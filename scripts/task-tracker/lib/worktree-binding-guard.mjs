@@ -8,6 +8,7 @@
 import { execFile } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { resolveRuntimeRootOverride } from './runtime-storage.mjs';
 import { promisify } from 'node:util';
 
 import { getActiveTask } from '../session-state.mjs';
@@ -147,10 +148,13 @@ export function resolveCurrentSessionWorktreeBinding({
   const loadFleet = deps.readFleet ?? readFleet;
   const candidates = new Set([path.resolve(invokingDir)]);
 
-  for (const variable of ['AI_TASK_MANAGER_PROJECT_DIR', 'TASK_TRACKER_PROJECT_DIR']) {
-    const value = process.env[variable];
-    if (typeof value === 'string' && value.trim()) candidates.add(path.resolve(value));
-  }
+  const override = resolveRuntimeRootOverride({
+    cwd: invokingDir,
+    env: deps.env ?? process.env,
+    foreignWorktreeAdmission: deps.foreignWorktreeAdmission,
+    adapters: deps.runtimeRootAdapters,
+  });
+  if (override) candidates.add(override.projectRoot);
 
   const mainPath = (deps.resolveMain || findMain)(invokingDir, deps);
   const fleet = loadFleet(fleetRegistryPath(mainPath));

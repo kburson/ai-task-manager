@@ -12,6 +12,7 @@
 // end-to-end via a child process. The source-level invariants moved to the
 // preflight helper / dispatcher wiring.
 
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { readFileSync, mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -178,7 +179,7 @@ test('refuses cross-close: exit 7, PROMPT_REQUIRED on stdout (via dispatcher pre
   const env = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox, TT_SKIP_NETWORK: '1' };
   let err;
   try {
-    await pexec('node', [CLI, 'close', '#102'], { env });
+    await pexec('node', unitRuntimeEntrypointArgs(CLI, ['close', '#102']), { env });
     throw new Error('expected non-zero exit');
   } catch (e) {
     err = e;

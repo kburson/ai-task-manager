@@ -11,6 +11,7 @@
 // the CLI via `node task-tracker.mjs test #999`. The gh shim records any
 // comment or body write so the preflight's no-effect boundary is observable.
 
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -216,7 +217,7 @@ process.exit(0);
   let stderr = '',
     exitCode = 0;
   try {
-    await pexec('node', [CLI, 'test', '#999'], {
+    await pexec('node', unitRuntimeEntrypointArgs(CLI, ['test', '#999']), {
       cwd: sandbox,
       env,
       timeout: 30000,

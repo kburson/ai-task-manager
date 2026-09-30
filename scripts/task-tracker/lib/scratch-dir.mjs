@@ -15,6 +15,7 @@ import { cpSync, mkdirSync, mkdtempSync, existsSync, writeFileSync } from 'node:
 import { execFileSync } from 'node:child_process';
 import { tmpdir as systemTmpdir } from 'node:os';
 import path from 'node:path';
+import { resolveRuntimeRoot } from './runtime-storage.mjs';
 import { BoundWorktreeMissingError, resolveProjectDir } from './project-dir.mjs';
 
 const VALID_PURPOSE_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
@@ -56,11 +57,17 @@ export function resolveScratchRoot(projectDir, deps = {}) {
     return resolve({ deps: { projectDir } });
   } catch (error) {
     if (!(error instanceof BoundWorktreeMissingError)) throw error;
-    return projectDir || env.AI_TASK_MANAGER_PROJECT_DIR || cwd();
+    return (
+      projectDir ||
+      resolveRuntimeRoot({ env, cwd: cwd(), adapters: deps.runtimeRootAdapters }).projectRoot
+    );
   }
 }
 
-// `mkdtempSync` inside `projectScratchDir(purpose)`, then `git init -q` so the
+// Genuine Git fixtures live outside freely writable artifact roots (#1857).
+// Ordinary scratch files remain in projectScratchDir; these repositories model
+// runtime authority and therefore use the dedicated test-fixtures namespace.
+// `mkdtempSync`, then `git init -q` so the
 // resulting dir is its own git-worktree root. Required when test code (or code
 // under test) walks up via `git rev-parse --show-toplevel` / `findMainWorktreePath`
 // — without the init, those walkers escape the sandbox and resolve to this
@@ -91,8 +98,23 @@ const GIT_TEST_IDENTITY = {
 let prototypeDir = null;
 let prototypeBuilds = 0;
 
+function gitFixtureDir(purpose) {
+  if (!VALID_PURPOSE_RE.test(String(purpose))) {
+    throw new Error('gitFixtureDir: invalid purpose');
+  }
+  const dir = path.join(
+    resolveScratchRoot(),
+    '.ai-task-manager',
+    'runtime',
+    'test-fixtures',
+    purpose
+  );
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
 function buildSandboxPrototype(purpose) {
-  const dir = mkdtempSync(path.join(projectScratchDir(purpose), 'aitm-sandbox-prototype-'));
+  const dir = mkdtempSync(path.join(gitFixtureDir(purpose), 'aitm-sandbox-prototype-'));
   execFileSync('git', ['init', '-q', '-b', 'trunk'], { cwd: dir });
   // Stop Node's module-type resolver from walking out of the sandbox and
   // inheriting this repo's `"type": "module"` package.json. Tests that drop
@@ -121,7 +143,7 @@ export function mkdtempProjectIsolated(prefix, purpose = 'test') {
   if (prototypeDir === null || !existsSync(prototypeDir)) {
     prototypeDir = buildSandboxPrototype(purpose);
   }
-  const dir = mkdtempSync(path.join(projectScratchDir(purpose), prefix));
+  const dir = mkdtempSync(path.join(gitFixtureDir(purpose), prefix));
   cpSync(prototypeDir, dir, { recursive: true });
   return dir;
 }

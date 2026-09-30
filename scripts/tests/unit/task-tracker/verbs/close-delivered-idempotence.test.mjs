@@ -1,6 +1,6 @@
 // @story #1381
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
 
 import {
   decideCloseConvergence,

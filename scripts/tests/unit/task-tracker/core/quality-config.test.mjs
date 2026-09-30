@@ -16,6 +16,8 @@ const PEER_REVIEW_DIRECTORY = 'docs/peer-reviews/';
 const PEER_REVIEW_GLOB = 'docs/peer-reviews/**';
 const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md';
 const PEER_REVIEW_RESPONSE_IGNORE_GLOBS = [
+  'docs/reviews/1857-expanded/**/review-*-author-response-*.md',
+  'docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md',
   'docs/superpowers/reviews/**/*-review-*-author-response-*.md',
   'docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md',
   'docs/superpowers/reviews/**/review-*-author-response-*.md',
@@ -116,8 +118,13 @@ assert.deepEqual(
     (entry) => entry.includes('/reviews/') && entry.includes('-reviewer-')
   ),
   [
+    ...PEER_REVIEW_RESPONSE_IGNORE_GLOBS.filter(
+      (glob) => glob.startsWith('docs/reviews/') && glob.includes('-reviewer-')
+    ),
     REVIEWER_IGNORE_GLOB,
-    ...PEER_REVIEW_RESPONSE_IGNORE_GLOBS.filter((glob) => glob.includes('-reviewer-')),
+    ...PEER_REVIEW_RESPONSE_IGNORE_GLOBS.filter(
+      (glob) => glob.startsWith('docs/superpowers/') && glob.includes('-reviewer-')
+    ),
   ],
   'markdownlint must use canonical role and sealed-response globs, never exact reviewer files'
 );
@@ -182,3 +189,19 @@ for (const word of dict) {
 }
 
 console.log(`ok — ${requiredFiles.length} files, ${requiredScripts.length} scripts verified`);
+
+const sealedManifestGlob = 'docs/reviews/1857-expanded/**/review-*-review-manifest.md';
+assert.ok(
+  prettierIgnore.includes(sealedManifestGlob),
+  'Prettier must preserve generated APR manifest bytes'
+);
+for (const filename of [
+  'design.md',
+  'implementation-plan.md',
+  '1857-cleanup-skill-baseline-evidence.md',
+]) {
+  assert.equal(
+    path.matchesGlob('docs/reviews/1857-expanded/spec/' + filename, sealedManifestGlob),
+    false
+  );
+}

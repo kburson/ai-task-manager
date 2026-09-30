@@ -8,6 +8,7 @@
 // transition, the tracker-state file must NOT contain a `state` field —
 // even when the file was seeded with a stale `state` from legacy data.
 
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -23,7 +24,7 @@ const REPO_ROOT = path.resolve(__dirname, '../../../..');
 const MOVE_STATE = path.join(REPO_ROOT, 'scripts/tests/helpers/move-state-cli.mjs');
 
 async function runMoveState(args, env) {
-  return pexec(process.execPath, [MOVE_STATE, ...args], {
+  return pexec(process.execPath, unitRuntimeEntrypointArgs(MOVE_STATE, args), {
     env: { ...process.env, ...env },
     timeout: 30_000,
   });

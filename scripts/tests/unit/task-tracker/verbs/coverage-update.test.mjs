@@ -17,7 +17,8 @@
 // AI_TASK_MANAGER_PROJECT_DIR so the live repo is never touched.
 
 import { strict as assert } from 'node:assert';
-import { test, before, after } from 'node:test';
+import { before, after } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
 import path from 'node:path';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 

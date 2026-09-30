@@ -4,6 +4,7 @@
 
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { resolveRuntimeRootOverride } from './runtime-storage.mjs';
 
 import { resolveRegisteredWorkspaceForIssue } from '../../gh/lib/dirty-workspace.mjs';
 import { getActiveTask } from '../session-state.mjs';
@@ -50,11 +51,17 @@ export function resolveProjectDir({ issue, deps = {} } = {}) {
   const issueLabel = issueRef || 'the active issue';
   const env = deps.env ?? process.env;
   const logOverride = deps.logOverride ?? ((message) => console.error(message));
-  for (const variable of ['TASK_TRACKER_PROJECT_DIR', 'AI_TASK_MANAGER_PROJECT_DIR']) {
-    if (typeof env?.[variable] !== 'string' || !env[variable].trim()) continue;
-    const override = path.resolve(env[variable]);
-    logOverride(`[task-tracker] projectDir override: ${variable}=${override} for ${issueLabel}`);
-    return override;
+  const override = resolveRuntimeRootOverride({
+    env,
+    cwd: deps.invokingDir ?? process.cwd(),
+    foreignWorktreeAdmission: deps.foreignWorktreeAdmission,
+    adapters: deps.runtimeRootAdapters,
+  });
+  if (override) {
+    logOverride(
+      `[task-tracker] validated projectDir override: ${override.selectedAlias}=${override.projectRoot} for ${issueLabel}`
+    );
+    return override.projectRoot;
   }
 
   // cwd is discovery context only: it locates this repository's session/fleet

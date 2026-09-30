@@ -6,6 +6,7 @@
 // marker-cleanup pass that returns a coarse {status} signal only. The retired
 // threshold-gap / idle-row / rebind assertions are gone; what remains is the
 // no-session / no-marker signalling and the exported gap helper.
+import { withUnitRuntimeRoot } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -17,22 +18,27 @@ import {
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-on-up-'));
 
-// Test 1: no session → no-op
-{
-  const r = await processPendingPause({ env: {} });
-  assert.equal(r.status, 'no-session');
-}
+await withUnitRuntimeRoot(
+  async () => {
+    // Test 1: no session → no-op
+    {
+      const r = await processPendingPause({ env: {} });
+      assert.equal(r.status, 'no-session');
+    }
 
-// Test 2: no marker file → no-op
-{
-  const env = { CLAUDE_SESSION_ID: 'u1', AI_TASK_MANAGER_PROJECT_DIR: tmp };
-  const r = await processPendingPause({ env });
-  assert.equal(r.status, 'no-op');
-}
+    // Test 2: no marker file → no-op
+    {
+      const env = { CLAUDE_SESSION_ID: 'u1', AI_TASK_MANAGER_PROJECT_DIR: tmp };
+      const r = await processPendingPause({ env });
+      assert.equal(r.status, 'no-op');
+    }
 
-// Test 3: computeGapSeconds basic math (retained export)
-assert.equal(computeGapSeconds(new Date(Date.now() - 60_000).toISOString()), 60);
-assert.equal(computeGapSeconds('not-a-date'), 0);
+    // Test 3: computeGapSeconds basic math (retained export)
+    assert.equal(computeGapSeconds(new Date(Date.now() - 60_000).toISOString()), 60);
+    assert.equal(computeGapSeconds('not-a-date'), 0);
 
-rmSync(tmp, { recursive: true });
-console.log('on-user-prompt.test.mjs: all passed');
+    rmSync(tmp, { recursive: true });
+    console.log('on-user-prompt.test.mjs: all passed');
+  },
+  { projectRoot: tmp }
+);

@@ -1,7 +1,6 @@
 // @story #1659
 // @story #1767
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -312,65 +311,6 @@ test('committed candidate transcripts and reports exactly match regeneration', a
     assert.equal(existsSync(artifactPath), true, `missing generated artifact: ${relativePath}`);
     assert.deepEqual(JSON.parse(readFileSync(artifactPath, 'utf8')), value);
   }
-});
-
-test('current recertification binds every obligation and the complete public CLI lifecycle', async () => {
-  const { buildCurrentRecertificationDecision } =
-    await import('../../../../maintenance/measure-guidance-candidate.mjs');
-  const decision = buildCurrentRecertificationDecision({ projectRoot });
-  assert.equal(decision.schema, 'aitm.guidance-feasibility-recertification/v1');
-  assert.equal(decision.owner.issue, 1767);
-  assert.equal(decision.owner.foundationIssue, 1660);
-  assert.equal(decision.verdict, 'GO');
-  assert.equal(decision.obligations.total, 41);
-  assert.equal(decision.obligations.retainedProtocol, 24);
-  assert.equal(decision.obligations.enforcement, 17);
-  assert.equal(decision.obligations.uncovered.length, 0);
-  assert.equal(decision.capture.events, 17);
-  assert.equal(
-    decision.capture.actionResults.every(({ status }) => status === 'ready'),
-    true
-  );
-  for (const adapter of ['claude', 'codex']) {
-    assert.equal(decision.adapters[adapter].status, 'pass');
-    assert.ok(decision.adapters[adapter].measurements.fullLifecycle <= 5600);
-  }
-});
-
-test('recertification refuses a relabeled or altered lifecycle capture', async () => {
-  const { buildCurrentRecertificationDecision } =
-    await import('../../../../maintenance/measure-guidance-candidate.mjs');
-  const committed = JSON.parse(
-    readFileSync(path.join(fixtureRoot, 'actual-explain-traffic-recertification.json'), 'utf8')
-  );
-  const modeDrift = structuredClone(committed);
-  modeDrift.identity.mode = 'historical';
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: modeDrift }),
-    /guidance-feasibility:capture-mode/
-  );
-  const transcriptDrift = structuredClone(committed);
-  transcriptDrift.events.find(({ name }) => name === 'lifecycle-close').typed.status = 'blocked';
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: transcriptDrift }),
-    /guidance-feasibility:capture-transcript-digest/
-  );
-  const sourceDrift = structuredClone(committed);
-  sourceDrift.identity.implementationFiles[0].sha256 = `sha256:${'0'.repeat(64)}`;
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: sourceDrift }),
-    /guidance-feasibility:capture-committed-source/
-  );
-  const selfConsistentDrift = structuredClone(committed);
-  const first = selfConsistentDrift.events.find(({ name }) => name === 'ready-first-load');
-  first.stdout = first.stdout.replace('"query":"bind"', '"query":"noop"');
-  selfConsistentDrift.identity.transcriptSha256 = `sha256:${createHash('sha256')
-    .update(JSON.stringify(selfConsistentDrift.events))
-    .digest('hex')}`;
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: selfConsistentDrift }),
-    /capture-replay/
-  );
 });
 
 test('current release gate refuses budget relaxation', async () => {

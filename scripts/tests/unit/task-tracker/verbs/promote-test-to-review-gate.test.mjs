@@ -23,7 +23,7 @@
 // entered Review surfaces as `promoted-with-warning` (still in Review), not as
 // a false `promoted` and not as a demote.
 
-import { test } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
 import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #1412
+// @story #1857
 // Contract tests for mkdtempProjectIsolated's prototype-and-copy sandbox (#1412).
 //
 // The helper used to spawn `git init`, `git add` and `git commit` per call —
@@ -22,6 +23,8 @@ import {
   mkdtempProjectIsolated,
   sandboxPrototypeBuildCount,
 } from '../../../../task-tracker/lib/scratch-dir.mjs';
+
+import { resolveRuntimeRoot } from '../../../../task-tracker/lib/runtime-storage.mjs';
 
 const GIT_ENV = {
   ...process.env,
@@ -102,4 +105,9 @@ test('the sandbox directory actually exists on disk', () => {
   const dir = mkdtempProjectIsolated('proto-exists-');
   assert.equal(existsSync(dir), true);
   assert.equal(existsSync(path.join(dir, '.git')), true);
+});
+
+test('genuine Git sandboxes are admissible roots outside volatile artifacts', () => {
+  const dir = mkdtempProjectIsolated('proto-runtime-');
+  assert.equal(resolveRuntimeRoot({ cwd: dir, env: {} }).projectRoot, realpathSync(dir));
 });

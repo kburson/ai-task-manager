@@ -1,6 +1,7 @@
 // Word counter — extracted from tally-chat-words.mjs for reuse.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { resolveRuntimeRoot } from './lib/runtime-storage.mjs';
 import { homedir } from 'node:os';
 
 import { detectProvider, getProvider, listProviders } from '../providers/index.mjs';
@@ -12,14 +13,13 @@ import {
 import { scanJsonlRecords } from './lib/jsonl-line-scanner.mjs';
 import { resolveSessionId } from './lib/session-id.mjs';
 
-export function projectKey() {
-  const dir = projectDir();
+export function projectKey(dir = projectDir()) {
   // Flatten path separators (POSIX `/`, Windows `\`) and the Windows drive colon.
   return dir.replace(/[\\/:]/g, '-');
 }
 
 export function projectDir() {
-  return process.env.AI_TASK_MANAGER_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  return resolveRuntimeRoot().projectRoot;
 }
 
 export function aiAppName() {

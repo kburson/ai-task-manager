@@ -3,6 +3,7 @@
 // /task skill CLI. Dispatches verbs to per-verb modules under ./verbs/.
 // Shared runtime context lives in ./runtime.mjs.
 
+import { withRegisteredForeignWorktreeAdmission } from './lib/runtime-storage.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -417,8 +418,15 @@ const _isMain = (() => {
   }
 })();
 
+function runRegisteredTaskHub(operation) {
+  return withRegisteredForeignWorktreeAdmission(
+    parseForeignWorktreeOverride(process.argv.slice(2)),
+    operation
+  );
+}
+
 if (_isMain)
-  (async () => {
+  runRegisteredTaskHub(async () => {
     const admission = admitGuidance({ argv: process.argv.slice(2), surface: 'task-hub' });
     if (!admission.admitted) {
       process.stderr.write(admission.diagnostic);
@@ -959,4 +967,4 @@ if (_isMain)
       if (err && err.defectHint) console.error(err.defectHint);
       process.exit(1);
     }
-  })();
+  });

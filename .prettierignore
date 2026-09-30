@@ -22,3 +22,4 @@ scripts/tests/fixtures/1558/lifecycle-transcript-final.json
 # APR sealed responses retain exact protected metadata.
 docs/reviews/1857-expanded/**/review-*-author-response-*.md
 docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md
+docs/reviews/1857-expanded/**/review-*-review-manifest.md

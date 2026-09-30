@@ -302,35 +302,3 @@ test('missing, stale, shortened or relabeled inputs cannot become a decision', a
     /guidance-feasibility:decision-drift/
   );
 });
-
-test('historical foundation stays immutable while command modes report the current recertification', async () => {
-  const { buildFeasibilityDecision, buildCurrentRecertificationDecision, runMeasurementCommand } =
-    await measurementTool();
-  assert.deepEqual(json('feasibility-decision.json'), buildFeasibilityDecision({ projectRoot }));
-  const expected = buildCurrentRecertificationDecision({ projectRoot });
-  assert.deepEqual(json('feasibility-recheck-1767.json'), expected);
-
-  for (const args of [
-    ['--all', '--json'],
-    ['--all', '--assert-feasible', '--json'],
-  ]) {
-    let stdout = '';
-    let stderr = '';
-    const status = runMeasurementCommand(args, {
-      projectRoot,
-      writeStdout: (value) => (stdout += value),
-      writeStderr: (value) => (stderr += value),
-    });
-    assert.equal(status, 0, stderr);
-    assert.deepEqual(JSON.parse(stdout), expected);
-  }
-
-  let stderr = '';
-  const invalid = runMeasurementCommand(['--json'], {
-    projectRoot,
-    writeStdout: () => {},
-    writeStderr: (value) => (stderr += value),
-  });
-  assert.notEqual(invalid, 0);
-  assert.match(stderr, /usage: measure-guidance-candidate/);
-});

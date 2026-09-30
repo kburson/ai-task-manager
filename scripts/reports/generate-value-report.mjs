@@ -56,7 +56,7 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
-import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { readSessionMinutes } from './lib/session-field.mjs';
 import {
   formatAcceleration,
@@ -73,6 +73,7 @@ import { wantsHelp, emitSelfDoc, isDirectInvocation } from '../lib/self-doc.mjs'
 import { reportAttribution } from './lib/attribution-resolver.mjs';
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
 import { bucketRowsByDay, renderDailyChart, extractTimingBody } from './lib/daily-activity.mjs';
+import { resolveRuntimeRoot } from '../task-tracker/lib/runtime-storage.mjs';
 
 const argv = process.argv.slice(2);
 if (isDirectInvocation(import.meta.url) && wantsHelp(argv)) {
@@ -88,9 +89,7 @@ const CONFIG_PATH = path.join(__dir, 'value-report-config.json');
 const fileCfg = existsSync(CONFIG_PATH) ? JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) : {};
 
 // Load task-tracker project config to get projectId and repo
-const projectRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR ?? process.env.CLAUDE_PROJECT_DIR
-  ?? execSync('git rev-parse --show-toplevel 2>/dev/null || echo ""', { encoding: 'utf8', timeout: GIT_TIMEOUT_MS }).trim()
-  ?? process.cwd();
+const projectRoot = resolveRuntimeRoot().projectRoot;
 const ttCfg = loadConfig({
   projectPath: path.join(projectRoot, '.ai-task-manager', 'task-tracker.json'),
   legacyProjectPath: path.join(projectRoot, '.claude', 'task-tracker.json'),

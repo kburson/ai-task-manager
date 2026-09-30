@@ -53,3 +53,6 @@ tmp/
 .claude/scheduled_tasks.lock
 
 .worktrees/
+
+# #1857 genuine Git test fixtures must be outside volatile artifact roots.
+/.ai-task-manager/runtime/test-fixtures/

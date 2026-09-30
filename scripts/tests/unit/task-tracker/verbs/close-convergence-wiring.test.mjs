@@ -1,7 +1,7 @@
 // @story #925
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
-import { test } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
 
 import {
   readUnauthorizedCloseRecovery,

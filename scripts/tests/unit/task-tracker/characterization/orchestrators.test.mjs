@@ -20,6 +20,7 @@
 // to protect. If a refactor renames an internal helper, these tests stay green;
 // if it changes what a caller observes, they go red. That is the contract.
 
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { execFile } from 'node:child_process';
@@ -84,7 +85,10 @@ function moveStateEnv(sandbox, extra = {}) {
 }
 
 async function runMoveState(args, env) {
-  return pexec(process.execPath, [MOVE_STATE, ...args], { env, timeout: 10000 });
+  return pexec(process.execPath, unitRuntimeEntrypointArgs(MOVE_STATE, args), {
+    env,
+    timeout: 10000,
+  });
 }
 
 async function runMoveStateExpectFail(args, env) {

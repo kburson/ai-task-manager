@@ -3,7 +3,7 @@
 import { strict as assert } from 'node:assert';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { test } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
 
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import {

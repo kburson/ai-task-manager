@@ -17,7 +17,7 @@ import {
   setActionCaptureEnabled,
   summarizeActionCorpus,
 } from '../../../../task-tracker/lib/action-capture.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import { runCaptureActions } from '../../../../task-tracker/capture-actions.mjs';
 
 const classify = (args, input = '') => classifyGhCall(args, Buffer.from(input));

@@ -6,7 +6,7 @@
 // writes through the real setConfigValue, redirected to a temp projectPath so
 // no real project-local config is touched.
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { verbConfig } from '../../../../task-tracker/verbs/config.mjs';

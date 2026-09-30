@@ -6,6 +6,7 @@
 //   - reports unmatched options (column missing on Status field)
 //   - static parse: init-project-config.sh CANONICAL_STATUS_PALETTE has 8 entries in expected order
 
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -36,7 +37,7 @@ function readCfg(sandbox) {
 }
 
 async function runRepair(sandbox, fakeOptions) {
-  return pexec('node', [REPAIR], {
+  return pexec('node', unitRuntimeEntrypointArgs(REPAIR), {
     env: {
       ...process.env,
       AI_TASK_MANAGER_PROJECT_DIR: sandbox,
