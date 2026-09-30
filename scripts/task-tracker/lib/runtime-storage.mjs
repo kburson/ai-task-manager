@@ -1,7 +1,7 @@
 // @story #1857
 // cspell:words commondir backlink
 // Root discovery deliberately has no dependency on runtime state or bindings.
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { execFileSync } from 'node:child_process';
@@ -225,4 +225,155 @@ export function resolveRuntimeRootOverride(options = {}) {
   const env = options.env ?? process.env;
   if (!PROJECT_ROOT_ALIASES.some((alias) => env?.[alias] != null && env[alias] !== '')) return null;
   return resolveRuntimeRoot({ ...options, env });
+}
+
+export function runtimeStoragePaths({ projectRoot, mainRoot } = {}) {
+  const identity = resolveRuntimeRoot({ cwd: projectRoot, env: {} });
+  if (physical(mainRoot) !== identity.mainRoot) {
+    fail('ROOT_IDENTITY_MISMATCH', 'Runtime main root differs from registered Git identity');
+  }
+  const localRuntimeRoot = path.join(identity.projectRoot, '.ai-task-manager', 'runtime');
+  const sharedRuntimeRoot = path.join(identity.mainRoot, '.ai-task-manager', 'runtime');
+  return {
+    projectRoot: identity.projectRoot,
+    mainRoot: identity.mainRoot,
+    localRuntimeRoot,
+    sharedRuntimeRoot,
+    localRoot: path.join(localRuntimeRoot, 'store'),
+    sharedRoot: path.join(sharedRuntimeRoot, 'store'),
+    controlPath: path.join(localRuntimeRoot, 'control.json'),
+    sharedControlPath: path.join(sharedRuntimeRoot, 'control.json'),
+    migrationRoot: path.join(sharedRuntimeRoot, 'migrations'),
+    registeredRoots: [...identity.worktreeIdentity.registeredRoots],
+  };
+}
+
+function assertStoragePath(target, base, code = 'RUNTIME_OVERRIDE_UNSAFE') {
+  const resolved = path.resolve(target);
+  const relative = path.relative(base, resolved);
+  if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
+    fail(code, 'Runtime path is outside its owning namespace: ' + target);
+  }
+  // Reject aliases at every existing ancestor, including the runtime directory.
+  let cursor = base;
+  const ancestors = [];
+  while (cursor !== path.dirname(cursor)) {
+    ancestors.push(cursor);
+    cursor = path.dirname(cursor);
+  }
+  cursor = base;
+  for (const component of relative.split(path.sep).filter(Boolean)) {
+    cursor = path.join(cursor, component);
+    ancestors.push(cursor);
+  }
+  for (const candidate of ancestors) {
+    try {
+      if (lstatSync(candidate).isSymbolicLink())
+        fail(code, 'Runtime path contains a symbolic link: ' + candidate);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+  return resolved;
+}
+
+function readRequiredJson(file, base, code) {
+  assertStoragePath(file, base, code);
+  try {
+    if (!lstatSync(file).isFile()) fail(code, 'Runtime record is not a regular file: ' + file);
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    if (error instanceof RuntimeRootError) throw error;
+    fail(code, 'Missing or corrupt runtime record: ' + file);
+  }
+}
+
+function readControl(file, root, mainRoot, base) {
+  const control = readRequiredJson(file, base, 'RUNTIME_CONTROL_INVALID');
+  if (control?.schema !== 'aitm.runtime-control/v1')
+    fail('RUNTIME_CONTROL_INVALID', 'Unsupported runtime control schema');
+  if (['prepared', 'publishing'].includes(control.status))
+    fail('RUNTIME_TRANSACTION_INCOMPLETE', 'Runtime publication requires registered recovery');
+  if (
+    control.status !== 'active' ||
+    control.projectRoot !== root ||
+    control.mainRoot !== mainRoot ||
+    !/^[a-zA-Z0-9-]+$/.test(control.transactionId ?? '') ||
+    !/^sha256:[a-f0-9]{64}$/.test(control.planDigest ?? '')
+  ) {
+    fail('RUNTIME_CONTROL_INVALID', 'Runtime control identity is invalid');
+  }
+  return control;
+}
+
+export function assertRuntimeReadable(roots) {
+  const layout = runtimeStoragePaths(roots);
+  assertStoragePath(layout.controlPath, layout.localRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
+  assertStoragePath(layout.sharedControlPath, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
+  if (!existsSync(layout.controlPath)) {
+    if (existsSync(layout.localRoot) || existsSync(layout.sharedControlPath)) {
+      fail('RUNTIME_CONTROL_INVALID', 'Partial runtime loss requires registered recovery');
+    }
+    fail('RUNTIME_MIGRATION_REQUIRED', 'Explicit runtime migration or initialization required');
+  }
+  const local = readControl(
+    layout.controlPath,
+    layout.projectRoot,
+    layout.mainRoot,
+    layout.localRuntimeRoot
+  );
+  const shared = readControl(
+    layout.sharedControlPath,
+    layout.mainRoot,
+    layout.mainRoot,
+    layout.sharedRuntimeRoot
+  );
+  if (local.transactionId !== shared.transactionId || local.planDigest !== shared.planDigest) {
+    fail('RUNTIME_CONTROL_INVALID', 'Runtime controls disagree');
+  }
+  const manifestPath = path.join(layout.migrationRoot, local.transactionId, 'manifest.json');
+  const manifest = readRequiredJson(manifestPath, layout.migrationRoot, 'RUNTIME_CONTROL_INVALID');
+  if (
+    manifest.schema !== 'aitm.runtime-migration/v1' ||
+    manifest.transactionId !== local.transactionId ||
+    manifest.planDigest !== local.planDigest ||
+    !Array.isArray(manifest.roots) ||
+    !manifest.roots.includes(layout.projectRoot) ||
+    !manifest.roots.includes(layout.mainRoot)
+  ) {
+    fail('RUNTIME_CONTROL_INVALID', 'Runtime activation journal identity is invalid');
+  }
+  if (manifest.status !== 'complete')
+    fail('RUNTIME_TRANSACTION_INCOMPLETE', 'Runtime transaction has not completed');
+  assertRuntimeStoreRecords(layout);
+  return { ...local, layout };
+}
+
+export function assertRuntimeOverrideSafe({ path: target, projectRoot, mainRoot }) {
+  const layout = runtimeStoragePaths({ projectRoot, mainRoot });
+  if (typeof target !== 'string' || target.split(path.sep).includes('..')) {
+    fail('RUNTIME_OVERRIDE_UNSAFE', 'Invalid runtime override');
+  }
+  return assertStoragePath(path.resolve(projectRoot, target), layout.localRoot);
+}
+
+export const assertRuntimeStoragePath = assertStoragePath;
+
+export function assertRuntimeStoreRecords(layout) {
+  const required = [
+    [path.join(layout.localRoot, 'state', 'task-tracker-state.json'), layout.localRoot, 'state'],
+    [path.join(layout.localRoot, 'state', 'task-tracker-queue.json'), layout.localRoot, 'queue'],
+    [path.join(layout.sharedRoot, 'fleet', 'task-fleet.json'), layout.sharedRoot, 'object'],
+    [path.join(layout.sharedRoot, 'fleet', 'occupancy.json'), layout.sharedRoot, 'object'],
+  ];
+  for (const [file, base, kind] of required) {
+    const value = readRequiredJson(file, base, 'RUNTIME_STATE_CORRUPT');
+    const object = value !== null && typeof value === 'object' && !Array.isArray(value);
+    if (
+      (kind === 'queue' ? !Array.isArray(value) : !object) ||
+      (kind === 'state' && value.schema !== undefined && value.schema !== 'aitm.runtime-state/v1')
+    ) {
+      fail('RUNTIME_STATE_CORRUPT', 'Unsupported runtime record schema: ' + file);
+    }
+  }
 }
