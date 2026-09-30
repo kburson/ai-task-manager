@@ -554,3 +554,20 @@ test('documentation admission rejects uninspectable output redirects', () => {
   ])
     assert.equal(classifyBash(command), 'WRITE_CODE', command);
 });
+
+// @story #1848
+test('document writes never conceal additional writer operands', () => {
+  for (const verb of ['tee', 'touch', 'mkdir', 'rmdir', 'rm']) {
+    assert.equal(classifyBash(`${verb} docs/draft.md scripts/source.mjs`), 'WRITE_CODE');
+  }
+});
+
+// @story #1848
+test('document admission inspects single commands and wrappers', () => {
+  for (const command of [
+    `python -c 'open("scripts/x.mjs","w").write("bad")' > docs/draft.md`,
+    'env touch docs/draft.md scripts/source.mjs',
+    'command tee docs/draft.md scripts/source.mjs',
+  ])
+    assert.equal(classifyBash(command), 'WRITE_CODE', command);
+});

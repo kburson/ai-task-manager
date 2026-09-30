@@ -320,6 +320,13 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
     )
       return 'WRITE_CODE';
   }
+  for (const segment of splitCommandSegments(inspectQuotedHeredocs(cmd).source)) {
+    if (
+      /^\s*(?:tee|touch|mkdir|rmdir|rm)\b/.test(segment) &&
+      !/^\s*(?:tee|touch|mkdir|rmdir|rm)\s+(?:-[A-Za-z]+\s+)*[A-Za-z0-9_./-]+\s*$/.test(segment)
+    )
+      return 'WRITE_CODE';
+  }
   const targets = extractWriteTargets(cmd);
   let writeActivity = null;
   for (const target of targets) {
@@ -346,8 +353,7 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
     segment.trim()
   );
   if (
-    (writeActivity === 'WRITE_DOCS' || gitActivity === 'WRITE_DOCS') &&
-    segments.length > 1 &&
+    (writeActivity === 'WRITE_DOCS' || (gitActivity === 'WRITE_DOCS' && segments.length > 1)) &&
     segments.some((segment) => {
       if (
         [...(policy.testRunners || []), ...(policy.buildCommands || [])].some((pattern) =>
@@ -356,7 +362,8 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
       )
         return false;
       if (/^\s*(?:cat|echo|printf)\b/.test(segment) && !/[$`|&()]/.test(segment)) return false;
-      if (/^\s*tee\s+(?:-a\s+)?[A-Za-z0-9_./-]+\s*$/.test(segment)) return false;
+      if (/^\s*(?:tee|touch|mkdir|rmdir|rm)\s+(?:-[A-Za-z]+\s+)*[A-Za-z0-9_./-]+\s*$/.test(segment))
+        return false;
       return true;
     })
   )
