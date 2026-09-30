@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1848
 // @story #540
 // Regression: the close verb must emit the final-stage lifecycle rows in
 // canonical order `review:approved → issue:wrap → issue:closed`.
@@ -92,6 +93,10 @@ test('verbClose emits review:approved + issue:wrap before the done board move', 
     cfg: { repo: 'o/r' },
     statePath,
     projectDir: dir,
+    // These tests exercise close ordering/labels, with terminal storage external.
+    releaseIssueBindings: () => ({ released: [] }),
+    deregisterTask: () => {},
+    releaseBindingOccupancy: () => ({ released: [] }),
     rest: ['#999'],
     SKIP_NETWORK: true,
     // #655 — an honestly-approved live body; the review:approved row is now
@@ -242,6 +247,10 @@ test('#692 AC2 — retried close does not re-emit an existing review:approved/is
     cfg: { repo: 'o/r' },
     statePath,
     projectDir: dir,
+    // These tests exercise close ordering/labels, with terminal storage external.
+    releaseIssueBindings: () => ({ released: [] }),
+    deregisterTask: () => {},
+    releaseBindingOccupancy: () => ({ released: [] }),
     rest: ['#999'],
     SKIP_NETWORK: true,
     closeBody: '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" -->\n',
@@ -318,6 +327,10 @@ test('#692 AC3 — review:approved active duration derives from the timing comme
     cfg: { repo: 'o/r' },
     statePath,
     projectDir: dir,
+    // These tests exercise close ordering/labels, with terminal storage external.
+    releaseIssueBindings: () => ({ released: [] }),
+    deregisterTask: () => {},
+    releaseBindingOccupancy: () => ({ released: [] }),
     rest: ['#999'],
     SKIP_NETWORK: true,
     closeBody: `## Done\n\n<!-- aitm-review-approved ts="${new Date(closeMs).toISOString()}" -->\n`,

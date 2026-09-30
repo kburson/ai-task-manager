@@ -1,3 +1,4 @@
+// @story #1848
 // @story #925 #1732
 import { strict as assert } from 'node:assert';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -64,6 +65,10 @@ async function runOfflineOrdinaryClose({ gateReviewToDone, reviewer }) {
       cfg: { repo: 'o/r' },
       statePath,
       projectDir: dir,
+      // These tests exercise close ordering/labels, with terminal storage external.
+      releaseIssueBindings: () => ({ released: [] }),
+      deregisterTask: () => {},
+      releaseBindingOccupancy: () => ({ released: [] }),
       rest: ['#925'],
       SKIP_NETWORK: true,
       closeBody: '<!-- aitm-review-approved ts="2026-07-29T00:00:00Z" -->',

@@ -34,6 +34,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
     ['scripts/task-tracker/capture-actions.mjs', 'capture-actions'],
     ['scripts/task-tracker/cut-child-worktree.mjs', 'cut-child-worktree'],
     ['scripts/task-tracker/cut-epic-branch.mjs', 'cut-epic-branch'],
+    ['scripts/task-tracker/draft-branch.mjs', 'draft-branch'],
     ['scripts/task-tracker/heal-backlog.mjs', 'heal-backlog'],
     ['scripts/task-tracker/guidance.mjs', 'guidance'],
     ['scripts/task-tracker/measure-context.mjs', 'measure-context'],

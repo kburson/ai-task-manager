@@ -1,3 +1,4 @@
+// @story #1848
 // @story #801
 // Regression: the close converge/no-op fast-path must STILL emit the terminal
 // `review:approved → issue:wrap` audit pair. Before #801, a close that resolved
@@ -46,6 +47,10 @@ async function runConverge({ issueBody, timingBody }) {
   const { statePath, dir } = tmpState(baseState());
   const posted = [];
   const ctx = {
+    // @story #1848: terminal storage is outside these timing/label unit contracts.
+    releaseIssueBindings: () => ({ released: [] }),
+    deregisterTask: () => {},
+    releaseBindingOccupancy: () => ({ released: [] }),
     rest: ['#5'],
     projectConfig: {
       cfg: { repo: 'o/r' },

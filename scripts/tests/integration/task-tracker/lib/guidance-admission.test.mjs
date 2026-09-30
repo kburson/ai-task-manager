@@ -349,7 +349,8 @@ test('admission inventory accounts for every canonical command, alias, and class
     if (entry.gateCall === null) assert.ok(entry.exception, entry.path);
   }
   assert.equal(VERBS.size, 74);
-  assert.equal(Object.keys(SCRIPTS).length, 23);
+  // #1848 adds the bounded draft-branch standalone route.
+  assert.equal(Object.keys(SCRIPTS).length, 24);
   assert.deepEqual(
     new Set(inventory.commands.filter((row) => row.route === 'standalone').map((row) => row.token)),
     new Set([

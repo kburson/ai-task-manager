@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1848
 // @story #558
 //
 // Characterization harness for the three state-machine orchestrators:
@@ -259,6 +260,10 @@ function makeCloseCtx({ statePath, dir, rest, boardState, sequence }) {
     cfg: { repo: 'o/r' },
     statePath,
     projectDir: dir,
+    // These tests exercise close ordering/labels, with terminal storage external.
+    releaseIssueBindings: () => ({ released: [] }),
+    deregisterTask: () => {},
+    releaseBindingOccupancy: () => ({ released: [] }),
     rest,
     SKIP_NETWORK: true,
     pexec: async () => ({ stdout: '{}', stderr: '' }),

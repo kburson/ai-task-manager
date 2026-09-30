@@ -32,7 +32,13 @@ import path from 'node:path';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
-import { classifyEdit, isAllowed, loadPolicy, DEFAULT_POLICY } from './activity-policy.mjs';
+import {
+  classifyEdit,
+  isAllowed,
+  loadPolicy,
+  DEFAULT_POLICY,
+  DRAFTING_STATES,
+} from './activity-policy.mjs';
 import { loadConfig } from './config.mjs';
 import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
 import { ownershipDecision } from './lib/ownership-policy.mjs';
@@ -187,7 +193,7 @@ export function decideSourceEdit({
   }
 
   if (
-    state === 'plan' &&
+    DRAFTING_STATES.includes(state) &&
     planBindingValid &&
     /^(?:docs|\.claude\/plans)\/(?:[^/]+\/)*[^/]+\.md$/.test(relPath) &&
     Array.isArray(assignees) &&
@@ -423,6 +429,16 @@ function readStdin() {
 }
 
 export async function runHook(payload, deps = {}) {
+  if (
+    payload &&
+    Object.hasOwn(payload, 'session_id') &&
+    (typeof payload.session_id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(payload.session_id))
+  )
+    return {
+      decision: 'block',
+      code: 'source-edit-session',
+      reason: '[task-tracker] invalid native hook session identity.',
+    };
   const toolName = payload?.tool_name;
   if (!GATED_TOOLS.has(toolName)) return { decision: 'allow', reason: 'tool-not-gated' };
 
@@ -482,12 +498,16 @@ export async function runHook(payload, deps = {}) {
     }
   }
   const choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);
-  const exactBinding = (deps.readExactSessionBinding || readExactSessionBinding)(projectDir);
+  const exactBinding = (deps.readExactSessionBinding || readExactSessionBinding)(projectDir, {
+    sessionId: payload?.session_id,
+  });
   const boundIssue = deps.loadBoundIssue
     ? deps.loadBoundIssue(projectDir)
     : exactBinding
       ? `#${exactBinding.issueNumber}`
-      : loadBoundIssue(projectDir);
+      : payload?.session_id !== undefined
+        ? null
+        : loadBoundIssue(projectDir);
 
   let signals = { state: 'unknown', hasPostedMarker: false, hasCompleteMarker: false };
   if (!choreModeActive && boundIssue) {

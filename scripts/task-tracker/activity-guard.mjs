@@ -49,6 +49,9 @@ import {
   isAllowed,
   loadPolicy,
   STATE_MATRIX,
+  DRAFTING_STATES,
+  scratchShellTargets,
+  extractWriteTargets,
 } from './activity-policy.mjs';
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
 import { readBoundState } from './lib/bound-state.mjs';
@@ -99,7 +102,14 @@ if (toolName === 'apply_patch') {
     block(`[task-tracker] mutation target parsing failed: ${error.message}`);
   }
 }
-const { activeIssue, state: recordedState } = readBoundState(projectRoot);
+if (
+  Object.hasOwn(input, 'session_id') &&
+  (typeof input.session_id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(input.session_id))
+)
+  block('[task-tracker] invalid native hook session identity.');
+const { activeIssue, state: recordedState } = readBoundState(projectRoot, {
+  sessionId: input.session_id,
+});
 // When no task is bound (paused or never started), ignore the residual
 // `state` field from the last active task. Otherwise editing infra/meta
 // files between tasks would be permanently blocked: WRITE_OTHER is excluded
@@ -182,6 +192,18 @@ if (
   if (typeof command !== 'string' || !command) process.exit(0);
   target = command;
   activityClass = classifyBash(command, policy);
+  if (activityClass === 'WRITE_SCRATCH') {
+    try {
+      for (const scratchTarget of scratchShellTargets(command)) {
+        const resolved = resolveMutationTarget(scratchTarget, invocationDir, projectRoot);
+        if (!/^(?:\.scratch|\.tmp)(?:\/|$)/.test(resolved.relative))
+          throw new Error('scratch target resolves outside designated scratch');
+      }
+    } catch (error) {
+      block(`[task-tracker] scratch target refused: ${error.message}`);
+    }
+    process.exit(0);
+  }
   if (gitContext?.kind === 'commit') {
     try {
       const staged = readStagedRecords(gitContext.cwd);
@@ -234,15 +256,16 @@ function commitMessageFileText(args, cwd) {
 // grants a bypass (#440 AC2). The commit-subject contract is unaffected: the
 // PostToolUse commit-trail still requires `chore:` subjects while chore-mode is
 // on, so loosening the edit gate does not loosen the commit gate (#440 AC5).
+const bashDocumentWrite =
+  toolName === 'Bash' && extractWriteTargets(target).some((filePath) => /\.md$/.test(filePath));
 if (
   activityClass === 'COMMIT_DOCS' ||
-  (state === 'plan' && (activityClasses || []).includes('WRITE_DOCS')) ||
-  (state === 'plan' &&
+  (DRAFTING_STATES.includes(state) && (activityClasses || []).includes('WRITE_DOCS')) ||
+  (DRAFTING_STATES.includes(state) &&
     toolName === 'Bash' &&
-    gitContext?.kind === 'add' &&
-    activityClass === 'WRITE_DOCS')
+    (activityClass === 'WRITE_DOCS' || bashDocumentWrite))
 ) {
-  const bound = readExactSessionBinding(projectRoot);
+  const bound = readExactSessionBinding(projectRoot, { sessionId: input.session_id });
   const valid = bindingMatches(
     observedIdentity,
     bound,
@@ -250,15 +273,32 @@ if (
   );
   if (!valid)
     block(
-      '[task-tracker] Plan document mutation refused: current session binding, branch, or worktree mismatch.'
+      '[task-tracker] Draft document mutation refused: current session binding, branch, or worktree mismatch.'
     );
-  if (toolName === 'Bash' && gitContext?.kind === 'add' && state === 'plan') {
-    if (!gitContext.contextSafe) block('[task-tracker] Plan staging context is not inspectable.');
+  if (
+    toolName === 'Bash' &&
+    (activityClass === 'WRITE_DOCS' || bashDocumentWrite) &&
+    gitContext?.kind !== 'add'
+  ) {
+    const writes = extractWriteTargets(target);
+    if (!writes.length) block('[task-tracker] Draft write targets are not inspectable.');
+    try {
+      for (const filePath of writes) {
+        const resolved = resolveMutationTarget(filePath, invocationDir, projectRoot);
+        if (!/^(?:docs|\.claude\/plans)\/(?:[^/]+\/)*[^/]+\.md$/.test(resolved.relative))
+          throw new Error('target is not a regular design document path');
+      }
+    } catch (error) {
+      block(`[task-tracker] Draft write target refused: ${error.message}`);
+    }
+  }
+  if (toolName === 'Bash' && gitContext?.kind === 'add' && DRAFTING_STATES.includes(state)) {
+    if (!gitContext.contextSafe) block('[task-tracker] Draft staging context is not inspectable.');
     try {
       for (const filePath of gitContext.args)
         resolveMutationTarget(filePath, gitContext.cwd, projectRoot);
     } catch (error) {
-      block(`[task-tracker] Plan staging target refused: ${error.message}`);
+      block(`[task-tracker] Draft staging target refused: ${error.message}`);
     }
   }
   if (activityClass === 'COMMIT_DOCS') {
@@ -295,6 +335,8 @@ if (
   }
 }
 if (isChoreModeActive(projectRoot) && activityClass !== 'COMMIT_DOCS') process.exit(0);
+if (input.session_id !== undefined && !activeIssue && activityClass !== 'READ_*')
+  block('[task-tracker] Native hook session has no active issue binding.');
 
 // Active task bound but no kanban state recorded → drift. Refuse all write
 // activity classes and point at reconcile. READ_* still passes.

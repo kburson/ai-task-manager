@@ -22,7 +22,8 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { discoverBashActivity } from './lib/mutation-context.mjs';
+import { splitCommandSegments } from './lib/gh-edit-guard.mjs';
+import { discoverBashActivity, inspectQuotedHeredocs } from './lib/mutation-context.mjs';
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -97,10 +98,12 @@ export const DEFAULT_POLICY = Object.freeze({
   buildCommands: ['npm run build', 'tsc', 'cargo build', 'go build'],
 });
 
+export const DRAFTING_STATES = Object.freeze(['backlog', 'refine', 'ready-for-plan', 'plan']);
+
 export const STATE_MATRIX = Object.freeze({
-  backlog: ['WRITE_ISSUE', 'READ_*'],
-  refine: ['WRITE_ISSUE', 'READ_*'],
-  'ready-for-plan': ['WRITE_ISSUE', 'READ_*'],
+  backlog: ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'READ_*'],
+  refine: ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'READ_*'],
+  'ready-for-plan': ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'READ_*'],
   plan: ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'RUN_TESTS', 'READ_*'],
   develop: [
     'WRITE_CODE',
@@ -256,9 +259,9 @@ function stripQuotedRegions(command) {
   return out;
 }
 
-function extractWriteTargets(command) {
+export function extractWriteTargets(command) {
   const targets = new Set();
-  const scanned = stripQuotedRegions(command);
+  const scanned = stripQuotedRegions(inspectQuotedHeredocs(command).source);
 
   // Redirections: `> path` or `>> path` (not `>&`, not `2>`).
   const redirectRe = /(?<![0-9&])>>?\s*([^\s;|&<>]+)/g;
@@ -276,12 +279,55 @@ function extractWriteTargets(command) {
   return [...targets];
 }
 
+// @story #1848
+// Closed shell forms: incidental scratch paths never authorize other effects.
+export function scratchShellTargets(command) {
+  if (typeof command !== 'string') return null;
+  const target = '(?:\\.scratch|\\.tmp)(?:/[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*)*';
+  const heredoc = command.match(
+    new RegExp(
+      '^\\s*cat\\s*>\\s*(' + target + ")\\s*<<'([A-Za-z_][A-Za-z0-9_]*)'\\n([\\s\\S]*)\\n\\2\\s*$"
+    )
+  );
+  if (heredoc) {
+    if (heredoc[3].split('\n').includes(heredoc[2])) return null;
+    return [heredoc[1]];
+  }
+  const mkdir = command.match(
+    new RegExp('^\\s*mkdir\\s+(?:-p\\s+)?(' + target + '(?:\\s+' + target + ')*)\\s*$')
+  );
+  if (mkdir) return mkdir[1].trim().split(/\s+/);
+  const echo = command.match(
+    new RegExp("^\\s*echo\\s+(?:[A-Za-z0-9_ .-]+|'[^'\\n]*')\\s*>>?\\s*(" + target + ')\\s*$')
+  );
+  return echo ? [echo[1]] : null;
+}
+
 export function classifyBash(command, policy = DEFAULT_POLICY) {
   if (typeof command !== 'string' || !command) return 'READ_*';
   const cmd = command.replace(/^\s+/, '');
+  if (scratchShellTargets(cmd)) return 'WRITE_SCRATCH';
 
   // A compound command may stage a document after writing source. Inspect all
   // shell write targets before granting the narrower Git or runner activity.
+  // Every output redirect must expose one literal target to containment checks.
+  // Quoted targets, descriptor writes, and descriptor duplication fail closed.
+  const redirectSource = inspectQuotedHeredocs(cmd).source;
+  const scanned = stripQuotedRegions(redirectSource);
+  for (const match of scanned.matchAll(/>+/g)) {
+    if (
+      /[0-9&]/.test(scanned.charAt(match.index - 1)) ||
+      !/^>>?\s*[A-Za-z0-9_./-]+(?=\s|$|[;|&])/.test(redirectSource.slice(match.index))
+    )
+      return 'WRITE_CODE';
+  }
+  for (const segment of splitCommandSegments(inspectQuotedHeredocs(cmd).source)) {
+    if (
+      /^\s*(?:tee|touch|mkdir|rmdir|rm)\b/.test(segment) &&
+      !/^\s*(?:tee|touch|mkdir|rmdir|rm)\s+(?:-[A-Za-z]+\s+)*[A-Za-z0-9_./-]+\s*$/.test(segment)
+    )
+      return 'WRITE_CODE';
+  }
   const targets = extractWriteTargets(cmd);
   let writeActivity = null;
   for (const target of targets) {
@@ -299,23 +345,43 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
   }
   const gitActivity = discoverBashActivity(cmd, process.cwd());
   if (gitActivity === 'COMMIT_CODE') return gitActivity;
+  if (inspectQuotedHeredocs(cmd).executable) return 'WRITE_CODE';
   if (writeActivity === 'WRITE_CODE') return writeActivity;
   if (gitActivity === 'WRITE_CODE') return gitActivity;
   if (writeActivity === 'WRITE_ISSUE') return writeActivity;
-  if (gitActivity) return gitActivity;
+
+  const segments = splitCommandSegments(inspectQuotedHeredocs(cmd).source).filter((segment) =>
+    segment.trim()
+  );
+  if (
+    (writeActivity === 'WRITE_DOCS' || (gitActivity === 'WRITE_DOCS' && segments.length > 1)) &&
+    segments.some((segment) => {
+      if (
+        [...(policy.testRunners || []), ...(policy.buildCommands || [])].some((pattern) =>
+          startsWithCommand(segment, pattern)
+        )
+      )
+        return false;
+      if (/^\s*(?:cat|echo|printf)\b/.test(segment) && !/[$`|&()]/.test(segment)) return false;
+      if (/^\s*(?:tee|touch|mkdir|rmdir|rm)\s+(?:-[A-Za-z]+\s+)*[A-Za-z0-9_./-]+\s*$/.test(segment))
+        return false;
+      return true;
+    })
+  )
+    return 'WRITE_CODE';
+  // Build commands.
+  const buildCommands = [...(policy.buildCommands || [])].sort((a, b) => b.length - a.length);
+  for (const pat of buildCommands) {
+    if (segments.some((segment) => startsWithCommand(segment, pat))) return 'RUN_BUILD';
+  }
 
   // Test runners — longest-first so `npm run test` wins over `npm`.
   const testRunners = [...(policy.testRunners || [])].sort((a, b) => b.length - a.length);
   for (const pat of testRunners) {
-    if (startsWithCommand(cmd, pat)) return 'RUN_TESTS';
+    if (segments.some((segment) => startsWithCommand(segment, pat))) return 'RUN_TESTS';
   }
 
-  // Build commands.
-  const buildCommands = [...(policy.buildCommands || [])].sort((a, b) => b.length - a.length);
-  for (const pat of buildCommands) {
-    if (startsWithCommand(cmd, pat)) return 'RUN_BUILD';
-  }
-
+  if (gitActivity) return gitActivity;
   if (writeActivity) return writeActivity;
 
   return 'READ_*';
@@ -327,7 +393,7 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
 
 export function isAllowed(state, activityClass) {
   // READ_* is universally allowed.
-  if (activityClass === 'READ_*') return true;
+  if (activityClass === 'READ_*' || activityClass === 'WRITE_SCRATCH') return true;
 
   // No-active-task policy: refuse WRITE_CODE / COMMIT_CODE; allow all else.
   if (state == null) {

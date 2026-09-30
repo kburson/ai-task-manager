@@ -108,9 +108,12 @@ async function evaluate(input) {
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
   const { configPath } = await import('./paths.mjs');
-  const { resolveInvocationDirectory, parseDirectGit } = await import('./lib/mutation-context.mjs');
+  const { resolveInvocationDirectory, parseDirectGit, inspectQuotedHeredocs } =
+    await import('./lib/mutation-context.mjs');
 
-  const command = input?.tool_input?.command ?? '';
+  const rawCommand = input?.tool_input?.command ?? '';
+  const heredoc = inspectQuotedHeredocs(rawCommand);
+  const command = heredoc.executable ? rawCommand : heredoc.source;
   if (!command) process.exit(0);
 
   const invocationDir = resolveInvocationDirectory(input);
@@ -143,7 +146,10 @@ async function evaluate(input) {
   const worktreeClassification = classifyBashWorktreeCommand(command);
   if (worktreeClassification.guarded) {
     const invokingDir = effectiveDir;
-    const bound = resolveCurrentSessionWorktreeBinding({ invokingDir });
+    const bound = resolveCurrentSessionWorktreeBinding({
+      invokingDir,
+      deps: { sessionId: input.session_id },
+    });
     const invoking = bound ? readWorktreeIdentity({ projectDir: invokingDir }) : null;
     const worktreeResult = evaluateBashWorktreeBinding({
       command,

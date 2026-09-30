@@ -222,6 +222,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // separate so the preserved #1624 branch can apply its exact ceiling change
   // without both histories editing the same base hunk.
   const recoveryEntryAllowance = 1;
+  // #1848 ships the bounded draft-branch bootstrap entry point.
+  const draftBranchAllowance = 1;
   // #1693 adds the standalone doctor entry point and its read-only observer.
   const doctorRuntimeAllowance = 2;
   // #1709 ships the pure story contract and shared Markdown views.
@@ -347,7 +349,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     deliveryIntegrationProofAllowance +
     localTrunkProofAllowance +
     localTrunkReceiptAllowance +
-    mutationContextAllowance;
+    mutationContextAllowance +
+    draftBranchAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

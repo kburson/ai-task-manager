@@ -549,3 +549,23 @@ test('Plan source-edit hook accepts owned Markdown from observed worktree', asyn
     cleanup();
   }
 });
+
+// @story #1848
+for (const state of ['backlog', 'refine', 'ready-for-plan']) {
+  test(`bound ${state} draft permits documentation but no source or foreign ownership`, () => {
+    const args = {
+      toolName: 'Edit',
+      filePath: 'docs/superpowers/specs/1848-design.md',
+      projectDir: PROJECT_DIR,
+      boundIssue: '#1848',
+      choreModeActive: false,
+      issueState: state,
+      planBindingValid: true,
+      ...LOCAL_OWNERSHIP,
+    };
+    assert.equal(decideSourceEdit(args).decision, 'allow');
+    assert.equal(decideSourceEdit({ ...args, planBindingValid: false }).decision, 'block');
+    assert.equal(decideSourceEdit({ ...args, assignees: ['foreign'] }).decision, 'block');
+    assert.equal(decideSourceEdit({ ...args, filePath: 'scripts/code.mjs' }).decision, 'block');
+  });
+}
