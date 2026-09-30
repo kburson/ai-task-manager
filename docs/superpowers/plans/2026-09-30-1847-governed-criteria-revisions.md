@@ -99,7 +99,7 @@ and never reach GitHub. Unknown or partial results are not normalized to absence
 
 ## Implementation tasks
 
-### Task 1: Seal exact proposals, evidence identities and human authorization
+### Task 1: 🐞 [BUG] Seal exact proposals, evidence identities and human authorization
 
 #### Story Intent
 
@@ -188,7 +188,7 @@ fixtures contain no production human approval.
 
 Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/schema.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/proposal.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/authorization.test.mjs`
 
-### Task 2: Serialize the registered writer domain and local activity admission
+### Task 2: 🐞 [BUG] Serialize the registered writer domain and local activity admission
 
 #### Story Intent
 
@@ -252,7 +252,7 @@ to fn. A serializable environment flag cannot mint one.
 
 Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/interlock.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/admission.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/domain.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-interlock.test.mjs scripts/tests/unit/meta/unit-lane-purity.test.mjs`
 
-### Task 3: Apply and recover archived legacy revisions through one event chain
+### Task 3: 🐞 [BUG] Apply and recover archived legacy revisions through one event chain
 
 #### Story Intent
 
@@ -320,7 +320,7 @@ apply/recover return a typed verified status or refusal without optimistic succe
 
 Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/records.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/reducer.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/legacy.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-recovery.test.mjs scripts/tests/unit/task-tracker/verbs/issue-body.test.mjs scripts/tests/unit/task-tracker/lib/mutate-issue-body-marker-loss.test.mjs`
 
-### Task 4: Amend canonical contracts and record current revision Plan approval
+### Task 4: 🐞 [BUG] Amend canonical contracts and record current revision Plan approval
 
 #### Story Intent
 
@@ -397,7 +397,7 @@ canonical contract reconstruction.
 
 Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/canonical.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/plan-approval.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-canonical.test.mjs`
 
-### Task 5: Enforce revision fences across all writers and lifecycle consumers
+### Task 5: 🐞 [BUG] Enforce revision fences across all writers and lifecycle consumers
 
 #### Story Intent
 
@@ -504,7 +504,7 @@ action; no caller translates unavailable authority to ready.
 
 Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/policy.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/coverage.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-consumers.test.mjs`
 
-### Task 6: Expose the supported command, Explain recovery and end-to-end delivery
+### Task 6: 🐞 [BUG] Expose the supported command, Explain recovery and end-to-end delivery
 
 #### Story Intent
 
