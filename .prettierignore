@@ -18,3 +18,7 @@ docs/superpowers/specs/2026-09-14-1624-workflow-exceptions-design.md
 scripts/tests/fixtures/1558/actual-explain-traffic-final.json
 scripts/tests/fixtures/1558/final-capture-manifest.json
 scripts/tests/fixtures/1558/lifecycle-transcript-final.json
+
+# APR sealed responses retain exact protected metadata.
+docs/reviews/1857-expanded/**/review-*-author-response-*.md
+docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md

@@ -50,7 +50,6 @@ import {
   loadPolicy,
   STATE_MATRIX,
   DRAFTING_STATES,
-  scratchShellTargets,
   extractWriteTargets,
 } from './activity-policy.mjs';
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
@@ -193,23 +192,6 @@ if (
         `  This refusal is unconditional — neither develop state nor chore-mode grants a bypass. Edit the package in its own source checkout and reinstall; never hand-edit the installed copy.`
     );
   }
-  // Carve-out: .scratch/** is disposable scratch, while .tmp/** remains
-  // machine-local runtime/generated output. Both are writable in every state.
-  // documented in CLAUDE.md "Tool Usage Rules"). Convention subfolders:
-  // .scratch/gh/ (issue body scratch), .scratch/plan/ (create-issue fragments),
-  // .scratch/heal/ (repair scratch), .scratch/inspect/ (ad-hoc scripts).
-  // Bypass classification so scratch writes are permitted in every kanban state.
-  if (
-    normalizedTargets.every(
-      (candidate) =>
-        candidate === '.tmp' ||
-        candidate.startsWith('.tmp/') ||
-        candidate === '.scratch' ||
-        candidate.startsWith('.scratch/')
-    )
-  ) {
-    process.exit(0);
-  }
   activityClasses = normalizedTargets.map((candidate) => classifyEdit(candidate, policy));
   activityClass = activityClasses[0];
 } else if (toolName === 'Bash') {
@@ -217,18 +199,6 @@ if (
   if (typeof command !== 'string' || !command) process.exit(0);
   target = command;
   activityClass = classifyBash(command, policy);
-  if (activityClass === 'WRITE_SCRATCH') {
-    try {
-      for (const scratchTarget of scratchShellTargets(command)) {
-        const resolved = resolveMutationTarget(scratchTarget, invocationDir, projectRoot);
-        if (!/^(?:\.scratch|\.tmp)(?:\/|$)/.test(resolved.relative))
-          throw new Error('scratch target resolves outside designated scratch');
-      }
-    } catch (error) {
-      block(`[task-tracker] scratch target refused: ${error.message}`);
-    }
-    process.exit(0);
-  }
   if (gitContext?.kind === 'commit') {
     try {
       const staged = readStagedRecords(gitContext.cwd);

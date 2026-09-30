@@ -1,7 +1,7 @@
 ABCDEFGHJKMNPQRSTVWXYZ
 ACMR
-actuals
 Actuals
+actuals
 adjustbox
 adrs
 affordances
@@ -17,6 +17,7 @@ approvable
 argjson
 argv
 Ariane
+authorable
 automatable
 automations
 backcompat
@@ -31,8 +32,8 @@ backticked
 baselined
 basenames
 basictex
-behaviour
 Behaviour
+behaviour
 behavioural
 bfseries
 bijective
@@ -107,8 +108,8 @@ disjointness
 dispositioned
 Dockerfiles
 documentclass
-dogfood
 Dogfood
+dogfood
 dogfooding
 Dogfooding
 dont
@@ -126,6 +127,7 @@ Erlikh
 etoolbox
 exfiltrates
 exitentry
+extensionless
 fancyfoot
 fancyhdr
 fancyhead
@@ -260,8 +262,9 @@ normativity
 ntfy
 Nubank
 octocat
-offtrunk
 OFFTRUNK
+offtrunk
+Oids
 oneline
 oneside
 OOPSLA
@@ -305,8 +308,8 @@ preflights
 prefs
 preimage
 premerge
-pretick
 Pretick
+pretick
 prevalidated
 printindex
 prio
@@ -346,8 +349,8 @@ recharacterization
 recognisable
 recognises
 redelegated
-redirections
 Redirections
+redirections
 redispatch
 redocumenting
 reengagement
@@ -356,8 +359,8 @@ reengagements
 Reengagements
 reentrancy
 reeval
-Reeval
 REEVAL
+Reeval
 refcounted
 refetched
 refetches
@@ -393,8 +396,8 @@ rollups
 Rovo
 RRFFQ
 Sadowski
-sandboxed
 Sandboxed
+sandboxed
 Sayagh
 scriptable
 scshape
@@ -418,9 +421,9 @@ spawnable
 speccing
 splitcmd
 splittable
-stampable
 Stampable
 STAMPABLE
+stampable
 statusless
 statusline
 Statusline
@@ -496,6 +499,7 @@ unestimated
 ungated
 ungroomed
 uninspectable
+unintegrated
 unioned
 unioning
 unisolated
@@ -554,10 +558,11 @@ Willison
 Willison's
 winget
 wontfixed
+wordcount
 workstream
 workstreams
-worktree
 Worktree
+worktree
 WORKTREE
 worktree's
 worktreeinclude

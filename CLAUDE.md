@@ -147,11 +147,11 @@ manually when you want a coverage snapshot.
 
 ## Tool Usage Rules
 
-Artifact authoring under physical `docs/`, `.scratch/`, and `.tmp/` paths does not require an issue binding, ownership, or lifecycle state. Ordinary documents, data, and images belong in `docs/`; executable script formats do not. The refused suffixes (case insensitive) are `.js .mjs .cjs .jsx .ts .tsx .sh .bash .zsh .fish .py .pyw .rb .pl .ps1 .psm1 .bat .cmd`. Markdown may contain code examples. Scratch and temporary directories permit every extension, including `.mjs` and `.sh`. Maintained scripts belong under `scripts/`.
+Artifact authoring under physical `docs/`, `.scratch/`, and `.tmp/` paths does not require an issue binding, ownership, or lifecycle state. Ordinary documents, data, and images belong in `docs/`; executable script formats do not. The refused suffixes (case insensitive) are `.js .mjs .cjs .jsx .ts .tsx .mts .cts .sh .bash .zsh .fish .ksh .php .lua .py .pyw .rb .pl .ps1 .psm1 .bat .cmd`. Markdown may contain code examples. Scratch and temporary directories permit every extension, including `.mjs` and `.sh`. Maintained scripts belong under `scripts/`.
 
 Direct file tools and complete literal shell writers share physical containment checks. Supported shell forms are `echo` or `printf` with one output redirect, literal `echo/printf | tee [-a]`, standalone `tee [-a]`, `mkdir [-p]`, `touch`, and direct `cat` with a quoted here-document and one output redirect. Quoted paths and spaces are supported. Substitutions, control-flow suffixes, mixed source targets, and arbitrary interpreters do not receive an artifact allowance. Installed guard targets and symlink escapes remain protected. Authoring permission does not authorize execution, Git commits, or lifecycle transitions.
 
-- Use Read, Edit, Write for files. Bash only for: git, npm/node, shell scripts.
+- Use Read, Edit, Write for files. Bash supports the complete literal artifact writers above, plus governed git, npm/node and shell-script commands.
 - Never search inside `node_modules/`.
 - Wrap currency in backticks: `$200`.
 - Disposable scratch and staging files go in `./.scratch/` (gitignored except for its contract README), under a purpose subfolder such as `gh/`, `plan/`, `heal/`, or `inspect/`. Nothing in the repository may depend on them. Reusable helpers graduate to tracked `scripts/maintenance/`; do not leave maintained code in scratch.

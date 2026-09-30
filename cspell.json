@@ -1,6 +1,7 @@
 {
   "version": "0.2",
   "language": "en",
+  "ignoreRegExpList": ["01M3SS09DEQCABP49A5D1B7EDV"],
   "useGitignore": false,
   "dictionaryDefinitions": [
     {
@@ -25,6 +26,8 @@
     "docs/postmortems/**",
     "docs/ai-memory/**",
     "docs/peer-reviews/**",
+    "docs/reviews/1857-expanded/**/review-*-author-response-*.md",
+    "docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md",
     "docs/superpowers/reviews/**/*-review-*-author-response-*.md",
     "docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md",
     "docs/superpowers/reviews/**/review-*-author-response-*.md",

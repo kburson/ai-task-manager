@@ -73,7 +73,17 @@ test('ordinary docs and every scratch format allow without ownership in every st
 });
 
 test('docs script suffixes refuse even during Develop and chore mode', () => {
-  for (const filePath of ['docs/run.mjs', 'docs/run.sh', 'docs/run.py', 'docs/run.PS1']) {
+  for (const filePath of [
+    'docs/run.mjs',
+    'docs/run.sh',
+    'docs/run.py',
+    'docs/run.PS1',
+    'docs/run.mts',
+    'docs/run.cts',
+    'docs/run.ksh',
+    'docs/run.php',
+    'docs/run.lua',
+  ]) {
     for (const choreModeActive of [false, true]) {
       const result = decideSourceEdit({
         toolName: 'Write',
@@ -211,5 +221,52 @@ test('mixed writes, execution and escaped targets never gain artifact permission
       true,
       command
     );
+  }
+});
+
+test('installed guards protect otherwise allowed scratch Markdown and physical aliases', async () => {
+  const installed = '.scratch/x/node_modules/ai-task-manager/scripts';
+  mkdirSync(path.join(root, installed), { recursive: true });
+  symlinkSync(path.join(root, installed), path.join(root, '.scratch', 'installed-alias'));
+  for (const filePath of [path.join(installed, 'a.md'), '.scratch/installed-alias/a.md']) {
+    assert.equal(activity({ file_path: filePath }, 'Write', 'develop', true), 'block', filePath);
+    assert.equal(
+      activity({ command: "printf '%s' text > " + filePath }, 'Bash', 'develop', true),
+      'block',
+      filePath
+    );
+    const result = await runHook(
+      { cwd: root, tool_name: 'Write', tool_input: { file_path: filePath } },
+      { projectDir: root, loadBoundIssue: () => null, isChoreModeActive: () => true }
+    );
+    assert.equal(result.decision, 'block', filePath);
+    assert.match(JSON.stringify(result), /installed/i, filePath);
+    assert.equal(
+      evaluateBashWorktreeBinding({
+        command: "printf '%s' text > " + filePath,
+        invoking: { worktreePath: root, worktreeBranch: 'local' },
+        bound: {
+          issueNumber: 42,
+          worktreePath: path.join(root, 'foreign'),
+          worktreeBranch: 'foreign',
+        },
+      }).block,
+      true,
+      filePath
+    );
+  }
+});
+
+test('additional script formats remain freely authorable in scratch and temp', () => {
+  for (const extension of ['.mts', '.cts', '.ksh', '.php', '.lua']) {
+    for (const directory of ['.scratch', '.tmp']) {
+      const filePath = path.join(directory, 'run' + extension);
+      assert.equal(
+        decideSourceEdit({ toolName: 'Write', filePath, projectDir: root, boundIssue: null })
+          .decision,
+        'allow'
+      );
+      assert.notEqual(activity({ file_path: filePath }), 'block', filePath);
+    }
   }
 });

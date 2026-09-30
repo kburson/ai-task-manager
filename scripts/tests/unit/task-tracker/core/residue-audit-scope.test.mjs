@@ -49,10 +49,12 @@ test('authored prose under docs/research is still audited', () => {
   assert.equal(isGeneratedResearchArtifact('docs/research/notes.md'), false);
 });
 
-test('executable analysis scripts under docs/research are still audited', () => {
-  // These sit beside the dumps and are authored, not generated.
+test('maintained analysis scripts under scripts/research are still audited', () => {
+  // Maintained helpers are authored source, not generated research data.
   assert.equal(
-    isGeneratedResearchArtifact('docs/research/2026-08-24-test-suite-performance-audit/graph.mjs'),
+    isGeneratedResearchArtifact(
+      'scripts/research/2026-08-24-test-suite-performance-audit/graph.mjs'
+    ),
     false
   );
 });
