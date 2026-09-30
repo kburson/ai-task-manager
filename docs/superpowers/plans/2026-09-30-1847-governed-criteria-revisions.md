@@ -22,6 +22,7 @@
 - Keep #124 live criteria and #1841 review records untouched. Use fixtures.
 - Existing interrupted XPR evidence and installed verified APR build remain preserved.
 - Normal GitHub lifecycle gates remain required. No implementation before child Plan/Develop admission and posted/mirrored deep dive.
+- Tasks 1–4 expose no reachable CLI, registered action, public API export or enabled workflow route to transaction mutation. Each child tests this absence against command/action/export catalogs. Task 5 installs all fences before Task 6 registers the first production mutation entrypoint; child merges cannot expose partial unsafe behavior.
 
 ## Scope and accepted Refine decisions
 
@@ -118,8 +119,11 @@ and never reach GitHub. Unknown or partial results are not normalized to absence
 `proposal.test.mjs`, `authorization.test.mjs`.
 Inspect and reuse `acceptance-criteria.mjs`, `ac-evidence.mjs`,
 `workflow-policy/authority-resolver.mjs`, and record-envelope canonical JSON;
-extend the host loader with an opt-in raw observation export without changing
-existing normalized callers.
+modify `scripts/task-tracker/lib/workflow-policy/authority-resolver.mjs` to export
+`loadRawCodexUserMessage({sessionId,messageId})`. Return the original record ID,
+role and unmodified content blocks; preserve its trusted transcript resolution and
+injection classification. Existing normalized loader callers remain unchanged.
+The new authorization adapter requires exactly one original input_text block.
 
 **Interfaces:** export validateRevisionRequest(value), deriveProposal({observation,
 edits,reason,mode,priorTransaction,executor,operationId,transactionId}),
@@ -136,11 +140,35 @@ fixtures contain no production human approval.
       dependency retirement, and rejection of supplied proof or arbitrary body text.
       A representative real test shape is:
 
+  ```javascript
   const { observation, edits } = makeLegacyRevisionFixture();
-  const proposal = deriveProposal({ observation, edits, reason: 'Replace obsolete model hooks', mode: 'revision', priorTransaction: null, executor: observation.executor, operationId: 'op-1', transactionId: 'tx-1' });
+  const proposal = deriveProposal({
+    observation,
+    edits,
+    reason: 'Replace obsolete model hooks',
+    mode: 'revision',
+    priorTransaction: null,
+    executor: observation.executor,
+    operationId: 'op-1',
+    transactionId: 'tx-1',
+  });
   assert.equal(proposal.observedResourceVector, null);
-  assert.equal(proposal.invalidation.some(item => item.kind === 'plan-approval' && item.disposition === 'retired'), true);
-  assert.throws(() => validateRevisionRequest({ schema: 'aitm.criteria-revision/v1', action: 'apply', proposal, authorizationSource: {}, allowMarkerLoss: true }));
+  assert.equal(
+    proposal.invalidation.some(
+      (item) => item.kind === 'plan-approval' && item.disposition === 'retired'
+    ),
+    true
+  );
+  assert.throws(() =>
+    validateRevisionRequest({
+      schema: 'aitm.criteria-revision/v1',
+      action: 'apply',
+      proposal,
+      authorizationSource: {},
+      allowMarkerLoss: true,
+    })
+  );
+  ```
 
 - [ ] Run the unit command below and confirm missing exports or unmet assertions fail.
 - [ ] Implement canonical hashing and complete identity maps. Exclude execution
@@ -176,7 +204,11 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/schema.t
 **Files:** create `scripts/task-tracker/lib/criteria-revision/interlock.mjs`,
 `admission.mjs`, `domain.mjs`; create focused tests
 `scripts/tests/unit/task-tracker/lib/criteria-revision/interlock.test.mjs`,
-`admission.test.mjs`, `domain.test.mjs`.
+`admission.test.mjs`, `domain.test.mjs` (pure injected-fs/process logic only);
+create `scripts/tests/integration/task-tracker/lib/criteria-revision-interlock.test.mjs`
+for real linked worktrees, sibling processes, subprocess delegation and holder
+liveness. No unit file or transitive fixture may import a Git sandbox or spawn
+git/node; preserve `scripts/tests/unit/meta/unit-lane-purity.test.mjs` unchanged.
 Modify `scripts/task-tracker/issue-mutator-lock.mjs` only for explicit ordering
 and delegation integration; keep ordinary disabled-domain behavior unchanged.
 
@@ -188,15 +220,17 @@ publishAdmission({capability,observation,state}), readAdmission(context), and
 refreshAdmission({context,observe}). The interlock passes a non-public capability
 to fn. A serializable environment flag cannot mint one.
 
-- [ ] Write red tests with two real temporary linked worktrees sharing one common
+- [ ] In the new integration file, write red tests with two real temporary linked worktrees sharing one common
       directory, sibling async calls, inherited fake flags, dead/live/unknown holder
       liveness, multiple-issue ordering and symlink/path normalization.
 
-  await withRevisionInterlock(context, async capability => {
-  await publishAdmission({ capability, observation, state: 'deny' });
-  assert.equal(readAdmission(secondWorktreeContext).state, 'deny');
-  await assert.rejects(competingWriter(), new RegExp('revision-lock-held'));
+  ```javascript
+  await withRevisionInterlock(context, async (capability) => {
+    await publishAdmission({ capability, observation, state: 'deny' });
+    assert.equal(readAdmission(secondWorktreeContext).state, 'deny');
+    await assert.rejects(competingWriter(), new RegExp('revision-lock-held'));
   });
+  ```
 
 - [ ] Run the focused command and observe the expected failures.
 - [ ] Implement owner-only atomic directory acquisition and holder identity.
@@ -207,13 +241,16 @@ to fn. A serializable environment flag cannot mint one.
       Missing/corrupt/version-mismatched/dirty/domain-mismatched state denies.
       Bind/gates refresh under the interlock from full remote authority; unavailable
       reads write deny. Domain restart invalidates admission until refreshed.
+- [ ] Unit-test pending-domain move/disable refusal through `resolveRevisionDomain`
+      and registration policy with injected observations; integration-test that
+      neither an independent clone nor another host can register the same domain.
 - [ ] Prove a never-revised allow requires verified empty-chain observation, not
       body pointer absence, and an old allow cannot overwrite a newer deny.
 - [ ] Run green and commit the child slice.
 
 **Verification Commands:**
 
-Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/interlock.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/admission.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/domain.test.mjs`
+Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/interlock.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/admission.test.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/domain.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-interlock.test.mjs scripts/tests/unit/meta/unit-lane-purity.test.mjs`
 
 ### Task 3: Apply and recover archived legacy revisions through one event chain
 
@@ -247,6 +284,7 @@ apply/recover return a typed verified status or refusal without optimistic succe
       incomplete archives, exact-cap/over-cap Unicode events, lost reads and each
       legal/illegal transition. Preserve every actual required byte, not just hashes.
 
+  ```javascript
   const scenario = makeLegacyRevisionFixture();
   const { context, request, resumeRequest } = scenario;
   const deps = createRecordedTransport(scenario);
@@ -256,7 +294,8 @@ apply/recover return a typed verified status or refusal without optimistic succe
   assert.equal(pending.status, 'pending-after');
   const terminal = await recoverRevision({ context, request: resumeRequest, deps });
   assert.equal(terminal.status, 'applied');
-  assert.equal(deps.createdEvents.filter(e => e.type === 'prepared').length, 1);
+  assert.equal(deps.createdEvents.filter((e) => e.type === 'prepared').length, 1);
+  ```
 
   Implement createRecordedTransport in the integration test itself with an
   in-memory comment list, body, effect log, and injected failAfter step; every
@@ -295,7 +334,11 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/records.
 **Estimate:** 8 human hours. **Depends on:** Tasks 1–3.
 
 **Files:** create `scripts/task-tracker/lib/criteria-revision/canonical.mjs`,
-`plan-approval.mjs`; modify
+`plan-approval.mjs`; modify the shared
+`scripts/task-tracker/lib/criteria-revision/engine.mjs`, `reducer.mjs`, and
+`store.mjs` to own canonical dispatch, status classification and recovery through
+the existing `applyRevision`, `observeRevision` and `recoverRevision` exports;
+modify
 `scripts/task-tracker/lib/github-records/contract-write.mjs`,
 `delivery-contract.mjs`, `record-envelope.mjs`, `capsule-chain.mjs`,
 `scripts/task-tracker/verbs/plan-approve.mjs`, and
@@ -315,14 +358,27 @@ canonical contract reconstruction.
       grant expiry/replacement, capsule-before-projection interruption, and
       exact source/revision/contract/authority epoch approval binding.
 
-  const { proposal, contract, grant, observation, validApproval, oldRevision } = makeCanonicalRevisionFixture();
+  ```javascript
+  const { proposal, contract, grant, observation, validApproval, oldRevision } =
+    makeCanonicalRevisionFixture();
   const amended = deriveCanonicalWrites({ proposal, contract, grant });
   assert.equal(amended.after.contractEpoch, contract.contractEpoch + 1);
   assert.deepEqual(amended.after.acceptedRecordIds, []);
-  assert.throws(() => validateRevisionPlanApproval({ ...validApproval, revisionId: oldRevision }, observation), new RegExp('binding'));
+  assert.throws(
+    () => validateRevisionPlanApproval({ ...validApproval, revisionId: oldRevision }, observation),
+    new RegExp('binding')
+  );
+  ```
 
   This assertion checks binding against current authority, not merely payload shape.
 
+- [ ] Red-test each canonical recovery row through shared `recoverRevision`:
+      capsule-present/contract-before resumes only projections, contract-after/body-before
+      resumes only the remaining deterministic writes, and expired/replaced/revoked
+      grants refuse `revision-authority-unavailable` with zero new authority effects.
+      Verify capsule → contract projection → other projections → body ordering and
+      fail/read-back seams at every prefix. `applyCanonicalRevision` is an adapter
+      invoked only by the shared engine, never a second transaction orchestrator.
 - [ ] Run the focused command red.
 - [ ] Add semantic-amendment persistence using appendCapsule and exact projection
       read-back. Preserve draft/sealed status and existing coordinator authorization.
@@ -360,11 +416,41 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/canonica
 `scripts/task-tracker/lib/versioned-issue-write.mjs`,
 `scripts/task-tracker/lib/github-records/contract-write.mjs`,
 `scripts/task-tracker/lib/github-records/capsule-chain.mjs`,
-`scripts/task-tracker/activity-guard.mjs`, binding/session admission,
+`scripts/task-tracker/activity-guard.mjs`,
+`scripts/task-tracker/source-edit-gate.mjs`,
+`scripts/task-tracker/verbs/start.mjs`, `scripts/task-tracker/verbs/resume.mjs`,
+`scripts/task-tracker/lib/bind-context.mjs`, `scripts/task-tracker/lib/bind-event.mjs`,
+`scripts/task-tracker/lib/worktree-binding-lifecycle.mjs`,
 `scripts/task-tracker/verbs/ac-stamp.mjs`, `plan-approve.mjs`, `test.mjs`,
 `approve.mjs`, `demote.mjs`, `deliver.mjs`, `close.mjs`,
-`scripts/gh/move-state.mjs`, verification receipt retirement and projection/
-reconciliation entry points identified by the inventory. Register policy at the
+`scripts/gh/move-state.mjs`;
+`scripts/task-tracker/verbs/promote.mjs`, `scripts/task-tracker/verbs/review.mjs`,
+`scripts/task-tracker/verbs/dod-stamp.mjs`, `scripts/task-tracker/verbs/check.mjs`,
+`scripts/task-tracker/verbs/reconcile.mjs`, `scripts/task-tracker/verbs/adopt-github-records.mjs`;
+`scripts/task-tracker/lib/github-records/lifecycle-transition.mjs`,
+`scripts/task-tracker/lib/github-records/projection-repair.mjs`,
+`scripts/task-tracker/lib/github-records/singleton-initializer.mjs`,
+`scripts/task-tracker/lib/github-records/lifecycle-gate-source.mjs`;
+`scripts/task-tracker/lib/evidence-v2/eligibility.mjs`,
+`scripts/task-tracker/lib/evidence-v2/subject.mjs`,
+`scripts/task-tracker/lib/evidence-v2/subject-inputs.mjs`,
+`scripts/task-tracker/lib/evidence-v2/runtime-adapter.mjs`;
+`scripts/task-tracker/lib/develop-exit-receipt-guard.mjs`,
+`scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs`,
+`scripts/task-tracker/lib/verification-receipt.mjs`,
+`scripts/task-tracker/lib/verification-receipt-retirement.mjs`,
+`scripts/task-tracker/lib/functional-dod-derive.mjs`,
+`scripts/task-tracker/lib/story-approval-binding-guard.mjs`,
+`scripts/task-tracker/lib/plan-transition-authority.mjs`,
+`scripts/task-tracker/lib/review-exit-review-approved-guard.mjs`,
+`scripts/task-tracker/lib/review-exit-close-gates-guard.mjs`,
+`scripts/task-tracker/lib/action-decision/observations.mjs`,
+`scripts/task-tracker/lib/action-decision/promote.mjs`,
+`scripts/task-tracker/lib/action-decision/test.mjs`,
+`scripts/task-tracker/lib/action-decision/review.mjs`,
+`scripts/task-tracker/lib/action-decision/deliver.mjs`,
+`scripts/task-tracker/lib/action-decision/close.mjs`, and
+`scripts/task-tracker/lib/action-decision/session.mjs`. Register policy at the
 actual action/guard catalog rather than shell command-name matching.
 Create `policy.test.mjs` and `coverage.test.mjs` in the new unit directory and
 `scripts/tests/integration/task-tracker/lib/criteria-revision-consumers.test.mjs`.
@@ -378,15 +464,25 @@ action; no caller translates unavailable authority to ready.
 - [ ] Red-test every inventory row with pending, applied/stale approval,
       current approval, malformed chain and unavailable authority fixtures.
 
+  ```javascript
   for (const consumer of REVISION_CONSUMER_COVERAGE) {
-  const result = await exerciseConsumer(consumer, pendingFixture);
-  assert.equal(result.effects.length, 0, consumer.entrypoint);
-  assert.equal(result.status, 'blocked', consumer.entrypoint);
+    const result = await exerciseConsumer(consumer, pendingFixture);
+    assert.equal(result.effects.length, 0, consumer.entrypoint);
+    assert.equal(result.status, 'blocked', consumer.entrypoint);
   }
+  ```
 
   exerciseConsumer is a test harness invoking the real public adapter with
   injected transport/effect spies, not a second copy of the policy evaluator.
 
+- [ ] Make `coverage.test.mjs` compare the coverage registry with an independently
+      discovered source import/call graph rooted at body writes, capsule/comment
+      authority writes, lifecycle evaluators and activity/session gates. An unlisted
+      root seam or direct bypass fails; the registry cannot define its own universe.
+      Invoke each discovered semantic entrypoint with effect spies and verify
+      proof read-side revision binding as well as zero writes while pending.
+      Keep graph tests pure; real A/B worktree, subprocess delegation and holder
+      liveness cases belong only in the consumer integration test.
 - [ ] Run the consumer command red.
 - [ ] Acquire strict interlock at public mutation boundaries before existing
       issue locks. Low-level delegates require/reuse the capability and cannot
@@ -422,7 +518,11 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/criteria-revision/policy.t
 **Estimate:** 6 human hours. **Depends on:** Tasks 1–5.
 
 **Files:** create `scripts/task-tracker/verbs/criteria-revise.mjs`;
-modify `bin/aitm-registry.mjs`, CLI routing/help catalog,
+modify `bin/aitm-registry.mjs`,
+`scripts/task-tracker/lib/command-surface/catalog.mjs`,
+`scripts/task-tracker/lib/action-decision/contract.mjs`,
+`scripts/task-tracker/lib/action-decision/remediations.mjs`,
+`instructions/aitm-guidance.yml`, CLI routing/help catalog,
 `skill/shared/router.md`, create
 `skill/shared/rules/criteria-revise.md`, update workflow guidance and installed
 guidance generation through repository-owned tooling; create
@@ -440,6 +540,20 @@ invalidation, archive size and typed refusal/recovery without executing verifier
 
 - [ ] Red-test CLI argument rejection, zero side effects for prepare/status,
       no arbitrary paths/flags/proof, and typed Explain mapping.
+- [ ] Register all six outcomes in action-decision `contract.mjs`, their closed
+      remediation entries in `remediations.mjs`, and human/agent guidance in
+      `instructions/aitm-guidance.yml`: `criteria-revision-required` → prepare;
+      `revision-pending` → status then exact recover; `revision-conflict` → status
+      then prepared forward-repair only when authorized; `revision-authorization-required`
+      → obtain the exact statement/source before apply or recover;
+      `revision-approval-stale` → normal current-revision plan-approve;
+      `revision-topology-unsupported` → explicit enable only for supported quiescent
+      topology, otherwise a typed operator decision without mutation. Bind every
+      action to issue and closed arguments. No apply/recover authorization becomes
+      Full-Auto merely because a remediation is registered.
+      Table-test each code, registered action and refusal branch in the CLI test;
+      assert guidance contains no marker-loss bypass, stage jump or old-receipt
+      reconstruction recommendation.
 - [ ] Run the focused command red.
 - [ ] Wire production dependencies to existing GitHub envelope/comment transport,
       trusted host session loader, binding/ownership and stage policies.
