@@ -11,8 +11,18 @@ Run `peer-review setup` with an explicit user or project scope, then run
 readiness before a review. Setup installs Codex and Claude provider hooks that
 capture the current model for each CLI invocation; model and effort may change at
 any time in the same session, so never pin them in project configuration.
-After a package
-upgrade, run `peer-review setup --update --dry-run` then `peer-review setup
+Codex hooks cover direct shell calls and `functions.exec` calls that use
+`tools.exec_command`; let the installed hook supply the model for the pending
+command. Do not add `CODEX_MODEL_ID` or a hook token yourself.
+In a Codex linked worktree, the host may load project hooks from the primary
+clone rather than this physical worktree. If `doctor` or a current review command
+reports `APR_IDENTITY_REQUIRED` while `doctor --mode installation` is healthy,
+the active host hook did not supply current-operation model evidence. Inspect
+the host's active hook source, update that source with `setup --update` if
+needed, trust or reload the hook, and rerun `doctor` in the actual agent session.
+Do not fill the gap with a model declaration or a prior-turn model. Existing
+review records remain intact while this is repaired.
+After a package upgrade, run `peer-review setup --update --dry-run` then `peer-review setup
 --update` in the affected project, or add `--scope user` for a user-scope
 installation. Update discovers all hosts recorded by the prior setup;
 setup backs up the prior bytes. `setup --remove` is an idempotent teardown. If a
