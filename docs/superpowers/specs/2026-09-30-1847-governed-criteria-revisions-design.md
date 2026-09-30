@@ -4,7 +4,7 @@ Issue: [#1847](https://github.com/kburson/ai-task-manager/issues/1847).
 Date: 2026-09-30.
 Status: **revised Backlog draft; pending Refine acceptance**.
 Source baseline: `4187a64fae6319808ec350f3beb0f126fc36769b`.
-Revision: SAR round 2 revision by the same reviewing agent.
+Revision: XPR author revision 1; preceding SAR round 3 made no artifact change.
 
 This is a Backlog design input. Drafting, committing, attaching, reviewing, or
 revising it confers no Refine acceptance, Plan approval, implementation authority,
@@ -128,6 +128,10 @@ A proposal contains exactly the following named domains:
 - `mode`: `revision`, `resume`, `abort`, or `forward-repair`.
 - `priorTransaction`: null for a new revision; otherwise an exact transaction and
   event reference.
+- `observedResourceVector`: null for `revision`; required SHA-256 for `resume`,
+  `abort`, and `forward-repair`. Hash the closed, canonical status resource
+  vector: revision-event head, capsule head, contract/projection hashes,
+  terminal observation, and exact current authority identities.
 - `executor`: host session and worktree identity.
 - `writerDomain`: registered host/common-directory identity.
 - `authority`: source kind, authority locator, current coordinator identity and
@@ -163,10 +167,25 @@ Version one uses the existing trusted Codex user-message source pattern.
 It does not introduce user signing keys, a new identity service, or a GitHub
 comment-as-human-approval shortcut.
 
-Prepare renders this exact statement, with concrete values:
+Prepare renders one UTF-8 line with concrete values and single ASCII spaces:
 
-`Approve criteria-revise <mode> for <repository>#<issue>, transaction
-<transactionId>, proposal <proposalDigest>, executor <sessionId>.`
+`Approve criteria-revise <mode> for <repository>#<issue>, transaction <transactionId>, proposal <proposalDigest>, executor <sessionId>.`
+
+Mode is exactly the proposal's `revision`, `resume`, `abort`, or
+`forward-repair`, never request action `apply` or `recover`. No line terminator
+is part of the statement. The user message must contain exactly this line,
+without quotes, fences, surrounding prose, or leading/trailing whitespace.
+Compare the whole message byte-for-byte, not a substring or normalized equivalent.
+The existing loader trims input blocks; this operation must additionally validate
+the original host message as one untrimmed `input_text` block before using its
+reference/hash. Unsupported host representations refuse; normalized loader
+output alone cannot prove raw equality.
+
+Recovery's required observed-resource-vector digest is covered by proposalDigest,
+so the statement transitively binds that observation. Render the observed vector
+and digest beside the statement in the read-only impact report. A changed vector
+requires a new proposal and approval except for the explicitly recognized writes
+of the already-authorized effective operation.
 
 The runtime resolves the source through its host-selected session/transcript
 loader. The mutation request cannot select a transcript path, inject a loader,
@@ -184,7 +203,9 @@ The adapter trusts the host's ownership and integrity of its user-message
 history. It does not claim protection against a compromised host or an actor
 who can rewrite that trusted history. If the runtime cannot establish this
 boundary, the source is unavailable or ambiguous, or the adapter is unsupported,
-refuse before preparing a durable transaction.
+refuse before preparing a durable transaction. Version one accepts only the
+`codex-session/v1` adapter; Claude and other unsupported execution hosts refuse
+`apply` and `recover`.
 
 Revalidate authorization immediately before durable preparation and before the
 first authority-changing write. A proposal prepared in a different session
@@ -204,7 +225,7 @@ recovering session. The old approval remains history and is never relabeled.
 | Ready for Planning          | Yes                   | Yes                                            |
 | Plan                        | Yes                   | Yes                                            |
 | Develop                     | Yes                   | Yes                                            |
-| Test or Review              | Yes                   | No; normal one-step demotions to Develop first |
+| Test or Review              | Yes                   | No; supported code-rework demotion to Develop first |
 | Done, closed, or delivered  | Read-only explanation | No                                             |
 | Active lifecycle transition | Read-only explanation | No                                             |
 
@@ -226,9 +247,31 @@ those edits separately and prepare against the resulting authority.
 
 Every semantic revision invalidates existing Plan approval, whether or not
 those other inputs change. In Refine or Ready for Planning, obtain approval at
-the normal later Plan stage. In Plan, obtain fresh approval there. From Develop,
-demote normally to Plan and obtain fresh approval before returning to Develop.
-Develop exit and downstream authority cannot qualify without that approval.
+the normal later Plan stage. In Plan, obtain fresh approval there.
+
+Develop retains its stage, but a verified applied revision without current
+revision-bound Plan approval immediately refuses `WRITE_CODE`, `COMMIT_CODE`,
+AC/VC/DoD execution and stamping, and Develop exit. The pending fence protects
+application; the stale-approval rule protects the interval after `applied`.
+Read-only work, governed planning/source-document corrections, another authorized
+revision, and the bounded approval path below remain available. Documentation
+edits/commits use existing documentation activity policy and cannot include code.
+
+Add a bounded revision reapproval path to `plan-approve` in Develop for both
+authority formats. It requires a verified latest applied revision, no pending
+transaction, exact current revision/source bindings, and all ordinary Plan
+approval checks with fresh approval provenance. It cannot repair approval from
+pre-revision evidence or synthesize a Plan stage-entry marker. Read-back of the
+new current approval releases the refusal. This is an explicit #1847 extension,
+not a baseline capability. No stage move occurs; normal Test, Review, delivery,
+and close remain required.
+
+The baseline has no Develop-to-Plan demotion. Test/Review-to-Develop requires a
+truthful `--rework` code-change reason. Do not invent a demotion or label
+criteria-only work as code rework. Version one supports those later-stage cases
+only when normal code-rework demotion is independently justified; otherwise
+refuse and report that criteria-only later-stage replanning is unsupported.
+Refine must explicitly accept that boundary.
 
 An issue whose canonical contract is still draft remains draft after revision;
 the operation cannot seal it or create execution proof. Its revision and
@@ -303,7 +346,9 @@ and destination revision. Consumers accept that exact existing proof in the
 new revision only when this verified disposition and every current dependency
 still match. This is an eligibility decision about the original execution, not
 a new execution receipt or a claim that the proof was originally revision-bound.
-A caller cannot add a proof or choose its disposition. An unclassified old proof
+Load this disposition from the verified effective proposal in the revision
+event chain, rooted in the original prepared archive; a body projection alone
+cannot establish it. A caller cannot add a proof or choose its disposition. An unclassified old proof
 refuses qualification. Aggregate evidence is never eligible through this rule.
 
 Canonical amendment increments the contract epoch, resets all lifecycle
@@ -326,7 +371,8 @@ Canonical support includes resolving the baseline `plan-approve` incompatibility
 within #1847.
 
 Refactor Plan approval's evaluation into shared source-binding checks plus
-authority-specific persistence. Keep normal stage, linked-plan, story/intent,
+authority-specific persistence. Keep normal stage admission (plus the narrow Develop revision reapproval
+above), linked-plan, story/intent,
 planning-evidence, provenance, and forecast requirements. Load canonical AC/VC
 definitions through the contract-source resolver rather than body projections.
 
@@ -431,7 +477,27 @@ Register a closed `aitm.criteria-revision-event/v1` envelope containing:
   authority.
 - Exact resource observations and terminal outcome where applicable.
 
-Preparation publishes the complete sealed proposal and archive. A
+Version one uses single-comment publication with a conservative maximum of
+60,000 UTF-8 bytes per complete rendered GitHub comment, including envelope,
+Markdown, proposal, and archive. This is below the 65,536-character service
+ceiling even under byte/character counting differences. The baseline 1 MiB
+record-envelope bound cannot authorize revision publication. There is no
+multipart or truncation fallback.
+
+Read-only `prepare` fixes event identities and rendered fields, computes the
+complete initial event size, and refuses `revision-archive-too-large` before
+locks or durable writes when over the cap. Recovery preparation does the same
+for its complete recovery event. Application repeats the check; rendering drift
+refuses before publication. Terminal rendering is budgeted during preparation
+using bounded fixed-format hashes/IDs and sealed outcome fields; unbounded
+diagnostics never enter an event. All revision event publishers enforce the cap.
+
+For failed prepared publication, reconcile exact event ID and bytes. Complete
+authoritative reads proving absence and unchanged resources establish that no
+transaction/fence exists; release the local interlock without an abort event.
+Uncertain reads remain indeterminate. Transport failure is not proof of absence.
+
+Durable preparation publishes the complete sealed proposal and archive. A
 `recovery-authorized` event publishes its complete recovery proposal, current
 observation, and any additional archive; referring only to a local recovery file
 is insufficient. Terminal events reference the original preparation and the
@@ -463,7 +529,9 @@ repeat write.
 The log loader enumerates all relevant comments with complete pagination and
 validates the full referenced chain. Incomplete or unavailable reads are
 indeterminate, not absence. A protected body pointer to the applied revision
-accelerates lookup but cannot replace chain validation.
+accelerates lookup but cannot replace chain validation. Share one complete
+paginated observation within each gate invocation, never across a mutation or
+later invocation as fresh authority. Budget this read cost at Refine.
 
 A verified `prepared` event without a verified terminal event is a pending fence.
 Only the transaction owner or a verified recovery operation may perform the
@@ -594,6 +662,7 @@ revision binding at these boundaries:
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | Ordinary issue-body edits and low-level governed body writers | Join interlock; refuse pending revision; retain ordinary invariants              |
 | AC, VC, and DoD execution/stamping                            | Refuse pending; bind generated proof to current definitions and revision         |
+| Develop activity admission | Refuse code writes/commits and proof generation until current revision Plan reapproval |
 | Plan approval and Plan exit                                   | Require current revision/digest and normal planning/source checks                |
 | Test and Agent Review                                         | Refuse pending; reject pre-revision aggregate evidence                           |
 | Final Review approval                                         | Bind to current revision as well as existing commit/review requirements          |
@@ -654,6 +723,9 @@ Required contract and proof cases:
 
 Required authority and concurrency cases:
 
+- Approval text with extra prose, whitespace, line breaks, multiple blocks, or
+  mismatched mode refuses; trimmed host text cannot substitute for raw equality.
+- Recovery proposals missing or mismatching the observed-vector digest refuse.
 - Wrong or injected message sources, assistant-origin approval, stale exact
   statements, unsupported hosts, foreign bindings, malformed requests, and
   conflicting transaction IDs refuse.
@@ -669,6 +741,10 @@ Required authority and concurrency cases:
 
 Required interruption cases:
 
+- Near-limit #124-shaped archives refuse read-only when complete rendering
+  exceeds 60,000 UTF-8 bytes; test exact-cap, one-byte-over, and non-ASCII content.
+- Test definite prepared-publication rejection and uncertain publication; only
+  complete absence plus unchanged resources permits the no-transaction result.
 - Inject failure before and after every event, capsule, projection, body write,
   and read-back.
 - Recognize each exact planned write-set prefix without duplicate archives or
@@ -693,7 +769,12 @@ Required lifecycle cases:
 - Canonical Plan approval uses the real authority-specific adapter; a stubbed
   success or manually seeded approval record does not satisfy the test.
 - Preserve canonical draft status during an early-stage revision.
-- Test/Review revisions require normal demotions before application.
+- Develop apply immediately blocks code writes/commits and proof generation.
+  Real current-revision reapproval releases that guard without moving stages.
+- Both authority formats reapprove in Develop with fresh ordinary Plan checks;
+  stale evidence repair, fake Plan entry, and mixed source/document commits refuse.
+- Test/Review requires independently justified normal code-rework demotion;
+  criteria-only later-stage cases refuse without fabricating rework.
 - Delivered, closed, Done, or actively transitioning issues refuse.
 
 Existing #1847 root verification commands remain the initial test contract.
@@ -703,12 +784,16 @@ Writing, reviewing, or revising this draft satisfies no implementation checkbox.
 ## Refine acceptance and exclusions
 
 Refine must confirm the bounded local writer topology is acceptable for the
-intended consumer, verify the trusted host adapter against real runtime message
+intended consumer, measure the complete intended #124-shaped event/archive
+against the 60,000-byte ceiling, and accept the later-stage code-rework limitation.
+Verify the trusted host adapter against real runtime message
 format, and complete the concrete producer/consumer inventory. These are
 validation and sizing obligations for this design, not unspecified substitutes
 for its authorization, serialization, invalidation, or recovery rules.
 
-Size the canonical Plan-approval adapter, amendment persistence, strict local
+Size the canonical Plan-approval adapter, bounded Develop revision reapproval
+and activity-policy integration, comment sizing and per-gate chain reads,
+amendment persistence, strict local
 interlock integration, revision records, and recovery tests as part of #1847.
 Do not assume those extensions already exist or hide them behind an unfiled
 prerequisite.
