@@ -256,10 +256,14 @@ function commitMessageFileText(args, cwd) {
 // grants a bypass (#440 AC2). The commit-subject contract is unaffected: the
 // PostToolUse commit-trail still requires `chore:` subjects while chore-mode is
 // on, so loosening the edit gate does not loosen the commit gate (#440 AC5).
+const bashDocumentWrite =
+  toolName === 'Bash' && extractWriteTargets(target).some((filePath) => /\.md$/.test(filePath));
 if (
   activityClass === 'COMMIT_DOCS' ||
   (DRAFTING_STATES.includes(state) && (activityClasses || []).includes('WRITE_DOCS')) ||
-  (DRAFTING_STATES.includes(state) && toolName === 'Bash' && activityClass === 'WRITE_DOCS')
+  (DRAFTING_STATES.includes(state) &&
+    toolName === 'Bash' &&
+    (activityClass === 'WRITE_DOCS' || bashDocumentWrite))
 ) {
   const bound = readExactSessionBinding(projectRoot, { sessionId: input.session_id });
   const valid = bindingMatches(
@@ -271,7 +275,11 @@ if (
     block(
       '[task-tracker] Draft document mutation refused: current session binding, branch, or worktree mismatch.'
     );
-  if (toolName === 'Bash' && activityClass === 'WRITE_DOCS' && gitContext?.kind !== 'add') {
+  if (
+    toolName === 'Bash' &&
+    (activityClass === 'WRITE_DOCS' || bashDocumentWrite) &&
+    gitContext?.kind !== 'add'
+  ) {
     const writes = extractWriteTargets(target);
     if (!writes.length) block('[task-tracker] Draft write targets are not inspectable.');
     try {

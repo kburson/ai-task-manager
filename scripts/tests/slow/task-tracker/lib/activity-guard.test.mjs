@@ -717,6 +717,23 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
       }
       const redirect = { ...payload, tool_input: { command: 'echo draft > docs/plan.md' } };
       assert.equal(runGuard({ cwd: root, payload: redirect, env }).stdout, '');
+      for (const command of [
+        "cat | bash <<'EOF'\necho source > src/file.mjs\nEOF",
+        'echo draft > docs/plan.md; node --test test.mjs',
+        'echo draft > docs/plan.md; npm run build',
+        'echo draft > docs/plan.md; cp payload src/file.mjs',
+        'git branch codex/foreign',
+        "echo draft > docs/plan.md; echo code > 'scripts/source.mjs'",
+        'echo draft > docs/plan.md; echo code 2> scripts/source.mjs',
+      ]) {
+        if (draftingState === 'plan' && command.includes('node --test')) continue;
+        const result = runGuard({
+          cwd: root,
+          payload: { ...payload, tool_input: { command } },
+          env,
+        });
+        assert.equal(result.decision?.decision, 'block', command);
+      }
       const outside = {
         ...payload,
         tool_input: { command: 'echo draft > /' + 'tmp/1848-escape.md' },
@@ -846,5 +863,25 @@ test('Bash scope guard does not execute quoted cat payload examples as issue com
     assert.equal(runGuard({ cwd: dir, payload, guardPath: BASH_GUARD }).decision, null);
   } finally {
     cleanup(dir);
+  }
+});
+
+// @story #1848
+test('Plan runner does not bypass exact document binding', () => {
+  const dir = makeRepo({ state: 'plan', activeIssue: '#65' });
+  try {
+    setActiveTask('incomplete-plan', { issue: '#65', kanbanState: 'plan' }, dir);
+    const result = runGuard({
+      cwd: dir,
+      payload: {
+        session_id: 'incomplete-plan',
+        tool_name: 'Bash',
+        tool_input: { command: 'echo draft > docs/plan.md; node --test test.mjs' },
+      },
+    });
+    assert.equal(result.decision?.decision, 'block');
+    assert.match(result.decision.reason, /session binding/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

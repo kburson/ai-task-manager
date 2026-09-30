@@ -148,8 +148,11 @@ function shellTokens(source) {
 
 const SAFE_CONFIG = new Set(['user.name', 'user.email', 'color.ui']);
 const META = new RegExp('(?:&&|\\|\\||[;&|<>`\\n]|\\$\\(|\\$\\{|\\$[A-Za-z_])');
-const SELECTOR_ENV = new RegExp('^(?:GIT_DIR|GIT_WORK_TREE|GIT_INDEX_FILE|GIT_CONFIG_[A-Z0-9_]+)=');
-const UNSUPPORTED_GIT_ENV = /^(?:GIT_DIR|GIT_WORK_TREE|GIT_INDEX_FILE|GIT_CONFIG_[A-Z0-9_]+)$/;
+const SELECTOR_ENV = new RegExp(
+  '^(?:GIT_DIR|GIT_WORK_TREE|GIT_INDEX_FILE|GIT_COMMON_DIR|GIT_NAMESPACE|GIT_CONFIG_[A-Z0-9_]+)='
+);
+const UNSUPPORTED_GIT_ENV =
+  /^(?:GIT_DIR|GIT_WORK_TREE|GIT_INDEX_FILE|GIT_COMMON_DIR|GIT_NAMESPACE|GIT_CONFIG_[A-Z0-9_]+)$/;
 export function hasUnsupportedGitEnvironment(environment = process.env) {
   return Object.keys(environment).some((name) => UNSUPPORTED_GIT_ENV.test(name));
 }
@@ -320,6 +323,32 @@ const GIT_READS = new Set([
   'version',
 ]);
 function readOnlyGitCommand(direct) {
+  if (direct.kind === 'branch') {
+    if (!direct.contextSafe) return false;
+    if (!direct.args.length) return true;
+    if (direct.args.length === 1 && direct.args[0] === '--show-current') return true;
+    const allowed = new Set([
+      '--list',
+      '-l',
+      '-a',
+      '-r',
+      '--all',
+      '--remotes',
+      '-v',
+      '-vv',
+      '--verbose',
+    ]);
+    return (
+      direct.args.some((arg) =>
+        ['--list', '-l', '-a', '-r', '--all', '--remotes', '-v', '-vv', '--verbose'].includes(arg)
+      ) &&
+      direct.args.every((arg) =>
+        arg.startsWith('-')
+          ? allowed.has(arg) || arg.startsWith('--format=')
+          : direct.args.includes('--list') || direct.args.includes('-l')
+      )
+    );
+  }
   if (GIT_READS.has(direct.kind)) return true;
   if (!direct.contextSafe) return false;
   if (direct.kind === 'config') {
@@ -354,13 +383,37 @@ export function inspectQuotedHeredocs(command) {
   let executable = false;
   for (let index = 0; index < lines.length; index++) {
     const header = lines[index];
-    if (!header.includes('<<')) continue;
+    let quote = '';
+    const operators = [];
+    for (let offset = 0; offset < header.length; offset++) {
+      const char = header[offset];
+      if (char === '\\' && quote !== "'") {
+        offset++;
+        continue;
+      }
+      if (quote) {
+        if (char === quote) quote = '';
+        continue;
+      }
+      if (char === "'" || char === '"') {
+        quote = char;
+        continue;
+      }
+      if (header.slice(offset, offset + 2) === '<<') {
+        operators.push(offset);
+        offset++;
+      }
+    }
+    if (!operators.length) continue;
     const delimiter = header.match(/<<(['"])([A-Za-z_][A-Za-z0-9_]*)\1\s*$/);
-    if (!delimiter || header.indexOf('<<') !== header.lastIndexOf('<<')) {
+    if (!delimiter || operators.length !== 1 || delimiter.index !== operators[0]) {
       executable = true;
       continue;
     }
-    if (!/^\s*cat(?:\s|$)/.test(header)) executable = true;
+    if (
+      !/^\s*cat\s*(?:>>?\s*[A-Za-z0-9_./-]+\s*)?<<(['"])[A-Za-z_][A-Za-z0-9_]*\1\s*$/.test(header)
+    )
+      executable = true;
     let end = index + 1;
     while (end < lines.length && lines[end] !== delimiter[2]) end++;
     if (end === lines.length) {

@@ -22,6 +22,7 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { splitCommandSegments } from './lib/gh-edit-guard.mjs';
 import { discoverBashActivity, inspectQuotedHeredocs } from './lib/mutation-context.mjs';
 
 // ---------------------------------------------------------------------------
@@ -309,6 +310,16 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
 
   // A compound command may stage a document after writing source. Inspect all
   // shell write targets before granting the narrower Git or runner activity.
+  // Every output redirect must expose one literal target to containment checks.
+  // Quoted targets, descriptor writes, and descriptor duplication fail closed.
+  const scanned = stripQuotedRegions(inspectQuotedHeredocs(cmd).source);
+  for (const match of scanned.matchAll(/>+/g)) {
+    if (
+      /[0-9&]/.test(scanned.charAt(match.index - 1)) ||
+      !/^>>?\s*[A-Za-z0-9_./-]+(?=\s|$|[;|&])/.test(scanned.slice(match.index))
+    )
+      return 'WRITE_CODE';
+  }
   const targets = extractWriteTargets(cmd);
   let writeActivity = null;
   for (const target of targets) {
@@ -330,20 +341,39 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
   if (writeActivity === 'WRITE_CODE') return writeActivity;
   if (gitActivity === 'WRITE_CODE') return gitActivity;
   if (writeActivity === 'WRITE_ISSUE') return writeActivity;
-  if (gitActivity) return gitActivity;
+
+  const segments = splitCommandSegments(inspectQuotedHeredocs(cmd).source).filter((segment) =>
+    segment.trim()
+  );
+  if (
+    (writeActivity === 'WRITE_DOCS' || gitActivity === 'WRITE_DOCS') &&
+    segments.length > 1 &&
+    segments.some((segment) => {
+      if (
+        [...(policy.testRunners || []), ...(policy.buildCommands || [])].some((pattern) =>
+          startsWithCommand(segment, pattern)
+        )
+      )
+        return false;
+      if (/^\s*(?:cat|echo|printf)\b/.test(segment) && !/[$`|&()]/.test(segment)) return false;
+      if (/^\s*tee\s+(?:-a\s+)?[A-Za-z0-9_./-]+\s*$/.test(segment)) return false;
+      return true;
+    })
+  )
+    return 'WRITE_CODE';
+  // Build commands.
+  const buildCommands = [...(policy.buildCommands || [])].sort((a, b) => b.length - a.length);
+  for (const pat of buildCommands) {
+    if (segments.some((segment) => startsWithCommand(segment, pat))) return 'RUN_BUILD';
+  }
 
   // Test runners — longest-first so `npm run test` wins over `npm`.
   const testRunners = [...(policy.testRunners || [])].sort((a, b) => b.length - a.length);
   for (const pat of testRunners) {
-    if (startsWithCommand(cmd, pat)) return 'RUN_TESTS';
+    if (segments.some((segment) => startsWithCommand(segment, pat))) return 'RUN_TESTS';
   }
 
-  // Build commands.
-  const buildCommands = [...(policy.buildCommands || [])].sort((a, b) => b.length - a.length);
-  for (const pat of buildCommands) {
-    if (startsWithCommand(cmd, pat)) return 'RUN_BUILD';
-  }
-
+  if (gitActivity) return gitActivity;
   if (writeActivity) return writeActivity;
 
   return 'READ_*';

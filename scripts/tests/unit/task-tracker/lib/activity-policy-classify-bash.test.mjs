@@ -439,7 +439,7 @@ test('real staged index classifies regular Markdown and mixed source separately'
 test('compound document staging cannot hide a source write', () => {
   assert.equal(classifyBash('echo x > scripts/example.mjs; git add docs/review.md'), 'WRITE_CODE');
   assert.equal(classifyBash('echo x > scripts/example.mjs; echo y > docs/review.md'), 'WRITE_CODE');
-  assert.equal(classifyBash('echo x > docs/review.md; git add docs/review.md'), 'WRITE_DOCS');
+  assert.equal(classifyBash('echo x > docs/review.md; git add docs/review.md'), 'WRITE_CODE');
 });
 
 test('read-only Git config and worktree queries stay read-only', () => {
@@ -509,4 +509,48 @@ test('quoted here-document data does not become shell authority', () => {
     classifyBash(`cat > .scratch/scope.md <<'EOF'\ntext\nEOF\n${binary} reset --hard`),
     'WRITE_SCRATCH'
   );
+});
+
+// @story #1848
+test('cat compound headers and draft suffixes do not inherit data authority', () => {
+  for (const header of ['cat | bash', 'cat && python3', 'cat; bash'])
+    assert.equal(classifyBash(`${header} <<'EOF'\ntext\nEOF`), 'WRITE_CODE');
+  const draft = "cat > docs/draft.md <<'EOF'\ntext\nEOF";
+  assert.equal(classifyBash(draft + '\nnode --test scripts/tests/example.test.mjs'), 'RUN_TESTS');
+  assert.equal(classifyBash(draft + '\nnpm run build'), 'RUN_BUILD');
+  assert.equal(classifyBash(draft + '\nnode --test example.test.mjs; npm run build'), 'RUN_BUILD');
+  assert.equal(
+    classifyBash(draft + '\nnode --test example.test.mjs; cp docs/draft.md scripts/source.mjs'),
+    'WRITE_CODE'
+  );
+  assert.equal(classifyBash('git add docs/draft.md && npm test'), 'WRITE_CODE');
+  assert.equal(classifyBash('git branch codex/arbitrary'), 'COMMIT_CODE');
+  assert.equal(classifyBash('git branch -D other'), 'COMMIT_CODE');
+  assert.equal(classifyBash('git branch --show-current'), 'READ_*');
+  assert.equal(classifyBash('git branch --list codex/*'), 'READ_*');
+});
+
+// @story #1848
+test('draft compounds refuse uninspectable source-mutating suffixes', () => {
+  const draft = "cat > docs/draft.md <<'EOF'\ntext\nEOF";
+  for (const suffix of [
+    "sed -i '' s/a/b/ scripts/source.mjs",
+    'cp docs/draft.md scripts/source.mjs',
+    'node -e "process.exit(0)"',
+  ])
+    assert.equal(classifyBash(draft + '\n' + suffix), 'WRITE_CODE');
+  assert.equal(classifyBash("rg -n '<<' scripts/task-tracker"), 'READ_*');
+  for (const name of ['GIT_COMMON_DIR', 'GIT_NAMESPACE'])
+    assert.equal(hasUnsupportedGitEnvironment({ [name]: 'other' }), true);
+});
+
+// @story #1848
+test('documentation admission rejects uninspectable output redirects', () => {
+  for (const command of [
+    "echo draft > docs/draft.md; echo code > 'scripts/source.mjs'",
+    'echo draft > docs/draft.md; printf code > "scripts/source.mjs"',
+    'echo draft > docs/draft.md; echo code 2> scripts/source.mjs',
+    'echo draft > "docs/draft.md"',
+  ])
+    assert.equal(classifyBash(command), 'WRITE_CODE', command);
 });
