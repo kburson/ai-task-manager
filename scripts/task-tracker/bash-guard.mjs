@@ -152,7 +152,9 @@ async function evaluate(input) {
     });
     const invoking = bound ? readWorktreeIdentity({ projectDir: invokingDir }) : null;
     const worktreeResult = evaluateBashWorktreeBinding({
-      command,
+      command: rawCommand,
+      invocationDir,
+      projectRoot,
       bound,
       invoking,
       classification: worktreeClassification,

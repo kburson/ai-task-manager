@@ -104,10 +104,7 @@ test('Edit src/foo.ts in develop → pass', () => {
   }
 });
 
-test('Edit docs/notes.md in plan without current-session binding → block', () => {
-  // STATE_MATRIX: analyze allows WRITE_DOCS; groom does NOT (matrix shipped in W1.2).
-  // The "Groom + docs" AC item in the issue body was aspirational; the matrix
-  // ultimately frozen at #63 only admits WRITE_ISSUE + READ_* in refine.
+test('Edit docs/notes.md in plan without current-session binding → allow', () => {
   const dir = makeRepo({ state: 'plan' });
   try {
     const r = runGuard({
@@ -115,14 +112,13 @@ test('Edit docs/notes.md in plan without current-session binding → block', () 
       payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.decision?.decision, 'block');
-    assert.match(r.decision.reason, /session binding/);
+    assert.equal(r.stdout, '', r.stderr);
   } finally {
     cleanup(dir);
   }
 });
 
-test('Edit docs/notes.md in refine without an exact binding → block', () => {
+test('Edit docs/notes.md in refine without an exact binding → allow', () => {
   const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
@@ -130,9 +126,7 @@ test('Edit docs/notes.md in refine without an exact binding → block', () => {
       payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.decision?.decision, 'block');
-    assert.match(r.decision.reason, /binding/);
-    assert.match(r.decision.reason, /worktree mismatch/);
+    assert.equal(r.stdout, '', r.stderr);
   } finally {
     cleanup(dir);
   }
@@ -364,7 +358,7 @@ test('Edit src/foo.ts with no state file at all → block (no-active-task)', () 
   }
 });
 
-test('Edit docs/notes.md with active issue but no state → block; suggest reconcile', () => {
+test('Edit docs/notes.md with active issue but no state → allow', () => {
   const dir = makeRepo({/* no state */});
   try {
     const r = runGuard({
@@ -372,9 +366,7 @@ test('Edit docs/notes.md with active issue but no state → block; suggest recon
       payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.decision?.decision, 'block');
-    assert.match(r.decision.reason, /no recorded kanban state/);
-    assert.match(r.decision.reason, /\/task reconcile accept-live 65/);
+    assert.equal(r.stdout, '', r.stderr);
   } finally {
     cleanup(dir);
   }
@@ -697,9 +689,19 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
             payload: { ...editPayload, session_id: 'missing-session' },
             env,
             guardPath,
-          }).decision?.decision,
-          'block'
+          }).stdout,
+          ''
         );
+      }
+      // #1857: invoking-root artifact writes do not borrow the child's binding.
+      for (const command of ['mkdir -p .scratch/local', "printf '%s' draft > docs/local.md"]) {
+        const artifact = runGuard({
+          cwd: root,
+          payload: { ...payload, cwd: root, tool_input: { command } },
+          env,
+          guardPath: BASH_GUARD,
+        });
+        assert.equal(artifact.stdout, '', artifact.stderr);
       }
       const redirect = { ...payload, tool_input: { command: 'echo draft > docs/plan.md' } };
       assert.equal(runGuard({ cwd: root, payload: redirect, env }).stdout, '');

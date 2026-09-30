@@ -168,7 +168,7 @@ test('package-boundary: no test files are packed', () => {
 test('package-boundary: excluded directories do not reappear', () => {
   const files = packedFiles();
   const forbidden = files.filter(
-    (p) => /^docs\/archive\//.test(p) || /^scripts\/maintenance\//.test(p)
+    (p) => /^docs\/archive\//.test(p) || /^scripts\/(?:maintenance|research)\//.test(p)
   );
   assert.deepEqual(
     forbidden,
@@ -224,6 +224,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const recoveryEntryAllowance = 1;
   // #1848 ships the bounded draft-branch bootstrap entry point.
   const draftBranchAllowance = 1;
+  // #1857 ships one shared artifact policy; research helpers remain development-only.
+  const artifactPolicyAllowance = 1;
   // #1693 adds the standalone doctor entry point and its read-only observer.
   const doctorRuntimeAllowance = 2;
   // #1709 ships the pure story contract and shared Markdown views.
@@ -350,7 +352,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     localTrunkProofAllowance +
     localTrunkReceiptAllowance +
     mutationContextAllowance +
-    draftBranchAllowance;
+    draftBranchAllowance +
+    artifactPolicyAllowance;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
@@ -369,6 +372,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
   for (const required of [
     'bin/cli.mjs',
     'bin/aitm.mjs',
+    'scripts/task-tracker/lib/artifact-write-policy.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',

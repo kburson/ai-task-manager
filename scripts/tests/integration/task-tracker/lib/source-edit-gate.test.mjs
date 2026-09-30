@@ -319,7 +319,7 @@ test('runHook tolerates signal fetch failure (falls through to decide)', async (
   assert.equal(r.code, 'source-edit-state-gate');
 });
 
-test('runHook allowlists .tmp without needing a bound issue or signals', async () => {
+test('runHook allowlists scratch without needing a bound issue or signals', async () => {
   let touched = false;
   const r = await runHook(
     { tool_name: 'Write', tool_input: { file_path: '.scratch/inspect/probe.mjs' } },
@@ -337,8 +337,8 @@ test('runHook allowlists .tmp without needing a bound issue or signals', async (
   );
   assert.equal(r.decision, 'allow');
   assert.equal(r.reason, 'allowlisted-path');
-  // loadBoundIssue is still called (cheap); resolveIssueSignals is NOT.
-  assert.equal(touched, true);
+  // Artifact authoring bypasses binding and issue-signal reads.
+  assert.equal(touched, false);
 });
 
 test('native apply_patch envelope classifies every target with ordinary source-edit rules', async () => {
@@ -441,7 +441,7 @@ test('#658: fetchIssueSignals reads false when neither grammar is present', asyn
   }
 });
 
-test('Plan permits only owned Markdown with exact binding signal', () => {
+test('Plan artifact authoring is independent of ownership; scripts and source remain gated', () => {
   const base = {
     toolName: 'Edit',
     filePath: 'docs/plan.md',
@@ -453,13 +453,9 @@ test('Plan permits only owned Markdown with exact binding signal', () => {
     ...LOCAL_OWNERSHIP,
   };
   assert.equal(decideSourceEdit(base).decision, 'allow');
-  for (const input of [
-    { planBindingValid: false },
-    { assignees: [] },
-    { currentUser: 'other' },
-    { filePath: 'docs/run.mjs' },
-    { filePath: 'CLAUDE.md' },
-  ])
+  for (const input of [{ planBindingValid: false }, { assignees: [] }, { currentUser: 'other' }])
+    assert.equal(decideSourceEdit({ ...base, ...input }).decision, 'allow');
+  for (const input of [{ filePath: 'docs/run.mjs' }, { filePath: 'CLAUDE.md' }])
     assert.equal(decideSourceEdit({ ...base, ...input }).decision, 'block');
 });
 
@@ -552,7 +548,7 @@ test('Plan source-edit hook accepts owned Markdown from observed worktree', asyn
 
 // @story #1848
 for (const state of ['backlog', 'refine', 'ready-for-plan']) {
-  test(`bound ${state} draft permits documentation but no source or foreign ownership`, () => {
+  test(`bound ${state} draft permits documents across ownership while source stays gated`, () => {
     const args = {
       toolName: 'Edit',
       filePath: 'docs/superpowers/specs/1848-design.md',
@@ -564,8 +560,8 @@ for (const state of ['backlog', 'refine', 'ready-for-plan']) {
       ...LOCAL_OWNERSHIP,
     };
     assert.equal(decideSourceEdit(args).decision, 'allow');
-    assert.equal(decideSourceEdit({ ...args, planBindingValid: false }).decision, 'block');
-    assert.equal(decideSourceEdit({ ...args, assignees: ['foreign'] }).decision, 'block');
+    assert.equal(decideSourceEdit({ ...args, planBindingValid: false }).decision, 'allow');
+    assert.equal(decideSourceEdit({ ...args, assignees: ['foreign'] }).decision, 'allow');
     assert.equal(decideSourceEdit({ ...args, filePath: 'scripts/code.mjs' }).decision, 'block');
   });
 }

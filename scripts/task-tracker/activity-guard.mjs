@@ -56,6 +56,7 @@ import {
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
 import { readBoundState } from './lib/bound-state.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { artifactPathPolicy, resolveArtifactShell } from './lib/artifact-write-policy.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 import { extractApplyPatchTargets, extractApplyPatchText } from './lib/apply-patch-targets.mjs';
 
@@ -101,6 +102,30 @@ if (toolName === 'apply_patch') {
   } catch (error) {
     block(`[task-tracker] mutation target parsing failed: ${error.message}`);
   }
+}
+// Artifact authoring bypasses binding only after physical containment checks.
+if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
+  const paths =
+    toolName === 'apply_patch'
+      ? applyPatchTargets
+      : [toolInput.file_path ?? toolInput.notebook_path ?? toolInput.path ?? ''];
+  if (paths.length && paths.every((target) => typeof target === 'string' && target)) {
+    try {
+      const policies = paths.map((target) =>
+        artifactPathPolicy(resolveMutationTarget(target, invocationDir, projectRoot).relative)
+      );
+      if (policies.includes('block'))
+        block('Script formats are not permitted under docs/; use .scratch/ or .tmp/.');
+      if (policies.every((policy) => policy === 'allow')) process.exit(0);
+    } catch (error) {
+      block('[task-tracker] artifact target refused: ' + error.message);
+    }
+  }
+} else if (toolName === 'Bash') {
+  const artifact = resolveArtifactShell(toolInput.command, invocationDir, projectRoot);
+  if (artifact.status === 'block')
+    block('[task-tracker] artifact target refused: ' + artifact.reason);
+  if (artifact.status === 'allow') process.exit(0);
 }
 if (
   Object.hasOwn(input, 'session_id') &&

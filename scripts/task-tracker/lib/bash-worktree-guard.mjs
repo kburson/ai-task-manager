@@ -1,3 +1,4 @@
+import { resolveArtifactShell } from './artifact-write-policy.mjs';
 // @story #1166
 // cspell:ignore reflog
 // Pure command classification and refusal rendering for the Bash PreToolUse
@@ -191,7 +192,20 @@ export function classifyBashWorktreeCommand(command) {
   };
 }
 
-export function evaluateBashWorktreeBinding({ command, bound, invoking, classification } = {}) {
+export function evaluateBashWorktreeBinding({
+  command,
+  bound,
+  invoking,
+  classification,
+  invocationDir = invoking?.worktreePath,
+  projectRoot = invoking?.worktreePath,
+} = {}) {
+  if (invocationDir && projectRoot) {
+    const artifact = resolveArtifactShell(command, invocationDir, projectRoot);
+    if (artifact.status === 'allow') return { block: false, status: 'artifact-write' };
+    if (artifact.status === 'block')
+      return { block: true, status: 'artifact-refused', reason: artifact.reason };
+  }
   const classified = classification ?? classifyBashWorktreeCommand(command);
   if (!classified.guarded) return { block: false, status: 'read-only' };
   if (!bound) return { block: false, status: 'unbound' };

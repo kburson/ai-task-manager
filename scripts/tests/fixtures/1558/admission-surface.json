@@ -1511,6 +1511,7 @@
         "./lib/activity-block-reason.mjs",
         "./lib/bound-state.mjs",
         "./lib/chore-mode.mjs",
+        "./lib/artifact-write-policy.mjs",
         "./lib/installed-guard-path.mjs",
         "./lib/apply-patch-targets.mjs"
       ],
@@ -2350,6 +2351,7 @@
         "./lib/apply-patch-targets.mjs",
         "./lib/mutation-context.mjs",
         "./lib/worktree-binding-guard.mjs",
+        "./lib/artifact-write-policy.mjs",
         "./lib/installed-guard-path.mjs",
         "./lib/workflow-policy/enforcement.mjs"
       ],
