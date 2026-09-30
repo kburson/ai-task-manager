@@ -89,7 +89,7 @@
         "matcher": "apply_patch|Edit|Write|NotebookEdit"
       },
       {
-        "matcher": "Bash",
+        "matcher": "^(?:Bash|functions\\.exec|exec)$",
         "hooks": [
           {
             "type": "command",
