@@ -140,3 +140,9 @@ User names an epic → `/task #<EPIC_N>` to attach. **none** → stay in plan mo
 ## Sequence semantics
 
 Include `**Sequence:** N` in every issue header. Same-sequence issues run in parallel; higher-sequence issues wait for all lower-sequence issues in scope to close. Without an explicit sequence, defaults to 1 (fully parallel). Cross-epic ordering belongs in a top-level note at the top of the spec.
+
+### First design drafts before refinement
+
+An exactly bound singleton owner may write and commit regular Markdown design documents under `docs/` or `.claude/plans/` in Backlog, Refine, Ready for Planning, and Plan. Include the issue number in the draft filename. In a clean detached managed linked worktree, use `npx aitm draft-branch <issue#>` to create `codex/<issue>-draft` at observed HEAD and renew binding. This bounded bootstrap does not permit arbitrary Git changes. Mixed/code commits, unsafe Git contexts, foreign bindings, and early implementation/testing remain refused.
+
+A draft and SAR are inputs to Refine. Review and accept the draft during refinement before deriving size, estimate, labels, and priority. Drafting never stamps acceptance, estimation, or Plan approval. Creation fragments may use contained `.scratch/plan/` writes; supported scratch shell forms are quoted `cat` here-documents, literal `echo` redirects, and literal `mkdir` commands. Compound commands do not receive this allowance.

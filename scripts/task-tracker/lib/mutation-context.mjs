@@ -346,10 +346,37 @@ function nestedShellCommand(words) {
   return flag >= 0 ? words[flag + 1] || null : null;
 }
 
+// @story #1848
+// Only quoted literal delimiters suppress shell expansion in the body. Keep
+// executable suffixes and treat interpreter input as code, never read authority.
+export function inspectQuotedHeredocs(command) {
+  const lines = String(command || '').split('\n');
+  let executable = false;
+  for (let index = 0; index < lines.length; index++) {
+    const header = lines[index];
+    if (!header.includes('<<')) continue;
+    const delimiter = header.match(/<<(['"])([A-Za-z_][A-Za-z0-9_]*)\1\s*$/);
+    if (!delimiter || header.indexOf('<<') !== header.lastIndexOf('<<')) {
+      executable = true;
+      continue;
+    }
+    if (!/^\s*cat(?:\s|$)/.test(header)) executable = true;
+    let end = index + 1;
+    while (end < lines.length && lines[end] !== delimiter[2]) end++;
+    if (end === lines.length) {
+      executable = true;
+      continue;
+    }
+    for (let body = index + 1; body <= end; body++) lines[body] = '';
+    index = end;
+  }
+  return { source: lines.join('\n'), executable };
+}
+
 export function discoverBashActivity(command, invocationDir, depth = 0) {
   if (depth > 4) return 'COMMIT_CODE';
   let result = null;
-  for (const segment of splitCommandSegments(String(command || ''))) {
+  for (const segment of splitCommandSegments(inspectQuotedHeredocs(command).source)) {
     const direct = parseDirectGit(segment, invocationDir);
     let current = null;
     if (direct.kind === 'commit') current = 'COMMIT_CODE';

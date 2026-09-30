@@ -22,7 +22,7 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { discoverBashActivity } from './lib/mutation-context.mjs';
+import { discoverBashActivity, inspectQuotedHeredocs } from './lib/mutation-context.mjs';
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -97,10 +97,12 @@ export const DEFAULT_POLICY = Object.freeze({
   buildCommands: ['npm run build', 'tsc', 'cargo build', 'go build'],
 });
 
+export const DRAFTING_STATES = Object.freeze(['backlog', 'refine', 'ready-for-plan', 'plan']);
+
 export const STATE_MATRIX = Object.freeze({
-  backlog: ['WRITE_ISSUE', 'READ_*'],
-  refine: ['WRITE_ISSUE', 'READ_*'],
-  'ready-for-plan': ['WRITE_ISSUE', 'READ_*'],
+  backlog: ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'READ_*'],
+  refine: ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'READ_*'],
+  'ready-for-plan': ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'READ_*'],
   plan: ['WRITE_ISSUE', 'WRITE_DOCS', 'COMMIT_DOCS', 'RUN_TESTS', 'READ_*'],
   develop: [
     'WRITE_CODE',
@@ -256,9 +258,9 @@ function stripQuotedRegions(command) {
   return out;
 }
 
-function extractWriteTargets(command) {
+export function extractWriteTargets(command) {
   const targets = new Set();
-  const scanned = stripQuotedRegions(command);
+  const scanned = stripQuotedRegions(inspectQuotedHeredocs(command).source);
 
   // Redirections: `> path` or `>> path` (not `>&`, not `2>`).
   const redirectRe = /(?<![0-9&])>>?\s*([^\s;|&<>]+)/g;
@@ -276,9 +278,34 @@ function extractWriteTargets(command) {
   return [...targets];
 }
 
+// @story #1848
+// Closed shell forms: incidental scratch paths never authorize other effects.
+export function scratchShellTargets(command) {
+  if (typeof command !== 'string') return null;
+  const target = '(?:\\.scratch|\\.tmp)(?:/[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*)*';
+  const heredoc = command.match(
+    new RegExp(
+      '^\\s*cat\\s*>\\s*(' + target + ")\\s*<<'([A-Za-z_][A-Za-z0-9_]*)'\\n([\\s\\S]*)\\n\\2\\s*$"
+    )
+  );
+  if (heredoc) {
+    if (heredoc[3].split('\n').includes(heredoc[2])) return null;
+    return [heredoc[1]];
+  }
+  const mkdir = command.match(
+    new RegExp('^\\s*mkdir\\s+(?:-p\\s+)?(' + target + '(?:\\s+' + target + ')*)\\s*$')
+  );
+  if (mkdir) return mkdir[1].trim().split(/\s+/);
+  const echo = command.match(
+    new RegExp("^\\s*echo\\s+(?:[A-Za-z0-9_ .-]+|'[^'\\n]*')\\s*>>?\\s*(" + target + ')\\s*$')
+  );
+  return echo ? [echo[1]] : null;
+}
+
 export function classifyBash(command, policy = DEFAULT_POLICY) {
   if (typeof command !== 'string' || !command) return 'READ_*';
   const cmd = command.replace(/^\s+/, '');
+  if (scratchShellTargets(cmd)) return 'WRITE_SCRATCH';
 
   // A compound command may stage a document after writing source. Inspect all
   // shell write targets before granting the narrower Git or runner activity.
@@ -299,6 +326,7 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
   }
   const gitActivity = discoverBashActivity(cmd, process.cwd());
   if (gitActivity === 'COMMIT_CODE') return gitActivity;
+  if (inspectQuotedHeredocs(cmd).executable) return 'WRITE_CODE';
   if (writeActivity === 'WRITE_CODE') return writeActivity;
   if (gitActivity === 'WRITE_CODE') return gitActivity;
   if (writeActivity === 'WRITE_ISSUE') return writeActivity;
@@ -327,7 +355,7 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
 
 export function isAllowed(state, activityClass) {
   // READ_* is universally allowed.
-  if (activityClass === 'READ_*') return true;
+  if (activityClass === 'READ_*' || activityClass === 'WRITE_SCRATCH') return true;
 
   // No-active-task policy: refuse WRITE_CODE / COMMIT_CODE; allow all else.
   if (state == null) {

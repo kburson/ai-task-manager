@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1848
 // @story #705
 // When a task is closed it is no longer tracked by the board, so its `ToDo`
 // label is stale. Legacy `BLOCKED` labels are no longer mutated. Drives
@@ -41,6 +42,10 @@ function makeCtx(statePath, dir, over = {}) {
     cfg: { repo: 'o/r', lifecycleCheckboxesRequired: false },
     statePath,
     projectDir: dir,
+    // These tests exercise close ordering/labels, with terminal storage external.
+    releaseIssueBindings: () => ({ released: [] }),
+    deregisterTask: () => {},
+    releaseBindingOccupancy: () => ({ released: [] }),
     rest: ['#5'],
     SKIP_NETWORK: true,
     closeBody: '',

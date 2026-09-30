@@ -10,7 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
@@ -123,7 +123,7 @@ test('Edit docs/notes.md in plan without current-session binding → block', () 
   }
 });
 
-test('Edit docs/notes.md in refine → block per STATE_MATRIX', () => {
+test('Edit docs/notes.md in refine without an exact binding → block', () => {
   const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
@@ -132,11 +132,8 @@ test('Edit docs/notes.md in refine → block per STATE_MATRIX', () => {
     });
     assert.equal(r.code, 0);
     assert.equal(r.decision?.decision, 'block');
-    assert.match(r.decision.reason, /WRITE_DOCS/);
-    // #281 — refusal advice migrated from legacy `/task move <id> <state>`
-    // to `/task promote → <state>` (forward) / `/task demote → <state>` (back).
-    assert.match(r.decision.reason, /\/task promote/);
-    assert.match(r.decision.reason, /plan/);
+    assert.match(r.decision.reason, /binding/);
+    assert.match(r.decision.reason, /worktree mismatch/);
   } finally {
     cleanup(dir);
   }
@@ -578,162 +575,276 @@ test('invalid state value in state file with active issue → block; suggest rec
   }
 });
 
-test('linked Plan document commit uses payload worktree and exact owner', () => {
-  const root = makeRepo({ state: 'plan' });
-  const binary = 'g' + 'it';
-  const verb = 'com' + 'mit';
-  const run = (cwd, ...args) => spawnSync(binary, args, { cwd, encoding: 'utf8' });
-  const shim = path.join(root, 'fake-bin');
-  const child = path.join(root, 'linked');
-  try {
-    writeFileSync(path.join(root, 'README.md'), 'seed');
-    run(root, 'add', 'README.md');
-    assert.equal(
-      run(root, '-c', 'user.name=test', '-c', 'user.email=test@example.com', verb, '-m', 'seed')
-        .status,
-      0
-    );
-    assert.equal(run(root, 'worktree', 'add', '-q', '-b', 'work/1830', child).status, 0);
-    mkdirSync(path.join(child, 'docs'));
-    writeFileSync(path.join(child, 'docs', 'plan.md'), 'plan');
-    run(child, 'add', 'docs/plan.md');
-    mkdirSync(path.join(child, '.ai-task-manager'), { recursive: true });
-    writeFileSync(
-      path.join(child, '.ai-task-manager', 'task-tracker.json'),
-      JSON.stringify({ repo: 'owner/repo', projectId: 'PVT_test' })
-    );
-    const sid = 'activity-plan-1830';
-    setActiveTask(
-      sid,
-      { issue: '#1830', kanbanState: 'plan', worktreePath: child, worktreeBranch: 'work/1830' },
-      child
-    );
-    mkdirSync(shim);
-    const fixture = {
-      data: {
-        repository: {
-          issue: {
-            assignees: { nodes: [{ login: 'tester' }] },
-            projectItems: {
-              nodes: [{ project: { id: 'PVT_test' }, fieldValueByName: { name: 'Plan' } }],
-              pageInfo: { hasNextPage: false },
+for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
+  test(`linked ${draftingState} document commit uses payload worktree and exact owner`, () => {
+    const root = makeRepo({ state: draftingState });
+    const binary = 'g' + 'it';
+    const verb = 'com' + 'mit';
+    const run = (cwd, ...args) => spawnSync(binary, args, { cwd, encoding: 'utf8' });
+    const shim = path.join(root, 'fake-bin');
+    const child = path.join(root, 'linked');
+    try {
+      writeFileSync(path.join(root, 'README.md'), 'seed');
+      run(root, 'add', 'README.md');
+      assert.equal(
+        run(root, '-c', 'user.name=test', '-c', 'user.email=test@example.com', verb, '-m', 'seed')
+          .status,
+        0
+      );
+      assert.equal(run(root, 'worktree', 'add', '-q', '-b', 'work/1830', child).status, 0);
+      mkdirSync(path.join(child, 'docs'));
+      writeFileSync(path.join(child, 'docs', 'plan.md'), 'plan');
+      run(child, 'add', 'docs/plan.md');
+      mkdirSync(path.join(child, '.ai-task-manager'), { recursive: true });
+      writeFileSync(
+        path.join(child, '.ai-task-manager', 'task-tracker.json'),
+        JSON.stringify({ repo: 'owner/repo', projectId: 'PVT_test' })
+      );
+      const sid = 'activity-plan-1830';
+      setActiveTask(
+        sid,
+        {
+          issue: '#1830',
+          kanbanState: draftingState,
+          worktreePath: child,
+          worktreeBranch: 'work/1830',
+        },
+        child
+      );
+      mkdirSync(shim);
+      const fixture = {
+        data: {
+          repository: {
+            issue: {
+              assignees: { nodes: [{ login: 'tester' }] },
+              projectItems: {
+                nodes: [{ project: { id: 'PVT_test' }, fieldValueByName: { name: draftingState } }],
+                pageInfo: { hasNextPage: false },
+              },
             },
           },
         },
-      },
-    };
-    const script = [
-      '#!/bin/sh',
-      'if [ "$1" = issue ]; then',
-      `printf '%s' '${JSON.stringify({ body: '' })}'`,
-      'elif [ "$2" = user ]; then',
-      "printf 'tester\\n'",
-      'else',
-      `printf '%s' '${JSON.stringify(fixture)}'`,
-      'fi',
-    ].join('\n');
-    writeFileSync(path.join(shim, 'gh'), script);
-    chmodSync(path.join(shim, 'gh'), 0o755);
-    const env = {
-      ...process.env,
-      AI_TASK_MANAGER_SESSION_ID: sid,
-      PATH: shim + path.delimiter + process.env.PATH,
-    };
-    const payload = {
-      tool_name: 'Bash',
-      cwd: child,
-      tool_input: { command: `${binary} ${verb} -m "[#1830] docs"` },
-    };
-    const allowed = runGuard({ cwd: root, payload, env });
-    assert.equal(allowed.code, 0, allowed.stderr);
-    assert.equal(allowed.stdout, '', allowed.stderr);
-    const ownershipGuard = runGuard({ cwd: root, payload, env, guardPath: BASH_GUARD });
-    assert.equal(ownershipGuard.stdout, '', ownershipGuard.stderr);
-    const globalOption = runGuard({
-      cwd: root,
-      payload: { ...payload, tool_input: { command: `${binary} -C . ${verb} -m "[#1830] docs"` } },
-      env,
-    });
-    assert.equal(globalOption.stdout, '', globalOption.stderr);
-    const effectiveChild = runGuard({
-      cwd: root,
-      payload: {
-        ...payload,
-        cwd: root,
-        tool_input: { command: `${binary} -C ${child} ${verb} -m "[#1830] docs"` },
-      },
-      env,
-    });
-    assert.equal(effectiveChild.stdout, '', effectiveChild.stderr);
-    const editPayload = {
-      tool_name: 'Edit',
-      cwd: child,
-      tool_input: { file_path: 'docs/plan.md' },
-    };
-    for (const guardPath of [GUARD, SOURCE_GUARD]) {
-      const edit = runGuard({ cwd: root, payload: editPayload, env, guardPath });
-      assert.equal(edit.stdout, '', edit.stderr);
-      const installed = runGuard({
+      };
+      const script = [
+        '#!/bin/sh',
+        'if [ "$1" = issue ]; then',
+        `printf '%s' '${JSON.stringify({ body: '' })}'`,
+        'elif [ "$2" = user ]; then',
+        "printf 'tester\\n'",
+        'else',
+        `printf '%s' '${JSON.stringify(fixture)}'`,
+        'fi',
+      ].join('\n');
+      writeFileSync(path.join(shim, 'gh'), script);
+      chmodSync(path.join(shim, 'gh'), 0o755);
+      const env = {
+        ...process.env,
+        AI_TASK_MANAGER_SESSION_ID: sid,
+        PATH: shim + path.delimiter + process.env.PATH,
+      };
+      const payload = {
+        session_id: sid,
+        tool_name: 'Bash',
+        cwd: child,
+        tool_input: { command: `${binary} ${verb} -m "[#1830] docs"` },
+      };
+      const allowed = runGuard({ cwd: root, payload, env });
+      assert.equal(allowed.code, 0, allowed.stderr);
+      assert.equal(allowed.stdout, '', allowed.stderr);
+      const ownershipGuard = runGuard({ cwd: root, payload, env, guardPath: BASH_GUARD });
+      assert.equal(ownershipGuard.stdout, '', ownershipGuard.stderr);
+      const globalOption = runGuard({
         cwd: root,
         payload: {
-          ...editPayload,
-          tool_input: {
-            file_path: 'node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs',
-          },
+          ...payload,
+          tool_input: { command: `${binary} -C . ${verb} -m "[#1830] docs"` },
         },
         env,
-        guardPath,
       });
-      assert.equal(installed.decision?.decision, 'block');
+      assert.equal(globalOption.stdout, '', globalOption.stderr);
+      const effectiveChild = runGuard({
+        cwd: root,
+        payload: {
+          ...payload,
+          cwd: root,
+          tool_input: { command: `${binary} -C ${child} ${verb} -m "[#1830] docs"` },
+        },
+        env,
+      });
+      assert.equal(effectiveChild.stdout, '', effectiveChild.stderr);
+      const editPayload = {
+        session_id: sid,
+        tool_name: 'Edit',
+        cwd: child,
+        tool_input: { file_path: 'docs/plan.md' },
+      };
+      for (const guardPath of [GUARD, SOURCE_GUARD]) {
+        const edit = runGuard({ cwd: root, payload: editPayload, env, guardPath });
+        assert.equal(edit.stdout, '', edit.stderr);
+        const installed = runGuard({
+          cwd: root,
+          payload: {
+            ...editPayload,
+            tool_input: {
+              file_path: 'node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs',
+            },
+          },
+          env,
+          guardPath,
+        });
+        assert.equal(installed.decision?.decision, 'block');
+      }
+      const conflictingEnv = { ...env, AI_TASK_MANAGER_SESSION_ID: 'wrong-native-session' };
+      assert.equal(runGuard({ cwd: root, payload, env: conflictingEnv }).stdout, '');
+      assert.equal(
+        runGuard({ cwd: root, payload, env: conflictingEnv, guardPath: BASH_GUARD }).stdout,
+        ''
+      );
+      for (const guardPath of [GUARD, SOURCE_GUARD]) {
+        assert.equal(
+          runGuard({ cwd: root, payload: editPayload, env: conflictingEnv, guardPath }).stdout,
+          ''
+        );
+        assert.equal(
+          runGuard({
+            cwd: root,
+            payload: { ...editPayload, session_id: 'missing-session' },
+            env,
+            guardPath,
+          }).decision?.decision,
+          'block'
+        );
+      }
+      const redirect = { ...payload, tool_input: { command: 'echo draft > docs/plan.md' } };
+      assert.equal(runGuard({ cwd: root, payload: redirect, env }).stdout, '');
+      const outside = {
+        ...payload,
+        tool_input: { command: 'echo draft > /' + 'tmp/1848-escape.md' },
+      };
+      assert.equal(runGuard({ cwd: root, payload: outside, env }).decision?.decision, 'block');
+      const wrong = runGuard({
+        cwd: root,
+        payload: { ...payload, tool_input: { command: `${binary} ${verb} -m "[#9999] docs"` } },
+        env,
+      });
+      assert.equal(wrong.decision?.decision, 'block');
+      mkdirSync(path.join(child, '.scratch'));
+      const messageFile = path.join(child, '.scratch', 'commit-message.txt');
+      writeFileSync(messageFile, '[#9999] docs');
+      const foreignMessageFile = {
+        ...payload,
+        tool_input: { command: `${binary} ${verb} -F .scratch/commit-message.txt` },
+      };
+      const ownershipOnly = runGuard({
+        cwd: root,
+        payload: foreignMessageFile,
+        env,
+        guardPath: BASH_GUARD,
+      });
+      assert.equal(ownershipOnly.stdout, '', ownershipOnly.stderr);
+      const refusedFile = runGuard({ cwd: root, payload: foreignMessageFile, env });
+      assert.equal(refusedFile.decision?.decision, 'block');
+      assert.match(refusedFile.decision.reason, /references another issue/);
+      writeFileSync(messageFile, '[#1830] docs');
+      const matchingFile = runGuard({ cwd: root, payload: foreignMessageFile, env });
+      assert.equal(matchingFile.stdout, '', matchingFile.stderr);
+      writeFileSync(path.join(child, 'docs', 'run.mjs'), 'code');
+      run(child, 'add', 'docs/run.mjs');
+      const mixed = runGuard({ cwd: root, payload, env });
+      assert.equal(mixed.decision?.decision, 'block');
+      assert.match(mixed.decision.reason, /COMMIT_CODE/);
+      run(child, 'reset', '-q', '--', 'docs/run.mjs');
+      setActiveTask(
+        sid,
+        { issue: '#1830', kanbanState: 'review', worktreePath: child, worktreeBranch: 'work/1830' },
+        child
+      );
+      const review = runGuard({ cwd: root, payload, env });
+      assert.equal(review.decision?.decision, 'block');
+      assert.match(review.decision.reason, /state differs|COMMIT_DOCS/);
+      const statePath = path.join(child, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+      mkdirSync(path.dirname(statePath), { recursive: true });
+      writeFileSync(statePath, JSON.stringify({ choreMode: { active: true } }));
+      setActiveTask(sid, { issue: null }, child);
+      const unboundChore = runGuard({ cwd: root, payload, env });
+      assert.equal(unboundChore.decision?.decision, 'block');
+    } finally {
+      run(root, 'worktree', 'remove', '--force', child);
+      cleanup(root);
     }
-    const wrong = runGuard({
-      cwd: root,
-      payload: { ...payload, tool_input: { command: `${binary} ${verb} -m "[#9999] docs"` } },
-      env,
-    });
-    assert.equal(wrong.decision?.decision, 'block');
-    mkdirSync(path.join(child, '.scratch'));
-    const messageFile = path.join(child, '.scratch', 'commit-message.txt');
-    writeFileSync(messageFile, '[#9999] docs');
-    const foreignMessageFile = {
-      ...payload,
-      tool_input: { command: `${binary} ${verb} -F .scratch/commit-message.txt` },
+  });
+}
+
+// @story #1848
+test('native hook session selects its own state instead of an environment session', () => {
+  const dir = makeRepo({ state: 'develop' });
+  try {
+    setActiveTask('payload-session', { issue: '#65', kanbanState: 'develop' }, dir);
+    setActiveTask('environment-session', { issue: '#65', kanbanState: 'backlog' }, dir);
+    const env = { ...process.env, AI_TASK_MANAGER_SESSION_ID: 'environment-session' };
+    const payload = {
+      session_id: 'payload-session',
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/foo.ts' },
     };
-    const ownershipOnly = runGuard({
-      cwd: root,
-      payload: foreignMessageFile,
-      env,
-      guardPath: BASH_GUARD,
-    });
-    assert.equal(ownershipOnly.stdout, '', ownershipOnly.stderr);
-    const refusedFile = runGuard({ cwd: root, payload: foreignMessageFile, env });
-    assert.equal(refusedFile.decision?.decision, 'block');
-    assert.match(refusedFile.decision.reason, /references another issue/);
-    writeFileSync(messageFile, '[#1830] docs');
-    const matchingFile = runGuard({ cwd: root, payload: foreignMessageFile, env });
-    assert.equal(matchingFile.stdout, '', matchingFile.stderr);
-    writeFileSync(path.join(child, 'docs', 'run.mjs'), 'code');
-    run(child, 'add', 'docs/run.mjs');
-    const mixed = runGuard({ cwd: root, payload, env });
-    assert.equal(mixed.decision?.decision, 'block');
-    assert.match(mixed.decision.reason, /COMMIT_CODE/);
-    run(child, 'reset', '-q', '--', 'docs/run.mjs');
-    setActiveTask(
-      sid,
-      { issue: '#1830', kanbanState: 'review', worktreePath: child, worktreeBranch: 'work/1830' },
-      child
-    );
-    const review = runGuard({ cwd: root, payload, env });
-    assert.equal(review.decision?.decision, 'block');
-    assert.match(review.decision.reason, /state differs|COMMIT_DOCS/);
-    const statePath = path.join(child, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
-    mkdirSync(path.dirname(statePath), { recursive: true });
-    writeFileSync(statePath, JSON.stringify({ choreMode: { active: true } }));
-    setActiveTask(sid, { issue: null }, child);
-    const unboundChore = runGuard({ cwd: root, payload, env });
-    assert.equal(unboundChore.decision?.decision, 'block');
+    assert.equal(runGuard({ cwd: dir, payload, env }).decision, null);
+    setActiveTask('payload-session', { issue: '#65', kanbanState: null }, dir);
+    assert.equal(runGuard({ cwd: dir, payload, env }).decision?.decision, 'block');
   } finally {
-    run(root, 'worktree', 'remove', '--force', child);
-    cleanup(root);
+    cleanup(dir);
+  }
+});
+
+// @story #1848
+test('scratch shell allowance validates physical targets and preserves early code restrictions', () => {
+  const dir = makeRepo({ state: 'backlog' });
+  try {
+    mkdirSync(path.join(dir, '.scratch'));
+    mkdirSync(path.join(dir, 'src'));
+    symlinkSync(path.join(dir, 'src'), path.join(dir, '.scratch', 'alias'));
+    const payload = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+    assert.equal(
+      runGuard({ cwd: dir, payload: payload("cat > .scratch/scope.md <<'EOF'\ntext\nEOF") })
+        .decision,
+      null
+    );
+    assert.equal(runGuard({ cwd: dir, payload: payload('mkdir -p .scratch/plan') }).decision, null);
+    assert.equal(
+      runGuard({ cwd: dir, payload: payload('echo text > .scratch/alias/source.mjs') }).decision
+        ?.decision,
+      'block'
+    );
+    assert.equal(
+      runGuard({
+        cwd: dir,
+        payload: payload('echo text > .scratch/scope.md; echo code > src/source.mjs'),
+      }).decision?.decision,
+      'block'
+    );
+    assert.equal(
+      runGuard({ cwd: dir, payload: payload("python3 - <<'PY'\nprint('text')\nPY") }).decision
+        ?.decision,
+      'block'
+    );
+    for (const session_id of ['', null, '../escape'])
+      assert.equal(
+        runGuard({ cwd: dir, payload: { ...payload('echo text > src/source.mjs'), session_id } })
+          .decision?.decision,
+        'block'
+      );
+  } finally {
+    cleanup(dir);
+  }
+});
+
+// @story #1848
+test('Bash scope guard does not execute quoted cat payload examples as issue commands', () => {
+  const dir = makeRepo({ state: 'backlog' });
+  try {
+    const command = "cat > docs/draft.md <<'EOF'\ngh issue create --title example\nEOF";
+    const payload = { tool_name: 'Bash', tool_input: { command } };
+    assert.equal(runGuard({ cwd: dir, payload, guardPath: BASH_GUARD }).decision, null);
+  } finally {
+    cleanup(dir);
   }
 });

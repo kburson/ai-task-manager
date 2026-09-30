@@ -1,3 +1,4 @@
+// @story #1848
 // @story #753
 // Regression: the close converge/no-op fast-path must STILL reconcile the
 // Lifecycle DoD boxes. Before #753, a close that had already run once (issue
@@ -42,6 +43,10 @@ function tmpState(state) {
 async function runConverge({ boardState, reconcileSpy }) {
   const { statePath, dir } = tmpState(baseState());
   const ctx = {
+    // @story #1848: terminal storage is outside these timing/label unit contracts.
+    releaseIssueBindings: () => ({ released: [] }),
+    deregisterTask: () => {},
+    releaseBindingOccupancy: () => ({ released: [] }),
     rest: ['#5'],
     projectConfig: {
       cfg: { repo: 'o/r' },

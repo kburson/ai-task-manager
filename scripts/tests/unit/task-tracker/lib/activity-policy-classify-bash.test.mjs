@@ -118,8 +118,14 @@ test('classifyBash: touch/mkdir code path', () => {
 // ---------------------------------------------------------------------------
 
 test('STATE_MATRIX: matches epic #61 allow-list verbatim', () => {
-  assert.deepEqual([...STATE_MATRIX.backlog].sort(), ['READ_*', 'WRITE_ISSUE'].sort());
-  assert.deepEqual([...STATE_MATRIX.refine].sort(), ['READ_*', 'WRITE_ISSUE'].sort());
+  assert.deepEqual(
+    [...STATE_MATRIX.backlog].sort(),
+    ['COMMIT_DOCS', 'READ_*', 'WRITE_DOCS', 'WRITE_ISSUE'].sort()
+  );
+  assert.deepEqual(
+    [...STATE_MATRIX.refine].sort(),
+    ['COMMIT_DOCS', 'READ_*', 'WRITE_DOCS', 'WRITE_ISSUE'].sort()
+  );
   assert.deepEqual(
     [...STATE_MATRIX.plan].sort(),
     ['COMMIT_DOCS', 'READ_*', 'RUN_TESTS', 'WRITE_DOCS', 'WRITE_ISSUE'].sort()
@@ -185,7 +191,7 @@ test('isAllowed: plan refuses WRITE_CODE / COMMIT_CODE / WRITE_OTHER / RUN_BUILD
 test('isAllowed: refine refuses WRITE_CODE / COMMIT_CODE / RUN_TESTS / RUN_BUILD', () => {
   assert.equal(isAllowed('refine', 'WRITE_CODE'), false);
   assert.equal(isAllowed('refine', 'COMMIT_CODE'), false);
-  assert.equal(isAllowed('refine', 'WRITE_DOCS'), false);
+  assert.equal(isAllowed('refine', 'WRITE_DOCS'), true);
   assert.equal(isAllowed('refine', 'RUN_TESTS'), false);
   assert.equal(isAllowed('refine', 'RUN_BUILD'), false);
 });
@@ -306,18 +312,8 @@ test('classifyBash: respects custom policy testRunners/buildCommands', () => {
   assert.equal(classifyBash('npm test', policy), 'READ_*'); // not in custom testRunners
 });
 
-test('COMMIT_DOCS is allowed only with an active Plan or Develop state', () => {
-  for (const state of [
-    null,
-    undefined,
-    'backlog',
-    'refine',
-    'ready-for-plan',
-    'test',
-    'review',
-    'done',
-    'unknown',
-  ]) {
+test('COMMIT_DOCS is allowed only with an active drafting or Develop state', () => {
+  for (const state of [null, undefined, 'test', 'review', 'done', 'unknown']) {
     assert.equal(isAllowed(state, 'COMMIT_DOCS'), false, String(state));
   }
   assert.equal(isAllowed('plan', 'COMMIT_DOCS'), true);
@@ -478,4 +474,39 @@ test('nested shell discovery enforces executable mutations but ignores printed t
   assert.equal(discoverBashActivity(`echo '${binary} ${verb} -m x'`, process.cwd()), null);
   assert.equal(discoverBashActivity(`${binary} add docs/review.md`, process.cwd()), 'WRITE_DOCS');
   assert.equal(discoverBashActivity(`${binary} add docs/run.mjs`, process.cwd()), 'WRITE_CODE');
+});
+
+// @story #1848
+for (const state of ['backlog', 'refine', 'ready-for-plan']) {
+  test(`draft documents are permitted in ${state} without granting implementation`, () => {
+    assert.equal(isAllowed(state, 'WRITE_DOCS'), true);
+    assert.equal(isAllowed(state, 'COMMIT_DOCS'), true);
+    for (const activity of ['WRITE_CODE', 'COMMIT_CODE', 'RUN_TESTS', 'RUN_BUILD'])
+      assert.equal(isAllowed(state, activity), false);
+  });
+}
+
+test('contained issue scratch shell writes have their own activity without hiding source or git', () => {
+  assert.equal(classifyBash("cat > .scratch/plan/scope.md <<'EOF'\nscope\nEOF"), 'WRITE_SCRATCH');
+  assert.equal(classifyBash('mkdir -p .scratch/plan'), 'WRITE_SCRATCH');
+  assert.equal(
+    classifyBash('echo x > .scratch/plan/scope.md; echo x > src/hidden.mjs'),
+    'WRITE_CODE'
+  );
+  assert.equal(classifyBash('echo x > .scratch/scope.md; git reset --hard'), 'COMMIT_CODE');
+  assert.notEqual(classifyBash('echo x > .scratch/../src/hidden.mjs'), 'WRITE_SCRATCH');
+  assert.notEqual(classifyBash('echo x > /' + 'tmp/hidden.md'), 'WRITE_SCRATCH');
+});
+
+// @story #1848
+test('quoted here-document data does not become shell authority', () => {
+  const binary = 'g' + 'it';
+  const data = `cat > docs/draft.md <<'EOF'\n${binary} reset --hard\nEOF`;
+  assert.equal(classifyBash(data), 'WRITE_DOCS');
+  assert.equal(classifyBash(`python3 - <<'PY'\nprint('rm imaginary')\nPY`), 'WRITE_CODE');
+  assert.equal(classifyBash(data + `\n${binary} reset --hard`), 'COMMIT_CODE');
+  assert.notEqual(
+    classifyBash(`cat > .scratch/scope.md <<'EOF'\ntext\nEOF\n${binary} reset --hard`),
+    'WRITE_SCRATCH'
+  );
 });

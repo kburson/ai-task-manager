@@ -170,6 +170,14 @@ const ROUTABLE_SELF_DOC = {
     audience: 'Orchestrator just before handing a sub-issue to an agent.',
     usage: 'aitm dispatch-prep <issue#> [--description "<text>"]',
   },
+  'draft-branch': {
+    group: 'Epic Branching',
+    path: 'scripts/task-tracker/draft-branch.mjs',
+    synopsis:
+      'Create the canonical issue draft branch in a clean detached linked worktree, then renew exact binding.',
+    audience: 'The singleton issue owner drafting before implementation.',
+    usage: 'aitm draft-branch <issue#>',
+  },
   'cut-epic-branch': {
     group: 'Epic Branching',
     path: 'scripts/task-tracker/cut-epic-branch.mjs',
@@ -380,6 +388,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('<issue#>', 'Child issue to claim.'),
     argument('--description <text>', 'Timing-row description.'),
   ],
+  'draft-branch': [argument('<issue#>', 'Active issue whose draft branch is created.')],
   'cut-epic-branch': [argument('<epic#>', 'Epic whose role-typed branch is created.')],
   'cut-child-worktree': [
     argument('<child#>', 'Epic child issue.'),
@@ -622,6 +631,21 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     ],
     examples: ['npx aitm dispatch-prep 1023 --description "agent boot"'],
     relatedCommands: ['ensure-wave-parent', 'start'],
+  }),
+  'draft-branch': routableContract({
+    preconditions: [
+      'Exact active issue/session/worktree binding, singleton authenticated owner, drafting state, and clean detached linked worktree.',
+    ],
+    effects: [
+      'Creates only codex/<issue>-draft at observed HEAD and renews ordinary start binding. Drafts confer no refinement, estimate, or Plan approval.',
+    ],
+    output: ['Prints verified branch and HEAD.'],
+    exitCodes: [
+      exitCode(0, 'branch and renewed binding verified'),
+      exitCode(1, 'arguments or authority preconditions refused'),
+    ],
+    examples: ['npx aitm draft-branch 1847'],
+    relatedCommands: ['start', 'refine', 'plan-approve'],
   }),
   'cut-epic-branch': routableContract({
     output: ['Prints the created epic branch and its resolved parent base.'],

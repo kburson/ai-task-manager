@@ -15,14 +15,15 @@ import { getActiveTask } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import { normalizeStateId } from './lifecycle-policy/index.mjs';
 
-export function readBoundState(root) {
+export function readBoundState(root, { sessionId } = {}) {
   // #666: the current session is authoritative for its own binding. Prefer this
   // session's own `active-task.json` over the global `active` pointer, which is a
   // single-slot-per-tree cache that can hold a prior session's ghost. Only when
   // this session has no record of its own do we fall back to the global pointer +
   // cross-session scan (legacy behavior — never-bound sessions, hooks firing
   // before a bind).
-  const own = readOwnSessionBinding(root);
+  const own = readOwnSessionBinding(root, sessionId);
+  if (sessionId !== undefined) return own || { activeIssue: null, state: null };
   if (own) return own;
 
   // #573: state lives under `.tmp/aitm/state/` now — read it through the resolver
@@ -57,10 +58,10 @@ export function readBoundState(root) {
 // only populated when the record carries a valid `kanbanState`; an issue with no
 // (or invalid) cached state still wins on `activeIssue` and reports state null,
 // since this session — not another session's record — owns the answer.
-function readOwnSessionBinding(root) {
+function readOwnSessionBinding(root, sessionId) {
   let sid;
   try {
-    sid = currentSessionId();
+    sid = sessionId ?? currentSessionId();
   } catch {
     return null;
   }
