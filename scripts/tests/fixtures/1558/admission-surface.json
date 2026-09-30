@@ -266,6 +266,14 @@
       "fixtureId": "invalid-tracked-override"
     },
     {
+      "token": "draft-branch",
+      "canonical": "draft-branch",
+      "route": "standalone",
+      "entrypoint": "scripts/task-tracker/draft-branch.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
       "token": "end",
       "canonical": "close",
       "route": "verbs/close.mjs",
@@ -1713,6 +1721,32 @@
         "./lib/direct-guidance-admission.mjs",
         "node:child_process",
         "./lib/resolve-epic-lineage.mjs",
+        "../lib/self-doc.mjs"
+      ],
+      "firstPotentialEffect": "direct entrypoint main invocation",
+      "gateCall": "enforceDirectGuidance",
+      "exception": null,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/draft-branch.mjs",
+      "classification": "agent-callable-standalone",
+      "command": "draft-branch",
+      "staticImports": [
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url",
+        "./lib/direct-guidance-admission.mjs",
+        "./lib/worktree-binding-guard.mjs",
+        "./lib/mutation-context.mjs",
+        "./lib/bound-state.mjs",
+        "./lib/assignment-snapshot.mjs",
+        "./session-state.mjs",
+        "./word-counter.mjs",
+        "./issue-mutator-lock.mjs",
+        "./activity-policy.mjs",
+        "./config.mjs",
         "../lib/self-doc.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
