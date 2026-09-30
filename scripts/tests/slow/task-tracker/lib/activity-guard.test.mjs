@@ -724,6 +724,8 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
         'echo draft > docs/plan.md; cp payload src/file.mjs',
         'git branch codex/foreign',
         'tee docs/plan.md scripts/source.mjs',
+        "echo code > 'scripts/source.mjs' docs/plan.md",
+        'echo code > docs/plan.md".mjs"',
         'env touch docs/plan.md scripts/source.mjs',
         'command tee docs/plan.md scripts/source.mjs',
         `python -c 'open("scripts/x.mjs","w").write("bad")' > docs/plan.md`,

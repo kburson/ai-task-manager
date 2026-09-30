@@ -571,3 +571,13 @@ test('document admission inspects single commands and wrappers', () => {
   ])
     assert.equal(classifyBash(command), 'WRITE_CODE', command);
 });
+
+// @story #1848
+test('redirect identity is checked before quote masking', () => {
+  for (const command of [
+    "echo code > 'scripts/source.mjs' docs/draft.md",
+    "echo code > 'package.json' docs/draft.md",
+    'echo code > docs/draft.md".mjs"',
+  ])
+    assert.equal(classifyBash(command), 'WRITE_CODE', command);
+});

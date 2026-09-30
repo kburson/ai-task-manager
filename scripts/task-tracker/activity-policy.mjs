@@ -312,11 +312,12 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
   // shell write targets before granting the narrower Git or runner activity.
   // Every output redirect must expose one literal target to containment checks.
   // Quoted targets, descriptor writes, and descriptor duplication fail closed.
-  const scanned = stripQuotedRegions(inspectQuotedHeredocs(cmd).source);
+  const redirectSource = inspectQuotedHeredocs(cmd).source;
+  const scanned = stripQuotedRegions(redirectSource);
   for (const match of scanned.matchAll(/>+/g)) {
     if (
       /[0-9&]/.test(scanned.charAt(match.index - 1)) ||
-      !/^>>?\s*[A-Za-z0-9_./-]+(?=\s|$|[;|&])/.test(scanned.slice(match.index))
+      !/^>>?\s*[A-Za-z0-9_./-]+(?=\s|$|[;|&])/.test(redirectSource.slice(match.index))
     )
       return 'WRITE_CODE';
   }
