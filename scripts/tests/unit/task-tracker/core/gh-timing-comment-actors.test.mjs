@@ -117,3 +117,104 @@ test('same interval with a different lifecycle event is a conflict, not a droppe
   );
   assert.equal(appendRow(body, make()), body);
 });
+
+test('canonical timing source requires a complete unambiguous issue comment census', async () => {
+  const { readCanonicalTimingSource } =
+    await import('../../../../task-tracker/gh-timing-comment.mjs');
+  const page = (nodes, hasNextPage = false, endCursor = null, totalCount = nodes.length) => ({
+    data: {
+      repository: {
+        nameWithOwner: 'owner/repo',
+        issue: {
+          number: 1857,
+          comments: { nodes, totalCount, pageInfo: { hasNextPage, endCursor } },
+        },
+      },
+    },
+  });
+  const timing = { id: 'IC_timing', body: '⏱ Timing Log\ncanonical rows\n' };
+  const response = await readCanonicalTimingSource({
+    issueNumber: 1857,
+    repo: 'owner/repo',
+    deps: { graphql: async () => page([timing]) },
+  });
+  assert.equal(response.status, 'found');
+  assert.equal(response.source.commentNodeId, 'IC_timing');
+  assert.equal(response.source.body, timing.body);
+  for (const broken of [
+    page([timing, { ...timing, id: 'IC_other' }]),
+    page([timing], false, null, 2),
+    page([timing], true, null, 2),
+    {
+      data: {
+        repository: {
+          nameWithOwner: 'other/repo',
+          issue: {
+            number: 1857,
+            comments: {
+              nodes: [timing],
+              totalCount: 1,
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      },
+    },
+  ]) {
+    const result = await readCanonicalTimingSource({
+      issueNumber: 1857,
+      repo: 'owner/repo',
+      deps: { graphql: async () => broken },
+    });
+    assert.equal(result.status, 'error');
+  }
+  let calls = 0;
+  const paged = await readCanonicalTimingSource({
+    issueNumber: 1857,
+    repo: 'owner/repo',
+    deps: {
+      graphql: async ({ after }) => {
+        calls++;
+        return after === null
+          ? page([{ id: 'IC_unrelated', body: 'ordinary' }], true, 'cursor', 2)
+          : page([timing], false, null, 2);
+      },
+    },
+  });
+  assert.equal(paged.status, 'found');
+  assert.equal(calls, 2);
+});
+
+test('canonical timing source ignores quoted heading mentions in unrelated records', async () => {
+  const { readCanonicalTimingSource } =
+    await import('../../../../task-tracker/gh-timing-comment.mjs');
+  const result = await readCanonicalTimingSource({
+    issueNumber: 1857,
+    repo: 'owner/repo',
+    deps: {
+      graphql: async () => ({
+        data: {
+          repository: {
+            nameWithOwner: 'owner/repo',
+            issue: {
+              number: 1857,
+              comments: {
+                totalCount: 2,
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [
+                  { id: 'IC_real', body: '⏱ Timing Log\nrows\n' },
+                  {
+                    id: 'IC_outcome',
+                    body: 'Outcome source mentions ⏱ Timing Log but is not the timing comment.',
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    },
+  });
+  assert.equal(result.status, 'found');
+  assert.equal(result.source.commentNodeId, 'IC_real');
+});

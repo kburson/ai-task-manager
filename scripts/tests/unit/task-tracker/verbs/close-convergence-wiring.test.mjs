@@ -673,6 +673,15 @@ test('convergence close synchronizes terminal timing before freezing its outcome
     'board-Done convergence must emit the close pair before its outcome'
   );
 
+  const drain = closeIssueBranch.indexOf(
+    'await flushCloseTimingOrThrow({ closeTarget, flushQueueFor })'
+  );
+  const firstOutcome = closeIssueBranch.indexOf('ctx.assertFieldsPersisted');
+  assert.ok(
+    drain >= 0 && firstOutcome > drain,
+    'pending original rows must drain before the first incomplete outcome can freeze'
+  );
+
   const convergence = source.indexOf('runClosedIssueConvergence(');
   const convergenceCall = source.slice(
     convergence,

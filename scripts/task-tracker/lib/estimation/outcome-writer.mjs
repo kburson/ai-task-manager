@@ -1,3 +1,4 @@
+import { INCOMPLETE_OUTCOME_SCHEMA, validateEstimationOutcome } from './outcome-record.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { runLogicalRecordClaim } from './record-claim.mjs';
 import { activeEstimationOutcomes } from './outcome-chain.mjs';
@@ -163,13 +164,40 @@ export async function ensureEstimationOutcome({
   return runLogicalRecordClaim(
     deps,
     { key: `outcome:${issue}:${kind}:${forecastRecordId ?? 'none'}`, issue },
-    () =>
-      ensureEstimationOutcomeUnlocked({
+    async () => {
+      const incomplete = outcomePayload?.schema === INCOMPLETE_OUTCOME_SCHEMA;
+      if (incomplete) {
+        validateEstimationOutcome(outcomePayload, { expectedIssue: issue });
+        if (outcomePayload.forecastRecordId !== forecastRecordId) fail('forecast-correlation');
+      }
+      const result = await ensureEstimationOutcomeUnlocked({
         issue,
         forecast,
         outcomePayload,
         supersedeExisting,
         deps,
-      })
+      });
+      if (!incomplete) return result;
+      const refreshed = await deps.listOutcomeRecords({ issue, forecastRecordId });
+      if (!Array.isArray(refreshed)) fail('write-readback');
+      let active;
+      try {
+        active = activeEstimationOutcomes(refreshed);
+      } catch {
+        fail('write-readback');
+      }
+      const record = active[0];
+      if (
+        active.length !== 1 ||
+        record?.envelope?.recordId !== result.recordId ||
+        record.envelope.repository !== outcomePayload.telemetry.source.repository ||
+        record.envelope.issue !== issue ||
+        typeof record.commentNodeId !== 'string' ||
+        canonicalRecordJson(record.envelope.payload) !== canonicalRecordJson(outcomePayload)
+      )
+        fail('write-readback');
+      validateEstimationOutcome(record.envelope.payload, { expectedIssue: issue });
+      return { ...result, record: structuredClone(record) };
+    }
   );
 }

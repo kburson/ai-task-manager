@@ -1,0 +1,15 @@
+# #1857 fixture containment incident
+
+During the source-story outcome/Close checkpoint, the existing slow Close fixture placed authority under `.scratch/test`; physical-root validation refused it. Converting the fixture to a genuine nested Git root under `.ai-task-manager/runtime/test-fixtures` exposed a separate existing state-path anchor defect. A bare nested `state.json` was attributed to the enclosing project by `projectDirForState`, so the mocked no-active Close case read the author's real local session overlay and a subsequent fixture action cleared that overlay.
+
+No GitHub Close occurred: the fixture used injected network/state-transition capabilities and `SKIP_NETWORK`. The author's global state retained `active: #1857` and `entryStartTs: 2026-10-01T01:06:59.486Z`. The session overlay was absent at inspection. Source work stopped immediately. The controller restored native host chore mode OFF before recovery; the owned worktree remained normal throughout.
+
+Registered own-session `start 1857 --role agent --allow-foreign-worktree` exited 0 and printed: `Bound #1857 (live timing span already active; no duplicate reengagement row).` Its read-back overlay nevertheless has a new `entryStartTs: 2026-10-01T01:46:00.322Z` and `boundAt: 2026-10-01T01:46:00.661Z`, with the correct owned worktree, branch and Develop state. No authority file was hand-edited and no historical row was backdated. The old span's precise end is unknown; the new bind time must not be used as an inferred old-span end. Work and diagnostic engagement occurred within that older span; unavailable derived telemetry does not mean zero work. Waiting after the stop is distinct from active author work.
+
+Evidence retained privately:
+
+- `.scratch/1857-outcome-checkpoint-tests.log`: 203 tests, 174 passed, 29 failed; failures came from the artifact-root fixture. SHA256 `1e519caee08e7668d1798e07f3031521fec10ce4bbfb5c1bffd4ad52a8989dd9`; observed UTC file mtime `2026-10-01T01:38:40.408940Z`.
+- `.scratch/1857-outcome-close-fixture.log`: 32 tests, 30 passed, 2 failed after Git/cwd conversion. Captures unexpected `Closed #1857.` from the isolated-intent mock case. SHA256 `a00dcfb798b97b991185bdd18ceb5acc6ba9e0fcef9cf64b254a8fd1c82e27b5`; observed UTC file mtime `2026-10-01T01:40:39.945496Z`; test-reported duration 8507.75725 ms. Mtime is an observation, not an exact test start or timing-close event.
+- Registered recovery process 11600 exited 0. Fresh Explain remained blocked at Develop exit by unticked original ACs and pending final verification; no promotion occurred.
+
+The bounded repair will place fixture state at its own `.tmp/aitm/state/state.json`, with exception-safe cwd/environment restoration. An external isolated parent/nested-repository sentinel regression must prove parent session bytes cannot be read or cleared. It must check selected root before any state mutation, so its RED cannot touch real authority. Production state-path relocation/physical-owner correction remains part of the later coupled runtime-storage work, not an unreviewed change in this checkpoint.

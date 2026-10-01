@@ -131,6 +131,10 @@ import {
 } from '../lib/closed-issue-convergence.mjs';
 import { resolveTailProfile } from '../lib/move-state/tail-profiles.mjs';
 import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapter.mjs';
+import {
+  INCOMPLETE_OUTCOME_SCHEMA,
+  validateEstimationOutcome,
+} from '../lib/estimation/outcome-record.mjs';
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import { normalizeGitHubInstant } from '../lib/github-records/github-comment-store.mjs';
@@ -4220,18 +4224,6 @@ export async function verbClose(ctx) {
       process.exitCode = 1;
       return;
     }
-    if (runLogIssueTime) await runLogIssueTime(closeTarget);
-    // Post-close board/body agreement check (#180 defect 1 guard). After
-    // runLogIssueTime, the `<!-- aitm-fields -->` body marker should have
-    // non-null engagedTime. If it's still null, board fields almost certainly
-    // were not written either — refuse to clear active so the user can recover.
-    if (!SKIP_NETWORK && closeIssueNum) {
-      await (ctx.assertFieldsPersisted || assertFieldsPersisted)({
-        cfg,
-        pexec,
-        issueNum: closeIssueNum,
-      });
-    }
     let flushResult;
     try {
       flushResult = await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
@@ -4247,6 +4239,19 @@ export async function verbClose(ctx) {
       console.log(
         `[task-tracker] queue: delivered ${flushResult.delivered}, pending 0 for ${closeTarget}.`
       );
+    }
+    const timingProjection = runLogIssueTime ? await runLogIssueTime(closeTarget) : undefined;
+    // Drain original queued rows before projecting or freezing timing. Unknown
+    // totals require canonical outcome evidence; field/transport failures refuse.
+    if (!SKIP_NETWORK && closeIssueNum) {
+      await (ctx.assertFieldsPersisted || assertFieldsPersisted)({
+        cfg,
+        pexec,
+        issueNum: closeIssueNum,
+        estimationOutcomeWriter,
+        acceptedSha: resolvedDeliveryGate?.gateInput?.acceptedSha,
+        timingProjection,
+      });
     }
     await markDeliveredCloseStep('timing');
   }
@@ -4711,7 +4716,14 @@ export async function verbClose(ctx) {
 // no line anchor) caught literal `<!-- aitm-fields: {...} -->` placeholders
 // inside body prose and failed `JSON.parse` on the `{...}` capture. See #298
 // for the production case that surfaced this.
-export async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
+export async function assertFieldsPersisted({
+  cfg,
+  pexec,
+  issueNum,
+  estimationOutcomeWriter,
+  acceptedSha,
+  timingProjection,
+}) {
   let body = '';
   try {
     const { stdout } = await pexec(
@@ -4740,7 +4752,31 @@ export async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
     );
   }
   const values = parsed.values || {};
-  if (values.engagedTime == null) {
+  if (values.engagedTime == null || timingProjection?.status === 'incomplete') {
+    if (estimationOutcomeWriter) {
+      const result = await ensureCloseEstimationOutcome({
+        issueNumber: issueNum,
+        body,
+        writer: estimationOutcomeWriter,
+      });
+      const record = result.record;
+      const payload = record?.envelope?.payload;
+      if (
+        payload?.schema !== INCOMPLETE_OUTCOME_SCHEMA ||
+        record.envelope.repository !== cfg.repo ||
+        record.envelope.issue !== Number(issueNum) ||
+        typeof record.commentNodeId !== 'string' ||
+        record.envelope.recordId !== result.recordId ||
+        payload.telemetry.verificationSha !== acceptedSha ||
+        payload.forecastRecordId !== readPlanApprovedForecastRecordId(body)
+      ) {
+        throw new Error(
+          'assertFieldsPersisted: canonical incomplete outcome linkage missing or inconsistent'
+        );
+      }
+      validateEstimationOutcome(payload, { expectedIssue: Number(issueNum) });
+      return { status: 'incomplete-telemetry-accepted', recordId: result.recordId };
+    }
     throw new Error(
       `assertFieldsPersisted: aitm-fields.engagedTime is still null on #${issueNum} after runLogIssueTime — ` +
         `field write silently failed.`

@@ -921,3 +921,103 @@ export const __internals = {
   createTimingComment,
   updateTimingComment,
 };
+
+const CANONICAL_TIMING_QUERY =
+  'query($owner:String!,$name:String!,$issue:Int!,$after:String){repository(owner:$owner,name:$name){nameWithOwner issue(number:$issue){number comments(first:100,after:$after){totalCount nodes{id body} pageInfo{hasNextPage endCursor}}}}}';
+
+// Completion authority requires the entire comment census, not first-match
+// selection from an unverified partial list.
+export async function readCanonicalTimingSource({ issueNumber, repo, timeoutMs, deps = {} } = {}) {
+  try {
+    const issue = Number(issueNumber);
+    const parts = typeof repo === 'string' ? repo.split('/') : [];
+    if (
+      !Number.isSafeInteger(issue) ||
+      issue <= 0 ||
+      parts.length !== 2 ||
+      parts.some((part) => !part)
+    ) {
+      throw new TypeError('timing-source:input');
+    }
+    const [owner, name] = parts;
+    const graphql =
+      deps.graphql ??
+      (async ({ after }) =>
+        JSON.parse(
+          await ghExec(
+            [
+              'api',
+              'graphql',
+              '-f',
+              'query=' + CANONICAL_TIMING_QUERY,
+              '-f',
+              'owner=' + owner,
+              '-f',
+              'name=' + name,
+              '-F',
+              'issue=' + issue,
+              ...(after === null ? [] : ['-f', 'after=' + after]),
+            ],
+            { timeoutMs }
+          )
+        ));
+    const seenIds = new Set();
+    const seenCursors = new Set();
+    const hits = [];
+    let after = null;
+    let total = null;
+    for (let page = 0; page < 1000; page++) {
+      const response = await graphql({ owner, name, issue, after });
+      const repository = response?.data?.repository;
+      const remoteIssue = repository?.issue;
+      const comments = remoteIssue?.comments;
+      if (
+        response?.errors?.length ||
+        repository?.nameWithOwner !== repo ||
+        remoteIssue?.number !== issue ||
+        !Array.isArray(comments?.nodes) ||
+        !Number.isSafeInteger(comments.totalCount) ||
+        comments.totalCount < 0 ||
+        typeof comments.pageInfo?.hasNextPage !== 'boolean'
+      )
+        throw new TypeError('timing-source:census');
+      if (total === null) total = comments.totalCount;
+      if (comments.totalCount !== total) throw new TypeError('timing-source:census-changed');
+      for (const comment of comments.nodes) {
+        if (
+          typeof comment?.id !== 'string' ||
+          typeof comment.body !== 'string' ||
+          seenIds.has(comment.id)
+        )
+          throw new TypeError('timing-source:comment');
+        seenIds.add(comment.id);
+        if (
+          comment.body
+            .split('\n')
+            .some(
+              (line) => line.trim() === TIMING_HEADING || line.trim() === '## ' + TIMING_HEADING
+            )
+        )
+          hits.push(comment);
+      }
+      if (!comments.pageInfo.hasNextPage) {
+        if (seenIds.size !== total || hits.length > 1)
+          throw new TypeError('timing-source:ambiguous-or-incomplete');
+        if (!hits.length) return { status: 'absent', source: null, error: null };
+        return {
+          status: 'found',
+          source: { repository: repo, issue, commentNodeId: hits[0].id, body: hits[0].body },
+          error: null,
+        };
+      }
+      const cursor = comments.pageInfo.endCursor;
+      if (typeof cursor !== 'string' || !cursor || seenCursors.has(cursor))
+        throw new TypeError('timing-source:cursor');
+      seenCursors.add(cursor);
+      after = cursor;
+    }
+    throw new TypeError('timing-source:census-limit');
+  } catch (error) {
+    return { status: 'error', source: null, error };
+  }
+}

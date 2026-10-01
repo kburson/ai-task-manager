@@ -15,7 +15,11 @@ import {
 import { loadProjectFieldDefs, fieldIdFor, valueForProjectField } from '../../project-fields.mjs';
 import { mutateIssueBody } from '../issue-body-mutate.mjs';
 import { upsertPlannedEstimate } from '../refine-estimate-comment.mjs';
-import { readTimingCommentBody, bodyOf } from '../../gh-timing-comment.mjs';
+import {
+  readTimingCommentBody,
+  readCanonicalTimingSource,
+  bodyOf,
+} from '../../gh-timing-comment.mjs';
 import { readEstimationStageTiming } from '../timing-row-reader.mjs';
 import {
   canonicalVerificationCommandSet,
@@ -32,6 +36,13 @@ import {
 import { createAitmRecordEnvelope, hashRecordPayload } from '../github-records/record-envelope.mjs';
 import { buildEstimationForecast } from './forecast-model.mjs';
 import { buildEstimationOutcome } from './outcome-builder.mjs';
+import {
+  INCOMPLETE_OUTCOME_SCHEMA,
+  validateOutcomeTimingSource,
+  readOutcomeTimingRows,
+} from './outcome-record.mjs';
+import { deriveActorEngagement } from '../timing-engagement.mjs';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { activeEstimationOutcomes } from './outcome-chain.mjs';
 import { ensureEstimationOutcome } from './outcome-writer.mjs';
 import {
@@ -1102,7 +1113,31 @@ export function createEstimationOutcomeRuntime({
         repo: cfg.repo,
       });
       if (timingResult?.status === 'error') fail('timing');
-      const timingBody = bodyOf(timingResult);
+      let timingBody = bodyOf(timingResult);
+      const requiresCanonical =
+        timingBody.includes('aitm-actor:') ||
+        records.some(
+          (record) =>
+            record.envelope.recordType === 'estimation-outcome' &&
+            record.envelope.payload?.schema === INCOMPLETE_OUTCOME_SCHEMA
+        );
+      const readCanonical = async () => {
+        const observed = await (deps.readCanonicalTimingSource ?? readCanonicalTimingSource)({
+          issueNumber,
+          repo: cfg.repo,
+        });
+        if (
+          observed?.status !== 'found' ||
+          observed.source?.repository !== cfg.repo ||
+          observed.source?.issue !== issueNumber ||
+          typeof observed.source?.commentNodeId !== 'string' ||
+          typeof observed.source?.body !== 'string'
+        )
+          fail('timing-source');
+        return observed.source;
+      };
+      const canonicalSource = requiresCanonical ? await readCanonical() : null;
+      if (canonicalSource) timingBody = canonicalSource.body;
       const diff = await (
         deps.readDiffEvidence ?? (isEpic ? defaultDiffEvidence : issueAttributedDiffEvidence)
       )({
@@ -1110,24 +1145,48 @@ export function createEstimationOutcomeRuntime({
         trunk: cfg.trunkRef ?? 'origin/trunk',
         issueNumber,
       });
+      const acceptedVerificationSha =
+        isEpic && !requiresCanonical
+          ? undefined
+          : outcomeVerificationSha({ resolveVerificationSha, issueNumber, diff });
       const verification = verificationEvidence(
         body,
         isEpic
           ? { expectedIssue: issueNumber }
           : {
               expectedIssue: issueNumber,
-              expectedFinalSha: outcomeVerificationSha({
-                resolveVerificationSha,
-                issueNumber,
-                diff,
-              }),
+              expectedFinalSha: acceptedVerificationSha,
               projectDir,
             }
       );
-      const outcomePayload = buildEstimationOutcome({
+      let timing;
+      if (canonicalSource) {
+        const rows = readOutcomeTimingRows(timingBody);
+        const engagement = deriveActorEngagement(rows, rows.at(-1)?.ts);
+        if (engagement.failures.length) fail('timing-evidence');
+        const stagesMs = Object.fromEntries(
+          ['plan', 'develop', 'test', 'review'].map((stage) => [
+            stage,
+            engagement.byPhase[stage]?.engagedMs ?? 0,
+          ])
+        );
+        const representedMs = Object.values(stagesMs).reduce((sum, value) => sum + value, 0);
+        timing =
+          engagement.complete && representedMs === engagement.engagedMs
+            ? { stagesMs }
+            : {
+                source: {
+                  repository: cfg.repo,
+                  commentNodeId: canonicalSource.commentNodeId,
+                  snapshot: timingBody,
+                },
+              };
+      } else timing = readEstimationStageTiming(timingBody.split('\n'));
+      let outcomePayload = buildEstimationOutcome({
         issue: issueNumber,
         forecast: outcomeForecast,
-        timing: readEstimationStageTiming(timingBody.split('\n')),
+        timing,
+        verificationSha: acceptedVerificationSha,
         verification,
         diff,
         review: {
@@ -1138,7 +1197,41 @@ export function createEstimationOutcomeRuntime({
         kind: isEpic ? 'epic-orchestration' : 'story',
         childOutcomeRecordIds: children,
       });
-      return ensureEstimationOutcome({
+      const sourceContext = (source) => ({
+        repository: cfg.repo,
+        issue: issueNumber,
+        commentNodeId: source.commentNodeId,
+        body: source.body,
+        verificationSha: acceptedVerificationSha,
+        forecastRecordId: outcomeForecast?.recordId ?? null,
+      });
+      if (canonicalSource && !supersedeExisting) {
+        const active = activeEstimationOutcomes(
+          records.filter((record) => record.envelope.recordType === 'estimation-outcome')
+        );
+        if (active.length > 1) fail('outcome-duplicate');
+        const previous = active[0]?.envelope.payload;
+        if (previous?.schema === INCOMPLETE_OUTCOME_SCHEMA) {
+          validateOutcomeTimingSource(previous, sourceContext(canonicalSource));
+          for (const group of previous.actual.commands) {
+            const current = verification.find(
+              (candidate) => candidate.classification === group.classification
+            );
+            if (
+              !current ||
+              group.executions.some(
+                (execution) =>
+                  !current.executions.some(
+                    (candidate) => canonicalRecordJson(candidate) === canonicalRecordJson(execution)
+                  )
+              )
+            )
+              fail('outcome-verification-lineage');
+          }
+          outcomePayload = previous;
+        }
+      }
+      const result = await ensureEstimationOutcome({
         issue: issueNumber,
         forecast: outcomeForecast,
         outcomePayload,
@@ -1163,6 +1256,13 @@ export function createEstimationOutcomeRuntime({
           withLogicalRecordClaim: io.withLogicalRecordClaim,
         },
       });
+      if (outcomePayload.schema === INCOMPLETE_OUTCOME_SCHEMA) {
+        validateOutcomeTimingSource(
+          result.record.envelope.payload,
+          sourceContext(await readCanonical())
+        );
+      }
+      return result;
     },
   };
 }
