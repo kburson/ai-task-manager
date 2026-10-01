@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { writeFile as writeFileDefault } from 'node:fs/promises';
 import path from 'node:path';
 
+import { POLICY_MARKER } from './reviewed-scope/model.mjs';
 import { extractPlanTasks } from './decomposition-policy.mjs';
 import { CANONICAL_USER_STORY_TEMPLATE } from './user-story-author.mjs';
 import { evaluateStoryProse, renderStoryFromIntent } from './user-story-quality.mjs';
@@ -87,6 +88,8 @@ function formatViolation(violation) {
 function renderScope(input, task) {
   return [
     `Deliver ${taskLabel(task)} from \`${input.planPath}\`.`,
+    '',
+    POLICY_MARKER,
     '',
     `Bounded source section (${taskLabel(task)}):`,
     '',

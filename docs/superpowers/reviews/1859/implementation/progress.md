@@ -1,0 +1,12 @@
+# Issue 1859 implementation progress
+
+Execution plan: `docs/superpowers/plans/2026-10-01-1859-reviewed-scope-evidence.md`. Technical plan and spec remain the accepted inputs. Sol 6.1 drives implementation; subagents are used only for concurrent independent work.
+
+## Checkpoints
+
+- Task 1: strict manifest/record/pointer model, live Scope scanner, conservative verifier predicate and generated child policy are implemented. Regression tests were written and observed failing before implementation. Focused model/targets/split-plan suites and ESLint passed before this checkpoint.
+- Tasks 2–6: pending.
+
+## Lifecycle admission
+
+The sanctioned refine verbs advanced Backlog to Refine to Ready for Planning using initial XL/40h human sizing. Plan entry refused `native-dependencies:blocking-repository`: incoming blockedBy is empty, but outgoing blocking points to `kburson/ai-peer-review#132`. The current native dependency reader rejects that cross-repository identity. The relation is preserved and no stage jump or false approval was recorded. Implementation is explicitly authorized by the user; lifecycle admission remains unresolved separately.
