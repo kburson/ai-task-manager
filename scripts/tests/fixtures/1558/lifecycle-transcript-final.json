@@ -11,35 +11,35 @@
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "matching-receipt",
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "compaction-reset",
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "blocked-migration-freeze",
           "kind": "query",
           "action": "bind",
           "currentStatus": "blocked",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "diagnostic",
           "kind": "query",
           "action": "bind",
           "currentStatus": "blocked",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "clear-freeze",
@@ -53,21 +53,21 @@
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+          "authoritySnapshotSha256": "sha256:5e71d1c05f77c4cf12e13fe73d71daefc7811abab862381254c1ff2571b64413"
         },
         {
           "id": "agent-change",
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+          "authoritySnapshotSha256": "sha256:5e71d1c05f77c4cf12e13fe73d71daefc7811abab862381254c1ff2571b64413"
         },
         {
           "id": "source-only-change",
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+          "authoritySnapshotSha256": "sha256:5e71d1c05f77c4cf12e13fe73d71daefc7811abab862381254c1ff2571b64413"
         },
         {
           "id": "approve-plan",
@@ -81,14 +81,14 @@
           "kind": "query",
           "action": "resume",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:9e65d59aaa77c3f7e3859705dd9a2dd870d5a0edc76ce9a86a87ea7ff431d4c7"
+          "authoritySnapshotSha256": "sha256:c5a000df4962579b7a5131018102a651423f05fbd9a55e8af30cf6d81882965f"
         },
         {
           "id": "lifecycle-promote",
           "kind": "query",
           "action": "promote",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:9e65d59aaa77c3f7e3859705dd9a2dd870d5a0edc76ce9a86a87ea7ff431d4c7"
+          "authoritySnapshotSha256": "sha256:c5a000df4962579b7a5131018102a651423f05fbd9a55e8af30cf6d81882965f"
         },
         {
           "id": "enter-develop",
@@ -102,7 +102,7 @@
           "kind": "query",
           "action": "test",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:bfc14bb16c40c69ddfea7e574cf6cb1c181e814e108333094b3993f2787e2810"
+          "authoritySnapshotSha256": "sha256:5c3b4bb21a0a33417b5e49820d0270d770858a4f063d49cf6ebded017f890781"
         },
         {
           "id": "enter-test",
@@ -116,7 +116,7 @@
           "kind": "query",
           "action": "review",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:fd945863fb92d1fb5f36a2caee1eca62283a6de6f41ff1d299aa0d41fb4dcc9b"
+          "authoritySnapshotSha256": "sha256:56a5027c4d6c64c426d99d9f18b1e7bcad34cb4567e1c41208e80556fc89dad3"
         },
         {
           "id": "enter-review",
@@ -130,7 +130,7 @@
           "kind": "query",
           "action": "deliver",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:dfd31758248d5716a8fbd180c9c3d92624da8787c7ee65ea615aa2c4280711f2"
+          "authoritySnapshotSha256": "sha256:17c0ad7c4b49964049f98c4f85ff868966880b9c9d6cd974335f010b2bd203c3"
         },
         {
           "id": "external-authority",
@@ -144,21 +144,21 @@
           "kind": "external",
           "action": null,
           "currentStatus": null,
-          "authoritySnapshotSha256": "sha256:40f5a96d6dce548f2b46220e501292607cbc6966acdd65751b50ac8603c41910"
+          "authoritySnapshotSha256": "sha256:8bf53a70e704b170cbfc89ee7cb5d2cde55b424988a204323d70183674282bfa"
         },
         {
           "id": "external-merge",
           "kind": "external",
           "action": null,
           "currentStatus": null,
-          "authoritySnapshotSha256": "sha256:40f5a96d6dce548f2b46220e501292607cbc6966acdd65751b50ac8603c41910"
+          "authoritySnapshotSha256": "sha256:8bf53a70e704b170cbfc89ee7cb5d2cde55b424988a204323d70183674282bfa"
         },
         {
           "id": "lifecycle-close",
           "kind": "query",
           "action": "close",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:40f5a96d6dce548f2b46220e501292607cbc6966acdd65751b50ac8603c41910"
+          "authoritySnapshotSha256": "sha256:8bf53a70e704b170cbfc89ee7cb5d2cde55b424988a204323d70183674282bfa"
         },
         {
           "id": "enter-done",
@@ -172,11 +172,11 @@
           "kind": "external",
           "action": null,
           "currentStatus": null,
-          "authoritySnapshotSha256": "sha256:ff5941182fbfb3c5aebbc98729174913803b496dd99dac6e9c92b498f8a8f7e0"
+          "authoritySnapshotSha256": "sha256:b439313ed0b2ef6cd74ebed86d6e1865f28f62554bed806b7cd3ad69d4ba881d"
         }
       ],
-      "scenarioDigest": "sha256:afa9a7729b91b813e7f3f715e63f57fa82892d0bc18948b72afe9f8d690d38db",
-      "authorityFixtureDigest": "sha256:aaa2b76b74104520d03f15152decfa5a459c94de6a71b44f7982459ea523e83c",
+      "scenarioDigest": "sha256:4048fc80e85fc8e7bb3acb91e324c3960d2eadf8a08c03afa5b27b7fa89effae",
+      "authorityFixtureDigest": "sha256:41b337c2931f930b535a8ea8e9a354b160645c218779ab910fe590944befb3b7",
       "entries": [
         {
           "scenarioId": "ready-first-load",
@@ -306,9 +306,9 @@
         "frozenTranscriptSha256": "sha256:643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48",
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1558/actual-explain-traffic-final.json",
-        "currentCaptureSha256": "sha256:b3562f42de2ab225bd86a1ace90bd1d8d5430f5a4b309fd100d6a7bab5a0d5e7",
+        "currentCaptureSha256": "sha256:c585b030db949507cabd86b1773fd6cbfb27762df0951105325a2e178636fe6b",
         "currentSourceCommit": null,
-        "currentSourceInputsSha256": "sha256:714437a554c5b37297011f48ec7906e27a6e2a5d0e035e599f8567599304f519"
+        "currentSourceInputsSha256": "sha256:31ca3881becfb90c7e1607c38e8473cb6965fc582e83572f1b9b86b47725dc3c"
       },
       "streams": {
         "legacy": [
@@ -442,7 +442,7 @@
           },
           {
             "event": "diagnostic",
-            "sha256": "sha256:36751c951b376ca20b15cf31952acf3b7db255be2de2dacc70bc13dd71b81bf0",
+            "sha256": "sha256:44e323f483b8fdf31e0621ec0b82011946a32a50a7e785da13d47c47a83ae083",
             "characters": 2554,
             "bytes": 2554
           },
@@ -454,13 +454,13 @@
           },
           {
             "event": "agent-change",
-            "sha256": "sha256:3ea86b8f66dd0d9ac9a7a6cc8bf346cf45b8c9035b394c111534642e6934afd5",
+            "sha256": "sha256:4ffbbb12aa78ed51b489a85ec7385d324e3fd154f491d82c1a6a7f47a6d385d1",
             "characters": 967,
             "bytes": 967
           },
           {
             "event": "source-only-change",
-            "sha256": "sha256:34b748af5c1ef2f2f35f6d87ac21dc2c28ee15c32fb1fc819562b61da60a339f",
+            "sha256": "sha256:7a805582a6e83332b7320914080b89c790487941e4e0754efef8a0194017d708",
             "characters": 747,
             "bytes": 747
           },
@@ -656,9 +656,9 @@
         "staticFiles": [
           {
             "path": "skill/SKILL.md",
-            "characters": 946,
-            "bytes": 946,
-            "proxyTokens": 237
+            "characters": 1732,
+            "bytes": 1732,
+            "proxyTokens": 433
           },
           {
             "path": "skill/shared/router.md",
@@ -705,11 +705,11 @@
             "bytes": 2502
           }
         },
-        "staticCharacters": 11044,
+        "staticCharacters": 11830,
         "trafficCharacters": 10577,
-        "characters": 21621,
-        "bytes": 21633,
-        "proxyTokens": 5407,
+        "characters": 22407,
+        "bytes": 22419,
+        "proxyTokens": 5603,
         "uncountedAgentVisibleBytes": 0,
         "fixedBudgets": {
           "routerPlusPickup": {
@@ -733,12 +733,12 @@
       },
       "currentBudgetVerdicts": {
         "routerPlusPickup": {
-          "proxyTokens": 2762,
+          "proxyTokens": 2958,
           "absolute": 5000,
           "working": 4000,
           "absolutePass": true,
           "workingPass": true,
-          "workingHeadroomPercent": 30.95
+          "workingHeadroomPercent": 26.05
         },
         "clean": {
           "proxyTokens": 124,
@@ -757,15 +757,15 @@
           "workingHeadroomPercent": 60.25
         },
         "fullLifecycle": {
-          "proxyTokens": 5407,
+          "proxyTokens": 5603,
           "absolute": 7000,
           "working": 6500,
           "absolutePass": true,
           "workingPass": true,
-          "workingHeadroomPercent": 16.82
+          "workingHeadroomPercent": 13.8
         }
       },
-      "deltaProxyTokens": -49131,
+      "deltaProxyTokens": -48935,
       "guaranteedReductionFromLegacyStaticAlone": true
     },
     "codex": {
@@ -777,35 +777,35 @@
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "matching-receipt",
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "compaction-reset",
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "blocked-migration-freeze",
           "kind": "query",
           "action": "bind",
           "currentStatus": "blocked",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "diagnostic",
           "kind": "query",
           "action": "bind",
           "currentStatus": "blocked",
-          "authoritySnapshotSha256": "sha256:558a91c145dda0151b883efee502d61875962ce007936387d84e75ee27825364"
+          "authoritySnapshotSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551"
         },
         {
           "id": "clear-freeze",
@@ -819,21 +819,21 @@
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+          "authoritySnapshotSha256": "sha256:5e71d1c05f77c4cf12e13fe73d71daefc7811abab862381254c1ff2571b64413"
         },
         {
           "id": "agent-change",
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+          "authoritySnapshotSha256": "sha256:5e71d1c05f77c4cf12e13fe73d71daefc7811abab862381254c1ff2571b64413"
         },
         {
           "id": "source-only-change",
           "kind": "query",
           "action": "bind",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:b15687a0dc0b4ca750cbcc25922082ded42b9099d03bb30cf8766c3add96f075"
+          "authoritySnapshotSha256": "sha256:5e71d1c05f77c4cf12e13fe73d71daefc7811abab862381254c1ff2571b64413"
         },
         {
           "id": "approve-plan",
@@ -847,14 +847,14 @@
           "kind": "query",
           "action": "resume",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:9e65d59aaa77c3f7e3859705dd9a2dd870d5a0edc76ce9a86a87ea7ff431d4c7"
+          "authoritySnapshotSha256": "sha256:c5a000df4962579b7a5131018102a651423f05fbd9a55e8af30cf6d81882965f"
         },
         {
           "id": "lifecycle-promote",
           "kind": "query",
           "action": "promote",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:9e65d59aaa77c3f7e3859705dd9a2dd870d5a0edc76ce9a86a87ea7ff431d4c7"
+          "authoritySnapshotSha256": "sha256:c5a000df4962579b7a5131018102a651423f05fbd9a55e8af30cf6d81882965f"
         },
         {
           "id": "enter-develop",
@@ -868,7 +868,7 @@
           "kind": "query",
           "action": "test",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:bfc14bb16c40c69ddfea7e574cf6cb1c181e814e108333094b3993f2787e2810"
+          "authoritySnapshotSha256": "sha256:5c3b4bb21a0a33417b5e49820d0270d770858a4f063d49cf6ebded017f890781"
         },
         {
           "id": "enter-test",
@@ -882,7 +882,7 @@
           "kind": "query",
           "action": "review",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:fd945863fb92d1fb5f36a2caee1eca62283a6de6f41ff1d299aa0d41fb4dcc9b"
+          "authoritySnapshotSha256": "sha256:56a5027c4d6c64c426d99d9f18b1e7bcad34cb4567e1c41208e80556fc89dad3"
         },
         {
           "id": "enter-review",
@@ -896,7 +896,7 @@
           "kind": "query",
           "action": "deliver",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:dfd31758248d5716a8fbd180c9c3d92624da8787c7ee65ea615aa2c4280711f2"
+          "authoritySnapshotSha256": "sha256:17c0ad7c4b49964049f98c4f85ff868966880b9c9d6cd974335f010b2bd203c3"
         },
         {
           "id": "external-authority",
@@ -910,21 +910,21 @@
           "kind": "external",
           "action": null,
           "currentStatus": null,
-          "authoritySnapshotSha256": "sha256:40f5a96d6dce548f2b46220e501292607cbc6966acdd65751b50ac8603c41910"
+          "authoritySnapshotSha256": "sha256:8bf53a70e704b170cbfc89ee7cb5d2cde55b424988a204323d70183674282bfa"
         },
         {
           "id": "external-merge",
           "kind": "external",
           "action": null,
           "currentStatus": null,
-          "authoritySnapshotSha256": "sha256:40f5a96d6dce548f2b46220e501292607cbc6966acdd65751b50ac8603c41910"
+          "authoritySnapshotSha256": "sha256:8bf53a70e704b170cbfc89ee7cb5d2cde55b424988a204323d70183674282bfa"
         },
         {
           "id": "lifecycle-close",
           "kind": "query",
           "action": "close",
           "currentStatus": "ready",
-          "authoritySnapshotSha256": "sha256:40f5a96d6dce548f2b46220e501292607cbc6966acdd65751b50ac8603c41910"
+          "authoritySnapshotSha256": "sha256:8bf53a70e704b170cbfc89ee7cb5d2cde55b424988a204323d70183674282bfa"
         },
         {
           "id": "enter-done",
@@ -938,11 +938,11 @@
           "kind": "external",
           "action": null,
           "currentStatus": null,
-          "authoritySnapshotSha256": "sha256:ff5941182fbfb3c5aebbc98729174913803b496dd99dac6e9c92b498f8a8f7e0"
+          "authoritySnapshotSha256": "sha256:b439313ed0b2ef6cd74ebed86d6e1865f28f62554bed806b7cd3ad69d4ba881d"
         }
       ],
-      "scenarioDigest": "sha256:afa9a7729b91b813e7f3f715e63f57fa82892d0bc18948b72afe9f8d690d38db",
-      "authorityFixtureDigest": "sha256:aaa2b76b74104520d03f15152decfa5a459c94de6a71b44f7982459ea523e83c",
+      "scenarioDigest": "sha256:4048fc80e85fc8e7bb3acb91e324c3960d2eadf8a08c03afa5b27b7fa89effae",
+      "authorityFixtureDigest": "sha256:41b337c2931f930b535a8ea8e9a354b160645c218779ab910fe590944befb3b7",
       "entries": [
         {
           "scenarioId": "ready-first-load",
@@ -1072,9 +1072,9 @@
         "frozenTranscriptSha256": "sha256:5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec",
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1558/actual-explain-traffic-final.json",
-        "currentCaptureSha256": "sha256:b3562f42de2ab225bd86a1ace90bd1d8d5430f5a4b309fd100d6a7bab5a0d5e7",
+        "currentCaptureSha256": "sha256:c585b030db949507cabd86b1773fd6cbfb27762df0951105325a2e178636fe6b",
         "currentSourceCommit": null,
-        "currentSourceInputsSha256": "sha256:714437a554c5b37297011f48ec7906e27a6e2a5d0e035e599f8567599304f519"
+        "currentSourceInputsSha256": "sha256:31ca3881becfb90c7e1607c38e8473cb6965fc582e83572f1b9b86b47725dc3c"
       },
       "streams": {
         "legacy": [
@@ -1208,7 +1208,7 @@
           },
           {
             "event": "diagnostic",
-            "sha256": "sha256:36751c951b376ca20b15cf31952acf3b7db255be2de2dacc70bc13dd71b81bf0",
+            "sha256": "sha256:44e323f483b8fdf31e0621ec0b82011946a32a50a7e785da13d47c47a83ae083",
             "characters": 2554,
             "bytes": 2554
           },
@@ -1220,13 +1220,13 @@
           },
           {
             "event": "agent-change",
-            "sha256": "sha256:3ea86b8f66dd0d9ac9a7a6cc8bf346cf45b8c9035b394c111534642e6934afd5",
+            "sha256": "sha256:4ffbbb12aa78ed51b489a85ec7385d324e3fd154f491d82c1a6a7f47a6d385d1",
             "characters": 967,
             "bytes": 967
           },
           {
             "event": "source-only-change",
-            "sha256": "sha256:34b748af5c1ef2f2f35f6d87ac21dc2c28ee15c32fb1fc819562b61da60a339f",
+            "sha256": "sha256:7a805582a6e83332b7320914080b89c790487941e4e0754efef8a0194017d708",
             "characters": 747,
             "bytes": 747
           },
@@ -1422,9 +1422,9 @@
         "staticFiles": [
           {
             "path": "skill/SKILL.md",
-            "characters": 946,
-            "bytes": 946,
-            "proxyTokens": 237
+            "characters": 1732,
+            "bytes": 1732,
+            "proxyTokens": 433
           },
           {
             "path": "skill/shared/router.md",
@@ -1471,11 +1471,11 @@
             "bytes": 2502
           }
         },
-        "staticCharacters": 10993,
+        "staticCharacters": 11779,
         "trafficCharacters": 10577,
-        "characters": 21570,
-        "bytes": 21582,
-        "proxyTokens": 5394,
+        "characters": 22356,
+        "bytes": 22368,
+        "proxyTokens": 5590,
         "uncountedAgentVisibleBytes": 0,
         "fixedBudgets": {
           "routerPlusPickup": {
@@ -1499,12 +1499,12 @@
       },
       "currentBudgetVerdicts": {
         "routerPlusPickup": {
-          "proxyTokens": 2749,
+          "proxyTokens": 2945,
           "absolute": 5000,
           "working": 4000,
           "absolutePass": true,
           "workingPass": true,
-          "workingHeadroomPercent": 31.27
+          "workingHeadroomPercent": 26.38
         },
         "clean": {
           "proxyTokens": 124,
@@ -1523,15 +1523,15 @@
           "workingHeadroomPercent": 60.25
         },
         "fullLifecycle": {
-          "proxyTokens": 5394,
+          "proxyTokens": 5590,
           "absolute": 7000,
           "working": 6500,
           "absolutePass": true,
           "workingPass": true,
-          "workingHeadroomPercent": 17.02
+          "workingHeadroomPercent": 14
         }
       },
-      "deltaProxyTokens": -48886,
+      "deltaProxyTokens": -48690,
       "guaranteedReductionFromLegacyStaticAlone": true
     }
   },
@@ -1539,7 +1539,7 @@
     "schema": "aitm.guidance-tokenizer-calibration/v1",
     "source": {
       "captureKind": "actual-public-cli-and-installed-static-with-deterministic-authority",
-      "sha256": "sha256:b3562f42de2ab225bd86a1ace90bd1d8d5430f5a4b309fd100d6a7bab5a0d5e7",
+      "sha256": "sha256:c585b030db949507cabd86b1773fd6cbfb27762df0951105325a2e178636fe6b",
       "sourceCommit": null,
       "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818"
     },
@@ -1579,17 +1579,17 @@
           "id": "diagnostic",
           "characters": 2554,
           "bytes": 2554,
-          "actualTokens": 916,
+          "actualTokens": 918,
           "proxyTokens": 639,
-          "ratio": 1.433489827856025
+          "ratio": 1.4366197183098592
         },
         {
           "id": "full-lifecycle",
           "characters": 10577,
           "bytes": 10577,
-          "actualTokens": 3355,
+          "actualTokens": 3341,
           "proxyTokens": 2645,
-          "ratio": 1.268431001890359
+          "ratio": 1.2631379962192817
         }
       ]
     }
@@ -1654,7 +1654,7 @@
     "currentV2": {
       "captureKind": "protocol-valid-synthetic-v2-presentation",
       "scope": "Serializer sensitivity; this combination is not asserted as an observed evaluator result.",
-      "seedCaptureSha256": "sha256:b3562f42de2ab225bd86a1ace90bd1d8d5430f5a4b309fd100d6a7bab5a0d5e7",
+      "seedCaptureSha256": "sha256:c585b030db949507cabd86b1773fd6cbfb27762df0951105325a2e178636fe6b",
       "inputs": {
         "action": "close",
         "childCount": 4,
@@ -1696,7 +1696,7 @@
         "characters": 2926,
         "bytes": 2926,
         "proxyTokens": 732,
-        "sha256": "sha256:9dddac655b35cc53ed1eecdde13ad34868d210e9df1eacd0ff181e02e2b3294a"
+        "sha256": "sha256:63857f8a3e48b4785a7dc5c15dff8bf1ed47532d78940e7f0a773a03a430f38c"
       },
       "tokenizer": {
         "tokenizer": {
@@ -1718,9 +1718,9 @@
             "id": "heavy-diagnostic",
             "characters": 2926,
             "bytes": 2926,
-            "actualTokens": 966,
+            "actualTokens": 968,
             "proxyTokens": 732,
-            "ratio": 1.319672131147541
+            "ratio": 1.3224043715846994
           }
         ]
       }
@@ -1767,7 +1767,7 @@
           }
         }
       },
-      "stdoutSha256": "sha256:ba5d3e5fb58bec53583c41cb55d0737344f4833c1db94fc5945ebc1de417fa59",
+      "stdoutSha256": "sha256:5f4c9073b89186826cb95270e7e856ede3aaa71c12acfbc4677eb9b49cc44125",
       "authorityReads": 25,
       "limitation": "The real evaluator groups four child and three dependency inputs into two guard-level blockers. The separate seven-blocker v2 sample remains serializer sensitivity only."
     }

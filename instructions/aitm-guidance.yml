@@ -617,3 +617,32 @@ entries:
       documentation:
         - path: docs/guides/workflow.md
           anchor: kanban-board-states
+
+  - id: protocol.reviewed-scope
+    revision: 1
+    binds:
+      action_ids: []
+      guard_ids:
+        - test-exit-reviewed-scope
+      remediation_ids: []
+    agent:
+      instruction:
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Record attributed evidence for narrative Scope items.
+      explanation: >-
+        Record after the final commit in the bound Develop/Test checkout using a canonical manifest and
+        retained local artifact hashes. Inspection and historical output are attributed claims, never
+        newly executed proof. Policy-marked children require current records independently of accepted Test.
+      triggered_when:
+        - A narrative Scope target requires reviewed evidence or its current record is stale.
+      execution:
+        - Use one exact Scope label with --reviewed-evidence; preserve orphan comments and reconcile retries.
+        - Keep original artifacts; a new HEAD or changed bytes requires a refreshed record.
+      examples:
+        - command: npx aitm ensureChecked "Inspect output" --reviewed-evidence .scratch/evidence/step.json
+          purpose: Record one reviewed Scope target after final commit.
+      documentation:
+        - path: docs/guides/reviewed-scope-evidence.md
+          anchor: reviewed-scope-evidence

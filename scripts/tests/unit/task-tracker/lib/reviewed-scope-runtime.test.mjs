@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
-import os from 'node:os';
+import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { canonicalRecordJson } from '../../../../task-tracker/lib/github-records/canonical-json.mjs';
@@ -13,7 +13,7 @@ import {
 } from '../../../../task-tracker/lib/reviewed-scope/runtime.mjs';
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 async function fixture(t) {
-  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'reviewed-runtime-')));
+  const root = await fs.realpath(mkdtempOutsideRepo('reviewed-runtime-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.mkdir(path.join(root, 'evidence'));
   await fs.writeFile(path.join(root, 'evidence/a.txt'), 'inspected bytes');

@@ -1,9 +1,9 @@
 {
   "schema": "aitm.guidance-final-capture-manifest/v1",
   "capturePath": "scripts/tests/fixtures/1558/actual-explain-traffic-final.json",
-  "captureSha256": "sha256:b3562f42de2ab225bd86a1ace90bd1d8d5430f5a4b309fd100d6a7bab5a0d5e7",
+  "captureSha256": "sha256:c585b030db949507cabd86b1773fd6cbfb27762df0951105325a2e178636fe6b",
   "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818",
-  "sourceInputsSha256": "sha256:714437a554c5b37297011f48ec7906e27a6e2a5d0e035e599f8567599304f519",
+  "sourceInputsSha256": "sha256:31ca3881becfb90c7e1607c38e8473cb6965fc582e83572f1b9b86b47725dc3c",
   "productionPackage": {
     "name": "@kburson/ai-task-manager",
     "version": "0.1.0",
@@ -15,7 +15,7 @@
       },
       {
         "path": "skill/SKILL.md",
-        "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+        "sha256": "sha256:d213477161ed0c4d81b8c92bc1fdf2cf38f3bfa01d9f93a5f614bc6f427c384a"
       },
       {
         "path": "skill/shared/router.md",
@@ -34,7 +34,7 @@
         "sha256": "sha256:79ebbff818aee872e1fcd0b56458efd4f75a70d09d8ef5ca32861811364b3e23"
       }
     ],
-    "filesSha256": "sha256:74e4a43f4b3276096cba7b3ee2ce49c76cf692f7d5a6a2f12c73267f11fa5990"
+    "filesSha256": "sha256:461f62c9f980bdd483e29edd100147ef71d0d896dea82496d0d080380534a4fe"
   },
   "implementationFiles": [
     {
@@ -43,7 +43,7 @@
     },
     {
       "path": "scripts/task-tracker/verbs/explain.mjs",
-      "sha256": "sha256:55edc368da121ca142b117a0cf7dd4c11473ddb716694188c12a02e1f103895d"
+      "sha256": "sha256:958f31fcf1fca9633b7df3a836f13002842978ba93122d1c531c8335b21e7d6e"
     },
     {
       "path": "scripts/tests/helpers/capture-guidance-release.mjs",
@@ -59,7 +59,7 @@
     },
     {
       "path": "instructions/aitm-guidance.yml",
-      "sha256": "sha256:27d03c27dd89a93633c77f00e604d4f97a9b6955abb9660de168bae316823acf"
+      "sha256": "sha256:9259bd36cb7802d3bf2bcfdc3563ebc7185c99b3e2bd187b07435619b3bf5e4a"
     }
   ],
   "eventNames": [
@@ -122,7 +122,7 @@
       "diagnostic": true
     },
     "observedStatus": "blocked",
-    "stdoutSha256": "sha256:ba5d3e5fb58bec53583c41cb55d0737344f4833c1db94fc5945ebc1de417fa59",
+    "stdoutSha256": "sha256:5f4c9073b89186826cb95270e7e856ede3aaa71c12acfbc4677eb9b49cc44125",
     "traffic": {
       "characters": 3950,
       "bytes": 3950,
@@ -153,10 +153,10 @@
         {
           "sourcePath": "skill/SKILL.md",
           "packagePath": "skill/SKILL.md",
-          "characters": 946,
-          "bytes": 946,
-          "proxyTokens": 237,
-          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          "characters": 1732,
+          "bytes": 1732,
+          "proxyTokens": 433,
+          "sha256": "sha256:d213477161ed0c4d81b8c92bc1fdf2cf38f3bfa01d9f93a5f614bc6f427c384a"
         },
         {
           "sourcePath": "skill/shared/router.md",
@@ -184,9 +184,9 @@
         }
       ],
       "totals": {
-        "characters": 11044,
-        "bytes": 11056,
-        "proxyTokens": 2762
+        "characters": 11830,
+        "bytes": 11842,
+        "proxyTokens": 2958
       }
     },
     "codex": {
@@ -194,10 +194,10 @@
         {
           "sourcePath": "skill/SKILL.md",
           "packagePath": "skill/SKILL.md",
-          "characters": 946,
-          "bytes": 946,
-          "proxyTokens": 237,
-          "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+          "characters": 1732,
+          "bytes": 1732,
+          "proxyTokens": 433,
+          "sha256": "sha256:d213477161ed0c4d81b8c92bc1fdf2cf38f3bfa01d9f93a5f614bc6f427c384a"
         },
         {
           "sourcePath": "skill/shared/router.md",
@@ -225,9 +225,9 @@
         }
       ],
       "totals": {
-        "characters": 10993,
-        "bytes": 11005,
-        "proxyTokens": 2749
+        "characters": 11779,
+        "bytes": 11791,
+        "proxyTokens": 2945
       }
     }
   }

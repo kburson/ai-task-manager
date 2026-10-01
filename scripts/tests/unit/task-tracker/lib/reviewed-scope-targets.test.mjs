@@ -1,4 +1,5 @@
 // @story #1859
+// cspell:ignore abcvc
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {

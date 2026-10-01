@@ -1,0 +1,30 @@
+{
+  "schema": "aitm.guidance-historical-static/v1",
+  "files": [
+    {
+      "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/claude.md",
+      "sha256": "sha256:e8519797ee2e0e4d3acd02f045f43a27e8e0e4ea5f018f59168b48b3c9a68b52",
+      "snapshotPath": "scripts/tests/fixtures/1558/pre-slim-static/0.base64"
+    },
+    {
+      "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/codex.md",
+      "sha256": "sha256:1c4eba8bc05a68870ff3f2dffdbd61194cc88e3e8a7e20e99271a76c740ea38e",
+      "snapshotPath": "scripts/tests/fixtures/1558/pre-slim-static/1.base64"
+    },
+    {
+      "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/pickup.md",
+      "sha256": "sha256:f3a9eb46e4cc07cc6677508200d174ad85547c1ed90a701b0d0a8d475c7c7a82",
+      "snapshotPath": "scripts/tests/fixtures/1558/pre-slim-static/2.base64"
+    },
+    {
+      "sourcePath": "scripts/tests/fixtures/1558/obligation-complete-static/router.md",
+      "sha256": "sha256:790003b58280cde7840a3b33d3d95e3ab6e0f340d00ff69010c24674631803fe",
+      "snapshotPath": "scripts/tests/fixtures/1558/pre-slim-static/3.base64"
+    },
+    {
+      "sourcePath": "skill/SKILL.md",
+      "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e",
+      "snapshotPath": "scripts/tests/fixtures/1558/pre-slim-static/4.base64"
+    }
+  ]
+}

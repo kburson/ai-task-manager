@@ -85,7 +85,7 @@ test('missing execution HEAD refuses instead of stamping unknown provenance', as
 
 // @story #1859
 test('both execution HEAD reads use the authoritative project directory', async () => {
-  const headCwds = [];
+  const headDirectories = [];
   const result = await deriveAndRescan({
     issueNumber: 1859,
     repo: 'owner/repo',
@@ -94,14 +94,14 @@ test('both execution HEAD reads use the authoritative project directory', async 
       readBack: undefined,
       pexec: async (bin, args, options) => {
         if (bin === 'git') {
-          headCwds.push(options.cwd);
+          headDirectories.push(options.cwd);
           return { stdout: HEAD };
         }
         return { stdout: LIVE_BODY };
       },
     }),
   });
-  assert.deepEqual(headCwds, ['/authoritative/project', '/authoritative/project']);
+  assert.deepEqual(headDirectories, ['/authoritative/project', '/authoritative/project']);
   assert.deepEqual(result.warnings, []);
 });
 

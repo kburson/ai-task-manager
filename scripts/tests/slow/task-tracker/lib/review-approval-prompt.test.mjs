@@ -23,6 +23,10 @@ import {
 } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { statePath as trackerStatePath } from '../../../../task-tracker/paths.mjs';
+import {
+  withReviewEntryHistory,
+  writeReviewConfig,
+} from '../../../fixtures/review-entry-history.mjs';
 import { buildPlanApprovalAuditComment } from '../../../../task-tracker/lib/plan-approval-audit.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,31 +54,8 @@ const TRACE_COMMENT = [
   `| [\`${HEAD_SHA.slice(0, 7)}\`](https://github.com/test-owner/test-repo/commit/${HEAD_SHA}) | s | a | t |`,
 ].join('\n');
 
-function writeConfig(sandbox) {
-  mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
-  writeFileSync(
-    path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify(
-      {
-        repo: 'test-owner/test-repo',
-        projectId: 'PVT_test',
-        kanbanFieldId: 'PVTF_x',
-        kanbanOptionBacklog: 'OPT_backlog',
-        kanbanOptionRefine: 'OPT_groom',
-        kanbanOptionPlan: 'OPT_analyze',
-        kanbanOptionDevelop: OPT_DEV,
-        kanbanOptionTest: 'OPT_validate',
-        kanbanOptionReview: OPT_REVIEW,
-        kanbanOptionDone: 'OPT_done',
-        gateReviewToDone: true,
-        preferences: { gateAssigneeMatch: false },
-      },
-      null,
-      2
-    )
-  );
-  mkdirSync(path.join(sandbox, 'scripts'), { recursive: true });
-}
+const writeConfig = (sandbox) =>
+  writeReviewConfig(sandbox, { developOption: OPT_DEV, reviewOption: OPT_REVIEW });
 
 // Build a gh shim that:
 //   - returns `bodyOnView` for `issue view ... --json body`
@@ -95,6 +76,9 @@ function makeGhShim(
   // wrote, not a frozen fixture. Without this, move-state.mjs's post-success
   // entry-marker stamp re-fetches the fixture and overwrites verb writes.
   const bodyStatePath = path.join(sandbox, 'gh-shim-body.txt');
+  // The real complete registry preserves contiguity refusals. Review-ready
+  // fixtures carry genuine prior entry history, independently of DoD evidence.
+  bodyOnView = withReviewEntryHistory(bodyOnView, DOD_VERIFIED_MARKER);
   writeFileSync(bodyStatePath, bodyOnView);
   const planAuditTemplate = buildPlanApprovalAuditComment({
     issueNumber: 999999,
@@ -153,6 +137,12 @@ if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
   // missed it and fell through to the body-only reply, leaving the Agent Review
   // Gate with zero comments and six spurious required-comments objections.
   const jsonFields = String(argv[argv.indexOf('--json') + 1] || '').split(',');
+  if (jsonFields.includes('blockedBy') || jsonFields.includes('blocking')) {
+    // Explicit complete native connections keep dependency readiness factual.
+    const connection = { nodes: [], totalCount: 0, pageInfo: { hasNextPage: false } };
+    fs.writeSync(1, JSON.stringify({ blockedBy: connection, blocking: connection }));
+    process.exit(0);
+  }
   if (jsonFields.includes('comments')) {
     const traceComment = ${JSON.stringify(traceComment)};
     // V2 required-comments (#811): the inline Agent Review Gate now demotes
@@ -246,7 +236,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
           id: 'ISS_test',
           subIssues: { nodes: [] },
           parent: null,
-          projectItems: { nodes: [{ id: 'PVTI_test', project: { id: 'PVT_test' }, fieldValueByName: { optionId: ${JSON.stringify(stateOptionId)} } }] },
+          projectItems: { nodes: [{ id: 'PVTI_test', project: { id: 'PVT_test' }, fieldValueByName: { optionId: ${JSON.stringify(stateOptionId)} }, fieldValues: { nodes: [] } }] },
           comments: { nodes: [] }
         }
       },
