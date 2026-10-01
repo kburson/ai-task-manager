@@ -108,7 +108,7 @@ function readRecord(file, optional = false) {
       fail('RUNTIME_CONTROL_INVALID', 'Coordination record must be a regular file');
     return JSON.parse(readFileSync(file, 'utf8'));
   } catch (error) {
-    if (optional && error.code === 'ENOENT') return null;
+    if (optional && error.code === 'ENOENT') return undefined;
     if (error instanceof RuntimeRootError) throw error;
     fail('RUNTIME_CONTROL_INVALID', 'Unreadable runtime coordination record');
   }
@@ -149,8 +149,9 @@ function coordinated(paths, owner, operation) {
 
 function readFence(paths) {
   const value = readRecord(paths.fence, true);
-  if (value === null) return null;
+  if (value === undefined) return null;
   if (
+    !isObject(value) ||
     value.schema !== 'aitm.runtime-fence/v1' ||
     !validOwner(value.owner) ||
     typeof value.transactionId !== 'string' ||
@@ -300,6 +301,7 @@ export async function fenceRuntimeWriters(input) {
 export const writeMigrationRecord = atomicJson;
 export const readMigrationRecord = readRecord;
 export const observeMigrationIdentity = identity;
+export const isRuntimeMigrationOwner = validOwner;
 
 export function completeRuntimeFence(input) {
   const owner = identity(input.adapters || {});

@@ -469,3 +469,173 @@ test('post-fence failure retains a journal and pending timing retries ignore lat
   assert.equal(keys.length, 2);
   assert.equal(keys[0], keys[1]);
 });
+
+test('completed transaction crash boundaries retain a recoverable exact-owner fence', async () => {
+  const {
+    planRuntimeMigration,
+    applyRuntimeMigration,
+    resumeRuntimeMigration,
+    readRuntimeMigrationStatus,
+  } = await engine();
+  for (const boundary of [
+    'after-manifest-complete',
+    'after-timing-publish',
+    'before-fence-release',
+  ]) {
+    const roots = repository(boundary);
+    const legacy = seed(roots);
+    const owner = {
+      provider: 'fixture',
+      sid: 'completed',
+      pid: 2001,
+      processToken: 'completed-first',
+    };
+    const calls = [];
+    const selected = transactionAdapters({
+      identity: () => owner,
+      publishTiming: async ({ idempotencyKey }) => {
+        calls.push(idempotencyKey);
+        return { status: 'confirmed' };
+      },
+      fault: (point) => {
+        if (point === boundary) throw new Error('injected completed crash');
+      },
+    });
+    const plan = await planRuntimeMigration({ ...roots, adapters: selected });
+    await assert.rejects(
+      applyRuntimeMigration({ plan, approvedPlanDigest: plan.digest, adapters: selected }),
+      new RegExp('injected completed crash')
+    );
+    const transactionId = 'migration-' + plan.digest.slice(7, 39);
+    const input = { ...roots, transactionId, approvedPlanDigest: plan.digest };
+    const fence = path.join(roots.mainRoot, '.ai-task-manager/runtime/migrations/fence.json');
+    assert.equal((await readRuntimeMigrationStatus(input)).status, 'complete');
+    assert.equal(existsSync(fence), true);
+    writeFileSync(legacy, 'inert legacy after activation');
+    writeFileSync(
+      plan.files.find((file) => file.source === legacy).destination,
+      JSON.stringify({ active: 99 })
+    );
+    const next = {
+      ...selected,
+      fault: undefined,
+      identity: () => ({
+        provider: 'fixture',
+        sid: 'recovery',
+        pid: 2002,
+        processToken: 'completed-next',
+      }),
+    };
+    for (const status of ['unknown', 'alive', 'pid-reused']) {
+      await assert.rejects(
+        resumeRuntimeMigration({
+          ...input,
+          adapters: { ...next, observeOwner: () => ({ status, identity: owner }) },
+        }),
+        { code: 'RUNTIME_MIGRATION_OWNER_UNCONFIRMED' }
+      );
+      assert.equal(existsSync(fence), true);
+    }
+    const recovered = { ...next, observeOwner: () => ({ status: 'dead', identity: owner }) };
+    assert.equal(
+      (await resumeRuntimeMigration({ ...input, adapters: recovered })).status,
+      'complete'
+    );
+    assert.equal(existsSync(fence), false);
+    await resumeRuntimeMigration({ ...input, adapters: recovered });
+    assert.equal(calls.length, 1);
+  }
+});
+
+test('recovery refuses malformed protected journals and controls without changing evidence', async () => {
+  const { planRuntimeMigration, applyRuntimeMigration, resumeRuntimeMigration } = await engine();
+  const roots = repository('corrupt-completed');
+  seed(roots);
+  const selected = transactionAdapters();
+  const plan = await planRuntimeMigration({ ...roots, adapters: selected });
+  const { transactionId } = await applyRuntimeMigration({
+    plan,
+    approvedPlanDigest: plan.digest,
+    adapters: selected,
+  });
+  const runtime = path.join(roots.mainRoot, '.ai-task-manager/runtime');
+  const manifestPath = path.join(runtime, 'migrations', transactionId, 'manifest.json');
+  const bootstrapPath = path.join(runtime, 'migrations', transactionId, 'bootstrap.json');
+  const controlPath = path.join(runtime, 'control.json');
+  const originals = new Map(
+    [manifestPath, bootstrapPath, controlPath].map((file) => [file, readFileSync(file)])
+  );
+  const cases = [
+    [manifestPath, () => null],
+    [manifestPath, (record) => ({ ...record, status: 'invented' })],
+    [manifestPath, (record) => ({ ...record, schema: 'unknown' })],
+    [manifestPath, (record) => ({ ...record, publishedRoots: undefined })],
+    [manifestPath, (record) => ({ ...record, publishedRoots: [] })],
+    [manifestPath, (record) => ({ ...record, timing: undefined })],
+    [manifestPath, (record) => ({ ...record, timing: { ...record.timing, intervals: [{}] } })],
+    [manifestPath, (record) => ({ ...record, owner: { pid: -1 } })],
+    [manifestPath, (record) => ({ ...record, roots: [path.join(roots.mainRoot, 'other')] })],
+    [bootstrapPath, () => null],
+    [bootstrapPath, (record) => ({ ...record, manifest: null })],
+    [controlPath, () => null],
+    [controlPath, (record) => ({ ...record, schema: 'unknown' })],
+    [controlPath, (record) => ({ ...record, projectRoot: path.join(roots.mainRoot, 'other') })],
+  ];
+  for (const [file, mutate] of cases) {
+    const corrupt = JSON.stringify(mutate(JSON.parse(originals.get(file))));
+    writeFileSync(file, corrupt);
+    const before = new Map([...originals.keys()].map((target) => [target, readFileSync(target)]));
+    await assert.rejects(
+      resumeRuntimeMigration({
+        ...roots,
+        transactionId,
+        approvedPlanDigest: plan.digest,
+        adapters: selected,
+      }),
+      { code: 'RUNTIME_CONTROL_INVALID' }
+    );
+    for (const [target, bytes] of before) assert.deepEqual(readFileSync(target), bytes);
+    writeFileSync(file, originals.get(file));
+  }
+});
+
+test('a corrupt retained fence cannot masquerade as an already released fence', async () => {
+  const { planRuntimeMigration, applyRuntimeMigration, resumeRuntimeMigration } = await engine();
+  const roots = repository('corrupt-fence');
+  seed(roots);
+  const selected = transactionAdapters({
+    fault: (point) => {
+      if (point === 'after-manifest-complete') throw new Error('retained fence');
+    },
+  });
+  const plan = await planRuntimeMigration({ ...roots, adapters: selected });
+  await assert.rejects(
+    applyRuntimeMigration({ plan, approvedPlanDigest: plan.digest, adapters: selected }),
+    new RegExp('retained fence')
+  );
+  const transactionId = 'migration-' + plan.digest.slice(7, 39);
+  const fence = path.join(roots.mainRoot, '.ai-task-manager/runtime/migrations/fence.json');
+  const original = readFileSync(fence);
+  for (const value of [null, [], {}, { ...JSON.parse(original), owner: null }]) {
+    const bytes = JSON.stringify(value);
+    writeFileSync(fence, bytes);
+    await assert.rejects(
+      resumeRuntimeMigration({
+        ...roots,
+        transactionId,
+        approvedPlanDigest: plan.digest,
+        adapters: transactionAdapters(),
+      }),
+      { code: 'RUNTIME_CONTROL_INVALID' }
+    );
+    assert.equal(readFileSync(fence, 'utf8'), bytes);
+  }
+  writeFileSync(fence, original);
+  await resumeRuntimeMigration({
+    ...roots,
+    transactionId,
+    approvedPlanDigest: plan.digest,
+    adapters: transactionAdapters(),
+  });
+  assert.equal(existsSync(fence), false);
+});

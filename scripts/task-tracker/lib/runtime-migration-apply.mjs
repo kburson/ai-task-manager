@@ -26,6 +26,7 @@ import {
   observeMigrationIdentity,
   recoverRuntimeFence,
   assertRecoveryOwner,
+  isRuntimeMigrationOwner,
 } from './runtime-migration-lock.mjs';
 
 const fail = (code, message) => {
@@ -115,12 +116,61 @@ function verifyPublishedFiles(plan) {
   }
 }
 
+const objectRecord = (value) =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const validInstant = (value) => typeof value === 'string' && Number.isFinite(Date.parse(value));
+function validateManifest(manifest, plan, transactionId) {
+  const roots = manifest?.roots;
+  const published = manifest?.publishedRoots;
+  const timing = manifest?.timing;
+  if (
+    !objectRecord(manifest) ||
+    manifest.schema !== 'aitm.runtime-migration/v1' ||
+    !['prepared', 'publishing', 'complete'].includes(manifest.status) ||
+    manifest.transactionId !== transactionId ||
+    manifest.planDigest !== plan.digest ||
+    !Array.isArray(roots) ||
+    roots.length === 0 ||
+    JSON.stringify(roots) !== JSON.stringify(plan.roots) ||
+    new Set(roots).size !== roots.length ||
+    !Array.isArray(published) ||
+    new Set(published).size !== published.length ||
+    published.some((root) => !roots.includes(root)) ||
+    (manifest.status === 'complete' && published.length !== roots.length) ||
+    !isRuntimeMigrationOwner(manifest.owner) ||
+    timing?.schema !== 'aitm.runtime-migration-timing/v1' ||
+    !Array.isArray(timing.intervals) ||
+    timing.intervals.length === 0 ||
+    timing.intervals.some(
+      (interval) =>
+        !objectRecord(interval) ||
+        !isRuntimeMigrationOwner(interval.owner) ||
+        !validInstant(interval.startedAt) ||
+        interval.basis !== 'process-engagement' ||
+        (interval.endedAt !== null && !validInstant(interval.endedAt)) ||
+        (interval.durationMs !== null &&
+          (!Number.isFinite(interval.durationMs) || interval.durationMs < 0)) ||
+        (interval.endedAt === null && interval.durationMs !== null) ||
+        (interval.endedAt !== null &&
+          interval.durationMs !== Date.parse(interval.endedAt) - Date.parse(interval.startedAt))
+    ) ||
+    !['pending', 'confirmed'].includes(timing.publication?.status) ||
+    timing.publication.idempotencyKey !== transactionId + ':engagement'
+  )
+    fail('RUNTIME_CONTROL_INVALID', 'Malformed transaction journal');
+}
+
 function readJournal(paths) {
   const bootstrapFile = path.join(paths.directory, 'bootstrap.json');
+  for (const file of [bootstrapFile, paths.plan, paths.manifest])
+    assertRuntimeStoragePath(file, paths.layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
   const bootstrap = readMigrationRecord(bootstrapFile);
-  if (bootstrap.schema !== 'aitm.runtime-bootstrap/v1')
+  if (bootstrap?.schema !== 'aitm.runtime-bootstrap/v1')
     fail('RUNTIME_CONTROL_INVALID', 'Unsupported transaction bootstrap');
+  if (!objectRecord(bootstrap.plan) || !objectRecord(bootstrap.manifest))
+    fail('RUNTIME_CONTROL_INVALID', 'Malformed transaction bootstrap');
   verifyApprovedPlan(bootstrap.plan, bootstrap.manifest?.planDigest);
+  validateManifest(bootstrap.manifest, bootstrap.plan, path.basename(paths.directory));
   if (
     bootstrap.plan.projectRoot !== paths.layout.projectRoot ||
     bootstrap.plan.mainRoot !== paths.layout.mainRoot ||
@@ -132,6 +182,7 @@ function readJournal(paths) {
   const manifest = exists(paths.manifest)
     ? readMigrationRecord(paths.manifest)
     : { ...bootstrap.manifest, checkpoint: 'bootstrap-only' };
+  validateManifest(manifest, plan, path.basename(paths.directory));
   if (
     manifest.schema !== 'aitm.runtime-migration/v1' ||
     manifest.transactionId !== path.basename(paths.directory) ||
@@ -352,7 +403,10 @@ async function continuePublication({ plan, approvedPlanDigest, adapters, paths, 
   manifest.timing.completionTail = { status: 'unresolved', startedAt: interval.endedAt };
   manifest.status = 'complete';
   save();
+  await adapters.fault?.('after-manifest-complete', { transactionId });
   await publishTiming(manifest, paths, adapters);
+  await adapters.fault?.('after-timing-publish', { transactionId });
+  await adapters.fault?.('before-fence-release', { transactionId });
   completeRuntimeFence({
     projectRoot: plan.projectRoot,
     mainRoot: plan.mainRoot,
@@ -375,10 +429,21 @@ export async function resumeRuntimeMigration({
   const { manifest, plan } = readJournal(paths);
   verifyApprovedPlan(plan, approvedPlanDigest);
   if (manifest.status === 'complete') {
+    if (
+      JSON.stringify([...manifest.roots].sort()) !==
+      JSON.stringify([...paths.layout.registeredRoots].sort())
+    )
+      fail('RUNTIME_CONTROL_INVALID', 'Completed transaction root census changed');
     for (const root of manifest.roots) {
       const layout = runtimeStoragePaths({ projectRoot: root, mainRoot });
+      assertRuntimeStoragePath(
+        layout.controlPath,
+        layout.localRuntimeRoot,
+        'RUNTIME_CONTROL_INVALID'
+      );
       const control = readMigrationRecord(layout.controlPath);
       if (
+        control?.schema !== 'aitm.runtime-control/v1' ||
         control.status !== 'active' ||
         control.transactionId !== transactionId ||
         control.planDigest !== approvedPlanDigest ||
@@ -387,7 +452,27 @@ export async function resumeRuntimeMigration({
       )
         fail('RUNTIME_CONTROL_INVALID', 'Completed transaction control identity changed');
     }
+    let retainedFence = null;
+    try {
+      retainedFence = recoverRuntimeFence({
+        projectRoot,
+        mainRoot,
+        transactionId,
+        approvedPlanDigest,
+        adapters,
+      });
+    } catch (error) {
+      if (error.code !== 'RUNTIME_MIGRATION_FENCE_MISSING') throw error;
+    }
+    if (retainedFence) {
+      manifest.owner = retainedFence.owner;
+      writeMigrationRecord(paths.manifest, manifest);
+    }
     await publishTiming(manifest, paths, adapters);
+    await adapters.fault?.('after-timing-publish', { transactionId });
+    await adapters.fault?.('before-fence-release', { transactionId });
+    if (retainedFence)
+      completeRuntimeFence({ projectRoot, mainRoot, transactionId, approvedPlanDigest, adapters });
     return { status: 'complete', transactionId, timing: manifest.timing };
   }
   const fresh = await planRuntimeMigration({
