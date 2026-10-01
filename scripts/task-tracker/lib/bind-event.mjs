@@ -77,11 +77,12 @@ export function classifyEvent(slug) {
 //   { kind: 'stop' }
 //   { kind: 'idle' }
 // or null when no interruption is currently open.
-export function lastOpenInterruption(body) {
+export function lastOpenInterruption(body, { actorKey } = {}) {
   if (!body) return null;
   let open = null;
   for (const line of String(body).split('\n')) {
     const slug = rowEventSlug(line);
+    if (actorKey !== undefined && parseTimingRow(line)?.actorKey !== actorKey) continue;
     if (slug == null) continue;
     const c = classifyEvent(slug);
     if (!c) continue;

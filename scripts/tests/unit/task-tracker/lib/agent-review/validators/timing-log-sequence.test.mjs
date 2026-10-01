@@ -782,3 +782,35 @@ test('bootstrap imports V3 after V1 and V2', async () => {
   assert.ok(iV1 >= 0 && iV2 >= 0 && iV3 >= 0, 'all three validator imports present');
   assert.ok(iV3 > iV2 && iV2 > iV1, 'V3 import must follow V2 which follows V1');
 });
+
+test('attributed inactive actors may remain paused while genuine issue stages advance', async () => {
+  const { timingActorKey, timingActorMarker } =
+    await import('../../../../../../task-tracker/lib/timing-actor.mjs');
+  const a = timingActorKey({ provider: 'codex', sid: 'actor-a' });
+  const b = timingActorKey({ provider: 'claude', sid: 'actor-b' });
+  const ctx = logCtx(
+    [
+      [T(0), 'develop:started'],
+      [T(0), 'start', 'actor a', timingActorMarker(a)],
+      [T(1), 'start', 'actor b', timingActorMarker(b)],
+      [T(2), 'pause:blocked', 'actor b paused', timingActorMarker(b)],
+      [T(3), 'pause:blocked', 'actor a paused', timingActorMarker(a)],
+      [T(4), 'develop:completed'],
+      [T(4), 'test:started'],
+      [T(5), 'review:started'],
+    ],
+    entered('develop', 'test', 'review')
+  );
+  assert.deepEqual(validate(ctx), { pass: true, failures: [] });
+  const onlyPaused = logCtx([
+    [T(0), 'start', 'a', timingActorMarker(a)],
+    [T(1), 'pause:blocked', 'a', timingActorMarker(a)],
+  ]);
+  assert.equal(validate(onlyPaused).pass, true);
+  const incomplete = logCtx([
+    [T(0), 'start', 'a', timingActorMarker(a)],
+    [T(1), 'start', 'b', timingActorMarker(b)],
+    [T(2), 'pause:blocked', 'b', timingActorMarker(b)],
+  ]);
+  assert.equal(validate(incomplete).pass, false);
+});

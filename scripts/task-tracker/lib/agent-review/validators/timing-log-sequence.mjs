@@ -1,3 +1,4 @@
+import { deriveActorEngagement } from '../../timing-engagement.mjs';
 // Agent Review Gate — V3 timing-log-sequence validator (#812, rewritten for the
 // timing model v2 grammar under #828).
 //
@@ -102,6 +103,7 @@ export function extractDataRows(logBody) {
       ts: row?.ts ?? '',
       event: row?.event ?? '',
       raw: line,
+      ...(row?.actorKey ? { actorKey: row.actorKey } : {}),
     });
   }
   return rows;
@@ -182,6 +184,7 @@ export function validate(context = {}) {
     return { pass: false, failures: ['⏱ Timing Log has no data rows'] };
   }
 
+  const previousByActor = new Map();
   let prevMs = null;
   let prevRow = null;
   // State-machine slot: 'idle' (nothing active) or 'active'. Starts 'idle' — the
@@ -197,6 +200,9 @@ export function validate(context = {}) {
   let sentinelResetIndex = 0;
 
   for (const row of rows) {
+    const prior = previousByActor.get(row.actorKey || 'legacy');
+    prevRow = prior || null;
+    prevMs = prior ? _tsToMs(prior.ts) : null;
     // --- Format schema -------------------------------------------------------
     const ms = _tsToMs(row.ts);
     if (!Number.isFinite(ms)) {
@@ -241,6 +247,7 @@ export function validate(context = {}) {
     }
     prevMs = ms;
     prevRow = row;
+    previousByActor.set(row.actorKey || 'legacy', row);
 
     // --- Reconciliation vs aitm-entered markers ------------------------------
     const lifecycleStage = stageOf(row.event);
@@ -287,6 +294,8 @@ export function validate(context = {}) {
       }
     }
 
+    if (row.actorKey) continue;
+
     // --- State-machine walk (skip / double detection) ------------------------
     if (isDepartureEvent(row.event)) {
       if (state === 'idle') {
@@ -320,6 +329,13 @@ export function validate(context = {}) {
       lastActiveRow = row;
       openDeparture = null;
     }
+  }
+
+  if (rows.some((row) => row.actorKey)) {
+    const engagement = deriveActorEngagement(rows, rows.at(-1).ts);
+    failures.push(...engagement.failures);
+    for (const actorKey of engagement.incompleteActors)
+      failures.push('incomplete actor engagement: ' + actorKey);
   }
 
   // Trailing unclosed interruption: the log ends idle with an interruption that

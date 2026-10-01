@@ -1,3 +1,4 @@
+import { readTimingActor } from './timing-actor.mjs';
 // Dependency-light lexical reader for AITM Timing Log Markdown rows (#1038).
 //
 // This module knows only the repository's row storage grammar: pipe-delimited
@@ -59,6 +60,12 @@ export function timingTimestampOffsetMin(value) {
 
 export function splitTimingRowMarker(line) {
   const source = String(line ?? '');
+  const actor = readTimingActor(source);
+  if (actor)
+    return {
+      core: source.slice(0, actor.index).trimEnd(),
+      marker: ' ' + source.slice(actor.index),
+    };
   const match = source.match(TRAILING_ROW_SEC_RE);
   if (!match) return { core: source, marker: '' };
   return {
@@ -79,6 +86,7 @@ export function parseTimingRow(line) {
     core,
     marker,
     cells,
+    ...(readTimingActor(raw) ? { actorKey: readTimingActor(raw).key } : {}),
     ts: cells[1] ?? '',
     event: (cells[2] ?? '').toLowerCase(),
     wordMarker: cells[6] ?? '',
