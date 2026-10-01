@@ -15,7 +15,9 @@ This is a single-agent review/revision loop, not independent peer review.
 Responses: [r1](review-response.r1.md), [r2](review-response.r2.md),
 [r3](review-response.r3.md).
 
-Canonical specification: [revision r2](../../../../specs/2026-10-01-1859-reviewed-scope-evidence-design.md).
+Canonical specification: [current document](../../../../specs/2026-10-01-1859-reviewed-scope-evidence-design.md).
+The subsequent XPR revised the canonical specification; [the issue review index](../../README.md)
+records accepted content. The snapshots and hashes here remain the exact SAR inputs.
 Source baseline: `1b495236e9b9651c5ffd5ad67d4c7f43238ed44f`.
 Snapshots preserve exact input bytes. The canonical document's status identifies
 the reviewed revision; this index and r3 response record the terminal SAR verdict
