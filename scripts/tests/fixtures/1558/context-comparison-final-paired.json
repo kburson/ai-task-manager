@@ -17,7 +17,7 @@
     },
     "budgets": {
       "path": "scripts/tests/fixtures/1558/context-budgets-final.json",
-      "sha256": "sha256:497e814d4d81186af63ed4c3624aaae94a79dba51c1808596a35fb051870cd12"
+      "sha256": "sha256:91690c18812a3a2c5b0f35c314d67a63969838297e4cf5d47dd6d95c7e4209ba"
     }
   },
   "adapters": {

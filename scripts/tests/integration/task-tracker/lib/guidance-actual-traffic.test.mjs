@@ -1,4 +1,4 @@
-// @story #1675
+// @story #1675 #1859
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -6,7 +6,6 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { measureProposedStatic } from '../../../../maintenance/capture-guidance-explain.mjs';
 import { capturedCommitBytes } from '../../../helpers/captured-commit-bytes.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
@@ -15,6 +14,56 @@ const capture = JSON.parse(
 );
 const sha256 = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
 const atCommit = (commit, file) => capturedCommitBytes(root, commit, file);
+
+function measureCapturedStatic(adapter) {
+  const planPath = 'docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md';
+  const plan = atCommit(capture.identity.sourceCommit, planPath).toString('utf8');
+  const extract = (pattern) => {
+    const match = pattern.exec(plan);
+    assert.ok(match, 'declared capture commit must contain the modeled proposal');
+    return match[1];
+  };
+  const files = [
+    {
+      id: 'shim',
+      sourcePath: 'skill/SKILL.md',
+      sourceSection: 'complete-file',
+      text: atCommit(capture.identity.sourceCommit, 'skill/SKILL.md').toString('utf8'),
+    },
+    {
+      id: 'router-proposal',
+      sourcePath: planPath,
+      sourceSection: 'Appendix A.1 router',
+      text: extract(/const router = `([\s\S]*?)`;/),
+    },
+    {
+      id: 'pickup-proposal',
+      sourcePath: planPath,
+      sourceSection: 'Appendix A.1 pickup',
+      text: extract(/const pickup = `([\s\S]*?)`;/),
+    },
+    {
+      id: 'adapter-proposal',
+      sourcePath: planPath,
+      sourceSection: `Appendix A.1 adapter.${adapter}`,
+      text: extract(new RegExp(adapter + ': `([\\s\\S]*?)`,')),
+    },
+  ].map(({ text, ...entry }) => ({
+    ...entry,
+    characters: text.length,
+    bytes: Buffer.byteLength(text),
+    proxyTokens: Math.ceil(text.length / 4),
+    sha256: sha256(text),
+  }));
+  return {
+    files,
+    totals: {
+      characters: files.reduce((sum, file) => sum + file.characters, 0),
+      bytes: files.reduce((sum, file) => sum + file.bytes, 0),
+      proxyTokens: files.reduce((sum, file) => sum + file.proxyTokens, 0),
+    },
+  };
+}
 
 test('actual explanation evidence is public subprocess traffic anchored to one source commit', () => {
   assert.equal(capture.schema, 'aitm.guidance-actual-cli-capture/v2');
@@ -126,7 +175,7 @@ test('actual traffic plus separately modeled static text remains inside fixed bu
     comparison.adapters.codex.legacy.static.totals.proxyTokens
   );
   for (const provider of ['claude', 'codex']) {
-    assert.deepEqual(measurement.modeledProposedStatic[provider], measureProposedStatic(provider));
+    assert.deepEqual(measurement.modeledProposedStatic[provider], measureCapturedStatic(provider));
     assert.equal(
       measurement.modeledFullLifecycleTotals[provider],
       measurement.modeledProposedStatic[provider].totals.proxyTokens +
