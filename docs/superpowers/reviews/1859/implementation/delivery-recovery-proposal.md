@@ -1,6 +1,6 @@
 # Issue 1859 delivery recovery proposal
 
-Status: proposed; no exception or decomposition approval has been recorded.
+Status: approved by the user selecting option A on 2026-10-01T22:14:00.411Z. The two workflow waivers are recorded and active; the visible decomposition waiver is published. Issue 1859 entered Develop through the sanctioned promote verb.
 
 ## Completed recovery
 
@@ -16,14 +16,14 @@ Do not waive design, implementation or peer review, completion approval, tests, 
 
 ## Proposed visible decomposition waiver
 
-This proposal would be added as the visible root Decomposition Waiver only after approval, with the actual approver and approval time.
+Published as the visible root Decomposition Waiver with the actual approval message and time.
 
 - **Rationale**: Keep the reviewed evidence route and blocked-decision preservation together because the acceptance scenario exercises both through one Test-to-Review boundary and the implementation is already complete as one defect.
 - **Expected-focused-duration**: 40h
 - **Milestone-checkpoint-plan**: Retain the six existing implementation checkpoints, the complete QA evidence, current-head Test verification, implementation Review and PR delivery.
 - **Why-no-nested-children**: Retrospective child creation would duplicate completed work and invent a delivery decomposition that was not used. The original issue remains the single accountable defect and its six accepted tasks remain reviewable.
-- **Approved-by**: Pending explicit approval
-- **Approved-at**: Pending explicit approval
+- **Approved-by**: kburson; user message msg_01a0f988-15db-7611-8438-1f9839b83377
+- **Approved-at**: 2026-10-01T22:14:00.411Z
 
 ## Alternative
 
