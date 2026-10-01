@@ -1,3 +1,5 @@
+// @story #1859
+import { parseReviewedCheckArgs, recordReviewedScope } from '../lib/reviewed-scope/record.mjs';
 import { loadState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -254,6 +256,7 @@ export function appendUnverifiedTickAudit(body, { label, ts }) {
 async function runEnsure(ctx, desired) {
   const { cfg, statePath, projectDir, rest, pexec } = ctx;
   const checking = desired === 'checked';
+  const reviewed = parseReviewedCheckArgs(rest, desired);
   // #295 — body writes go through mutateIssueBody({mutate}); closure runs on
   // FRESH base each push attempt. #567 — threads the optional
   // `allowUnverifiedTicks` bypass for the non-demonstrable-AC hatch.
@@ -266,6 +269,13 @@ async function runEnsure(ctx, desired) {
   }
 
   const verbName = checking ? 'ensureChecked' : 'ensureUnchecked';
+  if (reviewed) {
+    const result = await recordReviewedScope({ ctx, ...reviewed });
+    console.log(
+      `[task-tracker] ${result.status === 'no-op' ? 'Already checked' : 'Checked'} reviewed Scope on ${s.active}`
+    );
+    return result;
+  }
   const parsed = parseCheckArgs(rest);
   const issueNum = s.active.replace(/^#/, '');
 

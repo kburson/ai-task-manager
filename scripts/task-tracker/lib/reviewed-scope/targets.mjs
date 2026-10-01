@@ -7,7 +7,7 @@ export function isVerifierBearingScopeTarget(raw) {
     String(raw)
   );
 }
-function liveLines(body) {
+export function liveLines(body) {
   let fence = null,
     comment = false;
   const result = [];
