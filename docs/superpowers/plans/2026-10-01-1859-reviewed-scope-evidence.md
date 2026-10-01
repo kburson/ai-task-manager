@@ -37,12 +37,18 @@ New files under `scripts/task-tracker/lib/reviewed-scope/`:
 
 Modify `verbs/check.mjs`, `lib/body-invariants.mjs`, `lib/issue-body-mutate.mjs`,
 `lib/split-plan.mjs`, `states/test.mjs`, `lib/action-decision/review.mjs`,
-`lib/action-decision/evaluate.mjs`, `lib/action-decision/normalization.mjs`,
-`lib/review-derive-rescan.mjs`, `verbs/review.mjs`, `verbs/close.mjs`, and
+`lib/action-decision/evaluate.mjs`, `lib/action-decision/contract.mjs`,
+`lib/action-decision/legacy-refusals.json`, `lib/action-decision/normalization.mjs`,
+`lib/review-derive-rescan.mjs`, `lib/test-exit-pre-close-completeness-guard.mjs`,
+`lib/guard-registry.mjs` (inventory comment), `verbs/promote.mjs`,
+`verbs/review.mjs`, `verbs/close.mjs`, and
 `verbs/help-data.mjs`. Paths in this paragraph are relative to
 `scripts/task-tracker/`. Add one dedicated Test-exit guard
 `lib/test-exit-reviewed-scope-guard.mjs`. Guidance sources are `instructions/aitm-guidance.yml` and supplemental
 `skill/SKILL.md`; regenerate the catalog release manifest through `scripts/maintenance/generate-guidance-release.mjs`.
+Also modify `scripts/gh/move-state.mjs` for explicit invocation context and
+`scripts/tests/unit/task-tracker/lib/guard-parity-mid-stages.test.mjs` for the
+pinned Test-exit inventory; Task 4 owns these changes.
 
 Tasks 1–4 establish the evidence route; Task 5 repairs normalization; Task 6
 integrates the generated-child scenario and shipped guidance. Keep the two fixes
@@ -282,6 +288,10 @@ expectedPointer,nextPointer,expectedGlyph}`; only the recording coordinator can
 construct it after comment validation. `validateReviewedDelta(base,next,capability)`
 permits exactly the target glyph/pointer delta. Generic callers cannot pass a
 boolean to admit this family. Preserve capability and body checks on every retry.
+The mutate closure must return a string synchronously: mutateIssueBody's wrapper
+validates only synchronous string results. Complete initial asynchronous comment
+and evidence work before creating that closure; repeat asynchronous freshness
+checks only in validateFreshBaseAsync, never in mutate.
 
 - [ ] Write failing tests for all four outcomes (initial, refresh, validated recheck,
       checked no-op), invalid CLI mixtures before I/O, no-op stale-file refusal,
@@ -356,18 +366,25 @@ size check before every push, including the body-version stamp.
 `lib/action-decision/legacy-refusals.json`. Add the guard's inventory entry and
 registered typed refusal definitions; thread explicit projectDir/binding ports
 through `verbs/promote.mjs`, `verbs/review.mjs` and `scripts/gh/move-state.mjs`. Add `scripts/tests/unit/task-tracker/lib/reviewed-scope-readiness.test.mjs`;
-extend `scripts/tests/integration/task-tracker/lib/action-review.test.mjs`.
+extend `scripts/tests/integration/task-tracker/lib/action-review.test.mjs` and
+`scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs`.
+Update `scripts/tests/unit/task-tracker/lib/guard-parity-mid-stages.test.mjs` and
+the inventory comment in `lib/guard-registry.mjs`. The authoritative registered
+inventory is `lib/action-decision/legacy-refusals.json`, not the comment.
 
 **Interfaces:** `evaluateReviewedScope({body,repository,issue,projectDir,
 invokingDir,lifecycleEvidence,deps})` returns `{ok,blockers}`. Guard ID
 `test-exit-reviewed-scope` maps blockers to existing registry envelopes with
-labels and codes. Return `typedRefusals` from the guard with producer
+labels and codes. Return `refusals` from the guard with producer
 `test-exit-reviewed-scope`, required args `{label,reason}` (both strings) and
 `noAutomaticRemediation:{reason:'operator-reviewed-evidence-required'}`. Register
 blocked-only codes `reviewed-scope-current-missing`, `reviewed-scope-stale`,
 `reviewed-scope-comment-invalid`, `reviewed-scope-wrong-checkout`; use a distinct
 indeterminate-only `reviewed-scope-read-unavailable` for failed authoritative reads.
-All codes permit Test-exit phase only. Keep human decision prompts absent. Update
+All codes permit contract phase `evaluation`; the guard is registered only in
+Test's exit slot (Test-exit is not a contract phase name). The registry internally
+creates typedRefusals and exposes the normalized entries in runGuards().refusals;
+consumers never return or read a top-level typedRefusals substitute. Keep human decision prompts absent. Update
 contract/registry tests and run `npm run lint:action-refusals` so a new guard cannot
 silently become an unregistered generic refusal. It is a separate Test-exit guard, so accepted-Test completeness
 short-circuit cannot bypass it. Directory lane returns existing semantics before
@@ -387,6 +404,12 @@ legacy parser/attachment I/O.
       comments. Use separate `readEvidenceContext` export in runtime.mjs for this
       read-only path, leaving `readRecordingAuthority`'s Develop/Test/owner-write checks
       intact. Both share physical checkout and explicit-cwd Git collection.
+- [ ] Add `'test-exit-reviewed-scope': 'reviewed-scope-refused'` to
+      `REFUSAL_ID_TO_STATUS` in promote.mjs. Test the promote verb with stale,
+      missing and unavailable reviewed evidence and assert no delegated verb or
+      lower board mutator is called. Registry-level tests must drive real
+      `runGuards('test','review',...)` and assert the five registered codes and
+      args survive in `.refusals` with correct status, never unclassified-refusal.
 - [ ] Register in Test's exit guard list for all transition consumers. Audit Review,
       promote and explanation context construction; thread projectDir and invokingDir
       explicitly rather than defaulting to process.cwd inside library calls. Missing
@@ -402,38 +425,56 @@ legacy parser/attachment I/O.
 
 **Files:** Modify `lib/action-decision/evaluate.mjs`,
 `lib/action-decision/normalization.mjs`, `lib/review-derive-rescan.mjs`,
-`verbs/review.mjs`, `verbs/close.mjs`; extend
+`lib/test-exit-pre-close-completeness-guard.mjs`, `lib/action-decision/contract.mjs`,
+`verbs/promote.mjs`, `verbs/review.mjs`, `verbs/close.mjs`; extend
 `scripts/tests/unit/task-tracker/lib/review-derive-rescan.test.mjs`,
 `scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs`,
-`action-review.test.mjs` and `action-close.test.mjs` in that integration directory.
+`action-review.test.mjs`, `action-close.test.mjs` and `action-session-promote.test.mjs`
+in that integration directory.
 
 **Interfaces:** Export `completeGuardResult(result)` from evaluate.mjs without
-relaxing it. `NonReadyNormalization` carries `{decision,body,persisted}` and is
+relaxing it. `NonReadyNormalization` carries `{decision,body,persisted,warnings}` and is
 used only to abort a fresh-base attempt; public `persistReadyNormalizations` and
-`deriveAndRescan` return complete decision plus actual persistence state. Invalid
+`deriveAndRescan` retain complete decision, actual persistence state and warnings.
+Keep persistReadyNormalizations' `{decision,persisted,warnings,body}` contract;
+deriveAndRescan retains `{scanBody,derived,errors,persisted,decision}` and adds
+`warnings` without dropping existing fields. Preserve decision.warns separately.
+Add required `projectDir` to deriveAndRescan and pass it as cwd to both HEAD reads;
+Review, Close and Promote pass their authoritative resolved projectDir. Invalid
 results throw a distinct `normalization-decision-invalid` error.
 
-- [ ] Add exact-decision assertions with a valid refusal:
+- [ ] Convert completeness refusal to a registered typed code
+      `test-scope-incomplete`, producer `test-exit-pre-close-completeness`, blocked
+      only, evaluation phase, required string arg `{label}`. The guard returns one
+      entry per original unchecked line under `refusals`, retains raw reason and
+      blockers for legacy consumers, and noAutomaticRemediation with reason
+      `complete-required-checkbox`. Keep its accepted-Test skip unchanged.
+      Review reconstructs its exact displayed list from each typed `args.label`,
+      preserving count, ordering, timing and exit 4. This makes labels survive
+      evaluate.mjs' typed projection as well as raw registry output.
+- [ ] Build preservation fixtures through the real guard registry, not handwritten
+      envelopes that only satisfy completeGuardResult's shallow checks:
 
 ```js
-const blocked = {
-  status: 'blocked',
-  ok: false,
-  refusals: [
-    {
-      id: 'test-exit-pre-close-completeness',
-      code: 'test-to-review-incomplete',
-      args: { labels: ['Step A'] },
-      blockers: ['test-to-review-incomplete: Step A'],
-    },
-  ],
-  humanDecision: null,
-  warns: [],
-};
-assert.deepEqual(result.decision, blocked);
+const decision = await runGuards('test', 'review', fixtureContext);
+const missing = decision.refusals.filter((r) => r.code === 'test-scope-incomplete');
+assert.deepEqual(
+  missing.map((r) => r.args.label),
+  ['- [ ] Step A']
+);
+const result = await persistReadyNormalizations({
+  ...normalizationFixture,
+  refreshAndEvaluate: async () => decision,
+});
+assert.deepEqual(result.decision, decision);
+assert.deepEqual(result.warnings, []);
 assert.equal(result.persisted, false);
 assert.equal(pushes, 0);
 ```
+
+`fixtureContext` supplies a real body with that unchecked line and injects
+nonblocking dependencies for other registered guards; normalizationFixture uses
+the existing integration suite's in-memory body/readback/write counters.
 
 Include valid indeterminate, no-normalization path, retry turns non-ready, readback
 non-ready after successful write, concurrent HEAD drift plus block, malformed
@@ -449,9 +490,16 @@ non-ready after successful write, concurrent HEAD drift plus block, malformed
       validate projection integrity, then re-evaluate; preserve persisted=true if
       non-ready and stop workflow. Remaining normalization checks and true HEAD/body
       drift retain fence priority over guard failures.
+- [ ] Update Promote's Test-to-Review deriveAndRescan consumer (currently near
+      lines 441–455) to consume the returned decision directly. If non-ready,
+      return its mapped verb refusal before delegation; report persisted=true
+      truthfully. Do not call evaluateForBody again to replace that decision.
+      Preserve the existing evaluator path for transitions without normalization.
+      Add promote integration tests for initial blocked, retry non-ready and
+      successful-normalization/readback-non-ready, asserting no lower mutation.
 - [ ] Thread decision through `deriveAndRescan`. Change Review's destructuring at
       its normalization call; render the returned non-ready decision immediately using
-      its original completeness item list/timing row/exit 4 or existing generic refusal
+      the typed completeness args.label list/timing row/exit 4 or existing generic refusal
       renderer. Do not rerun a second evaluator and discard the original cause. Stop
       before transitions, reviewer launch or approval prompts.
 - [ ] In Close `evaluateCloseProjection`, construct complete blocked envelopes for
@@ -460,7 +508,7 @@ non-ready after successful write, concurrent HEAD drift plus block, malformed
       side effects. Do not alter force semantics, delivery checks, accepted SHA or
       local-trunk authority. Test delivered/local-trunk fixtures with removed original
       reviewed attachments to show no new dependency.
-- [ ] Run vc:2–3 plus action-review and action-close integration suites. Assert
+- [ ] Run vc:2–3 plus action-review, action-close and action-session-promote integration suites. Assert
       original humanDecision/warns/code/args survive; no incorrect rollback claim after
       successful normalization. Commit Task 5 files.
 
