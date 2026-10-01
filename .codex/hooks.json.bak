@@ -51,6 +51,17 @@
         "matcher": "manual|auto"
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "^(?:Bash|functions\\.exec|exec)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "peer-review-codex-hook"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "hooks": [
