@@ -36,6 +36,39 @@ import {
   residentGate,
 } from '../../../helpers/1857-timing-outcome-harness.mjs';
 
+test('source issue with children retains its own frozen forecast and exact Test lane', async () => {
+  const h = harness({ children: ['01J00000000000000000000842'] });
+  const result = await h.runtime.ensure({
+    issueNumber: issue,
+    forecastRecordId: forecastId,
+    body: closeBody(),
+  });
+  assert.equal(result.record.envelope.payload.kind, 'story');
+  assert.equal(result.record.envelope.payload.telemetry.forecastStatus, 'frozen');
+  assert.equal(result.record.envelope.payload.telemetry.verification.mode, 'exact-test');
+  const missing = harness({ children: ['01J00000000000000000000842'] });
+  await assert.rejects(
+    () => missing.runtime.ensure({ issueNumber: issue, forecastRecordId: null, body: closeBody() }),
+    /forecast-lineage/
+  );
+});
+
+test('fresh delivery kind must match the body used to select forecast and accounting', async () => {
+  const gate = residentGate();
+  const h = harness({ resolveDeliveryAuthority: async () => gate });
+  h.records.length = 0;
+  await assert.rejects(
+    () =>
+      h.runtime.ensure({
+        issueNumber: issue,
+        forecastRecordId: null,
+        body: closeBody().replace(/forecast-record-id=/g, 'old-record-id='),
+      }),
+    /outcome-delivery-kind/
+  );
+  assert.equal(h.records.length, 0);
+});
+
 test('parent-approved cascade reaches lawful child Close through fresh authority and immutable telemetry', async () => {
   const testBody = closeBody();
   const body = upsertVerificationReceipt(testBody, {
@@ -297,6 +330,20 @@ test('root epic local-trunk timing uses its actual completed burn receipt and em
     burn.deliveryOperationId
   );
   assert.deepEqual(result.record.envelope.payload.actual.commands, []);
+  const empty = harness({ resolveDeliveryAuthority });
+  empty.records.length = 0;
+  const emptyResult = await empty.runtime.ensure({
+    issueNumber: issue,
+    forecastRecordId: null,
+    body: gate.deliveryBody,
+  });
+  assert.equal(emptyResult.record.envelope.payload.kind, 'epic-orchestration');
+  assert.equal(emptyResult.record.envelope.payload.telemetry.forecastStatus, 'epic-not-applicable');
+  assert.equal(
+    emptyResult.record.envelope.payload.telemetry.verification.mode,
+    'local-trunk-delivery'
+  );
+  assert.deepEqual(emptyResult.record.envelope.payload.landscape.childOutcomeRecordIds, []);
 });
 
 test('outcome publication revalidates actual delivery authority after immutable write', async () => {
@@ -568,6 +615,20 @@ test('root epic runtime consumes freshly verified merged receipt with empty pare
   assert.equal(result.record.envelope.payload.telemetry.verification.recordId, intent.intentId);
   assert.deepEqual(result.record.envelope.payload.actual.commands, []);
   assert.equal(result.record.envelope.payload.telemetry.forecastStatus, 'epic-not-applicable');
+  const empty = harness({ resolveDeliveryAuthority });
+  empty.records.length = 0;
+  const emptyResult = await empty.runtime.ensure({
+    issueNumber: issue,
+    forecastRecordId: null,
+    body: gate.deliveryBody,
+  });
+  assert.equal(emptyResult.record.envelope.payload.kind, 'epic-orchestration');
+  assert.equal(emptyResult.record.envelope.payload.telemetry.forecastStatus, 'epic-not-applicable');
+  assert.equal(
+    emptyResult.record.envelope.payload.telemetry.verification.mode,
+    'merged-pr-delivery'
+  );
+  assert.deepEqual(emptyResult.record.envelope.payload.landscape.childOutcomeRecordIds, []);
 });
 
 test('no-commit proof rejects another checkout head and any issue-attributed commits', async () => {

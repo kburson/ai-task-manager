@@ -1139,9 +1139,9 @@ export function createEstimationOutcomeRuntime({
       const children = Array.isArray(discoveredChildren)
         ? discoveredChildren
         : discoveredChildren.recordIds;
-      const isEpic = Array.isArray(discoveredChildren)
-        ? children.length > 0
-        : discoveredChildren.childCount > 0;
+      // Kind is issue authority; child cardinality supplies landscape evidence only.
+      const issueKind = parseIssueKind(body);
+      const isEpic = issueKind === 'epic';
       const forecasts = recordsForProjection(records);
       const activeForecasts = forecasts.filter((record) => record.supersededBy === null);
       const legacyNone = !isEpic && forecasts.length === 0 && forecastRecordId === null;
@@ -1248,6 +1248,7 @@ export function createEstimationOutcomeRuntime({
           : outcomeVerificationSha({ resolveVerificationSha, issueNumber, diff });
       let residentProof = null;
       if (delivery && canonicalSource) {
+        if (parseIssueKind(delivery.deliveryBody) !== issueKind) fail('outcome-delivery-kind');
         if (
           delivery.gateInput?.repository !== cfg.repo ||
           delivery.gateInput?.issueNumber !== issueNumber ||
@@ -1466,7 +1467,8 @@ export function createEstimationOutcomeRuntime({
         },
         cost: costEvidence(verification),
         kind: isEpic ? 'epic-orchestration' : 'story',
-        childOutcomeRecordIds: children,
+        // Story outcomes describe their own work; only epics aggregate child outcomes.
+        childOutcomeRecordIds: isEpic ? children : [],
       });
       const sourceContext = (source) => ({
         repository: cfg.repo,
