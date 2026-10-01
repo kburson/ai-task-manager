@@ -1,0 +1,59 @@
+{
+  "issue": 1859,
+  "implementationCommit": "ae9e2ca8600cda57e7753c03ec441809c21c7075",
+  "executionNote": "Fast, focused, lint and format commands ran on working-tree bytes saved in this implementation commit. The slow lane completed after that checkpoint. Focused suite counts overlap.",
+  "results": [
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "log": "fast.log",
+      "sha256": "5d832640ce98e8c29ba4c0768364d3e3d727cac0fa3d42e5f0705c4ed569349b",
+      "count": 921,
+      "countKind": "files"
+    },
+    {
+      "command": "npm run test:slow",
+      "exitCode": 0,
+      "log": "slow.log",
+      "sha256": "2738ada0632a26a5616bf8c01c45ad7e5f4fb54923fd11aa4d12943bf5f81e34",
+      "count": 55,
+      "countKind": "files"
+    },
+    {
+      "command": "node --test scripts/tests/unit/task-tracker/verbs/check.test.mjs scripts/tests/unit/task-tracker/lib/review-derive-rescan.test.mjs scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs",
+      "exitCode": 0,
+      "log": "issue-verifiers.log",
+      "sha256": "79163bdf57357aebeaa363def322f8516f5ed1bf06ecae22745eaff6eec34bdd",
+      "count": 45,
+      "countKind": "tests"
+    },
+    {
+      "command": "node --test scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs scripts/tests/integration/task-tracker/lib/action-promote-reviewed-scope.test.mjs",
+      "exitCode": 0,
+      "log": "integration.log",
+      "sha256": "b335e448354a3666b4e3c0787bd01a371c6ab3f38d5984f73767476b77b11351",
+      "count": 27,
+      "countKind": "tests"
+    },
+    {
+      "command": "npm run lint:guidance-release-consumer",
+      "exitCode": 0,
+      "log": "guidance-consumer.log",
+      "sha256": "1feb6f47fe8e73c3827efeb55a51d8c02a9695c206c7be5e0213a9ed0b2855ca",
+      "count": 10,
+      "countKind": "tests"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "log": "lint.log",
+      "sha256": "956f071a2f0df8340fa431862708d8ad98f3137927b9bcba0e2a3f6707b07fca"
+    },
+    {
+      "command": "npm run format:check",
+      "exitCode": 0,
+      "log": "format.log",
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+    }
+  ]
+}

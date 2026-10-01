@@ -1,0 +1,35 @@
+✔ Close preserves unchecked reasons after delivered authority with old attachments removed (118.16125ms)
+✔ Close preserves unchecked reasons after local-trunk authority with old attachments removed (42.641667ms)
+✔ Test Promote preserves the initial normalization refusal before delegation (196.68775ms)
+✔ Test Promote preserves the retry normalization refusal before delegation (2.106583ms)
+✔ Test Promote preserves the readback normalization refusal before delegation (2.8735ms)
+✔ Test Promote preserves the unmapped normalization refusal before delegation (1.429875ms)
+✔ Test Promote refuses reviewed-scope-current-missing before normalization or delegation (3.83675ms)
+✔ Test Promote refuses reviewed-scope-stale before normalization or delegation (2.926416ms)
+✔ Test Promote refuses reviewed-scope-read-unavailable before normalization or delegation (1.348958ms)
+✔ real Review projection preserves completeness checkbox labels in action output (14.289041ms)
+✔ Review consumes normalized typed labels before transitions or reviewer work (140.75175ms)
+✔ real registry preserves reviewed-scope-current-missing without an unclassified fallback (2.754583ms)
+✔ real registry preserves reviewed-scope-stale without an unclassified fallback (1.312ms)
+✔ real registry preserves reviewed-scope-comment-invalid without an unclassified fallback (1.095ms)
+✔ real registry preserves reviewed-scope-wrong-checkout without an unclassified fallback (2.637792ms)
+✔ real registry preserves reviewed-scope-read-unavailable without an unclassified fallback (1.032375ms)
+✔ reviewed Scope guard is registered only in Test exit (0.101875ms)
+✔ read-only Review collector threads explicit execution and invoking directories (0.945833ms)
+✔ Review evaluator retains injected authoritative reviewed Scope ports (2.040958ms)
+✔ generated child records six final-HEAD targets, blocks artifact drift, recovers, and bounds twenty refresh rounds (1885.6665ms)
+✔ recording an ineligible Acceptance Criteria target refuses before comment or body writes (178.96725ms)
+✔ recording an ineligible Definition of Done target refuses before comment or body writes (178.023292ms)
+✔ recording an ineligible Verification Commands target refuses before comment or body writes (174.318167ms)
+✔ recording a directory-backed target refuses before comment or body writes (197.243291ms)
+✔ wrong session binding refuses before comment or body writes (175.223125ms)
+✔ a missing physical artifact refuses before comment or body writes (169.839625ms)
+✔ stale raw manifest bytes refuse before comment or body writes (202.39075ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3358.611167
