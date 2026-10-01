@@ -137,3 +137,34 @@ test('recording target resolution refuses duplicate reviewed lineage or comment 
     });
   }
 });
+
+test('bare verifier names remain narrative rather than execution declarations', () => {
+  for (const name of [
+    'aitm-verified',
+    'aitm-verified-by',
+    'aitm-verified-at',
+    'aitm-ac-evidence',
+    'aitm-dod-evidence',
+  ]) {
+    const label = 'Document the `' + name + '` marker format';
+    assert.equal(isVerifierBearingScopeTarget('- [ ] ' + label), false, name);
+    assert.equal(resolveScopeTarget('## Scope\n- [ ] ' + label, label).label, label);
+  }
+});
+test('fence syntax inside a terminated multiline HTML comment remains inert', () => {
+  for (const fence of ['```md', '~~~md']) {
+    const body = [
+      '## Scope',
+      '<!-- aitm-scope-evidence-policy:v1 -->',
+      '<!--',
+      fence,
+      '- [ ] Hidden',
+      '-->',
+      '- [ ] Real',
+    ].join('\n');
+    assert.deepEqual(
+      scanScope(body).targets.map((target) => target.label),
+      ['Real']
+    );
+  }
+});

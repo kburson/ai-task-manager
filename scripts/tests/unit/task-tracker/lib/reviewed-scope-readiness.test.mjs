@@ -411,3 +411,13 @@ test('guard accepts the actual registry repo context field', async () => {
   });
   assert.equal(evaluated.refusals[0].code, 'reviewed-scope-current-missing');
 });
+
+test('checked narrative mention of a verifier name still requires reviewed evidence', async () => {
+  const body = '## Scope\n' + POLICY_MARKER + '\n- [x] Document the `aitm-verified` marker format';
+  const result = await evaluateReviewedScope({
+    ...fixture({ policy: true, pointer: false }),
+    body,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.blockers[0].code, 'reviewed-scope-current-missing');
+});

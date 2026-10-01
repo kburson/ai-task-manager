@@ -4,7 +4,7 @@ import { LIFECYCLE_LABEL_SET } from '../lifecycle-dod.mjs';
 import { POLICY_MARKER, parsePointer, stripReviewedPointer, sha256, refuse } from './model.mjs';
 
 export function isVerifierBearingScopeTarget(raw) {
-  return /aitm-(?:verified(?:-by|-at)?|ac-evidence|dod-evidence)|\bvc-list\s*=|(?<![\w:])vc:[1-9][0-9]*(?![\w])/i.test(
+  return /<!--\s*aitm-(?:verified(?:-by|-at)?|ac-evidence|dod-evidence)\b|\bvc-list\s*=|(?<![\w:])vc:[1-9][0-9]*(?![\w])/i.test(
     String(raw)
   );
 }
@@ -37,15 +37,15 @@ export function liveLines(body) {
         fence = null;
       continue;
     }
-    if (marker) {
-      fence = marker[1];
-      continue;
-    }
     if (comment) {
       const end = raw.indexOf('-->');
       if (end < 0) continue;
       comment = false;
       if (raw.slice(end + 3).trim()) refuse('reviewed-scope-ambiguous-comment');
+      continue;
+    }
+    if (marker) {
+      fence = marker[1];
       continue;
     }
     const begin = raw.indexOf('<!--');

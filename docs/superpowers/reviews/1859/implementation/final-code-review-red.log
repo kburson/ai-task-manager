@@ -1,0 +1,122 @@
+✔ web tick preserves unadopted legacy behavior without evidence I/O (4.672417ms)
+✔ hatch tick preserves unadopted legacy behavior without evidence I/O (0.365458ms)
+✔ old generated tick preserves unadopted legacy behavior without evidence I/O (0.247375ms)
+✔ unchecked legacy preserves unadopted legacy behavior without evidence I/O (0.195125ms)
+✔ explicit current record always validates retained manifest and files despite accepted Test (2.303792ms)
+✔ adopted policy unchecked narrative blocks without a current record (0.337ms)
+✔ adopted policy proofless checked narrative blocks without a current record (0.243958ms)
+✔ unchecked explicit target validates its current record then blocks (0.356334ms)
+✔ policy machine-bearing targets remain owned by the existing machine route (0.235792ms)
+✔ readiness distinguishes wrong section (0.352833ms)
+✔ readiness distinguishes verifier target pointer (0.230166ms)
+✔ readiness distinguishes malformed pointer (0.246875ms)
+✔ readiness distinguishes changed target bytes (0.2985ms)
+✔ readiness distinguishes changed branch (0.222ms)
+✔ readiness distinguishes changed HEAD (0.580792ms)
+✔ readiness distinguishes wrong comment author (0.281833ms)
+✔ readiness distinguishes edited current comment (0.209333ms)
+✔ readiness distinguishes deleted current comment (0.257458ms)
+✔ readiness distinguishes rate-limited read (0.209042ms)
+✔ readiness distinguishes changed artifact bytes (0.301958ms)
+✔ readiness distinguishes unavailable artifact reader (0.233541ms)
+✔ readiness distinguishes non-bound checkout (0.203542ms)
+✔ readiness distinguishes missing invokingDir (0.156833ms)
+✔ directory lane returns before parser or any evidence read (0.5655ms)
+✔ fenced and multiline-comment examples are inert even without root Scope (0.315625ms)
+✔ guard preserves typed blocker args and remediation without accepted-Test bypass (0.303208ms)
+✔ copying a current pointer to another checkbox refuses duplicate lineage (0.1975ms)
+✔ unadopted legacy text has no new parser obligations (0.148833ms)
+✔ adopted target must have one visible label across all live issue checkboxes (0.419125ms)
+✔ record-retained manifest label must equal the current visible target label (0.432042ms)
+✔ policy does not adopt phase-owned Agent Review Passed (0.257375ms)
+✔ explicit reviewed pointer refuses phase-owned Agent Review Passed (0.16825ms)
+✔ policy does not adopt phase-owned Final Review Passed (0.138834ms)
+✔ explicit reviewed pointer refuses phase-owned Final Review Passed (0.128458ms)
+✔ policy does not adopt phase-owned Passed final human review (0.129041ms)
+✔ explicit reviewed pointer refuses phase-owned Passed final human review (0.422291ms)
+✔ policy does not adopt phase-owned Story closed and moved to Done (0.231375ms)
+✔ explicit reviewed pointer refuses phase-owned Story closed and moved to Done (0.139791ms)
+✔ policy does not adopt phase-owned Timing data flushed to issue (0.112292ms)
+✔ explicit reviewed pointer refuses phase-owned Timing data flushed to issue (0.117375ms)
+✔ policy does not adopt phase-owned Deep dive complete (0.109417ms)
+✔ explicit reviewed pointer refuses phase-owned Deep dive complete (0.151459ms)
+✔ policy does not adopt phase-owned Discussion complete (0.116792ms)
+✔ explicit reviewed pointer refuses phase-owned Discussion complete (0.115458ms)
+✔ guard accepts the actual registry repo context field (0.185292ms)
+✖ checked narrative mention of a verifier name still requires reviewed evidence (0.564292ms)
+✔ Scope scanner ignores fenced and HTML-comment examples and keeps nested narrative headings (2.31375ms)
+✔ duplicate Scope and duplicate live labels fail closed (0.270541ms)
+✔ policy adoption is explicit and fenced policy examples stay legacy (0.124209ms)
+✔ every recognized verifier form stays on its existing execution-proof route (0.088625ms)
+✔ target digest survives glyph and reviewed pointer changes but stales on other markers (0.26825ms)
+✔ a duplicate unsupported checkbox cannot make an eligible label unique (0.084417ms)
+✔ policy-name prose does not adopt legacy Scope (0.070708ms)
+✔ content identity keeps original trailing bytes while removing only pointer separator (0.113333ms)
+✔ narrative eligibility excludes phase-owned and special command labels (0.242167ms)
+✔ recording target resolution refuses duplicate reviewed lineage or comment IDs (0.316042ms)
+✖ bare verifier names remain narrative rather than execution declarations (0.487917ms)
+✖ fence syntax inside a terminated multiline HTML comment remains inert (0.079666ms)
+ℹ tests 58
+ℹ suites 0
+ℹ pass 55
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 101.419417
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/reviewed-scope-readiness.test.mjs:415:1
+✖ checked narrative mention of a verifier name still requires reviewed evidence (0.564292ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/unit/task-tracker/lib/reviewed-scope-readiness.test.mjs:418:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/reviewed-scope-targets.test.mjs:141:1
+✖ bare verifier names remain narrative rather than execution declarations (0.487917ms)
+  AssertionError [ERR_ASSERTION]: aitm-verified
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/unit/task-tracker/lib/reviewed-scope-targets.test.mjs:144:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/reviewed-scope-targets.test.mjs:148:1
+✖ fence syntax inside a terminated multiline HTML comment remains inert (0.079666ms)
+  Error [ReviewedScopeError]: reviewed-scope-unclosed-example
+      at refuse (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/task-tracker/lib/reviewed-scope/model.mjs:25:9)
+      at liveLines (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/task-tracker/lib/reviewed-scope/targets.mjs:59:25)
+      at scanScope (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/task-tracker/lib/reviewed-scope/targets.mjs:63:17)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/unit/task-tracker/lib/reviewed-scope-targets.test.mjs:151:22)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'reviewed-scope-unclosed-example'
+  }
