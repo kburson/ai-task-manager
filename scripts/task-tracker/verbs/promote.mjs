@@ -437,11 +437,13 @@ export async function runPromote({
       },
     });
   let normalizationPersisted = false;
+  let normalizedDecision;
   if (recorded === 'test' && target === 'review') {
     const normalized = await deriveAndRescan({
       issueNumber,
       repo: cfg.repo,
       scanBody: body,
+      projectDir: guardContextBase.projectDir,
       deps: {
         pexec: deps.pexec || pexec,
         nowIso,
@@ -452,17 +454,18 @@ export async function runPromote({
     });
     body = normalized.scanBody;
     normalizationPersisted = normalized.persisted;
+    normalizedDecision = normalized.decision;
   }
-  const { guardResult } = await evaluateForBody(body);
+  const guardResult = normalizedDecision ?? (await evaluateForBody(body)).guardResult;
   // An indeterminate shared result is an authority failure, never a reason to
   // delegate to the lower mutator. Block it even when its producer has no
   // historical verb-specific status mapping.
   const mappedRefusals =
-    guardResult.status === 'indeterminate'
+    guardResult.status === 'indeterminate' || (normalizedDecision && guardResult.status !== 'ready')
       ? guardResult.refusals
       : (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
   const verbRefusal = refusalsToVerbResult(mappedRefusals, { issueNumber, target });
-  if (verbRefusal) return verbRefusal;
+  if (verbRefusal) return { ...verbRefusal, decision: guardResult, normalizationPersisted };
   const refinementPlan = guardResult.derived?.refinementPlan ?? null;
 
   // #267 — Test → Review pre-flight gates (dod-verified marker + #257

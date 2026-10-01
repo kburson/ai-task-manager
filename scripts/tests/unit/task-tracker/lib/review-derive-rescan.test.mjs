@@ -29,6 +29,7 @@ test('fresh current body, not the caller snapshot, is scanned when no normalizat
   const result = await deriveAndRescan({
     issueNumber: 502,
     repo: 'owner/repo',
+    projectDir: '/authoritative/project',
     scanBody: STALE_BODY,
     deps: deps(),
   });
@@ -42,6 +43,7 @@ test('failed current-body read refuses instead of returning the stale caller sna
     deriveAndRescan({
       issueNumber: 502,
       repo: 'owner/repo',
+      projectDir: '/authoritative/project',
       scanBody: STALE_BODY,
       deps: deps({
         readBack: async () => {
@@ -58,6 +60,7 @@ test('missing complete evaluator cannot enter the old derive-before-readiness pa
     deriveAndRescan({
       issueNumber: 502,
       repo: 'owner/repo',
+      projectDir: '/authoritative/project',
       deps: deps({ refreshAndEvaluate: null }),
     }),
     /complete fresh guard evaluator is required/
@@ -69,6 +72,7 @@ test('missing execution HEAD refuses instead of stamping unknown provenance', as
     deriveAndRescan({
       issueNumber: 502,
       repo: 'owner/repo',
+      projectDir: '/authoritative/project',
       deps: deps({
         pexec: async () => {
           throw new Error('git unavailable');
@@ -76,5 +80,34 @@ test('missing execution HEAD refuses instead of stamping unknown provenance', as
       }),
     }),
     { code: 'normalization-authority-drift' }
+  );
+});
+
+// @story #1859
+test('both execution HEAD reads use the authoritative project directory', async () => {
+  const headCwds = [];
+  const result = await deriveAndRescan({
+    issueNumber: 1859,
+    repo: 'owner/repo',
+    projectDir: '/authoritative/project',
+    deps: deps({
+      readBack: undefined,
+      pexec: async (bin, args, options) => {
+        if (bin === 'git') {
+          headCwds.push(options.cwd);
+          return { stdout: HEAD };
+        }
+        return { stdout: LIVE_BODY };
+      },
+    }),
+  });
+  assert.deepEqual(headCwds, ['/authoritative/project', '/authoritative/project']);
+  assert.deepEqual(result.warnings, []);
+});
+
+test('an absent authoritative directory refuses before any HEAD read', async () => {
+  await assert.rejects(
+    deriveAndRescan({ issueNumber: 1859, repo: 'owner/repo', deps: deps() }),
+    /projectDir is required/
   );
 });

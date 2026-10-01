@@ -308,6 +308,19 @@ export const CODE_DEFINITIONS = Object.freeze({
     argumentSchema: args(['head'], { head: headType }),
     disposition: 'registered-remediation',
   }),
+  'test-scope-incomplete': decisionBlocked(
+    'test-scope-incomplete',
+    ['test-exit-pre-close-completeness'],
+    { argumentSchema: args(['label'], { label: stringType }) }
+  ),
+  'normalization-decision-invalid': definition({
+    code: 'normalization-decision-invalid',
+    domain: 'execution-normalization',
+    producers: ['action-result-validation'],
+    severity: 'error',
+    statuses: ['indeterminate'],
+    phases: ['execution'],
+  }),
   'normalization-authority-drift': definition({
     code: 'normalization-authority-drift',
     domain: 'execution-normalization',
@@ -412,6 +425,7 @@ export const CODE_DEFINITIONS = Object.freeze({
 });
 
 const NO_AUTOMATIC_REASONS = Object.freeze([
+  'complete-required-checkbox',
   'legacy-guard-requires-human-investigation',
   'operator-action-required',
   'authority-investigation-required',

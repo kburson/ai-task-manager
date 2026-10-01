@@ -927,7 +927,7 @@
         {
           "file": "scripts/task-tracker/lib/test-exit-pre-close-completeness-guard.mjs",
           "line": 38,
-          "fingerprint": "sha256:392ce52fa0c098afa6b178351d7a00ab5830353dce4c447d20ba92112d56f546",
+          "fingerprint": "sha256:04652180b29d95adfc216946279127f40d1b83e0e079614ca60caff61ebcb903",
           "kind": "refusal"
         }
       ]
@@ -939,19 +939,25 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 2335,
+          "line": 2334,
           "fingerprint": "sha256:e082d3e0bf8bd6bc08fa98eed3c52e616dc3c6329d243087f10166f7d85b6894",
           "kind": "warning"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 3371,
+          "line": 3370,
           "fingerprint": "sha256:88a1ee489d6cb2287e4f4b4282081da349cada2938a86e0ae9eb61d189caafb2",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 4812,
+          "line": 3651,
+          "fingerprint": "sha256:218076a68383a07b646a0d14222471dce53c0a7f0119802d63c58f378102e0ee",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/close.mjs",
+          "line": 4848,
           "fingerprint": "sha256:1f4f84c9a23cb774cb3a3dfaaee72679c500fda0cfad70ac870ef7feb2c887ee",
           "kind": "refusal"
         }

@@ -639,3 +639,109 @@ test('Review re-entry with a clean older ledger head still selects current resid
   assert.equal(decision.status, 'ready', JSON.stringify(decision));
   assert.equal(decision.selectedAction, 'review');
 });
+
+// @story #1859
+test('real Review projection preserves completeness checkbox labels in action output', async () => {
+  const item = fixture({
+    issueBody: bodyFor('test').replace('## Scope\n', '## Scope\n- [ ] Step A\n- [ ] Step B\n'),
+    runGuards: (_from, _to, context) =>
+      runGuards('test', 'review', {
+        ...context,
+        deps: {
+          ...context.deps,
+          observeDependencyReadiness: async () => ({ status: 'ready', unfinished: [] }),
+          reconcileDependencyDisposition: async () => {},
+          fetchParentIssue: async () => null,
+          resolveDocsOnlyLaneSkipProof: async () => false,
+          evidenceBranchReachability: async () => ({ ok: true }),
+        },
+      }),
+  });
+  const result = await item.decision('review');
+  assert.deepEqual(
+    result.blockers.filter((r) => r.code === 'test-scope-incomplete').map((r) => r.args.label),
+    ['- [ ] Step A', '- [ ] Step B']
+  );
+  assert.deepEqual(item.effects, []);
+});
+
+// @story #1859
+test('Review consumes normalized typed labels before transitions or reviewer work', async () => {
+  const projectDir = mkdtempProjectIsolated('aitm-review-normalization-');
+  const statePath = path.join(projectDir, 'state.json');
+  writeFileSync(
+    statePath,
+    JSON.stringify({ active: '#1667', entryStartTs: now(), lastWordMarker: 0 })
+  );
+  const original = `## Scope
+- [ ] Step A
+- [ ] Step B
+<!-- aitm-dod-verified sha="${HEAD}" ts="2026-09-21T21:20:00Z" -->
+<!-- aitm-last-known-state state="test" ts="2026-09-21T21:20:00Z" -->`;
+  const decision = await runGuards('test', 'review', {
+    issueNumber: ISSUE,
+    body: original,
+    toState: 'review',
+    cfg: { repo: REPOSITORY },
+    deps: {
+      observeDependencyReadiness: async () => ({ status: 'ready', unfinished: [] }),
+      reconcileDependencyDisposition: async () => {},
+      fetchParentIssue: async () => null,
+      resolveDocsOnlyLaneSkipProof: async () => false,
+    },
+  });
+  const effects = [];
+  let stderr = '';
+  let evaluatorCalls = 0;
+  const previousExit = process.exit;
+  const previousWrite = process.stderr.write;
+  process.exit = (code) => {
+    const error = new Error(`exit:${code}`);
+    error.code = code;
+    throw error;
+  };
+  process.stderr.write = (chunk) => {
+    stderr += chunk;
+    return true;
+  };
+  try {
+    await assert.rejects(
+      verbReview({
+        cfg: { repo: REPOSITORY },
+        projectDir,
+        statePath,
+        rest: ['#1667'],
+        SKIP_NETWORK: false,
+        drainQueueIfAny: async () => {},
+        nowIso: () => new Date().toISOString(),
+        runReviewPreflight: async () => ({ ok: true }),
+        pexec: async (bin) =>
+          bin === 'git' ? { stdout: HEAD } : { stdout: JSON.stringify({ body: original }) },
+        runGuards: async () => runGuards('done', 'done', {}),
+        mutateIssueBody: async () => ({ status: 'noop' }),
+        fetchSubIssues: async () => [],
+        normalizationReadBack: async () => ({ body: original, head: HEAD }),
+        normalizationEvaluate: async () => {
+          evaluatorCalls++;
+          return decision;
+        },
+        safePostTiming: async (_issue, row) => effects.push(row),
+        runMoveState: async () => {
+          effects.push('transition');
+          throw new Error('must not transition');
+        },
+      }),
+      (error) => error.code === 4
+    );
+    assert.match(stderr, /2 incomplete checkbox/);
+    assert.match(stderr, / {3}- \[ \] Step A\n {3}- \[ \] Step B/);
+    assert.equal(evaluatorCalls, 1);
+    assert.equal(effects.length, 1);
+    assert.match(effects[0], /gate-refused/);
+    assert.match(effects[0], /2 unticked checkbox/);
+  } finally {
+    process.exit = previousExit;
+    process.stderr.write = previousWrite;
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+});

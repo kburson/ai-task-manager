@@ -39,6 +39,11 @@ export const testExitPreCloseCompletenessGuard = {
       ok: false,
       reason: blockers[0],
       blockers,
+      refusals: stillUnticked.map((label) => ({
+        code: 'test-scope-incomplete',
+        args: { label },
+        noAutomaticRemediation: { reason: 'complete-required-checkbox' },
+      })),
     };
   },
 };
