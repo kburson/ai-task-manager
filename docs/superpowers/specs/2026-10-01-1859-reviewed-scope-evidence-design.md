@@ -1,7 +1,7 @@
 # Reviewed narrative Scope evidence and truthful Review refusals
 
 - Issue: [#1859](https://github.com/kburson/ai-task-manager/issues/1859).
-- Status: revision r2 under Astra 6 SAR; no implementation or workflow approval.
+- Status: XPR revision 1 after Astra SAR r2; no implementation or workflow approval.
 - Source baseline: `1b495236e9b9651c5ffd5ad67d4c7f43238ed44f`.
 
 ## Problem and source evidence
@@ -61,7 +61,15 @@ Separately hash target source content excluding its glyph and reviewed-history
 markers; changes to other target content invalidate the record. ACs, Verification Commands, all DoD subsections,
 lifecycle items and directory Delivery Contracts are ineligible. Directory-backed
 issues receive an explicit unsupported-route refusal; no new contract operation.
-Scope lines declaring machine verifiers are ineligible. Permit this recording in
+Use one pure `isVerifierBearingScopeTarget` predicate in the writer, mutation
+validator and readiness guard. Refuse consolidated `aitm-verified` declarations
+or proof (including cmd, vc-list, ts, sha or evidence fields), legacy
+`aitm-verified-by` / `aitm-verified-at`, AC/DoD execution markers, vc-list attributes,
+and standalone `vc:<positive integer>` citations in visible text. Recognized
+marker prefixes with malformed payloads refuse rather than becoming narrative.
+This conservative boundary includes markers already carrying execution proof;
+those remain in their existing execution route. Mere prose/backtick examples
+without a recognized verifier/citation do not create an executable declaration. Permit this recording in
 Develop and Test with current binding, singleton assignment and activity authority.
 Other stages refuse with the owning stage action. Evidence needing refresh in
 Review requires the operator to use the existing demotion/re-entry workflow to
@@ -80,7 +88,17 @@ explains what attachments establish for this step and their limits; empty text
 refuses. Artifacts are worktree-relative paths with expected SHA-256 hashes.
 Read actual bytes and compare independently. Refuse missing/unreadable files,
 directories, devices, symlinks, physical escapes, duplicate paths and invalid hashes.
-The manifest itself must resolve within the bound worktree. Never fetch remote
+The manifest itself must resolve within the bound worktree. Recording and
+Test-to-Review evaluation must run in that bound operator checkout, identified by
+canonical physical realpath plus its non-detached branch and HEAD. Another linked
+worktree at the same branch/HEAD does not match. Pass the authoritative projectDir
+explicitly to Git and artifact readers; never use an unrelated ambient cwd.
+Refuse a non-bound/main/sandbox checkout before evaluating local evidence, naming
+the bound checkout as the recovery location, rather than suggesting re-recording
+there. Detached Test sandboxes produce exact-SHA Test receipts, not reviewed Scope
+records; consume their accepted receipts back in the bound operator checkout.
+Keep attachments available there through readiness; ignored files are allowed but
+must be retained. Recommend recording after the final Develop commit, in Test. Never fetch remote
 URLs or interpret text as instructions.
 
 Historical output also records command text, original execution time, source
@@ -95,21 +113,43 @@ actor identity. Establish documented limits for manifest size, file count,
 individual and aggregate bytes, rationale, and encoded record size; test boundaries.
 No silent truncation or embedded attachment contents in GitHub bodies.
 
-Persist the complete canonical validated record, its SHA-256, and artifact paths
-and digests in a deterministic encoded same-line `aitm-reviewed-scope-evidence`
-comment. The record includes binding, provenance, rationale, target identity,
-actor and timestamp. A digest-only pointer to ephemeral scratch is insufficient.
-This marker family must not count as `hasExecutionProof` or synthesize exit=0.
-Inspection attests an operator's judgment plus validated attachments; it does not
-prove that substantive judgment true or replace exact-SHA Test evidence.
+Persist the complete canonical validated record in a dedicated durable GitHub
+issue comment on the same repository/issue, not scratch. Include a recognizable
+schema envelope, record digest, binding, provenance, rationale, target identity,
+actor/time, stable lineage and predecessor comment-ID/digest. Comments are
+append-only through this capability. The same-line `aitm-reviewed-scope-evidence`
+marker stores only the current comment ID, record SHA-256 and lineage ID. Verify
+comment issue membership and canonical record digest on every read; never fetch
+an arbitrary URL. The immutable record retains artifact paths and digests, not
+attachment contents. Old comments retain historical payloads without growing the
+issue body. Generic body writes cannot mint, replace or remove this pointer.
+
+Bound canonical record JSON to 8 KiB and its encoded comment to 12 KiB; bound the
+pointer to 384 ASCII bytes. Six targets therefore occupy at most 2,304 body bytes
+regardless of refresh count: 20 complete HEAD refreshes create at most 120 record
+comments (at most 1,440 KiB), while the six current pointers remain bounded.
+Preflight the resulting body against a conservative 60,000 UTF-8-byte budget
+before creating a comment. If unrelated body content consumes that budget, refuse
+with the exact byte excess and an operator instruction to move ordinary long-form
+prose to a linked durable issue comment through existing editing tools; preserve
+all governed sections/markers. Then retry the same recording. No history pruning,
+attachment deletion or new generic archive command is introduced. Provider comment
+limits/rate failures refuse truthfully and can be retried after recovery.
+
+This family never counts as `hasExecutionProof` or synthesizes exit=0. Inspection
+attests the recording actor's judgment plus validated attachments, not objective
+truth or exact-SHA Test success. Runtime reads validate the current record and its
+predecessor descriptor, not the full historical chain. Full historical traversal
+is an audit operation; deleted/changed current comments block, and historical
+comments remain available for audit without making readiness grow with history.
 
 ## Transaction and readiness
 
 Use `mutateIssueBody` with a narrow typed reviewed-evidence capability, never
 `evidenceStamp: true` or `allowUnverifiedTicks: true`. Validate the entire delta:
-only one eligible Scope target may change. Initial recording appends one record
-and checks its glyph; refreshing an already-checked target appends a superseding
-record without a glyph change. Rechecking an unchecked target with current
+only one eligible Scope target may change. Initial recording persists one comment then installs its pointer and checks the
+glyph; refreshing a checked target persists a superseding comment and replaces
+only the current pointer without changing the glyph. Rechecking an unchecked target with current
 evidence changes only its glyph after validation. An already-checked equivalent
 request is a byte-identical no-op. Preserve unrelated bytes except the existing
 body-version increment on actual writes. Protect this new
@@ -119,46 +159,58 @@ loss. AC and DoD stampers retain exclusive ownership.
 On each fresh-base retry, resolve target and section again, rehydrate binding,
 actor and assignment authority, and rehash manifest and attachments. Changes to
 request bytes, binding or target refuse before that push. Use existing body CAS;
-never replay earlier body bytes. Read back and verify target plus exact record.
+never replay earlier body bytes. Read back and verify target, pointer and exact comment record. Comment creation
+and body CAS are separate operations: create/read back the immutable comment
+before installing its pointer. On a failed/uncertain body write, preserve the
+unreferenced comment and reconcile by request digest, predecessor and lineage
+before retrying. If a comment creation outcome is uncertain, search/read existing
+same-issue records before any second create; ambiguous duplicates refuse. A
+concurrent successor invalidates the old expected predecessor; never overwrite
+its pointer. Bound body preflight and runtime authority checks precede comments,
+and fresh binding/artifact checks repeat before the body push.
 Uncertain writes or readback failure must remain uncertain; retry reconciles the
 existing exact record before another mutation.
 
-Compute a stable request digest over the canonical validated manifest, target
-identity and binding, excluding runtime actor/timestamp. An equivalent request
-reuses the persisted current record after full validation and preserves its
-original actor/timestamp. New records include the preceding record digest (null
-for the first record), creating one append-only history chain per target. The
-unique chain head is current; forks, broken references, duplicate records and
-ambiguous heads refuse. The first record establishes a stable lineage identifier;
-content hashes describe each recording, not a new lineage on every refresh.
-Historical records retain their original target/binding and are checked for
-schema, digest and chain integrity only. Only the current head must match live
-binding, target content and attachment bytes. A target label/content edit may
-stale its current record while keeping that line's history; a fresh recording
-appends to the same lineage. Moving/copying the lineage to another checkbox is
-forbidden. Untargetable or ambiguous edits require explicit refusal, not history
-rewriting or selection by line number. Superseded records never become current again solely
-because an old binding matches. An explicit changed request may supersede stale
-evidence after fresh validation. `ensureUnchecked` retains history. A new HEAD
-requires a new validated request. An uncertain retry reconciles the matching
-request and chain head before another append. Refuse history/body-size limits
-before writes; never prune history to fit.
+Compute a stable request digest over canonical validated manifest, target and
+binding, excluding runtime actor/time. Equivalent requests reuse the current
+comment and its original metadata after full validation. The first record creates
+a stable lineage ID; successor records name the expected current comment/digest.
+Only the single body pointer identifies current authority; unreferenced comments
+are historical or orphaned attempts, never automatically selected as current.
+Conflicting matching attempts require explicit reconciliation, not timestamp
+ordering. Target content edits may stale the pointer while retaining lineage;
+a new validated record supersedes it. Moving/copying lineage to a different
+checkbox is forbidden. `ensureUnchecked` retains the current pointer. New HEAD
+requires a new validated request. The content digest excludes only glyph and the
+reviewed pointer; adding any other same-line marker deliberately stales it.
 
-The proof guard admits this family only on eligible Scope lines through its
-sanctioned writer. At Test-to-Review readiness, checked narrative Scope items
-must have either their established valid execution-proof route or valid reviewed
-evidence; the new route preserves existing machine proof. If a reviewed marker
-is present, malformed history or a stale current head still blocks rather than
-falling back to a glyph or another marker. Unchecked eligible Scope items and checked
-items missing both forms of evidence also block. Run this validation independently
-of the accepted-Test early return in the legacy completeness guard. Use the
-complete Test-to-Review evaluator for Review execution, promotion and readiness
-explanation, including fresh retries. Resolve the existing legacy/directory lane
-before this guard: directory-backed contracts keep their existing readiness
-rules and do not gain narrative Scope proof requirements. In legacy bodies,
-reviewed markers outside an eligible live Scope target, including markers on
-verifier-bearing items, refuse explicitly rather than being ignored. Fixtures
-must verify both lane routing and misplaced-marker refusal.
+## Compatibility and readiness boundaries
+
+New split-plan child Scope output includes exactly one immutable
+`<!-- aitm-scope-evidence-policy:v1 -->` within root Scope. Only these explicitly
+versioned legacy bodies require every checked eligible narrative Scope target to
+have valid reviewed evidence or its established execution-proof route, and every
+unchecked eligible narrative Scope target to block even with accepted Test.
+Protect policy introduction/removal/duplication in governed mutation; only the
+child-generation route introduces it. Do not infer adoption from dates, body
+versions, old Generated-by text, or retroactively add it to existing issues.
+
+Unversioned legacy bodies retain their existing unchecked-only completeness and
+accepted-Test short-circuit for targets without reviewed pointers. Existing honest
+hatch ticks (with audit markers) and proofless web-UI ticks therefore keep existing
+legacy behavior; they are not relabeled as reviewed evidence. Explicitly recording
+one old target opts only that target into current-record validation. Every present
+reviewed pointer is validated independently of accepted-Test skips, even on an
+unversioned issue; malformed/stale pointers never fall back to glyph authority.
+Do not synthesize records or claim historical inspection occurred. Fixtures cover
+legacy hatch ticks, web ticks, old generated bodies, individually adopted targets,
+and new policy-versioned children.
+
+Use the shared pure parser and complete Test-to-Review evaluator for Review,
+promotion and explanation, including fresh retries. Resolve legacy/directory lane
+first: directory contracts retain existing rules with no new narrative proof
+obligations. In legacy bodies, reviewed pointers on ineligible live targets or
+outside live Scope refuse. Marker-like text inside fenced examples remains inert.
 
 Live binding and attachment validation applies to recording, its readback and
 Test-to-Review readiness. It is not a new terminal Close gate requiring the
@@ -215,20 +267,22 @@ No stale-body fallback, stage move, or weakened readiness gate is introduced.
 
 ## Acceptance and verification
 
-| Issue AC | Required implementation cases                                                                                                                                                                                                                                |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| AC1      | check unit suite: both provenances, runtime binding and actor, artifact digests, separate execution/recording commits, no machine-proof classification, idempotence                                                                                          |
-| AC2      | check unit suite: invalid manifests, missing/changed/escaping/symlink artifacts, wrong binding, duplicate labels, AC/DoD/VC/directory and verifier-bearing Scope targets, batch/hatch combinations, generic fabrication, retry races; no unauthorized writes |
-| AC3      | derive-rescan unit and normalization integration suites: original blocked/indeterminate decisions before write, during retry, after successful write; genuine HEAD/projection drift remains distinct                                                         |
-| AC4      | integration: generate child Scope using actual split-plan renderer, record each step honestly, supply accepted exact-SHA Test evidence and reach readiness; checked stale/missing records still block; shipped CLI help exposes route                        |
+| Issue AC | Required implementation cases                                                                                                                                                                                                                                                 |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC1      | check unit suite: both provenances, runtime binding and actor, artifact digests, separate execution/recording commits, no machine-proof classification, idempotence                                                                                                           |
+| AC2      | check unit suite: invalid manifests, missing/changed/escaping/symlink artifacts, wrong binding, duplicate labels, AC/DoD/VC/directory and verifier-bearing Scope targets, batch/hatch combinations, generic fabrication, retry races; no unauthorized writes                  |
+| AC3      | Review renderer in `verbs/review.mjs` must consume preserved `decision`; derive-rescan unit and normalization integration suites: original blocked/indeterminate decisions before write, during retry, after successful write; genuine HEAD/projection drift remains distinct |
+| AC4      | integration: generate child Scope using actual split-plan renderer, record each step honestly, supply accepted exact-SHA Test evidence and reach readiness; checked stale/missing records still block; shipped CLI help exposes route                                         |
 
 Use the issue's vc:1–3 test files. Add focused body-invariant, proof-marker, Review
 and Close tests at changed seams. Exercise legacy and directory refusal paths.
 Assert semantic decisions and item lists, not only one error string. Cover
 fenced examples, duplicate Scope headings, machine-proof compatibility,
 accepted-Test skips, all four mutation outcomes, stable uncertain retries,
-history forks, valid stale historical entries with a fresh head, content refresh
-within one lineage, lane routing, misplaced markers and size exhaustion. Cover known Close prechecks as blocked and
+comment/body partial failures and duplicate reconciliation, bounded pointer
+replacement over 20 six-target refreshes, content refresh in one lineage,
+compatibility policy, non-bound checkout refusals, shared verifier predicate,
+lane routing, misplaced markers and body-capacity recovery. Cover known Close prechecks as blocked and
 malformed envelopes as errors. Assert that delivered/local-trunk Close does not
 acquire a dependency on the original reviewed-evidence checkout or files. Implementation
 must also pass declared fast/slow suites, lint, format and commit checks (vc:4–8),
