@@ -400,3 +400,39 @@ test('whitespace cannot bypass special-label exclusion; manifest uses exact visi
   );
   assert.equal(f.creates, 0);
 });
+test('recording refuses phase-owned lifecycle and special-label targets before comments', async () => {
+  for (const label of [
+    'Agent Review Passed',
+    'Final Review Passed',
+    'Passed final human review',
+    'Story closed and moved to Done',
+    'Timing data flushed to issue',
+    'Deep dive complete',
+    'Discussion complete',
+  ]) {
+    const f = fixture();
+    f.body = f.body.replace('Inspect output', label);
+    f.changeManifest({ label });
+    await assert.rejects(
+      recordReviewedScope({ ctx: f.ctx, label, manifestPath: 'manifest.json' }),
+      { code: 'reviewed-scope-target' }
+    );
+    assert.equal(f.creates, 0);
+    assert.equal(f.pushes, 0);
+  }
+});
+test('recording refuses copied lineage before creating a successor', async () => {
+  const f = fixture();
+  await run(f);
+  const pointer = parsePointer(f.body.split('\n').find((x) => x.includes('Inspect output')));
+  f.body = f.body.replace(
+    '## Acceptance Criteria',
+    '- [ ] Other target ' +
+      `<!-- aitm-reviewed-scope-evidence comment="${pointer.commentId}" sha256="${pointer.sha256}" lineage="${pointer.lineage}" -->` +
+      '\n## Acceptance Criteria'
+  );
+  f.changeManifest({ rationale: 'A new request must not continue a copied lineage.' });
+  await assert.rejects(run(f), { code: 'reviewed-scope-pointer-duplicate' });
+  assert.equal(f.creates, 1);
+  assert.equal(f.pushes, 1);
+});

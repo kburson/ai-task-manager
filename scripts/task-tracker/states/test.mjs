@@ -1,3 +1,5 @@
+// @story #1859
+import { testExitReviewedScopeGuard } from '../lib/test-exit-reviewed-scope-guard.mjs';
 // State object: test (#292, #267).
 //
 // Test→review gates live in the exit list and are evaluated by
@@ -22,6 +24,7 @@ export default Object.freeze({
     blockedByGuard,
     testExitDodVerifiedGuard,
     testExitPreCloseCompletenessGuard,
+    testExitReviewedScopeGuard,
     childCannotLeadEpicExitGuard,
   ]),
 });

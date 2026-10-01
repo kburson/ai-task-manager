@@ -51,7 +51,7 @@ export async function readEvidenceContext({
     (await fs.realpath(observed.worktreePath)) !== worktree ||
     (await fs.realpath(invoking.worktreePath)) !== worktree
   )
-    refuse('reviewed-scope-worktree');
+    refuse('reviewed-scope-worktree', `bound checkout: ${worktree}`);
   if (
     !binding.worktreeBranch ||
     binding.worktreeBranch === 'HEAD' ||

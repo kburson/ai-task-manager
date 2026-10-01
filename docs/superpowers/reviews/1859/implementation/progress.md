@@ -8,7 +8,8 @@ Execution plan: `docs/superpowers/plans/2026-10-01-1859-reviewed-scope-evidence.
 - Task 2: runtime authority, physical bounded artifact validation and immutable same-issue comment reconciliation implemented; 40 focused tests and ESLint/Prettier passed. Committed and pushed as `5c935352`.
 - Task 3: narrow branded transaction and early reviewed CLI route implemented. Focused checkbox/invariant/record suites pass (58 tests); existing body-writer plus transaction regression suites pass (34 tests). Parallel review identified a same-target race and whitespace route bypass; regression fixes also close the asynchronous generic writer bypass. ESLint/Prettier and diff checks pass.
 - Task 5: complete non-ready normalization envelopes now survive initial evaluation, retries and successful-write readback. Typed completeness labels flow through Promote, Review and Close; explicit Git cwd is supplied. Worker verification: 148 focused tests, 46 adjacent contract/completeness tests, ESLint and refusal inventory lint passed.
-- Tasks 4 and 6: readiness implementation is undergoing controller integration; generated-child flow and shipped guidance remain pending.
+- Task 4: adoption-aware readiness is registered only at Test exit with five typed refusal codes. Explicit execution/invoking directories and authority ports survive explanation, Review, Promote and the lower in-process host. Parallel review fixes cover duplicate labels, manifest labels and phase-owned targets. Combined focused suites pass (249 tests); the lower-host suite passes (9 tests), and ESLint passes.
+- Task 6: generated six-target flow passes with artifact drift/recovery and 20 HEAD refresh rounds. Shipped guidance and release certification are being finalized; full package verification is underway.
 
 ## Lifecycle admission
 

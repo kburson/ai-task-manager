@@ -321,6 +321,7 @@ export async function evaluateExplanation({
     });
   } else if (effectiveAction === 'review') {
     readiness = await evaluateReviewReadiness({
+      invokingDir: process.cwd(),
       issue,
       cfg,
       projectDir: projectRoot,
@@ -355,7 +356,7 @@ export async function evaluateExplanation({
         : {}),
       promotePorts: { cfg, projectDir: projectRoot },
       testPorts: { cfg, projectDir: projectRoot },
-      reviewPorts: { cfg, projectDir: projectRoot },
+      reviewPorts: { cfg, projectDir: projectRoot, invokingDir: process.cwd() },
       closePorts: { cfg, projectDir: projectRoot },
     },
   });

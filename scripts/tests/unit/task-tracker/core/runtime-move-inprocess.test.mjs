@@ -16,8 +16,8 @@ import { runMoveStateInProcess } from '../../../../task-tracker/runtime.mjs';
 // tee-captures). Never spawns a child.
 function makeHost({ code = 0, stderr = '', stdout = '' } = {}) {
   const calls = [];
-  const host = async ({ argv, env }) => {
-    calls.push({ argv, env });
+  const host = async ({ argv, env, projectDir, invokingDir }) => {
+    calls.push({ argv, env, projectDir, invokingDir });
     if (stdout) process.stdout.write(stdout);
     if (stderr) process.stderr.write(stderr);
     return code;
@@ -102,4 +102,17 @@ test('process.stdout/stderr are restored after the in-process call', async () =>
   await runMoveStateInProcess(1, 'develop', { silent: true }, { host });
   assert.equal(process.stdout.write, beforeOut, 'stdout.write restored');
   assert.equal(process.stderr.write, beforeErr, 'stderr.write restored');
+});
+
+// @story #1859
+test('runtime forwards authoritative execution and invoking directories to the lower host', async () => {
+  const { host, calls } = makeHost({ code: 0 });
+  await runMoveStateInProcess(
+    1859,
+    'review',
+    { silent: true, projectDir: '/bound/project', invokingDir: '/actual/invocation' },
+    { host }
+  );
+  assert.equal(calls[0].projectDir, '/bound/project');
+  assert.equal(calls[0].invokingDir, '/actual/invocation');
 });

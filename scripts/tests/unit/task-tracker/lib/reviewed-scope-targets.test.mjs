@@ -105,3 +105,34 @@ test('content identity keeps original trailing bytes while removing only pointer
   );
   assert.equal(original.contentDigest, resolveScopeTarget(body + ' ' + pointer, 'A').contentDigest);
 });
+test('narrative eligibility excludes phase-owned and special command labels', async () => {
+  const { isEligibleNarrativeScopeTarget } =
+    await import('../../../../task-tracker/lib/reviewed-scope/targets.mjs');
+  for (const label of [
+    'Agent Review Passed',
+    'Final Review Passed',
+    'Passed final human review',
+    'Story closed and moved to Done',
+    'Timing data flushed to issue',
+    'Deep dive complete',
+    'Deep-dive complete',
+    'Discussion complete',
+    ' agent review passed ',
+  ])
+    assert.equal(isEligibleNarrativeScopeTarget('- [ ] ' + label), false, label);
+  assert.equal(isEligibleNarrativeScopeTarget('- [ ] Inspect saved output'), true);
+  assert.equal(
+    isEligibleNarrativeScopeTarget('- [ ] Run output <!-- aitm-verified cmd="node test.mjs" -->'),
+    false
+  );
+});
+test('recording target resolution refuses duplicate reviewed lineage or comment IDs', () => {
+  const pointer = (id, lineage) =>
+    `<!-- aitm-reviewed-scope-evidence comment="${id}" sha256="${'a'.repeat(64)}" lineage="${lineage}" -->`;
+  for (const second of [pointer('2', 'b'.repeat(64)), pointer('1', 'c'.repeat(64))]) {
+    const body = `## Scope\n- [ ] A ${pointer('1', 'b'.repeat(64))}\n- [ ] B ${second}`;
+    assert.throws(() => resolveScopeTarget(body, 'A'), {
+      code: 'reviewed-scope-pointer-duplicate',
+    });
+  }
+});

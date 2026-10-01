@@ -308,6 +308,33 @@ export const CODE_DEFINITIONS = Object.freeze({
     argumentSchema: args(['head'], { head: headType }),
     disposition: 'registered-remediation',
   }),
+  'reviewed-scope-current-missing': decisionBlocked(
+    'reviewed-scope-current-missing',
+    ['test-exit-reviewed-scope'],
+    { argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }) }
+  ),
+  'reviewed-scope-stale': decisionBlocked('reviewed-scope-stale', ['test-exit-reviewed-scope'], {
+    argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }),
+  }),
+  'reviewed-scope-comment-invalid': decisionBlocked(
+    'reviewed-scope-comment-invalid',
+    ['test-exit-reviewed-scope'],
+    { argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }) }
+  ),
+  'reviewed-scope-wrong-checkout': decisionBlocked(
+    'reviewed-scope-wrong-checkout',
+    ['test-exit-reviewed-scope'],
+    { argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }) }
+  ),
+  'reviewed-scope-read-unavailable': definition({
+    code: 'reviewed-scope-read-unavailable',
+    domain: 'decision-blocker',
+    producers: ['test-exit-reviewed-scope'],
+    severity: 'error',
+    statuses: ['indeterminate'],
+    phases: ['evaluation'],
+    argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }),
+  }),
   'test-scope-incomplete': decisionBlocked(
     'test-scope-incomplete',
     ['test-exit-pre-close-completeness'],
@@ -425,6 +452,7 @@ export const CODE_DEFINITIONS = Object.freeze({
 });
 
 const NO_AUTOMATIC_REASONS = Object.freeze([
+  'operator-reviewed-evidence-required',
   'complete-required-checkbox',
   'legacy-guard-requires-human-investigation',
   'operator-action-required',

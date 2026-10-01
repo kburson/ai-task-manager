@@ -1,10 +1,24 @@
 // @story #1859
 import { stripMarkers } from '../ac-evidence.mjs';
+import { LIFECYCLE_LABEL_SET } from '../lifecycle-dod.mjs';
 import { POLICY_MARKER, parsePointer, stripReviewedPointer, sha256, refuse } from './model.mjs';
 
 export function isVerifierBearingScopeTarget(raw) {
   return /aitm-(?:verified(?:-by|-at)?|ac-evidence|dod-evidence)|\bvc-list\s*=|(?<![\w:])vc:[1-9][0-9]*(?![\w])/i.test(
     String(raw)
+  );
+}
+const phaseOwnedLabels = new Set([...LIFECYCLE_LABEL_SET].map((label) => label.toLowerCase()));
+/** Eligibility is shared by recording and readiness; phase-owned checkboxes
+ * and special command routes cannot acquire narrative evidence authority. */
+export function isEligibleNarrativeScopeTarget(raw) {
+  const match = /^- \[[ x]\] (.+)$/.exec(String(raw));
+  if (!match || isVerifierBearingScopeTarget(raw)) return false;
+  const label = stripMarkers(match[1]);
+  return (
+    Boolean(label) &&
+    !phaseOwnedLabels.has(label.toLowerCase()) &&
+    !/^deep[- ]?dive complete$|^discussion complete$/i.test(label)
   );
 }
 export function liveLines(body) {
@@ -85,8 +99,16 @@ export function scanScope(body) {
   return { policy: policies.length ? 'v1' : 'legacy', targets, pointers, allTargets };
 }
 export function resolveScopeTarget(body, label) {
-  const scan = scanScope(body),
-    wanted = stripMarkers(label),
+  const scan = scanScope(body);
+  const lineages = new Set(),
+    comments = new Set();
+  for (const { pointer } of scan.pointers) {
+    if (lineages.has(pointer.lineage) || comments.has(pointer.commentId))
+      refuse('reviewed-scope-pointer-duplicate');
+    lineages.add(pointer.lineage);
+    comments.add(pointer.commentId);
+  }
+  const wanted = stripMarkers(label),
     matches = scan.allTargets.filter((x) => x.label === wanted);
   if (matches.length !== 1 || !scan.targets.includes(matches[0])) refuse('reviewed-scope-target');
   return matches[0];

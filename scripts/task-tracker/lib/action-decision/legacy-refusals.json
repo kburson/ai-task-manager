@@ -931,6 +931,17 @@
           "kind": "refusal"
         }
       ]
+    },
+    "test-exit-reviewed-scope": {
+      "complete": true,
+      "sites": [
+        {
+          "file": "scripts/task-tracker/lib/test-exit-reviewed-scope-guard.mjs",
+          "line": 19,
+          "fingerprint": "sha256:9d96c963c437f5f615a9b9f021c23035c1c8e74120ee7655bc868a60f81eb3f6",
+          "kind": "refusal"
+        }
+      ]
     }
   },
   "symbols": {
@@ -1034,7 +1045,7 @@
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 1166,
+          "line": 1169,
           "fingerprint": "sha256:492e8cc29829df9cabe2708fc7955250795a0821d1a29aee6fa0f99bc8dcf005",
           "kind": "refusal"
         }

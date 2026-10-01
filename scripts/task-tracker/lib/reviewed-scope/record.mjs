@@ -18,7 +18,7 @@ import {
   refuse,
   ReviewedScopeError,
 } from './model.mjs';
-import { resolveScopeTarget, liveLines } from './targets.mjs';
+import { resolveScopeTarget, liveLines, isEligibleNarrativeScopeTarget } from './targets.mjs';
 import { readRecordingAuthority, readBoundManifest, validateLocalEvidence } from './runtime.mjs';
 import { readCurrentRecord, ensureRecordComment } from './comments.mjs';
 
@@ -58,7 +58,7 @@ function targetOnBase(base, descriptor) {
   if (parseIssueDirectory({ issueBody: base }) !== null) refuse('reviewed-scope-directory');
   const target = resolveScopeTarget(base, descriptor.label);
   if (
-    target.verifierBearing ||
+    !isEligibleNarrativeScopeTarget(target.raw) ||
     target.contentDigest !== descriptor.targetDigest ||
     target.checked !== descriptor.expectedGlyph ||
     !samePointer(target.pointer, descriptor.expectedPointer)
@@ -201,6 +201,7 @@ export async function recordReviewedScope({ ctx, label, manifestPath }) {
   const target = resolveScopeTarget(initial, label);
   if (manifest.label !== target.label) refuse('reviewed-scope-label');
   if (target.verifierBearing) refuse('reviewed-scope-verifier-target');
+  if (!isEligibleNarrativeScopeTarget(target.raw)) refuse('reviewed-scope-target');
   const request = requestDigest({ manifest, targetDigest: target.contentDigest });
   let current = null;
   if (target.pointer) {

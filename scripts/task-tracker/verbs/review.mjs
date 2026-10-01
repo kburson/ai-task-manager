@@ -1071,6 +1071,9 @@ export async function verbReview(ctx) {
         cfg,
         fromState: 'test',
         toState: 'review',
+        projectDir,
+        invokingDir: ctx.invokingDir ?? process.cwd(),
+        deps: ctx.deps,
       });
       const dodRefusal = (dodResult.refusals || []).find((r) => r.id === 'test-exit-dod-verified');
       if (dodRefusal) {
@@ -1465,6 +1468,8 @@ export async function verbReview(ctx) {
             toState: 'review',
             lifecycleEvidence: reviewEvidence.lifecycleEvidence,
             projectDir,
+            invokingDir: ctx.invokingDir ?? process.cwd(),
+            deps: ctx.deps,
           },
           runGuards: runGuardsFn,
           loadPolicy: async ({ requirementIds }) =>

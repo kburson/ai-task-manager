@@ -84,6 +84,7 @@ function fixture({
         reviewPorts: {
           scope,
           projectDir: process.cwd(),
+          invokingDir: process.cwd(),
           verifyResident: async () => resident,
           runGuards:
             runGuards ??
@@ -744,4 +745,145 @@ test('Review consumes normalized typed labels before transitions or reviewer wor
     process.stderr.write = previousWrite;
     rmSync(projectDir, { recursive: true, force: true });
   }
+});
+
+// @story #1859
+import { testExitReviewedScopeGuard } from '../../../../task-tracker/lib/test-exit-reviewed-scope-guard.mjs';
+import {
+  POLICY_MARKER,
+  serializePointer,
+  sha256,
+  ReviewedScopeError,
+} from '../../../../task-tracker/lib/reviewed-scope/model.mjs';
+import { STATES } from '../../../../task-tracker/states/index.mjs';
+for (const code of [
+  'reviewed-scope-current-missing',
+  'reviewed-scope-stale',
+  'reviewed-scope-comment-invalid',
+  'reviewed-scope-wrong-checkout',
+  'reviewed-scope-read-unavailable',
+]) {
+  test(`real registry preserves ${code} without an unclassified fallback`, async () => {
+    const registry = await import(
+      `../../../../task-tracker/lib/guard-registry.mjs?reviewed=${code}`
+    );
+    registry.registerGuard('test', 'exit', testExitReviewedScopeGuard);
+    const authority = {
+      repository: 'owner/repo',
+      issue: 1859,
+      worktree: '/bound',
+      branch: 'codex/1859',
+      head: 'a'.repeat(40),
+    };
+    const pointer = serializePointer({
+      commentId: '99',
+      sha256: 'a'.repeat(64),
+      lineage: 'b'.repeat(64),
+    });
+    const reviewed = {
+      readEvidenceContext: async () => {
+        if (code === 'reviewed-scope-wrong-checkout')
+          throw new ReviewedScopeError('reviewed-scope-worktree', 'bound checkout: /bound');
+        if (code === 'reviewed-scope-read-unavailable') throw new Error('rate limited');
+        return authority;
+      },
+      readCurrentRecord: async () => {
+        if (code === 'reviewed-scope-comment-invalid')
+          throw new ReviewedScopeError('reviewed-scope-comment-digest');
+        return { manifest: authority, targetDigest: sha256('Work') };
+      },
+      validateArtifacts: async () => {
+        if (code === 'reviewed-scope-stale')
+          throw new ReviewedScopeError('reviewed-scope-artifact-digest');
+      },
+    };
+    const decision = await registry.runGuards('test', 'review', {
+      body: `## Scope\n${POLICY_MARKER}\n- [x] Work${code === 'reviewed-scope-current-missing' ? '' : ' ' + pointer}\n`,
+      issueNumber: 1859,
+      cfg: { repo: 'owner/repo' },
+      projectDir: '/bound',
+      invokingDir: '/bound',
+      deps: { reviewedScope: reviewed },
+    });
+    assert.equal(
+      decision.status,
+      code === 'reviewed-scope-read-unavailable' ? 'indeterminate' : 'blocked',
+      JSON.stringify(decision)
+    );
+    assert.equal(decision.refusals[0].code, code, JSON.stringify(decision));
+    assert.equal(decision.refusals[0].args.label, 'Work');
+    assert.equal(typeof decision.refusals[0].args.reason, 'string');
+    assert.equal(decision.humanDecision, null);
+    assert.equal(Object.hasOwn(decision, 'typedRefusals'), false);
+  });
+}
+test('reviewed Scope guard is registered only in Test exit', () => {
+  const locations = Object.values(STATES).flatMap((s) =>
+    ['entryGuards', 'exitGuards'].flatMap((slot) =>
+      s[slot].filter((g) => g.id === 'test-exit-reviewed-scope').map(() => `${s.name}:${slot}`)
+    )
+  );
+  assert.deepEqual(locations, ['test:exitGuards']);
+});
+
+test('read-only Review collector threads explicit execution and invoking directories', async () => {
+  const item = fixture({
+    runGuards: async (_from, _to, context) => {
+      assert.equal(context.projectDir, process.cwd());
+      assert.equal(context.invokingDir, process.cwd());
+      return { ok: true, status: 'ready', refusals: [], humanDecision: null };
+    },
+  });
+  assert.equal((await item.decision('review')).status, 'ready');
+});
+
+test('Review evaluator retains injected authoritative reviewed Scope ports', async () => {
+  const { evaluateReviewReadiness } =
+    await import('../../../../task-tracker/lib/action-decision/review.mjs');
+  const registry =
+    await import('../../../../task-tracker/lib/guard-registry.mjs?reviewed-context-1859');
+  registry.registerGuard('test', 'exit', testExitReviewedScopeGuard);
+  const body = bodyFor('test').replace(
+    'Review readiness is explained without effects.',
+    `${POLICY_MARKER}\n- [x] Work`
+  );
+  let contexts = 0;
+  const decision = await evaluateReviewReadiness({
+    issue: ISSUE,
+    cfg: { repo: REPOSITORY },
+    projectDir: '/bound',
+    invokingDir: '/bound',
+    now,
+    deps: {
+      readBody: async () => body,
+      readHead: async () => HEAD,
+      fetchBoard: async () => ({ state: 'test' }),
+      readWorktree: async () => ({ matches: true, headSha: HEAD }),
+      readSessionState: async () => ({ active: `#${ISSUE}` }),
+      runPreflight: async () => ({
+        ok: true,
+        reasons: [],
+        headSha: HEAD,
+        bodyDigest: bodyDigest(body),
+      }),
+      resolveReviewEvidence: async () => ({ ok: true, mode: 'receipt-v1', reasons: [] }),
+      loadWorkflowBoundary: async () => ({ status: 'policy-compatible', isWaived: () => false }),
+      runGuards: registry.runGuards,
+      reviewedScope: {
+        readEvidenceContext: async () => {
+          contexts++;
+          return {
+            repository: REPOSITORY,
+            issue: ISSUE,
+            worktree: '/bound',
+            branch: 'codex/1859',
+            head: HEAD,
+          };
+        },
+      },
+    },
+  });
+  assert.equal(contexts, 1, JSON.stringify(decision));
+  assert.equal(decision.status, 'blocked');
+  assert.equal(decision.blockers[0].code, 'reviewed-scope-current-missing');
 });

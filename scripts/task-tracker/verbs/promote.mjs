@@ -97,6 +97,7 @@ const REFUSAL_ID_TO_STATUS = {
   // (the duplicate copies). Both now live in `STATES.test.exitGuards`.
   'test-exit-dod-verified': 'dod-verified-missing',
   'test-exit-pre-close-completeness': 'completeness-refused',
+  'test-exit-reviewed-scope': 'reviewed-scope-refused',
   'blocked-by-not-done': 'blocked-refused',
   // #356 — child-cannot-lead-epic migrated into the exitGuards registry.
   // Preserves the legacy verb-level `parent-admission-refused` status.
@@ -248,7 +249,7 @@ export const MOVE_STATE_DELEGATE_TIMEOUT_MS = GH_API_TIMEOUT_MS * 2;
 // the promote-held advisory lock via env[AITM_ISSUE_LOCK_HELD] so it skips
 // re-acquisition rather than deadlocking. `host` is injectable for tests.
 export function defaultRunMoveState(
-  { issueNumber, target, command = 'promote' },
+  { issueNumber, target, command = 'promote', projectDir, invokingDir },
   { host = runMoveStateHost } = {}
 ) {
   const cursorRequest = buildCommandCursorRequest({
@@ -259,6 +260,8 @@ export function defaultRunMoveState(
   });
   return host({
     argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
+    projectDir,
+    invokingDir,
     env: {
       ...process.env,
       AITM_INTERNAL: '1',
@@ -404,6 +407,7 @@ export async function runPromote({
     toState: target,
     cfg,
     deps: { ...deps, resolveStoryIntent: deps?.resolveStoryIntent ?? resolveStoryIntentSource },
+    invokingDir: deps.invokingDir ?? process.cwd(),
     projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({ issue: issueNumber, deps }),
     sessionPolicy:
       deps.sessionPolicy ||
@@ -489,7 +493,16 @@ export async function runPromote({
         verb: aliasVerb,
         exitCode: await spawnVerb({ verb: aliasVerb, issueNumber, cfg }),
       }
-    : { kind: 'direct', exitCode: await runMoveState({ issueNumber, target, cfg }) };
+    : {
+        kind: 'direct',
+        exitCode: await runMoveState({
+          issueNumber,
+          target,
+          cfg,
+          projectDir: guardContextBase.projectDir,
+          invokingDir: guardContextBase.invokingDir,
+        }),
+      };
 
   if (transitionResult.exitCode !== 0) {
     // Re-read live board to classify the failure.
