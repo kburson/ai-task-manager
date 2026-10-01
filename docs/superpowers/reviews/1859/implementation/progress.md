@@ -1,5 +1,7 @@
 # Issue 1859 implementation progress
 
+<!-- cspell:ignore WRQE -->
+
 Execution plan: `docs/superpowers/plans/2026-10-01-1859-reviewed-scope-evidence.md`. Technical plan and spec remain the accepted inputs. Sol 6.1 drives implementation; subagents are used only for concurrent independent work.
 
 ## Checkpoints
