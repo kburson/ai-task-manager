@@ -125,3 +125,216 @@ test('canonical aliases pair and actor ordering and malformed keys stay explicit
     { code: 'TIMING_ACTOR_INVALID' }
   );
 });
+
+test('current closed evidence accounts genuine work after unknown legacy history', () => {
+  const result = deriveActorEngagement(
+    [
+      { ts: at(0), event: 'develop:started' },
+      { ts: at(1), event: 'start' },
+      {
+        ts: at(40),
+        event: 'pause:blocked',
+        actorKey: keyA,
+        engagement: {
+          startMs: Date.parse(at(10)),
+          endMs: Date.parse(at(40)),
+          activeEstimateSec: null,
+          wordStart: 10,
+          wordEnd: 15,
+          fullWordStart: null,
+          fullWordEnd: null,
+        },
+      },
+    ],
+    at(50)
+  );
+  assert.equal(result.engagedMs, 30000);
+  assert.deepEqual(result.failures, []);
+  assert.deepEqual(result.incompleteActors, []);
+  assert.equal(result.complete, false);
+  assert.equal(result.unknownRows, 1);
+  assert.equal(result.byActor[keyA].words, 5);
+});
+test('same actor explicit coverage unions overlaps while independent actors add', () => {
+  const evidence = (key, start, end, words) => ({
+    ts: at(end),
+    event: 'pause:blocked',
+    actorKey: key,
+    engagement: {
+      startMs: Date.parse(at(start)),
+      endMs: Date.parse(at(end)),
+      activeEstimateSec: null,
+      wordStart: words === null ? null : 0,
+      wordEnd: words,
+      fullWordStart: null,
+      fullWordEnd: null,
+    },
+  });
+  const result = deriveActorEngagement(
+    [evidence(keyA, 0, 30, null), evidence(keyB, 10, 30, 7), evidence(keyA, 20, 40, null)],
+    at(50)
+  );
+  assert.equal(result.engagedMs, 60000);
+  assert.equal(result.byActor[keyA].engagedMs, 40000);
+  assert.equal(result.byActor[keyB].engagedMs, 20000);
+  assert.equal(result.byActor[keyA].words, null);
+  assert.equal(result.byActor[keyB].words, 7);
+});
+test('evidence ending after row and reversed shared lifecycle facts remain invalid', () => {
+  const bad = deriveActorEngagement(
+    [
+      {
+        ts: at(20),
+        event: 'pause',
+        actorKey: keyA,
+        engagement: {
+          startMs: Date.parse(at(0)),
+          endMs: Date.parse(at(30)),
+          activeEstimateSec: null,
+          wordStart: 0,
+          wordEnd: 1,
+          fullWordStart: null,
+          fullWordEnd: null,
+        },
+      },
+    ],
+    at(40)
+  );
+  assert.ok(bad.failures.includes('actor-evidence-window'));
+  const lifecycle = deriveActorEngagement(
+    [
+      { ts: at(20), event: 'develop:started', actorKey: keyA },
+      { ts: at(10), event: 'develop:completed', actorKey: keyB },
+    ],
+    at(40)
+  );
+  assert.ok(lifecycle.failures.includes('lifecycle-out-of-order'));
+});
+test('tagged close cannot claim a missing phase or invalid current instant matched', () => {
+  assert.equal(computePhaseCloseDelta(actorBody, 'plan', at(50)).matched, false);
+  assert.equal(computePhaseCloseDelta(actorBody, 'develop', 'bad').matched, false);
+});
+
+test('duplicate immutable interval replay cannot double-count or erase known cursors', () => {
+  const row = {
+    ts: at(40),
+    event: 'pause',
+    actorKey: keyA,
+    engagement: {
+      startMs: Date.parse(at(10)),
+      endMs: Date.parse(at(40)),
+      activeEstimateSec: null,
+      wordStart: 10,
+      wordEnd: 15,
+      fullWordStart: 100,
+      fullWordEnd: 110,
+    },
+  };
+  const result = deriveActorEngagement([row, structuredClone(row)], at(50));
+  assert.equal(result.engagedMs, 30000);
+  assert.equal(result.byActor[keyA].words, 5);
+  assert.deepEqual(result.failures, []);
+});
+test('contradictory same-interval cursors cannot become a trusted word total', () => {
+  const row = {
+    ts: at(40),
+    event: 'pause',
+    actorKey: keyA,
+    engagement: {
+      startMs: Date.parse(at(10)),
+      endMs: Date.parse(at(40)),
+      activeEstimateSec: null,
+      wordStart: 10,
+      wordEnd: 15,
+      fullWordStart: null,
+      fullWordEnd: null,
+    },
+  };
+  const changed = structuredClone(row);
+  changed.engagement.wordEnd = 16;
+  const result = deriveActorEngagement([row, changed], at(50));
+  assert.equal(result.complete, false);
+  assert.ok(result.failures.includes('actor-evidence-conflict'));
+});
+
+test('mixed history exposes known subtotal without a complete numeric total', () => {
+  const body = tableRow(0, 'start') + '\n' + actorBody;
+  const summary = computeActiveByPhaseSpans(body);
+  assert.equal(summary.totalActiveSec, null);
+  assert.equal(summary.knownActiveSec, 60);
+  assert.equal(summary.engagement.complete, false);
+  const ladder = deriveLadder(parseTimingRows(body));
+  assert.equal(ladder.totals.activeSec, null);
+  assert.equal(ladder.totals.knownActiveSec, 60);
+  for (const row of ladder.rows) {
+    assert.equal(typeof row.class, 'string');
+    assert.ok(Object.hasOwn(row, 'state'));
+    assert.ok(Object.hasOwn(row, 'activeSec'));
+    assert.ok(Object.hasOwn(row, 'idleSec'));
+  }
+});
+test('ladder lexical path preserves current interval evidence', () => {
+  const body =
+    tableRow(40, 'pause', actorA).replace(' <!-- row-sec: a=0 i=0 -->', '') +
+    ' <!-- aitm-engagement:v1 start=1790812810000 end=1790812840000 active=unknown wstart=0 wend=0 fstart=unknown fend=unknown -->';
+  assert.equal(deriveLadder(parseTimingRows(body)).totals.activeSec, 30);
+});
+
+test('unattributed historical phase totals stay unknown beside later actor intervals', () => {
+  const old = tableRow(0, 'plan:completed').replace('a=0', 'a=120');
+  const summary = computeActiveByPhaseSpans(old + '\n' + actorBody);
+  assert.equal(summary.totalActiveSec, null);
+  assert.equal(summary.knownActiveSec, 60);
+  assert.equal(summary.engagement.unknownRows, 1);
+});
+
+test('exact current start agrees with genuine opener rounded to its table second', () => {
+  const startMs = Date.parse(at(10)) + 250;
+  const result = deriveActorEngagement(
+    [
+      { ts: at(10), event: 'resumed', actorKey: keyA },
+      {
+        ts: at(40),
+        event: 'pause',
+        actorKey: keyA,
+        engagement: {
+          startMs,
+          endMs: Date.parse(at(40)) + 250,
+          activeEstimateSec: null,
+          wordStart: 0,
+          wordEnd: 5,
+          fullWordStart: null,
+          fullWordEnd: null,
+        },
+      },
+    ],
+    at(41)
+  );
+  assert.equal(result.engagedMs, 30000);
+  assert.deepEqual(result.failures, []);
+});
+
+test('final phase uses validated exact evidence cutoff instead of dropping fractional work', () => {
+  const result = deriveActorEngagement(
+    [
+      { ts: at(0), event: 'develop:started' },
+      {
+        ts: at(40),
+        event: 'pause',
+        actorKey: keyA,
+        engagement: {
+          startMs: Date.parse(at(10)) + 250,
+          endMs: Date.parse(at(40)) + 750,
+          activeEstimateSec: null,
+          wordStart: 0,
+          wordEnd: 5,
+          fullWordStart: null,
+          fullWordEnd: null,
+        },
+      },
+    ],
+    at(40)
+  );
+  assert.equal(result.engagedMs, 30500);
+  assert.equal(result.byPhase.develop.engagedMs, 30500);
+});

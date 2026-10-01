@@ -58,3 +58,64 @@ test('actual fallback sentinel and coerced identity fields are refused', () => {
   ])
     assert.throws(() => timingActorKey(actor), { code: 'TIMING_ACTOR_INVALID' });
 });
+
+test('current interval evidence survives row edits without inventing a historical start', () => {
+  const actor = timingActorKey({ provider: 'codex', sid: 'current-session' });
+  const row =
+    '| 2026-10-01 00:01:00 +00:00 | pause | | | | 40 | current |' +
+    timingActorMarker(actor) +
+    ' <!-- aitm-engagement:v1 start=1790812800000 end=1790812860000 active=unknown wstart=28 wend=40 fstart=unknown fend=unknown -->';
+  const edited = replaceTimingRowCell(row, 7, ' waiting ');
+  assert.deepEqual(parseTimingRow(edited).engagement, {
+    startMs: 1790812800000,
+    endMs: 1790812860000,
+    activeEstimateSec: null,
+    wordStart: 28,
+    wordEnd: 40,
+    fullWordStart: null,
+    fullWordEnd: null,
+  });
+  assert.equal(parseTimingRow(edited).actorKey, actor);
+});
+
+test('malformed or orphan interval evidence refuses rather than becoming ordinary text', () => {
+  const base = '| 2026-10-01 00:01:00 +00:00 | pause | | | | 40 | current |';
+  const actor = timingActorMarker({ provider: 'codex', sid: 'current-session' });
+  for (const marker of [
+    ' <!-- aitm-engagement:v1 start=20 end=10 active=unknown wstart=0 wend=40 fstart=unknown fend=unknown -->',
+    ' <!-- aitm-engagement:v1 start=10 end=20 active=20 wstart=0 wend=40 fstart=unknown fend=unknown -->',
+    ' <!-- aitm-engagement:v2 start=10 end=20 active=unknown wstart=0 wend=40 fstart=unknown fend=unknown -->',
+    ' <!-- aitm-engagement:v1 start=10 end=20 active=unknown wstart=-1 wend=40 fstart=unknown fend=unknown -->',
+  ])
+    assert.throws(() => parseTimingRow(base + actor + marker), { code: 'TIMING_ACTOR_INVALID' });
+  assert.throws(
+    () =>
+      parseTimingRow(
+        base +
+          ' <!-- aitm-engagement:v1 start=10 end=20 active=unknown wstart=0 wend=40 fstart=unknown fend=unknown -->'
+      ),
+    { code: 'TIMING_ACTOR_INVALID' }
+  );
+});
+
+test('current evidence derives words from own endpoints and rejects row cursor disagreement', () => {
+  const actor = timingActorMarker({ provider: 'codex', sid: 'current-session' });
+  const prefix = '| 2026-10-01 00:01:00 +00:00 | pause | | | | 40 | work | 100 |' + actor;
+  const evidence =
+    ' <!-- aitm-engagement:v1 start=1790812800000 end=1790812860000 active=unknown wstart=28 wend=40 fstart=80 fend=100 -->';
+  assert.deepEqual(parseTimingRow(prefix + evidence).engagement, {
+    startMs: 1790812800000,
+    endMs: 1790812860000,
+    activeEstimateSec: null,
+    wordStart: 28,
+    wordEnd: 40,
+    fullWordStart: 80,
+    fullWordEnd: 100,
+  });
+  assert.throws(() => parseTimingRow(prefix.replace('| 40 |', '| 41 |') + evidence), {
+    code: 'TIMING_ACTOR_INVALID',
+  });
+  assert.throws(() => parseTimingRow(prefix + evidence.replace('wstart=28', 'wstart=42')), {
+    code: 'TIMING_ACTOR_INVALID',
+  });
+});

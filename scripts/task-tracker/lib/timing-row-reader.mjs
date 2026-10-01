@@ -80,13 +80,16 @@ export function parseTimingRow(line) {
   if (SEPARATOR_ROW_RE.test(raw)) return null;
   const { core, marker } = splitTimingRowMarker(raw);
   const cells = core.split('|').map((cell) => cell.trim());
+  const actor = readTimingActor(raw);
   if (cells.length < 3) return null;
   return {
     raw,
     core,
     marker,
     cells,
-    ...(readTimingActor(raw) ? { actorKey: readTimingActor(raw).key } : {}),
+    ...(actor
+      ? { actorKey: actor.key, ...(actor.engagement ? { engagement: actor.engagement } : {}) }
+      : {}),
     ts: cells[1] ?? '',
     event: (cells[2] ?? '').toLowerCase(),
     wordMarker: cells[6] ?? '',

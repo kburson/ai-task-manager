@@ -297,9 +297,24 @@ export function computePhaseCloseDelta(body, phase, nowTs, nowMarker = NaN) {
     .map(parseTimingRow)
     .filter((row) => row && isTableTimingTimestamp(row.ts));
   if (actorRows.some((row) => row.actorKey)) {
+    const enterEvent = PHASE_EVENTS?.[phase]?.enter?.event;
+    if (
+      !Number.isFinite(tsToMs(nowTs)) ||
+      !enterEvent ||
+      !actorRows.some((row) => row.event === enterEvent)
+    ) {
+      return {
+        activeSec: null,
+        idleSec: null,
+        startWordMarker: NaN,
+        deltaWords: null,
+        matched: false,
+      };
+    }
     const engagement = deriveActorEngagement(actorRows, nowTs);
     return {
-      activeSec: (engagement.byPhase[phase]?.engagedMs ?? 0) / 1000,
+      activeSec: engagement.complete ? (engagement.byPhase[phase]?.engagedMs ?? 0) / 1000 : null,
+      knownActiveSec: (engagement.byPhase[phase]?.engagedMs ?? 0) / 1000,
       idleSec: null,
       startWordMarker: NaN,
       deltaWords: null,
@@ -402,7 +417,8 @@ export function computeActiveByPhaseSpans(body, nowTs) {
   if (actorRows.some((row) => row.actorKey)) {
     const engagement = deriveActorEngagement(actorRows, nowTs ?? actorRows.at(-1).ts);
     return {
-      totalActiveSec: engagement.engagedMs / 1000,
+      totalActiveSec: engagement.complete ? engagement.engagedMs / 1000 : null,
+      knownActiveSec: engagement.engagedMs / 1000,
       totalIdleSec: null,
       perPhase: Object.entries(engagement.byPhase).map(([phase, value]) => ({
         event: PHASE_EVENTS[phase].enter.event,

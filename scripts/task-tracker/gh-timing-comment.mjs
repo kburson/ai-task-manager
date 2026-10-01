@@ -1,6 +1,7 @@
 // GH timing comment — locate/create/append.
 // GH I/O uses `gh` CLI via execFile with timeout.
 
+import { timingActorMarker, timingEngagementMarker } from './lib/timing-actor.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
@@ -137,6 +138,8 @@ export function buildRow({
   fullWordMarker,
   description = '',
   phase,
+  actorKey,
+  engagement,
 }) {
   const tsMs = tsToMs(ts);
   if (!Number.isFinite(tsMs)) {
@@ -169,7 +172,11 @@ export function buildRow({
   let activeCell;
   let idleCell;
   let trailingMarker = '';
-  if (Number.isFinite(Number(activeSec)) || Number.isFinite(Number(idleSec))) {
+  if (engagement && !actorKey) throw new TypeError('timing-evidence:actor-required');
+  if (actorKey && (activeSec === null || idleSec === null)) {
+    activeCell = activeSec === null ? 'Unknown' : formatDurationSeconds(activeSec ?? 0);
+    idleCell = idleSec === null ? 'Unknown' : formatDurationSeconds(idleSec ?? 0);
+  } else if (Number.isFinite(Number(activeSec)) || Number.isFinite(Number(idleSec))) {
     const aSec = Number.isFinite(Number(activeSec))
       ? Math.max(0, Math.floor(Number(activeSec)))
       : 0;
@@ -193,7 +200,14 @@ export function buildRow({
       : deltaWordsFull === undefined
         ? ''
         : ` ${fmtNumBlankZero(deltaWordsFull)} |`;
-  return `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${fullCell}${trailingMarker}`;
+  if (actorKey)
+    trailingMarker =
+      timingActorMarker(actorKey) +
+      (engagement ? timingEngagementMarker(engagement) : '') +
+      trailingMarker;
+  const row = `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${fullCell}${trailingMarker}`;
+  if (actorKey) parseTimingRow(row);
+  return row;
 }
 
 // #981 — narrow, explicit exemption from buildRow's retroactive-timestamp
@@ -295,13 +309,17 @@ export function buildFlushRow({
   fullWordMarker,
   description = '',
   phase,
+  actorKey,
+  engagement,
 }) {
-  const toSec = (min) => Math.max(0, Math.round(Number(min) || 0) * 60);
+  const toSec = (min) => (min === null ? null : Math.max(0, Math.round(Number(min) || 0) * 60));
   return buildRow({
     ts,
     event,
     activeSec: toSec(activeMin),
     idleSec: toSec(idleMin),
+    actorKey,
+    engagement,
     deltaWords,
     deltaWordsFull,
     wordMarker,
@@ -498,6 +516,7 @@ function normalizeAdjacentWordDeltas(lines) {
   return lines.map((line) => {
     const parsed = parseTimingRow(line);
     if (!parsed || !isTableTimingTimestamp(parsed.ts)) return line;
+    if (parsed.actorKey) return line;
     const current = numericWordMarker(parsed.wordMarker);
     const delta = previous === null || current === null ? 0 : Math.max(0, current - previous);
     if (current !== null) previous = current;
@@ -558,12 +577,75 @@ function carryForwardWordMarker(body, row) {
 //   • no open interruption → loud refusal via DuplicateStartError (AC3).
 // This makes a duplicate `start` impossible by construction, independent of any
 // upstream read/resolve state.
+
+function appendActorRow(body, row) {
+  const normalized = ensureTimingRowFullMarkerCell(row);
+  const incoming = parseTimingRow(normalized);
+  const lines = body.split('\n');
+  const records = lines
+    .map(parseTimingRow)
+    .filter((entry) => entry && isTableTimingTimestamp(entry.ts));
+  const own = records.filter((entry) => entry.actorKey === incoming.actorKey);
+  if (own.some((entry) => entry.raw === incoming.raw)) return body;
+  if (
+    incoming.engagement &&
+    own.some(
+      (entry) =>
+        entry.engagement &&
+        entry.engagement.startMs === incoming.engagement.startMs &&
+        entry.engagement.endMs === incoming.engagement.endMs
+    )
+  ) {
+    const same = own.find(
+      (entry) =>
+        entry.engagement &&
+        entry.engagement.startMs === incoming.engagement.startMs &&
+        entry.engagement.endMs === incoming.engagement.endMs
+    );
+    if (
+      JSON.stringify(same.engagement) === JSON.stringify(incoming.engagement) &&
+      same.marker === incoming.marker &&
+      same.cells.every((cell, index) => index === 5 || cell === incoming.cells[index])
+    )
+      return body;
+    throw new TypeError('timing-evidence:conflicting-interval');
+  }
+  if (incoming.event === 'start' && own.length) {
+    throw new DuplicateStartError('refusing duplicate actor start');
+  }
+  let effective = normalized;
+  const prior = own.at(-1);
+  let delta = null;
+  if (incoming.engagement?.wordStart !== null && incoming.engagement?.wordStart !== undefined) {
+    delta = incoming.engagement.wordEnd - incoming.engagement.wordStart;
+  } else if (prior) {
+    const before = numericWordMarker(prior.wordMarker);
+    const after = numericWordMarker(incoming.wordMarker);
+    if (before !== null && after !== null && after >= before) delta = after - before;
+  }
+  effective = replaceTimingRowCell(
+    effective,
+    5,
+    delta === null ? ' — ' : ' ' + delta.toLocaleString('en-US') + ' '
+  );
+  const incomingMs = _tsToMs(incoming.ts);
+  const later = lines.findIndex((line) => {
+    const parsed = parseTimingRow(line);
+    return parsed && isTableTimingTimestamp(parsed.ts) && _tsToMs(parsed.ts) > incomingMs;
+  });
+  let lastTable = -1;
+  for (let i = 0; i < lines.length; i++) if (lines[i].startsWith('|')) lastTable = i;
+  lines.splice(later < 0 ? lastTable + 1 : later, 0, effective);
+  return lines.join('\n').trimEnd() + '\n';
+}
+
 function appendRow(body, row) {
   body = normalizeTimingSchema(body);
   if (shouldSuppressTimingAppend(body, rowEventSlug(row))) {
     return body;
   }
 
+  if (parseTimingRow(row)?.actorKey) return appendActorRow(body, row);
   let effectiveRow = ensureTimingRowFullMarkerCell(row);
   const incomingEvent = rowEventSlug(effectiveRow);
   if (incomingEvent === 'review:approved') {

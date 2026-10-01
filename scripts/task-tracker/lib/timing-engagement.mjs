@@ -3,7 +3,7 @@
 import { PHASE_EVENTS } from '../phase-events.mjs';
 import { classifyTimingEvent, EVENT_CLASS } from './timing-events/index.mjs';
 import { timingTimestampToMs } from './timing-row-reader.mjs';
-import { assertTimingActorKey } from './timing-actor.mjs';
+import { assertTimingActorKey, validateTimingEngagement } from './timing-actor.mjs';
 const departure = (event) => classifyTimingEvent(event) === EVENT_CLASS.DEPARTURE;
 const opener = (event) => classifyTimingEvent(event) === EVENT_CLASS.REENGAGEMENT;
 const phaseEntries = new Map(
@@ -53,6 +53,7 @@ export function reconcileActorCoverage(intervals, candidate) {
 }
 export function deriveActorEngagement(rows, nowTs) {
   const endMs = instant(nowTs);
+  let observedEndMs = endMs;
   const list = (rows || []).map((row) => ({ ...row, ms: instant(row.ts) }));
   const result = {
     engagedMs: 0,
@@ -69,6 +70,7 @@ export function deriveActorEngagement(rows, nowTs) {
   const phases = [];
   let phase = null;
   let phaseStart = null;
+  let lastLifecycleMs = -Infinity;
   for (const row of list) {
     if (!Number.isFinite(row.ms) || !Number.isFinite(endMs) || row.ms > endMs) {
       result.failures.push('invalid-timing-window');
@@ -79,15 +81,34 @@ export function deriveActorEngagement(rows, nowTs) {
       phaseEnds.has(row.event) ||
       row.event.startsWith('demoted:')
     ) {
+      if (row.ms < lastLifecycleMs) {
+        result.failures.push('lifecycle-out-of-order');
+        continue;
+      }
+      lastLifecycleMs = row.ms;
       if (phase !== null) phases.push({ phase, startMs: phaseStart, endMs: row.ms });
       phase = phaseEntries.get(row.event) ?? null;
       phaseStart = phase === null ? null : row.ms;
     }
     if (!row.actorKey) {
+      const historicalSeconds = Number(
+        row.marker?.match(new RegExp('row-sec:\\s*a=(-?[0-9]+)'))?.[1]
+      );
+      const historicalCell = String(row.cells?.[3] ?? '')
+        .replaceAll(',', '')
+        .trim();
+      const hasHistoricalWork =
+        historicalSeconds > 0 ||
+        row.activeSec > 0 ||
+        (historicalCell !== '' &&
+          historicalCell !== '0' &&
+          historicalCell !== '—' &&
+          historicalCell !== '0h 0m 0s');
       if (
-        !phaseEntries.has(row.event) &&
-        !phaseEnds.has(row.event) &&
-        !row.event.startsWith('demoted:')
+        hasHistoricalWork ||
+        (!phaseEntries.has(row.event) &&
+          !phaseEnds.has(row.event) &&
+          !row.event.startsWith('demoted:'))
       )
         result.unknownRows++;
       continue;
@@ -98,7 +119,24 @@ export function deriveActorEngagement(rows, nowTs) {
       continue;
     }
     previous.set(row.actorKey, row.ms);
-    if (opener(row.event)) {
+    if (row.engagement) {
+      validateTimingEngagement(row.engagement);
+      if (row.engagement.endMs < row.ms || row.engagement.endMs >= row.ms + 1000) {
+        result.failures.push('actor-evidence-window');
+        continue;
+      }
+      const opened = open.get(row.actorKey);
+      if (
+        opened !== undefined &&
+        (row.engagement.startMs < opened || row.engagement.startMs >= opened + 1000)
+      ) {
+        result.failures.push('actor-evidence-start-conflict');
+        continue;
+      }
+      observedEndMs = Math.max(observedEndMs, row.engagement.endMs);
+      result.intervals.push({ actorKey: row.actorKey, ...row.engagement });
+      open.delete(row.actorKey);
+    } else if (opener(row.event)) {
       if (open.has(row.actorKey)) result.failures.push('duplicate-actor-start:' + row.actorKey);
       else open.set(row.actorKey, row.ms);
     } else if (departure(row.event)) {
@@ -113,8 +151,40 @@ export function deriveActorEngagement(rows, nowTs) {
       }
     }
   }
-  if (phase !== null && Number.isFinite(endMs)) phases.push({ phase, startMs: phaseStart, endMs });
+  if (phase !== null && Number.isFinite(endMs))
+    phases.push({ phase, startMs: phaseStart, endMs: observedEndMs });
   result.incompleteActors = [...open.keys()];
+  const rawIntervals = result.intervals;
+  result.intervals = [];
+  for (const actorKey of new Set(rawIntervals.map((interval) => interval.actorKey))) {
+    const sorted = rawIntervals
+      .filter((interval) => interval.actorKey === actorKey)
+      .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
+    let prior = null;
+    for (const interval of sorted) {
+      if (prior && interval.startMs === prior.startMs && interval.endMs === prior.endMs) {
+        const fields = [
+          'wordStart',
+          'wordEnd',
+          'fullWordStart',
+          'fullWordEnd',
+          'activeEstimateSec',
+        ];
+        if (fields.every((field) => interval[field] === prior[field])) continue;
+        result.failures.push('actor-evidence-conflict');
+      }
+      if (prior && interval.startMs < prior.endMs) {
+        prior.endMs = Math.max(prior.endMs, interval.endMs);
+        // Overlapping scalar word estimates have no defensible subtraction.
+        prior.wordStart = prior.wordEnd = null;
+        prior.fullWordStart = prior.fullWordEnd = null;
+        prior.activeEstimateSec = null;
+      } else {
+        prior = { ...interval };
+        result.intervals.push(prior);
+      }
+    }
+  }
   for (const interval of result.intervals) {
     if (!validSpan(interval)) {
       result.failures.push('invalid-actor-interval');
@@ -122,7 +192,12 @@ export function deriveActorEngagement(rows, nowTs) {
     }
     const duration = interval.endMs - interval.startMs;
     result.engagedMs += duration;
-    (result.byActor[interval.actorKey] ||= { engagedMs: 0 }).engagedMs += duration;
+    const actor = (result.byActor[interval.actorKey] ||= { engagedMs: 0, words: 0 });
+    actor.engagedMs += duration;
+    actor.words =
+      actor.words === null || interval.wordStart == null
+        ? null
+        : actor.words + interval.wordEnd - interval.wordStart;
     for (const span of phases) {
       const overlap = Math.max(
         0,
