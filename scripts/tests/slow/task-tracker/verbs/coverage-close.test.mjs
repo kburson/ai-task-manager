@@ -9,10 +9,15 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
-import { readFileSync, writeFileSync, rmSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { tmpdir } from 'node:os';
-import { loadState, clearActive, projectDirForState } from '../../../../task-tracker/state.mjs';
+import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  loadState,
+  saveState,
+  clearActive,
+  projectDirForState,
+} from '../../../../task-tracker/state.mjs';
 import { currentSessionId } from '../../../../task-tracker/word-counter.mjs';
 import { execFileSync } from 'node:child_process';
 import {
@@ -21,6 +26,7 @@ import {
   tickLifecycleOnClose,
 } from '../../../../task-tracker/verbs/close.mjs';
 import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
 
 // Review-approval marker + populated aitm-fields (engagedTime non-null) so
 // assertFieldsPersisted passes and shouldEmitReviewApprovedRow is true.
@@ -151,6 +157,7 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
     setEnv('TT_SKIP_DIRTY_CHECK', dirty ? undefined : '1');
     setEnv('CI', ci);
     setEnv('AI_TASK_MANAGER_PROJECT_DIR', dir);
+    saveState(state, statePath);
     const ctx = makeCtx(statePath, dir, over);
     process.exit = (code) => {
       exitCode = code ?? 0;
@@ -688,6 +695,7 @@ test('cascade: queued terminal timing leaves child in Review and retains evidenc
 test('cascade: each child outcome uses its own resolved worktree', async () => {
   const calls = [];
   const r = await run({
+    state: { ...baseState(), lastWordMarker: 98765, lastFullWordMarker: 123456 },
     over: {
       SKIP_NETWORK: false,
       rest: ['#5', '--force'],
@@ -695,8 +703,24 @@ test('cascade: each child outcome uses its own resolved worktree', async () => {
       getIssueBoardState: async () => 'review',
       fetchSubIssues: async () => ['101'],
       resolveIssueWorkspace: ({ issueRef }) => `/dedicated/${issueRef.replace('#', '')}`,
-      createEstimationOutcomeWriter: ({ projectDir }) => ({
+      safePostTiming: async (target, row) => {
+        if (target === '#101') {
+          const parsed = parseTimingRow(row);
+          assert.equal(parsed.wordMarker, '0');
+          assert.equal(parsed.fullWordMarker, '0');
+        }
+        return { ok: true };
+      },
+      createEstimationOutcomeWriter: ({
+        projectDir,
+        resolveVerificationSha,
+        resolveDeliveryAuthority,
+      }) => ({
         ensure: async ({ issueNumber }) => {
+          if (Number(issueNumber) === 101) {
+            assert.equal(typeof resolveVerificationSha, 'function');
+            assert.equal(typeof resolveDeliveryAuthority, 'function');
+          }
           calls.push(`outcome ${issueNumber} ${projectDir}`);
           return { status: 'written' };
         },
@@ -779,7 +803,7 @@ test('tickLifecycleOnClose: mutate throws → best-effort swallow', async () => 
 console.log('coverage-close.test.mjs: defined');
 
 test('nested fixture state never reads or clears its isolated parent session', () => {
-  const outer = mkdtempSync(join(tmpdir(), 'aitm-1857-parent-'));
+  const outer = mkdtempOutsideRepo('aitm-1857-parent-');
   const child = join(outer, '.ai-task-manager', 'runtime', 'test-fixtures', 'child');
   const priorCwd = process.cwd(),
     priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;

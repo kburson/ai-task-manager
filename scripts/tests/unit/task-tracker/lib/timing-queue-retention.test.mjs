@@ -54,9 +54,11 @@ assert.equal(survivors.length, 3, 'two sequence rows and the non-target row surv
 assert.deepEqual(
   survivors.map(({ issue, row: timingRow }) => [issue, parseTimingRow(timingRow)?.event]),
   [
-    ['#1109', 'pause:question'],
+    // Retained evidence keeps original order; acknowledging another item does
+    // not rewrite the relative chronology of surviving actor rows.
     ['#1107', 'pause:question'],
     ['#1107', 'resume:question'],
+    ['#1109', 'pause:question'],
   ]
 );
 

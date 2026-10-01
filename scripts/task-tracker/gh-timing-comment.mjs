@@ -819,15 +819,60 @@ export async function postTimingEvent({
   retries = 2,
   lock = true,
   projDir,
+  deps = {},
 } = {}) {
   const work = async () => {
-    const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
+    const find = deps.findTimingComment ?? findTimingComment;
+    const update = deps.updateTimingComment ?? updateTimingComment;
+    const create = deps.createTimingComment ?? createTimingComment;
+    if (parseTimingRow(row)?.actorKey) {
+      const issue = Number(String(issueNumber).replace(/^#/, ''));
+      const read = deps.readCanonicalTimingSource ?? readCanonicalTimingSource;
+      const observe = async () => {
+        const result = await read({ issueNumber: issue, repo, timeoutMs });
+        if (result?.status === 'error')
+          throw result.error ?? new TypeError('timing-publication:source');
+        if (result?.status === 'absent' && result.source === null) return null;
+        const source = result?.source;
+        if (
+          result?.status !== 'found' ||
+          source?.repository !== repo ||
+          source.issue !== issue ||
+          typeof source.commentNodeId !== 'string' ||
+          !source.commentNodeId ||
+          typeof source.body !== 'string'
+        ) {
+          throw new TypeError('timing-publication:source');
+        }
+        return source;
+      };
+      const existing = await observe();
+      const updated = appendRow(existing?.body ?? buildInitialComment(), row);
+      if (existing) {
+        // A lost response may already have committed these exact immutable
+        // bytes. Re-observe instead of issuing another remote mutation.
+        if (updated !== existing.body)
+          await update(existing.commentNodeId, repo, updated, { timeoutMs });
+      } else {
+        await create(issue, repo, updated, { timeoutMs });
+      }
+      const observed = await observe();
+      if (
+        !observed ||
+        (existing && observed.commentNodeId !== existing.commentNodeId) ||
+        appendRow(observed.body, row) !== observed.body
+      ) {
+        throw new TypeError('timing-publication:readback');
+      }
+      return;
+    }
+    const existing = await find(issueNumber, repo, { timeoutMs });
     if (existing) {
       const updated = appendRow(existing.body, row);
-      await updateTimingComment(existing.id, repo, updated, { timeoutMs });
+      await update(existing.id, repo, updated, { timeoutMs });
     } else {
       const initial = appendRow(buildInitialComment(), row);
-      await createTimingComment(issueNumber, repo, initial, { timeoutMs });
+      await create(issueNumber, repo, initial, { timeoutMs });
     }
   };
   if (!lock) {
@@ -896,6 +941,32 @@ export function renderTimingSingletonMarkdown({ timingBody, timingProjection } =
     timingProjection.revision <= 0
   ) {
     throw new TypeError('timing-singleton-projection:input');
+  }
+  const totals = timingProjection.totals;
+  if (
+    [totals.totalActiveSec, totals.totalIdleSec, totals.engagedSec, totals.planMin].some(
+      (value) => value === null
+    )
+  ) {
+    const duration = (value) =>
+      value === null ? 'Unknown' : formatDurationSeconds(Math.round(value));
+    return [
+      timingBody.trimEnd(),
+      '',
+      '### Normalized timing projection',
+      '',
+      '- Total active: ' + duration(totals.totalActiveSec),
+      '- Total idle: ' + duration(totals.totalIdleSec),
+      '- Engaged: ' + duration(totals.engagedSec),
+      '- Plan: ' + (totals.planMin === null ? 'Unknown' : totals.planMin + ' min'),
+      ...(Number.isFinite(totals.knownEngagedSec)
+        ? ['- Known engagement lower bound: ' + totals.knownEngagedSec + ' seconds']
+        : []),
+      ...(totals.telemetry?.reasons?.length
+        ? ['- Unavailable: ' + totals.telemetry.reasons.join(', ')]
+        : []),
+      '',
+    ].join(String.fromCharCode(10));
   }
   const body = timingBody.endsWith('\n') ? timingBody : `${timingBody}\n`;
   return (

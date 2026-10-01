@@ -21,7 +21,8 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import { join } from 'node:path';
 
 import { buildReviewToDoneClosePair } from '../../../../task-tracker/gh-timing-comment.mjs';
@@ -69,7 +70,7 @@ test('buildReviewToDoneClosePair emits review:approved then issue:wrap', () => {
 function makeStatePath(state) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-540-'));
   const p = join(dir, 'state.json');
-  writeFileSync(p, JSON.stringify(state));
+  saveState(state, p);
   return { statePath: p, dir };
 }
 

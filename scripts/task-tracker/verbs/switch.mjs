@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { timingActorKey } from '../lib/timing-actor.mjs';
 
 import {
   saveState,
@@ -21,6 +22,7 @@ import { finalizePauseForSwitch } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
 import {
   resolveBindEvent,
+  timingBodyForActor,
   timingCommentHasRows,
   assertPairedReengagement,
 } from '../lib/bind-event.mjs';
@@ -118,7 +120,7 @@ export async function verbSwitch(ctx, target) {
       const { deltaMin, deltaWords } = await flushActiveToGH(s, eventSlug, eventDesc, undefined, {
         suppressRowWords: true,
       });
-      previousNote = ` Previous: ${previous} ended (+${deltaMin} min, +${deltaWords} words).`;
+      previousNote = ` Previous: ${previous} ended (${deltaMin === null ? 'Unknown active time' : '+' + deltaMin + ' min'}, +${deltaWords} words).`;
       await runLogIssueTime(previous);
       try {
         deregisterTask(projectDir, previous);
@@ -210,7 +212,10 @@ export async function verbSwitch(ctx, target) {
         issueNumber: Number(target.replace(/^#/, '')),
         repo: cfg.repo,
       });
-      tcBody = gh.bodyOf(tcResult);
+      tcBody = timingBodyForActor(
+        gh.bodyOf(tcResult),
+        timingActorKey({ provider: aiAppName(), sid })
+      );
       readStatus = tcResult?.status ?? null;
       hasTimingHistory = timingCommentHasRows(tcBody);
     }
@@ -233,6 +238,7 @@ export async function verbSwitch(ctx, target) {
     }
     const row = buildRow({
       ts,
+      actorKey: timingActorKey({ provider: aiAppName(), sid }),
       event: bindEvent,
       activeSec: 0,
       idleSec: 0,

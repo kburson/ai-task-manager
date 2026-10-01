@@ -37,6 +37,7 @@ import {
   makeCloseTrunkRefResolver,
 } from '../lib/full-auto-merge-execute.mjs';
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
+import { lineageDoneGate } from '../lib/close-gates-lineage.mjs';
 import {
   canonicalVerificationCommandSet,
   parseVerificationReceipt,
@@ -49,7 +50,12 @@ import {
   parseDeliveryCommentForPullRequest,
   projectDeliveryRecords,
 } from '../lib/delivery-records.mjs';
-import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from '../lib/issue-kind.mjs';
+import {
+  isNoCommitKind,
+  isIssueResidentDeliveryKind,
+  parseDeliverablePosted,
+  parseIssueKind,
+} from '../lib/issue-kind.mjs';
 import {
   parseNoCommitDeliveryComment,
   projectNoCommitDeliveryRecords,
@@ -131,8 +137,9 @@ import {
 } from '../lib/closed-issue-convergence.mjs';
 import { resolveTailProfile } from '../lib/move-state/tail-profiles.mjs';
 import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapter.mjs';
+import { createCascadeOutcomeAuthority } from '../lib/estimation/cascade-outcome-authority.mjs';
 import {
-  INCOMPLETE_OUTCOME_SCHEMA,
+  isIncompleteOutcome,
   validateEstimationOutcome,
 } from '../lib/estimation/outcome-record.mjs';
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
@@ -2637,7 +2644,7 @@ export async function verbClose(ctx) {
       resolveProjectDir({ issue: issueRef, deps: { invokingDir } }));
   const outcomeWriterForIssue = (
     issueNumber,
-    { requireDedicated = false, resolveVerificationSha } = {}
+    { requireDedicated = false, resolveVerificationSha, resolveDeliveryAuthority } = {}
   ) => {
     if (ctx.estimationOutcomeWriter) return ctx.estimationOutcomeWriter;
     if (
@@ -2656,9 +2663,54 @@ export async function verbClose(ctx) {
       cfg,
       projectDir: outcomeProjectDir,
       ...(resolveVerificationSha === undefined ? {} : { resolveVerificationSha }),
+      ...(resolveDeliveryAuthority === undefined ? {} : { resolveDeliveryAuthority }),
     });
   };
   const estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum, {
+    resolveDeliveryAuthority: async ({ issueNumber }) => {
+      if (Number(issueNumber) !== Number(closeIssueNum)) {
+        throw new TypeError('close-estimation-delivery-authority:issue-mismatch');
+      }
+      if (!resolvedDeliveryGate) {
+        throw new TypeError('close-estimation-delivery-authority:gate-missing');
+      }
+      const authority = await ensureDeliveryAuthorized({ refresh: true });
+      if (authority?.gateInput?.lineage?.parentIssueNumber == null) return authority;
+      if (isIssueResidentDeliveryKind(authority.deliveryBody)) {
+        if (
+          !parseDeliverablePosted(authority.deliveryBody) ||
+          authority.testReceiptSha !== authority.gateInput.acceptedSha ||
+          authority.acceptedReviewSha !== authority.gateInput.acceptedSha
+        ) {
+          throw new TypeError('close-estimation-delivery-authority:resident-unavailable');
+        }
+        // Existing child delivery is issue-resident; no provider receipt or
+        // source commit trail is manufactured for its timing projection.
+        return authority;
+      }
+      const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
+      const lineage = await lineageDoneGate({
+        cfg,
+        issueNumber: Number(closeIssueNum),
+        projectDir,
+        body: authority.deliveryBody,
+        acceptedSha: authority.gateInput.acceptedSha,
+        includeEvidence: true,
+        deps: {
+          resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }),
+          ...ctx.closeOutcomeLineageDeps,
+        },
+      });
+      if (
+        !lineage.ok ||
+        lineage.skipped ||
+        !lineage.evidence ||
+        lineage.evidence.parentIssue !== authority.gateInput.lineage.parentIssueNumber
+      ) {
+        throw new TypeError('close-estimation-delivery-authority:lineage-unavailable');
+      }
+      return { ...authority, lineageEvidence: lineage.evidence };
+    },
     resolveVerificationSha: ({ issueNumber }) => {
       if (Number(issueNumber) !== Number(closeIssueNum)) {
         throw new TypeError('close-estimation-verification-sha:issue-mismatch');
@@ -4065,11 +4117,10 @@ export async function verbClose(ctx) {
                   activeSec: 0,
                   idleSec: 0,
                   deltaWords: 0,
-                  // #475 AC1 — stamp the epic session's durable marker (the session
-                  // performing the cascade); the per-log monotonic-max in
-                  // rollupTotals protects each child's own running total.
-                  wordMarker: s.lastWordMarker ?? 0,
-                  fullWordMarker: stateFullWordMarker(s),
+                  // Shared child lifecycle fact, never parent actor work.
+                  // wordMarker:0 audit row — shared child lifecycle fact, not parent actor work.
+                  wordMarker: 0,
+                  fullWordMarker: 0,
                   description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
                 })
               );
@@ -4117,10 +4168,61 @@ export async function verbClose(ctx) {
                   { timeout: GH_API_TIMEOUT_MS }
                 );
                 childBody = String(stdout ?? '');
+                const childAuthority = createCascadeOutcomeAuthority({
+                  repository: cfg.repo,
+                  parentIssue: Number(closeIssueNum),
+                  issue: Number(child.num),
+                  deps: {
+                    refreshParent: () => ensureDeliveryAuthorized({ refresh: true }),
+                    readChildCensus: async () => {
+                      const fresh = await refreshCloseChildren();
+                      if (!fresh)
+                        throw new TypeError('cascade-outcome-authority:census-unavailable');
+                      return fresh.childStates;
+                    },
+                    readChildParent: () =>
+                      fetchParentIssueStrict({ issueNumber: child.num, repo: cfg.repo }),
+                    readChildBody: async () => {
+                      const response = await pexec(
+                        'gh',
+                        ['issue', 'view', String(child.num), '-R', cfg.repo, '--json', 'body'],
+                        { timeout: GH_API_TIMEOUT_MS }
+                      );
+                      return JSON.parse(response.stdout).body;
+                    },
+                    readLineage: async ({ body, acceptedSha }) => {
+                      const childProjectDir = resolveEstimationOutcomeProjectDir({
+                        issueNumber: child.num,
+                        projectDir,
+                        issueWorkspaceResolver,
+                        requireDedicated: true,
+                      });
+                      const inWorktree = await detectLinkedWorktree({
+                        pexec,
+                        cwd: childProjectDir,
+                      });
+                      return lineageDoneGate({
+                        cfg,
+                        issueNumber: Number(child.num),
+                        projectDir: childProjectDir,
+                        body,
+                        acceptedSha,
+                        includeEvidence: true,
+                        deps: {
+                          resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }),
+                          ...ctx.closeOutcomeLineageDeps,
+                        },
+                      });
+                    },
+                  },
+                });
                 await ensureCloseEstimationOutcome({
                   issueNumber: child.num,
                   body: childBody,
-                  writer: outcomeWriterForIssue(child.num, { requireDedicated: true }),
+                  writer: outcomeWriterForIssue(child.num, {
+                    requireDedicated: true,
+                    ...childAuthority,
+                  }),
                 });
               } catch (err) {
                 console.error(
@@ -4762,7 +4864,7 @@ export async function assertFieldsPersisted({
       const record = result.record;
       const payload = record?.envelope?.payload;
       if (
-        payload?.schema !== INCOMPLETE_OUTCOME_SCHEMA ||
+        !isIncompleteOutcome(payload) ||
         record.envelope.repository !== cfg.repo ||
         record.envelope.issue !== Number(issueNum) ||
         typeof record.commentNodeId !== 'string' ||

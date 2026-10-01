@@ -1,5 +1,5 @@
 // Word counter — extracted from tally-chat-words.mjs for reuse.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { resolveRuntimeRoot } from './lib/runtime-storage.mjs';
 import { homedir } from 'node:os';
@@ -12,6 +12,8 @@ import {
 } from '../providers/transcript-normalizer.mjs';
 import { scanJsonlRecords } from './lib/jsonl-line-scanner.mjs';
 import { resolveSessionId } from './lib/session-id.mjs';
+import { timingActorKey } from './lib/timing-actor.mjs';
+import { withLock } from './fleet-registry.mjs';
 
 export function projectKey(dir = projectDir()) {
   // Flatten path separators (POSIX `/`, Windows `\`) and the Windows drive colon.
@@ -89,21 +91,26 @@ export function markerPathFor(sid) {
 
 export function ensureSessionTracking(sid) {
   const trackingPath = markerPathFor(sid);
-  if (existsSync(trackingPath)) return;
-  mkdirSync(path.dirname(trackingPath), { recursive: true });
-  writeFileSync(
-    trackingPath,
-    JSON.stringify(
-      {
-        sessionId: sid,
-        startedAt: new Date().toISOString(),
-        wordCount: { line: 0, words: 0, wordsFull: 0, task: null, ts: null },
-      },
-      null,
-      2
-    ),
-    'utf8'
-  );
+  const identity = cursorIdentity();
+  if (sid !== identity.sid) invalidCursor();
+  return withLock(trackingPath, () => {
+    const existing = readCursor(trackingPath, identity);
+    if (existing) return existing;
+    const record = {
+      schema: 'aitm.word-cursor/v1',
+      actor: timingActorKey(identity),
+      ...identity,
+      sessionId: sid,
+      startedAt: new Date().toISOString(),
+      wordCount: { line: 0, words: 0, wordsFull: 0, task: null, ts: null },
+    };
+    validateWordCursor(record, identity);
+    mkdirSync(path.dirname(trackingPath), { recursive: true });
+    const temporary = trackingPath + '.tmp.' + process.pid;
+    writeFileSync(temporary, JSON.stringify(record, null, 2) + String.fromCharCode(10), 'utf8');
+    renameSync(temporary, trackingPath);
+    return record;
+  });
 }
 
 export function currentSessionId() {
@@ -114,10 +121,58 @@ export function currentSessionId() {
   return resolveSessionId({ env: process.env, transcriptDir });
 }
 
-export function loadMarker(markerPath) {
+function cursorIdentity() {
+  return { provider: aiAppName(), sid: currentSessionId() };
+}
+function invalidCursor() {
+  const error = new Error('Word cursor is malformed, unsupported, or belongs to another actor');
+  error.code = 'WORD_CURSOR_INVALID';
+  throw error;
+}
+export function validateWordCursor(record, identity) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) invalidCursor();
+  if (record.schema !== undefined) {
+    if (
+      record.schema !== 'aitm.word-cursor/v1' ||
+      record.provider !== identity.provider ||
+      record.sid !== identity.sid ||
+      record.actor !== timingActorKey(identity)
+    )
+      invalidCursor();
+  }
+  if (record.sessionId !== undefined && record.sessionId !== identity.sid) invalidCursor();
+  if (!record.wordCount || typeof record.wordCount !== 'object' || Array.isArray(record.wordCount))
+    invalidCursor();
+  const merged = { line: 0, words: 0, task: null, ...record.wordCount };
+  if (merged.wordsFull == null) merged.wordsFull = merged.words;
+  for (const key of ['line', 'words', 'wordsFull']) {
+    if (!Number.isSafeInteger(merged[key]) || merged[key] < 0) invalidCursor();
+  }
+  if (merged.wordsFull < merged.words) invalidCursor();
+  if (merged.task !== null && typeof merged.task !== 'string' && !Number.isSafeInteger(merged.task))
+    invalidCursor();
+  if (
+    merged.ts != null &&
+    (typeof merged.ts !== 'string' || !Number.isFinite(Date.parse(merged.ts)))
+  )
+    invalidCursor();
+  return merged;
+}
+function readCursor(markerPath, identity) {
+  if (!existsSync(markerPath)) return null;
+  let record;
+  try {
+    record = JSON.parse(readFileSync(markerPath, 'utf8'));
+  } catch {
+    invalidCursor();
+  }
+  validateWordCursor(record, identity);
+  return record;
+}
+export function loadMarker(markerPath, { identity = cursorIdentity() } = {}) {
   if (!existsSync(markerPath)) return { line: 0, words: 0, wordsFull: 0, task: null };
   try {
-    const { wordCount = {} } = JSON.parse(readFileSync(markerPath, 'utf8'));
+    const { wordCount } = readCursor(markerPath, identity);
     const merged = { line: 0, words: 0, task: null, ...wordCount };
     // Legacy markers persisted before the full-expansion tier lack `wordsFull`.
     // Default it to the loaded `words` so the cumulative full snapshot never
@@ -125,41 +180,55 @@ export function loadMarker(markerPath) {
     if (merged.wordsFull == null) merged.wordsFull = merged.words;
     return merged;
   } catch {
-    return { line: 0, words: 0, wordsFull: 0, task: null };
+    invalidCursor();
   }
 }
 
-export function saveMarker(markerPath, line, words, task = null, wordsFull = words) {
-  mkdirSync(path.dirname(markerPath), { recursive: true });
-  let existing = {};
-  try {
-    if (existsSync(markerPath)) existing = JSON.parse(readFileSync(markerPath, 'utf8'));
-  } catch {
-    /* best-effort: optional read; fall back to default on parse/IO error */
-  }
-  writeFileSync(
-    markerPath,
-    JSON.stringify(
-      { ...existing, wordCount: { line, words, wordsFull, task, ts: new Date().toISOString() } },
-      null,
-      2
-    ),
-    'utf8'
-  );
+export function saveMarker(
+  markerPath,
+  line,
+  words,
+  task = null,
+  wordsFull = words,
+  { identity = cursorIdentity() } = {}
+) {
+  return withLock(markerPath, () => {
+    const existing = readCursor(markerPath, identity) ?? {};
+    const record = {
+      ...existing,
+      schema: 'aitm.word-cursor/v1',
+      actor: timingActorKey(identity),
+      ...identity,
+      wordCount: {
+        ...existing.wordCount,
+        line,
+        words,
+        wordsFull,
+        task,
+        ts: new Date().toISOString(),
+      },
+    };
+    validateWordCursor(record, identity);
+    mkdirSync(path.dirname(markerPath), { recursive: true });
+    const temporary = markerPath + '.tmp.' + process.pid;
+    writeFileSync(temporary, JSON.stringify(record, null, 2) + '\n', 'utf8');
+    renameSync(temporary, markerPath);
+  });
 }
 
 // #1142 — compaction is a transcript cursor boundary, not a word-count reset.
 // Advance only the consumed line index while carrying both absolute markers.
-export function advanceMarkerCursor(markerPath, line, task = undefined) {
-  const marker = loadMarker(markerPath);
+export function advanceMarkerCursor(markerPath, line, task = undefined, options = {}) {
+  const marker = loadMarker(markerPath, options);
   saveMarker(
     markerPath,
     line,
     marker.words,
     task === undefined ? marker.task : task,
-    marker.wordsFull
+    marker.wordsFull,
+    options
   );
-  return loadMarker(markerPath);
+  return loadMarker(markerPath, options);
 }
 
 // Prefixes/markers that indicate injected (non-reader-visible) text.

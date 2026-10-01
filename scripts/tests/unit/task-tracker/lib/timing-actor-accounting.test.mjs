@@ -338,3 +338,37 @@ test('final phase uses validated exact evidence cutoff instead of dropping fract
   assert.equal(result.engagedMs, 30500);
   assert.equal(result.byPhase.develop.engagedMs, 30500);
 });
+
+test('explicit unknown session recovery preserves the lost interval without charging or fabricating its end', () => {
+  const result = deriveActorEngagement(
+    [
+      { ts: at(0), event: 'start', actorKey: keyA },
+      {
+        ts: at(10),
+        event: 'session-end-recovery',
+        actorKey: keyA,
+        cells: ['', at(10), 'session-end-recovery', 'Unknown', 'Unknown'],
+      },
+      { ts: at(10), event: 'session-start', actorKey: keyA },
+      {
+        ts: at(20),
+        event: 'pause:other',
+        actorKey: keyA,
+        engagement: {
+          startMs: Date.parse(at(10)),
+          endMs: Date.parse(at(20)),
+          activeEstimateSec: null,
+          wordStart: null,
+          wordEnd: null,
+          fullWordStart: null,
+          fullWordEnd: null,
+        },
+      },
+    ],
+    at(20)
+  );
+  assert.deepEqual(result.failures, []);
+  assert.equal(result.engagedMs, 10000);
+  assert.equal(result.unknownRows, 1);
+  assert.equal(result.complete, false);
+});

@@ -1613,6 +1613,10 @@ historical external-review response envelopes matching
 responses and numbered XPR response aliases also use canonical filename rules:
 
 - `docs/superpowers/reviews/**/review-*-author-response-*.md`
+- `docs/reviews/1857-expanded/**/review-*-author-response-*.md`
+- `docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md`
+- `docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md`
+- `docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md`
 - `docs/superpowers/reviews/**/review-*-reviewer-response-*.md`
 - `docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md`
 - `docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md`

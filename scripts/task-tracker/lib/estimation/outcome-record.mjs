@@ -1,3 +1,4 @@
+import { validateOutcomeDeliveryProof } from './outcome-delivery-proof.mjs';
 import { isKnownTimingEvent, isEmittableTimingEvent } from '../timing-events/index.mjs';
 import { createHash } from 'node:crypto';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
@@ -37,7 +38,7 @@ function closeEnough(left, right) {
 }
 
 export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
-  const incomplete = payload?.schema === INCOMPLETE_OUTCOME_SCHEMA;
+  const incomplete = isIncompleteOutcome(payload);
   if (!incomplete && payload?.schema !== OUTCOME_SCHEMA) fail('outcome-schema');
   exact(
     payload,
@@ -59,7 +60,10 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
   if (!Number.isInteger(payload.issue) || payload.issue <= 0) fail('outcome-issue');
   if (expectedIssue !== undefined && payload.issue !== expectedIssue) fail('issue-correlation');
   if (!new Set(['story', 'epic-orchestration']).has(payload.kind)) fail('outcome-kind');
-  if (payload.kind === 'story') {
+  if (
+    payload.kind === 'story' &&
+    !(incomplete && payload.telemetry?.forecastStatus === 'legacy-none')
+  ) {
     if (
       typeof payload.forecastRecordId !== 'string' ||
       !RECORD_ID_RE.test(payload.forecastRecordId)
@@ -216,7 +220,33 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
   return payload;
 }
 
-export const INCOMPLETE_OUTCOME_SCHEMA = 'aitm.estimation-outcome/v2';
+export const LEGACY_INCOMPLETE_OUTCOME_SCHEMA = 'aitm.estimation-outcome/v2';
+export const INCOMPLETE_OUTCOME_SCHEMA = 'aitm.estimation-outcome/v3';
+export function isIncompleteOutcome(payload) {
+  return [LEGACY_INCOMPLETE_OUTCOME_SCHEMA, INCOMPLETE_OUTCOME_SCHEMA].includes(payload?.schema);
+}
+
+function validCalendarTimestamp(value) {
+  const parts = String(value).match(
+    new RegExp(
+      '^([0-9]{4})-([0-9]{2})-([0-9]{2})[ T]([0-9]{2}):([0-9]{2}):([0-9]{2})(?:[.][0-9]{1,3})? ?(Z|[+-]([0-9]{2}):([0-9]{2}))$'
+    )
+  );
+  if (!parts) return false;
+  const [, year, month, day, hour, minute, second, , offsetHour, offsetMinute] = parts;
+  const leap = Number(year) % 4 === 0 && (Number(year) % 100 !== 0 || Number(year) % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return (
+    Number(month) >= 1 &&
+    Number(month) <= 12 &&
+    Number(day) >= 1 &&
+    Number(day) <= days[Number(month) - 1] &&
+    Number(hour) < 24 &&
+    Number(minute) < 60 &&
+    Number(second) < 60 &&
+    (offsetHour === undefined || (Number(offsetHour) < 24 && Number(offsetMinute) < 60))
+  );
+}
 
 function validatedOutcomeTimingRow(line) {
   const row = parseTimingRow(line);
@@ -227,6 +257,7 @@ function validatedOutcomeTimingRow(line) {
     !row ||
     !(isTableTimingTimestamp(row.ts) || iso.test(row.ts)) ||
     !Number.isFinite(timingTimestampToMs(row.ts)) ||
+    !validCalendarTimestamp(row.ts) ||
     !isKnownTimingEvent(row.event) ||
     row.cells.length < 8
   )
@@ -298,9 +329,18 @@ export function deriveIncompleteTelemetry({ source, verificationSha } = {}) {
 }
 function validateIncompleteTelemetry(payload) {
   const telemetry = payload.telemetry;
+  const current = payload.schema === INCOMPLETE_OUTCOME_SCHEMA;
   exact(
     telemetry,
-    ['status', 'reasons', 'verificationSha', 'knownEngagedMs', 'intervals', 'source'],
+    [
+      'status',
+      'reasons',
+      'verificationSha',
+      'knownEngagedMs',
+      'intervals',
+      'source',
+      ...(current ? ['verification', 'forecastStatus'] : []),
+    ],
     'telemetry-keys'
   );
   exact(
@@ -309,16 +349,44 @@ function validateIncompleteTelemetry(payload) {
     'telemetry-source'
   );
   const { repository, commentNodeId, snapshot } = telemetry.source;
-  const expected = deriveIncompleteTelemetry({
-    source: { repository, commentNodeId, snapshot },
-    verificationSha: telemetry.verificationSha,
-  });
+  const expected = {
+    ...deriveIncompleteTelemetry({
+      source: { repository, commentNodeId, snapshot },
+      verificationSha: telemetry.verificationSha,
+    }),
+    ...(current
+      ? { verification: telemetry.verification, forecastStatus: telemetry.forecastStatus }
+      : {}),
+  };
+  const proof = telemetry.verification;
+  let requiresTestCommand = true;
+  if (current) {
+    ({ requiresTestCommand } = validateOutcomeDeliveryProof(proof, {
+      kind: payload.kind,
+      issue: payload.issue,
+      repository,
+      verificationSha: telemetry.verificationSha,
+    }));
+    if (
+      telemetry.forecastStatus !==
+      (payload.kind === 'epic-orchestration'
+        ? 'epic-not-applicable'
+        : payload.forecastRecordId === null
+          ? 'legacy-none'
+          : 'frozen')
+    )
+      fail('telemetry-forecast-status');
+  }
   if (canonicalRecordJson(expected) !== canonicalRecordJson(telemetry))
     fail('telemetry-projection');
   if (
+    requiresTestCommand &&
     !payload.actual.commands.some((command) =>
       command.executions.some(
-        (execution) => execution.commitSha === telemetry.verificationSha && execution.exitCode === 0
+        (execution) =>
+          execution.commitSha === telemetry.verificationSha &&
+          execution.exitCode === 0 &&
+          (!current || (execution.stage === 'test' && execution.receiptId === proof.recordId))
       )
     )
   )
@@ -327,7 +395,7 @@ function validateIncompleteTelemetry(payload) {
 
 export function validateOutcomeTimingSource(payload, context = {}) {
   validateEstimationOutcome(payload, { expectedIssue: context.issue });
-  if (payload.schema !== INCOMPLETE_OUTCOME_SCHEMA) fail('telemetry-schema');
+  if (!isIncompleteOutcome(payload)) fail('telemetry-schema');
   const { source, verificationSha } = payload.telemetry;
   if (
     context.repository !== source.repository ||

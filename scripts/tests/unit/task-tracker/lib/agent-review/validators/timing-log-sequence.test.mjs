@@ -752,6 +752,10 @@ test('extractDataRows bounds the scan to the table and skips the separator', () 
 
 test('findTimingLogBody returns the matching comment body', () => {
   const found = findTimingLogBody([{ body: 'nope' }, { body: '## ⏱ Timing Log\nx' }]);
+  const real = logCtx(GOOD_ROWS, GOOD_STAGES).comments[0];
+  const embedded = { body: JSON.stringify({ timingSnapshot: real.body }) };
+  assert.equal(findTimingLogBody([embedded, real]), real.body);
+  assert.equal(findTimingLogBody([real, { ...real }]), null);
   assert.match(found, /⏱ Timing Log/);
   assert.equal(findTimingLogBody([{ body: 'nope' }]), null);
 });
@@ -781,6 +785,52 @@ test('bootstrap imports V3 after V1 and V2', async () => {
   const iV3 = src.indexOf('validators/timing-log-sequence.mjs');
   assert.ok(iV1 >= 0 && iV2 >= 0 && iV3 >= 0, 'all three validator imports present');
   assert.ok(iV3 > iV2 && iV2 > iV1, 'V3 import must follow V2 which follows V1');
+});
+
+test('current explicit intervals and unknown process recovery retain complete lexical evidence at Review', async (t) => {
+  const { buildRow } = await import('../../../../../../task-tracker/gh-timing-comment.mjs');
+  const { timingActorKey } = await import('../../../../../../task-tracker/lib/timing-actor.mjs');
+  const actorKey = timingActorKey({ provider: 'codex', sid: 'current-bound-author' });
+  const start = Date.parse('2026-10-01T00:00:00Z');
+  const later = start + 12 * 3600000;
+  let clock = start;
+  t.mock.method(Date, 'now', () => clock);
+  const row = (ts, event, extra = {}) => {
+    clock = ts;
+    return buildRow({
+      ts,
+      event,
+      actorKey,
+      activeSec: null,
+      idleSec: null,
+      wordMarker: 0,
+      fullWordMarker: 0,
+      ...extra,
+    });
+  };
+  const current = row(later + 60000, 'pause:blocked', {
+    engagement: {
+      startMs: later,
+      endMs: later + 60000,
+      activeEstimateSec: null,
+      wordStart: 0,
+      wordEnd: 0,
+      fullWordStart: 0,
+      fullWordEnd: 0,
+    },
+  });
+  const context = (rows) => ({
+    comments: [{ body: ['## ⏱ Timing Log', HEADER, SEP, ...rows].join('\n') }],
+  });
+  assert.deepEqual(validate(context([current])), { pass: true, failures: [] });
+  const oldStart = row(start, 'start');
+  const recovery = row(later, 'session-end-recovery');
+  assert.deepEqual(validate(context([oldStart, recovery, current])), { pass: true, failures: [] });
+  const unexplained = validate(context([oldStart, row(later, 'update')]));
+  assert.equal(unexplained.pass, false);
+  assert.ok(unexplained.failures.some((failure) => failure.includes('suspicious wall-clock gap')));
+  const conflicting = current.replace('start=' + later, 'start=' + (later - 1000));
+  assert.equal(validate(context([row(later, 'start'), conflicting])).pass, false);
 });
 
 test('attributed inactive actors may remain paused while genuine issue stages advance', async () => {

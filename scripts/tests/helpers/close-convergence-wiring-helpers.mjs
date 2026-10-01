@@ -4,6 +4,7 @@
 // audits, which only scan `*.test.mjs`; see lib/discover-test-files.mjs).
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { withUnitRuntimeRoot } from './unit-runtime-root.mjs';
 
 import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
 import { readDeliveredCloseTransactions } from '../../task-tracker/lib/close-convergence.mjs';
@@ -103,7 +104,8 @@ export async function runClose({
   contextOverrides = {},
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), `aitm-${issueNumber}-close-wiring-`));
-  const statePath = join(dir, 'state.json');
+  const statePath = join(dir, '.tmp', 'aitm', 'state', 'state.json');
+  mkdirSync(join(dir, '.tmp', 'aitm', 'state'), { recursive: true });
   writeFileSync(statePath, JSON.stringify(initialState));
 
   let liveBody = body;
@@ -247,187 +249,192 @@ export async function runClose({
   const previousDirty = process.env.TT_SKIP_DIRTY_CHECK;
   const previousProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   const previousExitCode = process.exitCode;
-  process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
-  if (gateReviewToDone !== undefined) {
-    const configDir = join(dir, '.ai-task-manager');
-    mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'task-tracker.json'), JSON.stringify({ gateReviewToDone }));
-  }
-  process.env.TT_SKIP_DIRTY_CHECK = '1';
-  process.exitCode = 0;
   let result;
   try {
-    result = await verbClose({
-      rest: [
-        `#${issueNumber}`,
-        ...(restartStaleTransaction ? ['--restart-stale-transaction'] : []),
-        ...(force ? ['--force'] : []),
-        ...extraRest,
-      ],
-      projectConfig,
-      timingRecorder,
-      stateRunner,
-      githubClient,
-      ...(!omitIssueBodyMutator ? { issueBodyMutator } : {}),
-      convergenceTailProfile,
-      preserveActiveOnConvergence: true,
-      checkDirtyWorkspace: async () => dirtyWorkspace,
-      randomUUIDFn: () => replacementTransactionId,
-      listDeliveredCloseSupersessionComments: async () => {
-        calls.supersessionCommentLists += 1;
-        calls.order.push('comment:list');
-        if (supersessionCommentListError) throw supersessionCommentListError;
-        return structuredClone(liveSupersessionComments);
-      },
-      createDeliveredCloseSupersessionComment: async (commentBody) => {
-        calls.supersessionCommentCreates += 1;
-        calls.order.push('comment:create');
-        if (supersessionCommentCreateError) throw supersessionCommentCreateError;
-        const comment = {
-          id: 77,
-          body: commentBody,
-          user: { login: 'kburson' },
-          created_at: '2026-08-31T21:00:00Z',
-          updated_at: '2026-08-31T21:00:00Z',
-          issue_url: `https://api.github.com/repos/${repository}/issues/${issueNumber}`,
-        };
-        liveSupersessionComments.push(comment);
-        return structuredClone(comment);
-      },
-      readDeliveredCloseSupersessionComment: async (id) => {
-        calls.supersessionCommentReads += 1;
-        calls.order.push('comment:read');
-        if (supersessionCommentReadError) throw supersessionCommentReadError;
-        const comment = structuredClone(
-          liveSupersessionComments.find((candidate) => String(candidate.id) === String(id))
-        );
-        return supersessionCommentReadTransform
-          ? supersessionCommentReadTransform(comment)
-          : comment;
-      },
-      tickLifecycleOnClose: delegateLifecycleHelper
-        ? async (args) =>
-            tickLifecycleOnClose({
-              ...args,
-              deps: {
-                ...args.deps,
-                mutateIssueBody:
-                  args.deps?.mutateIssueBody ??
-                  (async () => {
-                    calls.lifecycleFallbacks += 1;
-                    const error = new Error('raw lifecycle mutator fallback would be reached');
-                    error.name = 'BodyWriteRefusalError';
-                    throw error;
-                  }),
-                sleep: async () => {},
-              },
-            })
-        : async () => {
-            calls.lifecycleReconciles += 1;
-            return { ok: true };
+    process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
+    if (gateReviewToDone !== undefined) {
+      const configDir = join(dir, '.ai-task-manager');
+      mkdirSync(configDir, { recursive: true });
+      writeFileSync(join(configDir, 'task-tracker.json'), JSON.stringify({ gateReviewToDone }));
+    }
+    process.env.TT_SKIP_DIRTY_CHECK = '1';
+    process.exitCode = 0;
+    result = await withUnitRuntimeRoot(
+      () =>
+        verbClose({
+          rest: [
+            `#${issueNumber}`,
+            ...(restartStaleTransaction ? ['--restart-stale-transaction'] : []),
+            ...(force ? ['--force'] : []),
+            ...extraRest,
+          ],
+          projectConfig,
+          timingRecorder,
+          stateRunner,
+          githubClient,
+          ...(!omitIssueBodyMutator ? { issueBodyMutator } : {}),
+          convergenceTailProfile,
+          preserveActiveOnConvergence: true,
+          checkDirtyWorkspace: async () => dirtyWorkspace,
+          randomUUIDFn: () => replacementTransactionId,
+          listDeliveredCloseSupersessionComments: async () => {
+            calls.supersessionCommentLists += 1;
+            calls.order.push('comment:list');
+            if (supersessionCommentListError) throw supersessionCommentListError;
+            return structuredClone(liveSupersessionComments);
           },
-      readTimingCommentBody: async () => {
-        calls.timingReads += 1;
-        return {
-          status: 'found',
-          body: timingBody,
-          error: null,
-        };
-      },
-      reconcileReviewApprovedTiming: async () => ({ status: 'posted' }),
-      writeTerminalDisposition: async () => {
-        calls.terminalDispositions += 1;
-        return { status: 'ok' };
-      },
-      readTerminalDisposition: async () => {
-        if (terminalDispositionError) throw terminalDispositionError;
-        if (terminalDisposition !== undefined) return terminalDisposition;
-        const initial = readDeliveredCloseTransactions(body);
-        return initial[0]?.completedSteps.includes('disposition') ? 'Delivered' : null;
-      },
-      readCloseLabels: async () => {
-        calls.labelReads += 1;
-        if (labelReadError) throw labelReadError;
-        return [...liveLabels];
-      },
-      inspectTerminalIssueBindingRelease: async () => {
-        calls.bindingReads += 1;
-        if (bindingReadError) throw bindingReadError;
-        return { status: bindingReleaseStatus, closedAt: '2026-08-28T00:00:00.000Z' };
-      },
-      resolveReopenedBindingOwnership: () => structuredClone(bindingOwnership),
-      resumeTerminalIssueBindingRelease: async () => {
-        calls.bindingResumes += 1;
-        if (bindingResumeError) throw bindingResumeError;
-        return { status: 'released' };
-      },
-      applyReviewDelta: async () => ({ status: 'skipped' }),
-      ...(createEstimationOutcomeWriter ? { createEstimationOutcomeWriter } : {}),
-      ...(trackEstimationOutcomes
-        ? {
-            estimationOutcomeWriter: async () => {
-              calls.estimationOutcomes += 1;
-              return { status: 'existing' };
-            },
-          }
-        : {}),
-      releaseIssueBindings: () => {
-        calls.bindingReleases += 1;
-        return { released: [] };
-      },
-      deregisterTask: () => {},
-      releaseBindingOccupancy: () => ({ status: 'released' }),
-      loadCloseDeliveryBody: async () => liveBody,
-      locateAuthoritySource: lifecycleEvidence
-        ? () => ({ kind: 'github-records/v1' })
-        : () => ({ kind: 'legacy-body/v1' }),
-      getHeadSha: async () => localHeadSha,
-      resolveLifecycleEvidence: async (input) => {
-        calls.lifecycleExpectedShas.push(input.expectedSha);
-        return lifecycleEvidence;
-      },
-      resolveCloseParentIssue: async () => null,
-      ...(loadCurrentSession ? { loadCurrentSession } : {}),
-      ...(loadRawProjectConfig ? { loadRawProjectConfig } : {}),
-      ...(deliveryVerificationDeps ?? {}),
-      ...(useInjectedDeliveryGateInput
-        ? {
-            loadCloseDeliveryGateInput: async () =>
-              deliveryGateInput ?? {
-                issueNumber,
-                lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
-                branch: `feature/${issueNumber}`,
-                acceptedSha,
-                localHeadSha: acceptedSha,
-                pullRequests: [],
-                records: null,
+          createDeliveredCloseSupersessionComment: async (commentBody) => {
+            calls.supersessionCommentCreates += 1;
+            calls.order.push('comment:create');
+            if (supersessionCommentCreateError) throw supersessionCommentCreateError;
+            const comment = {
+              id: 77,
+              body: commentBody,
+              user: { login: 'kburson' },
+              created_at: '2026-08-31T21:00:00Z',
+              updated_at: '2026-08-31T21:00:00Z',
+              issue_url: `https://api.github.com/repos/${repository}/issues/${issueNumber}`,
+            };
+            liveSupersessionComments.push(comment);
+            return structuredClone(comment);
+          },
+          readDeliveredCloseSupersessionComment: async (id) => {
+            calls.supersessionCommentReads += 1;
+            calls.order.push('comment:read');
+            if (supersessionCommentReadError) throw supersessionCommentReadError;
+            const comment = structuredClone(
+              liveSupersessionComments.find((candidate) => String(candidate.id) === String(id))
+            );
+            return supersessionCommentReadTransform
+              ? supersessionCommentReadTransform(comment)
+              : comment;
+          },
+          tickLifecycleOnClose: delegateLifecycleHelper
+            ? async (args) =>
+                tickLifecycleOnClose({
+                  ...args,
+                  deps: {
+                    ...args.deps,
+                    mutateIssueBody:
+                      args.deps?.mutateIssueBody ??
+                      (async () => {
+                        calls.lifecycleFallbacks += 1;
+                        const error = new Error('raw lifecycle mutator fallback would be reached');
+                        error.name = 'BodyWriteRefusalError';
+                        throw error;
+                      }),
+                    sleep: async () => {},
+                  },
+                })
+            : async () => {
+                calls.lifecycleReconciles += 1;
+                return { ok: true };
               },
-          }
-        : {}),
-      ...(useInjectedReviewAuthorization
-        ? {
-            resolveReviewAuthorization: reviewAuthorizationResolver ?? (() => reviewAuthorization),
-          }
-        : {}),
-      ...(useInjectedDeliveryReceipt
-        ? {
-            requireDeliveryReceipt: () => {
-              if (deliveryRefusal) throw deliveryRefusal;
-              return { skipped: false, receipt: {} };
-            },
-          }
-        : {}),
-      ...(useInjectedFreshDeliveryVerification
-        ? {
-            verifyCloseDeliveryReceipt: async ({ gateInput, receiptGate }) => {
-              calls.freshDeliveryVerifications += 1;
-              calls.freshDeliveryInputs.push(gateInput);
-              return { skipped: false, receipt: receiptGate.receipt, gateInput };
-            },
-          }
-        : {}),
-      ...contextOverrides,
-    });
+          readTimingCommentBody: async () => {
+            calls.timingReads += 1;
+            return {
+              status: 'found',
+              body: timingBody,
+              error: null,
+            };
+          },
+          reconcileReviewApprovedTiming: async () => ({ status: 'posted' }),
+          writeTerminalDisposition: async () => {
+            calls.terminalDispositions += 1;
+            return { status: 'ok' };
+          },
+          readTerminalDisposition: async () => {
+            if (terminalDispositionError) throw terminalDispositionError;
+            if (terminalDisposition !== undefined) return terminalDisposition;
+            const initial = readDeliveredCloseTransactions(body);
+            return initial[0]?.completedSteps.includes('disposition') ? 'Delivered' : null;
+          },
+          readCloseLabels: async () => {
+            calls.labelReads += 1;
+            if (labelReadError) throw labelReadError;
+            return [...liveLabels];
+          },
+          inspectTerminalIssueBindingRelease: async () => {
+            calls.bindingReads += 1;
+            if (bindingReadError) throw bindingReadError;
+            return { status: bindingReleaseStatus, closedAt: '2026-08-28T00:00:00.000Z' };
+          },
+          resolveReopenedBindingOwnership: () => structuredClone(bindingOwnership),
+          resumeTerminalIssueBindingRelease: async () => {
+            calls.bindingResumes += 1;
+            if (bindingResumeError) throw bindingResumeError;
+            return { status: 'released' };
+          },
+          applyReviewDelta: async () => ({ status: 'skipped' }),
+          ...(createEstimationOutcomeWriter ? { createEstimationOutcomeWriter } : {}),
+          ...(trackEstimationOutcomes
+            ? {
+                estimationOutcomeWriter: async () => {
+                  calls.estimationOutcomes += 1;
+                  return { status: 'existing' };
+                },
+              }
+            : {}),
+          releaseIssueBindings: () => {
+            calls.bindingReleases += 1;
+            return { released: [] };
+          },
+          deregisterTask: () => {},
+          releaseBindingOccupancy: () => ({ status: 'released' }),
+          loadCloseDeliveryBody: async () => liveBody,
+          locateAuthoritySource: lifecycleEvidence
+            ? () => ({ kind: 'github-records/v1' })
+            : () => ({ kind: 'legacy-body/v1' }),
+          getHeadSha: async () => localHeadSha,
+          resolveLifecycleEvidence: async (input) => {
+            calls.lifecycleExpectedShas.push(input.expectedSha);
+            return lifecycleEvidence;
+          },
+          resolveCloseParentIssue: async () => null,
+          ...(loadCurrentSession ? { loadCurrentSession } : {}),
+          ...(loadRawProjectConfig ? { loadRawProjectConfig } : {}),
+          ...(deliveryVerificationDeps ?? {}),
+          ...(useInjectedDeliveryGateInput
+            ? {
+                loadCloseDeliveryGateInput: async () =>
+                  deliveryGateInput ?? {
+                    issueNumber,
+                    lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+                    branch: `feature/${issueNumber}`,
+                    acceptedSha,
+                    localHeadSha: acceptedSha,
+                    pullRequests: [],
+                    records: null,
+                  },
+              }
+            : {}),
+          ...(useInjectedReviewAuthorization
+            ? {
+                resolveReviewAuthorization:
+                  reviewAuthorizationResolver ?? (() => reviewAuthorization),
+              }
+            : {}),
+          ...(useInjectedDeliveryReceipt
+            ? {
+                requireDeliveryReceipt: () => {
+                  if (deliveryRefusal) throw deliveryRefusal;
+                  return { skipped: false, receipt: {} };
+                },
+              }
+            : {}),
+          ...(useInjectedFreshDeliveryVerification
+            ? {
+                verifyCloseDeliveryReceipt: async ({ gateInput, receiptGate }) => {
+                  calls.freshDeliveryVerifications += 1;
+                  calls.freshDeliveryInputs.push(gateInput);
+                  return { skipped: false, receipt: receiptGate.receipt, gateInput };
+                },
+              }
+            : {}),
+          ...contextOverrides,
+        }),
+      { projectRoot: dir }
+    );
     return {
       result,
       calls,

@@ -18,7 +18,8 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
@@ -33,7 +34,7 @@ import { reviewAgentValidationAction } from '../../../../task-tracker/lib/reside
 function makeTmpStatePath(state) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-463-'));
   const p = join(dir, 'state.json');
-  writeFileSync(p, JSON.stringify(state));
+  saveState(state, p);
   return { statePath: p, dir };
 }
 
@@ -99,7 +100,7 @@ test('s.active === target: C6 no longer calls flushActiveToGH (deferral seam rem
       'C6 retired the bare `review` row, so flushActiveToGH must not be called by the review verb'
     );
     assert.equal(calls.postTiming.length, 0, 'no timing row is posted on the pre-network path');
-    const after = JSON.parse(readFileSync(statePath, 'utf8'));
+    const after = loadState(statePath);
     assert.equal(
       after.entryStartTs,
       state.entryStartTs,
@@ -125,7 +126,7 @@ test('a paused binding opens a timing segment before automated Review work', asy
 
     await verbReview(ctx);
 
-    const after = JSON.parse(readFileSync(statePath, 'utf8'));
+    const after = loadState(statePath);
     assert.equal(typeof after.entryStartTs, 'string');
     assert.equal(after.wordsAtEntryStart, state.lastWordMarker);
   } finally {

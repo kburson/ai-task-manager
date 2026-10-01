@@ -16,6 +16,7 @@ import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mj
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { readFileSync, mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
@@ -146,6 +147,10 @@ function withRealStateFile({ active }) {
       wordsAtEntryStart: 0,
     })
   );
+  saveState(
+    { active, lastActive: active, entryStartTs: '2026-05-17T12:00:00Z', wordsAtEntryStart: 0 },
+    statePath
+  );
   return { dir, statePath };
 }
 
@@ -170,6 +175,10 @@ function makeDispatcherSandbox({ active }) {
       discoverBucket: null,
       state: 'develop',
     })
+  );
+  saveState(
+    { active, lastActive: active, entryStartTs: '2026-05-17T12:00:00Z', wordsAtEntryStart: 0 },
+    path.join(stateDir, 'task-tracker-state.json')
   );
   return dir;
 }

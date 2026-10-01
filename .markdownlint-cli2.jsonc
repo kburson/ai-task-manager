@@ -41,6 +41,8 @@
     "docs/peer-reviews/**",
     "docs/reviews/1857-expanded/**/review-*-author-response-*.md",
     "docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md",
+    "docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md",
+    "docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md",
     "docs/superpowers/reviews/**/*-reviewer-*-review.md",
     "docs/superpowers/reviews/**/*-review-*-author-response-*.md",
     "docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md",

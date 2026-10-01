@@ -1,3 +1,12 @@
+import { validateOutcomeDeliveryProof, outcomeProofDigest } from './outcome-delivery-proof.mjs';
+import { createHash } from 'node:crypto';
+import { requireDeliveryReceipt, verifyCloseDeliveryReceipt } from '../close-delivery-receipt.mjs';
+import { renderLocalTrunkCloseReceipt } from '../local-trunk-close-receipt.mjs';
+import {
+  parseIssueKind,
+  parseDeliverablePosted,
+  isIssueResidentDeliveryKind,
+} from '../issue-kind.mjs';
 import { pexec } from '../../../gh/lib/gh-client.mjs';
 
 import {
@@ -38,6 +47,7 @@ import { buildEstimationForecast } from './forecast-model.mjs';
 import { buildEstimationOutcome } from './outcome-builder.mjs';
 import {
   INCOMPLETE_OUTCOME_SCHEMA,
+  isIncompleteOutcome,
   validateOutcomeTimingSource,
   readOutcomeTimingRows,
 } from './outcome-record.mjs';
@@ -291,7 +301,10 @@ export function estimationOutcomeSamples(records) {
       .map((record) => [record.envelope.recordId, record.envelope])
   );
   return activeEstimationOutcomes(records)
-    .filter((record) => record.envelope.payload.kind === 'story')
+    .filter(
+      (record) =>
+        record.envelope.payload.kind === 'story' && !isIncompleteOutcome(record.envelope.payload)
+    )
     .map((record) => {
       const forecast = forecastsById.get(record.envelope.payload.forecastRecordId);
       if (!forecast || forecast.issue !== record.envelope.issue) {
@@ -712,11 +725,12 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
     },
     listComparableOutcomes: async ({ planInput }) => {
       const allowed = new Set(planInput.comparableIssueIds ?? []);
-      return (await corpus())
+      return activeEstimationOutcomes(await corpus())
         .filter(
           (record) =>
             record.envelope.recordType === 'estimation-outcome' &&
             record.envelope.payload.kind === 'story' &&
+            !isIncompleteOutcome(record.envelope.payload) &&
             (allowed.size === 0 || allowed.has(record.envelope.issue))
         )
         .map((record) => ({
@@ -931,7 +945,11 @@ async function defaultDiffEvidence({ projectDir, trunk = 'origin/trunk' }) {
   };
 }
 
-export async function issueAttributedDiffEvidence({ projectDir, issueNumber } = {}) {
+export async function issueAttributedDiffEvidence({
+  projectDir,
+  issueNumber,
+  requireEmpty = false,
+} = {}) {
   if (!projectDir || !Number.isInteger(issueNumber) || issueNumber <= 0) {
     fail('issue-diff-input');
   }
@@ -952,6 +970,17 @@ export async function issueAttributedDiffEvidence({ projectDir, issueNumber } = 
       return { sha: line.slice(0, tab), subject: line.slice(tab + 1) };
     })
     .filter(({ sha, subject }) => /^[0-9a-f]{40}$/i.test(sha) && subject.includes(token));
+  if (requireEmpty) {
+    if (commits.length !== 0) fail('issue-resident-has-commits');
+    return {
+      commitSha: verificationSha,
+      verificationSha,
+      filesChanged: 0,
+      modules: [],
+      lanes: [],
+      dependencyBreadth: 0,
+    };
+  }
   if (commits.length === 0) fail('issue-diff-commit');
 
   const files = new Set();
@@ -1006,12 +1035,35 @@ export function createEstimationOutcomeRuntime({
   cfg,
   projectDir,
   resolveVerificationSha,
+  resolveDeliveryAuthority,
   deps = {},
 } = {}) {
   if (!cfg?.repo || !projectDir) fail('outcome-config');
   const io = deps.recordIo ?? createGitHubEstimationRecordIo(deps);
   const graphql = deps.graphql ?? io.graphql;
   const { owner, name } = splitRepository(cfg.repo);
+  const sameVerificationProof = async (previous, current) => {
+    if (canonicalRecordJson(previous) === canonicalRecordJson(current)) return true;
+    if (previous?.mode !== 'child-lineage' || current?.mode !== 'child-lineage') return false;
+    const stable = (proof) => {
+      const value = structuredClone(proof);
+      delete value.lineageDigest;
+      delete value.lineage.targetHead;
+      return canonicalRecordJson(value);
+    };
+    if (stable(previous) !== stable(current)) return false;
+    try {
+      const before = previous.lineage.targetHead;
+      const after = current.lineage.targetHead;
+      if (deps.isLineageAncestor)
+        return (await deps.isLineageAncestor({ before, after, projectDir })) === true;
+      await pexec('git', ['merge-base', '--is-ancestor', before, after], { cwd: projectDir });
+      return true;
+    } catch {
+      // Rewritten, missing or unobservable targets cannot authorize immutable retry.
+      return false;
+    }
+  };
 
   const childOutcomeRecordIds = async (issueNumber) => {
     const childNumbers = [];
@@ -1092,11 +1144,22 @@ export function createEstimationOutcomeRuntime({
         : discoveredChildren.childCount > 0;
       const forecasts = recordsForProjection(records);
       const activeForecasts = forecasts.filter((record) => record.supersededBy === null);
-      if (!isEpic && forecasts.length === 0 && forecastRecordId === null) {
-        return { status: 'legacy-no-forecast' };
-      }
+      const legacyNone = !isEpic && forecasts.length === 0 && forecastRecordId === null;
+      if (
+        legacyNone &&
+        String(body)
+          .split('\n')
+          .some(
+            (line) =>
+              new RegExp('^\\s*<!--\\s*aitm-estimation-forecast-ready\\b', 'i').test(line) ||
+              (new RegExp('^\\s*<!--\\s*aitm-plan-approved\\b', 'i').test(line) &&
+                line.includes('forecast-record-id'))
+          )
+      )
+        fail('forecast-claim-without-record');
       if (
         !isEpic &&
+        !legacyNone &&
         (activeForecasts.length !== 1 || activeForecasts[0].recordId !== forecastRecordId)
       ) {
         fail('forecast-lineage');
@@ -1106,8 +1169,8 @@ export function createEstimationOutcomeRuntime({
           record.envelope.recordType === 'estimation-forecast' &&
           record.envelope.recordId === forecastRecordId
       );
-      if (!isEpic && !forecastRecord) fail('forecast');
-      const outcomeForecast = isEpic ? null : forecastRecord.envelope;
+      if (!isEpic && !legacyNone && !forecastRecord) fail('forecast');
+      const outcomeForecast = isEpic || legacyNone ? null : forecastRecord.envelope;
       const timingResult = await (deps.readTimingCommentBody ?? readTimingCommentBody)({
         issueNumber,
         repo: cfg.repo,
@@ -1119,8 +1182,9 @@ export function createEstimationOutcomeRuntime({
         records.some(
           (record) =>
             record.envelope.recordType === 'estimation-outcome' &&
-            record.envelope.payload?.schema === INCOMPLETE_OUTCOME_SCHEMA
+            isIncompleteOutcome(record.envelope.payload)
         );
+      if (legacyNone && !requiresCanonical) return { status: 'legacy-no-forecast' };
       const readCanonical = async () => {
         const observed = await (deps.readCanonicalTimingSource ?? readCanonicalTimingSource)({
           issueNumber,
@@ -1138,9 +1202,42 @@ export function createEstimationOutcomeRuntime({
       };
       const canonicalSource = requiresCanonical ? await readCanonical() : null;
       if (canonicalSource) timingBody = canonicalSource.body;
+      const delivery = resolveDeliveryAuthority
+        ? await resolveDeliveryAuthority({ issueNumber, refresh: true })
+        : null;
+      const deliveryFingerprint = (value) => {
+        if (
+          !value ||
+          typeof value.deliveryBody !== 'string' ||
+          value.gateInput?.body !== value.deliveryBody
+        )
+          fail('outcome-delivery-linkage');
+        return outcomeProofDigest({
+          repository: value.gateInput.repository,
+          issue: value.gateInput.issueNumber,
+          acceptedSha: value.gateInput.acceptedSha,
+          parentIssue: value.gateInput.lineage?.parentIssueNumber ?? null,
+          testReceiptSha: value.testReceiptSha,
+          acceptedReviewSha: value.acceptedReviewSha,
+          receipt: value.receipt ?? null,
+          lineageEvidence: value.lineageEvidence ?? null,
+          cascadeAuthorization: value.cascadeAuthorization ?? null,
+          kind: parseIssueKind(value.deliveryBody),
+          deliverable: parseDeliverablePosted(value.deliveryBody),
+          verification: parseValidatedVerificationReceipts(value.deliveryBody, {
+            expectedIssue: issueNumber,
+          }),
+        });
+      };
+      const preparedDeliveryFingerprint =
+        delivery && canonicalSource ? deliveryFingerprint(delivery) : null;
+      const residentChild =
+        delivery?.gateInput?.lineage?.parentIssueNumber != null &&
+        isIssueResidentDeliveryKind(delivery.deliveryBody);
       const diff = await (
         deps.readDiffEvidence ?? (isEpic ? defaultDiffEvidence : issueAttributedDiffEvidence)
       )({
+        requireEmpty: delivery?.receipt?.mode === 'no-commit' || residentChild,
         projectDir,
         trunk: cfg.trunkRef ?? 'origin/trunk',
         issueNumber,
@@ -1149,9 +1246,108 @@ export function createEstimationOutcomeRuntime({
         isEpic && !requiresCanonical
           ? undefined
           : outcomeVerificationSha({ resolveVerificationSha, issueNumber, diff });
+      let residentProof = null;
+      if (delivery && canonicalSource) {
+        if (
+          delivery.gateInput?.repository !== cfg.repo ||
+          delivery.gateInput?.issueNumber !== issueNumber ||
+          delivery.gateInput?.acceptedSha !== acceptedVerificationSha ||
+          typeof delivery.deliveryBody !== 'string' ||
+          delivery.gateInput?.body !== delivery.deliveryBody ||
+          delivery.testReceiptSha !== acceptedVerificationSha ||
+          delivery.acceptedReviewSha !== acceptedVerificationSha
+        ) {
+          fail('outcome-delivery-linkage');
+        }
+        body = delivery.deliveryBody;
+      }
+      if (delivery?.receipt?.mode === 'no-commit') {
+        if (diff.verificationSha !== acceptedVerificationSha) fail('outcome-delivery-local-head');
+        const kind = parseIssueKind(delivery.deliveryBody);
+        if (
+          !isIssueResidentDeliveryKind(delivery.deliveryBody) ||
+          delivery.gateInput?.repository !== cfg.repo ||
+          delivery.gateInput?.issueNumber !== issueNumber ||
+          delivery.gateInput?.acceptedSha !== acceptedVerificationSha ||
+          delivery.gateInput?.body !== delivery.deliveryBody
+        )
+          fail('outcome-delivery-linkage');
+        const fresh = requireDeliveryReceipt(delivery.gateInput);
+        await verifyCloseDeliveryReceipt({
+          gateInput: delivery.gateInput,
+          receiptGate: fresh,
+          testReceiptSha: delivery.testReceiptSha,
+          acceptedReviewSha: delivery.acceptedReviewSha,
+        });
+        if (canonicalRecordJson(fresh.receipt) !== canonicalRecordJson(delivery.receipt.receipt))
+          fail('outcome-delivery-linkage');
+        residentProof = {
+          mode: 'issue-resident-delivery',
+          issueKind: kind,
+          recordId: fresh.receipt.recordId,
+          recordDigest: createHash('sha256')
+            .update(canonicalRecordJson(fresh.receipt))
+            .digest('hex'),
+          acceptedSha: acceptedVerificationSha,
+        };
+        body = delivery.deliveryBody;
+      }
+      if (isEpic && canonicalSource && delivery?.gateInput?.lineage?.parentIssueNumber == null) {
+        const localTrunk = delivery?.receipt?.mode === 'local-trunk';
+        if (
+          parseIssueKind(delivery?.deliveryBody) !== 'epic' ||
+          delivery.gateInput?.repository !== cfg.repo ||
+          delivery.gateInput?.issueNumber !== issueNumber ||
+          delivery.gateInput?.acceptedSha !== acceptedVerificationSha ||
+          delivery.gateInput?.body !== delivery.deliveryBody ||
+          delivery.gateInput?.lineage?.parentIssueNumber !== null ||
+          delivery.testReceiptSha !== acceptedVerificationSha ||
+          delivery.acceptedReviewSha !== acceptedVerificationSha ||
+          delivery.receipt?.skipped !== false ||
+          (!localTrunk && !delivery.receipt?.verification)
+        )
+          fail('outcome-epic-delivery-linkage');
+        if (localTrunk) {
+          const receipt = delivery.receipt.receipt;
+          renderLocalTrunkCloseReceipt(receipt);
+          if (
+            receipt.repository !== cfg.repo ||
+            receipt.issue !== issueNumber ||
+            receipt.acceptedHeadSha !== acceptedVerificationSha ||
+            delivery.gateInput.pullRequests?.length !== 0
+          )
+            fail('outcome-epic-delivery-linkage');
+          residentProof = {
+            mode: 'local-trunk-delivery',
+            issueKind: 'epic',
+            recordId: receipt.deliveryOperationId,
+            recordDigest: outcomeProofDigest(receipt),
+            acceptedSha: acceptedVerificationSha,
+          };
+        } else {
+          const fresh = requireDeliveryReceipt(delivery.gateInput);
+          if (
+            fresh.skipped ||
+            fresh.mode ||
+            !fresh.receipt?.intentId ||
+            canonicalRecordJson(fresh.receipt) !== canonicalRecordJson(delivery.receipt.receipt)
+          )
+            fail('outcome-epic-delivery-linkage');
+          residentProof = {
+            mode: 'merged-pr-delivery',
+            issueKind: 'epic',
+            recordId: fresh.receipt.intentId,
+            recordDigest: createHash('sha256')
+              .update(canonicalRecordJson(fresh.receipt))
+              .digest('hex'),
+            acceptedSha: acceptedVerificationSha,
+          };
+        }
+        body = delivery.deliveryBody;
+      }
       const verification = verificationEvidence(
         body,
-        isEpic
+        isEpic || residentProof || residentChild
           ? { expectedIssue: issueNumber }
           : {
               expectedIssue: issueNumber,
@@ -1159,6 +1355,79 @@ export function createEstimationOutcomeRuntime({
               projectDir,
             }
       );
+      const exactTests = parseValidatedVerificationReceipts(body, {
+        expectedIssue: issueNumber,
+      }).filter(
+        (receipt) => receipt.stage === 'test' && receipt.commitSha === acceptedVerificationSha
+      );
+      if (canonicalSource && exactTests.length !== 1) fail('outcome-exact-test-identity');
+      const exactTest = exactTests[0];
+      let verificationProvenance =
+        residentProof ??
+        (exactTest
+          ? {
+              mode: 'exact-test',
+              issueKind: parseIssueKind(body),
+              recordId: exactTest.receiptId,
+              recordDigest: outcomeProofDigest(exactTest),
+              acceptedSha: acceptedVerificationSha,
+            }
+          : undefined);
+      if (canonicalSource && residentChild) {
+        const deliverable = parseDeliverablePosted(body);
+        if (!deliverable || diff.verificationSha !== acceptedVerificationSha || !exactTest)
+          fail('outcome-child-resident');
+        verificationProvenance = {
+          mode: 'child-resident-delivery',
+          issueKind: parseIssueKind(body),
+          recordId: exactTest.receiptId,
+          recordDigest: outcomeProofDigest(exactTest),
+          acceptedSha: acceptedVerificationSha,
+          parentIssue: delivery.gateInput.lineage.parentIssueNumber,
+          deliverableUrl: deliverable.url,
+        };
+        validateOutcomeDeliveryProof(verificationProvenance, {
+          kind: 'story',
+          issue: issueNumber,
+          repository: cfg.repo,
+          verificationSha: acceptedVerificationSha,
+        });
+      } else if (canonicalSource && delivery?.gateInput?.lineage?.parentIssueNumber != null) {
+        const lineage = delivery.lineageEvidence;
+        if (
+          !lineage ||
+          lineage.parentIssue !== delivery.gateInput.lineage.parentIssueNumber ||
+          !exactTest
+        )
+          fail('outcome-child-lineage');
+        verificationProvenance = {
+          mode: 'child-lineage',
+          issueKind: parseIssueKind(body),
+          recordId: exactTest.receiptId,
+          recordDigest: outcomeProofDigest(exactTest),
+          acceptedSha: acceptedVerificationSha,
+          lineage: structuredClone(lineage),
+          lineageDigest: outcomeProofDigest(lineage),
+        };
+        validateOutcomeDeliveryProof(verificationProvenance, {
+          kind: isEpic ? 'epic-orchestration' : 'story',
+          issue: issueNumber,
+          repository: cfg.repo,
+          verificationSha: acceptedVerificationSha,
+        });
+      }
+      if (canonicalSource && delivery?.cascadeAuthorization) {
+        verificationProvenance = {
+          ...verificationProvenance,
+          cascadeScope: structuredClone(delivery.cascadeAuthorization),
+        };
+        validateOutcomeDeliveryProof(verificationProvenance, {
+          kind: isEpic ? 'epic-orchestration' : 'story',
+          issue: issueNumber,
+          repository: cfg.repo,
+          verificationSha: acceptedVerificationSha,
+        });
+      }
       let timing;
       if (canonicalSource) {
         const rows = readOutcomeTimingRows(timingBody);
@@ -1182,11 +1451,13 @@ export function createEstimationOutcomeRuntime({
                 },
               };
       } else timing = readEstimationStageTiming(timingBody.split('\n'));
+      if (legacyNone && !timing.source) return { status: 'legacy-no-forecast' };
       let outcomePayload = buildEstimationOutcome({
         issue: issueNumber,
         forecast: outcomeForecast,
         timing,
         verificationSha: acceptedVerificationSha,
+        verificationProvenance,
         verification,
         diff,
         review: {
@@ -1205,30 +1476,46 @@ export function createEstimationOutcomeRuntime({
         verificationSha: acceptedVerificationSha,
         forecastRecordId: outcomeForecast?.recordId ?? null,
       });
-      if (canonicalSource && !supersedeExisting) {
+      if (canonicalSource) {
         const active = activeEstimationOutcomes(
           records.filter((record) => record.envelope.recordType === 'estimation-outcome')
         );
         if (active.length > 1) fail('outcome-duplicate');
         const previous = active[0]?.envelope.payload;
-        if (previous?.schema === INCOMPLETE_OUTCOME_SCHEMA) {
-          validateOutcomeTimingSource(previous, sourceContext(canonicalSource));
-          for (const group of previous.actual.commands) {
-            const current = verification.find(
-              (candidate) => candidate.classification === group.classification
-            );
+        if (isIncompleteOutcome(previous)) {
+          validateOutcomeTimingSource(previous, {
+            ...sourceContext(canonicalSource),
+            verificationSha: supersedeExisting
+              ? previous.telemetry.verificationSha
+              : acceptedVerificationSha,
+          });
+          if (!supersedeExisting) {
             if (
-              !current ||
-              group.executions.some(
-                (execution) =>
-                  !current.executions.some(
-                    (candidate) => canonicalRecordJson(candidate) === canonicalRecordJson(execution)
-                  )
-              )
+              previous.schema === INCOMPLETE_OUTCOME_SCHEMA &&
+              !(await sameVerificationProof(
+                previous.telemetry.verification,
+                verificationProvenance
+              ))
             )
               fail('outcome-verification-lineage');
+            for (const group of previous.actual.commands) {
+              const current = verification.find(
+                (candidate) => candidate.classification === group.classification
+              );
+              if (
+                !current ||
+                group.executions.some(
+                  (execution) =>
+                    !current.executions.some(
+                      (candidate) =>
+                        canonicalRecordJson(candidate) === canonicalRecordJson(execution)
+                    )
+                )
+              )
+                fail('outcome-verification-lineage');
+            }
+            outcomePayload = previous;
           }
-          outcomePayload = previous;
         }
       }
       const result = await ensureEstimationOutcome({
@@ -1256,11 +1543,59 @@ export function createEstimationOutcomeRuntime({
           withLogicalRecordClaim: io.withLogicalRecordClaim,
         },
       });
-      if (outcomePayload.schema === INCOMPLETE_OUTCOME_SCHEMA) {
+      if (isIncompleteOutcome(outcomePayload)) {
+        if (preparedDeliveryFingerprint !== null) {
+          const freshDelivery = await resolveDeliveryAuthority({ issueNumber, refresh: true });
+          if (deliveryFingerprint(freshDelivery) !== preparedDeliveryFingerprint)
+            fail('outcome-delivery-changed-after-publication');
+        }
         validateOutcomeTimingSource(
           result.record.envelope.payload,
           sourceContext(await readCanonical())
         );
+        if (legacyNone) {
+          const freshRecords = await io.listIssueRecords({
+            repository: cfg.repo,
+            issue: issueNumber,
+          });
+          if (
+            !Array.isArray(freshRecords) ||
+            freshRecords.some((record) => record.envelope.recordType === 'estimation-forecast')
+          )
+            fail('forecast-appeared-after-outcome');
+          const freshDelivery = resolveDeliveryAuthority
+            ? await resolveDeliveryAuthority({ issueNumber, refresh: true })
+            : null;
+          const freshBody =
+            freshDelivery?.deliveryBody ??
+            (await (
+              deps.readIssueBody ??
+              (async () => {
+                const result = await pexec('gh', [
+                  'issue',
+                  'view',
+                  String(issueNumber),
+                  '-R',
+                  cfg.repo,
+                  '--json',
+                  'body',
+                ]);
+                return JSON.parse(result.stdout).body;
+              })
+            )({ issueNumber, repository: cfg.repo }));
+          if (
+            typeof freshBody !== 'string' ||
+            freshBody
+              .split(String.fromCharCode(10))
+              .some(
+                (line) =>
+                  line.trim().startsWith('<!-- aitm-estimation-forecast-ready') ||
+                  (line.trim().startsWith('<!-- aitm-plan-approved') &&
+                    line.includes('forecast-record-id'))
+              )
+          )
+            fail('forecast-claim-after-outcome');
+        }
       }
       return result;
     },

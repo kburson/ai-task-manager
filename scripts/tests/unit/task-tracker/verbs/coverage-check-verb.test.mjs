@@ -12,6 +12,9 @@
 
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
+import { saveState } from '../../../../task-tracker/state.mjs';
+import { setSessionKanbanState } from '../../../../task-tracker/session-state.mjs';
+import { currentSessionId } from '../../../../task-tracker/word-counter.mjs';
 import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
@@ -109,6 +112,7 @@ function stateFile(active, legacyState) {
   const p = path.join(tmpRoot, `state-${stateCounter++}.json`);
   const obj = { active, lastActive: active };
   if (legacyState) obj.state = legacyState;
+  saveState(obj, p);
   writeFileSync(p, JSON.stringify(obj));
   return p;
 }
@@ -347,12 +351,12 @@ test('verbCheck: "deep dive complete" outside Refine → ensureDeepDive, no exit
 });
 
 test('verbCheck: "deep dive complete" while bound in Refine → refuse, exit 1', async () => {
-  // Drive readBoundState to `refine` via a dedicated projectDir whose resolved
-  // state file carries the legacy `state` field.
+  // The own binding carries the observed Refine state in this isolated fixture.
   const refineDir = path.join(tmpRoot, 'refine-proj');
   const sp = resolveStatePath(refineDir);
   mkdirSync(path.dirname(sp), { recursive: true });
-  writeFileSync(sp, JSON.stringify({ active: '#777', state: 'refine' }));
+  saveState({ active: '#777' }, sp);
+  setSessionKanbanState(currentSessionId(), 'refine', refineDir);
   const r = await runVerb(
     baseCtx({
       projectDir: refineDir,

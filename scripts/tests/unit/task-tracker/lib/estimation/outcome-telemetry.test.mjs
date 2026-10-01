@@ -1,4 +1,71 @@
 // @story #1857
+import { outcomeProofDigest } from '../../../../../task-tracker/lib/estimation/outcome-delivery-proof.mjs';
+test('child outcome carries the real Test identity plus parent lineage, never a skipped receipt', () => {
+  const lineage = {
+    schema: 'aitm.lineage-delivery-evidence/v1',
+    repository: 'owner/repo',
+    issue: 1857,
+    parentIssue: 1847,
+    acceptedSha: 'a'.repeat(40),
+    targetBranch: 'codex/1847',
+    targetHead: 'b'.repeat(40),
+    commits: ['c'.repeat(40)],
+    children: [],
+  };
+  const outcome = buildEstimationOutcome({
+    ...input,
+    verificationProvenance: {
+      ...input.verificationProvenance,
+      mode: 'child-lineage',
+      lineage,
+      lineageDigest: outcomeProofDigest(lineage),
+    },
+  });
+  assert.equal(outcome.telemetry.verification.recordId, input.verificationProvenance.recordId);
+  const missingTest = structuredClone(outcome);
+  missingTest.actual.commands = [];
+  assert.throws(() => validateEstimationOutcome(missingTest));
+  const changed = structuredClone(outcome);
+  changed.telemetry.verification.lineage.parentIssue = 1857;
+  changed.telemetry.verification.lineageDigest = outcomeProofDigest(
+    changed.telemetry.verification.lineage
+  );
+  assert.throws(() => validateEstimationOutcome(changed));
+});
+test('root epic incomplete telemetry uses actual merged delivery identity without invented parent commands', () => {
+  const outcome = buildEstimationOutcome({
+    ...input,
+    forecast: null,
+    kind: 'epic-orchestration',
+    verification: [],
+    childOutcomeRecordIds: ['01J00000000000000000000842'],
+    verificationProvenance: {
+      ...input.verificationProvenance,
+      mode: 'merged-pr-delivery',
+      issueKind: 'epic',
+    },
+  });
+  assert.equal(outcome.telemetry.forecastStatus, 'epic-not-applicable');
+  assert.deepEqual(outcome.actual.commands, []);
+  for (const mutate of [
+    (value) => {
+      value.telemetry.verification.mode = 'issue-resident-delivery';
+    },
+    (value) => {
+      value.telemetry.verification.issueKind = 'code';
+    },
+    (value) => {
+      value.telemetry.verification.recordId = '';
+    },
+    (value) => {
+      value.telemetry.verification.acceptedSha = 'b'.repeat(40);
+    },
+  ]) {
+    const bad = structuredClone(outcome);
+    mutate(bad);
+    assert.throws(() => validateEstimationOutcome(bad));
+  }
+});
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildEstimationOutcome } from '../../../../../task-tracker/lib/estimation/outcome-builder.mjs';
@@ -26,6 +93,13 @@ const input = {
   forecast,
   timing: { source },
   verificationSha: 'a'.repeat(40),
+  verificationProvenance: {
+    mode: 'exact-test',
+    issueKind: 'code',
+    recordId: '01J00000000000000000000810',
+    recordDigest: '1'.repeat(64),
+    acceptedSha: 'a'.repeat(40),
+  },
   verification: [
     {
       classification: 'test-unit',
@@ -34,7 +108,7 @@ const input = {
       executions: [
         {
           receiptId: '01J00000000000000000000810',
-          stage: 'develop-final',
+          stage: 'test',
           commitSha: 'a'.repeat(40),
           command: 'node',
           args: ['--test'],
@@ -50,7 +124,7 @@ const input = {
 };
 test('incomplete outcome derives known subtotal from immutable timing source without numeric fabrication', () => {
   const outcome = buildEstimationOutcome(input);
-  assert.equal(outcome.schema, 'aitm.estimation-outcome/v2');
+  assert.equal(outcome.schema, 'aitm.estimation-outcome/v3');
   assert.equal(outcome.actual.engagedHours, null);
   assert.equal(outcome.actual.stages.develop, null);
   assert.equal(outcome.variance, null);
@@ -296,4 +370,50 @@ test('supported ISO fractional historical timing rows remain represented', () =>
   assert.equal(value.telemetry.status, 'incomplete');
   assert.ok(value.telemetry.reasons.includes('legacy-attribution-unknown'));
   assert.equal(value.telemetry.source.snapshot, iso);
+});
+
+test('incomplete source proof carries closed exact Test provenance and refuses omitted or forged modes', () => {
+  const value = buildEstimationOutcome(input);
+  assert.deepEqual(value.telemetry.verification, input.verificationProvenance);
+  assert.throws(() => buildEstimationOutcome({ ...input, verificationProvenance: undefined }));
+  for (const change of [
+    { mode: 'anything' },
+    { issueKind: 'epic' },
+    { acceptedSha: 'b'.repeat(40) },
+    { recordId: '01J00000000000000000000999' },
+    { recordDigest: 'invalid' },
+  ]) {
+    assert.throws(() =>
+      buildEstimationOutcome({
+        ...input,
+        verificationProvenance: { ...input.verificationProvenance, ...change },
+      })
+    );
+  }
+});
+
+test('calendar-normalized impossible original timing dates are refused', () => {
+  for (const invalid of ['2026-02-31T00:00:01+00:00', '2026-10-01T24:00:00+00:00']) {
+    const badSnapshot = source.snapshot.replace('2026-10-01 00:00:01 +00:00', invalid);
+    assert.throws(
+      () =>
+        buildEstimationOutcome({
+          ...input,
+          timing: { source: { ...source, snapshot: badSnapshot } },
+        }),
+      new RegExp('estimation-')
+    );
+  }
+});
+
+test('persisted predecessor v2 remains readable without invented proof fields', () => {
+  const predecessor = buildEstimationOutcome(input);
+  predecessor.schema = 'aitm.estimation-outcome/v2';
+  delete predecessor.telemetry.verification;
+  delete predecessor.telemetry.forecastStatus;
+  assert.doesNotThrow(() => validateEstimationOutcome(predecessor));
+  assert.equal(predecessor.telemetry.verification, undefined);
+});
+test('new provenance uses an explicit schema generation', () => {
+  assert.equal(buildEstimationOutcome(input).schema, 'aitm.estimation-outcome/v3');
 });

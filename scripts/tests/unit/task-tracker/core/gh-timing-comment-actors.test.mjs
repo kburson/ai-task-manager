@@ -7,6 +7,7 @@ import {
   buildInitialComment,
 } from '../../../../task-tracker/gh-timing-comment.internals.mjs';
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
+import { postTimingEvent } from '../../../../task-tracker/gh-timing-comment.mjs';
 import { timingActorKey } from '../../../../task-tracker/lib/timing-actor.mjs';
 import { postTimingSafely } from '../../../../task-tracker/lib/timing-post-outcome.mjs';
 const key = timingActorKey({ provider: 'codex', sid: 'original-author' });
@@ -217,4 +218,125 @@ test('canonical timing source ignores quoted heading mentions in unrelated recor
   });
   assert.equal(result.status, 'found');
   assert.equal(result.source.commentNodeId, 'IC_real');
+});
+
+test('attributed publication reconciles ambiguous success against canonical exact-row replay', async () => {
+  let body = buildInitialComment();
+  let writes = 0;
+  let reads = 0;
+  const deps = {
+    findTimingComment: async () => ({ id: 'IC_real', body }),
+    readCanonicalTimingSource: async () => {
+      reads++;
+      return {
+        status: 'found',
+        source: { repository: 'owner/repo', issue: 1857, commentNodeId: 'IC_real', body },
+      };
+    },
+    updateTimingComment: async (id, repo, updated) => {
+      assert.equal(id, 'IC_real');
+      assert.equal(repo, 'owner/repo');
+      body = updated;
+      writes++;
+      if (writes === 1) throw new Error('response lost after remote acceptance');
+    },
+  };
+  const args = { issueNumber: 1857, repo: 'owner/repo', row: make(), lock: false, deps };
+  await assert.rejects(postTimingEvent(args), /response lost/);
+  await postTimingEvent(args);
+  assert.equal(writes, 1, 'exact accepted replay needs no second mutation');
+  assert.equal(
+    body
+      .split('\n')
+      .map(parseTimingRow)
+      .filter((row) => row?.actorKey).length,
+    1
+  );
+  assert.ok(reads >= 3, 'successful return includes fresh canonical readback');
+});
+
+test('attributed publication refuses ambiguous census and unobserved writes', async () => {
+  let writes = 0;
+  const source = {
+    repository: 'owner/repo',
+    issue: 1857,
+    commentNodeId: 'IC_real',
+    body: buildInitialComment(),
+  };
+  const args = { issueNumber: 1857, repo: 'owner/repo', row: make(), lock: false };
+  await assert.rejects(
+    postTimingEvent({
+      ...args,
+      deps: {
+        findTimingComment: async () => ({ id: 'IC_real', body: source.body }),
+        readCanonicalTimingSource: async () => ({
+          status: 'error',
+          error: new Error('ambiguous corpus'),
+        }),
+        updateTimingComment: async () => {
+          writes++;
+        },
+      },
+    }),
+    /ambiguous corpus/
+  );
+  assert.equal(writes, 0);
+  await assert.rejects(
+    postTimingEvent({
+      ...args,
+      deps: {
+        findTimingComment: async () => ({ id: 'IC_real', body: source.body }),
+        readCanonicalTimingSource: async () => ({ status: 'found', source }),
+        updateTimingComment: async () => {
+          writes++;
+        },
+      },
+    }),
+    /timing-publication:readback/
+  );
+  assert.equal(writes, 1);
+});
+
+test('attributed creation requires fresh unique canonical identity and matching issue', async () => {
+  let body = null;
+  let reads = 0;
+  await postTimingEvent({
+    issueNumber: '#1857',
+    repo: 'owner/repo',
+    row: make(),
+    lock: false,
+    deps: {
+      findTimingComment: async () => null,
+      readCanonicalTimingSource: async () => {
+        reads++;
+        return body === null
+          ? { status: 'absent', source: null }
+          : {
+              status: 'found',
+              source: { repository: 'owner/repo', issue: 1857, commentNodeId: 'IC_created', body },
+            };
+      },
+      createTimingComment: async (_issue, _repo, value) => {
+        body = value;
+      },
+    },
+  });
+  assert.equal(reads, 2);
+  await assert.rejects(
+    postTimingEvent({
+      issueNumber: 1857,
+      repo: 'owner/repo',
+      row: make(),
+      lock: false,
+      deps: {
+        findTimingComment: async () => ({ id: 'IC_other', body }),
+        updateTimingComment: async () => {},
+        readCanonicalTimingSource: async () => ({
+          status: 'found',
+          source: { repository: 'owner/repo', issue: 1858, commentNodeId: 'IC_other', body },
+        }),
+      },
+    }),
+    /timing-publication:source/
+  );
 });

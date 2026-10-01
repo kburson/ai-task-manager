@@ -939,19 +939,19 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 2335,
+          "line": 2346,
           "fingerprint": "sha256:e082d3e0bf8bd6bc08fa98eed3c52e616dc3c6329d243087f10166f7d85b6894",
           "kind": "warning"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 3371,
+          "line": 3427,
           "fingerprint": "sha256:88a1ee489d6cb2287e4f4b4282081da349cada2938a86e0ae9eb61d189caafb2",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 4812,
+          "line": 4950,
           "fingerprint": "sha256:1f4f84c9a23cb774cb3a3dfaaee72679c500fda0cfad70ac870ef7feb2c887ee",
           "kind": "refusal"
         }
@@ -1028,7 +1028,7 @@
         },
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 1166,
+          "line": 1182,
           "fingerprint": "sha256:492e8cc29829df9cabe2708fc7955250795a0821d1a29aee6fa0f99bc8dcf005",
           "kind": "refusal"
         }

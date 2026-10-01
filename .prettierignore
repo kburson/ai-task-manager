@@ -23,3 +23,6 @@ scripts/tests/fixtures/1558/lifecycle-transcript-final.json
 docs/reviews/1857-expanded/**/review-*-author-response-*.md
 docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md
 docs/reviews/1857-expanded/**/review-*-review-manifest.md
+docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md
+docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md
+docs/reviews/1857-revised-plan-xpr/**/review-*-review-manifest.md

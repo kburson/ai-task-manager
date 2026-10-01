@@ -12,6 +12,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
@@ -60,7 +61,7 @@ after(() => {
 
 function stateFile(active) {
   const p = path.join(tmpRoot, `state-${Math.abs(hashish(String(active)))}.json`);
-  writeFileSync(p, JSON.stringify({ active, lastActive: active }));
+  saveState({ active, lastActive: active }, p);
   return p;
 }
 function hashish(s) {

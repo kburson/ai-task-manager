@@ -28,12 +28,17 @@ import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs'
 import { inspectTestDeclarations } from '../../../../task-tracker/lib/action-decision/test.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { saveState } from '../../../../task-tracker/state.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
 const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-test-injection-'));
+saveState(
+  { active: '#999', entryStartTs: new Date().toISOString(), wordsAtEntryStart: 0 },
+  path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+);
 try {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(

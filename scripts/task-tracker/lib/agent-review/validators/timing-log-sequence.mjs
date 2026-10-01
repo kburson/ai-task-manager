@@ -1,4 +1,4 @@
-import { deriveActorEngagement } from '../../timing-engagement.mjs';
+import { deriveActorEngagement, isUnknownActorRecovery } from '../../timing-engagement.mjs';
 // Agent Review Gate — V3 timing-log-sequence validator (#812, rewritten for the
 // timing model v2 grammar under #828).
 //
@@ -40,7 +40,7 @@ import { _tsToMs } from '../../timing-rows.mjs';
 import { parseTimingRow } from '../../timing-row-reader.mjs';
 import { stateIds, isTimingHistoryEdge, normalizeStateId } from '../../lifecycle-policy/index.mjs';
 
-const TIMING_LOG_RE = /⏱\s*Timing Log/;
+const TIMING_LOG_RE = /^(?:##\s+)?⏱\s*Timing Log\s*$/m;
 // The timing table's header row: `| Timestamp | Event | ... |`.
 const HEADER_RE = /^\|\s*Timestamp\s*\|\s*Event\b/i;
 // A markdown table separator row: `|---|---|...|` (dashes, colons, pipes only).
@@ -75,11 +75,10 @@ function baseSlug(event) {
 // Locate the ⏱ Timing Log comment body. Returns the body string or null.
 export function findTimingLogBody(comments) {
   const list = Array.isArray(comments) ? comments : [];
-  for (const c of list) {
-    const b = c && typeof c.body === 'string' ? c.body : '';
-    if (TIMING_LOG_RE.test(b)) return b;
-  }
-  return null;
+  const matches = list.filter(
+    (comment) => typeof comment?.body === 'string' && TIMING_LOG_RE.test(comment.body)
+  );
+  return matches.length === 1 ? matches[0].body : null;
 }
 
 // Extract the timing table's data rows from a comment body. Bounds the scan to
@@ -103,7 +102,13 @@ export function extractDataRows(logBody) {
       ts: row?.ts ?? '',
       event: row?.event ?? '',
       raw: line,
-      ...(row?.actorKey ? { actorKey: row.actorKey } : {}),
+      ...(row?.actorKey
+        ? {
+            actorKey: row.actorKey,
+            cells: row.cells,
+            ...(row.engagement ? { engagement: row.engagement } : {}),
+          }
+        : {}),
     });
   }
   return rows;
@@ -237,6 +242,7 @@ export function validate(context = {}) {
       prevMs != null &&
       ms - prevMs > SUSPICIOUS_GAP_SEC * 1000 &&
       prevRow &&
+      !isUnknownActorRecovery(row) &&
       !isDepartureEvent(prevRow.event)
     ) {
       failures.push(

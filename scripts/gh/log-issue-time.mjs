@@ -26,7 +26,10 @@ import {
   rollupTotals,
   upsertStageRollupMarker,
 } from '../task-tracker/timing-rollup.mjs';
-import { firstStartTimestamp } from '../task-tracker/gh-timing-comment.mjs';
+import {
+  firstStartTimestamp,
+  readCanonicalTimingSource,
+} from '../task-tracker/gh-timing-comment.mjs';
 import { gh, gql, splitRepo, writeProjectFieldValue } from './lib/github-projects.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
@@ -56,7 +59,25 @@ export function formatRollupSummaryLines({
   reviewMin,
   planMin,
   thresholdMin,
+  knownEngagedSec,
+  telemetry,
 } = {}) {
+  if ([engagedMin, totalActiveMin, reviewMin, planMin].some((value) => value === null)) {
+    return [
+      ...Object.entries({
+        Engaged: engagedMin,
+        Session: totalActiveMin,
+        Review: reviewMin,
+        Plan: planMin,
+      }).map(
+        ([label, value]) => '  ' + label + ': ' + (value === null ? 'Unknown' : value + ' min')
+      ),
+      ...(Number.isFinite(knownEngagedSec)
+        ? ['  Known engagement lower bound: ' + knownEngagedSec + ' seconds']
+        : []),
+      ...(telemetry?.reasons?.length ? ['  Unavailable: ' + telemetry.reasons.join(', ')] : []),
+    ];
+  }
   return [
     `  ${DURATION_FIELD_LABELS.engagedTime.padEnd(19)}: ${engagedMin} min  (active ${totalActiveMin} + review ${reviewMin})`,
     `  ${DURATION_FIELD_LABELS.sessionTime.padEnd(19)}: ${totalActiveMin} min`,
@@ -66,7 +87,70 @@ export function formatRollupSummaryLines({
 }
 
 let issueNumber = '';
+export function timingFieldProjection(rollup) {
+  const values = {
+    engagedTime: rollup.engagedMin,
+    sessionTime: rollup.totalActiveMin,
+    reviewTime: rollup.reviewMin,
+    planTime: rollup.planMin,
+  };
+  const secondsByKey = {
+    engagedTime: rollup.engagedSec,
+    sessionTime: rollup.totalActiveSec,
+    reviewTime: rollup.reviewSec,
+    planTime: rollup.planMin === null ? null : rollup.planMin * 60,
+  };
+  for (const value of Object.values(values)) {
+    if (value !== null && (!Number.isFinite(value) || value < 0))
+      throw new TypeError('timing-field-projection:invalid');
+  }
+  if (rollup.telemetry?.reasons?.includes('invalid-actor-evidence'))
+    throw new TypeError('timing-field-projection:invalid-evidence');
+  return {
+    schema: 'aitm.timing-field-result/v1',
+    status: rollup.telemetry?.status ?? 'complete',
+    reasons: rollup.telemetry?.reasons ?? [],
+    knownEngagedSec: rollup.knownEngagedSec ?? rollup.engagedSec,
+    values,
+    secondsByKey,
+    unknownFields: Object.keys(values).filter((key) => values[key] === null),
+  };
+}
+
 let dryRun = false;
+export async function publishTimingBoardFields({
+  cfg,
+  itemId,
+  fieldDefs,
+  values,
+  projection,
+  resolvedFieldIds = {},
+  write = writeProjectFieldValue,
+}) {
+  const effectiveCfg = { ...cfg, fieldIds: { ...resolvedFieldIds, ...cfg.fieldIds } };
+  const unknownIds = new Set(
+    projection.unknownFields.map((key) => fieldIdFor(effectiveCfg, key)).filter(Boolean)
+  );
+  const plan = buildFieldSyncPlan({
+    cfg: effectiveCfg,
+    fieldDefs,
+    values,
+    secondsByKey: projection.secondsByKey,
+  });
+  for (const item of plan) {
+    if (unknownIds.has(item.fieldId)) continue;
+    await write({ projectId: cfg.projectId, itemId, fieldId: item.fieldId, value: item.value });
+  }
+  for (const fieldId of unknownIds) {
+    await write({
+      projectId: cfg.projectId,
+      itemId,
+      fieldId,
+      value: { text: 'Unknown (canonical timing evidence incomplete)' },
+    });
+  }
+}
+
 let cfg = null;
 let owner = '';
 let repoName = '';
@@ -79,9 +163,10 @@ async function fetchIssueBody() {
 // ---- GitHub queries ----
 
 async function fetchTimingComment() {
-  const out = await gh(['issue', 'view', issueNumber, '-R', cfg.repo, '--json', 'comments']);
-  const { comments } = JSON.parse(out);
-  return comments.find((c) => c.body.includes('⏱ Timing Log')) ?? null;
+  const result = await readCanonicalTimingSource({ issueNumber, repo: cfg.repo });
+  if (result.status === 'error')
+    throw new Error('log-issue-time: canonical timing source unavailable');
+  return result.status === 'found' ? { body: result.source.body, source: result.source } : null;
 }
 
 async function fetchProjectMeta() {
@@ -191,16 +276,10 @@ export async function main(argv = process.argv.slice(2)) {
   // `applyPauseSpansToRows` per-row pause subtraction is retired here — it
   // double-subtracted brackets already netted inside each `<phase>:completed`
   // row's span. `reviewMin`/`planMin` are timestamp-delta derived from the rows.
-  const {
-    rowCount,
-    totalActiveMin,
-    totalActiveSec,
-    reviewMin,
-    reviewSec,
-    planMin,
-    engagedMin,
-    engagedSec,
-  } = rollupTotals(rows, thresholdMin, comment.body);
+  const rollup = rollupTotals(rows, thresholdMin, comment.body);
+  const { rowCount, totalActiveMin, reviewMin, planMin, engagedMin, knownEngagedSec, telemetry } =
+    rollup;
+  const fieldProjection = timingFieldProjection(rollup);
 
   if (rowCount === 0) {
     console.error('Timing comment found but contains no data rows');
@@ -214,6 +293,8 @@ export async function main(argv = process.argv.slice(2)) {
     reviewMin,
     planMin,
     thresholdMin,
+    knownEngagedSec,
+    telemetry,
   })) {
     console.log(line);
   }
@@ -238,7 +319,8 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  const { itemId, startTimeFieldId } = await fetchProjectMeta();
+  const projectMeta = await fetchProjectMeta();
+  const { itemId, startTimeFieldId } = projectMeta;
   const fieldDefs = loadProjectFieldDefs();
   const issueBody = issueBodyForPauses;
 
@@ -255,10 +337,7 @@ export async function main(argv = process.argv.slice(2)) {
   const overrideKeys = ['engagedTime', 'sessionTime', 'reviewTime', 'planTime'];
   if (repairedStartTime) overrideKeys.push('startTime');
   const writeUpdates = {
-    engagedTime: engagedMin,
-    sessionTime: totalActiveMin,
-    reviewTime: reviewMin,
-    planTime: planMin,
+    ...fieldProjection.values,
     ...(repairedStartTime ? { startTime: repairedStartTime } : {}),
   };
 
@@ -290,21 +369,28 @@ export async function main(argv = process.argv.slice(2)) {
   // precision. The body marker (`values`) stays in minutes; `secondsByKey`
   // feeds the true seconds totals so `buildFieldSyncPlan` formats the four
   // timing Text fields via `formatDuration`. This is the sole board-write path.
-  const secondsByKey = {
-    engagedTime: engagedSec,
-    sessionTime: totalActiveSec,
-    reviewTime: reviewSec,
-    planTime: planMin * 60,
-  };
-  const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values, secondsByKey });
-  for (const item of syncPlan) {
-    await writeProjectFieldValue({
-      projectId: cfg.projectId,
-      itemId,
-      fieldId: item.fieldId,
-      value: item.value,
-    });
-  }
+  await publishTimingBoardFields({
+    cfg,
+    itemId,
+    fieldDefs,
+    values,
+    projection: fieldProjection,
+    resolvedFieldIds: {
+      engagedTime: projectMeta.engagedFieldId,
+      sessionTime: projectMeta.sessionFieldId,
+      reviewTime: projectMeta.reviewFieldId,
+      planTime: projectMeta.planFieldId,
+    },
+  });
+  console.log(
+    'AITM_TIMING_RESULT ' +
+      JSON.stringify({
+        ...fieldProjection,
+        issue: Number(issueNumber),
+        repository: cfg.repo,
+        sourceCommentId: comment.source.commentNodeId,
+      })
+  );
 
   if (repairedStartTime && startTimeFieldId) {
     await writeProjectFieldValue({

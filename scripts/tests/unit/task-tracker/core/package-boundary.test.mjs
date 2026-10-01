@@ -229,6 +229,27 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #1857 adds the independently reviewed shared runtime-root validator.
   assert.ok(files.includes('scripts/task-tracker/lib/runtime-storage.mjs'));
   const runtimeRootAllowance = 1;
+  // #1857: seven committed migration/actor primitives plus six actor/outcome
+  // runtime modules. Enumerate required additions; tests, research and review
+  // collateral remain excluded. The admitted tarball has 866 entries and this
+  // outcome adds six, yielding 872 without general-purpose growth headroom.
+  const actorRuntimeEntries = [
+    'runtime-migration-admission.mjs',
+    'runtime-migration-apply.mjs',
+    'runtime-migration-lock.mjs',
+    'runtime-migration-plan.mjs',
+    'runtime-migration.mjs',
+    'timing-actor.mjs',
+    'timing-engagement.mjs',
+    'actor-flush-journal.mjs',
+    'actor-hook-timing.mjs',
+    'actor-timing-state.mjs',
+    'estimation/cascade-outcome-authority.mjs',
+    'estimation/outcome-delivery-proof.mjs',
+    'timing-field-result.mjs',
+  ];
+  for (const entry of actorRuntimeEntries)
+    assert.ok(files.includes('scripts/task-tracker/lib/' + entry), entry);
   // #1693 adds the standalone doctor entry point and its read-only observer.
   const doctorRuntimeAllowance = 2;
   // #1709 ships the pure story contract and shared Markdown views.
@@ -357,7 +378,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     mutationContextAllowance +
     draftBranchAllowance +
     artifactPolicyAllowance +
-    runtimeRootAllowance;
+    runtimeRootAllowance +
+    actorRuntimeEntries.length;
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

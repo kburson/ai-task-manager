@@ -171,7 +171,15 @@ async function defaultEpicTrailLog({ epicHead, projectDir }) {
 // The lineage-aware done gate. Leaf issues keep the trail skip semantics of
 // `commitsOnTrunkGate`; epics always evaluate their derived child trail because
 // they intentionally have no epic-owned commit trail.
-export async function lineageDoneGate({ cfg, issueNumber, projectDir, body = '', deps = {} } = {}) {
+export async function lineageDoneGate({
+  cfg,
+  issueNumber,
+  projectDir,
+  body = '',
+  deps = {},
+  includeEvidence = false,
+  acceptedSha,
+} = {}) {
   if (!cfg) throw new Error('lineageDoneGate: cfg is required');
   if (!issueNumber) throw new Error('lineageDoneGate: issueNumber is required');
 
@@ -207,7 +215,8 @@ export async function lineageDoneGate({ cfg, issueNumber, projectDir, body = '',
   const graph = (issue) => {
     try {
       return rawGraph(issue) || { parent: null, children: [] };
-    } catch {
+    } catch (error) {
+      if (includeEvidence) throw error;
       return { parent: null, children: [] };
     }
   };
@@ -237,7 +246,39 @@ export async function lineageDoneGate({ cfg, issueNumber, projectDir, body = '',
     } catch (err) {
       return { ok: false, blocker: `close-lineage-target-unresolved: ${err.message}` };
     }
+    let evidence = null;
+    if (includeEvidence) {
+      try {
+        const validSha = (value) =>
+          typeof value === 'string' && new RegExp('^[0-9a-f]{40}$').test(value);
+        if (!validSha(acceptedSha) || typeof cfg.repo !== 'string' || !cfg.repo.includes('/'))
+          throw new TypeError('lineage-evidence-input');
+        const targetHead = await (
+          deps.resolveHead ??
+          (async (ref) => {
+            const { stdout } = await pexec('git', ['rev-parse', '--verify', ref + '^{commit}'], {
+              cwd: projectDir,
+              timeout: 10000,
+            });
+            return stdout.trim();
+          })
+        )(epicHead);
+        if (!validSha(targetHead)) throw new TypeError('lineage-evidence-target');
+        evidence = {
+          schema: 'aitm.lineage-delivery-evidence/v1',
+          repository: cfg.repo,
+          issue: Number(id),
+          parentIssue: lineage.parentIssue,
+          acceptedSha,
+          targetBranch: epicHead,
+          targetHead,
+        };
+      } catch (error) {
+        return { ok: false, blocker: 'close-lineage-evidence-target: ' + error.message };
+      }
+    }
     return epicDerivedTrailGate({
+      evidence,
       epicNumber: Number(id),
       epicHead,
       projectDir,
@@ -255,8 +296,26 @@ export async function lineageDoneGate({ cfg, issueNumber, projectDir, body = '',
   }
 
   let commits;
+  let targetHead;
   try {
-    commits = await attributing(issueNumber, { cwd: projectDir, refs: [doneBranch] });
+    if (includeEvidence) {
+      const validSha = (value) =>
+        typeof value === 'string' && new RegExp('^[0-9a-f]{40}$').test(value);
+      if (!validSha(acceptedSha) || typeof cfg.repo !== 'string' || !cfg.repo.includes('/'))
+        throw new TypeError('lineage-evidence-input');
+      targetHead = await (
+        deps.resolveHead ??
+        (async (ref) => {
+          const { stdout } = await pexec('git', ['rev-parse', '--verify', ref + '^{commit}'], {
+            cwd: projectDir,
+            timeout: 10000,
+          });
+          return stdout.trim();
+        })
+      )(doneBranch);
+      if (!validSha(targetHead)) throw new TypeError('lineage-evidence-target');
+    }
+    commits = await attributing(issueNumber, { cwd: projectDir, refs: [targetHead ?? doneBranch] });
   } catch (err) {
     return {
       ok: false,
@@ -264,7 +323,32 @@ export async function lineageDoneGate({ cfg, issueNumber, projectDir, body = '',
       doneBranch,
     };
   }
-  if (Array.isArray(commits) && commits.length > 0) return { ok: true, doneBranch };
+  if (Array.isArray(commits) && commits.length > 0) {
+    if (!includeEvidence) return { ok: true, doneBranch };
+    const commitShas = commits.map((commit) => commit.sha);
+    if (
+      commitShas.some(
+        (sha) => typeof sha !== 'string' || !new RegExp('^[0-9a-f]{40}$').test(sha)
+      ) ||
+      new Set(commitShas).size !== commitShas.length
+    )
+      return { ok: false, blocker: 'close-lineage-evidence-census' };
+    return {
+      ok: true,
+      doneBranch,
+      evidence: {
+        schema: 'aitm.lineage-delivery-evidence/v1',
+        repository: cfg.repo,
+        issue: Number(id),
+        parentIssue: lineage.parentIssue,
+        acceptedSha,
+        targetBranch: doneBranch,
+        targetHead,
+        commits: commitShas.sort(),
+        children: [],
+      },
+    };
+  }
 
   return {
     ok: false,
@@ -276,7 +360,14 @@ export async function lineageDoneGate({ cfg, issueNumber, projectDir, body = '',
 // Epic done check — the derived child-trail (#883) must be reachable on the
 // selected delivery target. Delegates the reachability arithmetic to
 // `groupCommitsByChild`; refuses naming every child with no reachable commit.
-async function epicDerivedTrailGate({ epicNumber, epicHead, projectDir, graph, epicTrailLog }) {
+async function epicDerivedTrailGate({
+  epicNumber,
+  epicHead,
+  projectDir,
+  graph,
+  epicTrailLog,
+  evidence = null,
+}) {
   const trailLog = epicTrailLog || ((args) => defaultEpicTrailLog(args));
 
   const { children = [] } = graph(epicNumber) || {};
@@ -288,15 +379,52 @@ async function epicDerivedTrailGate({ epicNumber, epicHead, projectDir, graph, e
 
   let stdout;
   try {
-    stdout = await trailLog({ epicHead, projectDir });
+    stdout = await trailLog({ epicHead: evidence?.targetHead ?? epicHead, projectDir });
   } catch (err) {
     return { ok: false, blocker: `close-epic-trail-log-failed: ${err.message}`, epicHead };
   }
   const commits = parseEpicTrailLog(stdout);
+  if (
+    evidence &&
+    (commits.some((commit) => !new RegExp('^[0-9a-f]{40}$').test(commit.sha)) ||
+      commits.length !==
+        String(stdout)
+          .split(String.fromCharCode(10))
+          .filter((line) => line.trim()).length)
+  ) {
+    return { ok: false, blocker: 'close-lineage-evidence-census', epicHead };
+  }
   const { deliveryRequired } = partitionChildrenByDeliveryRequirement(childList);
   const groups = groupCommitsByChild({ children: deliveryRequired, commits });
   const unreachable = groups.filter((g) => g.commits.length === 0);
-  if (unreachable.length === 0) return { ok: true, epicHead };
+  if (unreachable.length === 0) {
+    if (!evidence) return { ok: true, epicHead };
+    const children = childList
+      .map((child) => {
+        const group = groups.find((group) => group.number === Number(child.number));
+        return {
+          issue: Number(child.number),
+          disposition: group ? 'delivered' : 'not-planned',
+          commits: group ? [...new Set(group.commits.map((commit) => commit.sha))].sort() : [],
+        };
+      })
+      .sort((a, b) => a.issue - b.issue);
+    if (
+      children.some((child) => !Number.isSafeInteger(child.issue) || child.issue <= 0) ||
+      new Set(children.map((child) => child.issue)).size !== children.length
+    ) {
+      return { ok: false, blocker: 'close-lineage-evidence-children', epicHead };
+    }
+    return {
+      ok: true,
+      epicHead,
+      evidence: {
+        ...evidence,
+        commits: [...new Set(children.flatMap((child) => child.commits))].sort(),
+        children,
+      },
+    };
+  }
 
   const err = new UnreachableChildrenError(epicNumber, unreachable);
   return {

@@ -17,6 +17,16 @@ const phaseEnds = new Set(
     .map((value) => value.complete.event)
 );
 const instant = timingTimestampToMs;
+export function isUnknownActorRecovery(row) {
+  return Boolean(
+    row?.actorKey &&
+    row.event === 'session-end-recovery' &&
+    !row.engagement &&
+    row.cells?.[3] === 'Unknown' &&
+    row.cells?.[4] === 'Unknown'
+  );
+}
+
 const validSpan = (value) =>
   value &&
   typeof value.actorKey === 'string' &&
@@ -119,6 +129,13 @@ export function deriveActorEngagement(rows, nowTs) {
       continue;
     }
     previous.set(row.actorKey, row.ms);
+    if (isUnknownActorRecovery(row)) {
+      // The prior end was not observed. Retain unknown contribution rather
+      // than inventing an end, and allow a genuinely current later interval.
+      open.delete(row.actorKey);
+      result.unknownRows++;
+      continue;
+    }
     if (row.engagement) {
       validateTimingEngagement(row.engagement);
       if (row.engagement.endMs < row.ms || row.engagement.endMs >= row.ms + 1000) {

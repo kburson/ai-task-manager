@@ -19,6 +19,7 @@
 import { strict as assert } from 'node:assert';
 import { before, after } from 'node:test';
 import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 
@@ -48,7 +49,7 @@ after(() => {
 
 function stateFile(active, extra = {}) {
   const p = path.join(tmpRoot, `state-${Math.abs(hashish(String(active)))}.json`);
-  writeFileSync(p, JSON.stringify({ active, lastActive: active, ...extra }));
+  saveState({ active, lastActive: active, ...extra }, p);
   return p;
 }
 function hashish(s) {

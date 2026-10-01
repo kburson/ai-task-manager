@@ -1,4 +1,8 @@
-import { validateEstimationOutcome, deriveIncompleteTelemetry } from './outcome-record.mjs';
+import {
+  validateEstimationOutcome,
+  deriveIncompleteTelemetry,
+  INCOMPLETE_OUTCOME_SCHEMA,
+} from './outcome-record.mjs';
 
 const STAGES = ['plan', 'develop', 'test', 'review'];
 const RECORD_ID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
@@ -16,6 +20,7 @@ export function buildEstimationOutcome({
   timing,
   verification = [],
   verificationSha,
+  verificationProvenance,
   diff,
   review,
   cost = {},
@@ -23,11 +28,25 @@ export function buildEstimationOutcome({
   childOutcomeRecordIds = [],
 } = {}) {
   if (!Number.isInteger(issue) || issue <= 0) fail('input');
-  if (kind === 'story' && forecast?.payload?.issue !== issue) fail('input');
+  if (
+    kind === 'story' &&
+    !(forecast === null && timing?.source) &&
+    forecast?.payload?.issue !== issue
+  )
+    fail('input');
   if (kind === 'epic-orchestration' && forecast !== null) fail('input');
   if (!new Set(['story', 'epic-orchestration']).has(kind)) fail('input');
   const telemetry = timing?.source
-    ? deriveIncompleteTelemetry({ source: timing.source, verificationSha })
+    ? {
+        ...deriveIncompleteTelemetry({ source: timing.source, verificationSha }),
+        verification: structuredClone(verificationProvenance),
+        forecastStatus:
+          kind === 'epic-orchestration'
+            ? 'epic-not-applicable'
+            : forecast === null
+              ? 'legacy-none'
+              : 'frozen',
+      }
     : null;
   if ((!timing?.stagesMs && !telemetry) || !diff || !review) fail('evidence');
   const stages = {};
@@ -69,14 +88,14 @@ export function buildEstimationOutcome({
     fail('children');
   if (kind === 'story' && childOutcomeRecordIds.length > 0) fail('children');
   const payload = {
-    schema: telemetry ? 'aitm.estimation-outcome/v2' : 'aitm.estimation-outcome/v1',
+    schema: telemetry ? INCOMPLETE_OUTCOME_SCHEMA : 'aitm.estimation-outcome/v1',
     ...(telemetry ? { telemetry } : {}),
     issue,
     kind,
-    forecastRecordId: kind === 'story' ? forecast.recordId : null,
-    humanPlanHours: kind === 'story' ? forecast.payload.plan.humanHours : null,
+    forecastRecordId: kind === 'story' && forecast ? forecast.recordId : null,
+    humanPlanHours: kind === 'story' && forecast ? forecast.payload.plan.humanHours : null,
     aiForecast:
-      kind === 'story'
+      kind === 'story' && forecast
         ? {
             p50EngagedHours: forecast.payload.ai.p50EngagedHours,
             p80EngagedHours: forecast.payload.ai.p80EngagedHours,

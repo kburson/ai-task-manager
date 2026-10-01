@@ -18,6 +18,8 @@ const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md
 const PEER_REVIEW_RESPONSE_IGNORE_GLOBS = [
   'docs/reviews/1857-expanded/**/review-*-author-response-*.md',
   'docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md',
+  'docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md',
+  'docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md',
   'docs/superpowers/reviews/**/*-review-*-author-response-*.md',
   'docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md',
   'docs/superpowers/reviews/**/review-*-author-response-*.md',
@@ -190,6 +192,16 @@ for (const word of dict) {
 
 console.log(`ok — ${requiredFiles.length} files, ${requiredScripts.length} scripts verified`);
 
+const revisedManifestGlob = 'docs/reviews/1857-revised-plan-xpr/**/review-*-review-manifest.md';
+assert.ok(prettierIgnore.includes(revisedManifestGlob));
+for (const filename of ['1857-delivery-report.md', 'plan.md', 'design.md']) {
+  const candidate = 'docs/reviews/1857-revised-plan-xpr/plan/' + filename;
+  assert.equal(path.matchesGlob(candidate, revisedManifestGlob), false);
+  assert.equal(
+    PEER_REVIEW_RESPONSE_IGNORE_GLOBS.some((glob) => path.matchesGlob(candidate, glob)),
+    false
+  );
+}
 const sealedManifestGlob = 'docs/reviews/1857-expanded/**/review-*-review-manifest.md';
 assert.ok(
   prettierIgnore.includes(sealedManifestGlob),
