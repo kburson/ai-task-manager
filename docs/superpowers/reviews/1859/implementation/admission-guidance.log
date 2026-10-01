@@ -1,3 +1,9 @@
+npm notice run @kburson/ai-task-manager@0.1.0 lint:guidance-release-consumer
+npm notice run npm run lint:guidance-release && node scripts/maintenance/generate-guidance-release.mjs --assert-consumer-release && node scripts/task-tracker/measure-guidance-context.mjs --all --assert-budgets && node --test scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs
+npm notice run @kburson/ai-task-manager@0.1.0 lint:guidance-release
+npm notice run node scripts/maintenance/generate-guidance-release.mjs --check
+guidance release manifest agrees with catalog and parser
+guidance consumer release certified: cross-process B2 cache and production package
 {
   "schema": "aitm.guidance-context-report/v1",
   "classification": "final-installed-consumer-release",
@@ -1775,5 +1781,551 @@
   "finalInstalledAdapterGate": {
     "status": "passed",
     "reason": "Measured actual installed adapter bytes and complete public CLI traffic against fixed working limits."
+  },
+  "releaseEvidence": {
+    "contextBudgets": {
+      "schema": "aitm.guidance-context-budgets/v1",
+      "source": {
+        "path": "scripts/task-tracker/lib/context-budgets.mjs",
+        "sha256": "sha256:dc0d6b8c8909eb838d4c15daf7fde584bd9cfb27c345b161b5c9b45d33747892"
+      },
+      "fixedReleaseBudgets": {
+        "routerPlusPickup": {
+          "absolute": 5000,
+          "working": 4000
+        },
+        "clean": {
+          "absolute": 300,
+          "working": 240
+        },
+        "blocked": {
+          "absolute": 500,
+          "working": 400
+        },
+        "fullLifecycle": {
+          "absolute": 7000,
+          "target": 6000,
+          "working": 6500
+        }
+      },
+      "historicalStaticBudgets": {
+        "idle": 1500,
+        "invoked": 8000,
+        "active": 12000
+      },
+      "historicalScenarioBudgets": {
+        "claude": {
+          "bind": 12000,
+          "bind+review+close": 13500,
+          "parallel-orchestration": 14000
+        },
+        "codex": {
+          "bind": 12000,
+          "bind+review+close": 17000,
+          "parallel-orchestration": 17500
+        }
+      },
+      "units": "proxy tokens; ceil(characters/4), with per-file static and aggregate traffic rounding"
+    },
+    "authorityAfter": {
+      "schema": "aitm.guidance-authority-after/v1",
+      "classification": "fixed-stub-collection-and-controlled-live-timing",
+      "sources": {
+        "actionBaselinePath": "scripts/tests/fixtures/1558/action-authority-cost.json",
+        "actionBaselineSha256": "sha256:eeb8d6500d0f6dbfc2f7cd44fd4e65d23cb557554730870ae1d5ca7f2304eb89",
+        "timingPath": "scripts/tests/fixtures/1558/authority-after-timing.json",
+        "timingSha256": "sha256:8eccb266210c20716db60cb7aaaf01e6fc68c36e716860aeff6f90bf71fb2b1d"
+      },
+      "deterministic": {
+        "method": "separate-explanation-evaluator-and-direct-executor-collector-attempts",
+        "limitation": "Fixed observation-port fixture at the shared read seam; not public-CLI transport.",
+        "actions": [
+          {
+            "id": "bind",
+            "explain": {
+              "physicalReads": 7,
+              "requestKeys": [
+                "local-config:local-config:1670",
+                "session-state:session-state:1670",
+                "worktree:worktree:1670",
+                "occupancy:occupancy:1670",
+                "migration-journal:migration-journal:1670",
+                "project-board:issue:1670:2",
+                "issue-body:issue:1670:1"
+              ],
+              "perResource": {
+                "local-config": 1,
+                "session-state": 1,
+                "worktree": 1,
+                "occupancy": 1,
+                "migration-journal": 1,
+                "project-board": 1,
+                "issue-body": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "executor": {
+              "physicalReads": 7,
+              "requestKeys": [
+                "local-config:local-config:1670",
+                "session-state:session-state:1670",
+                "worktree:worktree:1670",
+                "occupancy:occupancy:1670",
+                "migration-journal:migration-journal:1670",
+                "project-board:issue:1670:2",
+                "issue-body:issue:1670:1"
+              ],
+              "perResource": {
+                "local-config": 1,
+                "session-state": 1,
+                "worktree": 1,
+                "occupancy": 1,
+                "migration-journal": 1,
+                "project-board": 1,
+                "issue-body": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "pairedEqual": true,
+            "ciRequestCeiling": 9
+          },
+          {
+            "id": "resume",
+            "explain": {
+              "physicalReads": 7,
+              "requestKeys": [
+                "local-config:local-config:1670",
+                "session-state:session-state:1670",
+                "worktree:worktree:1670",
+                "occupancy:occupancy:1670",
+                "migration-journal:migration-journal:1670",
+                "project-board:issue:1670:2",
+                "issue-body:issue:1670:1"
+              ],
+              "perResource": {
+                "local-config": 1,
+                "session-state": 1,
+                "worktree": 1,
+                "occupancy": 1,
+                "migration-journal": 1,
+                "project-board": 1,
+                "issue-body": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "executor": {
+              "physicalReads": 7,
+              "requestKeys": [
+                "local-config:local-config:1670",
+                "session-state:session-state:1670",
+                "worktree:worktree:1670",
+                "occupancy:occupancy:1670",
+                "migration-journal:migration-journal:1670",
+                "project-board:issue:1670:2",
+                "issue-body:issue:1670:1"
+              ],
+              "perResource": {
+                "local-config": 1,
+                "session-state": 1,
+                "worktree": 1,
+                "occupancy": 1,
+                "migration-journal": 1,
+                "project-board": 1,
+                "issue-body": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "pairedEqual": true,
+            "ciRequestCeiling": 9
+          },
+          {
+            "id": "promote",
+            "explain": {
+              "physicalReads": 3,
+              "requestKeys": [
+                "issue-body:issue:1670:1",
+                "project-board:issue:1670:2",
+                "migration-journal:migration-journal:1670"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "project-board": 1,
+                "migration-journal": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "executor": {
+              "physicalReads": 3,
+              "requestKeys": [
+                "issue-body:issue:1670:1",
+                "project-board:issue:1670:2",
+                "migration-journal:migration-journal:1670"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "project-board": 1,
+                "migration-journal": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "pairedEqual": true,
+            "ciRequestCeiling": 4
+          },
+          {
+            "id": "test",
+            "explain": {
+              "physicalReads": 4,
+              "requestKeys": [
+                "issue-body:issue:1670:1",
+                "project-board:issue:1670:2",
+                "worktree:worktree:1670",
+                "session-state:session-state:1670"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "project-board": 1,
+                "worktree": 1,
+                "session-state": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "executor": {
+              "physicalReads": 4,
+              "requestKeys": [
+                "issue-body:issue:1670:1",
+                "project-board:issue:1670:2",
+                "worktree:worktree:1670",
+                "session-state:session-state:1670"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "project-board": 1,
+                "worktree": 1,
+                "session-state": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "pairedEqual": true,
+            "ciRequestCeiling": 5
+          },
+          {
+            "id": "review",
+            "explain": {
+              "physicalReads": 5,
+              "requestKeys": [
+                "issue-body:issue:1670:1",
+                "project-board:issue:1670:2",
+                "worktree:worktree:1670",
+                "session-state:session-state:1670",
+                "delivery:evidence:1670:1"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "project-board": 1,
+                "worktree": 1,
+                "session-state": 1,
+                "delivery": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "executor": {
+              "physicalReads": 5,
+              "requestKeys": [
+                "issue-body:issue:1670:1",
+                "project-board:issue:1670:2",
+                "worktree:worktree:1670",
+                "session-state:session-state:1670",
+                "delivery:evidence:1670:1"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "project-board": 1,
+                "worktree": 1,
+                "session-state": 1,
+                "delivery": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "pairedEqual": true,
+            "ciRequestCeiling": 7
+          },
+          {
+            "id": "deliver",
+            "explain": {
+              "physicalReads": 2,
+              "requestKeys": [
+                "issue-body:issue:1670",
+                "delivery:evidence:1670:1"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "delivery": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "executor": {
+              "physicalReads": 2,
+              "requestKeys": [
+                "issue-body:issue:1670",
+                "delivery:evidence:1670:1"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "delivery": 1
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "pairedEqual": true,
+            "ciRequestCeiling": 3
+          },
+          {
+            "id": "close",
+            "explain": {
+              "physicalReads": 6,
+              "requestKeys": [
+                "issue-body:issue:1670:1",
+                "project-board:issue:1670:2",
+                "worktree:worktree:1670",
+                "delivery:evidence:1670:1",
+                "delivery:evidence:1670:2",
+                "delivery:evidence:1670:3"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "project-board": 1,
+                "worktree": 1,
+                "delivery": 3
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "executor": {
+              "physicalReads": 6,
+              "requestKeys": [
+                "issue-body:issue:1670:1",
+                "project-board:issue:1670:2",
+                "worktree:worktree:1670",
+                "delivery:evidence:1670:1",
+                "delivery:evidence:1670:2",
+                "delivery:evidence:1670:3"
+              ],
+              "perResource": {
+                "issue-body": 1,
+                "project-board": 1,
+                "worktree": 1,
+                "delivery": 3
+              },
+              "retryCount": 0,
+              "additionalPageCount": 0,
+              "transportScope": "fixed-observation-port-no-transport-pagination"
+            },
+            "pairedEqual": true,
+            "ciRequestCeiling": 8
+          }
+        ],
+        "totals": {
+          "explainPhysicalReads": 34,
+          "executorPhysicalReads": 34
+        },
+        "separateInvocations": {
+          "collectionCount": 2,
+          "crossInvocationReuse": false
+        },
+        "sameInvocationDiagnostic": {
+          "extraPhysicalReads": 0
+        },
+        "namedRefresh": {
+          "resource": "issue-body",
+          "physicalReadsBefore": 1,
+          "physicalReadsAfter": 2,
+          "reason": "explicit-refresh-request"
+        },
+        "workflowPolicy": {
+          "readyBaselinePhysicalReads": 0,
+          "waivableFailurePhysicalReads": 1,
+          "requirementIds": [
+            "approval.plan"
+          ],
+          "unrelatedRequirementReads": 0
+        },
+        "postSuccessAnnotation": {
+          "ordinarySuccess": {
+            "lookups": 0,
+            "writes": 0
+          },
+          "divergedExisting": {
+            "lookups": 1,
+            "writes": 0
+          },
+          "divergedAbsent": {
+            "lookups": 1,
+            "writes": 1
+          },
+          "phase": "after-durable-success"
+        }
+      },
+      "timing": {
+        "localCache": {
+          "kind": "local-cache",
+          "method": "100 same-attempt observation memo hits after one fixture read",
+          "samplesMs": [
+            0.504,
+            0.556,
+            0.926,
+            0.405,
+            0.556
+          ],
+          "mutations": 0,
+          "sampleCount": 5,
+          "medianMs": 0.556,
+          "p95Ms": 0.926,
+          "ciCeilingMs": 2,
+          "ceilingBasis": "recorded-p95-with-at-least-20-percent-headroom"
+        },
+        "localStub": {
+          "kind": "local-stub",
+          "method": "measureFixedActionAuthorityReads with deterministic observation-port fixture",
+          "samplesMs": [
+            11.126,
+            1.976,
+            2.448,
+            1.909,
+            1.806
+          ],
+          "mutations": 0,
+          "sampleCount": 5,
+          "medianMs": 1.976,
+          "p95Ms": 11.126,
+          "ciCeilingMs": 14,
+          "ceilingBasis": "recorded-p95-with-at-least-20-percent-headroom"
+        },
+        "controlledLive": {
+          "kind": "controlled-read-only",
+          "command": [
+            "gh",
+            "issue",
+            "view",
+            "1770",
+            "-R",
+            "kburson/ai-task-manager",
+            "--json",
+            "number,state"
+          ],
+          "samplesMs": [
+            490.461,
+            411.245,
+            459.63,
+            435.456,
+            722.6
+          ],
+          "mutations": 0,
+          "sampleCount": 5,
+          "medianMs": 459.63,
+          "p95Ms": 722.6,
+          "ciCeilingMs": 904,
+          "ceilingBasis": "recorded-p95-with-at-least-20-percent-headroom"
+        }
+      }
+    },
+    "currentPairedComparison": {
+      "schema": "aitm.guidance-current-paired-comparison/v1",
+      "classification": "final-installed-public-cli-paired-comparison",
+      "historicalComparison": {
+        "path": "scripts/tests/fixtures/1558/context-comparison.json",
+        "sha256": "sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894",
+        "disposition": "immutable-early-candidate-characterization"
+      },
+      "sources": {
+        "lifecycle": {
+          "path": "scripts/tests/fixtures/1558/lifecycle-transcript-final.json",
+          "sha256": "sha256:97f595f614e09bb518e41d0ac18d8e1bacfded44bfa19482b1a0474d68034c9a"
+        },
+        "authority": {
+          "path": "scripts/tests/fixtures/1558/authority-after.json",
+          "sha256": "sha256:1023eedc15f9b8a249ae0e883911cb8f36fc78a8454bdf4430c5d10971e596d1"
+        },
+        "budgets": {
+          "path": "scripts/tests/fixtures/1558/context-budgets-final.json",
+          "sha256": "sha256:91690c18812a3a2c5b0f35c314d67a63969838297e4cf5d47dd6d95c7e4209ba"
+        }
+      },
+      "adapters": {
+        "claude": {
+          "currentCaptureKind": "actual-public-cli-traffic-plus-installed-static",
+          "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+          "currentProxyTokens": 5603,
+          "modeledLegacyProxyTokens": 54538,
+          "conservativeReductionFromLegacyStaticAlone": true,
+          "fullLifecycleWorkingPass": true,
+          "sourceCaptureSha256": "sha256:57898ed4abd03a644e89851902ed980f7b4c8ed7cd7dbbe125f45b9da4a3ad24"
+        },
+        "codex": {
+          "currentCaptureKind": "actual-public-cli-traffic-plus-installed-static",
+          "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+          "currentProxyTokens": 5590,
+          "modeledLegacyProxyTokens": 54280,
+          "conservativeReductionFromLegacyStaticAlone": true,
+          "fullLifecycleWorkingPass": true,
+          "sourceCaptureSha256": "sha256:57898ed4abd03a644e89851902ed980f7b4c8ed7cd7dbbe125f45b9da4a3ad24"
+        }
+      },
+      "authority": {
+        "method": "separate-explanation-evaluator-and-direct-executor-collector-attempts",
+        "explainPhysicalReads": 34,
+        "executorPhysicalReads": 34,
+        "timingClassifications": [
+          "local-cache",
+          "local-stub",
+          "controlled-read-only"
+        ]
+      },
+      "finalInstalledAdapterGate": {
+        "status": "passed",
+        "reason": "Measured actual installed adapter bytes and complete public CLI traffic against fixed working limits."
+      }
+    }
   }
 }
+✔ claude static pickup and captured lifecycle use the same router-plus-pickup budget (15.063083ms)
+✔ claude static lifecycle and captured lifecycle use the same full-lifecycle budget (6.008459ms)
+✔ codex static pickup and captured lifecycle use the same router-plus-pickup budget (11.51075ms)
+✔ codex static lifecycle and captured lifecycle use the same full-lifecycle budget (10.151958ms)
+✔ pre-slim public CLI capture cannot certify the final installed adapter release (1181.205208ms)
+✔ final release requires a complete installed-byte and public-CLI capture (1144.71825ms)
+✔ final package and public-CLI capture regenerate byte for byte (29021.946041ms)
+✔ fixed release measurement refuses a missing required instruction file (0.3255ms)
+✔ claude aggregate CLI labels fixed release scenarios and exits on any breach (157.620417ms)
+✔ codex aggregate CLI labels fixed release scenarios and exits on any breach (144.216334ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31960.160666

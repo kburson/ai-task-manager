@@ -1,9 +1,9 @@
 {
   "schema": "aitm.guidance-final-capture-manifest/v1",
   "capturePath": "scripts/tests/fixtures/1558/actual-explain-traffic-final.json",
-  "captureSha256": "sha256:c585b030db949507cabd86b1773fd6cbfb27762df0951105325a2e178636fe6b",
+  "captureSha256": "sha256:57898ed4abd03a644e89851902ed980f7b4c8ed7cd7dbbe125f45b9da4a3ad24",
   "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818",
-  "sourceInputsSha256": "sha256:31ca3881becfb90c7e1607c38e8473cb6965fc582e83572f1b9b86b47725dc3c",
+  "sourceInputsSha256": "sha256:7d5c3b5e8a78ede0ee5f9ed476c2dbabcdc7e03b3ae3adf359c4c4625aac42e7",
   "productionPackage": {
     "name": "@kburson/ai-task-manager",
     "version": "0.1.0",
@@ -47,7 +47,7 @@
     },
     {
       "path": "scripts/tests/helpers/capture-guidance-release.mjs",
-      "sha256": "sha256:1d2d355dea5c88ba32ab8882153c033691cd096cc33fc88d67dfc442e2078906"
+      "sha256": "sha256:7756ce012a085c61a0d2e4bd447ac7d15cb06072ddec9306720ffa7d8e569e48"
     },
     {
       "path": "scripts/task-tracker/lib/action-decision/close.mjs",

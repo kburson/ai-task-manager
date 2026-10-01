@@ -1,0 +1,104 @@
+{
+  "issue": 1859,
+  "sourceBaseCommit": "ba3a06ac77ca60f3171ac0dc0d4f6e1838f55046",
+  "sourceHashes": {
+    "scripts/task-tracker/lib/native-dependencies.mjs": "1a4fb60c7ff41f92569d38619aafc2b3b6c7bb662ddb95ca05e5f4d0480d0123",
+    "scripts/task-tracker/lib/dependency-disposition.mjs": "9e2987eeda9971a44ec2bd90e17b2aca5341c742b6b638dea3fb3a881027b1e0",
+    "scripts/tests/helpers/capture-guidance-release.mjs": "7756ce012a085c61a0d2e4bd447ac7d15cb06072ddec9306720ffa7d8e569e48"
+  },
+  "results": [
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "count": 921,
+      "countKind": "files",
+      "log": "admission-fast.log",
+      "sha256": "f899ffac7a2a3ebcbf22219df0df5ea66c539cc01a60ff3d08b906441fbaa357"
+    },
+    {
+      "command": "node --test scripts/tests/unit/task-tracker/lib/native-depend*.test.mjs",
+      "exitCode": 0,
+      "count": 26,
+      "countKind": "tests",
+      "log": "admission-dependencies.log",
+      "sha256": "99987471c663bf3b71d6766f71c40d86242f79f95944bd9af54600e111d2f735"
+    },
+    {
+      "command": "node --test scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs scripts/tests/unit/task-tracker/lib/blocked-by-guard.test.mjs",
+      "exitCode": 0,
+      "count": 41,
+      "countKind": "tests",
+      "log": "admission-consumers.log",
+      "sha256": "6f10594b1e4bdec255dfe6aaa2ac9def4d180df430b8d2e814171358dcb693de"
+    },
+    {
+      "command": "npm run lint:guidance-release-consumer",
+      "exitCode": 0,
+      "count": 10,
+      "countKind": "tests",
+      "log": "admission-guidance.log",
+      "sha256": "3c77bbfed8013812ae3bb3e080a2f622f387513ef5060db2134542e4c75f42e0"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "count": null,
+      "countKind": null,
+      "log": "admission-lint.log",
+      "sha256": "65f82c24cff42c155e035bde758f09301523ba2f122f5d71f35f9d9ab004866a"
+    },
+    {
+      "command": "npm run format:check",
+      "exitCode": 0,
+      "count": null,
+      "countKind": null,
+      "log": "admission-format.log",
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+    },
+    {
+      "command": "node --test scripts/tests/integration/task-tracker/lib/action-close-default.test.mjs scripts/tests/integration/task-tracker/lib/action-close.test.mjs scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs",
+      "exitCode": 0,
+      "count": 32,
+      "countKind": "tests",
+      "log": "admission-adjacent.log",
+      "sha256": "afce5b0f6e8f526eaf5767fbef760242a8de69aa3c6f00862eb45fd2576f66d1"
+    }
+  ],
+  "restoredSetup": [
+    {
+      "path": ".ai-peer-review.json",
+      "sha256": "a379bcf8d830a53e7497c35c8d800058db14f48f514a0e545f51004cf3ca10ad",
+      "backupCommit": "c4d0f60a7b8c5e67c564f9ce02e5e874e48796db"
+    },
+    {
+      "path": ".claude/config.json",
+      "sha256": "06f3f2508c4ee72f18ce1fa4a4514fb7d51887db3e1e1a4444e76dca9324682b",
+      "backupCommit": "c4d0f60a7b8c5e67c564f9ce02e5e874e48796db"
+    },
+    {
+      "path": ".claude/settings.json",
+      "sha256": "d4ce3dca24d36cf01a24b2b32bc8c984ea72bb89da07810c541cdbc52daa5848",
+      "backupCommit": "c4d0f60a7b8c5e67c564f9ce02e5e874e48796db"
+    },
+    {
+      "path": ".claude/skills/peer-review/SKILL.md",
+      "sha256": "96fe5a4991fd4119f617cef4d3bc7e6c85657273ec4e5d4c26736fc1bccb2265",
+      "backupCommit": "c4d0f60a7b8c5e67c564f9ce02e5e874e48796db"
+    },
+    {
+      "path": ".codex/config.json",
+      "sha256": "06f3f2508c4ee72f18ce1fa4a4514fb7d51887db3e1e1a4444e76dca9324682b",
+      "backupCommit": "c4d0f60a7b8c5e67c564f9ce02e5e874e48796db"
+    },
+    {
+      "path": ".codex/hooks.json",
+      "sha256": "b61f2fce4f16000b79e2556c42ea6865deafcc16288ca87f1c6baefb99da6f48",
+      "backupCommit": "c4d0f60a7b8c5e67c564f9ce02e5e874e48796db"
+    },
+    {
+      "path": ".codex/skills/peer-review/SKILL.md",
+      "sha256": "96fe5a4991fd4119f617cef4d3bc7e6c85657273ec4e5d4c26736fc1bccb2265",
+      "backupCommit": "c4d0f60a7b8c5e67c564f9ce02e5e874e48796db"
+    }
+  ]
+}

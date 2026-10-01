@@ -238,24 +238,29 @@ async function productionCloseFixture({
       fetchBoard: async () => ({ state: 'review' }),
       run: async (command, args) => {
         commands.push([command, args]);
-        if (command === 'gh' && args[0] === 'issue' && !args.includes('blockedBy,blocking'))
+        if (
+          command === 'gh' &&
+          args[0] === 'issue' &&
+          !(args.includes('blockedBy,blocking') || args.includes('blockedBy'))
+        )
           issueReads += 1;
         if (command === 'gh' && args[0] === 'issue')
           return {
-            stdout: args.includes('blockedBy,blocking')
-              ? JSON.stringify({
-                  blockedBy: { nodes: [], totalCount: 0 },
-                  blocking: { nodes: [], totalCount: 0 },
-                })
-              : args.includes('body')
-                ? body
-                : JSON.stringify({
-                    number: ISSUE,
-                    body: bodyOnRead?.(issueReads, body) ?? body,
-                    state: issueState,
-                    stateReason: issueState === 'CLOSED' ? 'COMPLETED' : null,
-                    updatedAt: revisionOnRead?.(issueReads) ?? now(),
-                  }),
+            stdout:
+              args.includes('blockedBy,blocking') || args.includes('blockedBy')
+                ? JSON.stringify({
+                    blockedBy: { nodes: [], totalCount: 0 },
+                    blocking: { nodes: [], totalCount: 0 },
+                  })
+                : args.includes('body')
+                  ? body
+                  : JSON.stringify({
+                      number: ISSUE,
+                      body: bodyOnRead?.(issueReads, body) ?? body,
+                      state: issueState,
+                      stateReason: issueState === 'CLOSED' ? 'COMPLETED' : null,
+                      updatedAt: revisionOnRead?.(issueReads) ?? now(),
+                    }),
           };
         if (command === 'gh' && args[0] === 'pr') return { stdout: '[]' };
         if (command === 'gh' && args.includes('graphql'))
