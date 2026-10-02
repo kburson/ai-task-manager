@@ -22,7 +22,7 @@ import { parseDurationSeconds } from '../../../../task-tracker/lib/timing-rows.m
 function parseRow(row) {
   // | ts | event | activeMin | idleMin | dWords | wMarker | desc | <!-- ... -->
   const cells = row
-    .replace(/<!--.*?-->\s*$/, '')
+    .replace(/<!--.*?-->\s*$/s, '')
     .split('|')
     .map((c) => c.trim());
   // cells[0] is '' (leading pipe)
