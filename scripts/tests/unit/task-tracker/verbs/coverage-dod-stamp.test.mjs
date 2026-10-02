@@ -12,6 +12,11 @@
 // no-verifier-command, verifier-failure) is driven in-process with a fake
 // `pexec` and a `process.exit` that throws a sentinel.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
 import { saveState } from '../../../../task-tracker/state.mjs';

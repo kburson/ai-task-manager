@@ -19,6 +19,11 @@
 //         without it, the same board/issue state still short-circuits (the bug).
 //   AC4 — `--repair` is documented in the `close` verb help output.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { after, before, test } from 'node:test';
 import { mkdtempSync, writeFileSync } from 'node:fs';

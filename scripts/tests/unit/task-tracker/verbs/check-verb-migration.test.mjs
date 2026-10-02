@@ -19,6 +19,11 @@
 // Harness mirrors coverage-check-verb.test.mjs (stateful injected pexec +
 // process.exit sentinel); the grep arm shells out to `grep`.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
 import { saveState } from '../../../../task-tracker/state.mjs';

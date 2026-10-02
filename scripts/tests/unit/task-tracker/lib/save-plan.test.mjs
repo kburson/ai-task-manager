@@ -11,6 +11,11 @@
 //   - --title override changes saved filename slug
 //   - collision avoids overwrite by appending -2 suffix
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';

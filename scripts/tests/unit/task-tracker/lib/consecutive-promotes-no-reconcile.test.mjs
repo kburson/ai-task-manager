@@ -8,6 +8,11 @@
 // transition, the tracker-state file must NOT contain a `state` field —
 // even when the file was seeded with a stale `state` from legacy data.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';

@@ -12,6 +12,11 @@
 // end-to-end via a child process. The source-level invariants moved to the
 // preflight helper / dispatcher wiring.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';

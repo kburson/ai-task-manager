@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 // @story #1557
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

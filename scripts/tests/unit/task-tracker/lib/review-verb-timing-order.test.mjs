@@ -16,6 +16,11 @@
 // the E2E suite because runReviewPreflight and runGuards use dynamic import()
 // and cannot be intercepted by Node's built-in test runner.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdtempSync, rmSync } from 'node:fs';

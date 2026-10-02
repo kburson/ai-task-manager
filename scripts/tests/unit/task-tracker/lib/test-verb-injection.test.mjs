@@ -11,6 +11,11 @@
 // the CLI via `node task-tracker.mjs test #999`. The gh shim records any
 // comment or body write so the preflight's no-effect boundary is observable.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';

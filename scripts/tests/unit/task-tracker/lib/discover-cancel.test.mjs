@@ -3,6 +3,11 @@
 // Regression: `/task cancel` is the escape hatch for a stuck discovery
 // bucket. It clears the bucket and active binding WITHOUT emitting any timing
 // rows, and is a clean no-op when no bucket is active. See issue #234.
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { mkdtempSync } from 'node:fs';
 import { loadState, saveState } from '../../../../task-tracker/state.mjs';

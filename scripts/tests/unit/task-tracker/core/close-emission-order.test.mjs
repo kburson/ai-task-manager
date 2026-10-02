@@ -19,6 +19,11 @@
 // (AC4). Part C models the combined close + move-state(done) row stream and
 // asserts exactly one `review:approved`, in canonical order (AC3).
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdtempSync, rmSync } from 'node:fs';

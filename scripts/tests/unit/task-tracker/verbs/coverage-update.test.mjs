@@ -16,6 +16,11 @@
 // state dir, which we redirect to an isolated temp dir via
 // AI_TASK_MANAGER_PROJECT_DIR so the live repo is never touched.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { before, after } from 'node:test';
 import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';

@@ -9,6 +9,11 @@
 // exception (validateBody-refusal branch's un-injected postTimingEvent) is
 // neutralized with an empty PATH so it ENOENTs into review's best-effort catch.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';

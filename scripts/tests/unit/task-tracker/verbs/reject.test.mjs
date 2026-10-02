@@ -11,6 +11,11 @@
 // null (since `rejected` is not itself a ladder stage), so the row is a pure
 // audit note, never a stage transition.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
