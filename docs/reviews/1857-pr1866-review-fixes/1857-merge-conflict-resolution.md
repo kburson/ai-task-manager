@@ -25,14 +25,14 @@ Each now creates its own isolated actor state while exercising the existing Clos
 
 ## Verification
 
-| Lane | Result | Receipt |
-| --- | ---: | --- |
-| Conflict-focused regression batch | 42/42 passed | [1857-conflict-final-tests.log](merge-resolution-receipts/1857-conflict-final-tests.log) |
-| Merged integration batch | 74/74 passed, exit 0 | [1857-merge-integration-final.log](merge-resolution-receipts/1857-merge-integration-final.log) |
-| Merged fast/unit lane | 36 failed files of 936 | [1857-merge-final-unit.log](merge-resolution-receipts/1857-merge-final-unit.log) |
-| Scoped ESLint and Prettier | Passed | final scoped command receipts |
-| Refusal inventory | 36 guards passed | final inventory receipt |
-| Resolution-path diff check | Passed | final scoped diff-check receipt |
+| Lane                              |                 Result | Receipt                                                                                        |
+| --------------------------------- | ---------------------: | ---------------------------------------------------------------------------------------------- |
+| Conflict-focused regression batch |           42/42 passed | [1857-conflict-final-tests.log](merge-resolution-receipts/1857-conflict-final-tests.log)       |
+| Merged integration batch          |   74/74 passed, exit 0 | [1857-merge-integration-final.log](merge-resolution-receipts/1857-merge-integration-final.log) |
+| Merged fast/unit lane             | 36 failed files of 936 | [1857-merge-final-unit.log](merge-resolution-receipts/1857-merge-final-unit.log)               |
+| Scoped ESLint and Prettier        |                 Passed | final scoped command receipts                                                                  |
+| Refusal inventory                 |       36 guards passed | final inventory receipt                                                                        |
+| Resolution-path diff check        |                 Passed | final scoped diff-check receipt                                                                |
 
 The exact 36-file failure set in the merged 936-file lane equals the pre-merge candidate's 36-file failure set from `/private/tmp/1866-fixes-final-unit-frozen.log`; there are no new or removed failing files. The larger file census reflects the merged trunk additions. This establishes that conflict resolution preserved the known aggregate-failure boundary. It does not make the unit lane green.
 

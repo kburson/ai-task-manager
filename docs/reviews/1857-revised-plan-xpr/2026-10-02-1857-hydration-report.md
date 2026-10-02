@@ -10,13 +10,13 @@ Review collateral was committed at `0d39f76c` after review finalization `cb13306
 
 All children were created through the scoped installed shaped wrapper as sub-issues of #1857. Each is assigned to `kburson`, tethered to the parent, open in Backlog, and contains unchecked acceptance criteria tied to the accepted decomposition.
 
-| Label | Issue | Outcome | Advisory engagement | Unchecked ACs |
-| --- | --- | --- | --- | ---: |
-| C1 | [#1861](https://github.com/kburson/ai-task-manager/issues/1861) | Crash-safe runtime transaction and recovery kernel | 8–12h | 5 |
-| C2 | [#1862](https://github.com/kburson/ai-task-manager/issues/1862) | Complete runtime writer/timing adoption and compatibility | 10–16h | 8 |
-| C3 | [#1863](https://github.com/kburson/ai-task-manager/issues/1863) | Safe cleanup capability with worktree and branch proof | 12–18h | 6 |
-| C4 | [#1864](https://github.com/kburson/ai-task-manager/issues/1864) | Cleanup skill and provider/package installation parity | 6–10h | 5 |
-| C5 | [#1865](https://github.com/kburson/ai-task-manager/issues/1865) | Joint release verification and operational admission | 6–10h | 6 |
+| Label | Issue                                                           | Outcome                                                   | Advisory engagement | Unchecked ACs |
+| ----- | --------------------------------------------------------------- | --------------------------------------------------------- | ------------------- | ------------: |
+| C1    | [#1861](https://github.com/kburson/ai-task-manager/issues/1861) | Crash-safe runtime transaction and recovery kernel        | 8–12h               |             5 |
+| C2    | [#1862](https://github.com/kburson/ai-task-manager/issues/1862) | Complete runtime writer/timing adoption and compatibility | 10–16h              |             8 |
+| C3    | [#1863](https://github.com/kburson/ai-task-manager/issues/1863) | Safe cleanup capability with worktree and branch proof    | 12–18h              |             6 |
+| C4    | [#1864](https://github.com/kburson/ai-task-manager/issues/1864) | Cleanup skill and provider/package installation parity    | 6–10h               |             5 |
+| C5    | [#1865](https://github.com/kburson/ai-task-manager/issues/1865) | Joint release verification and operational admission      | 6–10h               |             6 |
 
 Fresh native dependency readback records:
 

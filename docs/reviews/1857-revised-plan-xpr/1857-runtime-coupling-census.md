@@ -121,6 +121,7 @@ The actual source/artifact hooks now return structured refusal when ordinary aut
 Issue and timing critical sections now retain whole writer leases across awaits. Protected, atomically published operation ownership replaces age-based lock takeover; legacy locks remain explicit blockers. Genuine child reentrancy requires the exact protected proof and a live ancestor, while sibling calls and caller-created flags cannot inherit authority. The registered bootstrap exposes operation status and exact-digest, confirmed-death recovery. A genuinely killed child was recovered through the actual registered CLI in an isolated fixture, with its orphan writer lease reconciled separately. No real runtime record was deleted.
 
 Observed scoped evidence, contained in the author's original engagement:
+
 - .scratch/1857-hook-runtime-refusal-green.log: 11/11, 15666.902541ms. Preceding .scratch/1857-scratch-root-green.log is misleadingly named and actually contains 9 passes / 2 failures; it is retained as RED evidence, not a pass.
 - .scratch/1857-actor-durable-red.log: volatile alias accepted and actor projection ran before a lease.
 - .scratch/1857-actor-authority-red.log and .scratch/1857-journal-authority-red.log: missing control became zero words or an empty optional journal.

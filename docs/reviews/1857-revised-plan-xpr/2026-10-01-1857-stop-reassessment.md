@@ -33,24 +33,24 @@ live migration, cleanup or installed-image change is being performed.
 
 These are scoped observations, not full issue completion.
 
-| Check | Actual result | Evidence |
-| --- | --- | --- |
-| Canonical unit census | FAIL: 109 of 933 files | `.scratch/1857-runtime-unit-classification.log` |
-| Runtime integration batch | 124/126; two fixture containment failures | `.scratch/1857-runtime-adoption-combined.log` |
-| Those two corrected fixture suites | 14/14 | `.scratch/1857-combined-fixture-green.log` |
-| Shared Close fixture conversion, seven files | 146/146, 16985.0015 ms | `.scratch/1857-unit-close-batch.log` |
-| Migration transaction recovery plus canonical timing coverage | 18/18, 23360.020166 ms | `.scratch/1857-migration-timing-coupled.log` |
-| Timing engine behavior RED before coupling | Refused expected canonical reason; got generic publication-unconfirmed | `.scratch/1857-migration-timing-engine-red.log` |
-| Initial new timing module test | Missing-module RED only, not behavioral proof | `.scratch/1857-migration-timing-red.log` |
-| Current Ready journal suite | 19/19 | `.scratch/1857-ready-journal-current-green.log` |
-| Question producer/current clock | 3/3 | `.scratch/1857-question-writer-current-green.log` |
-| Hook stamp/question combination | 2/2 | `.scratch/1857-hook-question-green.log` |
-| Orchestrator actual writer/guard | 3/3 | `.scratch/1857-orchestrator-guard-green.log` |
-| Terminal binding ledger | 1/1 | `.scratch/1857-terminal-ledger-green.log` |
-| Draft branch real Git compound scenario | 1/1 | `.scratch/1857-draft-durable-green.log` |
-| Provider transcript provenance plus actor | 4/4 | `.scratch/1857-transcript-provenance-green.log` |
-| Durable Test root and stale-reaper proof | 6/6 | `.scratch/1857-test-root-reaper-green.log` |
-| Live evidence authority plus recorded rehearsal | 11/11 | `.scratch/1857-evidence-authority-green.log` |
+| Check                                                         | Actual result                                                          | Evidence                                          |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| Canonical unit census                                         | FAIL: 109 of 933 files                                                 | `.scratch/1857-runtime-unit-classification.log`   |
+| Runtime integration batch                                     | 124/126; two fixture containment failures                              | `.scratch/1857-runtime-adoption-combined.log`     |
+| Those two corrected fixture suites                            | 14/14                                                                  | `.scratch/1857-combined-fixture-green.log`        |
+| Shared Close fixture conversion, seven files                  | 146/146, 16985.0015 ms                                                 | `.scratch/1857-unit-close-batch.log`              |
+| Migration transaction recovery plus canonical timing coverage | 18/18, 23360.020166 ms                                                 | `.scratch/1857-migration-timing-coupled.log`      |
+| Timing engine behavior RED before coupling                    | Refused expected canonical reason; got generic publication-unconfirmed | `.scratch/1857-migration-timing-engine-red.log`   |
+| Initial new timing module test                                | Missing-module RED only, not behavioral proof                          | `.scratch/1857-migration-timing-red.log`          |
+| Current Ready journal suite                                   | 19/19                                                                  | `.scratch/1857-ready-journal-current-green.log`   |
+| Question producer/current clock                               | 3/3                                                                    | `.scratch/1857-question-writer-current-green.log` |
+| Hook stamp/question combination                               | 2/2                                                                    | `.scratch/1857-hook-question-green.log`           |
+| Orchestrator actual writer/guard                              | 3/3                                                                    | `.scratch/1857-orchestrator-guard-green.log`      |
+| Terminal binding ledger                                       | 1/1                                                                    | `.scratch/1857-terminal-ledger-green.log`         |
+| Draft branch real Git compound scenario                       | 1/1                                                                    | `.scratch/1857-draft-durable-green.log`           |
+| Provider transcript provenance plus actor                     | 4/4                                                                    | `.scratch/1857-transcript-provenance-green.log`   |
+| Durable Test root and stale-reaper proof                      | 6/6                                                                    | `.scratch/1857-test-root-reaper-green.log`        |
+| Live evidence authority plus recorded rehearsal               | 11/11                                                                  | `.scratch/1857-evidence-authority-green.log`      |
 
 The original 109-file unit failure count has not been rerun after the seven-file
 Close conversion. Do not subtract seven and claim a fresh remaining count.
