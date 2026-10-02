@@ -110,3 +110,4 @@ audit-line-cap: review 792-line feature file above soft 400: scripts/tests/unit/
 audit-line-cap: review 418-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs
 audit-line-cap: review 789-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs
 audit-line-cap: review 579-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs
+Scoped Markdownlint: 5 files, 0 errors

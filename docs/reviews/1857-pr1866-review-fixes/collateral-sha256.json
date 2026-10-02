@@ -4,7 +4,7 @@
   "03-astra-fix-review-acceptance.md": "60fc6ee2af6cb0973cc58a26ff100bca8a5c9a0d217288693bc7c33d6fb9063a",
   "2026-10-02-1857-pr1866-correction-final-report.md": "e68d364bacbd4b95c11ac0de0751392bd1e888daefbca08b9fbc98d45c3f744d",
   "2026-10-02-1857-pr1866-requested-changes-correction-plan.md": "ffa4ac29110cdc2398cea4a1cf4ddfb5051096ead55a59805d1ef939a5ce22e3",
-  "receipts/affected-quality.txt": "519b732ca4883d43a2f052e930d5c12ad0f0e54dc0dd55e8c31a87c3bf2a4ab1",
+  "receipts/affected-quality.txt": "cc341f1847b5499feea841fbd482858942ea0c88cc75edf78c465cf4cf10775d",
   "receipts/astra-actor-flush-tests.txt": "f37a3d0b36f96c32f11946a3b0061aca8932b100202b3eb2b2f5036f2392f0f6",
   "receipts/astra-files.txt": "894546ebcf652ccc5661f5dfb1bd4a7d5dfefa1e4e8ffb840ca86dd9519f22e1",
   "receipts/astra-final-fixes-reviewed.patch": "bb70fce2b7032b6c10d636dbb4060439e83fd5dbaa7c474ac7c69a45bcd44c54",
@@ -25,6 +25,7 @@
   "receipts/fixes-red.txt": "4515a4a82a7bc766e3093bec0cc983bbb5a236ba5b8f73bbbabd2a525e1bb004",
   "receipts/original-astra-pr-review.md.txt": "597831343b0a2a7c65b818064a28d4c66dec0fbf0526907269a37ec1f87a2768",
   "receipts/original-astra-reproduction.test.mjs.txt": "f870ff6fc95ea9b61bfe446000e3cf8303346f8b95779e5630c98c6ba756437f",
+  "receipts/package-markdownlint.txt": "73db5b3234997348efda48074cfa10fe9bdd588d37b17061582a3ec424c8cc88",
   "receipts/review-input-equivalence.json": "0247d5208f3fb7cda1b88e0ca211e465e2552d036cee867641b0796208874566",
   "receipts/run-clean.py": "22edb63e1c94726f51d5b0c4b15be0e6eff27e658ca738d9ab1b7950980df255",
   "receipts/unit-comparison.json": "528c8f275154aa003d0622f32c501b45a46ae29d619754bcb7f8d844e2fd24fc"
