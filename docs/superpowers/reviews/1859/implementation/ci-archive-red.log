@@ -1,0 +1,72 @@
+✖ historical capture bytes remain reproducible without any original Git objects (100.566417ms)
+✖ a missing Git object never permits changed archived bytes (15.917042ms)
+✖ a missing Git object never permits an undeclared archive entry (26.285041ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 210.4405
+
+✖ failing tests:
+
+test at scripts/tests/unit/test-helpers/captured-commit-bytes.test.mjs:21:1
+✖ historical capture bytes remain reproducible without any original Git objects (100.566417ms)
+  Error: captured source archive lacks 1b300cd8121b33631c5c3119daed583eb1d636fb:skill/SKILL.md
+      at archivedBytes (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/helpers/captured-commit-bytes.mjs:33:11)
+      at capturedCommitBytes (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/helpers/captured-commit-bytes.mjs:61:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/unit/test-helpers/captured-commit-bytes.test.mjs:28:22)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+
+test at scripts/tests/unit/test-helpers/captured-commit-bytes.test.mjs:32:1
+✖ a missing Git object never permits changed archived bytes (15.917042ms)
+  Error: ENOENT: no such file or directory, open '/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/test/capture-archive-BK2Pqz/scripts/tests/fixtures/1558/captured-sources/95db22a0306ddbf8bc07c79b8e547778efd68c5d/scripts/maintenance/capture-guidance-lifecycle.mjs.snapshot'
+      at writeFileSync (node:fs:2997:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/unit/test-helpers/captured-commit-bytes.test.mjs:34:3)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/test/capture-archive-BK2Pqz/scripts/tests/fixtures/1558/captured-sources/95db22a0306ddbf8bc07c79b8e547778efd68c5d/scripts/maintenance/capture-guidance-lifecycle.mjs.snapshot'
+  }
+
+test at scripts/tests/unit/test-helpers/captured-commit-bytes.test.mjs:38:1
+✖ a missing Git object never permits an undeclared archive entry (26.285041ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /archive lacks/. Input:
+  
+  'Error: captured commit is unavailable: 95db22a0306ddbf8bc07c79b8e547778efd68c5d'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/unit/test-helpers/captured-commit-bytes.test.mjs:44:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: captured commit is unavailable: 95db22a0306ddbf8bc07c79b8e547778efd68c5d
+        at capturedCommitBytes (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/helpers/captured-commit-bytes.mjs:49:26)
+        at file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/unit/test-helpers/captured-commit-bytes.test.mjs:44:23
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/scripts/tests/unit/test-helpers/captured-commit-bytes.test.mjs:44:10)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12),
+    expected: /archive lacks/,
+    operator: 'throws',
+    diff: 'simple'
+  }

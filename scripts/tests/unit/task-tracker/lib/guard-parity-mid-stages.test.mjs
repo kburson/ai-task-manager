@@ -384,3 +384,38 @@ describe('guard-parity: test→review via-registry (#267)', () => {
     assert.equal(direct.ok, true, JSON.stringify(direct.refusals));
   });
 });
+
+// @story #1859
+it('adopted narrative Scope is a separate Test-exit obligation', async () => {
+  const ctx = {
+    issueNumber: 1859,
+    body: '## Scope\n<!-- aitm-scope-evidence-policy:v1 -->\n- [x] Work',
+    toState: 'review',
+    cfg: CFG,
+    projectDir: '/bound',
+    invokingDir: '/bound',
+    deps: {
+      observeDependencyReadiness: async () => ({ status: 'ready', unfinished: [] }),
+      reconcileDependencyDisposition: async () => {},
+      fetchParentIssue: async () => null,
+      resolveDocsOnlyLaneSkipProof: async () => false,
+      reviewedScope: {
+        readEvidenceContext: async () => ({
+          repository: CFG.repo,
+          issue: 1859,
+          worktree: '/bound',
+          branch: 'codex/1859',
+          head: 'a'.repeat(40),
+        }),
+      },
+    },
+  };
+  const registry = await runGuards('test', 'review', ctx);
+  const state = await runStateObjectGuards('test', 'review', ctx);
+  assert.ok(
+    registry.refusals.some(
+      (r) => r.id === 'test-exit-reviewed-scope' && r.code === 'reviewed-scope-current-missing'
+    )
+  );
+  assert.ok(state.refusals.some((r) => r.id === 'test-exit-reviewed-scope'));
+});

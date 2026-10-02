@@ -73,7 +73,6 @@ import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { projectFunctionalDod } from '../lib/functional-dod-project.mjs';
-import { NormalizationRefusalError } from '../lib/action-decision/normalization.mjs';
 import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import { parseAitmRecord } from '../lib/github-records/record-envelope.mjs';
@@ -3698,7 +3697,27 @@ export async function verbClose(ctx) {
       lifecycleEvidence: projectedLifecycleEvidence,
     });
     if (projectedUnchecked.length > 0 || projectedLifecycleGate.block) {
-      throw new NormalizationRefusalError('normalization-authority-drift');
+      const reasons = [];
+      if (projectedUnchecked.length > 0) {
+        reasons.push(
+          `${projectedUnchecked.length} unchecked checkbox${projectedUnchecked.length === 1 ? '' : 'es'} in issue body`
+        );
+      }
+      if (projectedLifecycleGate.block) reasons.push(projectedLifecycleGate.reason);
+      return {
+        ok: false,
+        status: 'blocked',
+        refusals: reasons.map((reason) => ({
+          id: 'body-gates-entry-done',
+          guardId: 'body-gates-entry-done',
+          code: 'unclassified-refusal',
+          args: {},
+          reason,
+          blockers: projectedUnchecked,
+          noAutomaticRemediation: { reason: 'complete-required-checkbox' },
+        })),
+        humanDecision: null,
+      };
     }
     const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
     const { guardResult } = await evaluateCompleteGuards({
@@ -3792,6 +3811,7 @@ export async function verbClose(ctx) {
             issueNumber: closeIssueNum,
             repo: cfg.repo,
             scanBody: body,
+            projectDir,
             deps: {
               pexec,
               nowIso,
@@ -3806,6 +3826,22 @@ export async function verbClose(ctx) {
         console.log(
           `[task-tracker] Functional DoD normalization persisted for ${closeTarget}; close transition remains pending.`
         );
+      }
+
+      if (
+        normalized.decision?.status !== 'ready' &&
+        normalized.decision?.refusals.some((r) => r.id === 'body-gates-entry-done')
+      ) {
+        console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
+        normalized.decision.refusals.forEach((r) => console.error(`   • ${r.reason}`));
+        const unchecked = normalized.decision.refusals.find((r) => r.blockers)?.blockers ?? [];
+        unchecked.forEach((line) => console.error(`   ${line}`));
+        console.error('');
+        console.error('See .ai-task-manager/templates/pickup-directive.md Hard Rules.');
+        console.error(
+          'Verify each item, check its box (`/task ensureChecked "<label>"`), then retry.'
+        );
+        process.exit(3);
       }
 
       closeLifecycleEvidence = await loadCloseLifecycleEvidence(body);
@@ -3873,7 +3909,7 @@ export async function verbClose(ctx) {
         // `origin/trunk` (a remote-tracking ref that is never checked out) so the
         // shared local `trunk` ref is never touched. Injected via the existing
         // `deps.closeGates.resolveTrunkRef` override hook. cfg.trunkRef still wins.
-        const guardResult = await evaluateCloseProjection({ projection: { body } });
+        const guardResult = normalized.decision;
 
         const refusals = (guardResult.refusals || []).filter(
           (r) => !(r.id === 'review-exit-review-approved' && reviewGateBypassed)

@@ -84,6 +84,7 @@ function fixture({
         reviewPorts: {
           scope,
           projectDir: process.cwd(),
+          invokingDir: process.cwd(),
           verifyResident: async () => resident,
           runGuards:
             runGuards ??

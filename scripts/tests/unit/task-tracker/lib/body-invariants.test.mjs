@@ -390,3 +390,10 @@ test('findAcsWithoutVerifierOrInvalidTag still passes verified-cmd and invalid-t
     'the verified-cmd and invalid-tag exemptions are untouched by the new waiver skip'
   );
 });
+
+// @story #1859
+test('reviewed Scope policy is protected as an invariant; pointer remains distinct from execution proof', () => {
+  assert.deepEqual(findLostMarkers('<!-- aitm-scope-evidence-policy:v1 -->', ''), [
+    'aitm-scope-evidence-policy',
+  ]);
+});

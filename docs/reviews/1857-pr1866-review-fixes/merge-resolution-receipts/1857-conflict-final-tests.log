@@ -1,0 +1,51 @@
+✔ package-boundary: no test files are packed (15774.510208ms)
+✔ package-boundary: excluded directories do not reappear (0.384583ms)
+✔ package-boundary: ships the exact docs/introduction/ set (0.264333ms)
+✔ package-boundary: shipped README has no dead docs/introduction link (0.41875ms)
+✔ package-boundary: total entry count stays under the ceiling (0.215375ms)
+✔ package-boundary: development-only context calibration is not shipped (0.268166ms)
+✔ package-boundary: runtime entry points are still shipped (0.123542ms)
+✔ package-boundary: production parser and guidance release guard are declared (0.311833ms)
+✔ package-boundary: tag and explicit release CI retain the B2 consumer gate (0.62575ms)
+✔ static files round separately while aggregate traffic rounds exactly once (4.042583ms)
+✔ candidate workflow retains every lane and required query boundary without executing refusals (39.728041ms)
+✔ paired artifacts reconcile exact identities, context categories, sensitivity and cardinality (66.075ms)
+✔ artifact validation rejects incomplete, shortened, relabeled or latency-guessed evidence (211.873375ms)
+✔ committed candidate transcripts and reports exactly match historical regeneration (95.745834ms)
+✔ archived recertification binds every obligation and its recorded public CLI lifecycle (12.245458ms)
+✔ recertification refuses a relabeled or altered lifecycle capture (23915.8835ms)
+✔ current release gate refuses budget relaxation (0.524375ms)
+✔ retained obligation coverage binds each reviewed sentence to its required file (7.813917ms)
+✔ accepted WBS 5-7 generation produces the sole pinned GO decision (317.659459ms)
+✔ decision pins complete source, runner, oracle, serializer, fixture and proposed-text identities (50.233375ms)
+✔ honest NO-GO remains reportable while the foundation assertion exits nonzero (0.564959ms)
+✔ missing, stale, shortened or relabeled inputs cannot become a decision (300.929166ms)
+✔ historical foundation stays immutable and obsolete recertification cannot assert current GO (55974.589292ms)
+✔ the production lifecycle keeps eight states and canonically names Ready for Planning (1.213458ms)
+✔ the factory machine projects navigation only through lifecycle policy (0.14525ms)
+✔ the baseline names the canonical eight states in production order (0.073ms)
+✔ all three lifecycle projections explicitly cover all 64 ordered pairs (0.126208ms)
+✔ the executable matrix matches pre-refactor transition validation for every pair (1.222375ms)
+✔ the entry-history matrix matches the current marker-history edge set (0.118125ms)
+✔ the timing-history matrix matches the current strict timing walk (2.768959ms)
+✔ same-state requests are executable no-ops but remain valid history rows (0.118167ms)
+✔ reverse and history-only distinctions remain explicit (0.086209ms)
+✔ action eligibility and delegation match current verb exports (0.184667ms)
+✔ refine entry and self-run policy match injected production behavior (82.6625ms)
+[task-tracker] WARN: required project field "Start Time" (cfg.fieldStartTime) is not configured — board stamp skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist field ids.
+✔ bootstrap policy resolves live state and refuses a missing board item (541.228875ms)
+✔ the exact vocabulary includes every canonical lifecycle slug once (1.391333ms)
+✔ vocabulary definitions are separate from emitters and source-verified (5.778ms)
+✔ production timing emitter discovery exactly matches the characterized call sites (219.164ms)
+✔ every direct production timing-row producer supplies the full-marker observation (161.237042ms)
+✔ every characterized production timing emitter maps to known strict-reader rules (8.176583ms)
+✔ parameterized interruption and audit families retain their current classification (3.06025ms)
+✔ retired timing slugs remain neutral read-side history only (0.242542ms)
+ℹ tests 42
+ℹ suites 0
+ℹ pass 42
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56766.781

@@ -1,0 +1,17 @@
+✔ actual explanation evidence is public subprocess traffic anchored to one source commit (51.990875ms)
+✔ actual traffic plus separately modeled static text remains inside fixed budgets (39.132292ms)
+✔ delivery Explain exposes only named read ports (0.57625ms)
+✔ archived recertification retains its observed authority and original runner provenance (12.194334ms)
+✔ current recertification captures complete simulated authority without executing actions (11160.39675ms)
+✔ current recertification replays start from identical current authority bytes (10425.057958ms)
+✔ historical capture bytes remain reproducible without any original Git objects (130.2485ms)
+✔ a missing Git object never permits changed archived bytes (27.861084ms)
+✔ a missing Git object never permits an undeclared archive entry (25.3825ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21777.486375

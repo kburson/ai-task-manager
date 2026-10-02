@@ -1,0 +1,21 @@
+{
+  "schema": "aitm.workflow-exception-result/v1",
+  "action": "show",
+  "status": "shown",
+  "results": [
+    {
+      "issue": 1859,
+      "status": "active",
+      "recordId": "01M3WRQE3PWY7G256B1SKM42VX",
+      "revision": 1,
+      "history": [
+        {
+          "recordId": "01M3WRQE3PWY7G256B1SKM42VX",
+          "revision": 1,
+          "disposition": "active"
+        }
+      ],
+      "conflicts": []
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "aitm.workflow-exception-result/v1",
+  "action": "record",
+  "status": "recorded",
+  "results": [
+    {
+      "issue": 1859,
+      "status": "created",
+      "recordId": "01M3WRQE3PWY7G256B1SKM42VX",
+      "revision": 1,
+      "recoveredAfterTransport": false
+    }
+  ]
+}

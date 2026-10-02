@@ -1,0 +1,61 @@
+test 1 passed: verbReview emits marker on success
+test 1b passed: verbReview refuses missing canonical commit trace
+test 1c passed: verbReview refuses tracked worktree changes
+test 2 passed: verbReview refuses without aitm-dod-verified marker
+test 3 passed: verbReview refuses AC/DoD without evidence
+test 4 passed: verbReview marks AC/DoD with passing evidence
+test 5 passed: /task reject without --reason exits non-zero
+test 6 passed: /task reject refuses wrong state
+test 7 passed: /task reject happy path posts rejection comment
+test 8 passed: completeness gate refuses an unticked manual checkbox
+review-approval-prompt.test.mjs: all passed
+✔ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs (22731.508833ms)
+✔ promote: refine→R4P is a direct move-state call with refine-estimate hook (561.840542ms)
+✔ promote: refine→R4P refused when full refine-estimate signals are missing (14.079417ms)
+✔ promote: refine→R4P refuses when Acceptance Criteria drift after snapshot (12.667708ms)
+✔ promote: refine→R4P refused when refine-exit gate returns blockers (#147) (12.85525ms)
+✔ promote: backlog→refine stamps Start time on success (#147, #1211) (12.057583ms)
+✔ promote: backlog→refine is a direct move-state call without a Priority gate (12.116959ms)
+✔ promote: plan→develop is a direct move-state call when planned-estimate appendix is present (20.138333ms)
+✔ promote: plan→develop surfaces an empty Plan Metadata refusal before move-state (15.180792ms)
+✔ promote: plan→develop refused when refine-estimate comment is missing (#134) (13.668458ms)
+✔ promote: plan→develop refused when any sub-issue still in Backlog (#135) (15.248917ms)
+✔ promote: plan→develop refuses only children without current R4P-or-later evidence (14.2315ms)
+✔ promote: refine→plan refused when an epic child is PAST refine (#149 — lead-rule) (12.17275ms)
+✔ promote: plan→develop refused when planned-estimate appendix is missing (#134) (14.900667ms)
+✔ promote: develop→test delegates to /task test (#137) (27.053542ms)
+✔ promote: develop→test refused when CODE_COMPLETE gate returns blockers (#136) (27.07025ms)
+✔ promote: develop→test allowed when CODE_COMPLETE gate passes (#136) (26.295791ms)
+✔ promote: test→review delegates to the review verb (21.101292ms)
+✔ promote: test→review refused when aitm-dod-verified marker is missing (#210 Fix C) (13.091958ms)
+✔ promote: test→review REFUSED when a non-lifecycle checkbox is still unticked (#257) (13.075584ms)
+✔ promote: test→review ALLOWED when dod-verified present and every checkbox ticked (#257) (17.27275ms)
+✔ promote: review→done delegates to /task close (14.873334ms)
+✔ promote: review→done reports transition-failed when close exits 0 but board stays review (#710) (17.533959ms)
+✔ promote: historical Assigned body canonicalizes to R4P before drift comparison (37.258625ms)
+✔ promote: terminal refusal on done (22.027958ms)
+✔ promote: drift refused when live ≠ recorded (16.27475ms)
+✔ promote: bootstrap when lastKnownState absent — syncs to live, then promotes (16.798208ms)
+✔ promote: transition-failed when alias verb exits non-zero — no metadata update (24.219083ms)
+✔ promote: delegate non-zero but board reached target → promoted-with-warning (#175) (20.889208ms)
+✔ promote: delegate non-zero, board at target, marker stale → repair write fires (#175) (26.288541ms)
+[state-recording] issue #1752 marker write to "test" FAILED after 2 attempts: simulated gh failure
+✔ promote: delegate non-zero, marker repair write fails → audit comment posted (#175, #168) (21.142667ms)
+✔ promote: alias=test exit non-zero, board at target, NO aitm-dod-verified → promoted-with-warning, no rollback (#271 regression guard) (31.927125ms)
+✔ promote: delegate non-zero AND board drifted to non-target → transition-failed (#175) (21.121125ms)
+✔ promote: drift-reconcile is a no-op when live state matches recorded after failure (24.417458ms)
+✔ promote: drift-reconcile survives getLiveState throwing on the post-failure read (18.744166ms)
+✔ promote: error when recorded state is unknown (11.646875ms)
+✔ promote: no longer writes a move:<target> audit row (#128 — chokepoint emits paired phase rows) (11.847209ms)
+✔ native dependency guard allows no dependencies and all-Done dependencies (1.102292ms)
+✔ native dependency guard refuses unfinished and unknown dependencies (0.225541ms)
+✔ native dependency guard fails closed on graph, state, or projection failure (0.189583ms)
+✔ bootstrap keeps the native dependency guard on every forward delivery exit (0.089125ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22738.866125

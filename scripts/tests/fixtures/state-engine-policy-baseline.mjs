@@ -310,19 +310,19 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      323,
+      324,
       'event-call',
       "'gate-refused'",
       ['gate-refused']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      399,
+      400,
       'event-call',
       "'lifecycle-warn'",
       ['lifecycle-warn']
     ),
-    timingEmitter('scripts/task-tracker/runtime.mjs', 255, 'flush-call', 'event', [
+    timingEmitter('scripts/task-tracker/runtime.mjs', 265, 'flush-call', 'event', [
       'update',
       'pause:other',
       'review:failed',
@@ -341,24 +341,24 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      3470,
+      3469,
       'event-call',
       "'unauthorized-close'",
       ['unauthorized-close']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      3668,
+      3667,
       'event-call',
       "'closed-with-dirty-tree'",
       ['closed-with-dirty-tree']
     ),
-    timingEmitter('scripts/task-tracker/verbs/close.mjs', 3850, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/close.mjs', 3886, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      4116,
+      4152,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']
@@ -423,7 +423,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/review.mjs', 1009, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 1545, 'event-call', "'gate-refused'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 1548, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
     timingEmitter('scripts/task-tracker/verbs/stop.mjs', 53, 'flush-call', "'stop'", ['stop']),

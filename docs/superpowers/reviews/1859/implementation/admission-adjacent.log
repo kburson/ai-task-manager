@@ -1,0 +1,41 @@
+✔ production delivery reader resolves empty or omitted trunkRef for an attributed epic child (17.757791ms)
+✔ production delivery reader follows the shared local and configured-remote fallback authority (0.902541ms)
+✔ production child close resolves an omitted trunkRef and keeps parent attribution blockers (14.192625ms)
+✔ production child close projects the same gate outcome with explicit and default trunk refs (10.038209ms)
+✔ production child reader retains complete paginated child identity and refuses malformed pages (1.882625ms)
+✔ production worktree reader compares binding identity and observes dirty paths without writing (0.226792ms)
+✔ production delivery reader uses canonical parent lineage and current receipt evidence (2.185ms)
+✔ production delivery rejects evidence-v2 without invoking its mutating close runner (0.156417ms)
+✔ production guard adapter reads dependencies and refuses missing local commit objects (0.641083ms)
+✔ production close reaches ready with fresh authority and only read transports (10.585834ms)
+✔ production close collector and terminal authority guard refuse changed delivery after ready (3.103333ms)
+✔ production close observes workflow policy when a guard requires enrichment (4.091958ms)
+✔ production close cannot select ordinary completion for a CLOSED GitHub issue in Review (3.541042ms)
+✔ production close refuses issue-body changes even when semantic scope is unchanged (3.426625ms)
+✔ production close refuses a changed issue revision with byte-identical body (1.989209ms)
+✔ production close cannot bypass pending recovery on an OPEN issue in Review (2.327541ms)
+✔ production close retains immutable initial and current issue revisions (1.212375ms)
+✔ ordinary close collects current authority without effects (1.701416ms)
+✔ close fails closed on missing objects and retains independent guard blockers (1.004ms)
+✔ close cannot convert a missing receipt or child read into readiness (1.20475ms)
+✔ production close adapter fails closed without read-only delivery and guard seams (0.638833ms)
+✔ production guards pin both child and epic delivery proofs to the verified immutable tip (1.12775ms)
+✔ collector preserves all seven fields on read failure and does not execute effects (0.52175ms)
+✔ epic child refusals and independent child approval requests survive close collection (0.568583ms)
+✔ close preserves approval requests alongside attribution investigation (0.911458ms)
+✔ incorporated and malformed evidence-v2 authority cannot select a special close lane (1.195334ms)
+✔ a current Review state selects sanctioned close navigation (0.056041ms)
+✔ Done remains terminal and cannot select another close (0.038ms)
+✔ Review promotion delegates to the close collector (0.544958ms)
+✔ close retains approval and investigation requests simultaneously (0.687208ms)
+✔ missing workflow-policy reader is a typed indeterminate result (0.318625ms)
+move-state-approval-gate.test.mjs: all passed
+✔ scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs (9060.142959ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9068.48375

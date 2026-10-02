@@ -431,7 +431,7 @@ if (args[0] === 'issue' && args[1] === 'view') {
     process.stdout.write(JSON.stringify({ state: snapshot.state === 'done' ? 'CLOSED' : 'OPEN' }) + '\\n');
     process.exit(0);
   }
-  if (recertification && args.includes('blockedBy,blocking')) {
+  if (recertification && (args.includes('blockedBy,blocking') || args.includes('blockedBy'))) {
     const refs = snapshot.heavy && args[2] === '${issue}' ? [3100, 3101, 3102] : [];
     const nodes = refs.map((number) => ({ number, repository: { nameWithOwner: 'example/project' } }));
     process.stdout.write(JSON.stringify({ blockedBy: { nodes, totalCount: nodes.length }, blocking: { nodes: [], totalCount: 0 } }) + '\\n');

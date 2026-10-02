@@ -593,3 +593,17 @@ Yoder
 zxcvbn
 Zylos
 Δwords
+
+BMFJA
+CJSP
+PSAR
+Untargetable
+checkpointed
+fstat
+hardlink
+mkfifo
+prechecks
+reparsing
+reserialization
+unadopted
+unrun

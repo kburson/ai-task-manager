@@ -4,6 +4,7 @@
 import { projectFunctionalDod } from '../functional-dod-project.mjs';
 import { parseFunctionalDodKeys } from '../functional-dod-evidence.mjs';
 import { mutateIssueBody } from '../issue-body-mutate.mjs';
+import { completeGuardResult } from './evaluate.mjs';
 
 export class NormalizationRefusalError extends Error {
   constructor(code, cause) {
@@ -13,16 +14,19 @@ export class NormalizationRefusalError extends Error {
   }
 }
 
-function requireReady(decision) {
-  if (
-    !decision ||
-    decision.status !== 'ready' ||
-    decision.ok !== true ||
-    !Array.isArray(decision.refusals) ||
-    decision.refusals.length !== 0 ||
-    !Object.hasOwn(decision, 'humanDecision')
-  ) {
-    throw new NormalizationRefusalError('normalization-authority-drift');
+// Internal control-flow carrier: only a complete, fresh non-ready evaluation
+// can abort a versioned attempt without being mislabeled as authority drift.
+class NonReadyNormalization extends Error {
+  constructor({ decision, body, persisted, warnings }) {
+    super('normalization is not ready');
+    this.name = 'NonReadyNormalization';
+    Object.assign(this, { decision, body, persisted, warnings });
+  }
+}
+
+function validateDecision(decision) {
+  if (!completeGuardResult(decision)) {
+    throw new NormalizationRefusalError('normalization-decision-invalid');
   }
   return decision;
 }
@@ -71,7 +75,7 @@ export async function persistReadyNormalizations({
   }
   const evaluateCurrent = async ({ body, projection }) => {
     try {
-      return await refreshAndEvaluate({ body, projection, head, evaluatedAt });
+      return validateDecision(await refreshAndEvaluate({ body, projection, head, evaluatedAt }));
     } catch (cause) {
       if (cause instanceof NormalizationRefusalError) throw cause;
       throw new NormalizationRefusalError('normalization-authority-drift', cause);
@@ -95,10 +99,9 @@ export async function persistReadyNormalizations({
     body: initial.body,
     projection: initialProjection,
   });
-  if (!initialProjection.normalization) {
+  if (decision.status !== 'ready' || !initialProjection.normalization) {
     return { decision, persisted: false, warnings: [], body: initial.body };
   }
-  decision = requireReady(decision);
 
   let writeProjection;
   let write;
@@ -128,14 +131,30 @@ export async function persistReadyNormalizations({
           throw new NormalizationRefusalError('normalization-authority-drift');
         }
         const projection = projectFunctionalDod({ body: base, head, evaluatedAt });
-        requireReady(await evaluateCurrent({ body: base, projection }));
         if (next !== projection.body) {
           throw new NormalizationRefusalError('normalization-authority-drift');
+        }
+        const freshDecision = await evaluateCurrent({ body: base, projection });
+        if (freshDecision.status !== 'ready') {
+          throw new NonReadyNormalization({
+            decision: freshDecision,
+            body: base,
+            persisted: false,
+            warnings: [],
+          });
         }
         writeProjection = projection;
       },
     });
   } catch (cause) {
+    if (cause instanceof NonReadyNormalization) {
+      return {
+        decision: cause.decision,
+        body: cause.body,
+        persisted: cause.persisted,
+        warnings: cause.warnings,
+      };
+    }
     if (cause instanceof NormalizationRefusalError) throw cause;
     throw new NormalizationRefusalError('normalization-persist-failed', cause);
   }
@@ -157,9 +176,9 @@ export async function persistReadyNormalizations({
     throw new NormalizationRefusalError('normalization-authority-drift');
   }
   const remaining = projectFunctionalDod({ body: observed.body, head, evaluatedAt });
-  decision = requireReady(await evaluateCurrent({ body: observed.body, projection: remaining }));
   if (remaining.normalization) {
     throw new NormalizationRefusalError('normalization-authority-drift');
   }
+  decision = await evaluateCurrent({ body: observed.body, projection: remaining });
   return { decision, persisted: write?.status === 'ok', warnings: [], body: observed.body };
 }

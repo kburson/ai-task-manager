@@ -379,7 +379,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     draftBranchAllowance +
     artifactPolicyAllowance +
     runtimeRootAllowance +
-    actorRuntimeEntries.length;
+    actorRuntimeEntries.length +
+    8; // #1859: six reviewed-scope modules, readiness guard and operator guide.
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

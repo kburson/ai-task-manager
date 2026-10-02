@@ -51,6 +51,7 @@ export async function observeDependencyReadiness({ issueNumber, cfg, deps = {} }
   const graph = await readDependencies({
     issueNumber,
     repo: cfg.repo,
+    includeBlocking: false,
     deps: deps.nativeDependencies,
   });
   const blockedBy = canonicalBlockedBy(graph?.blockedBy);

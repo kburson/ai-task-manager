@@ -132,6 +132,8 @@ export async function runMoveStateInProcess(
     reviewAuthority = null,
     lifecycleEvidence = null,
     cursorCommand = null,
+    projectDir,
+    invokingDir,
   } = {},
   {
     host = runMoveStateHost,
@@ -157,7 +159,7 @@ export async function runMoveStateInProcess(
     const cursorRequest = buildCommandCursorRequest({
       command: cursorCommand,
       issue: Number(issueNum),
-      cwd: getProjectDir(),
+      cwd: projectDir ?? getProjectDir(),
       requestedTarget: state,
     });
     mergedEnv.AITM_CURSOR_TRIGGER = cursorRequest.trigger;
@@ -181,7 +183,15 @@ export async function runMoveStateInProcess(
   stderr.write = capture(errParts);
   let code;
   try {
-    code = await host({ argv, env: mergedEnv, tailProfile, reviewAuthority, lifecycleEvidence });
+    code = await host({
+      argv,
+      env: mergedEnv,
+      tailProfile,
+      reviewAuthority,
+      lifecycleEvidence,
+      projectDir,
+      invokingDir,
+    });
   } finally {
     stdout.write = realOut;
     stderr.write = realErr;
@@ -825,7 +835,12 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
   // flag forwarding) lives in the exported `runMoveStateInProcess`; here we only
   // bind the SKIP_NETWORK short-circuit for offline/test runs.
   ctx.runMoveState = (issue, state, opts = {}) =>
-    runMoveStateInProcess(issue, state, { ...opts, skipNetwork: SKIP_NETWORK });
+    runMoveStateInProcess(issue, state, {
+      projectDir: ctx.projectDir,
+      invokingDir: ctx.invokingDir ?? process.cwd(),
+      ...opts,
+      skipNetwork: SKIP_NETWORK,
+    });
 
   ctx.runMoveStateDone = (issue, opts = {}) =>
     ctx.runMoveState(issue, 'done', {
