@@ -27,6 +27,7 @@ import {
   renderDeliveryReceiptComment,
 } from '../../task-tracker/lib/delivery-records.mjs';
 import { configPath, SHARED_DIR, statePath } from '../../task-tracker/paths.mjs';
+import { setActiveTask } from '../../task-tracker/session-state.mjs';
 import { mkdtempProjectIsolated } from '../../task-tracker/lib/scratch-dir.mjs';
 import {
   FINAL_GUIDANCE_CONTEXT_BUDGETS,
@@ -624,6 +625,8 @@ export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
     const baseEnv = {
       ...process.env,
       AI_TASK_MANAGER_PROJECT_DIR: fixtureDir,
+      AI_TASK_MANAGER_APP_NAME: 'claude',
+      AI_TASK_MANAGER_SESSION_ID: 'fixture-guidance-capture',
       PATH: `${path.join(fixtureDir, 'fake-bin')}${path.delimiter}${process.env.PATH}`,
       TT_FULL_AUTO: '1',
       CAPTURE_AUTHORITY_LOG: authorityLog,
@@ -705,9 +708,10 @@ export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
       if (nextHead) snapshot.head = nextHead;
       writeSnapshot();
       if (mode !== 'historical' && state === 'develop') {
-        writeFileSync(
-          statePath(fixtureDir),
-          `${JSON.stringify({ active: `#${issue}`, entryStartTs: '2026-09-22T00:00:00Z' })}\n`
+        setActiveTask(
+          baseEnv.AI_TASK_MANAGER_SESSION_ID,
+          { issue, entryStartTs: '2026-09-22T00:00:00Z' },
+          fixtureDir
         );
       }
       events.push({

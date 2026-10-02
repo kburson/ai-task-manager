@@ -1,6 +1,7 @@
 // @story #1772
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -88,12 +89,14 @@ test('pre-slim public CLI capture cannot certify the final installed adapter rel
 
 test('final release requires a complete installed-byte and public-CLI capture', async () => {
   const finalBytes = readFileSync(
-    path.resolve('scripts/tests/fixtures/1558/actual-explain-traffic-final.json')
+    path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json')
   );
   const report = await buildGuidanceContextReport({ captureBytes: finalBytes });
   const capture = JSON.parse(finalBytes);
   const manifest = JSON.parse(
-    readFileSync(path.resolve('scripts/tests/fixtures/1558/final-capture-manifest.json'))
+    readFileSync(
+      path.resolve('scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json')
+    )
   );
   assert.equal(report.classification, 'final-installed-consumer-release');
   assert.equal(report.finalInstalledAdapterGate.status, 'passed');
@@ -146,7 +149,7 @@ test('final release requires a complete installed-byte and public-CLI capture', 
 
 test('final package and public-CLI capture regenerate byte for byte', () => {
   const expected = readFileSync(
-    path.resolve('scripts/tests/fixtures/1558/actual-explain-traffic-final.json'),
+    path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json'),
     'utf8'
   );
   assert.equal(
@@ -187,3 +190,34 @@ for (const adapter of ['claude', 'codex']) {
     assert.equal(run.status, reports.some((entry) => entry.status === 'OVER') ? 1 : 0);
   });
 }
+
+test('accepted final archive stays intact and cannot certify changed current sources', async () => {
+  const bytes = readFileSync(
+    path.resolve('scripts/tests/fixtures/1558/actual-explain-traffic-final.json')
+  );
+  const archived = JSON.parse(bytes);
+  const manifest = JSON.parse(
+    readFileSync(path.resolve('scripts/tests/fixtures/1558/final-capture-manifest.json'))
+  );
+  const digest = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
+  assert.equal(manifest.captureSha256, digest(bytes));
+  assert.equal(archived.identity.transcriptSha256, digest(JSON.stringify(archived.events)));
+  assert.deepEqual(
+    manifest.eventNames,
+    archived.events.map(({ name }) => name)
+  );
+  assert.deepEqual(manifest.trafficCategories, archived.measurement.traffic.categories);
+  assert.ok(
+    archived.identity.implementationFiles.some(
+      ({ path: file, sha256 }) => digest(readFileSync(path.resolve(file))) !== sha256
+    )
+  );
+  await assert.rejects(
+    buildGuidanceContextReport({
+      captureBytes: bytes,
+      capturePath: manifest.capturePath,
+      manifestBytes: Buffer.from(JSON.stringify(manifest)),
+    }),
+    /final capture identity drift/
+  );
+});

@@ -16,10 +16,16 @@ async function measurementTool() {
   return import('../../../../maintenance/measure-guidance-candidate.mjs');
 }
 
-test('current recertification binds every obligation and the complete public CLI lifecycle', async () => {
+test('archived recertification binds every obligation and refuses current replay identity drift', async () => {
   const { buildCurrentRecertificationDecision } =
     await import('../../../../maintenance/measure-guidance-candidate.mjs');
-  const decision = buildCurrentRecertificationDecision({ projectRoot });
+  const decision = json('feasibility-recheck-1767.json');
+  const archived = json('actual-explain-traffic-recertification.json');
+  assert.equal(decision.capture.transcriptSha256, archived.identity.transcriptSha256);
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot }),
+    /TIMING_ACTOR_INVALID|Invalid timing actor/
+  );
   assert.equal(decision.schema, 'aitm.guidance-feasibility-recertification/v1');
   assert.equal(decision.owner.issue, 1767);
   assert.equal(decision.owner.foundationIssue, 1660);
@@ -71,16 +77,16 @@ test('recertification refuses a relabeled or altered lifecycle capture', async (
     .digest('hex')}`;
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot, capture: selfConsistentDrift }),
-    /capture-replay/
+    /capture-replay|Invalid timing actor/
   );
 });
 
-test('historical foundation stays immutable while command modes report the current recertification', async () => {
+test('historical foundation stays immutable while current commands refuse obsolete replay', async () => {
   const { buildFeasibilityDecision, buildCurrentRecertificationDecision, runMeasurementCommand } =
     await measurementTool();
-  assert.deepEqual(json('feasibility-decision.json'), buildFeasibilityDecision({ projectRoot }));
-  const expected = buildCurrentRecertificationDecision({ projectRoot });
-  assert.deepEqual(json('feasibility-recheck-1767.json'), expected);
+  assert.throws(() => buildFeasibilityDecision({ projectRoot }), /measurement-artifact-drift/);
+  assert.equal(json('feasibility-decision.json').schema, 'aitm.guidance-feasibility-decision/v1');
+  assert.throws(() => buildCurrentRecertificationDecision({ projectRoot }), /Invalid timing actor/);
 
   for (const args of [
     ['--all', '--json'],
@@ -93,8 +99,9 @@ test('historical foundation stays immutable while command modes report the curre
       writeStdout: (value) => (stdout += value),
       writeStderr: (value) => (stderr += value),
     });
-    assert.equal(status, 0, stderr);
-    assert.deepEqual(JSON.parse(stdout), expected);
+    assert.notEqual(status, 0);
+    assert.equal(stdout, '');
+    assert.match(stderr, /Invalid timing actor/);
   }
 
   let stderr = '';

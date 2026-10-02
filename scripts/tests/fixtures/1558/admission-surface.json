@@ -2098,7 +2098,7 @@
         "./gh-timing-comment.mjs",
         "./lib/bind-event.mjs",
         "./word-counter.mjs",
-        "./active-time.mjs",
+        "./lib/actor-hook-timing.mjs",
         "./queue.mjs",
         "./fleet-registry.mjs",
         "./paths.mjs",
@@ -2150,9 +2150,10 @@
         "../paths.mjs",
         "../session-state.mjs",
         "../state.mjs",
-        "../config.mjs",
         "../gh-timing-comment.mjs",
-        "../queue.mjs"
+        "../word-counter.mjs",
+        "../lib/timing-actor.mjs",
+        "../lib/timing-row-reader.mjs"
       ],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,

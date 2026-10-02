@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { capturedCommitBytes } from './captured-commit-bytes.mjs';
 
 import {
   measureAgentVisible,
@@ -17,6 +18,10 @@ import { validateLifecycleTranscript } from '../../maintenance/capture-guidance-
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const FIXTURES = 'scripts/tests/fixtures/1558';
+export const CURRENT_FINAL_CAPTURE =
+  'scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json';
+export const CURRENT_FINAL_MANIFEST =
+  'scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json';
 const PINNED_CAPTURE_SHA256 =
   'sha256:b22d77cbd4d1ea589f71b0079724f64154e6ee9c5baf1462ac0a54affe944fc4';
 const PINNED_SCENARIO_MANIFEST_SHA256 =
@@ -119,6 +124,8 @@ function modelLegacyEvent(event, frozenEntries, loadedText) {
 export function buildPairedContext({
   captureBytes,
   adapter,
+  capturePath = CURRENT_FINAL_CAPTURE,
+  manifestBytes,
   budgets = GUIDANCE_CONTEXT_BUDGETS,
 } = {}) {
   if (!Buffer.isBuffer(captureBytes) || !['claude', 'codex'].includes(adapter)) {
@@ -166,13 +173,14 @@ export function buildPairedContext({
   }
   validateLifecycleTranscript(capture);
   if (final) {
-    const manifest = JSON.parse(read(`${FIXTURES}/final-capture-manifest.json`));
+    const manifest = JSON.parse(manifestBytes ?? read(CURRENT_FINAL_MANIFEST));
     if (
       capture.captureKind !==
         'actual-public-cli-and-installed-static-with-deterministic-authority' ||
+      !/^[0-9a-f]{40}$/.test(manifest.sourceCommit ?? '') ||
       manifest.captureSha256 !== digest(captureBytes) ||
       manifest.scenarioManifestSha256 !== capture.identity?.scenarioManifestSha256 ||
-      manifest.capturePath !== `${FIXTURES}/actual-explain-traffic-final.json` ||
+      manifest.capturePath !== capturePath ||
       JSON.stringify(manifest.eventNames) !==
         JSON.stringify(capture.events.map(({ name }) => name)) ||
       JSON.stringify(manifest.trafficCategories) !==
@@ -200,7 +208,9 @@ export function buildPairedContext({
         ) ||
       !Array.isArray(capture.identity?.implementationFiles) ||
       capture.identity.implementationFiles.some(
-        ({ path: sourcePath, sha256 }) => digest(read(sourcePath)) !== sha256
+        ({ path: sourcePath, sha256 }) =>
+          digest(read(sourcePath)) !== sha256 ||
+          digest(capturedCommitBytes(ROOT, manifest.sourceCommit, sourcePath)) !== sha256
       )
     )
       throw new Error('paired context: final capture identity drift');
@@ -316,7 +326,9 @@ export function buildPairedContext({
       frozenTranscriptPath: adapterBaseline.transcriptPath,
       frozenTranscriptSha256: digest(transcriptBytes),
       historicalSourceCommit: baseline.source.commit,
-      currentCapturePath: `${FIXTURES}/actual-explain-traffic-${final ? 'final' : 'recertification'}.json`,
+      currentCapturePath: final
+        ? capturePath
+        : `${FIXTURES}/actual-explain-traffic-recertification.json`,
       currentCaptureSha256: digest(captureBytes),
       currentSourceCommit: capture.identity.sourceCommit ?? null,
       ...(final ? { currentSourceInputsSha256: capture.identity.sourceInputsSha256 } : {}),

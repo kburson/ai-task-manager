@@ -18,6 +18,8 @@ import { buildAuthorityAfterReport } from '../../../helpers/guidance-authority-a
 const ROOT = path.resolve(import.meta.dirname, '../../../../..');
 const FIXTURES = 'scripts/tests/fixtures/1558/';
 const read = (name) => readFileSync(path.join(ROOT, FIXTURES, name));
+const currentRead = (name) =>
+  readFileSync(path.join(ROOT, 'scripts/tests/fixtures/1857/1866-current', name));
 const digest = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 
 test('generates current paired artifacts while preserving the frozen comparison', async () => {
@@ -62,10 +64,10 @@ test('public meter certifies final installed bytes and the paired report', async
     report.releaseEvidence.currentPairedComparison.classification,
     'final-installed-public-cli-paired-comparison'
   );
-  const finalCaptureBytes = read('actual-explain-traffic-final.json');
+  const finalCaptureBytes = currentRead('actual-explain-traffic-final.json');
   const finalLifecycle = await buildGuidanceContextReport({ captureBytes: finalCaptureBytes });
   assert.equal(
-    read('lifecycle-transcript-final.json').toString(),
+    currentRead('lifecycle-transcript-final.json').toString(),
     `${JSON.stringify(finalLifecycle, null, 2)}\n`
   );
   const finalPaired = buildCurrentPairedComparison({
@@ -73,7 +75,7 @@ test('public meter certifies final installed bytes and the paired report', async
     authority: report.releaseEvidence.authorityAfter,
     budgets: report.releaseEvidence.contextBudgets,
   });
-  assert.deepEqual(JSON.parse(read('context-comparison-final-paired.json')), finalPaired);
+  assert.deepEqual(JSON.parse(currentRead('context-comparison-final-paired.json')), finalPaired);
   const assertion = spawnSync(process.execPath, [...base, '--assert-budgets'], {
     cwd: ROOT,
     encoding: 'utf8',
