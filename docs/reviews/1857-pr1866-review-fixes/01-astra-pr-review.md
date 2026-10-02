@@ -1,0 +1,112 @@
+# PR #1866 independent Astra review
+
+**Assessment: Request changes. Not ready to merge.** Three introduced defects were reproduced against an isolated archive of the committed head. This is an implementation review, not a lifecycle approval or a review of the live WIP.
+
+## Reviewed identity and scope
+
+- PR: <https://github.com/kburson/ai-task-manager/pull/1866>
+- Freshly verified head: `d4c42d7809c22acc9576d51da8938952588c207e`.
+- Freshly verified current base: `120ed5ae6d0c8c8e9cb7d48623bec0a572ae430c` (`trunk`).
+- Merge base used to identify introduced changes: `92e32ca6376eb5f25260ef35ab637ec1ec4eadf6`.
+- GitHub reports 239 changed files, +19,504/-2,246. A complete `gh api --paginate .../pulls/1866/files?per_page=100` census exactly matches the local three-dot changed-file set. File list: `/private/tmp/1866-astra-files.txt`.
+- PR title is `Codex/1857 draft`; body is `review collateral`. The diff includes active production source, tests, root selection, actor state/queue/timing, Close/outcome/report behavior, and configuration—not only review documents. The PR description needs to identify that scope and its incomplete release state.
+- Governing inputs: committed durable-runtime/cleanup design, actor-timing addendum, and accepted remaining-work decomposition. The latter's committed SHA-256 is `67f3a31fb5098ecd7ce967a900d0c16667acdc2c087323ef88d63b49af61bd13`, matching the later XPR acceptance audit. Earlier SAR digest is correctly described as historical evidence.
+- Snapshot: `/private/tmp/1866-astra-head`, extracted with `git archive` from the head above. A separate temporary Git repository and empty fixture commit were created there solely for Git-root/worktree tests; this fixture HEAD is not represented as the PR's commit.
+
+The source worktree, its staged rename and other uncommitted work, index, refs, configuration, runtime state and remote PR were not changed. No live lifecycle/migration command, GitHub comment, approval or merge was performed.
+
+## Findings
+
+### P1 — Move the Test sandbox before enabling the artifact-root refusal
+
+**Changed location:** `scripts/task-tracker/paths.mjs:122-123` (the new `resolveRuntimeRoot` call). Associated new refusal: `scripts/task-tracker/lib/runtime-storage.mjs:39-49`.
+
+`getProjectDir()` now rejects a genuine Git worktree located beneath an enclosing project's `.scratch`. However, the committed Test implementation still creates every verification worktree with `sandboxWorktreePath()` → `projectTmpDir(projectDir)` at `scripts/task-tracker/verbs/test.mjs:143-145`, which resolves precisely to `.scratch/.task-test-*`. Its verification subprocesses run there and forward `AI_TASK_MANAGER_PROJECT_DIR: wtPath` (`test.mjs:215-227`). Any verification command using ordinary AITM root/config/scratch resolution is now refused before the verification can execute.
+
+**Reproduction:** In the isolated head repository, create a genuine registered detached worktree below `.scratch/.task-test-1857-fixture`, then call the committed `resolveRuntimeRoot({cwd: worktree, env: {AI_TASK_MANAGER_PROJECT_DIR: worktree}})`. It throws:
+
+```text
+ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /private/tmp/1866-astra-head/.scratch/.task-test-1857-fixture
+```
+
+Evidence: `/private/tmp/1866-astra-sandbox-repro.txt`. This is a regression in the currently active Test path, rather than a request to finish all remaining runtime work. Land the sandbox relocation and corresponding ownership/consumer changes together with this refusal, or defer activation of the refusal until that coherent change is ready.
+
+### P1 — Reconcile the existing own-session cursor before resetting actor state
+
+**Changed location:** `scripts/task-tracker/state.mjs:242-257`, particularly deletion/reset at lines 243-244.
+
+An existing session may have a valid `active-task.json` and persisted own word cursor but no newly introduced actor timing record. `loadState()` now discards all legacy timing fields and initializes `lastWordMarker` to zero while retaining that session's binding. On its first real flush, the runtime computes the new stay-abreast cursor from zero plus newly counted words, whereas `cursor.before.words` still comes from the existing session cursor. The new journal correctly refuses the backwards cursor at `lib/actor-flush-journal.mjs:102-108`; consequently update, pause and other flushing lifecycle operations fail after the upgrade.
+
+**Reproduction:** Existing own binding at #1857, legacy marker 100, own cursor `{line:1,words:100,wordsFull:100}`, no actor-state record, and a transcript with three new words. `loadState()` returns `lastWordMarker:0`; `ctx.flushActiveToGH(...)` fails with `ACTOR_FLUSH_INVALID` before publication because the proposed cursor is 3 < 100.
+
+Evidence: `/private/tmp/1866-astra-upgrade-repro.log`. Reproduce with:
+
+```sh
+python3 /private/tmp/1866-astra-run-isolated.py --test-name-pattern='legacy session cursor' scripts/tests/integration/task-tracker/lib/astra-review-repro.test.mjs
+```
+
+The reproduction harness extends a copy of the committed fixture suite only within the temporary snapshot. Repair the transition using validated own-session cursor evidence or a typed explicit compatibility/migration path; do not reinstate another actor's unattributed global history or relax monotonic cursor validation.
+
+### P2 — Keep an already-paused binding's departure valid for the actor reader
+
+**Changed location:** `scripts/task-tracker/runtime.mjs:624-629` (actor-tagged row without engagement in the no-open-timer branch).
+
+Successful Test and Review handoffs deliberately preserve `active` while clearing `entryStartTs` (`verbs/test.mjs:1656-1660` and the Review pause helper). A subsequent ordinary `/task pause` still enters `verbPause()` because the issue is bound. The newly changed no-timer flush branch writes an actor-tagged `pause:*` row with no engagement interval. The prior explicit interval has already closed the reader's open actor span, so `deriveActorEngagement()` records `actor-end-without-start` at `lib/timing-engagement.mjs:159-160`.
+
+The row is published and the local pause succeeds, but the resulting canonical timing history is invalid. The field projector rejects `invalid-actor-evidence` (`scripts/gh/log-issue-time.mjs:107-108`) and the Close outcome runtime rejects `timing-evidence` (`lib/estimation/runtime-adapter.mjs:1433-1436`). A later resume does not remove the invalid historical departure.
+
+**Reproduction:** Flush an active actor interval, apply the committed `pauseTimingKeepBinding` handoff, then call the real `verbPause` with the fixture's local transport. Parsing the emitted rows produces exactly `actor-end-without-start:<actor-key>`.
+
+Evidence: `/private/tmp/1866-astra-paused-bound-repro.log`. Reproduce with:
+
+```sh
+python3 /private/tmp/1866-astra-run-isolated.py --test-name-pattern='explicit pause after' scripts/tests/integration/task-tracker/lib/astra-review-repro.test.mjs
+```
+
+Make departure from an already-paused binding idempotent, or represent it as an explicitly valid non-work boundary. Do not invent an engagement start or broadly suppress malformed actor evidence.
+
+## Verification and coverage
+
+The original head archive contains unchanged production bytes. Only temporary Git metadata, copied `js-yaml`/`argparse` dependencies, generated fixture data and a reproduction test copy were added. Test subprocesses stripped inherited `AI_TASK_MANAGER_*`, `TASK_TRACKER_*`, `AITM_*`, `CLAUDE_*`, `CODEX_*`, `GIT_*` and `TT_*` variables; fixture identities were created locally rather than copied from a live actor. Node was v26.8.1.
+
+Fresh focused results:
+
+1. Actor grammar/accounting, attributed comment publication, actor journal/state isolation and artifact policy: 51 passing tests across the six successfully executed files in `/private/tmp/1866-astra-focused-tests.log`. Its initial actor integration file could not load `js-yaml` from the bare archive; that environmental failure was then resolved by copying the dependency into the temporary snapshot, without changing source.
+2. The committed actor-flush integration suite then passed **20/20**: `/private/tmp/1866-astra-actor-flush-tests.log`.
+3. Outcome telemetry/proof/cascade, report projection, timing delivery provenance, unknown projection and migration transaction helper batch: **75 passed, 3 failed out of 78**, `/private/tmp/1866-astra-outcome-tests.log`. All three failures are in the newly added `child-close-telemetry.integration.test.mjs`; the helper supplies no session identity, so `loadState()` throws `TIMING_ACTOR_INVALID` before those assertions execute in a clean environment. This prevents claiming that suite validated child Close. The test runner itself does not inject a replacement session identity.
+4. Two adversarial fixture extensions reproduce findings 2 and 3 as failing expectations. Finding 1 was reproduced directly with genuine isolated Git registration.
+
+The 78-test batch was:
+
+```sh
+python3 /private/tmp/1866-astra-run-isolated.py \
+  scripts/tests/unit/task-tracker/lib/estimation/outcome-telemetry.test.mjs \
+  scripts/tests/unit/task-tracker/lib/estimation/outcome-delivery-proof.test.mjs \
+  scripts/tests/unit/task-tracker/lib/estimation/cascade-outcome-authority.test.mjs \
+  scripts/tests/unit/reports/lib/estimation-records.test.mjs \
+  scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs \
+  scripts/tests/integration/task-tracker/verbs/child-close-telemetry.integration.test.mjs \
+  scripts/tests/unit/task-tracker/core/timing-unknown-projection.test.mjs \
+  scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs
+```
+
+Review passes covered artifact path/shell containment and guard integration, root resolution and Test handoff, actor identity/state/cursor/journal/queue boundaries, lifecycle timing producers, timing union/phase accounting, Close delivery/source linkage, outcome validation/readback, reports/calibration, relevant installer/config/package changes, and accepted review-document provenance. Preparatory migration helpers were sampled and their transaction tests run; this is not a complete crash/recovery or installed runtime admission audit. Not every historical review transcript was re-audited.
+
+No full unit/integration/quality rerun was performed. Historical `109/933` failures and older focused results are not current aggregate evidence, and the new focused passes must not be subtracted from that baseline. The controller's fresh PR-check observation reports CodeQL only; that does not establish source-test success.
+
+## Strengths
+
+The artifact policy has explicit physical containment and installed-guard checks with adversarial coverage. Actor keys preserve provider/session distinctions without exposing those identifiers in published timing rows. Immutable journal payloads and exact-row reconciliation are useful foundations. The incomplete outcome work deliberately retains unknowns and provenance, and excludes incomplete records from quantitative calibration rather than inventing totals. The later accepted plan clearly distinguishes remaining implementation, review acceptance, installed deployment and operational activation.
+
+## Declined to judge as a new implementation defect
+
+- Missing complete C1–C5 runtime/cleanup implementation, migration registration and cleanup skill/provider installation: explicitly deferred by the accepted remaining-work plan; their absence is not independently called a regression. Active unsafe partial adoption is covered by finding 1.
+- Full transactional atomicity of binding/actor/global state and question pause/marker updates: explicitly assigned to C1/C2; no completion credit is granted by this review.
+- Live migration, installation, runtime activation, cleanup, archival and branch deletion: outside the authorized review and not exercised.
+- Worktree-only runtime changes and staged actor-flush test rename: not present in the reviewed commit and excluded.
+- Trunk-only #1859 additions: a two-dot comparison misleadingly renders these as branch deletions; excluded using the verified merge-base diff.
+- Formatting-only edits and preserved historical review-response prose: not raised as correctness findings.
+
+## Merge readiness
+
+Do not merge this snapshot as release-ready production code. Resolve the three reproduced runtime regressions, repair the clean-environment child-Close fixture admission, and obtain a fresh coherent verification result for the resulting candidate. Review-document acceptance remains plan-scoped and does not certify the active source changes in this PR.

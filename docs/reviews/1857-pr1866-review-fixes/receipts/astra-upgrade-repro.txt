@@ -1,0 +1,44 @@
+before state {
+  active: '#1857',
+  lastActive: null,
+  entryStartTs: '2026-10-02T11:40:42.382Z',
+  wordsAtEntryStart: 100,
+  totalActiveMinutes: 0,
+  discoverBucket: null,
+  lastWordMarker: 0,
+  lastFullWordMarker: 0,
+  pausedAtTs: null
+} cursor {
+  line: 1,
+  words: 100,
+  task: '#1857',
+  wordsFull: 100,
+  ts: '2026-10-02T11:40:43.413Z'
+}
+✖ review reproduction: legacy session cursor survives first actor flush (189.5565ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 471.001875
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/astra-review-repro.test.mjs:708:1
+✖ review reproduction: legacy session cursor survives first actor flush (189.5565ms)
+  Error: Actor flush journal is invalid, conflicting, or publication is unresolved
+      at fail (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-flush-journal.mjs:19:17)
+      at validate (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-flush-journal.mjs:108:7)
+      at file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-flush-journal.mjs:136:20
+      at withLock (file:///private/tmp/1866-astra-head/scripts/task-tracker/fleet-registry.mjs:48:12)
+      at prepare (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-flush-journal.mjs:129:10)
+      at runActorFlushJournal (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-flush-journal.mjs:161:18)
+      at journal (file:///private/tmp/1866-astra-head/scripts/task-tracker/runtime.mjs:512:7)
+      at publishFlush (file:///private/tmp/1866-astra-head/scripts/task-tracker/runtime.mjs:538:28)
+      at ctx.flushActiveToGH (file:///private/tmp/1866-astra-head/scripts/task-tracker/runtime.mjs:741:24)
+      at async file:///private/tmp/1866-astra-head/scripts/tests/integration/task-tracker/lib/astra-review-repro.test.mjs:719:5 {
+    code: 'ACTOR_FLUSH_INVALID'
+  }
