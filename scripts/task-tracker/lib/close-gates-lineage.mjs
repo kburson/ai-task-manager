@@ -1,3 +1,4 @@
+// @story #1867
 // Lineage-aware "done" gate — Axis 1 of the two-axis delivery model (#913, epic #912).
 //
 // The flat `commitsOnTrunkGate` (close-gates.mjs) asks "is the deliverable on
@@ -111,14 +112,15 @@ export function resolveDoneTargetBranch({ issueNumber, deps = {} } = {}) {
     if (seen.has(currentIssue)) return trunk;
     seen.add(currentIssue);
 
-    const { parentBranch } = resolveEpicLineage(currentIssue, { deps: { graph, trunk } });
+    const { parentBranch, parentIssue } = resolveEpicLineage(currentIssue, {
+      deps: { graph, trunk },
+    });
     if (parentBranch === trunk) return trunk; // terminal
     if (branchExists(parentBranch)) return parentBranch; // nearest surviving ancestor
 
     // Immediate parent branch is gone — climb to the parent epic and try its parent.
-    const parsed = parseBranchName(parentBranch);
-    if (!parsed || !parsed.issue) return trunk; // unparseable → conservative trunk fallback
-    currentIssue = parsed.issue;
+    if (parentIssue === null) return trunk;
+    currentIssue = parentIssue;
   }
 }
 
