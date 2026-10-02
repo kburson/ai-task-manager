@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { capturedCommitBytes } from './captured-commit-bytes.mjs';
+import { assertCurrentCaptureSources } from './guidance-capture-provenance.mjs';
 
 import {
   measureAgentVisible,
@@ -172,6 +172,7 @@ export function buildPairedContext({
     if (!manifest.some(({ id }) => id === name)) throw new Error(`paired context: missing ${name}`);
   }
   validateLifecycleTranscript(capture);
+  let currentSourceCommit = capture.identity.sourceCommit ?? null;
   if (final) {
     const manifest = JSON.parse(manifestBytes ?? read(CURRENT_FINAL_MANIFEST));
     if (
@@ -206,14 +207,14 @@ export function buildPairedContext({
             productionPackage: capture.identity?.productionPackage,
           })
         ) ||
-      !Array.isArray(capture.identity?.implementationFiles) ||
-      capture.identity.implementationFiles.some(
-        ({ path: sourcePath, sha256 }) =>
-          digest(read(sourcePath)) !== sha256 ||
-          digest(capturedCommitBytes(ROOT, manifest.sourceCommit, sourcePath)) !== sha256
-      )
+      !Array.isArray(capture.identity?.implementationFiles)
     )
       throw new Error('paired context: final capture identity drift');
+    try {
+      currentSourceCommit = assertCurrentCaptureSources(capture, manifest.sourceCommit, ROOT);
+    } catch {
+      throw new Error('paired context: final capture identity drift');
+    }
   } else if (
     digest(captureBytes) !== PINNED_CAPTURE_SHA256 ||
     capture.identity?.scenarioManifestSha256 !== PINNED_SCENARIO_MANIFEST_SHA256
@@ -330,7 +331,7 @@ export function buildPairedContext({
         ? capturePath
         : `${FIXTURES}/actual-explain-traffic-recertification.json`,
       currentCaptureSha256: digest(captureBytes),
-      currentSourceCommit: capture.identity.sourceCommit ?? null,
+      currentSourceCommit,
       ...(final ? { currentSourceInputsSha256: capture.identity.sourceInputsSha256 } : {}),
     },
     streams: {

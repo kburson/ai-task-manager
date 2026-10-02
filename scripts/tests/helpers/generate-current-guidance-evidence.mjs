@@ -7,7 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import prettier from 'prettier';
 import { captureGuidanceLifecycle } from './capture-guidance-release.mjs';
-import { capturedCommitBytes } from './captured-commit-bytes.mjs';
+import { assertCurrentCaptureSources } from './guidance-capture-provenance.mjs';
 import { CURRENT_FINAL_CAPTURE, CURRENT_FINAL_MANIFEST } from './guidance-paired-context.mjs';
 import {
   buildGuidanceContextReport,
@@ -43,11 +43,7 @@ export async function generateCurrentGuidanceEvidence() {
     encoding: 'utf8',
   }).trim();
   const capture = captureGuidanceLifecycle({ mode: 'final' });
-  for (const file of capture.identity.implementationFiles) {
-    if (digest(capturedCommitBytes(root, sourceCommit, file.path)) !== file.sha256) {
-      throw new Error(`current guidance: uncommitted captured source ${file.path}`);
-    }
-  }
+  assertCurrentCaptureSources(capture, sourceCommit, root);
   const captureBytes = Buffer.from(`${JSON.stringify(capture, null, 2)}\n`);
   const manifest = currentCaptureManifest(capture, captureBytes, sourceCommit);
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);

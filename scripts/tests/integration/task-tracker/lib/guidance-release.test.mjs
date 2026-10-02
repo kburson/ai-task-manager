@@ -1,8 +1,8 @@
 // @story #1772
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 
@@ -11,6 +11,9 @@ import { captureGuidanceLifecycle } from '../../../helpers/capture-guidance-rele
 import { buildGuidanceContextReport } from '../../../../task-tracker/measure-guidance-context.mjs';
 import { formatReleaseMeasurement, measure } from '../../../../task-tracker/measure-context.mjs';
 import { buildPairedContext } from '../../../helpers/guidance-paired-context.mjs';
+import { assertCurrentCaptureSources } from '../../../helpers/guidance-capture-provenance.mjs';
+import { currentCaptureManifest } from '../../../helpers/generate-current-guidance-evidence.mjs';
+import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const MEASURE_SCRIPT = path.resolve('scripts/task-tracker/measure-context.mjs');
 
@@ -124,6 +127,7 @@ test('final release requires a complete installed-byte and public-CLI capture', 
   assert.ok(report.heavyCase.observedPublicCli.traffic.proxyTokens > 0);
   for (const adapter of ['claude', 'codex']) {
     const paired = report.adapters[adapter];
+    assert.equal(paired.identities.currentSourceCommit, manifest.sourceCommit);
     assert.equal(paired.current.captureKind, 'actual-public-cli-traffic-plus-installed-static');
     assert.equal(paired.current.uncountedAgentVisibleBytes, 0);
     assert.ok(paired.eventManifest.length >= 24);
@@ -220,4 +224,69 @@ test('accepted final archive stays intact and cannot certify changed current sou
     }),
     /final capture identity drift/
   );
+});
+
+test('internally consistent dirty installed guidance cannot inherit a committed source identity', () => {
+  const originalCapture = JSON.parse(
+    readFileSync(
+      path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json')
+    )
+  );
+  const originalManifest = JSON.parse(
+    readFileSync(
+      path.resolve('scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json')
+    )
+  );
+  const fixture = mkdtempProjectIsolated('guidance-dirty-source-');
+  const digest = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
+  const git = (args) => execFileSync('git', args, { cwd: fixture, encoding: 'utf8' }).trim();
+  try {
+    git(['fetch', '--no-tags', path.resolve('.'), originalManifest.sourceCommit]);
+    git(['checkout', '-q', '--detach', 'FETCH_HEAD']);
+    assert.equal(
+      assertCurrentCaptureSources(originalCapture, originalManifest.sourceCommit, fixture),
+      originalManifest.sourceCommit
+    );
+    for (const [sourcePath, packagePath] of [
+      ['skill/shared/router.md', 'skill/shared/router.md'],
+      ['.ai-task-manager/templates/pickup-directive.md', 'templates/pickup-directive.md'],
+    ]) {
+      const capture = structuredClone(originalCapture);
+      const original = readFileSync(path.join(fixture, sourcePath), 'utf8');
+      const dirty = original.replace(/[A-Za-z]/, (letter) =>
+        letter === letter.toUpperCase() ? letter.toLowerCase() : letter.toUpperCase()
+      );
+      assert.notEqual(dirty, original);
+      for (const file of new Set([sourcePath, packagePath]))
+        writeFileSync(path.join(fixture, file), dirty);
+      for (const adapter of Object.values(capture.measurement.installedStatic)) {
+        for (const file of adapter.files)
+          if (file.sourcePath === sourcePath) file.sha256 = digest(dirty);
+      }
+      for (const file of capture.identity.productionPackage.files)
+        if (file.path === packagePath) file.sha256 = digest(dirty);
+      capture.identity.productionPackage.filesSha256 = digest(
+        JSON.stringify(capture.identity.productionPackage.files)
+      );
+      capture.identity.sourceInputsSha256 = digest(
+        JSON.stringify({
+          implementationFiles: capture.identity.implementationFiles,
+          productionPackage: capture.identity.productionPackage,
+        })
+      );
+      const captureBytes = Buffer.from(JSON.stringify(capture));
+      const manifest = currentCaptureManifest(capture, captureBytes, originalManifest.sourceCommit);
+      assert.equal(manifest.captureSha256, digest(captureBytes));
+      assert.deepEqual(manifest.installedStatic, capture.measurement.installedStatic);
+      assert.equal(git(['rev-parse', 'HEAD']), manifest.sourceCommit);
+      assert.throws(
+        () => assertCurrentCaptureSources(capture, manifest.sourceCommit, fixture),
+        /uncommitted captured source/
+      );
+      for (const file of new Set([sourcePath, packagePath]))
+        writeFileSync(path.join(fixture, file), original);
+    }
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
 });
