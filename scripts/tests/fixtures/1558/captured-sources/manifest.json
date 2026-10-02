@@ -50,6 +50,21 @@
       "commit": "a38843a639df71cced9f2ee5a40c46fe34ca2f00",
       "filePath": "scripts/tests/fixtures/1558/actual-explain-traffic.json",
       "sha256": "sha256:01352ddc23f480fbfee6ce2fde40922ee25993ce2c846d964378ef6ea71d2702"
+    },
+    {
+      "commit": "1b300cd8121b33631c5c3119daed583eb1d636fb",
+      "filePath": "skill/SKILL.md",
+      "sha256": "sha256:7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e"
+    },
+    {
+      "commit": "1b300cd8121b33631c5c3119daed583eb1d636fb",
+      "filePath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md",
+      "sha256": "sha256:6810a378cc1ba3fff051fcf72032278efc955af053eb76b8b059de9e033e79f1"
+    },
+    {
+      "commit": "95db22a0306ddbf8bc07c79b8e547778efd68c5d",
+      "filePath": "scripts/maintenance/capture-guidance-lifecycle.mjs",
+      "sha256": "sha256:218017063bd49a308f5dbd66e7236c1e7b26de89709a1ecc6b7e23cc74da4024"
     }
   ]
 }
