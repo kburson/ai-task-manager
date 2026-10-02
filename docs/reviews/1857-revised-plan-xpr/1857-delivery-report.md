@@ -194,3 +194,53 @@ Outcome 1 was committed normally at e0429245bf42da3e07221d20cbef20bd9eccfbd4 and
 The correction selects accounting from the existing issue-kind parser, requires the freshly validated delivery body to retain that kind, and reserves child-outcome aggregation for actual epics. A source story keeps its own frozen forecast and full Test obligations regardless of child links. Empty and populated epics both retain the real merged-PR or local-trunk authority; no forecast exemption or delivery gate was invented.
 
 Regression evidence: .scratch/1857-kind-red.log observed four expected failures. The first production correction exposed the existing story schema's prohibition on child aggregation, captured in .scratch/1857-kind-green.log (39/40); the final correction preserves that schema and .scratch/1857-kind-green-final.log passed 40/40 in 841.875041ms across provenance, runtime and receipt compatibility. The first source patch check refused missing context before mutation; the corrected contextual patch checked and applied normally. These process durations are contained in the author's continuing genuine engagement, not additional actor charges. Live emitters remain on the immutable installed image pending Outcome 2 admission.
+
+### Continued producer adoption and administrative decision
+
+The capacity reset is complete. The controller deleted the one-shot capacity-threshold automation through the sanctioned app tool; no further capacity monitoring or reset requests are planned.
+
+Candidate-only runtime integration has now covered the action-capture child process through its exit/outcome publication, question pause/resume through asynchronous publication, and durable hook-idempotency stamp creation. Human question-response wait holds no writer lease. Isolated physical-alias and malformed-record cases refuse instead of accepting volatile authority.
+
+Evidence: `.scratch/1857-capture-shim-green.log` (8/8), `.scratch/1857-publication-validation-green.log` (5/5), `.scratch/1857-question-writer-current-green.log` (3/3), and `.scratch/1857-hook-question-green.log` (2/2). The corresponding missing-lease/schema RED logs remain preserved. The earlier question-writer-green filename contains a failed historical-clock fixture run; it is not passing evidence. The fixture was corrected to use its actual current observation while leaving production freshness enforcement intact.
+
+These are focused integration results, not a complete Outcome 2 exit. Remaining coupling includes orchestrator ownership/recovery, remaining direct runtime consumers, multi-record crash publication, canonical migration timing reconciliation, classified fixture compatibility, and the full installed-hook/bootstrap matrix. No live migration, installed-image switch, current asset cleanup, or Outcome 2 commit has occurred. Existing operational setup files/backups remain preserved and excluded from source staging.
+
+### Runtime fixture census and continued execution
+
+The full canonical unit classification run completed with 109 of 933 files failing
+(`.scratch/1857-runtime-unit-classification.log`). This is a failing compatibility
+baseline, not a passed release gate. Most failures point to retired fixture paths,
+missing explicit activation records, or source inventories; production refusal is
+preserved. The first shared Close fixture conversion now passes all 146 existing
+cases across seven files in 16985.0015 ms
+(`.scratch/1857-unit-close-batch.log`). Its explicit unit-only identity and activation
+model performs no Git subprocesses and grants no production CLI bypass.
+
+The runtime integration batch was 124/126 before two fixture repairs. Their focused
+14-case rerun passed (`.scratch/1857-combined-fixture-green.log`); a whole-batch
+126/126 result has not yet been recorded. All 18 inventory family groups now have
+either candidate durable adoption or explicit nonproduction classification.
+Crash publication, timing reconciliation, remaining fixture conversion, installed
+entrypoint verification and the fresh operational migration plan still govern the
+complete Outcome 2 exit. There has been no live activation.
+
+Audit correction: the filenames `1857-ready-journal-red.log` and
+`1857-ready-journal-green.log` were inadvertently reused during the later Ready
+journal tests. They no longer establish the earlier 24-case historical observation.
+The uniquely named current evidence is
+`.scratch/1857-ready-journal-current-green.log`: 19/19. Preserve the historical
+claim as a reported observation, not as evidence backed by the overwritten files.
+
+### User clarification of future phase models
+
+The user explicitly directed this current Astra process to finish uninterrupted.
+No current model, session, or implementation scope was changed. Future defaults
+are Sol 6.1 for brainstorming/specification; Astra 6 for SAR or Astra 6 author plus
+Opus 5.5 reviewer for XPR; Sol 6.1 in an interactive session for implementation
+(headless only for genuine parallel fan-out); and Sol 5.6 for documentation.
+The controller acknowledged that carrying the XPR author/model into sequential
+implementation was its interpretation, not an explicit user model selection.
+The revised-plan handoff was f5e72b59 at 06:07:17Z; this implementation engagement
+resumed at 2026-10-01T06:11:14.772Z. The own overlay still reports that original
+start. The controller's attempted separate note was refused before execution,
+with no file or state change. These facts do not retroactively alter timing.
