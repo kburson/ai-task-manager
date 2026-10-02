@@ -607,3 +607,4 @@ reparsing
 reserialization
 unadopted
 unrun
+unadmittable
