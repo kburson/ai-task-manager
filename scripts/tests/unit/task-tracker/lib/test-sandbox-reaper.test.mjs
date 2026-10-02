@@ -9,6 +9,7 @@ import {
   parseRegisteredWorktreePaths,
   reapStaleTestSandboxes,
   selectStaleTestSandboxPaths,
+  testSandboxDirectory,
 } from '../../../../task-tracker/lib/test-sandbox-reaper.mjs';
 
 const projectDir = path.resolve('/repo');
@@ -92,4 +93,20 @@ test('inventory failure is non-fatal and performs no removal', async () => {
   });
   assert.deepEqual(result, { candidates: [], attempted: [] });
   assert.equal(removals, 0);
+});
+
+test('new sandbox namespace selects only registered exact-parent dead owners', () => {
+  const parent = testSandboxDirectory(projectDir);
+  const dead = path.join(parent, '.task-test-1857-deadbeef-41001-a1b2c3d4');
+  const liveNew = path.join(parent, '.task-test-1857-deadbeef-41003-a1b2c3d4');
+  const foreign = path.join(testSandboxDirectory('/other'), path.basename(dead));
+  const nested = path.join(parent, 'nested', path.basename(dead));
+  assert.deepEqual(
+    selectStaleTestSandboxPaths({
+      projectDir,
+      worktreePaths: [dead, liveNew, foreign, nested],
+      isPidAlive: (pid) => pid === 41003,
+    }),
+    [dead]
+  );
 });

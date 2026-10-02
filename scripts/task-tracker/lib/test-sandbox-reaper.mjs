@@ -10,6 +10,13 @@ import { isProcessAlive } from '../issue-mutator-lock.mjs';
 const pexec = promisify(execFile);
 const TOKENIZED_SANDBOX_RE = /^\.task-test-([1-9]\d*)-([0-9a-f]{8})-([1-9]\d*)-([0-9a-f]{8})$/;
 
+// #1857 — verification worktrees need Git authority, so they cannot live in
+// artifact scratch. Keep this path shared by creation and registered cleanup.
+export function testSandboxDirectory(projectDir) {
+  if (!projectDir) throw new TypeError('test-sandbox: projectDir is required');
+  return path.join(path.resolve(projectDir), '.ai-task-manager', 'runtime', 'test-sandboxes');
+}
+
 export function parseRegisteredWorktreePaths(porcelain) {
   return String(porcelain || '')
     .split('\0')
@@ -23,12 +30,15 @@ export function selectStaleTestSandboxPaths({
   isPidAlive = isProcessAlive,
 } = {}) {
   if (!projectDir) throw new TypeError('test-sandbox-reaper: projectDir is required');
-  const expectedParent = path.join(path.resolve(projectDir), '.tmp');
+  const expectedParents = new Set([
+    testSandboxDirectory(projectDir),
+    path.join(path.resolve(projectDir), '.tmp'),
+  ]);
   const selected = [];
 
   for (const candidate of worktreePaths) {
     const resolved = path.resolve(String(candidate || ''));
-    if (path.dirname(resolved) !== expectedParent) continue;
+    if (!expectedParents.has(path.dirname(resolved))) continue;
     const match = path.basename(resolved).match(TOKENIZED_SANDBOX_RE);
     if (!match) continue;
     const pid = Number(match[3]);

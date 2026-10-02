@@ -4,6 +4,7 @@
 // audits, which only scan `*.test.mjs`; see lib/discover-test-files.mjs).
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { saveState } from '../../task-tracker/state.mjs';
 import { withUnitRuntimeRoot } from './unit-runtime-root.mjs';
 
 import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
@@ -249,9 +250,17 @@ export async function runClose({
   const previousDirty = process.env.TT_SKIP_DIRTY_CHECK;
   const previousProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   const previousExitCode = process.exitCode;
+  const actorKeys = ['AI_TASK_MANAGER_SESSION_ID', 'AI_TASK_MANAGER_APP_NAME'];
+  const previousActor = Object.fromEntries(actorKeys.map((key) => [key, process.env[key]]));
   let result;
   try {
     process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
+    process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-close-wiring';
+    process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
+    await withUnitRuntimeRoot(() => saveState(initialState, statePath), { projectRoot: dir });
+    // Seed own actor authority without changing the compatibility fixture bytes:
+    // refusal tests compare this exact initial snapshot for absence of writes.
+    writeFileSync(statePath, JSON.stringify(initialState));
     if (gateReviewToDone !== undefined) {
       const configDir = join(dir, '.ai-task-manager');
       mkdirSync(configDir, { recursive: true });
@@ -447,6 +456,10 @@ export async function runClose({
     else process.env.TT_SKIP_DIRTY_CHECK = previousDirty;
     if (previousProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
     else process.env.AI_TASK_MANAGER_PROJECT_DIR = previousProjectDir;
+    for (const [key, value] of Object.entries(previousActor)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
     process.exitCode = previousExitCode;
     captureFinalState?.(readFileSync(statePath, 'utf8'));
     rmSync(dir, { recursive: true, force: true });

@@ -528,6 +528,23 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     if (opts.recoverOnly) return { status: 'reconciled' };
     let cursorBefore = null;
     const durableBefore = opts.computeOnly ? state : loadState(statePath);
+    // #1857 — Test/Review may retain a binding after closing its interval.
+    // Repeated departure (pause, stop, switch) must not publish an unmatched
+    // actor end. Reconcile pending publication above before treating it as idle.
+    if (!state.entryStartTs && isDepartureEvent(effectiveEvent)) {
+      return {
+        row: null,
+        post: { ok: true, skipped: true },
+        ts,
+        deltaMin: 0,
+        idleMin: 0,
+        deltaWallMin: 0,
+        deltaWords: 0,
+        wordMarker: state.lastWordMarker ?? 0,
+        lastWordMarker: state.lastWordMarker ?? 0,
+        lastFullWordMarker: state.lastFullWordMarker ?? 0,
+      };
+    }
     const previous = {
       entryStartTs: durableBefore.entryStartTs ?? null,
       lastWordMarker: durableBefore.lastWordMarker ?? 0,

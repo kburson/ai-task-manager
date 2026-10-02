@@ -85,8 +85,13 @@ export function jsonlPath(sid) {
   return flat;
 }
 
-export function markerPathFor(sid) {
-  return path.join(markerDir(), `${sid}.json`);
+export function markerPathFor(sid, owningRoot = projectDir()) {
+  return path.join(
+    owningRoot,
+    getProvider(aiAppName()).stateDir,
+    'session-tracking',
+    `${sid}.json`
+  );
 }
 
 export function ensureSessionTracking(sid) {

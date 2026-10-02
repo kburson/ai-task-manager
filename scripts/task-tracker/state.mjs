@@ -255,6 +255,15 @@ export function loadState(statePath) {
   const projDir = projectDirForState(statePath);
   const ownTiming = readActorTimingState({ provider: aiAppName(), sid }, projDir);
   if (ownTiming) Object.assign(base, migrateLegacyFields(ownTiming));
+  else {
+    // Upgrade only this actor's validated cumulative cursor. The shared legacy
+    // ledger cannot attribute another session's history to this actor.
+    const cursor = loadMarker(markerPathFor(sid, projDir), {
+      identity: { provider: aiAppName(), sid },
+    });
+    base.lastWordMarker = cursor.words;
+    base.lastFullWordMarker = cursor.wordsFull;
+  }
   const active = getActiveTask(sid, projDir);
   if (active && typeof active === 'object') {
     if (active.issue != null) {

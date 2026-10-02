@@ -4,7 +4,7 @@
 // On invocation:
 //   1. Resolves the target issue (from rest args or active binding).
 //   2. Parses `## Verification Commands` from the issue body.
-//   3. Stages a fresh git worktree at `tmp/.task-test-<N>-<sha8>-<token>/` from
+//   3. Stages a fresh git worktree at `.ai-task-manager/runtime/test-sandboxes/.task-test-<N>-<sha8>-<token>/` from
 //      HEAD (the per-run `<token>` keeps concurrent runs from colliding — #563).
 //   4. Runs `npm ci --no-audit --no-fund` inside the worktree.
 //   5. Executes each VC via execFile (allowlist-validated), capturing exit
@@ -23,7 +23,7 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
-import { projectTmpDir } from '../paths.mjs';
+import { testSandboxDirectory } from '../lib/test-sandbox-reaper.mjs';
 import {
   isPolicyShapeVerificationRejection as isPolicyShapeRejection,
   validateVerificationCommand,
@@ -142,7 +142,10 @@ function shortSha(sha) {
 // stays easy to grep. Pass an explicit `token` for deterministic cleanup/test paths.
 export function sandboxWorktreePath({ projectDir, issueNum, sha, token } = {}) {
   const tok = token || `${process.pid}-${randomBytes(4).toString('hex')}`;
-  return path.join(projectTmpDir(projectDir), `.task-test-${issueNum}-${shortSha(sha)}-${tok}`);
+  return path.join(
+    testSandboxDirectory(projectDir),
+    `.task-test-${issueNum}-${shortSha(sha)}-${tok}`
+  );
 }
 
 export function buildPassedMessage(issueNumber, target) {
