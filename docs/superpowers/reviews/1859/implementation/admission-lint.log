@@ -1,0 +1,182 @@
+npm notice run @kburson/ai-task-manager@0.1.0 lint
+npm notice run npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals && npm run lint:guidance-release
+npm notice run @kburson/ai-task-manager@0.1.0 lint:js
+npm notice run eslint .
+npm notice run @kburson/ai-task-manager@0.1.0 lint:md
+npm notice run markdownlint-cli2 "**/*.md"
+markdownlint-cli2 v0.23.2 (markdownlint v0.41.1)
+Finding: **/*.md **/*.md !.tmp/** !.scratch/** !node_modules/** !.git/** !.worktrees/** !.claude/worktrees/** !reports/** !coverage/** !output/** !docs/postmortems/** !docs/ai-memory/** !docs/peer-reviews/** !docs/superpowers/reviews/**/*-reviewer-*-review.md !docs/superpowers/reviews/**/*-review-*-author-response-*.md !docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md !docs/superpowers/reviews/**/review-*-author-response-*.md !docs/superpowers/reviews/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md !docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md !docs/superpowers/reviews/1219/**/protocol-runs/** !.ai-task-manager/memory/** !.superpowers/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/**
+Linting: 763 files
+Summary: 0 issues in 0 files
+npm notice run @kburson/ai-task-manager@0.1.0 lint:spell
+npm notice run cspell --no-progress "**/*.{md,mjs,js,json}"
+CSpell: Files checked: 2876, Issues found: 0 in 0 files.
+npm notice run @kburson/ai-task-manager@0.1.0 lint:tmp
+npm notice run node scripts/maintenance/lint-no-system-tmp.mjs
+lint:tmp — 1948 file(s) clean
+npm notice run @kburson/ai-task-manager@0.1.0 lint:fleet-sandbox
+npm notice run node scripts/maintenance/lint-fleet-sandbox-isolation.mjs
+lint:fleet-sandbox — 1273 test file(s) clean
+npm notice run @kburson/ai-task-manager@0.1.0 lint:test-layout
+npm notice run node scripts/tests/tools/audit-test-layout.mjs
+audit-test-layout: all 1192 test files declare a canonical scripts/tests/<unit|integration|slow>/ lane.
+npm notice run @kburson/ai-task-manager@0.1.0 lint:test-entrypoint-imports
+npm notice run node scripts/tests/tools/audit-test-entrypoint-imports.mjs
+audit-test-entrypoint-imports: no discovered test entrypoint imports among 1192 files.
+npm notice run @kburson/ai-task-manager@0.1.0 lint:story-tags
+npm notice run node scripts/tests/tools/audit-story-tags.mjs
+audit-story-tags: all 1192 test files carry a @story tag.
+npm notice run @kburson/ai-task-manager@0.1.0 lint:line-cap
+npm notice run node scripts/tests/tools/audit-line-cap.mjs
+audit-line-cap: all test files within 800-line code-LOC limit
+audit-line-cap: review 403-line feature file above soft 400: scripts/tests/integration/task-tracker/core/templates.test.mjs
+audit-line-cap: review 758-line feature file above soft 400: scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs
+audit-line-cap: review 508-line feature file above soft 400: scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs
+audit-line-cap: review 423-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs
+audit-line-cap: review 781-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-close.test.mjs
+audit-line-cap: review 798-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs
+audit-line-cap: review 787-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs
+audit-line-cap: review 558-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs
+audit-line-cap: review 605-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-review.test.mjs
+audit-line-cap: review 794-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs
+audit-line-cap: review 567-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-test.test.mjs
+audit-line-cap: review 526-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/delivery-waiver-journal.test.mjs
+audit-line-cap: review 572-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs
+audit-line-cap: review 795-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs
+audit-line-cap: review 418-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/evidence-v2/delivery-flow.test.mjs
+audit-line-cap: review 640-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/github-records-coordinator-replacement.test.mjs
+audit-line-cap: review 410-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/github-records-initialization.test.mjs
+audit-line-cap: review 774-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs
+audit-line-cap: review 562-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs
+audit-line-cap: review 505-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs
+audit-line-cap: review 506-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs
+audit-line-cap: review 633-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs
+audit-line-cap: review 554-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs
+audit-line-cap: review 437-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/verification-receipt.test.mjs
+audit-line-cap: review 638-line feature file above soft 400: scripts/tests/integration/task-tracker/local-trunk-close.integration.test.mjs
+audit-line-cap: review 659-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs
+audit-line-cap: review 435-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs
+audit-line-cap: review 794-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs
+audit-line-cap: review 408-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs
+audit-line-cap: review 546-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/local-trunk-close-authority.test.mjs
+audit-line-cap: review 730-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs
+audit-line-cap: review 628-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs
+audit-line-cap: review 714-line feature file above soft 400: scripts/tests/slow/task-tracker/core/verify-develop.test.mjs
+audit-line-cap: review 789-line feature file above soft 400: scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs
+audit-line-cap: review 780-line feature file above soft 400: scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs
+audit-line-cap: review 726-line feature file above soft 400: scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs
+audit-line-cap: review 709-line feature file above soft 400: scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs
+audit-line-cap: review 414-line feature file above soft 400: scripts/tests/unit/providers/parity.test.mjs
+audit-line-cap: review 440-line feature file above soft 400: scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs
+audit-line-cap: review 799-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs
+audit-line-cap: review 757-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/action-presentation.test.mjs
+audit-line-cap: review 411-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs
+audit-line-cap: review 547-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs
+audit-line-cap: review 682-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence.test.mjs
+audit-line-cap: review 422-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/code-complete-gate.test.mjs
+audit-line-cap: review 418-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs
+audit-line-cap: review 529-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/decomposition-plan-exit-gate.test.mjs
+audit-line-cap: review 514-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs
+audit-line-cap: review 743-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-incident-reconciliation.test.mjs
+audit-line-cap: review 746-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-incident-records.test.mjs
+audit-line-cap: review 482-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs
+audit-line-cap: review 746-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs
+audit-line-cap: review 561-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs
+audit-line-cap: review 439-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-waived-receipt.test.mjs
+audit-line-cap: review 644-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-waiver-close-recovery.test.mjs
+audit-line-cap: review 467-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-waiver-consumption.test.mjs
+audit-line-cap: review 738-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-waiver-reverification.test.mjs
+audit-line-cap: review 614-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/epic-r4p-orchestration.test.mjs
+audit-line-cap: review 414-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/estimation/records.test.mjs
+audit-line-cap: review 441-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/false-delivery-close-recovery.test.mjs
+audit-line-cap: review 596-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/contract-source.test.mjs
+audit-line-cap: review 800-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/coordination-authority.test.mjs
+audit-line-cap: review 615-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/delivery-contract.test.mjs
+audit-line-cap: review 679-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/github-comment-store.test.mjs
+audit-line-cap: review 524-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs
+audit-line-cap: review 786-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-authority-adversarial.test.mjs
+audit-line-cap: review 784-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-multi-replacement.test.mjs
+audit-line-cap: review 642-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-nested-authority.test.mjs
+audit-line-cap: review 771-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-replacement-capability.test.mjs
+audit-line-cap: review 800-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-snapshot-boundary.test.mjs
+audit-line-cap: review 796-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-temporal.test.mjs
+audit-line-cap: review 800-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment.test.mjs
+audit-line-cap: review 689-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/guard-registry-plan-exit.test.mjs
+audit-line-cap: review 445-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs
+audit-line-cap: review 710-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/guidance-candidate-oracle.test.mjs
+audit-line-cap: review 461-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/guidance-validator.test.mjs
+audit-line-cap: review 551-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/heal-timing-log.test.mjs
+audit-line-cap: review 660-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/incorporated-close.test.mjs
+audit-line-cap: review 464-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/markers.test.mjs
+audit-line-cap: review 473-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs
+audit-line-cap: review 534-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs
+audit-line-cap: review 796-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/r4p-jit-boundaries.test.mjs
+audit-line-cap: review 520-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/ready-for-plan-migration.test.mjs
+audit-line-cap: review 638-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/reopened-close-recovery.test.mjs
+audit-line-cap: review 401-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/review-receipt-reuse.test.mjs
+audit-line-cap: review 431-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs
+audit-line-cap: review 412-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/reviewed-scope-readiness.test.mjs
+audit-line-cap: review 436-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/reviewed-scope-record.test.mjs
+audit-line-cap: review 786-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/state-action-resume.test.mjs
+audit-line-cap: review 516-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/state-boundary-order.test.mjs
+audit-line-cap: review 498-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs
+audit-line-cap: review 526-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/user-story-quality.test.mjs
+audit-line-cap: review 405-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/verb-preflight.test.mjs
+audit-line-cap: review 479-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/workflow-policy/exception-partitions.test.mjs
+audit-line-cap: review 523-line feature file above soft 400: scripts/tests/unit/task-tracker/merge-back.test.mjs
+audit-line-cap: review 681-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs
+audit-line-cap: review 703-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-delivered-idempotence.test.mjs
+audit-line-cap: review 788-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-false-delivery-recovery-wiring.test.mjs
+audit-line-cap: review 460-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs
+audit-line-cap: review 668-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-reopened-recovery-wiring.test.mjs
+audit-line-cap: review 460-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs
+audit-line-cap: review 764-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/deliver-default-deps.test.mjs
+audit-line-cap: review 755-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
+audit-line-cap: review 710-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs
+audit-line-cap: review 792-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs
+audit-line-cap: review 418-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs
+audit-line-cap: review 789-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs
+audit-line-cap: review 584-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs
+npm notice run @kburson/ai-task-manager@0.1.0 lint:test-reach
+npm notice run node scripts/maintenance/lint-test-coverage-reach.mjs
+lint:test-reach — 30 test file(s) exercise no repo source (32 baselined, 0 new):
+  [baseline] scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/adapter-dedup.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/adapter-token-floor.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/assignee-default-docs-793.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/beta-report-templates-497.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/ci-actions-node-pins.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/ci-memory-parity-index.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/codex-support-matrix.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/defect-first-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/demonstrable-ac-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/discuss-label-action-499.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/docs-735-attribution.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/docs-issue-body-forbiddance.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/evidence-marker-guidance.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/guard-trust-boundary-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/lock-primitive-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/memory-seed-docs.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/pickup-directive-has-checkpoint.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/pickup-directive-recovery.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/pickup-directive-token-floor.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/relicense-manifest.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/relicense-no-mit.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/scope-rename.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/sequence-rules-docs.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/session-boot.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/session-state-template.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/state-walk-ac-stamp-test-carveout.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/worker-context-contract.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/coverage-config.test.mjs
+lint:test-reach — 1192 test file(s) scanned, 30 baselined offender(s), 0 new
+npm notice run @kburson/ai-task-manager@0.1.0 lint:doc-anchors
+npm notice run node scripts/maintenance/lint-doc-anchors.mjs
+lint:doc-anchors — 38 anchor(s) across 3 doc(s) clean
+npm notice run @kburson/ai-task-manager@0.1.0 lint:action-refusals
+npm notice run node scripts/maintenance/lint-action-refusals.mjs
+lint:action-refusals: 36 registered guards frozen
+npm notice run @kburson/ai-task-manager@0.1.0 lint:guidance-release
+npm notice run node scripts/maintenance/generate-guidance-release.mjs --check
+guidance release manifest agrees with catalog and parser

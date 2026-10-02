@@ -1,15 +1,54 @@
 // @story #1659
 // @story #1767
+// @story #1859
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
 const actions = ['bind', 'resume', 'promote', 'test', 'review', 'deliver', 'close'];
+
+// Historical reports certify the exact shim bytes they measured. Later product
+// guidance must not silently replace their inputs or change their recorded GO.
+function historicalCandidateRoot() {
+  const record = json('pre-slim-static/manifest.json').files.find(
+    ({ sourcePath }) => sourcePath === 'skill/SKILL.md'
+  );
+  const bytes = Buffer.from(
+    readFileSync(path.join(projectRoot, record.snapshotPath), 'utf8').trim(),
+    'base64'
+  );
+  assert.equal(`sha256:${createHash('sha256').update(bytes).digest('hex')}`, record.sha256);
+  assert.equal(
+    record.sha256,
+    json('context-comparison.json').adapters.codex.candidate.static.files.find(
+      ({ id }) => id === 'shim'
+    ).sha256
+  );
+  const historicalRoot = mkdtempSync(
+    path.join(projectScratchDir('test', projectRoot), 'guidance-historical-')
+  );
+  after(() => rmSync(historicalRoot, { recursive: true, force: true }));
+  for (const directory of ['scripts', 'docs']) {
+    symlinkSync(path.join(projectRoot, directory), path.join(historicalRoot, directory), 'dir');
+  }
+  mkdirSync(path.join(historicalRoot, 'skill'));
+  writeFileSync(path.join(historicalRoot, 'skill/SKILL.md'), bytes);
+  return historicalRoot;
+}
 
 function json(file) {
   return JSON.parse(readFileSync(path.join(fixtureRoot, file), 'utf8'));
@@ -292,12 +331,13 @@ test('artifact validation rejects incomplete, shortened, relabeled or latency-gu
   }
 });
 
-test('committed candidate transcripts and reports exactly match regeneration', async () => {
+test('committed candidate transcripts and reports exactly match historical regeneration', async () => {
+  const historicalRoot = historicalCandidateRoot();
   const { buildCandidateMeasurementArtifacts } = await measurement();
   const { withFrozenCandidateRuntime } =
     await import('../../../../maintenance/measure-guidance-candidate.mjs');
   const artifacts = withFrozenCandidateRuntime(() =>
-    buildCandidateMeasurementArtifacts({ projectRoot })
+    buildCandidateMeasurementArtifacts({ projectRoot: historicalRoot })
   );
   const expected = new Map([
     ['action-cardinality.json', artifacts.actionCardinality],
@@ -314,10 +354,9 @@ test('committed candidate transcripts and reports exactly match regeneration', a
   }
 });
 
-test('current recertification binds every obligation and the complete public CLI lifecycle', async () => {
-  const { buildCurrentRecertificationDecision } =
-    await import('../../../../maintenance/measure-guidance-candidate.mjs');
-  const decision = buildCurrentRecertificationDecision({ projectRoot });
+test('archived recertification binds every obligation and its recorded public CLI lifecycle', () => {
+  const decision = json('feasibility-recheck-1767.json');
+  const capture = json('actual-explain-traffic-recertification.json');
   assert.equal(decision.schema, 'aitm.guidance-feasibility-recertification/v1');
   assert.equal(decision.owner.issue, 1767);
   assert.equal(decision.owner.foundationIssue, 1660);
@@ -327,12 +366,43 @@ test('current recertification binds every obligation and the complete public CLI
   assert.equal(decision.obligations.enforcement, 17);
   assert.equal(decision.obligations.uncovered.length, 0);
   assert.equal(decision.capture.events, 17);
-  assert.equal(
-    decision.capture.actionResults.every(({ status }) => status === 'ready'),
-    true
+  assert.equal(decision.inputs.captureSourceCommit, capture.identity.sourceCommit);
+  assert.deepEqual(
+    decision.inputs.captureImplementationFiles,
+    capture.identity.implementationFiles
   );
+  for (const [key, value] of Object.entries(decision.inputs.fixture)) {
+    assert.equal(value, capture.identity[key]);
+  }
+  const historicalStatic = json('pre-slim-static/manifest.json').files;
+  for (const record of decision.inputs.records.filter(({ role }) =>
+    ['proposed-static', 'proposed-static-shim'].includes(role)
+  )) {
+    const snapshot = historicalStatic.find(({ sourcePath }) => sourcePath === record.path);
+    const bytes = Buffer.from(
+      readFileSync(path.join(projectRoot, snapshot.snapshotPath), 'utf8').trim(),
+      'base64'
+    );
+    assert.equal(`sha256:${createHash('sha256').update(bytes).digest('hex')}`, record.sha256);
+  }
+  assert.equal(decision.capture.transcriptSha256, capture.identity.transcriptSha256);
+  assert.equal(
+    decision.capture.transcriptSha256,
+    `sha256:${createHash('sha256').update(JSON.stringify(capture.events)).digest('hex')}`
+  );
+  for (const { name, actionId, status } of decision.capture.actionResults) {
+    const event = capture.events.find((entry) => entry.name === name);
+    assert.equal(status, 'ready');
+    assert.equal(event.typed.actionId, actionId);
+    assert.equal(event.typed.status, status);
+    assert.equal(event.exitCode, 0);
+  }
   for (const adapter of ['claude', 'codex']) {
     assert.equal(decision.adapters[adapter].status, 'pass');
+    assert.equal(
+      decision.adapters[adapter].measurements.fullLifecycle,
+      capture.measurement.modeledProposedTotals[adapter]
+    );
     assert.ok(decision.adapters[adapter].measurements.fullLifecycle <= 5600);
   }
 });

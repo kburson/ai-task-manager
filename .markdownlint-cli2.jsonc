@@ -17,6 +17,11 @@
   },
   "overrides": [
     {
+      "filter": ["docs/superpowers/reviews/1859/story/1859-body-v7.md"],
+      "config": { "MD034": false },
+      "combine": "merge"
+    },
+    {
       "filter": [
         "docs/superpowers/plans/2026-09-27-1830-mutation-guard-context.md",
         "docs/superpowers/reviews/1830/plan/SAR/plan.r1.md",

@@ -124,6 +124,7 @@ test('ready-only derive-and-rescan reads body and execution HEAD through the sha
     const result = await deriveAndRescan({
       issueNumber: 1409,
       repo: 'o/r',
+      projectDir: '/authoritative/project',
       scanBody: 'stale body',
       deps: {
         refreshAndEvaluate: async () => ({
@@ -137,13 +138,21 @@ test('ready-only derive-and-rescan reads body and execution HEAD through the sha
     });
     assert.equal(result.scanBody, 'live body');
     assert.deepEqual(calls, [
-      { file: 'git', args: ['rev-parse', 'HEAD'], options: { timeout: 5000 } },
+      {
+        file: 'git',
+        args: ['rev-parse', 'HEAD'],
+        options: { timeout: 5000, cwd: '/authoritative/project' },
+      },
       {
         file: 'gh',
         args: ['issue', 'view', '1409', '-R', 'o/r', '--json', 'body', '--jq', '.body'],
         options: { timeout: 30000 },
       },
-      { file: 'git', args: ['rev-parse', 'HEAD'], options: { timeout: 5000 } },
+      {
+        file: 'git',
+        args: ['rev-parse', 'HEAD'],
+        options: { timeout: 5000, cwd: '/authoritative/project' },
+      },
     ]);
   } finally {
     ghClient.pexec = original;

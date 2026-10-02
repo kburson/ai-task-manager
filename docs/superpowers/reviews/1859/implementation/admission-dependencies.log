@@ -1,0 +1,34 @@
+✔ normalizes a complete connection into sorted repository issue refs (1.391959ms)
+✔ derives repository identity from production-shaped dependency URLs (0.1605ms)
+✔ rejects absent, malformed, conflicting, and foreign repository identity (0.354459ms)
+✔ refuses incomplete, malformed, foreign, duplicate, and self connections (0.140291ms)
+✔ reads and normalizes both native dependency directions (0.29075ms)
+✔ converges an exact set with only missing additions and present removals (0.304ms)
+✔ exact-set convergence is idempotent but still verifies readback (0.113208ms)
+✔ exact-set convergence rejects self references before mutation (0.146125ms)
+✔ exact-set convergence fails when provider readback differs (0.15125ms)
+✔ operation-aware union and subtraction preserve edges added between caller intent and convergence (1.130083ms)
+✔ operator documents identify native dependency authority without reviving legacy carriers (4.679625ms)
+✔ derives blocked, ready, and fail-closed unknown projections (1.0695ms)
+✔ projects BLOCKED for unfinished dependencies (0.486583ms)
+✔ requires BLOCKED before failing closed on unknown or unreadable dependency evidence (0.635334ms)
+✔ clears BLOCKED after every dependency is Done and is idempotent when already clear (0.192833ms)
+✔ preserves every terminal disposition without dependency or field mutation (0.174958ms)
+✔ loads native dependencies and AITM Status when no observation is supplied (0.249958ms)
+✔ refuses unexpected non-terminal values before mutation (0.100291ms)
+✔ reports stable categories for missing field, item, option, and mutation failures (0.366917ms)
+✔ requires exact readback after write and clear (0.179334ms)
+✔ shared observation reads native refs and AITM Status including external issues (1.103125ms)
+✔ post-bind reconciliation succeeds or warns without undoing the binding (0.305542ms)
+✔ switch and resume invoke projection after writing active binding state (0.98625ms)
+✔ readiness reads only incoming blockers with 0 incoming relation (0.371667ms)
+✔ readiness reads only incoming blockers with 1 incoming relation (0.176209ms)
+✔ incoming cross-repository blockers still refuse rather than lose identity (0.364583ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69.485375

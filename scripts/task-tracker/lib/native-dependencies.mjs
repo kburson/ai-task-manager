@@ -61,14 +61,27 @@ export function normalizeDependencyConnection(
   return refs.sort((left, right) => left - right);
 }
 
-export async function readNativeDependencies({ issueNumber, repo, deps = {} } = {}) {
+export async function readNativeDependencies({
+  issueNumber,
+  repo,
+  includeBlocking = true,
+  deps = {},
+} = {}) {
   assertIssueInput(issueNumber, repo);
   const run = deps.pexec || pexec;
   let parsed;
   try {
     const { stdout } = await run(
       'gh',
-      ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'blockedBy,blocking'],
+      [
+        'issue',
+        'view',
+        String(issueNumber),
+        '-R',
+        repo,
+        '--json',
+        includeBlocking ? 'blockedBy,blocking' : 'blockedBy',
+      ],
       { timeout: GH_API_TIMEOUT_MS }
     );
     parsed = JSON.parse(stdout);
@@ -81,11 +94,15 @@ export async function readNativeDependencies({ issueNumber, repo, deps = {} } = 
       issueNumber,
       relation: 'blockedBy',
     }),
-    blocking: normalizeDependencyConnection(parsed?.blocking, {
-      repo,
-      issueNumber,
-      relation: 'blocking',
-    }),
+    ...(includeBlocking
+      ? {
+          blocking: normalizeDependencyConnection(parsed?.blocking, {
+            repo,
+            issueNumber,
+            relation: 'blocking',
+          }),
+        }
+      : {}),
   };
 }
 

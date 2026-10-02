@@ -19,14 +19,20 @@ async function fetchLiveBody({ pexec, issueNumber, repo }) {
   return String(stdout || '');
 }
 
-export async function deriveAndRescan({ issueNumber, repo, deps = {} } = {}) {
+export async function deriveAndRescan({ issueNumber, repo, projectDir, deps = {} } = {}) {
   if (typeof deps.refreshAndEvaluate !== 'function') {
     throw new TypeError('deriveAndRescan: complete fresh guard evaluator is required');
+  }
+  if (typeof projectDir !== 'string' || !projectDir) {
+    throw new TypeError('deriveAndRescan: projectDir is required');
   }
   const pexec = deps.pexec || sharedPexec;
   let head;
   try {
-    const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { timeout: 5000 });
+    const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
+      timeout: 5000,
+      cwd: projectDir,
+    });
     head = String(stdout ?? '').trim();
   } catch (cause) {
     throw new NormalizationRefusalError('normalization-authority-drift', cause);
@@ -43,7 +49,10 @@ export async function deriveAndRescan({ issueNumber, repo, deps = {} } = {}) {
       deps.readBack ||
       (async () => {
         const body = await fetchLiveBody({ pexec, issueNumber, repo });
-        const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { timeout: 5000 });
+        const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
+          timeout: 5000,
+          cwd: projectDir,
+        });
         return { body, head: String(stdout ?? '').trim() };
       }),
   });
@@ -53,5 +62,6 @@ export async function deriveAndRescan({ issueNumber, repo, deps = {} } = {}) {
     errors: [],
     persisted: result.persisted,
     decision: result.decision,
+    warnings: result.warnings,
   };
 }

@@ -157,7 +157,7 @@ if (args[0] === 'issue' && args[1] === 'edit' && args.includes('--body-file')) {
   process.exit(0);
 }
 if (args[0] === 'issue' && args[1] === 'view') {
-  if (args.includes('blockedBy,blocking')) {
+  if ((args.includes('blockedBy,blocking') || args.includes('blockedBy'))) {
     fs.writeSync(1, JSON.stringify({
       blockedBy: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
       blocking: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },

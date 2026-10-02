@@ -1071,6 +1071,9 @@ export async function verbReview(ctx) {
         cfg,
         fromState: 'test',
         toState: 'review',
+        projectDir,
+        invokingDir: ctx.invokingDir ?? process.cwd(),
+        deps: ctx.deps,
       });
       const dodRefusal = (dodResult.refusals || []).find((r) => r.id === 'test-exit-dod-verified');
       if (dodRefusal) {
@@ -1464,6 +1467,9 @@ export async function verbReview(ctx) {
             fromState: 'test',
             toState: 'review',
             lifecycleEvidence: reviewEvidence.lifecycleEvidence,
+            projectDir,
+            invokingDir: ctx.invokingDir ?? process.cwd(),
+            deps: ctx.deps,
           },
           runGuards: runGuardsFn,
           loadPolicy: async ({ requirementIds }) =>
@@ -1481,10 +1487,15 @@ export async function verbReview(ctx) {
             }),
         })
       ).guardResult;
-    const { scanBody, persisted: normalizationPersisted } = await deriveAndRescan({
+    const {
+      scanBody,
+      persisted: normalizationPersisted,
+      decision: guardResult,
+    } = await deriveAndRescan({
       issueNumber: issueNum,
       repo: cfg.repo,
       scanBody: rawBody,
+      projectDir,
       deps: {
         pexec,
         nowIso,
@@ -1506,19 +1517,11 @@ export async function verbReview(ctx) {
     // gate-refused timing row, `⛔ Refusing to move … N incomplete checkbox(es)`,
     // one indented line per offending checkbox, retry hint, exit 4.
     if (effectiveReviewCommandState === 'test') {
-      const guardResult = await evaluateReviewProjection({ projection: { body: scanBody } });
-      const completenessRefusal = (guardResult.refusals || []).find(
-        (r) => r.id === 'test-exit-pre-close-completeness'
+      const completenessRefusals = guardResult.refusals.filter(
+        (r) => r.code === 'test-scope-incomplete'
       );
-      if (completenessRefusal) {
-        const blockers = completenessRefusal.blockers || [];
-        // Recover the original checkbox-label lines from the blocker strings.
-        // Guard formats each blocker as: `test-to-review-incomplete: <line> (the close gate …)`.
-        const stillUnticked = blockers.map((b) =>
-          b
-            .replace(/^test-to-review-incomplete:\s*/, '')
-            .replace(/\s*\(the close gate enforces the same set\)\s*$/, '')
-        );
+      if (completenessRefusals.length > 0) {
+        const stillUnticked = completenessRefusals.map((r) => r.args.label);
         const { buildRow: br0 } = await import('../gh-timing-comment.mjs');
         const _tsR0 = nowIso();
         const _dR0 = deriveStateMoveDelta(rawBody, _tsR0);
@@ -1546,6 +1549,13 @@ export async function verbReview(ctx) {
         );
         process.exit(4);
       }
+    }
+    if (guardResult.status !== 'ready') {
+      process.stderr.write(`⛔ Refusing to move ${target} to Review:\n`);
+      for (const refusal of guardResult.refusals) {
+        process.stderr.write(`   BLOCKED: ${refusal.reason ?? refusal.code}\n`);
+      }
+      process.exit(4);
     }
     // #881 — the move to Review runs FIRST, unconditionally. Entering Review is
     // not gated on the agent review: the Agent Review Gate is the ACTION of the
