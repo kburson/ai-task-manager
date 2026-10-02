@@ -1,6 +1,7 @@
 // @story #1669
 // @story #1767
 // @story #1802
+// @story #1867
 // Advisory close collection: all I/O is confined to command-local observations.
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
 import { createDefaultDeliverDeps } from '../../verbs/deliver.mjs';
@@ -27,6 +28,7 @@ import { resolveProjectDir } from '../project-dir.mjs';
 import { readWorktreeIdentity } from '../worktree-binding-guard.mjs';
 import { buildGraphNodeAuthority } from '../graph-node-authority.mjs';
 import { resolveEpicLineage } from '../resolve-epic-lineage.mjs';
+import { resolveDoneTargetBranch } from '../close-gates-lineage.mjs';
 import { resolveTrunkRef } from '../trunk-ref.mjs';
 import { PROTOCOL_MARKER_RE } from '../evidence-v2/protocol.mjs';
 import { isIssueResidentDeliveryKind, parseIssueKind } from '../issue-kind.mjs';
@@ -200,29 +202,38 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
     const local = remote === null;
     trunk = local ? trunk.replace(/^refs\/heads\//, '') : remoteRef.slice(remote.length + 1);
     const graph = new Map();
+    const survivingBranches = new Set();
     let number = issue;
-    let target;
     for (;;) {
       if (graph.has(number)) throw new TypeError('close-readiness:lineage-cycle');
       const node = await readGraph(number);
       graph.set(number, node);
       const lineage = resolveEpicLineage(number, { deps: { graph: () => node, trunk } });
-      target = lineage.parentBranch;
-      if (node.parent === null || local) break;
-      const remoteResult = (
-        await output('git', ['ls-remote', remote, `refs/heads/${target}`])
-      ).trim();
-      if (remoteResult) {
-        if (
-          !new RegExp(
-            `^[a-f0-9]{40,64}\\s+${`refs/heads/${target}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
-          ).test(remoteResult)
-        )
-          throw new TypeError('close-readiness:lineage-ref-ambiguous');
+      if (lineage.parentBranch === trunk) break;
+      try {
+        await output('git', [
+          'rev-parse',
+          '--verify',
+          '--quiet',
+          `refs/heads/${lineage.parentBranch}`,
+        ]);
+        survivingBranches.add(lineage.parentBranch);
         break;
+      } catch (error) {
+        // Only an absent ref permits climbing. Transport failure is not absence.
+        if (error.code !== 1) throw error;
       }
-      number = node.parent;
+      number = lineage.parentIssue;
     }
+    const target = resolveDoneTargetBranch({
+      issueNumber: issue,
+      deps: {
+        graph: (n) => graph.get(n),
+        branchExists: (branch) => survivingBranches.has(branch),
+        trunk,
+      },
+    });
+    const localTarget = target !== trunk || local;
     const { loadCloseDeliveryGateInput, resolveCloseLifecycleEvidence } =
       await import('../../verbs/close.mjs');
     const lifecycleEvidence = await resolveCloseLifecycleEvidence({
@@ -253,7 +264,7 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
           : 'ordinary',
       gateInput,
       lifecycleEvidence,
-      authority: local ? { localRef: target } : { remote },
+      authority: localTarget ? { localRef: `refs/heads/${target}` } : { remote },
       graph: [...graph.entries()],
     };
   };
@@ -655,7 +666,12 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
         noAutomaticRemediation: { reason: 'authority-investigation-required' },
       });
     } else if (attribution.status === 'not-attributed')
-      blockers.push(legacy('review-exit-close-gates'));
+      blockers.push({
+        guardId: 'review-exit-close-gates',
+        code: 'close-delivery-not-attributed',
+        args: { target, sha: tip.sha },
+        noAutomaticRemediation: { reason: 'authority-investigation-required' },
+      });
   }
   if (delivery) {
     const input = delivery.gateInput;

@@ -1,3 +1,4 @@
+// @story #1867
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
@@ -146,6 +147,11 @@ export const CODE_DEFINITIONS = Object.freeze({
   'attribution-authority-unavailable': decisionIndeterminate('attribution-authority-unavailable', [
     'authority-collection',
   ]),
+  'close-delivery-not-attributed': decisionBlocked(
+    'close-delivery-not-attributed',
+    ['review-exit-close-gates'],
+    { argumentSchema: args(['target', 'sha'], { target: stringType, sha: stringType }) }
+  ),
   'unclassified-refusal': decisionBlocked('unclassified-refusal', registeredGuard),
   'code-complete-ac-evidence-incomplete': decisionBlocked(
     'code-complete-ac-evidence-incomplete',

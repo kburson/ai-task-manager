@@ -1,5 +1,6 @@
 // @story #1669
 // @story #1802
+// @story #1867
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { writeFileSync, rmSync } from 'node:fs';
@@ -119,7 +120,13 @@ test('production delivery reader uses canonical parent lineage and current recei
   assert.ok(calls.every(([command, args]) => !(command === 'git' && args[0] === 'fetch')));
   assert.ok(
     calls.every(
-      ([command, args]) => !(command === 'git' && args[0] === 'rev-parse' && args[1] === '--verify')
+      ([command, args]) =>
+        !(
+          command === 'git' &&
+          args[0] === 'rev-parse' &&
+          args[1] === '--verify' &&
+          /^(?:refs\/remotes\/)?origin\/trunk$/.test(args.at(-1))
+        )
     ),
     'an explicit trunkRef must win without a default probe'
   );
