@@ -1,4 +1,4 @@
-// @story #1769
+// @story #1769 #1859
 // Project frozen Markdown and CLI text over the #1767 event order. This is a
 // cost model, not a replay of the historical commands on modern authority.
 import { createHash } from 'node:crypto';
@@ -262,7 +262,16 @@ export function buildPairedContext({
   }
   const current = measureAgentVisible({
     staticFiles: proposedFiles.map(({ sourcePath, sha256 }) => {
-      const bytes = read(sourcePath);
+      // Pre-slim captures describe fixed historical bytes. Current release
+      // captures still require exact correspondence with the live sources.
+      const historical = final
+        ? null
+        : JSON.parse(read(`${FIXTURES}/pre-slim-static/manifest.json`)).files.find(
+            (file) => file.sourcePath === sourcePath && file.sha256 === sha256
+          );
+      const bytes = historical
+        ? Buffer.from(read(historical.snapshotPath).toString('utf8').trim(), 'base64')
+        : read(sourcePath);
       if (digest(bytes) !== sha256) {
         throw new Error(`paired context: proposed static drift: ${sourcePath}`);
       }

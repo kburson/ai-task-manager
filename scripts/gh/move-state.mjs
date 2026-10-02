@@ -89,6 +89,8 @@ export async function runMoveStateHost({
   tailProfile = 'task-owner',
   reviewAuthority = null,
   lifecycleEvidence = null,
+  projectDir = getProjectDir(env),
+  invokingDir = process.cwd(),
   shelveBackwardGuardCapability = null,
   _observeGuardPhasePolicy = null,
 } = {}) {
@@ -340,6 +342,8 @@ export async function runMoveStateHost({
     tailProfile: resolvedTailProfile,
     reviewAuthority,
     lifecycleEvidence,
+    projectDir,
+    invokingDir,
     repairOnly: plan.noop,
     _observeGuardPhasePolicy,
   };

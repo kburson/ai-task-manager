@@ -1,3 +1,5 @@
+import { validateReviewedDelta } from './reviewed-scope/record.mjs';
+// @story #1859
 // Canonical high-level helper for issue-body writes (#293).
 //
 // `mutateIssueBody` is a thin pass-through to `versionedWriteBody` whose
@@ -95,6 +97,7 @@ export async function mutateIssueBody({
   allowMarkerLoss = false,
   allowUnverifiedTicks = false,
   evidenceStamp = false,
+  reviewedEvidenceCapability,
   expectedRemovedHeadings = [],
   allowLargeShrink = false,
   allowMarkerAdvance = [],
@@ -117,6 +120,7 @@ export async function mutateIssueBody({
   const validateMutation = (baseBody, next) => {
     if (typeof validateFreshBase === 'function') validateFreshBase(baseBody, next);
     if (typeof next === 'string') {
+      const reviewedLine = validateReviewedDelta(baseBody, next, reviewedEvidenceCapability);
       if (!allowMarkerLoss) {
         const lost = findLostMarkers(baseBody, next);
         if (lost.length > 0) throw new MarkerLossError(issueNumber, lost);
@@ -143,7 +147,9 @@ export async function mutateIssueBody({
       // #362 — checkbox proof-marker invariant. Runs after marker-loss so
       // catastrophic invariant drops surface first.
       if (!allowUnverifiedTicks) {
-        const offenders = findCheckboxesTickedWithoutProof(baseBody, next);
+        const offenders = findCheckboxesTickedWithoutProof(baseBody, next).filter(
+          (line) => line.lineIndex !== reviewedLine
+        );
         if (offenders.length > 0) throw new CheckboxProofMissingError({ lines: offenders });
       }
       // #423 — malformed-declaration invariant. A write may not INTRODUCE an
@@ -190,6 +196,12 @@ export async function mutateIssueBody({
 
   const guardedMutate = (baseBody) => {
     const next = mutate(baseBody);
+    if (next && typeof next.then === 'function') {
+      return Promise.resolve(next).then((resolved) => {
+        validateMutation(baseBody, resolved);
+        return resolved;
+      });
+    }
     validateMutation(baseBody, next);
     return next;
   };

@@ -1,0 +1,36 @@
+✔ historical capture bytes remain reproducible without any original Git objects (147.252ms)
+✔ a missing Git object never permits changed archived bytes (32.820708ms)
+✔ a missing Git object never permits an undeclared archive entry (29.470041ms)
+✔ layout audit rejects a discovered test outside the canonical lane tree (95.243125ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (45.577833ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (51.791708ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (127.228042ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (2.095041ms)
+✔ current test-tree baseline is well formed (1.58025ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.382958ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.46525ms)
+✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (3.704791ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (10.048834ms)
+✔ actual explanation evidence is public subprocess traffic anchored to one source commit (62.899667ms)
+✔ actual traffic plus separately modeled static text remains inside fixed budgets (45.794542ms)
+✔ delivery Explain exposes only named read ports (0.561292ms)
+✔ archived recertification retains its observed authority and original runner provenance (11.828125ms)
+✔ current recertification captures complete simulated authority without executing actions (11521.902167ms)
+✔ current recertification replays start from identical current authority bytes (11213.833666ms)
+✔ no unit-lane test touches a live system (225.605666ms)
+✔ the classifier catches a git sandbox (0.169875ms)
+✔ the classifier catches a direct git spawn in each spawn form (0.082709ms)
+✔ the classifier catches any Node subprocess by name or by execPath (0.067542ms)
+✔ the classifier reports every signal a file trips, in stable order (0.08525ms)
+✔ an ordinary unit test trips nothing (0.086625ms)
+✔ merely mentioning git in prose or data is not a spawn (0.05225ms)
+✔ the closure follows the test tree but stops at product code (0.06225ms)
+✔ the closure follows imported test modules because importing them executes their suites (0.19025ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22954.128125

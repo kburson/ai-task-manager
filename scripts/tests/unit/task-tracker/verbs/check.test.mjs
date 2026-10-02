@@ -175,3 +175,20 @@ test('#411 batch reports ambiguous independently without dropping other labels',
     { label: 'dup', status: 'ambiguous', alreadyChecked: false, count: 2 },
   ]);
 });
+
+// @story #1859
+import { verbEnsureChecked, verbEnsureUnchecked } from '../../../../task-tracker/verbs/check.mjs';
+test('reviewed option mixtures refuse before state, batch, or directory I/O', async () => {
+  const ctx = {
+    rest: ['Work', '--reviewed-evidence', 'manifest.json', '--labels-file', 'should-not-read'],
+    statePath: '/missing/state.json',
+    pexec: async () => {
+      throw new Error('unexpected I/O');
+    },
+  };
+  await assert.rejects(verbEnsureChecked(ctx), /reviewed-scope-options/);
+  await assert.rejects(
+    verbEnsureUnchecked({ ...ctx, rest: ['Work', '--reviewed-evidence', 'manifest.json'] }),
+    /reviewed-scope-options/
+  );
+});

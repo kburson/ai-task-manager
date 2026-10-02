@@ -1,4 +1,4 @@
-// @story #1672
+// @story #1672 #1859
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -31,7 +31,12 @@ function fixture() {
   writeFileSync(path.join(packageRoot, 'guidance/source.mjs'), '// fixture module\n');
   writeFileSync(path.join(packageRoot, 'instructions/aitm-guidance.yml'), source);
   writeFileSync(path.join(packageRoot, 'instructions/aitm-guidance.release.json'), manifest);
-  for (const doc of ['workflow.md', 'guard-architecture.md', 'ask-the-script.md']) {
+  for (const doc of [
+    'workflow.md',
+    'guard-architecture.md',
+    'ask-the-script.md',
+    'reviewed-scope-evidence.md',
+  ]) {
     mkdirSync(path.join(packageRoot, 'docs/guides'), { recursive: true });
     copyFileSync(path.join(root, 'docs/guides', doc), path.join(packageRoot, 'docs/guides', doc));
   }

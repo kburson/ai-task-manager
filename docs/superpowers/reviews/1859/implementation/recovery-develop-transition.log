@@ -1,0 +1,11 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' promote 1859
+✓ Issue #1859 moved to: develop
+✓ move #1859 plan→develop complete
+  exit flush  : plan row closed (verified)
+  entry stamp : aitm-entered-develop present (verified)
+  entry row   : develop row opened (verified)
+  status      : Status == Develop (verified)
+  sentinel    : aitm-move-complete state=develop (written last)
+  tail        : 8/8 best-effort steps ok
+✓ #1859 promoted: plan → develop (direct)

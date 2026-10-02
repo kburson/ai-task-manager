@@ -1,0 +1,20 @@
+✔ aggregate parity matrix covers every lifecycle action and required scenario (1.623625ms)
+✔ aggregate parity executes the seven action suites, not only their metadata (10645.251167ms)
+✔ authority cost evidence matches fresh physical reads before A2 certification (14.385417ms)
+✔ legacy refusal and warning fallbacks remain inventoried and fail closed (1.075833ms)
+✔ actual explanation evidence is public subprocess traffic anchored to one source commit (74.721333ms)
+✔ actual traffic plus separately modeled static text remains inside fixed budgets (84.41275ms)
+✔ generates current paired artifacts while preserving the frozen comparison (1465.994583ms)
+✔ public meter certifies final installed bytes and the paired report (2410.324334ms)
+✔ delivery Explain exposes only named read ports (0.734459ms)
+✔ archived recertification retains its observed authority and original runner provenance (16.166042ms)
+✔ current recertification captures complete simulated authority without executing actions (12703.901625ms)
+✔ current recertification replays start from identical current authority bytes (12620.151959ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25561.316

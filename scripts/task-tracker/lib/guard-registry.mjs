@@ -66,7 +66,7 @@
 //            |                                       | develop-epic-children-done (terminal children),
 //            |                                       | child-cannot-lead-epic
 //   test     | contiguity, body-gates                | blocked-by, test-exit-dod-verified,
-//            |                                       | test-exit-pre-close-completeness, child-cannot-lead-epic
+//            |                                       | test-exit-pre-close-completeness, test-exit-reviewed-scope, child-cannot-lead-epic
 //   review   | contiguity, body-gates                | blocked-by, review-exit-review-approved,
 //            |                                       | review-exit-epic-children-done (children at done),
 //            |                                       | review-exit-close-gates, child-cannot-lead-epic

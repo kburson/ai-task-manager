@@ -1,4 +1,4 @@
-// @story #1558
+// @story #1558 #1859
 // Historical capture commits were rewritten during #1558 branch synchronization.
 // A missing original object uses its reachable byte-equivalent, or the
 // checksum-bound archive when a squash merge removed that ancestry.
@@ -46,7 +46,7 @@ export function capturedCommitBytes(projectRoot, commit, filePath) {
   if (original.status === 0) return original.stdout;
 
   const equivalent = REBASED_EQUIVALENTS.get(commit);
-  if (!equivalent) throw new Error(`captured commit is unavailable: ${commit}`);
+  if (!equivalent) return archivedBytes(projectRoot, commit, filePath);
   const reachable = spawnSync('git', ['merge-base', '--is-ancestor', equivalent, 'HEAD'], {
     cwd: projectRoot,
   });

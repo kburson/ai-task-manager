@@ -1,0 +1,20 @@
+✔ historical capture bytes remain reproducible without any original Git objects (172.198541ms)
+✔ a missing Git object never permits changed archived bytes (55.664167ms)
+✔ a missing Git object never permits an undeclared archive entry (33.038958ms)
+✔ no unit-lane test touches a live system (292.844791ms)
+✔ the classifier catches a git sandbox (0.267ms)
+✔ the classifier catches a direct git spawn in each spawn form (0.351791ms)
+✔ the classifier catches any Node subprocess by name or by execPath (0.32675ms)
+✔ the classifier reports every signal a file trips, in stable order (0.139291ms)
+✔ an ordinary unit test trips nothing (0.105708ms)
+✔ merely mentioning git in prose or data is not a spawn (0.059875ms)
+✔ the closure follows the test tree but stops at product code (0.059042ms)
+✔ the closure follows imported test modules because importing them executes their suites (0.20775ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 374.559083

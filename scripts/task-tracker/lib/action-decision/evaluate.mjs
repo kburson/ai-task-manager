@@ -209,7 +209,7 @@ export function indeterminateRefreshResult({ guardResult, refusals, issueNumber 
   };
 }
 
-function completeGuardResult(result) {
+export function completeGuardResult(result) {
   return Boolean(
     result &&
     typeof result === 'object' &&

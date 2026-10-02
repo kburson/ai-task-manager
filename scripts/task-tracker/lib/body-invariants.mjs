@@ -1,3 +1,4 @@
+// @story #1859
 // @story #1629
 // Body-invariant markers — the set of hidden HTML comment markers that
 // must NEVER be dropped by an issue-body mutation. This list is the
@@ -157,6 +158,7 @@ function validateLedgerAdvance({ markerId, baseMatch, nextMatch, nextBody }) {
 }
 
 export const INVARIANT_MARKER_PATTERNS = [
+  { name: 'aitm-scope-evidence-policy', re: /<!--\s*aitm-scope-evidence-policy/i, kind: 'single' },
   {
     name: 'aitm-evidence-v2',
     re: PROTOCOL_MARKER_RE,

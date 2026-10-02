@@ -313,9 +313,18 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:8e92475aa99410f36fba17c33e609de6a9c2290d49e9f2f20091a4dc188c2072"
+        "sitesSha256": "sha256:5fc8d7278a4f9baffa383390ba75e8ba050d52d7e162d3f521c5cc76853a5b6b"
       },
       "rationale": "Pre-close checkboxes require individual verification and current body evidence."
+    },
+    {
+      "guardId": "test-exit-reviewed-scope",
+      "disposition": "manual-investigation",
+      "source": {
+        "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+        "sitesSha256": "sha256:424eb785451672a8dac1cd182706e4f14e86c3372dda0b44adf21420ad56c1b3"
+      },
+      "rationale": "Reviewed Scope refusals require current bound-checkout, immutable-comment and artifact authority; an untyped fallback cannot record inspection or select an automatic remedy."
     }
   ]
 }

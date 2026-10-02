@@ -1,0 +1,13 @@
+# CI replay recovery for #1859
+
+GitHub CI on the merge-conflict recovery commit exposed two historical replay tests that passed locally because the original Git objects existed. CI could not read the captured planning text and shim from commit `1b300cd8121b33631c5c3119daed583eb1d636fb`, or the archived recertification runner from `95db22a0306ddbf8bc07c79b8e547778efd68c5d`.
+
+The existing captured-source archive now retains those three exact `git show` byte streams with SHA-256 checksums. The test helper uses its checksum-bound archive when the original object and any known reachable equivalent are unavailable. Historical capture artifacts, their assertions, and frozen maintenance runners are unchanged.
+
+The new isolated-repository regression removes access to original Git objects and verifies all three snapshots reproduce the original bytes. Negative cases reject changed bytes and an undeclared archive entry. The initial red run reproduced the missing archive/object failures; the green run passed all nine focused tests, including current recertification replay. Focused ESLint passed. Raw diagnostics are retained beside this note. Full governed verification and exact-head GitHub CI are recorded separately on the issue.
+
+CI subsequently identified that the new Git-backed regression belonged in the integration lane, not the unit lane. It was moved unchanged into `scripts/tests/integration/test-helpers/`. Unit-lane purity and the three archive regressions then passed together (12 tests), with focused ESLint and formatting also passing. The superseded governed run was stopped without asserting passing Test evidence; final verification is run on the corrected commit.
+
+Two independent read-only reviews of the archive correction found no actionable issues. The provenance reviewer confirmed all three snapshots exactly equal their declared historical `git show` bytes and the original recertification capture's runner hash. The portability reviewer confirmed isolated repositories prevent parent-object discovery and the fallback rejects changed or undeclared bytes. The subsequent lane correction changes only the test's directory; its imports remain valid at the same depth.
+
+The final canonical regression location is `scripts/tests/integration/meta/captured-commit-bytes.test.mjs`. Integration directory ownership requires an existing source subsystem or `meta`; the intermediate `test-helpers` folder was rejected. The final combined run passes all 28 tests covering unit-lane purity, integration-tree ownership, isolated archive integrity, original captured traffic and current recertification replay. Focused lint and formatting pass. No purity/layout rule or archive assertion was relaxed.

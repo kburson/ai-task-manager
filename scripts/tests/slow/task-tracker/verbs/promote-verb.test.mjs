@@ -8,6 +8,7 @@ import { strict as assert } from 'node:assert';
 import { after, before, test } from 'node:test';
 
 import { installStubGh } from '../../../fixtures/stub-gh.mjs';
+import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
 
@@ -167,6 +168,12 @@ function bodyWithState(state) {
   // #503 — `## User Story` must be the FIRST `## ` heading in the body; lead with
   // it so these fixtures satisfy the position check inherited by the gates.
   const base = `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n${USER_STORY_SECTION}\n## Issue\n\nbody.\n`;
+  if (state === 'test') {
+    return ['backlog', 'refine', 'plan', 'develop', 'test'].reduce(
+      (body, stage) => stampEntryMarker(body, stage, '2026-05-10T00:00:00.000Z'),
+      base
+    );
+  }
   return state === 'plan' ? base + DEEP_DIVE_SIGNALS : base;
 }
 

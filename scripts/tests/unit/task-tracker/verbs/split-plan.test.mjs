@@ -606,3 +606,10 @@ test('confirm stops on partial live failure and retains created issue numbers', 
     args.cleanup();
   }
 });
+
+// @story #1859
+test('new split children explicitly adopt reviewed Scope evidence policy', () => {
+  const proposals = buildSplitProposals(input());
+  for (const proposal of proposals)
+    assert.equal(proposal.scope.split('<!-- aitm-scope-evidence-policy:v1 -->').length, 2);
+});

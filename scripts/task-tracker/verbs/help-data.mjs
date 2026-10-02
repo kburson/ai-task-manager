@@ -1,4 +1,4 @@
-// @story #1675 #1787 #1795
+// @story #1675 #1787 #1795 #1859
 // Per-verb reference data for `/task help` (#667).
 //
 // This module is the single data source behind the reworked help surface. It is
@@ -793,6 +793,10 @@ export const VERB_REFERENCE = {
     aliases: ['ensureChecked'],
     flags: [
       {
+        flag: '--reviewed-evidence <manifest>',
+        desc: 'one narrative Scope label; canonical manifest and retained local artifacts in the bound Develop/Test checkout; no batch or override flags',
+      },
+      {
         flag: '--allow-unverified-ticks',
         desc: 'honest override when an item genuinely cannot be stamped',
       },
@@ -810,17 +814,25 @@ export const VERB_REFERENCE = {
     aliases: ['check'],
     flags: [
       {
+        flag: '--reviewed-evidence <manifest>',
+        desc: 'one narrative Scope label; canonical manifest and retained local artifacts in the bound Develop/Test checkout; no batch or override flags',
+      },
+      {
         flag: '--allow-unverified-ticks',
         desc: 'honest override for a genuinely unstampable item',
       },
       { flag: '--label "<label>"', desc: 'checkbox label for repeatable batch mode' },
       { flag: '--labels-file <path>', desc: 'newline-delimited checkbox labels for batch mode' },
     ],
-    examples: ['/task ensureChecked "Deep dive complete"'],
+    examples: [
+      '/task ensureChecked "Deep dive complete"',
+      '/task ensureChecked "Inspect output" --reviewed-evidence .scratch/evidence/step.json',
+    ],
   },
   ensureUnchecked: {
     topic: 'evidence',
-    summary: 'Ensure a checkbox is unticked (idempotent; never ticks).',
+    summary:
+      'Ensure a checkbox is unticked; retain its reviewed pointer. Does not accept --reviewed-evidence.',
     usage: '/task ensureUnchecked ["<label>" | --label "<label>" ... | --labels-file <path>]',
     flags: [
       { flag: '--label "<label>"', desc: 'checkbox label for repeatable batch mode' },
