@@ -20,6 +20,8 @@ const PEER_REVIEW_RESPONSE_IGNORE_GLOBS = [
   'docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md',
   'docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md',
   'docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md',
+  'docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-author-response-*.md',
+  'docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-reviewer-response-*.md',
   'docs/superpowers/reviews/**/*-review-*-author-response-*.md',
   'docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md',
   'docs/superpowers/reviews/**/review-*-author-response-*.md',
