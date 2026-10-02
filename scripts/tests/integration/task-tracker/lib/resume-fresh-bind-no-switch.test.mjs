@@ -16,6 +16,12 @@
 //   AC5 — a genuine in-session switch (this session itself holds #A, then
 //         rebinds #B) still routes through verbSwitch (no regression).
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -25,6 +31,7 @@ import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir
 
 const tmp = mkdtempProjectIsolated('tt-resume-no-switch-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+process.chdir(tmp);
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 

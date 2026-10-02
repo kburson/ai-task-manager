@@ -12,6 +12,11 @@
 //   - un-approved body → `review:approved` is WITHHELD (anti-fabrication), but
 //     `issue:wrap` (the terminal-close record, not an approval claim) still posts;
 //   - a timing body already carrying both halves → NOTHING is re-emitted.
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';

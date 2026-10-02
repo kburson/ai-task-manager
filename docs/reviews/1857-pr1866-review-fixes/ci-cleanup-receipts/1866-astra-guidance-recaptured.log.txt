@@ -1,0 +1,13 @@
+From /private/tmp/1866-astra-integration-head
+ * branch              7b5fa0faaaf975875b5405f520abce3a3f5f0189 -> FETCH_HEAD
+✔ final release requires a complete installed-byte and public-CLI capture (1855.906125ms)
+✔ accepted final archive stays intact and cannot certify changed current sources (8.579542ms)
+✔ internally consistent dirty installed guidance cannot inherit a committed source identity (6080.767541ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8349.133833

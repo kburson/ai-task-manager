@@ -26,13 +26,14 @@ export async function verbPause(ctx) {
   // #832 (D4) — pause is an interruption: bank the span's words onto the durable
   // marker but render this pause row's Δ Words cell as 0, so the words attribute
   // to the phase's `<phase>:completed` row rather than to this interruption.
-  const { deltaMin, deltaWallMin, deltaWords, ts, post } = await flushActiveToGH(
-    s,
-    pauseEvent,
-    pauseDesc,
-    undefined,
-    { suppressRowWords: true }
-  );
+  const {
+    deltaMin: activeEstimateMin,
+    deltaWallMin,
+    deltaWords,
+    ts,
+    post,
+  } = await flushActiveToGH(s, pauseEvent, pauseDesc, undefined, { suppressRowWords: true });
+  const deltaMin = activeEstimateMin ?? 'Unknown';
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   saveState(
     {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #309
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -13,7 +14,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const SCRIPT = path.resolve(__dir, '../../../gh/set-priority.mjs');
 
 async function run(args, env = {}) {
-  return pexec('node', [SCRIPT, ...args], {
+  return pexec('node', unitRuntimeEntrypointArgs(SCRIPT, args), {
     env: { ...process.env, ...env },
   });
 }

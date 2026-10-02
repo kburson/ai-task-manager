@@ -1,3 +1,4 @@
+import { deriveActorEngagement } from './timing-engagement.mjs';
 // Second-precision timing row helpers (#159 — D3).
 //
 // State-move verbs historically built timing rows with hardcoded
@@ -29,8 +30,9 @@ import { PHASE_EVENTS } from '../phase-events.mjs';
 const PAUSE_MARKER_RE = /<!--\s*aitm-pause:\s*([^\s>]+?)\.\.([^\s>]+?)\s*-->/g;
 // D3 design-doc form: `<!-- aitm-pause: from=<ISO> until=<ISO> [reason=<slug>] -->`.
 // Keys may appear in any order; reason is optional. Values are non-whitespace runs.
-const PAUSE_MARKER_KV_RE =
-  /<!--\s*aitm-pause:\s+(?=[^>]*\bfrom=)(?=[^>]*\buntil=)((?:\s*[a-z]+=\S+)+)\s*-->/g;
+// Require whitespace between fields: optional separators let a value containing
+// repeated key-like text repartition exponentially when the closing comment is absent.
+const PAUSE_MARKER_KV_RE = /<!--\s*aitm-pause:\s+([a-z]+=\S+(?:\s+[a-z]+=\S+)*)\s*-->/g;
 const ROW_SEC_RE = /<!--\s*row-sec:\s*a=(-?\d+)\s+i=(-?\d+)\s*-->/;
 
 export function formatHMS(sec) {
@@ -128,13 +130,18 @@ export function computeStateMoveDelta({ prevRowTs, nowTs, pauseSpans = [] } = {}
 
 // Read the latest timing-row timestamp from an issue body. Returns the
 // raw timestamp string (table format) or null if no rows are present.
-export function lastRowTsFromBody(body) {
+export function lastRowTsFromBody(body, { actorKey } = {}) {
   if (!body || typeof body !== 'string') return null;
   const lines = body.split('\n');
   let last = null;
   for (const line of lines) {
     const row = parseTimingRow(line);
-    if (row && isTableTimingTimestamp(row.ts)) last = row.ts;
+    if (
+      row &&
+      isTableTimingTimestamp(row.ts) &&
+      (actorKey === undefined || row.actorKey === actorKey)
+    )
+      last = row.ts;
   }
   return last;
 }
@@ -146,13 +153,14 @@ export function lastRowTsFromBody(body) {
 // second departure row — the Fault Z doubled-step. The Event cell is the 2nd
 // pipe-delimited field (`| ts | event | active | ... |`); a trailing
 // `<!-- row-sec -->` marker lives after the last pipe and never perturbs it.
-export function lastRowFromBody(body) {
+export function lastRowFromBody(body, { actorKey } = {}) {
   if (!body || typeof body !== 'string') return null;
   const lines = body.split('\n');
   let last = null;
   for (const line of lines) {
     const row = parseTimingRow(line);
     if (!row || !isTableTimingTimestamp(row.ts)) continue;
+    if (actorKey !== undefined && row.actorKey !== actorKey) continue;
     last = { ts: row.ts, event: row.event };
   }
   return last;
@@ -285,6 +293,36 @@ export function deriveStateMoveDelta(body, nowTs) {
 // `matched:false` (no enter row found, or unusable input) signals the caller to
 // fall back to `deriveStateMoveDelta` rather than emit a 0-active row.
 export function computePhaseCloseDelta(body, phase, nowTs, nowMarker = NaN) {
+  const actorRows = String(body || '')
+    .split('\n')
+    .map(parseTimingRow)
+    .filter((row) => row && isTableTimingTimestamp(row.ts));
+  if (actorRows.some((row) => row.actorKey)) {
+    const enterEvent = PHASE_EVENTS?.[phase]?.enter?.event;
+    if (
+      !Number.isFinite(tsToMs(nowTs)) ||
+      !enterEvent ||
+      !actorRows.some((row) => row.event === enterEvent)
+    ) {
+      return {
+        activeSec: null,
+        idleSec: null,
+        startWordMarker: NaN,
+        deltaWords: null,
+        matched: false,
+      };
+    }
+    const engagement = deriveActorEngagement(actorRows, nowTs);
+    return {
+      activeSec: engagement.complete ? (engagement.byPhase[phase]?.engagedMs ?? 0) / 1000 : null,
+      knownActiveSec: (engagement.byPhase[phase]?.engagedMs ?? 0) / 1000,
+      idleSec: null,
+      startWordMarker: NaN,
+      deltaWords: null,
+      matched: true,
+      engagement,
+    };
+  }
   const enterEvent = PHASE_EVENTS?.[phase]?.enter?.event;
   const nowMs = tsToMs(nowTs);
   if (!enterEvent || !Number.isFinite(nowMs) || !body || typeof body !== 'string') {
@@ -373,6 +411,24 @@ export function computePhaseCloseDelta(body, phase, nowTs, nowMarker = NaN) {
 //
 // Returns `{ totalActiveSec, totalIdleSec, perPhase: [{ event, activeSec, idleSec }] }`.
 export function computeActiveByPhaseSpans(body, nowTs) {
+  const actorRows = String(body || '')
+    .split('\n')
+    .map(parseTimingRow)
+    .filter((row) => row && isTableTimingTimestamp(row.ts));
+  if (actorRows.some((row) => row.actorKey)) {
+    const engagement = deriveActorEngagement(actorRows, nowTs ?? actorRows.at(-1).ts);
+    return {
+      totalActiveSec: engagement.complete ? engagement.engagedMs / 1000 : null,
+      knownActiveSec: engagement.engagedMs / 1000,
+      totalIdleSec: null,
+      perPhase: Object.entries(engagement.byPhase).map(([phase, value]) => ({
+        event: PHASE_EVENTS[phase].enter.event,
+        activeSec: value.engagedMs / 1000,
+        idleSec: null,
+      })),
+      engagement,
+    };
+  }
   const empty = { totalActiveSec: 0, totalIdleSec: 0, perPhase: [] };
   if (!body || typeof body !== 'string') return empty;
 

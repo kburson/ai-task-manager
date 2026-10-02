@@ -45,7 +45,13 @@ export async function verbStop(ctx) {
     }
   }
   const reason = rest.join(' ').trim() || undefined;
-  const { deltaMin, deltaWallMin, deltaWords, post } = await flushActiveToGH(s, 'stop', reason);
+  const {
+    deltaMin: activeEstimateMin,
+    deltaWallMin,
+    deltaWords,
+    post,
+  } = await flushActiveToGH(s, 'stop', reason);
+  const deltaMin = activeEstimateMin ?? 'Unknown';
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   saveState(
     {

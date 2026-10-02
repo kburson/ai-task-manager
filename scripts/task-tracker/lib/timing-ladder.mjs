@@ -1,3 +1,5 @@
+import { parseTimingRow } from './timing-row-reader.mjs';
+import { deriveActorEngagement } from './timing-engagement.mjs';
 // #683 — the active/idle ladder: the spec that computes per-row and per-state
 // Active/Idle from a sequence of timing-log rows, keyed off the event
 // vocabulary in `lib/timing-events/`.
@@ -67,7 +69,14 @@ export function parseTimingRows(body) {
     const cells = line.split('|').map((c) => c.trim());
     // cells[0] is '' (leading pipe); cells[1] timestamp; cells[2] event.
     if (!ROW_TS_RE.test(cells[1] || '')) continue;
-    out.push({ ts: cells[1], event: (cells[2] || '').toLowerCase() });
+    const parsed = parseTimingRow(line);
+    const actorKey = parsed?.actorKey;
+    out.push({
+      ts: cells[1],
+      event: (cells[2] || '').toLowerCase(),
+      ...(actorKey ? { actorKey } : {}),
+      ...(parsed?.engagement ? { engagement: parsed.engagement } : {}),
+    });
   }
   return out;
 }
@@ -82,6 +91,33 @@ export function parseTimingRows(body) {
 // `deltaFloor` controls sub-second rounding (default: round to nearest second).
 export function deriveLadder(rows, { round = Math.round } = {}) {
   const list = Array.isArray(rows) ? rows : [];
+  if (list.some((row) => row.actorKey)) {
+    const engagement = deriveActorEngagement(list, list.at(-1)?.ts);
+    return {
+      rows: list.map((row, index) => ({
+        ...row,
+        class: classifyTimingEvent(row.event),
+        state: list
+          .slice(0, index + 1)
+          .reduce((state, entry) => ENTER_SLUG_TO_STATE[entry.event] ?? state, null),
+        activeSec: null,
+        idleSec: null,
+      })),
+      states: Object.fromEntries(
+        Object.entries(engagement.byPhase).map(([phase, value]) => [
+          phase,
+          { activeSec: round(value.engagedMs / 1000), idleSec: null },
+        ])
+      ),
+      prelude: { activeSec: null, idleSec: null },
+      totals: {
+        activeSec: engagement.complete ? round(engagement.engagedMs / 1000) : null,
+        knownActiveSec: round(engagement.engagedMs / 1000),
+        idleSec: null,
+      },
+      engagement,
+    };
+  }
   const outRows = [];
   const states = {};
   const prelude = { activeSec: 0, idleSec: 0 };

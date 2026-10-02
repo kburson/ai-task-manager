@@ -1,4 +1,10 @@
 // @story #1142
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import assert from 'node:assert/strict';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -27,6 +33,7 @@ writeFileSync(
   'utf8'
 );
 process.env.AI_TASK_MANAGER_PROJECT_DIR = base;
+process.chdir(base);
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
 process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
 process.env.AI_TASK_MANAGER_SESSION_ID = sid;
@@ -122,5 +129,6 @@ test.after(() => {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
+  process.chdir(fixtureOriginalCwd);
   rmSync(base, { recursive: true, force: true });
 });

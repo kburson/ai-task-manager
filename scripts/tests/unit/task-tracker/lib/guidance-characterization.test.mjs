@@ -346,7 +346,19 @@ test('missing, stale, shortened or relabeled inputs cannot become a decision', a
   );
 });
 
-test('historical foundation stays immutable and obsolete recertification cannot assert current GO', async () => {
+test('historical foundation stays immutable and obsolete recertification cannot assert current GO', async (t) => {
+  // #1857: current replay uses an isolated fixture actor; archived captures
+  // and their original provenance assertions remain unchanged.
+  const keys = ['AI_TASK_MANAGER_SESSION_ID', 'AI_TASK_MANAGER_APP_NAME'];
+  const prior = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-guidance-replay';
+  process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
+  t.after(() => {
+    for (const [key, value] of Object.entries(prior)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
   const { buildFeasibilityDecision, buildCurrentRecertificationDecision, runMeasurementCommand } =
     await measurementTool();
   const historicalRoot = historicalCandidateRoot();

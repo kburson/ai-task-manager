@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { findMainWorktreePath } from '../fleet-registry.mjs';
 import { configPath, statePath } from '../paths.mjs';
 import { createRecordId } from './github-records/record-envelope.mjs';
+import { resolveRuntimeRoot } from './runtime-storage.mjs';
 import {
   assertNoCredentialValues,
   assertNoSecretRecordData,
@@ -195,6 +196,7 @@ export function prepareActionCaptureEnv(
   { env = process.env, cwd = process.cwd(), command = '' },
   deps = {}
 ) {
+  cwd = resolveRuntimeRoot({ cwd, env, adapters: deps.runtimeRootAdapters }).projectRoot;
   try {
     const config = readJson(configPath(cwd));
     const state = readJson(statePath(cwd));

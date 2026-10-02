@@ -1,5 +1,10 @@
 // @story #1496
 // cspell:ignore NOSYSTEM hardlink fsmonitor
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
@@ -91,6 +96,7 @@ test('cold process denies network, arbitrary subprocesses and production filesys
       assert.throws(() => dns.resolve4('github.com'), /network-denied/);
       assert.throws(() => execFileSync('ssh', ['github.com']), /unsupported-process/);
       assert.throws(() => readFileSync(${JSON.stringify(protectedFile)}), /Access to this API has been restricted/);
+      assert.throws(() => readFileSync(${JSON.stringify(path.join(toolRoot, '.git'))}), /Access to this API has been restricted/);
       assert.throws(() => readFileSync(${JSON.stringify(path.join(toolRoot, 'node_modules/ai-task-manager/.ai-task-manager/task-tracker.json'))}), /Access to this API has been restricted/);
       assert.throws(() => writeFileSync(${JSON.stringify(protectedFile)}, 'wrong'), /Access to this API has been restricted/);
       assert.equal(process.env.GH_TOKEN, undefined);
@@ -112,11 +118,25 @@ test('Git executable options and remote hooks refuse before native execution', (
       ['rebase', '--exec=touch should-not-exist', 'HEAD'],
       ['commit', '-S', '-m', 'unsafe'],
       ['diff', `--git-dir=${sandbox.context.gitCommonDir}`],
+      ['rev-parse', `--git-dir=${sandbox.context.gitCommonDir}`],
+      ['--git-dir', sandbox.context.gitCommonDir, 'rev-parse'],
     ])
       assert.throws(
         () => guardGitInvocation(sandbox.context, args),
-        /git-(?:execution-option|override)/
+        /git-(?:execution-option|override|command)/
       );
+    const discovery = sandbox.probe(`
+      import assert from 'node:assert/strict';
+      import {execFileSync} from 'node:child_process';
+      const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+      const identity = execFileSync('git', ['-C', process.cwd(), 'rev-parse', '--path-format=absolute', '--show-toplevel', '--git-dir', '--git-common-dir'], {env, encoding: 'utf8'}).trim().split('\\n');
+      assert.equal(identity.length, 3);
+      assert.equal(identity[0], process.cwd());
+      const census = execFileSync('git', ['worktree', 'list', '--porcelain', '-z'], {env, encoding: 'utf8'});
+      assert.ok(census.includes('worktree ' + process.cwd()));
+      assert.throws(() => execFileSync('git', ['rev-parse', '--git-dir'], {env: {...env, NODE_OPTIONS: '--require=unsafe-preload'}}), /process-environment/);
+    `);
+    assert.equal(discovery.exitCode, 0, discovery.stderr);
     const hook = path.join(sandbox.remote, 'hooks', 'pre-receive');
     writeFileSync(hook, '#!/bin/sh\nexit 0\n');
     assert.throws(() => sandbox.git(['push', 'origin', 'trunk']), /git-hooks/);

@@ -7,6 +7,8 @@
 import { pauseSpansBetween, computeActiveByPhaseSpans } from './lib/timing-rows.mjs';
 import { parseEntryMarkers, STAGES } from './lib/stage-entry-markers.mjs';
 import { PHASE_EVENTS } from './phase-events.mjs';
+import { parseTimingRow } from './lib/timing-row-reader.mjs';
+import { deriveActorEngagement } from './lib/timing-engagement.mjs';
 
 // Support both legacy minute-precision (HH:MM) and current second-precision
 // (HH:MM:SS) timestamps.
@@ -55,7 +57,11 @@ export function parseTimingRows(body) {
     const secMatch = line.match(ROW_SEC_RE);
     const activeSec = secMatch ? Number(secMatch[1]) : activeMin != null ? activeMin * 60 : null;
     const idleSec = secMatch ? Number(secMatch[2]) : 0;
+    const lexical = parseTimingRow(line);
     rows.push({
+      ...(lexical?.actorKey ? { actorKey: lexical.actorKey } : {}),
+      ...(lexical?.engagement ? { engagement: lexical.engagement } : {}),
+      ts: lexical?.ts,
       tsMs: parseTs(cells[tsCol] ?? ''),
       event: (cells[eventCol] ?? '').trim().toLowerCase(),
       activeMin,
@@ -297,6 +303,41 @@ export function upsertStageRollupMarker(body, rollup) {
 // timing-comment `body` to take the span path; omit it and the function falls
 // back to the legacy per-row sum so pre-v2 callers keep working.
 export function rollupTotals(rows, thresholdMin, body = null) {
+  if (rows.some((row) => row.actorKey)) {
+    const engagement = deriveActorEngagement(
+      rows.map((row) => ({ ...row, ts: row.ts ?? row.tsMs })),
+      rows.at(-1)?.ts ?? rows.at(-1)?.tsMs
+    );
+    const total = engagement.complete ? engagement.engagedMs / 1000 : null;
+    const known = engagement.engagedMs / 1000;
+    const words = Object.values(engagement.byActor).map((actor) => actor.words);
+    return {
+      rowCount: rows.length,
+      totalActiveSec: total,
+      knownEngagedSec: known,
+      totalActiveMin: total === null ? null : Math.round(total / 60),
+      totalIdleSec: null,
+      totalIdleMin: null,
+      reviewMin: null,
+      reviewSec: null,
+      engagedSec: total,
+      engagedMin: total === null ? null : Math.round(total / 60),
+      planMin: engagement.complete ? (engagement.byPhase.plan?.engagedMs ?? 0) / 60000 : null,
+      lastWordMarker:
+        engagement.complete && words.every((value) => value !== null)
+          ? words.reduce((sum, value) => sum + value, 0)
+          : null,
+      telemetry: {
+        status: engagement.complete ? 'complete' : 'incomplete',
+        reasons: [
+          ...(engagement.unknownRows ? ['legacy-attribution-unknown'] : []),
+          ...(engagement.incompleteActors.length ? ['open-actor-interval'] : []),
+          ...(engagement.failures.length ? ['invalid-actor-evidence'] : []),
+        ],
+        engagement,
+      },
+    };
+  }
   let totalActiveMin = 0;
   let totalActiveSec = 0;
   // #475 AC2 — idle is now aggregated alongside active time.

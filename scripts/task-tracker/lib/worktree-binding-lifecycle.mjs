@@ -7,6 +7,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { resolveRuntimeRootOverride } from './runtime-storage.mjs';
 
 import { deregisterTask, fleetRegistryPath, readFleet, withLock } from '../fleet-registry.mjs';
 import { closedBindingsPath, occupancyPath } from '../paths.mjs';
@@ -155,10 +156,13 @@ export function collectBindingCandidateWorktrees({ projectDir, deps = {} } = {})
   const mainWorktreePath = resolveMain(projectDir, deps);
   const candidates = new Set([path.resolve(projectDir), path.resolve(mainWorktreePath)]);
   const env = deps.env || process.env;
-  for (const variable of ['AI_TASK_MANAGER_PROJECT_DIR', 'TASK_TRACKER_PROJECT_DIR']) {
-    const value = env[variable];
-    if (typeof value === 'string' && value.trim()) candidates.add(path.resolve(value));
-  }
+  const override = resolveRuntimeRootOverride({
+    cwd: projectDir,
+    env,
+    foreignWorktreeAdmission: deps.foreignWorktreeAdmission,
+    adapters: deps.runtimeRootAdapters,
+  });
+  if (override) candidates.add(override.projectRoot);
   const fleet = (deps.readFleet || readFleet)(
     (deps.fleetRegistryPath || fleetRegistryPath)(mainWorktreePath)
   );

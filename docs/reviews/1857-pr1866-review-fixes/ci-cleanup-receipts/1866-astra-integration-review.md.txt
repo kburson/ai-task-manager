@@ -1,0 +1,72 @@
+# PR 1866 integration and CI cleanup — independent Astra review
+
+## Final assessment
+
+No open actionable findings in the bounded cleanup after two review corrections described below. This is code-review acceptance of the reviewed fixture, provenance, parser, rehearsal and quality-configuration changes. It is not a whole-PR merge authorization, remote-CI success claim, or delivery/completion of #1857's C1–C5 scope.
+
+Reviewed working tree: `/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager`.
+
+The review began at committed `5de3d7536b6cc27f1b379258f59130869f372d6f` plus the integration/source diff and ended at checkpoint `7b5fa0faaaf975875b5405f520abce3a3f5f0189` plus the remaining unstaged cleanup. Final source/fixture bytes were reread and hashed after the guidance agent completed its recapture and seven-suite verification.
+
+- Exact 57-file source/config/test inventory and five current-evidence hashes: `/private/tmp/1866-astra-integration-source-hashes.json`.
+- Inventory file SHA256: `8be66df3c0cab9c4cac10d0725123a7dff566e25d907f2b1eec9deb38a7a8ac0`.
+- Final tracked diff against `5de3d753` SHA256: `dcb3701760704ba55605cadc5bafa4592bce6f67f270d9339efc0bd2a0d3b3a5`.
+- The inventory also covers the committed source changes made by `5de3d753`, which were reviewed in addition to its successor diff. It excludes the mutable CI narrative report and unrelated work.
+
+## Turn notes and resolved findings
+
+### 1. P2 — installed guidance was not bound to the claimed source commit (resolved)
+
+At the original checkpoint, `scripts/tests/helpers/generate-current-guidance-evidence.mjs:46–49` and `scripts/tests/helpers/guidance-paired-context.mjs:209–213` checked the six `implementationFiles` against the manifest commit but did not perform that check for installed static guidance. A dirty router or pickup template could agree with the current filesystem and internally consistent capture/manifest hashes while differing from `sourceCommit`. The final paired report also emitted a null `currentSourceCommit`, because it read a field intentionally absent from final captures instead of the verified manifest.
+
+Independent reproduction: `/private/tmp/1866-astra-provenance-repro.mjs`, run in `/private/tmp/1866-astra-integration-head`, changed only a temporary copy of `skill/shared/router.md` from `AITM` to `aitm`, preserving length. It updated cloned capture/package/static/manifest hashes consistently and called `buildPairedContext`. Pre-fix output accepted the capture with claimed commit `5de3d753...`, committed router hash `2a098607...`, dirty router hash `c067a540...`, and reported commit null. Log: `/private/tmp/1866-astra-provenance-repro.log`.
+
+The shared `guidance-capture-provenance.mjs` validator now compares captured implementation files, every installed-static source path, and package file records with both current bytes and the manifest commit. Both tracked pickup-template copies are covered. The generator and paired consumer use the same check; paired reports retain the verified manifest commit. The unchanged independent reproduction now throws `paired context: final capture identity drift`: `/private/tmp/1866-astra-provenance-fixed.log`. The new negative test also mutates router and template copies with internally consistent hashes and verifies refusal. Resolved.
+
+### 2. P2 — Codex unavailable-input fixture seeded a different session's cursor (resolved)
+
+Adding the explicit helper identity to `absolute-word-markers.test.mjs` left its unavailable-Codex case setting only `CODEX_THREAD_ID`, although `AI_TASK_MANAGER_SESSION_ID` has priority. `saveMarker(markerPathFor(sid), 4, ...)` therefore seeded a cursor different from the actor used by `bankTranscriptTail`; passing assertions did not demonstrate preservation of the intended seeded cursor.
+
+The test now sets/restores the explicit AITM session ID to the same SID and compares the complete loaded cursor before and after banking, including line 4 and its timestamp. The terminal-review fixture's two IDs were aligned too. Independent final actor/pause verification passed. Resolved.
+
+## Contract and scope assessment
+
+- Actor tests use genuine isolated fixture identities and protected `saveState` initialization instead of asking legacy shared JSON to establish actor authority. Updated absolute-marker coverage asserts independent actor baselines, idempotent banking and readback for both actors.
+- The changed auto-gap expectations agree with the accepted actor timing addendum: a current actor must not backdate a departure or claim untagged history. The new legacy case asserts exactly one attributed current start and no retroactive gap row. The mixed-history interruption cases retain unavailable phase totals while separately asserting observed own-marker arithmetic. This is an explicit contract update, not removal of positive behavior assertions.
+- Cross-worktree suppression now supplies the same actor marker for its same-actor history scenario; actor attribution does not come from the historical issue-wide tail. Degraded-post coverage now establishes a real timed binding and checks both actor attribution and engagement evidence on the queued row.
+- Epic estimation fixtures now supply canonical epic classification rather than inferring it from discovered child count. Existing child outcome pagination, incomplete-child refusal and correction assertions remain.
+- Historical accepted guidance archives are preserved. New evidence lives under `scripts/tests/fixtures/1857/1866-current`; current source-derived admission imports are distinct from immutable archives. The final current manifest records `7b5fa0faaaf975875b5405f520abce3a3f5f0189`, and the selected final test asserts both adapters report that exact commit.
+- The pause KV regex requires whitespace between fields, eliminating the ambiguous optional-separator repartition responsible for explosive backtracking. Timestamp validity remains checked after extraction; field order, optional reason and the dot-dot legacy form retain tests. The bounded subprocess regression was moved into integration, preserving unit-lane purity.
+- Quality-tool exclusions are confined to the generated `.ai-task-manager/runtime/test-fixtures` namespace and the three byte-preserved current capture files. They do not exclude production runtime source generally.
+- Rehearsal Git allows only standalone `rev-parse --git-dir` discovery, retaining override and arbitrary-process refusal. `NODE_OPTIONS` allowance requires equality with the immutable launch permission flags. The external temporary sandbox grants only absent exact ancestor `.git` paths and refuses an existing ancestor repository; source `.git`, network and unsafe preload checks remain. Independent rehearsal isolation coverage passed. The final scratch-dir edit only documents this bounded exception.
+
+## Verification evidence
+
+All reviewer executions used isolated temporary snapshots and `/private/tmp/1866-run-clean.py`; no candidate worktree source was changed by this review. No live AITM operation, lifecycle action, GitHub write, index mutation, commit or push was performed.
+
+| Verification | Result | Log |
+| --- | --- | --- |
+| Initial focused actor, marker, pause and rehearsal isolation batch (5 files) | 43/43 tests, no failures/skips | `/private/tmp/1866-astra-integration-focused.log` |
+| Final corrected actor/terminal/pause batch (4 files) | 39/39 tests, no failures/skips | `/private/tmp/1866-astra-integration-final-focused.log` |
+| Selected guidance current-capture/archive/dirty-source checks after recapture | 3/3 tests, no failures/skips | `/private/tmp/1866-astra-guidance-recaptured.log` |
+| Original dirty-guidance reproduction after correction | Required refusal reproduced | `/private/tmp/1866-astra-provenance-fixed.log` |
+| Controller full unit lane, log independently inspected | 936/936 test files passed | `/private/tmp/1866-full-unit-green.log` |
+| Guidance agent's seven suites, log independently inspected | 49/49 tests, no failures/skips; includes real byte-for-byte package/capture regeneration | `/private/tmp/1866-guidance-provenance-all.log` |
+
+Reviewer final batch command:
+
+```sh
+python3 /private/tmp/1866-run-clean.py node --test \
+  scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs \
+  scripts/tests/integration/task-tracker/lib/pause-marker-backtracking.test.mjs \
+  scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs \
+  scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs
+```
+
+Guidance verification selected `complete installed-byte|accepted final archive|internally consistent dirty` in `guidance-release.test.mjs` with Node's `--test-name-pattern`.
+
+The current five evidence artifacts were rehashed after recapture and their hashes matched the guidance agent's output. The final raw capture SHA256 remains `a247c30470d2794acc7b310648221728cc76d0e16802052ccec6fb40261a1bdd`; the manifest/report identity changes are captured in the inventory.
+
+## Readiness limits
+
+Full final integration, final format/lint and remote CI are controller gates, not proven by these focused runs. Earlier failures remain historical evidence; they are not rewritten as passes. A successful bounded cleanup does not implement or admit runtime transaction/migration work, writer adoption, cleanup capability, provider/install parity, operational activation, or the combined delivery requirements assigned to C1–C5. Recheck the final committed candidate and aggregate receipts before a merge-readiness claim.

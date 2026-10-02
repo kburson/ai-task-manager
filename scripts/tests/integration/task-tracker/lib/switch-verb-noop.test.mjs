@@ -20,6 +20,12 @@
 //
 // Word-counter side effects (jsonlPath / markerPathFor / transcriptDir) are
 // redirected into the temp tree via env so nothing touches the real project.
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { rmSync } from 'node:fs';
@@ -31,6 +37,7 @@ import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir
 // the lint:tmp guard stays green — no system temp dir.
 const base = mkdtempProjectIsolated('switch-noop-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = base;
+process.chdir(base);
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(base, 'transcript');
 
 // Import AFTER the env is set so word-counter path resolution honours the temp tree.
@@ -173,6 +180,7 @@ test('a superseded occupancy rollback preserves the target state to avoid split 
 
 test.after(() => {
   try {
+    process.chdir(fixtureOriginalCwd);
     rmSync(base, { recursive: true, force: true });
   } catch {
     /* best-effort temp cleanup */

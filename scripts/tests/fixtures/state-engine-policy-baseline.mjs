@@ -198,68 +198,75 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/gh/ensure-wave-parent.mjs', 337, 'event-call', "'start'", ['start']),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      331,
+      349,
       'phase-call',
       "{ state: 'review', phase: 'complete' }",
       ['review:approved']
     ),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      340,
+      358,
       'phase-call',
       "{ state: 'done', phase: 'enter' }",
       ['issue:wrap']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      166,
-      'event-call',
-      "'pre-compact-flush'",
-      ['pre-compact-flush']
-    ),
-    timingEmitter(
-      'scripts/task-tracker/hook-handler.mjs',
-      212,
-      'event-call',
-      "'post-compact-resume'",
-      ['post-compact-resume']
-    ),
-    timingEmitter(
-      'scripts/task-tracker/hook-handler.mjs',
-      274,
+      170,
       'event-spec',
       "'session-end-recovery'",
       ['session-end-recovery']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      287,
+      183,
       'event-spec',
       "'pause:orphan-recovery'",
       ['pause:orphan-recovery']
     ),
-    timingEmitter('scripts/task-tracker/hook-handler.mjs', 296, 'event-spec', "'resumed'", [
+    timingEmitter('scripts/task-tracker/hook-handler.mjs', 192, 'event-spec', "'resumed'", [
       'resumed',
     ]),
-    timingEmitter('scripts/task-tracker/hook-handler.mjs', 479, 'event-call', "'session-start'", [
-      'session-start',
-    ]),
-    timingEmitter('scripts/task-tracker/hooks/on-ask.mjs', 184, 'event-call', "'paused'", [
+    timingEmitter('scripts/task-tracker/hooks/on-ask.mjs', 147, 'flush-call', "'paused'", [
       'paused',
     ]),
-    timingEmitter('scripts/task-tracker/hooks/on-ask.mjs', 240, 'event-call', "'resume'", [
+    timingEmitter('scripts/task-tracker/hooks/on-ask.mjs', 201, 'event-call', "'resume'", [
       'resume',
     ]),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      110,
+      98,
       'event-call',
       '`demoted:${stateArg}`',
       ['demoted:develop']
     ),
+    timingEmitter('scripts/task-tracker/lib/actor-hook-timing.mjs', 12, 'flush-call', "'update'", [
+      'update',
+    ]),
+    timingEmitter(
+      'scripts/task-tracker/lib/actor-hook-timing.mjs',
+      23,
+      'flush-call',
+      "'session-end-recovery'",
+      ['session-end-recovery']
+    ),
+    timingEmitter(
+      'scripts/task-tracker/lib/actor-hook-timing.mjs',
+      30,
+      'flush-call',
+      "'session-start'",
+      ['session-start']
+    ),
+    timingEmitter(
+      'scripts/task-tracker/lib/actor-hook-timing.mjs',
+      38,
+      'flush-call',
+      'timingEvent',
+      ['pre-compact-flush', 'post-compact-resume']
+    ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      155,
+      137,
       'phase-call',
       "{ state: prev, phase: 'complete' }",
       [
@@ -273,14 +280,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      185,
+      167,
       'phase-call',
       "{ state: 'done', phase: 'complete' }",
       ['issue:closed']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      204,
+      186,
       'phase-call',
       "{ state: stateArg, phase: 'enter' }",
       [
@@ -296,7 +303,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      322,
+      293,
       'event-call',
       "'out-of-band-move'",
       ['out-of-band-move']
@@ -315,6 +322,13 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       "'lifecycle-warn'",
       ['lifecycle-warn']
     ),
+    timingEmitter('scripts/task-tracker/runtime.mjs', 265, 'flush-call', 'event', [
+      'update',
+      'pause:other',
+      'review:failed',
+      'test:failed',
+      'test:passed',
+    ]),
     timingEmitter('scripts/task-tracker/verbs/approve.mjs', 560, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
@@ -327,24 +341,24 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      3413,
+      3469,
       'event-call',
       "'unauthorized-close'",
       ['unauthorized-close']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      3611,
+      3667,
       'event-call',
       "'closed-with-dirty-tree'",
       ['closed-with-dirty-tree']
     ),
-    timingEmitter('scripts/task-tracker/verbs/close.mjs', 3830, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/close.mjs', 3886, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      4096,
+      4152,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']
@@ -374,23 +388,23 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       ['discovery: idle-reconciled']
     ),
     timingEmitter('scripts/task-tracker/verbs/new.mjs', 315, 'event-call', "'start'", ['start']),
-    timingEmitter('scripts/task-tracker/verbs/pause.mjs', 31, 'flush-call', 'pauseEvent', [
+    timingEmitter('scripts/task-tracker/verbs/pause.mjs', 35, 'flush-call', 'pauseEvent', [
       'pause:other',
     ]),
     timingEmitter('scripts/task-tracker/verbs/reject.mjs', 71, 'event-call', "'rejected:develop'", [
       'rejected:develop',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 250, 'event-call', "'resumed'", [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 253, 'event-call', "'resumed'", [
       'resumed',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/resume.mjs',
-      488,
+      494,
       'event-call',
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 514, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 521, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),
@@ -406,17 +420,17 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/review.mjs', 820, 'event-call', "'test:failed'", [
       'test:failed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 993, 'event-call', "'gate-refused'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 1009, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 1532, 'event-call', "'gate-refused'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 1548, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/stop.mjs', 48, 'flush-call', "'stop'", ['stop']),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 118, 'flush-call', 'eventSlug', [
+    timingEmitter('scripts/task-tracker/verbs/stop.mjs', 53, 'flush-call', "'stop'", ['stop']),
+    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 120, 'flush-call', 'eventSlug', [
       'switch-out:#1007',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 236, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 242, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),

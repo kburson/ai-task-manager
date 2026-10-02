@@ -10,9 +10,17 @@
 // Without the lock, two concurrent writers race their read-modify-write
 // and the second one clobbers the first. With the lock, both rows persist.
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, writeFileSync, chmodSync, readFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +32,7 @@ const __dirname = path.dirname(__filename) + '/..';
 const repoRoot = path.resolve(__dirname, '../../../..');
 const fakeGhMjs = path.join(__dirname, '../../fixtures/fake-gh.mjs');
 
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-timing-conc-'));
+const tmp = mkdtempProjectIsolated('tt-timing-conc-');
 const binDir = path.join(tmp, 'bin');
 const store = path.join(tmp, 'store.json');
 
@@ -72,6 +80,7 @@ await postTimingEvent({
 function runWorker(label, event) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [workerPath, label, event ?? ''], {
+      cwd: tmp,
       env: {
         ...process.env,
         PATH: `${binDir}:${process.env.PATH}`,

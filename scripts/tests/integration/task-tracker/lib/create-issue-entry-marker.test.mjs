@@ -1,4 +1,9 @@
 // @story #221
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -10,7 +15,10 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = new URL('../../../../..', import.meta.url).pathname;
@@ -54,7 +62,7 @@ const CANONICAL_BODY = [
 // gh mock that copies the --body-file content to a known capture path so the
 // test can assert what was actually posted to `gh issue create`.
 function setup() {
-  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-create-em-'));
+  const temp = mkdtempProjectIsolated('aitm-create-em-');
   const binDir = join(temp, 'bin');
   mkdirSync(binDir, { recursive: true });
   mkdirSync(join(temp, '.ai-task-manager'), { recursive: true });

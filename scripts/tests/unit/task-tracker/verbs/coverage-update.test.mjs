@@ -16,8 +16,15 @@
 // state dir, which we redirect to an isolated temp dir via
 // AI_TASK_MANAGER_PROJECT_DIR so the live repo is never touched.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
-import { test, before, after } from 'node:test';
+import { before, after } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 
@@ -47,7 +54,7 @@ after(() => {
 
 function stateFile(active, extra = {}) {
   const p = path.join(tmpRoot, `state-${Math.abs(hashish(String(active)))}.json`);
-  writeFileSync(p, JSON.stringify({ active, lastActive: active, ...extra }));
+  saveState({ active, lastActive: active, ...extra }, p);
   return p;
 }
 function hashish(s) {

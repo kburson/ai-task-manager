@@ -114,6 +114,7 @@ test('a body with no matching enter row returns matched:false', () => {
 
 test('AC5 — emitPhasePairRows writes no `idle`/`active-work` row on a phase completion', async () => {
   const emitted = [];
+  let actorFlushes = 0;
   const enterBody = bodyWith([row('13:00:00', 'develop:started', { marker: 100 })]);
   const ctx = {
     issueArg: 825,
@@ -123,6 +124,9 @@ test('AC5 — emitPhasePairRows writes no `idle`/`active-work` row on a phase co
     cfg: { repo: 'kburson/ai-task-manager' },
     SKIP_NETWORK: false,
     deps: {
+      flushBoundActorInterval: async () => {
+        actorFlushes += 1;
+      },
       timingRows,
       phaseEvents,
       ghTimingComment: {
@@ -145,6 +149,7 @@ test('AC5 — emitPhasePairRows writes no `idle`/`active-work` row on a phase co
     },
   };
   await emitPhasePairRows(ctx);
+  assert.equal(actorFlushes, 1, 'own actor is flushed exactly once before shared lifecycle facts');
   const slugs = emitted.map((r) => r.slug);
   assert.ok(slugs.length >= 2, `expected paired rows, got ${JSON.stringify(slugs)}`);
   assert.ok(
@@ -153,13 +158,9 @@ test('AC5 — emitPhasePairRows writes no `idle`/`active-work` row on a phase co
   );
   // The completion + entry pair are the canonical develop→test slugs.
   assert.deepEqual(slugs, ['develop:completed', 'test:started']);
-  // The completion row carries the phase-span active delta (enter → real now),
-  // not the 0/0 of the paired entry row — proving the v2 span path ran.
+  // Lifecycle facts do not duplicate the independently flushed actor interval.
   const completion = emitted.find((r) => r.slug === 'develop:completed');
-  assert.ok(
-    Number.isFinite(completion.args.activeSec) && completion.args.activeSec > 0,
-    `completion activeSec should be a positive span delta, got ${completion.args.activeSec}`
-  );
+  assert.equal(completion.args.activeSec, 0);
   const entry = emitted.find((r) => r.slug === 'test:started');
   assert.equal(entry.args.activeSec, 0);
 });

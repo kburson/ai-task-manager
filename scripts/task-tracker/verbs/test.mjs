@@ -4,7 +4,7 @@
 // On invocation:
 //   1. Resolves the target issue (from rest args or active binding).
 //   2. Parses `## Verification Commands` from the issue body.
-//   3. Stages a fresh git worktree at `tmp/.task-test-<N>-<sha8>-<token>/` from
+//   3. Stages a fresh git worktree at `.ai-task-manager/runtime/test-sandboxes/.task-test-<N>-<sha8>-<token>/` from
 //      HEAD (the per-run `<token>` keeps concurrent runs from colliding — #563).
 //   4. Runs `npm ci --no-audit --no-fund` inside the worktree.
 //   5. Executes each VC via execFile (allowlist-validated), capturing exit
@@ -23,7 +23,7 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
-import { projectTmpDir } from '../paths.mjs';
+import { testSandboxDirectory } from '../lib/test-sandbox-reaper.mjs';
 import {
   isPolicyShapeVerificationRejection as isPolicyShapeRejection,
   validateVerificationCommand,
@@ -142,7 +142,10 @@ function shortSha(sha) {
 // stays easy to grep. Pass an explicit `token` for deterministic cleanup/test paths.
 export function sandboxWorktreePath({ projectDir, issueNum, sha, token } = {}) {
   const tok = token || `${process.pid}-${randomBytes(4).toString('hex')}`;
-  return path.join(projectTmpDir(projectDir), `.task-test-${issueNum}-${shortSha(sha)}-${tok}`);
+  return path.join(
+    testSandboxDirectory(projectDir),
+    `.task-test-${issueNum}-${shortSha(sha)}-${tok}`
+  );
 }
 
 export function buildPassedMessage(issueNumber, target) {
@@ -1514,6 +1517,7 @@ export async function runTestWithEntryInterlock({
   projectDir,
   deps = {},
   now,
+  timingContext = null,
 } = {}) {
   const {
     acquireIssueLock = withIssueLock,
@@ -1523,7 +1527,57 @@ export async function runTestWithEntryInterlock({
   } = deps;
   return acquireIssueLock(
     { issue: issueNumber, verb: 'test', projDir: projectDir, retries: 0 },
-    () => executeTest({ cfg, issueNumber, projectDir, deps: { ...runDeps, entryPreflight }, now })
+    async () => {
+      if (timingContext) {
+        const state = loadState(timingContext.statePath);
+        if (String(state.active).replace('#', '') !== String(issueNumber).replace('#', '')) {
+          throw new Error('TEST_TIMING_BINDING_MISMATCH');
+        }
+        if (!state.entryStartTs) {
+          saveState(
+            {
+              ...state,
+              entryStartTs: new Date().toISOString(),
+              paused: false,
+              wordsAtEntryStart: state.lastWordMarker ?? 0,
+              fullWordsAtEntryStart: state.lastFullWordMarker ?? state.lastWordMarker ?? 0,
+            },
+            timingContext.statePath
+          );
+        }
+      }
+      let result;
+      let executionError;
+      try {
+        result = await executeTest({
+          cfg,
+          issueNumber,
+          projectDir,
+          deps: { ...runDeps, entryPreflight },
+          now,
+        });
+      } catch (error) {
+        executionError = error;
+      }
+      if (timingContext) {
+        try {
+          const { flushBoundActorInterval } = await import('../runtime.mjs');
+          await flushBoundActorInterval(timingContext, {
+            issue: issueNumber,
+            description: 'Test verification execution completed',
+          });
+        } catch (timingError) {
+          if (executionError)
+            throw new AggregateError(
+              [executionError, timingError],
+              'Test execution and timing publication failed'
+            );
+          throw timingError;
+        }
+      }
+      if (executionError) throw executionError;
+      return result;
+    }
   );
 }
 
@@ -1564,6 +1618,7 @@ export async function verbTest(ctx) {
       cfg,
       issueNumber,
       projectDir,
+      timingContext: ctx,
       deps: {
         moveState,
         demoteState,
@@ -1605,7 +1660,7 @@ export async function verbTest(ctx) {
       // verb. Only the timing session closes; the issue stays bound so the next
       // verb needs no intervening re-`start`. `pause` remains the sole verb that
       // nulls `active`.
-      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
+      saveState(pauseTimingKeepBinding(loadState(statePath), '#' + issueNumber), statePath);
       return result.status;
     }
     case 'reverified': {
@@ -1618,20 +1673,20 @@ export async function verbTest(ctx) {
       } else if (result.newTestsPost?.status === 'post-failed') {
         console.error(`  ⚠ new-automated-tests comment post failed: ${result.newTestsPost.error}`);
       }
-      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
+      saveState(pauseTimingKeepBinding(loadState(statePath), '#' + issueNumber), statePath);
       return result.status;
     }
     case 'already-verified':
       console.log(
         `✓ #${issueNumber} already has a valid exact-SHA Test receipt (${result.receipt.receiptId}); standard commands were not rerun.`
       );
-      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
+      saveState(pauseTimingKeepBinding(loadState(statePath), `#${issueNumber}`), statePath);
       return result.status;
     case 'directory-evidence-accepted':
       console.log(
         `✓ #${issueNumber} already has accepted current-contract exact-SHA Test evidence; body receipts were not consulted.`
       );
-      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
+      saveState(pauseTimingKeepBinding(loadState(statePath), '#' + issueNumber), statePath);
       return result.status;
     case 'move-failed': {
       // #406 — sandbox passed but the board move was refused. Do NOT print the

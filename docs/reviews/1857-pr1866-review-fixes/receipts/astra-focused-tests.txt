@@ -1,0 +1,85 @@
+node:internal/modules/package_json_reader:331
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'js-yaml' imported from /private/tmp/1866-astra-head/guidance/parse.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:331:9)
+    at packageResolve (node:internal/modules/esm/resolve:784:25)
+    at moduleResolve (node:internal/modules/esm/resolve:873:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs (249.27375ms)
+✔ ordinary docs and every scratch format allow without ownership in every state (3126.079167ms)
+✔ docs script suffixes refuse even during Develop and chore mode (3586.228584ms)
+✔ direct tools and multi-target patches share physical artifact containment (539.432333ms)
+✔ complete literal writers authorize artifacts without a matching binding (8247.126625ms)
+✔ mixed writes, execution and escaped targets never gain artifact permission (1938.766625ms)
+✔ installed guards protect otherwise allowed scratch Markdown and physical aliases (237.27375ms)
+✔ additional script formats remain freely authorable in scratch and temp (630.407833ms)
+✔ row builders preserve unavailable estimates and explicit current actor interval (20.749ms)
+✔ first attributed flush keeps own word delta after larger unrelated legacy cursor (2.933209ms)
+✔ different actors may start independently and immutable replay appends only once (0.788792ms)
+✔ queue freezes original evidence before failed publication and never reattributes it (0.317917ms)
+✔ builder second-resolution timestamp retains exact millisecond interval for accounting (0.603625ms)
+✔ whole-issue terminal suppression remains unconditional for attributed rows (0.307417ms)
+✔ same interval with a different lifecycle event is a conflict, not a dropped replay (0.729417ms)
+✔ canonical timing source requires a complete unambiguous issue comment census (0.446625ms)
+✔ canonical timing source ignores quoted heading mentions in unrelated records (0.156541ms)
+✔ attributed publication reconciles ambiguous success against canonical exact-row replay (0.855208ms)
+✔ attributed publication refuses ambiguous census and unobserved writes (0.428ms)
+✔ attributed creation requires fresh unique canonical identity and matching issue (0.438709ms)
+✔ pending flush preserves exact evidence across every publication and cursor crash boundary (29.263917ms)
+✔ publication failure leaves the cursor unchanged and conflicting or corrupt recovery refuses (2.541625ms)
+✔ one actor pause cannot replace another actor start or word cursors (18.3485ms)
+✔ legacy own binding establishes its current interval without inheriting unattributed global history (6.875792ms)
+✔ invalid actor write refuses before mutating binding or prior evidence (6.439875ms)
+✔ corrupt, unsupported and mismatched actor state refuse without global fallback (5.287417ms)
+✔ a genuine new binding supersedes only its own stale paused interval (7.917958ms)
+✔ timing updates preserve genuine same-issue binding generation and original bound time (7.065542ms)
+✔ actor engagement overlaps additively without manufacturing phase starts (1.232125ms)
+✔ unknown legacy attribution and missing actor end remain explicit (0.652083ms)
+✔ same actor migration coverage is unioned while different actors remain additive (0.527958ms)
+✔ existing last-row and interruption readers scope exact actors (2.285125ms)
+✔ phase aggregate, close and ladder preserve concurrent actor engagement (1.465375ms)
+✔ canonical aliases pair and actor ordering and malformed keys stay explicit (0.486875ms)
+✔ current closed evidence accounts genuine work after unknown legacy history (0.893667ms)
+✔ same actor explicit coverage unions overlaps while independent actors add (0.421709ms)
+✔ evidence ending after row and reversed shared lifecycle facts remain invalid (0.149792ms)
+✔ tagged close cannot claim a missing phase or invalid current instant matched (0.999917ms)
+✔ duplicate immutable interval replay cannot double-count or erase known cursors (0.376375ms)
+✔ contradictory same-interval cursors cannot become a trusted word total (0.267875ms)
+✔ mixed history exposes known subtotal without a complete numeric total (0.324041ms)
+✔ ladder lexical path preserves current interval evidence (0.532542ms)
+✔ unattributed historical phase totals stay unknown beside later actor intervals (0.122291ms)
+✔ exact current start agrees with genuine opener rounded to its table second (0.081ms)
+✔ final phase uses validated exact evidence cutoff instead of dropping fractional work (0.069417ms)
+✔ explicit unknown session recovery preserves the lost interval without charging or fabricating its end (0.095167ms)
+✔ opaque versioned timing keys preserve exact provider/session distinction (3.021416ms)
+✔ actor attribution survives lexical row edits alongside exact seconds (0.868375ms)
+✔ actual fallback sentinel and coerced identity fields are refused (0.110041ms)
+✔ current interval evidence survives row edits without inventing a historical start (0.849709ms)
+✔ malformed or orphan interval evidence refuses rather than becoming ordinary text (0.169709ms)
+✔ current evidence derives words from own endpoints and rejects row cursor disagreement (0.806417ms)
+ℹ tests 52
+ℹ suites 0
+ℹ pass 51
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18644.244583
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs:1:1
+✖ scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs (249.27375ms)
+  'test failed'

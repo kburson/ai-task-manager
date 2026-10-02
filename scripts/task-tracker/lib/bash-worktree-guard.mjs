@@ -1,11 +1,12 @@
 // @story #1166
 // cspell:ignore reflog
-// Pure command classification and refusal rendering for the Bash PreToolUse
+// Filesystem-aware command classification and refusal rendering for the Bash PreToolUse
 // worktree-binding guard. Binding discovery stays in worktree-binding-guard.mjs;
 // this module decides whether a command needs that authority and what a
 // confirmed mismatch means.
 
 import path from 'node:path';
+import { resolveArtifactShell } from './artifact-write-policy.mjs';
 
 import { splitCommandSegments } from './gh-edit-guard.mjs';
 import { discoverBashActivity } from './mutation-context.mjs';
@@ -191,7 +192,20 @@ export function classifyBashWorktreeCommand(command) {
   };
 }
 
-export function evaluateBashWorktreeBinding({ command, bound, invoking, classification } = {}) {
+export function evaluateBashWorktreeBinding({
+  command,
+  bound,
+  invoking,
+  classification,
+  invocationDir = invoking?.worktreePath,
+  projectRoot = invoking?.worktreePath,
+} = {}) {
+  if (invocationDir && projectRoot) {
+    const artifact = resolveArtifactShell(command, invocationDir, projectRoot);
+    if (artifact.status === 'allow') return { block: false, status: 'artifact-write' };
+    if (artifact.status === 'block')
+      return { block: true, status: 'artifact-refused', reason: artifact.reason };
+  }
   const classified = classification ?? classifyBashWorktreeCommand(command);
   if (!classified.guarded) return { block: false, status: 'read-only' };
   if (!bound) return { block: false, status: 'unbound' };

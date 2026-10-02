@@ -1,4 +1,10 @@
 // @story #1142
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import assert from 'node:assert/strict';
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -94,6 +100,7 @@ test('real pause and switch-out flushes preserve both markers while away growth 
     );
     writeFileSync(transcriptPath, message('one two three'), 'utf8');
     process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+    process.chdir(projectDir);
     process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
     process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
     process.env.CLAUDE_SESSION_ID = sid;
@@ -134,8 +141,10 @@ test('real pause and switch-out flushes preserve both markers while away growth 
 
     saveState(
       {
-        ...state,
+        ...loadState(ctx.statePath),
         active: null,
+        entryStartTs: null,
+        wordsAtEntryStart: 0,
         lastActive: '#1142',
         paused: true,
         pausedAtTs: paused.ts,
@@ -164,7 +173,17 @@ test('real pause and switch-out flushes preserve both markers while away growth 
       new Date().toISOString(),
       pauseBank.marker
     );
-    assert.equal(pauseClose.deltaWords, 5, 'five away words are excluded from pause span');
+    assert.equal(pauseClose.matched, true);
+    assert.equal(
+      pauseClose.deltaWords,
+      null,
+      'mixed actor history does not fabricate a phase word total'
+    );
+    assert.equal(
+      Number(parseTimingRow(paused.row).wordMarker) + pauseBank.marker - Number(resumed.wordMarker),
+      5,
+      'own observed markers exclude five away words from the pause span'
+    );
 
     saveState(
       {
@@ -211,7 +230,20 @@ test('real pause and switch-out flushes preserve both markers while away growth 
       new Date().toISOString(),
       switchCloseBank.marker
     );
-    assert.equal(switchClose.deltaWords, 5, 'four peer-away words are excluded from switch span');
+    assert.equal(switchClose.matched, true);
+    assert.equal(
+      switchClose.deltaWords,
+      null,
+      'mixed actor history retains unavailable phase words'
+    );
+    assert.equal(
+      Number(parseTimingRow(switchOut.row).wordMarker) -
+        10 +
+        switchCloseBank.marker -
+        switchAway.marker,
+      5,
+      'own observed markers exclude four peer-away words from the switch span'
+    );
   } finally {
     for (const [key, value] of Object.entries({
       AI_TASK_MANAGER_PROJECT_DIR: savedEnv.projectDir,
@@ -225,6 +257,7 @@ test('real pause and switch-out flushes preserve both markers while away growth 
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    process.chdir(fixtureOriginalCwd);
     rmSync(projectDir, { recursive: true, force: true });
   }
 });

@@ -14,19 +14,28 @@ function activeForecast(records) {
   return active.length === 1 ? active[0] : null;
 }
 
+function activeOutcomes(records) {
+  const outcomes = records.filter((record) => record?.envelope?.recordType === 'estimation-outcome');
+  const superseded = new Set(outcomes.map((record) => record.envelope.supersedes).filter(Boolean));
+  return outcomes.filter((record) => !superseded.has(record.envelope.recordId));
+}
+
 function matchingStoryOutcome(records, forecast) {
-  if (forecast === null) return null;
-  const matching = records.filter(
+  const hasForecast = records.some((record) => record?.envelope?.recordType === 'estimation-forecast');
+  const matching = activeOutcomes(records).filter(
     (record) =>
       record?.envelope?.recordType === 'estimation-outcome' &&
       record.envelope.payload.kind !== 'epic-orchestration' &&
-      record.envelope.payload.forecastRecordId === forecast.envelope.recordId
+      (forecast !== null
+        ? record.envelope.payload.forecastRecordId === forecast.envelope.recordId
+        : !hasForecast && record.envelope.payload.forecastRecordId === null &&
+          record.envelope.payload.telemetry?.forecastStatus === 'legacy-none')
   );
   return matching.length === 1 ? matching[0] : null;
 }
 
 function epicOutcomeState(records) {
-  const outcomes = records.filter(
+  const outcomes = activeOutcomes(records).filter(
     (record) =>
       record?.envelope?.recordType === 'estimation-outcome' &&
       record.envelope.payload.kind === 'epic-orchestration'
@@ -123,7 +132,7 @@ function storyRow(issue, records, externalGaps = []) {
       record.envelope.payload.kind !== 'epic-orchestration'
   );
   const gaps = [];
-  if (forecast === null) {
+  if (forecast === null && outcome?.envelope.payload.telemetry?.forecastStatus !== 'legacy-none') {
     gaps.push(
       records.some((record) => record?.envelope?.recordType === 'estimation-forecast')
         ? 'ambiguous-active-forecast'
@@ -137,6 +146,8 @@ function storyRow(issue, records, externalGaps = []) {
   const aiP50Hours = forecast?.envelope.payload.ai.p50EngagedHours ?? null;
   const aiP80Hours = forecast?.envelope.payload.ai.p80EngagedHours ?? null;
   const actualEngagedHours = outcome?.envelope.payload.actual.engagedHours ?? null;
+  const telemetry = outcome?.envelope.payload.telemetry;
+  if (telemetry?.status === 'incomplete') gaps.push(...telemetry.reasons);
   const acceleration =
     humanPlanHours != null && actualEngagedHours != null && actualEngagedHours > 0
       ? humanPlanHours / actualEngagedHours
@@ -150,12 +161,14 @@ function storyRow(issue, records, externalGaps = []) {
     aiP50Hours,
     aiP80Hours,
     actualEngagedHours,
-    varianceVsAiP50Hours: outcome?.envelope.payload.variance.vsAiP50Hours ?? null,
-    varianceVsAiP80Hours: outcome?.envelope.payload.variance.vsAiP80Hours ?? null,
+    telemetryStatus: telemetry?.status ?? (actualEngagedHours === null ? 'unavailable' : 'complete'),
+    knownEngagedMs: telemetry?.knownEngagedMs ?? (actualEngagedHours === null ? null : actualEngagedHours * 3600000),
+    varianceVsAiP50Hours: outcome?.envelope.payload.variance?.vsAiP50Hours ?? null,
+    varianceVsAiP80Hours: outcome?.envelope.payload.variance?.vsAiP80Hours ?? null,
     refineAccuracy: accuracy(refineHours, humanPlanHours),
     aiP50Accuracy: accuracy(aiP50Hours, actualEngagedHours),
     avoidableWasteHours:
-      outcome?.envelope.payload.costClassification.avoidableProcessWasteHours ?? null,
+      outcome?.envelope.payload.costClassification?.avoidableProcessWasteHours ?? null,
     acceleration,
     accelerationLabel: formatAcceleration(acceleration),
     parentOrchestrationHours: 0,
@@ -273,7 +286,7 @@ export function buildEstimationReportModel({ items, recordsByIssue, evidenceGaps
     const aiP80Hours = complete ? sumPresent(childRows, 'aiP80Hours') : null;
     const childWaste = complete ? sumPresent(childRows, 'avoidableWasteHours') : null;
     const parentWaste =
-      parentOutcome?.envelope.payload.costClassification.avoidableProcessWasteHours ?? null;
+      parentOutcome?.envelope.payload.costClassification?.avoidableProcessWasteHours ?? null;
     const acceleration =
       humanPlanHours != null && actualEngagedHours != null && actualEngagedHours > 0
         ? humanPlanHours / actualEngagedHours
@@ -296,8 +309,14 @@ export function buildEstimationReportModel({ items, recordsByIssue, evidenceGaps
       acceleration,
       accelerationLabel: formatAcceleration(acceleration),
       parentOrchestrationHours,
+      telemetryStatus: actualEngagedHours === null ? 'incomplete' : 'complete',
+      knownEngagedMs: referencesMatch && parentOutcome !== null
+        ? (parentOutcome.envelope.payload.telemetry?.knownEngagedMs ?? (parentOrchestrationHours ?? 0) * 3600000) +
+          childRows.reduce((sum, row) => sum + (row.knownEngagedMs ?? (row.actualEngagedHours ?? 0) * 3600000), 0)
+        : null,
       evidenceGaps: [
         ...parentBlockingGaps,
+        ...(parentOutcome?.envelope.payload.telemetry?.reasons ?? []),
         ...childRows.flatMap((row) => row.evidenceGaps.map((gap) => `child-${gap}`)),
         ...(ambiguousParentOutcome ? ['ambiguous-parent-outcome'] : []),
         ...(parentOutcome === null && !legacyOnlyEpic && !ambiguousParentOutcome

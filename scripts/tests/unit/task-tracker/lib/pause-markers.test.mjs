@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #166
+// @story #1857
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import {
@@ -120,4 +121,10 @@ test('applyPauseSpansToRows: rollup drops engaged time by 20 min', () => {
   const adjusted = rollupTotals(adjustedRows, 5);
   // Engaged should drop by ~20 minutes.
   assert.equal(baseline.engagedMin - adjusted.engagedMin, 20);
+});
+
+test('parsePauseMarkers: kv fields permit any order and preserve optional reason', () => {
+  const out = parsePauseMarkers(`<!-- aitm-pause: reason=question until=${U} from=${F} -->`);
+  assert.deepEqual(out, [{ from: new Date(FMS), until: new Date(UMS), reason: 'question' }]);
+  assert.equal(parsePauseMarkers(`<!-- aitm-pause: until=${U} from=${F} -->`)[0].reason, '');
 });

@@ -1,0 +1,12 @@
+file:///private/tmp/1866-astra-integration-head/scripts/tests/helpers/guidance-paired-context.mjs:216
+      throw new Error('paired context: final capture identity drift');
+            ^
+
+Error: paired context: final capture identity drift
+    at buildPairedContext (file:///private/tmp/1866-astra-integration-head/scripts/tests/helpers/guidance-paired-context.mjs:216:13)
+    at file:///private/tmp/1866-astra-provenance-repro.mjs:23:15
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v26.8.1

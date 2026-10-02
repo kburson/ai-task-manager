@@ -168,7 +168,7 @@ test('package-boundary: no test files are packed', () => {
 test('package-boundary: excluded directories do not reappear', () => {
   const files = packedFiles();
   const forbidden = files.filter(
-    (p) => /^docs\/archive\//.test(p) || /^scripts\/maintenance\//.test(p)
+    (p) => /^docs\/archive\//.test(p) || /^scripts\/(?:maintenance|research)\//.test(p)
   );
   assert.deepEqual(
     forbidden,
@@ -224,6 +224,32 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const recoveryEntryAllowance = 1;
   // #1848 ships the bounded draft-branch bootstrap entry point.
   const draftBranchAllowance = 1;
+  // #1857 ships one shared artifact policy; research helpers remain development-only.
+  const artifactPolicyAllowance = 1;
+  // #1857 adds the independently reviewed shared runtime-root validator.
+  assert.ok(files.includes('scripts/task-tracker/lib/runtime-storage.mjs'));
+  const runtimeRootAllowance = 1;
+  // #1857: seven committed migration/actor primitives plus six actor/outcome
+  // runtime modules. Enumerate required additions; tests, research and review
+  // collateral remain excluded. The admitted tarball has 866 entries and this
+  // outcome adds six, yielding 872 without general-purpose growth headroom.
+  const actorRuntimeEntries = [
+    'runtime-migration-admission.mjs',
+    'runtime-migration-apply.mjs',
+    'runtime-migration-lock.mjs',
+    'runtime-migration-plan.mjs',
+    'runtime-migration.mjs',
+    'timing-actor.mjs',
+    'timing-engagement.mjs',
+    'actor-flush-journal.mjs',
+    'actor-hook-timing.mjs',
+    'actor-timing-state.mjs',
+    'estimation/cascade-outcome-authority.mjs',
+    'estimation/outcome-delivery-proof.mjs',
+    'timing-field-result.mjs',
+  ];
+  for (const entry of actorRuntimeEntries)
+    assert.ok(files.includes('scripts/task-tracker/lib/' + entry), entry);
   // #1693 adds the standalone doctor entry point and its read-only observer.
   const doctorRuntimeAllowance = 2;
   // #1709 ships the pure story contract and shared Markdown views.
@@ -351,6 +377,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     localTrunkReceiptAllowance +
     mutationContextAllowance +
     draftBranchAllowance +
+    artifactPolicyAllowance +
+    runtimeRootAllowance +
+    actorRuntimeEntries.length +
     8; // #1859: six reviewed-scope modules, readiness guard and operator guide.
   assert.ok(
     files.length <= effectiveCeiling,
@@ -370,6 +399,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
   for (const required of [
     'bin/cli.mjs',
     'bin/aitm.mjs',
+    'scripts/task-tracker/lib/artifact-write-policy.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',

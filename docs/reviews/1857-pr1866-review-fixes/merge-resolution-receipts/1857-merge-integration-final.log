@@ -1,0 +1,100 @@
+✔ Close preserves unchecked reasons after delivered authority with old attachments removed (300.139375ms)
+✔ Close preserves unchecked reasons after local-trunk authority with old attachments removed (103.795041ms)
+✔ Test Promote preserves the initial normalization refusal before delegation (206.890459ms)
+✔ Test Promote preserves the retry normalization refusal before delegation (1.230167ms)
+✔ Test Promote preserves the readback normalization refusal before delegation (1.147125ms)
+✔ Test Promote preserves the unmapped normalization refusal before delegation (0.659208ms)
+✔ Test Promote refuses reviewed-scope-current-missing before normalization or delegation (2.704334ms)
+✔ Test Promote refuses reviewed-scope-stale before normalization or delegation (15.738417ms)
+✔ Test Promote refuses reviewed-scope-read-unavailable before normalization or delegation (7.808542ms)
+✔ real Review projection preserves completeness checkbox labels in action output (17.621709ms)
+✔ Review consumes normalized typed labels before transitions or reviewer work (296.278708ms)
+✔ real registry preserves reviewed-scope-current-missing without an unclassified fallback (2.3905ms)
+✔ real registry preserves reviewed-scope-stale without an unclassified fallback (1.884584ms)
+✔ real registry preserves reviewed-scope-comment-invalid without an unclassified fallback (1.530291ms)
+✔ real registry preserves reviewed-scope-wrong-checkout without an unclassified fallback (1.407416ms)
+✔ real registry preserves reviewed-scope-read-unavailable without an unclassified fallback (1.265292ms)
+✔ reviewed Scope guard is registered only in Test exit (0.137875ms)
+✔ read-only Review collector threads explicit execution and invoking directories (2.280875ms)
+✔ Review evaluator retains injected authoritative reviewed Scope ports (2.721334ms)
+Started #1857.
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+Resumed #1857.
+✔ question hooks close only their own actor interval and resume without charging the wait (388.892334ms)
+✔ question reply ambiguity retains the original row and replays before resuming (270.498334ms)
+✔ question marker cannot substitute another event for the frozen resume (293.137917ms)
+✔ question hook respects its own manual pause without creating a resume marker (166.960333ms)
+✔ flush preserves genuine own wall interval and unknown estimate despite another actor tail (189.64325ms)
+✔ first attributed interruption retains observed cursor delta without a fabricated opener (190.91175ms)
+✔ update preserves cumulative actor cursor and unknown total after an unavailable estimate (236.789ms)
+✔ real start pause and resume retain one actor identity and explicit current boundaries (410.566791ms)
+✔ phase boundary flushes own actor interval and shared lifecycle rows do not duplicate actor work (190.73725ms)
+✔ Test interlock records actual verification engagement from a paused own binding (197.44475ms)
+✔ status distinguishes missing activity observation from zero work (125.944625ms)
+✔ failed Test execution retains both its failure and actual actor work (204.397917ms)
+✔ session tracking initializes a versioned own cursor and refuses corrupt existing authority (173.594042ms)
+✔ failed publication retains original row and cursor, then exact replay precedes new work (365.809917ms)
+✔ publication cannot overwrite a concurrently changed own timing boundary (117.785375ms)
+✔ Review human handoff flushes actual actor work before pausing its own binding (191.139334ms)
+✔ compaction hooks use the same actor journal and never resume a paused binding (310.704083ms)
+✔ session restart records unknown prior work without synthesizing historical active or idle time (262.575625ms)
+✔ actual hook entrypoint refuses a foreign payload actor before mutating timing state (245.247375ms)
+✔ actual idle SessionStart preserves cumulative actor word evidence (491.216958ms)
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+✔ review reproduction: legacy session cursor survives first actor flush (335.193125ms)
+✔ explicit pause after Test handoff is idempotent (195.993375ms)
+✔ explicit pause after Review handoff is idempotent (183.925125ms)
+✔ production Test sandbox admits real Git identity outside artifact roots (102.327916ms)
+✔ upgrade cursor is scoped to the state-owning project, not ambient root (122.303291ms)
+✔ upgrade refuses invalid own cursor and never imports global timing history (125.547334ms)
+Stopped #1857: +0 active min, +0 words. Use "/task resume <N>" to return to it later.
+✔ paused binding does not publish unmatched stop (874.673375ms)
+✔ paused binding does not publish unmatched switch-out:#1861 (178.865292ms)
+✔ paused binding does not publish unmatched switch-out (187.632208ms)
+✔ generated child records six final-HEAD targets, blocks artifact drift, recovers, and bounds twenty refresh rounds (2207.321167ms)
+✔ recording an ineligible Acceptance Criteria target refuses before comment or body writes (268.410417ms)
+✔ recording an ineligible Definition of Done target refuses before comment or body writes (255.774ms)
+✔ recording an ineligible Verification Commands target refuses before comment or body writes (255.3925ms)
+✔ recording a directory-backed target refuses before comment or body writes (270.171041ms)
+✔ wrong session binding refuses before comment or body writes (265.154ms)
+✔ a missing physical artifact refuses before comment or body writes (246.54375ms)
+✔ stale raw manifest bytes refuse before comment or body writes (281.379666ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.scratch/test/aitm-1857-close-wiring-KgBuYR for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.scratch/test/aitm-1857-close-wiring-dJjCh5 for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.scratch/test/aitm-1857-close-wiring-qzT2RK for #1857
+[task-tracker] ⛔ Refusing to finalize #1857: close-estimation-delivery-authority:lineage-unavailable. Completion outcome evidence did not converge; local state remains active for retry.
+#1857 closed-issue finalize failed at ensureOutcome: completion outcome evidence did not converge. Local task state was retained for retry.
+✔ #1857 no-command child Close uses posted deliverable and exact accepted Test Review heads (149.656542ms)
+✔ #1857 child outcome callback obtains the existing lineage gate exact census (84.8295ms)
+✔ #1857 skipped child lineage cannot become canonical outcome authority (98.26375ms)
+[task-tracker] Could not move 9 to done: move-state exited 5
+BLOCKED: illegal transition: backlog → done. Allowed: assigned.
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 9 done
+✔ runMoveStateInProcess drives the in-process host with the right argv/env (no spawn) (1.162291ms)
+✔ runMoveStateInProcess folds extraArgs (--force) into the synthetic argv (1.896084ms)
+✔ runMoveStateInProcess strips a leading # from the issue (0.197583ms)
+✔ exit-5 done→done self-loop is classified benign via tee-captured stderr (0.438916ms)
+✔ exit-5 test→test self-loop is classified benign (0.206666ms)
+✔ exit-5 genuine illegal transition (backlog→done) is NOT benign (0.542333ms)
+✔ SKIP_NETWORK short-circuits without calling the host (0.086375ms)
+✔ process.stdout/stderr are restored after the in-process call (0.152541ms)
+✔ runtime forwards authoritative execution and invoking directories to the lower host (0.135083ms)
+✔ fresh current body, not the caller snapshot, is scanned when no normalization is pending (0.978125ms)
+✔ failed current-body read refuses instead of returning the stale caller snapshot (0.485583ms)
+✔ missing complete evaluator cannot enter the old derive-before-readiness path (0.094958ms)
+✔ missing execution HEAD refuses instead of stamping unknown provenance (0.19825ms)
+✔ both execution HEAD reads use the authoritative project directory (0.676375ms)
+✔ an absent authoritative directory refuses before any HEAD read (0.961625ms)
+ℹ tests 74
+ℹ suites 0
+ℹ pass 74
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5300.600375

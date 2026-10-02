@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { resolveRuntimeRoot } from './lib/runtime-storage.mjs';
 
 export const SHARED_DIR = '.ai-task-manager';
 export const LEGACY_CLAUDE_DIR = '.claude';
@@ -119,7 +120,7 @@ export function existingRuntimePath(projectDir, runtimePath) {
 
 // Resolves the project root. Precedence: AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd.
 export function getProjectDir(env = process.env, cwd = process.cwd()) {
-  return env.AI_TASK_MANAGER_PROJECT_DIR || env.CLAUDE_PROJECT_DIR || cwd;
+  return resolveRuntimeRoot({ env, cwd }).projectRoot;
 }
 
 // Returns a project-local scratch directory, creating it if needed.

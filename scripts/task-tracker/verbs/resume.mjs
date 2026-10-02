@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { timingActorKey } from '../lib/timing-actor.mjs';
 
 import {
   loadState,
@@ -23,6 +24,7 @@ import { finalizeOrphanPause } from '../orphan-finalize.mjs';
 import { seedSessionKanbanFromBody } from '../lib/seed-kanban-cache.mjs';
 import {
   resolveBindEvent,
+  timingBodyForActor,
   timingCommentHasRows,
   assertPairedReengagement,
   detectUnmarkedDepartureGap,
@@ -247,6 +249,7 @@ export async function verbResume(ctx) {
       const { buildRow } = await import('../gh-timing-comment.mjs');
       const row = buildRow({
         ts,
+        actorKey: timingActorKey({ provider: aiAppName(), sid }),
         event: 'resumed',
         activeSec: 0,
         idleSec,
@@ -408,6 +411,7 @@ export async function verbResume(ctx) {
     const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
     let hasTimingHistory = false;
     let tcBody = '';
+    let wholeTimingBody = '';
     let readStatus = null;
     let tcResult = null;
     if (cfg?.repo) {
@@ -420,7 +424,8 @@ export async function verbResume(ctx) {
         issueNumber: String(normalizedTarget).replace(/^#/, ''),
         repo: cfg.repo,
       });
-      tcBody = gh.bodyOf(tcResult);
+      wholeTimingBody = gh.bodyOf(tcResult);
+      tcBody = timingBodyForActor(wholeTimingBody, timingActorKey({ provider: aiAppName(), sid }));
       readStatus = tcResult?.status ?? null;
       hasTimingHistory = timingCommentHasRows(tcBody);
     }
@@ -435,7 +440,8 @@ export async function verbResume(ctx) {
       timingBody: cfg?.repo ? tcBody : null,
       readStatus,
     });
-    const terminalReviewHandoff = reopeningBoundTimer && isTerminalReviewHandoffOpen(tcBody);
+    const terminalReviewHandoff =
+      reopeningBoundTimer && isTerminalReviewHandoffOpen(wholeTimingBody);
     // #534 AC5/AC7 — orphan-pairing guard. Never post a re-engagement with no
     // open interruption AND no prior `start` to pair against.
     // #568 — downgrade to `start` ONLY on positive confirmation the log is empty
@@ -511,6 +517,7 @@ export async function verbResume(ctx) {
     if (!suppressBindEvent) {
       const row = buildRow({
         ts,
+        actorKey: timingActorKey({ provider: aiAppName(), sid }),
         event: bindEvent,
         activeSec: 0,
         idleSec,

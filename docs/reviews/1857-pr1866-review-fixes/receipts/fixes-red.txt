@@ -1,0 +1,101 @@
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+nothing to pause
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+nothing to pause
+✖ review reproduction: legacy session cursor survives first actor flush (113.734458ms)
+✖ explicit pause after Test handoff is idempotent (731.767958ms)
+✖ explicit pause after Review handoff is idempotent (385.810875ms)
+✖ production Test sandbox admits real Git identity outside artifact roots (228.668625ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.scratch/test/aitm-1857-close-wiring-qEeA74 for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.scratch/test/aitm-1857-close-wiring-Pa9DHT for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.scratch/test/aitm-1857-close-wiring-IXukx3 for #1857
+[task-tracker] ⛔ Refusing to finalize #1857: close-estimation-delivery-authority:lineage-unavailable. Completion outcome evidence did not converge; local state remains active for retry.
+#1857 closed-issue finalize failed at ensureOutcome: completion outcome evidence did not converge. Local task state was retained for retry.
+✔ #1857 no-command child Close uses posted deliverable and exact accepted Test Review heads (26.834334ms)
+✔ #1857 child outcome callback obtains the existing lineage gate exact census (5.456833ms)
+✔ #1857 skipped child lineage cannot become canonical outcome authority (3.950666ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 3
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1676.952834
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:65:1
+✖ review reproduction: legacy session cursor survives first actor flush (113.734458ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 100
+  
+      at file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:75:12
+      at fixture (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:55:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:66:3)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 100,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:82:3
+✖ explicit pause after Test handoff is idempotent (731.767958ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:95:14
+      at async fixture (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:55:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:82:3
+✖ explicit pause after Review handoff is idempotent (385.810875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:95:14
+      at async fixture (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:55:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:102:1
+✖ production Test sandbox admits real Git identity outside artifact roots (228.668625ms)
+  Error [RuntimeRootError]: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.ai-task-manager/runtime/test-fixtures/sandbox-admission-S9PlxT/.scratch/.task-test-1857-deadbeef-1234-deadbeef
+      at fail (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:44:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:183:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/task-tracker/paths.mjs:123:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs:108:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }

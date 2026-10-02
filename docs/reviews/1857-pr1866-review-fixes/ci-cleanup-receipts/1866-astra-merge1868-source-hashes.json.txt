@@ -1,0 +1,145 @@
+{
+  "reviewed_head": "e545522e467e484bd96db3b327fc8ccd0047c086",
+  "merge_parents": [
+    "01e06747af25895998401698eb06b849028880e1",
+    "5b06fe9590d29e186d1b505dd0b2186f6ad8d236"
+  ],
+  "merge_delta_sha256": "d1d076277f1847b7a6af23182e6f5e289b0f6a08cf6ccba575e5abfeba1ee97b",
+  "source_and_incoming_archive_files": [
+    {
+      "path": "scripts/task-tracker/lib/action-decision/close.mjs",
+      "sha256": "6534ab60e849faa4117206cc1e006de5f807ba1a41023ddcccc37764567584b4"
+    },
+    {
+      "path": "scripts/task-tracker/lib/action-decision/contract.mjs",
+      "sha256": "9423e04fde8233f148f8daf9e20d099917b95186c24589fae56f16f34991cc72"
+    },
+    {
+      "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+      "sha256": "0d888063a70c452330e7276c7939df35431978fd41e869b0b40bcf5f49101a5f"
+    },
+    {
+      "path": "scripts/task-tracker/lib/close-gates-lineage.mjs",
+      "sha256": "5837e6d7b7bf63b0fd50a225aaec710b99baf5606b4236ccf8d22fc52dcbc2cc"
+    },
+    {
+      "path": "scripts/task-tracker/lib/resolve-epic-lineage.mjs",
+      "sha256": "9e00f168eaddb8fb3ee252f9eb6becf683193fc2388d976c92dccc8c80d4f615"
+    },
+    {
+      "path": "scripts/task-tracker/runtime.mjs",
+      "sha256": "dd1fd03df8f9c19d4dfa8e4cffa2748805861eb3e52a209ca7662bc797c821b5"
+    },
+    {
+      "path": "scripts/task-tracker/state.mjs",
+      "sha256": "ffa82fb0f054b5d3b98abb1a1e4ff3ddbb5d5522a28e20e7876f41db24c52c90"
+    },
+    {
+      "path": "scripts/tests/fixtures/1558/actual-explain-traffic-final.json",
+      "sha256": "719642b0bafc783942ce6b8de965caceebad728436f4b5158de5e9829761db23"
+    },
+    {
+      "path": "scripts/tests/fixtures/1558/context-comparison-final-paired.json",
+      "sha256": "06ed4fa597a109a4b3125f34474a2298b5cc22e82b14c097f4a72b8a879da36b"
+    },
+    {
+      "path": "scripts/tests/fixtures/1558/final-capture-manifest.json",
+      "sha256": "ede1374f6dc99cbeed75c445973caed12155ed306ac26887f5843d0650efe525"
+    },
+    {
+      "path": "scripts/tests/fixtures/1558/lifecycle-transcript-final.json",
+      "sha256": "258e074f38f950f7fe2db5deabaab7d73ad2ae2d97311372890e0a4a731ba7b3"
+    },
+    {
+      "path": "scripts/tests/fixtures/1558/residual-legacy-review.json",
+      "sha256": "d05c06de069c09597405877a25633eead68d31c0758a354db0d63d7909391e9e"
+    },
+    {
+      "path": "scripts/tests/helpers/capture-guidance-release.mjs",
+      "sha256": "cb6dc24e9f879c86f8f7cd756137767d8f9962a10f9d6e1ee1e85b36eddcc9da"
+    },
+    {
+      "path": "scripts/tests/helpers/generate-current-guidance-evidence.mjs",
+      "sha256": "e016ac0b4c7dfabb11231fe2738d90b1860a1569ab376e79e5853f1e4faf54bf"
+    },
+    {
+      "path": "scripts/tests/helpers/guidance-capture-provenance.mjs",
+      "sha256": "f64b55892404d84a3f7455386f24f5a909c898b81dce4a0951296980cc319d89"
+    },
+    {
+      "path": "scripts/tests/helpers/guidance-paired-context.mjs",
+      "sha256": "6154f31e626a62c1471ae0fcf319ddb9e9d8f663cd4cfc813688867006dfeaba"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-close-default.test.mjs",
+      "sha256": "9523518f495061e0a2357e741e072241e23006e5c1095c7dd3d9c8a858c51289"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-close-local-parent.test.mjs",
+      "sha256": "8f301036e8aef9f1fffbc45e893fbc59575f5b5a56ea01152c21b51ef26be291"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-close-local-trunk.test.mjs",
+      "sha256": "f5c969650a38206eac2ce501e37d11496695dd9f551333452e99b636a326d0c7"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-close.test.mjs",
+      "sha256": "310f9b3ae86fffed0acd31ceb5783277defa1f383f5064e5cfc0ce030b30dbfb"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs",
+      "sha256": "343c37bb2f4ae25ba2ef967b73875a416097a26425e7b563b675f3b62ec82c84"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "sha256": "a5a70d42105ad7f5735d8b56793aa66e3a97afea7c65628d70469064c6139a5c"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+      "sha256": "7d9bebe6a6e7a53245e384aa35108d725d8c15a35e395312306969c6f0c937d8"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs",
+      "sha256": "e69010569b7c2be51429267a6304239951fcf2a68cf181beb645890020e91cbf"
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs",
+      "sha256": "428c6dacc39a3fe4a2d54c706e1f7b03277a4a8803ee7e31bd5aa34f30a40fda"
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/close-gates-lineage.test.mjs",
+      "sha256": "64b8b21b75a16bcd98e202caa35dc967df73d69e847ee092e1c54f306524922f"
+    }
+  ],
+  "current_evidence": [
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
+      "sha256": "d13f4254a3f069b8ad8b1533e0d766cd320df7fb817d1c4421ba30fc92b0939c"
+    },
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/context-budgets-final.json",
+      "sha256": "91690c18812a3a2c5b0f35c314d67a63969838297e4cf5d47dd6d95c7e4209ba"
+    },
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/context-comparison-final-paired.json",
+      "sha256": "bd7cd61108fc9da6359e1be3aff39160b2e3bf8c048ab29b9076bfb2a1fea3a8"
+    },
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json",
+      "sha256": "6b52179b8f05cb60e793832e3d44aa658cae7d129755493ace52a2e8d1251211"
+    },
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/lifecycle-transcript-final.json",
+      "sha256": "83c5e42b942769d770248b3396741038f889b15212ba81254140a9d0682f6fd8"
+    }
+  ],
+  "original_1558_incoming_paths_match_trunk": true,
+  "post_merge_fixture_correction": [
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+      "sha256": "c9b42e13d224a74758c7c252b28ced1abf54c97e85817f4bd78a7c65f65f4eaf",
+      "change": "dotAll regex flag for trailing multiline fixture comment"
+    }
+  ],
+  "post_merge_working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

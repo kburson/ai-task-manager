@@ -832,6 +832,22 @@ export async function emitSandboxVerificationFailureTimeline({
   });
 }
 
+export async function pauseReviewTiming(ctx, target) {
+  const before = loadState(ctx.statePath);
+  if (before.active !== target) throw new Error('REVIEW_TIMING_BINDING_MISMATCH');
+  if (before.entryStartTs) {
+    const { flushBoundActorInterval } = await import('../runtime.mjs');
+    await flushBoundActorInterval(ctx, {
+      issue: target,
+      event: 'pause:other',
+      description: 'review handed off for human approval',
+    });
+  }
+  const current = loadState(ctx.statePath);
+  if (current.active !== target) throw new Error('REVIEW_TIMING_BINDING_MISMATCH');
+  saveState(pauseTimingKeepBinding(current, target), ctx.statePath);
+}
+
 export async function verbReview(ctx) {
   const {
     cfg,
@@ -1805,7 +1821,7 @@ export async function verbReview(ctx) {
     ) {
       const liveState = loadState(statePath);
       const hadActiveSession = hasAgentTiming || liveState.active === target;
-      saveState(pauseTimingKeepBinding(liveState, target), statePath);
+      await pauseReviewTiming(ctx, target);
       if (hadActiveSession) {
         try {
           setTaskStatus(projectDir, target, 'paused');

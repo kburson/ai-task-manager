@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 // @story #309
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -94,14 +99,12 @@ assert.equal(s.lastActive, 'discover', 'legacy plan in lastActive migrates');
 assert.ok(s.discoverBucket, 'planBucket migrates to discoverBucket');
 assert.equal(s.planBucket, undefined, 'legacy planBucket is dropped');
 
-// Test 5: corrupt file returns empty state (does not throw)
-// Note (#212): per-session bound-issue state now lives in
-// .ai-task-manager/sessions/<sid>/active-task.json. Clear it first so this
-// test exercises the corrupt-global-file path in isolation.
+// Test 5: corrupt shared compatibility bytes cannot erase own actor history.
 clearActive(statePath);
+const ownBeforeCorruption = loadState(statePath);
 writeFileSync(statePath, '{not json');
 s = loadState(statePath);
-assert.deepEqual(s, EMPTY_STATE);
+assert.deepEqual(s, ownBeforeCorruption);
 
 // Test 6: preferred .ai-task-manager state reads legacy .claude state as fallback
 saveState({ active: '#200', lastActive: '#199' }, legacyStatePath);
@@ -134,6 +137,7 @@ assert.equal(s.active, '#201');
     AI_TASK_MANAGER_PROJECT_DIR: process.env.AI_TASK_MANAGER_PROJECT_DIR,
   };
   for (const k of Object.keys(savedEnv)) delete process.env[k];
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-relative-state';
   try {
     process.chdir(relTmp);
     const rel = '.ai-task-manager/task-tracker-state.json';
@@ -141,7 +145,7 @@ assert.equal(s.active, '#201');
       {
         active: '#212',
         lastActive: '#212',
-        entryStartTs: 'x',
+        entryStartTs: '2026-10-01T00:00:00Z',
         wordsAtEntryStart: 1,
       },
       rel
@@ -159,7 +163,7 @@ assert.equal(s.active, '#201');
       '.tmp',
       'aitm',
       'sessions',
-      'default-session',
+      'fixture-relative-state',
       'active-task.json'
     );
     assert.equal(
@@ -202,8 +206,8 @@ assert.equal(
   'legacy per-session full cursor participates in the durable maximum'
 );
 
-// Test 11 (#475 AC1): durableWordMarker reads lastWordMarker off the on-disk
-// global ledger, and returns 0 when the project has no state yet.
+// Test 11 (#475 AC1): durableWordMarker reads this actor's own persisted cursor,
+// and returns 0 when the project has no state yet.
 {
   const cwdBefore = process.cwd();
   const dwTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-dw-'));
@@ -216,6 +220,7 @@ assert.equal(
     AI_TASK_MANAGER_PROJECT_DIR: process.env.AI_TASK_MANAGER_PROJECT_DIR,
   };
   for (const k of Object.keys(savedEnv)) delete process.env[k];
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-durable-marker';
   try {
     process.chdir(dwTmp);
     // No state file yet => 0.

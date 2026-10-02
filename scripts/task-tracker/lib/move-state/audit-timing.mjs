@@ -18,7 +18,6 @@
 // builtins are imported directly here (identical module instances, no behavior
 // drift).
 
-import { durableWordMarkers, bankTranscriptTail } from '../../state.mjs';
 import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { splitTimingRowMarker } from '../timing-row-reader.mjs';
@@ -51,38 +50,27 @@ export async function emitPhasePairRows(ctx) {
     ctx;
   if (SKIP_NETWORK) return;
   try {
-    const { timing, rows, events } = await resolveTimingDeps(ctx);
-    const { buildRow, postTimingEvent, readTimingCommentBody, bodyOf } = timing;
-    const { deriveStateMoveDelta, computePhaseCloseDelta } = rows;
+    const { timing, events } = await resolveTimingDeps(ctx);
+    const { buildRow, postTimingEvent } = timing;
     const { PHASE_EVENTS } = events;
 
+    if (ctx.deps?.flushBoundActorInterval) {
+      await ctx.deps.flushBoundActorInterval({ issue: issueArg });
+    } else {
+      const runtime = await import('../../runtime.mjs');
+      const actorContext = ctx.deps?.actorContext ?? runtime.buildContext(['status']);
+      await runtime.flushBoundActorInterval(actorContext, { issue: issueArg });
+    }
     const ts = new Date().toISOString();
     const prev = resolvedFromState || '';
-    const timingBody = bodyOf(
-      await readTimingCommentBody({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        timeoutMs: GH_API_TIMEOUT_MS,
-      })
-    );
-    const { activeSec, idleSec } = deriveStateMoveDelta(timingBody, ts);
+    // Shared stage boundaries do not claim actor engagement a second time.
+    const activeSec = 0;
+    const idleSec = 0;
 
-    // EPIC #823 (C8, #832) — bank the uninterrupted transcript tail into the
-    // durable marker BEFORE reading it, so the `<phase>:completed` row (and the
-    // own-issue Δwords the close walker derives from the marker cells) credits
-    // words accrued since the last flush. Promote verbs never call
-    // `flushActiveToGH`, so without this bank an uninterrupted phase span leaves
-    // its words stranded in the per-sid cursor and the completed row reads 0.
-    // Injectable for tests (`ctx.deps.bankTail`); best-effort in production.
-    const bankTail = (ctx.deps && ctx.deps.bankTail) || bankTranscriptTail;
-    const banked = bankTail(getProjectDir());
-
-    // #475 AC1 — every phase-pair row carries the carried-forward durable
-    // marker rather than collapsing to 0.
-    const durable = durableWordMarkers(getProjectDir());
-    const _phaseMarker = banked?.marker ?? durable.marker;
-    const _phaseFullMarker = banked?.fullMarker ?? durable.fullMarker;
-    const _phaseFullObservation = banked?.fullMarkerAvailable === false ? null : _phaseFullMarker;
+    // Actor words were banked by the exact flush above. Shared phase facts
+    // carry no actor cursor and cannot credit that work again.
+    const _phaseMarker = 0;
+    const _phaseFullObservation = 0;
     const withTransition = (row) => {
       if (!ctx.transitionId) return row;
       const { core, marker } = splitTimingRowMarker(row);
@@ -141,15 +129,9 @@ export async function emitPhasePairRows(ctx) {
       // active sub-spans, so an intervening `pause` / `switch-out` / `review`
       // bracket (idle, or the peer's away words) is excluded — the words land on
       // THIS completed row, not the interruption row (AC1/AC2).
-      const close = computePhaseCloseDelta(timingBody, prev, ts, _phaseMarker);
-      const closeActive = close.matched ? close.activeSec : activeSec;
-      const closeIdle = close.matched ? close.idleSec : idleSec;
-      const deltaWords =
-        close.matched && Number.isFinite(close.deltaWords)
-          ? Math.max(0, close.deltaWords)
-          : close.matched && Number.isFinite(close.startWordMarker)
-            ? Math.max(0, _phaseMarker - close.startWordMarker)
-            : 0;
+      const closeActive = 0;
+      const closeIdle = 0;
+      const deltaWords = 0;
       const row = buildRow({
         ts,
         phase: { state: prev, phase: 'complete' },
@@ -302,30 +284,18 @@ export async function emitOutOfBandAudit(ctx) {
     /* best-effort */
   }
   try {
-    const { timing, rows } = await resolveTimingDeps(ctx);
-    const { buildRow, postTimingEvent, readTimingCommentBody, bodyOf } = timing;
-    const { deriveStateMoveDelta } = rows;
-    // Best-effort fetch of the timing-log comment body (where prior rows live).
-    // The issue body never contains timing rows. If the fetch fails the delta
-    // is honest 0/0.
-    const _timingBodyM2 = bodyOf(
-      await readTimingCommentBody({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        timeoutMs: GH_API_TIMEOUT_MS,
-      })
-    );
-    const _dM2 = deriveStateMoveDelta(_timingBodyM2, ts);
-    const markers = durableWordMarkers(getProjectDir());
+    const { timing } = await resolveTimingDeps(ctx);
+    const { buildRow, postTimingEvent } = timing;
+    // A shared correction fact does not prove any actor's engagement or words.
+    // The actor flush owns those observations and retains unknown coverage.
     const row = buildRow({
       ts,
       event: 'out-of-band-move',
-      activeSec: _dM2.activeSec,
-      idleSec: _dM2.idleSec,
+      activeSec: 0,
+      idleSec: 0,
       deltaWords: 0,
-      // #475 AC1 — carried-forward durable marker (out-of-band audit row)
-      wordMarker: markers.marker,
-      fullWordMarker: markers.fullMarker,
+      wordMarker: 0,
+      fullWordMarker: 0,
       description: `${fromLabel}→${stateArg}: ${outOfBandReason}`,
     });
     await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });

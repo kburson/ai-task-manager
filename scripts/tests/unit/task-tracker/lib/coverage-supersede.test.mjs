@@ -14,6 +14,11 @@
 // default I/O helpers (issueExists / mutateBody / postComment / closeNotPlanned)
 // are covered by a non-trapping runSupersede call that injects only runMoveState
 // and drives the rest against a stateful fake `gh` on PATH.
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';

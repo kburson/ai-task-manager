@@ -1,9 +1,10 @@
 // @story #1859
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { writeFileSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import { uncheckedPreCloseCheckboxes } from '../../../../task-tracker/close-gate.mjs';
 import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
 
@@ -16,9 +17,19 @@ for (const lane of ['delivered', 'local-trunk']) {
   test(`Close preserves unchecked reasons after ${lane} authority with old attachments removed`, async () => {
     const projectDir = mkdtempProjectIsolated('aitm-close-normalization-');
     const statePath = path.join(projectDir, 'state.json');
-    writeFileSync(
-      statePath,
-      JSON.stringify({ active: '#1669', entryStartTs: new Date().toISOString(), lastWordMarker: 0 })
+    // #1857: seed the current actor contract in this isolated fixture.
+    const actorEnv = {
+      AI_TASK_MANAGER_SESSION_ID: 'fixture-normalization-1669',
+      AI_TASK_MANAGER_APP_NAME: 'codex',
+      AI_TASK_MANAGER_PROJECT_DIR: projectDir,
+    };
+    const priorEnv = Object.fromEntries(
+      Object.keys(actorEnv).map((key) => [key, process.env[key]])
+    );
+    Object.assign(process.env, actorEnv);
+    saveState(
+      { active: '#1669', entryStartTs: new Date().toISOString(), lastWordMarker: 0 },
+      statePath
     );
     // No original checkout or attachment exists in this isolated fixture. Close
     // consumes accepted terminal authority, while completeness remains live.
@@ -111,6 +122,10 @@ for (const lane of ['delivered', 'local-trunk']) {
       process.exit = previousExit;
       console.error = previousError;
       process.exitCode = previousExitCode;
+      for (const [key, value] of Object.entries(priorEnv)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
       rmSync(projectDir, { recursive: true, force: true });
     }
   });

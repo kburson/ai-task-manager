@@ -24,9 +24,10 @@
 // (`computeEvaluation`) is injectable. Both keep the hook testable without a live
 // repo or `gh`.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { resolveRuntimeRoot } from './lib/runtime-storage.mjs';
 
 import { SCRATCH_REL_PREFIX } from './paths.mjs';
 import { currentBranch } from './fleet-registry.mjs';
@@ -152,15 +153,7 @@ function readStdin() {
 }
 
 function findProjectDir(startDir) {
-  if (process.env.AI_TASK_MANAGER_PROJECT_DIR) return process.env.AI_TASK_MANAGER_PROJECT_DIR;
-  let dir = path.resolve(startDir || process.cwd());
-  for (let i = 0; i < 8; i++) {
-    if (existsSync(path.join(dir, '.ai-task-manager'))) return dir;
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return null;
+  return resolveRuntimeRoot({ cwd: startDir || process.cwd() }).projectRoot;
 }
 
 function realGit(projectDir) {

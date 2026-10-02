@@ -1,3 +1,4 @@
+import { deriveActorEngagement, isUnknownActorRecovery } from '../../timing-engagement.mjs';
 // Agent Review Gate — V3 timing-log-sequence validator (#812, rewritten for the
 // timing model v2 grammar under #828).
 //
@@ -39,7 +40,7 @@ import { _tsToMs } from '../../timing-rows.mjs';
 import { parseTimingRow } from '../../timing-row-reader.mjs';
 import { stateIds, isTimingHistoryEdge, normalizeStateId } from '../../lifecycle-policy/index.mjs';
 
-const TIMING_LOG_RE = /⏱\s*Timing Log/;
+const TIMING_LOG_RE = /^(?:##\s+)?⏱\s*Timing Log\s*$/m;
 // The timing table's header row: `| Timestamp | Event | ... |`.
 const HEADER_RE = /^\|\s*Timestamp\s*\|\s*Event\b/i;
 // A markdown table separator row: `|---|---|...|` (dashes, colons, pipes only).
@@ -74,11 +75,10 @@ function baseSlug(event) {
 // Locate the ⏱ Timing Log comment body. Returns the body string or null.
 export function findTimingLogBody(comments) {
   const list = Array.isArray(comments) ? comments : [];
-  for (const c of list) {
-    const b = c && typeof c.body === 'string' ? c.body : '';
-    if (TIMING_LOG_RE.test(b)) return b;
-  }
-  return null;
+  const matches = list.filter(
+    (comment) => typeof comment?.body === 'string' && TIMING_LOG_RE.test(comment.body)
+  );
+  return matches.length === 1 ? matches[0].body : null;
 }
 
 // Extract the timing table's data rows from a comment body. Bounds the scan to
@@ -102,6 +102,13 @@ export function extractDataRows(logBody) {
       ts: row?.ts ?? '',
       event: row?.event ?? '',
       raw: line,
+      ...(row?.actorKey
+        ? {
+            actorKey: row.actorKey,
+            cells: row.cells,
+            ...(row.engagement ? { engagement: row.engagement } : {}),
+          }
+        : {}),
     });
   }
   return rows;
@@ -182,6 +189,7 @@ export function validate(context = {}) {
     return { pass: false, failures: ['⏱ Timing Log has no data rows'] };
   }
 
+  const previousByActor = new Map();
   let prevMs = null;
   let prevRow = null;
   // State-machine slot: 'idle' (nothing active) or 'active'. Starts 'idle' — the
@@ -197,6 +205,9 @@ export function validate(context = {}) {
   let sentinelResetIndex = 0;
 
   for (const row of rows) {
+    const prior = previousByActor.get(row.actorKey || 'legacy');
+    prevRow = prior || null;
+    prevMs = prior ? _tsToMs(prior.ts) : null;
     // --- Format schema -------------------------------------------------------
     const ms = _tsToMs(row.ts);
     if (!Number.isFinite(ms)) {
@@ -231,6 +242,7 @@ export function validate(context = {}) {
       prevMs != null &&
       ms - prevMs > SUSPICIOUS_GAP_SEC * 1000 &&
       prevRow &&
+      !isUnknownActorRecovery(row) &&
       !isDepartureEvent(prevRow.event)
     ) {
       failures.push(
@@ -241,6 +253,7 @@ export function validate(context = {}) {
     }
     prevMs = ms;
     prevRow = row;
+    previousByActor.set(row.actorKey || 'legacy', row);
 
     // --- Reconciliation vs aitm-entered markers ------------------------------
     const lifecycleStage = stageOf(row.event);
@@ -287,6 +300,8 @@ export function validate(context = {}) {
       }
     }
 
+    if (row.actorKey) continue;
+
     // --- State-machine walk (skip / double detection) ------------------------
     if (isDepartureEvent(row.event)) {
       if (state === 'idle') {
@@ -320,6 +335,13 @@ export function validate(context = {}) {
       lastActiveRow = row;
       openDeparture = null;
     }
+  }
+
+  if (rows.some((row) => row.actorKey)) {
+    const engagement = deriveActorEngagement(rows, rows.at(-1).ts);
+    failures.push(...engagement.failures);
+    for (const actorKey of engagement.incompleteActors)
+      failures.push('incomplete actor engagement: ' + actorKey);
   }
 
   // Trailing unclosed interruption: the log ends idle with an interruption that

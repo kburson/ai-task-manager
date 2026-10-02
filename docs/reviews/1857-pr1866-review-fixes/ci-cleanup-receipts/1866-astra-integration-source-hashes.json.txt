@@ -1,0 +1,257 @@
+{
+  "head": "7b5fa0faaaf975875b5405f520abce3a3f5f0189",
+  "comparison_base": "5de3d7536b6cc27f1b379258f59130869f372d6f",
+  "tracked_diff_sha256": "dcb3701760704ba55605cadc5bafa4592bce6f67f270d9339efc0bd2a0d3b3a5",
+  "files": [
+    {
+      "path": ".markdownlint-cli2.jsonc",
+      "sha256": "7b04d08db8b1d5d8428adf6aeec4e23847b743b1e06ebb46833e692b131a2adf"
+    },
+    {
+      "path": ".prettierignore",
+      "sha256": "cd02ff789b4bfd4a8d5f92dc4e8e2faba9b781769097081670b73acc40a85d33"
+    },
+    {
+      "path": "cspell.json",
+      "sha256": "40bb13e207024e4beaf93fbd9848554968e3195c1b98387b18bde291e84043de"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "sha256": "810f939a22495909730123432520ce926e8504f36288750c6d096143f4463fae"
+    },
+    {
+      "path": "scripts/task-tracker/lib/scratch-dir.mjs",
+      "sha256": "0e5fd4100438617dc2f1550e266a14b92083b7d04d2dd74fae03d2563e0802f2"
+    },
+    {
+      "path": "scripts/task-tracker/lib/timing-rows.mjs",
+      "sha256": "37ebf02f4356c4559dc901853b6a5909c2f43bbb7f0c81c39405a1df22082b78"
+    },
+    {
+      "path": "scripts/task-tracker/measure-guidance-context.mjs",
+      "sha256": "7d78c8ee78be83af3c73da631b0bc2a5938494fb8c6c6d91417e777bb425ef9b"
+    },
+    {
+      "path": "scripts/tests/fixtures/1558/admission-surface.json",
+      "sha256": "f978a328fbf7b716e577bed20f77586abb40fbf490719b21bbc001cfaf4d8d86"
+    },
+    {
+      "path": "scripts/tests/helpers/action-session-executor-fixture.mjs",
+      "sha256": "35536a68db3d438d0eae3a0527109cf71780e30a35cef1855e88b9db09d36694"
+    },
+    {
+      "path": "scripts/tests/helpers/capture-guidance-release.mjs",
+      "sha256": "cb6dc24e9f879c86f8f7cd756137767d8f9962a10f9d6e1ee1e85b36eddcc9da"
+    },
+    {
+      "path": "scripts/tests/helpers/evidence-v2/git-boundary.mjs",
+      "sha256": "094c9a0d0213d55454cc8958e7919ad871c0473d083ca74d8d5aa603e74f281f"
+    },
+    {
+      "path": "scripts/tests/helpers/evidence-v2/process-bootstrap.mjs",
+      "sha256": "51538fc605e09fea3c8b040e25e4c9982ceb22e9c072a552f92dd2293fe80110"
+    },
+    {
+      "path": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "sha256": "c407205d68dd31c4413aef74543a04af3431d3b47ad3fa67539abdc71c7b3f1e"
+    },
+    {
+      "path": "scripts/tests/helpers/generate-current-guidance-evidence.mjs",
+      "sha256": "e016ac0b4c7dfabb11231fe2738d90b1860a1569ab376e79e5853f1e4faf54bf"
+    },
+    {
+      "path": "scripts/tests/helpers/guidance-capture-provenance.mjs",
+      "sha256": "f64b55892404d84a3f7455386f24f5a909c898b81dce4a0951296980cc319d89"
+    },
+    {
+      "path": "scripts/tests/helpers/guidance-paired-context.mjs",
+      "sha256": "6154f31e626a62c1471ae0fcf319ddb9e9d8f663cd4cfc813688867006dfeaba"
+    },
+    {
+      "path": "scripts/tests/helpers/refresh-guidance-admission-inventory.mjs",
+      "sha256": "8b1594eed305067c1d2eda2a846ee4a01eb2b0031cfc051171715f53b1f92299"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
+      "sha256": "0049d5ba1b8de8a01973cc594caf62c5ca39ed7fd440cf3a7739d9868105cad3"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
+      "sha256": "ea207b50850839a00ac87deda84b74eff63ab802ca8f3485658ca4ef72c9b7da"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-parity.test.mjs",
+      "sha256": "92a9f385a92d02cb7a420bcc059ef06b9bc033a5be4fa84e4b08528b1eef4b3b"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+      "sha256": "3bdbc302c6e346ce98ea835cec819d7471a96915c8b002fa6811d4f60fe205cf"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+      "sha256": "d13bc554dcb386e386536f485161e4fc297e57b71e5ddbd0f9e2118ca1a7c8c5"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs",
+      "sha256": "0195e9c55316f86b7ab3521f29acd7c34565db2d146164a6498e4b6332b24f1e"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
+      "sha256": "85e1cb1b7ac7cea6d2ceec2f80676763ae459d7509c34d668685753994151adb"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs",
+      "sha256": "10bdd1f23ab6c6787e9b8e43102fbaa7c45e1dfcbc27a536a16c82eab2439403"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs",
+      "sha256": "bd49462e30b3f9b1154de6146f59b57722edc63b9c3a20a41b7b79ca09e121f5"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/create-issue-partial-success.test.mjs",
+      "sha256": "c35bf533c63d41d8b0bdfa29a283b32562ec3150b3d2b7343bb40e8a692c6071"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+      "sha256": "6820cd77fbc373aae9496b13024cf35a691770eb01d88224308b0f79f6778cac"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+      "sha256": "4b201544d1e2d180d6ffb6df2277040777b90055d5cd0685e17f8d4055b5088a"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs",
+      "sha256": "343c37bb2f4ae25ba2ef967b73875a416097a26425e7b563b675f3b62ec82c84"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs",
+      "sha256": "84a24b050de36938fd1e58d2439c020448cb13958877615e6aed981ca98328cb"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs",
+      "sha256": "57c796270d8f4364580061eaf488fb12724dbf863807878eb75de78c3745ba0c"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/evidence-v2/rehearsal-cli.test.mjs",
+      "sha256": "86ee3526287e18a2e03a11a44d6cdc7e3923e4d605be4a0e8422e9cd1072634c"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+      "sha256": "429da16ac5dd3f1099b30bf150e1ede6399a567a8847fbb13b532053367d822e"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+      "sha256": "61bd463c57ad455f5216fc75b833e83063221764c2f797d095668682483ff0ce"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs",
+      "sha256": "c0174ceda722e43be0f2cef5a10ba5789e50a9ff5378eedce791bed007d4c157"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "sha256": "a5a70d42105ad7f5735d8b56793aa66e3a97afea7c65628d70469064c6139a5c"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs",
+      "sha256": "f5bdc469bf50c0fcb0ae1ea6794ae9cf987e098094c9dc69fc02684d44df5266"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs",
+      "sha256": "db5906aee8e38c558b030d56d178580cc0563a84499d58feecdcd67fbe71a9b5"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
+      "sha256": "5acda3bb70eb111f98ee7fcc0831a0dfe04a2f77754715045ba1031438978059"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
+      "sha256": "f109f7446309052f80e615473be7e97e54fff8db3e5f8c2f7a087f4b6aa5b4dd"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
+      "sha256": "38e3606f3c1b6616258f3660b90550d13b8f4154be90e6b763eceb6074853dcf"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/pause-marker-backtracking.test.mjs",
+      "sha256": "0ebca22836b0048d3e98738f7a6d363ce8404f79f8b1d47a049c2355c7d3e43f"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+      "sha256": "b16064e164aaf98344b2b2dc155463eae3a272e4c670e4ddaa0c32e38767b6b5"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
+      "sha256": "b9826b598bc15309d821ef87d55b2244eec01d3f21b2ab0256c51f27769af09c"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/resume-seed.test.mjs",
+      "sha256": "1fa254e653e07f385d9d99d8101d9738829afc529ee29de67f8b29161b448373"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs",
+      "sha256": "2961e54432479533603fe38800a07a0df049b99833af9af2557f578e685f8d5a"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs",
+      "sha256": "20eecebe7d6a37dc015817453b3d17ed5889f9d3818f473e5ea3811337451448"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs",
+      "sha256": "82250d496b3571774100ef4c1f39d8867e7119c3d37462ede6f147f6ba976487"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs",
+      "sha256": "935b95179aa75eca2da55e265cf74da5e1c73818870de976d90158ee736bd201"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+      "sha256": "a71357c2abcd25824e24baf2b89c820b050f17679a34483cf3041e382726e08f"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+      "sha256": "3bccf623373e2a6ff48127fd331a0c09221402c8c936de1e090c42fbd1825d0f"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
+      "sha256": "88033d38e10e1b1391f9d038915e9a9049c453ce7b9d56badc0f2223be42c2df"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/verbs/bind.test.mjs",
+      "sha256": "409147401534e10fbedb11ef21c49ab8d51ccb4e92d8eb4711e9ab2b260bb983"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs",
+      "sha256": "140534988ac115239dedc5edca44083861f5d6c7321cd8fa769417eb86df0ec5"
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/quality-config.test.mjs",
+      "sha256": "160b7f53f2b2c4e4179179395cba348e015c6893ddcbd852869b37e9b8f58095"
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs",
+      "sha256": "f4b91767aa512402459012ec5440acb8339e5934085f7ee28a10db0f21fb4c36"
+    }
+  ],
+  "current_evidence": [
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/context-budgets-final.json",
+      "sha256": "91690c18812a3a2c5b0f35c314d67a63969838297e4cf5d47dd6d95c7e4209ba"
+    },
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/lifecycle-transcript-final.json",
+      "sha256": "c46a15a1b8c0e537e56fb0fbb75b5825f373f1b6cd56912539209acf287ca939"
+    },
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
+      "sha256": "a247c30470d2794acc7b310648221728cc76d0e16802052ccec6fb40261a1bdd"
+    },
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/context-comparison-final-paired.json",
+      "sha256": "e3afc7263599e2a34f83ab9ac1488fa037c015d10a11d31f3f255ff20530d1f4"
+    },
+    {
+      "path": "scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json",
+      "sha256": "f73a4c4a3bf1d7873e9051fa5fe3e83f6fc4f1edb13cdbfcb9e234436b89d136"
+    }
+  ]
+}

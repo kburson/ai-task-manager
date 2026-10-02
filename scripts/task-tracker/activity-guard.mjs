@@ -50,12 +50,12 @@ import {
   loadPolicy,
   STATE_MATRIX,
   DRAFTING_STATES,
-  scratchShellTargets,
   extractWriteTargets,
 } from './activity-policy.mjs';
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
 import { readBoundState } from './lib/bound-state.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { artifactPathPolicy, resolveArtifactShell } from './lib/artifact-write-policy.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 import { extractApplyPatchTargets, extractApplyPatchText } from './lib/apply-patch-targets.mjs';
 
@@ -101,6 +101,30 @@ if (toolName === 'apply_patch') {
   } catch (error) {
     block(`[task-tracker] mutation target parsing failed: ${error.message}`);
   }
+}
+// Artifact authoring bypasses binding only after physical containment checks.
+if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
+  const paths =
+    toolName === 'apply_patch'
+      ? applyPatchTargets
+      : [toolInput.file_path ?? toolInput.notebook_path ?? toolInput.path ?? ''];
+  if (paths.length && paths.every((target) => typeof target === 'string' && target)) {
+    try {
+      const policies = paths.map((target) =>
+        artifactPathPolicy(resolveMutationTarget(target, invocationDir, projectRoot).relative)
+      );
+      if (policies.includes('block'))
+        block('Script formats are not permitted under docs/; use .scratch/ or .tmp/.');
+      if (policies.every((policy) => policy === 'allow')) process.exit(0);
+    } catch (error) {
+      block('[task-tracker] artifact target refused: ' + error.message);
+    }
+  }
+} else if (toolName === 'Bash') {
+  const artifact = resolveArtifactShell(toolInput.command, invocationDir, projectRoot);
+  if (artifact.status === 'block')
+    block('[task-tracker] artifact target refused: ' + artifact.reason);
+  if (artifact.status === 'allow') process.exit(0);
 }
 if (
   Object.hasOwn(input, 'session_id') &&
@@ -168,23 +192,6 @@ if (
         `  This refusal is unconditional — neither develop state nor chore-mode grants a bypass. Edit the package in its own source checkout and reinstall; never hand-edit the installed copy.`
     );
   }
-  // Carve-out: .scratch/** is disposable scratch, while .tmp/** remains
-  // machine-local runtime/generated output. Both are writable in every state.
-  // documented in CLAUDE.md "Tool Usage Rules"). Convention subfolders:
-  // .scratch/gh/ (issue body scratch), .scratch/plan/ (create-issue fragments),
-  // .scratch/heal/ (repair scratch), .scratch/inspect/ (ad-hoc scripts).
-  // Bypass classification so scratch writes are permitted in every kanban state.
-  if (
-    normalizedTargets.every(
-      (candidate) =>
-        candidate === '.tmp' ||
-        candidate.startsWith('.tmp/') ||
-        candidate === '.scratch' ||
-        candidate.startsWith('.scratch/')
-    )
-  ) {
-    process.exit(0);
-  }
   activityClasses = normalizedTargets.map((candidate) => classifyEdit(candidate, policy));
   activityClass = activityClasses[0];
 } else if (toolName === 'Bash') {
@@ -192,18 +199,6 @@ if (
   if (typeof command !== 'string' || !command) process.exit(0);
   target = command;
   activityClass = classifyBash(command, policy);
-  if (activityClass === 'WRITE_SCRATCH') {
-    try {
-      for (const scratchTarget of scratchShellTargets(command)) {
-        const resolved = resolveMutationTarget(scratchTarget, invocationDir, projectRoot);
-        if (!/^(?:\.scratch|\.tmp)(?:\/|$)/.test(resolved.relative))
-          throw new Error('scratch target resolves outside designated scratch');
-      }
-    } catch (error) {
-      block(`[task-tracker] scratch target refused: ${error.message}`);
-    }
-    process.exit(0);
-  }
   if (gitContext?.kind === 'commit') {
     try {
       const staged = readStagedRecords(gitContext.cwd);

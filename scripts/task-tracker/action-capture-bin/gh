@@ -2,6 +2,7 @@
 // @story #1295
 
 import { spawn } from 'node:child_process';
+import { resolveRuntimeRoot } from '../lib/runtime-storage.mjs';
 
 import {
   beginCapturedAction,
@@ -36,8 +37,8 @@ function requiredEnvironment(name) {
 }
 
 function startCapture(args, stdin) {
+  const projectDir = resolveRuntimeRoot().projectRoot;
   try {
-    const projectDir = requiredEnvironment('AITM_CAPTURE_PROJECT_DIR');
     return beginCapturedAction({
       projectDir,
       repository: requiredEnvironment('AITM_CAPTURE_REPOSITORY'),

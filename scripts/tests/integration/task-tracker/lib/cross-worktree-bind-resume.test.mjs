@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 // @story #1018
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import test from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
@@ -14,6 +20,7 @@ import {
   shouldSuppressActiveBindEvent,
 } from '../../../../task-tracker/lib/bind-event.mjs';
 
+import { timingActorMarker } from '../../../../task-tracker/lib/timing-actor.mjs';
 const row = (ts, event) => `| ${ts} | ${event} | 0 | 0 | 0 | 0 | test | <!-- row-sec: a=0 i=0 -->`;
 const body = (...rows) => ['| Timestamp | Event |', '|---|---|', ...rows].join('\n');
 
@@ -120,10 +127,12 @@ test('fresh worktree binds locally but posts no row over an already-active live 
   const tmp = mkdtempProjectIsolated('tt-cross-worktree-bind-');
   try {
     process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+    process.chdir(tmp);
     process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
     process.env.AI_TASK_MANAGER_SESSION_ID = 'cross-worktree-active-tail-1018';
     mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
-    const statePath = path.join(tmp, 'state.json');
+    const statePath = path.join(tmp, '.tmp', 'aitm', 'state', 'state.json');
+    mkdirSync(path.dirname(statePath), { recursive: true });
     writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }), 'utf8');
     const posts = [];
     const now = new Date();
@@ -131,7 +140,10 @@ test('fresh worktree binds locally but posts no row over an already-active live 
       .toISOString()
       .replace('T', ' ')
       .replace('Z', ' +00:00');
-    const timingBody = body(row(fiveMinutesAgo, 'plan:started'));
+    const timingBody = body(
+      row(fiveMinutesAgo, 'plan:started') +
+        timingActorMarker({ provider: 'claude', sid: process.env.AI_TASK_MANAGER_SESSION_ID })
+    );
 
     await verbResume({
       rest: ['#1018'],
@@ -146,10 +158,12 @@ test('fresh worktree binds locally but posts no row over an already-active live 
       seedKanban: async () => ({ kanbanState: 'develop' }),
     });
 
-    const persisted = JSON.parse(readFileSync(statePath, 'utf8'));
+    const { loadState } = await import('../../../../task-tracker/state.mjs');
+    const persisted = loadState(statePath);
     assert.equal(persisted.active, '#1018', 'the new local session is bound');
     assert.equal(posts.length, 0, 'no duplicate active→active reengagement row is posted');
   } finally {
+    process.chdir(fixtureOriginalCwd);
     rmSync(tmp, { recursive: true, force: true });
   }
 });

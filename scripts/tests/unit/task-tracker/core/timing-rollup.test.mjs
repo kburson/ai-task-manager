@@ -296,3 +296,32 @@ assert.deepEqual(
 );
 
 console.log('timing-rollup.test.mjs: all passed');
+
+import { test } from 'node:test';
+import { timingActorKey, timingActorMarker } from '../../../../task-tracker/lib/timing-actor.mjs';
+test('attributed rollup uses actor intervals even without raw body and excludes inferred waits', () => {
+  const key = timingActorKey({ provider: 'codex', sid: 'rollup-author' });
+  const actorRows = [
+    '| 2026-10-01 00:00:00 +00:00 | develop:started | | | | 0 | phase |',
+    '| 2026-10-01 00:01:00 +00:00 | pause | Unknown | Unknown | 12 | 112 | work | 1020 |' +
+      timingActorMarker(key) +
+      ' <!-- aitm-engagement:v1 start=1790812800000 end=1790812860000 active=unknown wstart=100 wend=112 fstart=1000 fend=1020 -->',
+    '| 2026-10-01 00:02:00 +00:00 | develop:completed | | | | 0 | phase |',
+  ];
+  const body =
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |\n|---|---|---|---|---|---|---|---|\n' +
+    actorRows.join('\n');
+  const rows = parseTimingRows(body);
+  for (const totals of [rollupTotals(rows, 5), rollupTotals(rows, 5, body)]) {
+    assert.equal(totals.engagedSec, 60);
+    assert.equal(totals.knownEngagedSec, 60);
+    assert.equal(totals.reviewSec, null);
+    assert.equal(totals.lastWordMarker, 12);
+  }
+  const mixed = body + '\n| 2026-10-01 00:03:00 +00:00 | update | | | | 9999 | old |';
+  const totals = rollupTotals(parseTimingRows(mixed), 5, mixed);
+  assert.equal(totals.engagedSec, null);
+  assert.equal(totals.totalActiveMin, null);
+  assert.equal(totals.knownEngagedSec, 60);
+  assert.equal(totals.telemetry.status, 'incomplete');
+});

@@ -8,6 +8,12 @@ import {
 } from './paths.mjs';
 import { clearActiveTask, getActiveTask, setActiveTask } from './session-state.mjs';
 import {
+  ACTOR_TIMING_FIELDS,
+  actorTimingStateRecord,
+  readActorTimingState,
+  writeActorTimingState,
+} from './lib/actor-timing-state.mjs';
+import {
   currentSessionId,
   jsonlPath,
   markerPathFor,
@@ -234,6 +240,8 @@ export function loadState(statePath) {
     }
   }
   const base = { ...EMPTY_STATE, ...migrateLegacyFields(parsed) };
+  for (const field of ACTOR_TIMING_FIELDS) delete base[field];
+  Object.assign(base, EMPTY_STATE);
   // #218: silently drop any stale `state` field from on-disk JSON. The issue
   // body is now the single source of truth.
   delete base.state;
@@ -245,24 +253,47 @@ export function loadState(statePath) {
   // file. Missing-dir tolerated by getActiveTask (returns null).
   const sid = currentSid();
   const projDir = projectDirForState(statePath);
+  const ownTiming = readActorTimingState({ provider: aiAppName(), sid }, projDir);
+  if (ownTiming) Object.assign(base, migrateLegacyFields(ownTiming));
+  else {
+    // Upgrade only this actor's validated cumulative cursor. The shared legacy
+    // ledger cannot attribute another session's history to this actor.
+    const cursor = loadMarker(markerPathFor(sid, projDir), {
+      identity: { provider: aiAppName(), sid },
+    });
+    base.lastWordMarker = cursor.words;
+    base.lastFullWordMarker = cursor.wordsFull;
+  }
   const active = getActiveTask(sid, projDir);
   if (active && typeof active === 'object') {
     if (active.issue != null) {
       base.active = active.issue === 'plan' ? 'discover' : active.issue;
     }
-    if (active.entryStartTs != null) base.entryStartTs = active.entryStartTs;
-    if (active.wordsAtStart != null) base.wordsAtEntryStart = active.wordsAtStart;
+    base.entryStartTs = active.entryStartTs ?? null;
+    base.wordsAtEntryStart = active.wordsAtStart ?? 0;
+    if (base.entryStartTs !== null) {
+      delete base.paused;
+      base.pausedAtTs = null;
+    }
     for (const field of WORKTREE_SESSION_FIELDS) {
       if (active[field] != null) base[field] = active[field];
     }
+  } else {
+    base.active = null;
+    base.entryStartTs = null;
+    base.wordsAtEntryStart = 0;
   }
   return base;
 }
 
 export function saveState(state, statePath) {
-  mkdirSync(path.dirname(statePath), { recursive: true });
   const sid = currentSid();
+  const identity = { provider: aiAppName(), sid };
+  const actorRecord = actorTimingStateRecord(identity, migrateLegacyFields(state));
+  mkdirSync(path.dirname(statePath), { recursive: true });
   const projDir = projectDirForState(statePath);
+  readActorTimingState(identity, projDir);
+  const priorBinding = getActiveTask(sid, projDir);
   // Split: per-session triple goes to active-task.json; remainder stays in the
   // global ledger file.
   const hasActiveBinding =
@@ -279,6 +310,7 @@ export function saveState(state, statePath) {
     setActiveTask(
       sid,
       {
+        ...(priorBinding?.issue === state.active ? priorBinding : {}),
         issue: state.active ?? null,
         entryStartTs: state.entryStartTs ?? null,
         wordsAtStart: state.wordsAtEntryStart ?? 0,
@@ -289,10 +321,22 @@ export function saveState(state, statePath) {
   } else {
     clearActiveTask(sid, projDir);
   }
-  // Dual-write during transition (#212): mirror per-session fields in global.
-  // Read-path overlays session record, so the session copy is authoritative.
+  // Actor history is separate from binding so a pause can clear authority while
+  // retaining only this actor's resume and word cursor evidence.
+  writeActorTimingState(identity, projDir, actorRecord.state);
   void PER_SESSION_FIELDS;
-  const globalPayload = { ...state };
+  let previous = {};
+  if (existsSync(statePath)) {
+    try {
+      previous = JSON.parse(readFileSync(statePath, 'utf8'));
+    } catch {
+      /* legacy unknown */
+    }
+  }
+  const shared = Object.fromEntries(
+    Object.entries(state).filter(([key]) => !ACTOR_TIMING_FIELDS.includes(key))
+  );
+  const globalPayload = { ...previous, ...shared };
   // #218: never persist `state` to disk — issue body is the source of truth.
   delete globalPayload.state;
   for (const field of WORKTREE_SESSION_FIELDS) delete globalPayload[field];

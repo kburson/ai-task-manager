@@ -916,6 +916,8 @@
         "node:url",
         "./aitm-registry.mjs",
         "../scripts/task-tracker/lib/action-capture.mjs",
+        "../scripts/task-tracker/lib/runtime-storage.mjs",
+        "../scripts/task-tracker/lib/worktree-binding-guard.mjs",
         "../scripts/lib/self-doc.mjs",
         "../guidance/admission.mjs"
       ],
@@ -1423,7 +1425,8 @@
         "../lib/self-doc.mjs",
         "./lib/attribution-resolver.mjs",
         "./lib/trunk-signals.mjs",
-        "./lib/daily-activity.mjs"
+        "./lib/daily-activity.mjs",
+        "../task-tracker/lib/runtime-storage.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",
@@ -1511,6 +1514,7 @@
         "./lib/activity-block-reason.mjs",
         "./lib/bound-state.mjs",
         "./lib/chore-mode.mjs",
+        "./lib/artifact-write-policy.mjs",
         "./lib/installed-guard-path.mjs",
         "./lib/apply-patch-targets.mjs"
       ],
@@ -1661,6 +1665,7 @@
         "node:child_process",
         "node:util",
         "node:path",
+        "./lib/runtime-storage.mjs",
         "./lib/commit-trail.mjs",
         "./lib/process-timeouts.mjs",
         "./lib/chore-mode.mjs",
@@ -1793,6 +1798,7 @@
         "node:fs",
         "node:child_process",
         "node:path",
+        "./lib/runtime-storage.mjs",
         "./paths.mjs",
         "./fleet-registry.mjs",
         "./lib/branch-name.mjs",
@@ -2092,7 +2098,7 @@
         "./gh-timing-comment.mjs",
         "./lib/bind-event.mjs",
         "./word-counter.mjs",
-        "./active-time.mjs",
+        "./lib/actor-hook-timing.mjs",
         "./queue.mjs",
         "./fleet-registry.mjs",
         "./paths.mjs",
@@ -2144,9 +2150,10 @@
         "../paths.mjs",
         "../session-state.mjs",
         "../state.mjs",
-        "../config.mjs",
         "../gh-timing-comment.mjs",
-        "../queue.mjs"
+        "../word-counter.mjs",
+        "../lib/timing-actor.mjs",
+        "../lib/timing-row-reader.mjs"
       ],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
@@ -2350,6 +2357,7 @@
         "./lib/apply-patch-targets.mjs",
         "./lib/mutation-context.mjs",
         "./lib/worktree-binding-guard.mjs",
+        "./lib/artifact-write-policy.mjs",
         "./lib/installed-guard-path.mjs",
         "./lib/workflow-policy/enforcement.mjs"
       ],
@@ -2397,6 +2405,7 @@
       "classification": "internal-library-or-orchestration",
       "command": null,
       "staticImports": [
+        "./lib/runtime-storage.mjs",
         "node:path",
         "node:url",
         "node:child_process",

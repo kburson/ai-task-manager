@@ -1,7 +1,7 @@
 // @story #1859
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { rmSync, writeFileSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 
@@ -11,6 +11,7 @@ import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-poli
 import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
 import { verbReview } from '../../../../task-tracker/verbs/review.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 
 const ISSUE = 1667;
 const REPOSITORY = 'example/project';
@@ -130,9 +131,17 @@ test('real Review projection preserves completeness checkbox labels in action ou
 test('Review consumes normalized typed labels before transitions or reviewer work', async () => {
   const projectDir = mkdtempProjectIsolated('aitm-review-normalization-');
   const statePath = path.join(projectDir, 'state.json');
-  writeFileSync(
-    statePath,
-    JSON.stringify({ active: '#1667', entryStartTs: now(), lastWordMarker: 0 })
+  // #1857: seed the current actor contract in this isolated fixture.
+  const actorEnv = {
+    AI_TASK_MANAGER_SESSION_ID: 'fixture-normalization-1667',
+    AI_TASK_MANAGER_APP_NAME: 'codex',
+    AI_TASK_MANAGER_PROJECT_DIR: projectDir,
+  };
+  const priorEnv = Object.fromEntries(Object.keys(actorEnv).map((key) => [key, process.env[key]]));
+  Object.assign(process.env, actorEnv);
+  saveState(
+    { active: '#1667', entryStartTs: new Date().toISOString(), lastWordMarker: 0 },
+    statePath
   );
   const original = `## Scope
 - [ ] Step A
@@ -203,6 +212,10 @@ test('Review consumes normalized typed labels before transitions or reviewer wor
   } finally {
     process.exit = previousExit;
     process.stderr.write = previousWrite;
+    for (const [key, value] of Object.entries(priorEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
     rmSync(projectDir, { recursive: true, force: true });
   }
 });

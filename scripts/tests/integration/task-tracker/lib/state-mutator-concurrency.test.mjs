@@ -13,9 +13,17 @@
 // The richer test is exercised manually with real `gh` calls; here we focus on
 // the lock primitive's serialization guarantee.
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,7 +36,7 @@ const MOVE_STATE = path.resolve(__dir, '../../helpers/move-state-cli.mjs');
 const REPO_ROOT = path.resolve(__dir, '../../../..');
 
 function setupProjectDir() {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-conc-'));
+  const dir = mkdtempProjectIsolated('tt-conc-');
   const cfgDir = path.join(dir, '.ai-task-manager');
   mkdirSync(cfgDir, { recursive: true });
   writeFileSync(
@@ -49,6 +57,7 @@ function runMoveState(projDir, issue, state) {
   delete baseEnv.AITM_ISSUE_LOCK_HELD;
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [MOVE_STATE, String(issue), state], {
+      cwd: projDir,
       env: {
         ...baseEnv,
         AI_TASK_MANAGER_PROJECT_DIR: projDir,

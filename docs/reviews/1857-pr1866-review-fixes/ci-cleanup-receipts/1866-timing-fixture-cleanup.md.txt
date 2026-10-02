@@ -1,0 +1,21 @@
+# PR1866 timing fixture cleanup
+
+Owned only absolute-word-markers.test.mjs, interruption-word-markers.test.mjs, resume-auto-gap-activity.test.mjs. Retained root's explicit fixture actor and physical cwd/restore setup. No production edits, commits, staging, push, issue lifecycle, or live commands.
+
+Contract evidence: accepted actor addendum forbids fabricated historical attribution and retrospective intervals; state.mjs loadState discards global actor fields, saveState writes own actor timing/binding; bind-event.mjs detectUnmarkedDepartureGap returns null for tagged actor history; computePhaseCloseDelta returns unavailable deltaWords for actor projections.
+
+- Absolute markers: each SID now explicitly seeds own actor baseline via saveState; independently asserted cumulative/full markers and idempotent rebanking, then reread each SID to prove no contamination. Fresh bind fixture uses canonical .tmp/aitm/state path and saveState rather than raw shared file. Custom sandbox root state.json accidentally anchors outer .ai-task-manager container and is invalid fixture setup.
+- Interruption: genuine unbinding clears entryStartTs and wordsAtEntryStart and retains latest saved flush checkpoint. Runtime rows still prove exact markers3/8/10 and12/16/19; legacy phase exclusion test retains75. Mixed actor phase result must remain null; exact own marker arithmetic still asserts5 observed own words excluding5/4 away words respectively.
+- Resume activity: canonical per-test state paths and saveState; own history uses canonical timingActorMarker. Activity helpers retain original #1095 proof (found/none/unknown/verification). Resume does not use historical activity to invent departures for tagged history regardless activity disposition. New legacy regression asserts no collector/no synthetic departure, current tagged start, unchanged legacy source. Historical #1095 and #1142 story annotations preserved; #1857 added.
+
+Verification: python3 /private/tmp/1866-run-clean.py node --test <three owned files>, final /private/tmp/1866-timing-targeted.log:24/24 pass. Repository Prettier write/check passes; git diff --check passes. Tests run with escalation solely because candidate worktree is outside inherited writable roots. Initial sandbox-denied execution is not a behavioral result.
+
+Potential fixture residue from early custom state paths: actor session records absolute-bind-1142 and resume-activity-* under candidate outer .ai-task-manager/sessions may have been created before canonical-path correction. They are test-only identities, never controller actor, and no cleanup was attempted outside assigned files. Root should apply normal fixture residue hygiene if desired.
+
+## Additional bounded assignment
+
+Owned timing-degraded-write-visibility.test.mjs and verb-start-resume-stop.test.mjs only for second task. Degraded runtime flush now first saves genuine own active actor timer and passes loadState instead of unpersisted no-open object; queue outcome remains exact postFailure and row asserts actor+genuine engagement provenance. Pause/stop/update fixtures now saveState instead of shared JSON, retaining warning/error/prefix checks. Added physical cwd restore and sandbox cleanup. All #1107 assertions retained.
+
+verb-start-resume-stop already passed clean with root's latest canonicalpath+saveState edits, including exact lunch-break text. No substantive change added; formatted only. No production defect identified.
+
+Verification via /usr/bin/python3 /private/tmp/1866-run-clean.py node --test <two files>:2/2 file suites pass; /private/tmp/1866-degraded-start-targeted.log. Prettier check and git diff --check pass. No aggregate execution, staging, commit, push or live lifecycle actions.

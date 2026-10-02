@@ -9,6 +9,8 @@ import {
 } from '../../../../../task-tracker/lib/estimation/runtime-adapter.mjs';
 
 const repository = 'kburson/ai-task-manager';
+// Epic classification comes from issue authority, not discovered child cardinality.
+const epicBody = '## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="epic" -->';
 
 const environment = {
   node: 'v22.0.0',
@@ -310,7 +312,11 @@ test('epic child outcome discovery paginates children and delegates full comment
     },
   });
 
-  const result = await runtime.ensure({ issueNumber: 1067, forecastRecordId: null, body: '' });
+  const result = await runtime.ensure({
+    issueNumber: 1067,
+    forecastRecordId: null,
+    body: epicBody,
+  });
   assert.equal(result.status, 'written');
   assert.equal(graphqlCalls.length, 2);
   assert.deepEqual(recordCalls, [1067, 101, 102, 1067]);
@@ -376,7 +382,11 @@ test('mixed legacy/adaptive epics reference adaptive child outcomes and ignore f
     },
   });
 
-  const result = await runtime.ensure({ issueNumber: 1067, forecastRecordId: null, body: '' });
+  const result = await runtime.ensure({
+    issueNumber: 1067,
+    forecastRecordId: null,
+    body: epicBody,
+  });
 
   assert.equal(result.status, 'written');
   assert.deepEqual(writtenPayload.landscape.childOutcomeRecordIds, [adaptiveOutcomeId]);
@@ -428,7 +438,11 @@ test('an epic with only forecast-free legacy children writes an empty aggregatio
     },
   });
 
-  const result = await runtime.ensure({ issueNumber: 1067, forecastRecordId: null, body: '' });
+  const result = await runtime.ensure({
+    issueNumber: 1067,
+    forecastRecordId: null,
+    body: epicBody,
+  });
 
   assert.equal(result.status, 'written');
   assert.deepEqual(writtenPayload.landscape.childOutcomeRecordIds, []);
@@ -518,7 +532,7 @@ test('runtime threads explicit reopened-close correction authority into the immu
   const result = await runtime.ensure({
     issueNumber: 1067,
     forecastRecordId: null,
-    body: '',
+    body: epicBody,
     supersedeExisting: true,
   });
 
@@ -529,7 +543,7 @@ test('runtime threads explicit reopened-close correction authority into the immu
   const retry = await runtime.ensure({
     issueNumber: 1067,
     forecastRecordId: null,
-    body: '',
+    body: epicBody,
     supersedeExisting: true,
   });
   assert.equal(retry.status, 'existing');
@@ -555,7 +569,7 @@ test('runtime threads explicit reopened-close correction authority into the immu
     runtime.ensure({
       issueNumber: 1067,
       forecastRecordId: null,
-      body: '',
+      body: epicBody,
       supersedeExisting: true,
     }),
     /correction-predecessor/
@@ -593,7 +607,7 @@ test('epic close fails closed when an adaptive child has a forecast but no outco
   });
 
   await assert.rejects(
-    runtime.ensure({ issueNumber: 1067, forecastRecordId: null, body: '' }),
+    runtime.ensure({ issueNumber: 1067, forecastRecordId: null, body: epicBody }),
     /estimation-runtime:child-outcomes/
   );
 });

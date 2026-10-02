@@ -1,0 +1,233 @@
+{
+  "issue": 1857,
+  "pullRequest": 1866,
+  "trunkCommit": "5b06fe9590d29e186d1b505dd0b2186f6ad8d236",
+  "mergedSource": "e545522e467e484bd96db3b327fc8ccd0047c086",
+  "records": [
+    {
+      "file": "1866-astra-ci-cleanup-review.md.txt",
+      "sha256": "26b26a669f80842813f3599c0ebbf383120daf88f67ac69499a8e33ad076caf1",
+      "bytes": 5872
+    },
+    {
+      "file": "1866-astra-integration-review.md.txt",
+      "sha256": "385ebfaf0ff9f7a944209a7bc32de3b81097c2a5ef7de9d05f339167042d87ec",
+      "bytes": 9558
+    },
+    {
+      "file": "1866-astra-integration-source-hashes.json.txt",
+      "sha256": "8be66df3c0cab9c4cac10d0725123a7dff566e25d907f2b1eec9deb38a7a8ac0",
+      "bytes": 11357
+    },
+    {
+      "file": "1866-astra-merge1868-review.md.txt",
+      "sha256": "c7043c3a95efd5f391aa18f2c1dd026305901894146307839ecc708b1fc2260c",
+      "bytes": 7623
+    },
+    {
+      "file": "1866-astra-merge1868-source-hashes.json.txt",
+      "sha256": "fee9b7c0584fef0f198909763b99d963a0b2d970227842f1e42d06605764dedb",
+      "bytes": 6279
+    },
+    {
+      "file": "1866-estimation-cleanup.md.txt",
+      "sha256": "9491652612f8e329ad5d8c9b7eb4bb7989cc2e7ac509c05283225e0cb55e63b0",
+      "bytes": 1357
+    },
+    {
+      "file": "1866-timing-fixture-cleanup.md.txt",
+      "sha256": "6d355c59da93dbe002935e48b71755664d34dab68ce5166b5b1e42901498973c",
+      "bytes": 3717
+    },
+    {
+      "file": "1866-codeql-pause-parser.md.txt",
+      "sha256": "96dd3dfee41e3dd12e4959005edf28323f6866d64871c3059937362d0a0f3652",
+      "bytes": 1662
+    },
+    {
+      "file": "1866-guidance-cleanup-notes.md.txt",
+      "sha256": "fb0f0a9abe013aaa3b98200512a8599a26d5dbff70be8c9758ab5a14a0fcdece",
+      "bytes": 10138
+    },
+    {
+      "file": "1866-evidence-v2-isolation-notes.md.txt",
+      "sha256": "da446f7c27f5f911b3f3142cf1a35572737cd549fc6a21ffe628dd5fbb0ebc79",
+      "bytes": 2022
+    },
+    {
+      "file": "1866-astra-provenance-fixed.log.txt",
+      "sha256": "00d6a52262a5b92b5427d73e5d5e232eced2aacf4fbe1c1247a1dd67f87f77ca",
+      "bytes": 659
+    },
+    {
+      "file": "1866-astra-integration-final-focused.log.txt",
+      "sha256": "f161359ad6aade7be552d5f36a4d3059cbdcb4d307ddb6a792552753aca57b0b",
+      "bytes": 5003
+    },
+    {
+      "file": "1866-astra-guidance-recaptured.log.txt",
+      "sha256": "d029eff3be57eadbcaeb54445403447fed3624b32aa84937434c86d85df0c2e6",
+      "bytes": 538
+    },
+    {
+      "file": "1866-astra-merge-close.log.txt",
+      "sha256": "1bcd7ad86d3636af3d351ff7cb20b78c3938bed09760b169c7490c60d96bdd1f",
+      "bytes": 9151
+    },
+    {
+      "file": "1866-pause-red.log.txt",
+      "sha256": "52f7b74b228f8da25e0efbe20b0701be90758e6db6742a23433331c677deddc8",
+      "bytes": 4726
+    },
+    {
+      "file": "1866-pause-green.log.txt",
+      "sha256": "ae11d3953e1fe965084a4426bcde90375138c01b57ee8036f9e95d6ed9663c86",
+      "bytes": 2281
+    },
+    {
+      "file": "1866-guidance-provenance-all.log.txt",
+      "sha256": "a309f3b2e9a8af6645ac46208174f704ef0d3bef5d36c80e5fc08634f7469776",
+      "bytes": 4853
+    },
+    {
+      "file": "1866-guidance-merged-all.log.txt",
+      "sha256": "ecebd0f9de0aa9b433432c0fb6bc4d1ac02dcf34fe3e08248ecabf31f11a2518",
+      "bytes": 4850
+    },
+    {
+      "file": "1866-isolation-rehearsal.log.txt",
+      "sha256": "2c01af0f45f06050d2f0cc8f73a73890e7bb8dc0fbe3f30bd740869a06374041",
+      "bytes": 795
+    },
+    {
+      "file": "1866-merge1868-close.log.txt",
+      "sha256": "c6871357e72bd0ee974e62a3fbb8b5d71bef002ab91e279c38859d1641aa5840",
+      "bytes": 3550
+    },
+    {
+      "file": "1866-merge1868-full-unit.log.txt",
+      "sha256": "29c120bec3d06839d1c40fb33116850cbb48ac241fe7804786d4847bb621117a",
+      "bytes": 82220
+    },
+    {
+      "file": "1866-merge1868-format.log.txt",
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "bytes": 159
+    },
+    {
+      "file": "1866-merge1868-lint.log.txt",
+      "sha256": "9f8ac33707b58fd7067f3d88c54c26d7efae92bbfac02e832e7b1ff346e87efd",
+      "bytes": 22227
+    },
+    {
+      "file": "1866-codeql-01e-annotations.json.txt",
+      "sha256": "20e479e8dfb3f653c06316b95a6b4c8d9537fec2ae1e918ad38d30f846019e3a",
+      "bytes": 506
+    },
+    {
+      "file": "1866-codeql-multiline-green.log.txt",
+      "sha256": "e5b326043624914d751330797818bdeabdbb976d663b934f6b8a8a85be37805d",
+      "bytes": 321
+    },
+    {
+      "file": "1857-cleanup-full-unit.log.txt",
+      "sha256": "6f0275e26632f6e54dfd59adc2cdfdd2447b287420e34b877d587112ad457603",
+      "bytes": 82249
+    },
+    {
+      "file": "1857-unit-cleanup-first.log.txt",
+      "sha256": "9395fc341d3ff2374440f2340d55f4dcd170fb08f9ca4e3b45a16e357b8c8408",
+      "bytes": 35126
+    },
+    {
+      "file": "1857-cleanup-lint-final.log.txt",
+      "sha256": "28d7396c344e2b6d6ee407cb6137be24170c08e3f1a4d64c6210732f50c714d9",
+      "bytes": 22184
+    },
+    {
+      "file": "1857-cleanup-format.log.txt",
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "bytes": 159
+    },
+    {
+      "file": "1857-cleanup-45f3a6bf-unit.log.txt",
+      "sha256": "6ee2828c85166de106808e0cf12f9bf307038474f0f3e657579d3bf4db929742",
+      "bytes": 82278
+    },
+    {
+      "file": "1866-full-integration-candidate.log.txt",
+      "sha256": "aa33a60199ddf9c6889dda42ec5b606a1b6357cec156418713ba35722101e22e",
+      "bytes": 27100
+    },
+    {
+      "file": "1857-cleanup-full-integration.log.txt",
+      "sha256": "0e7abd2cac9113b1e3b6579a9caa135217f4be45be05e585c565f5b6b2567575",
+      "bytes": 237095
+    },
+    {
+      "file": "1857-unit-cleanup-files.json.txt",
+      "sha256": "073443e48e41329e478e6021e988c0136c717a679e7f9429b35bd1368f404d45",
+      "bytes": 2483
+    },
+    {
+      "file": "1866-astra-ci-cleanup-focused.log.txt",
+      "sha256": "e6d9d322dff43bc7034dc8cde6248ee63f8b4feea4b1ee3c52694e7479cee1f3",
+      "bytes": 7873
+    },
+    {
+      "file": "1866-astra-ci-cleanup-snapshot.json.txt",
+      "sha256": "b2910bd0e4b327d931db422da80ac60fd4750535d75a78a4de070770880ba0c2",
+      "bytes": 286
+    },
+    {
+      "file": "1866-astra-integration-focused.log.txt",
+      "sha256": "560ec2d232188af7fbda4b202445a8d873dbbb1ab4806756159d61f02b0b53b8",
+      "bytes": 5522
+    },
+    {
+      "file": "1866-astra-merge-actor-close.log.txt",
+      "sha256": "01490d193750fa13575f317bcc805543d0706aeb8fa4f65a4436edf58bfe7467",
+      "bytes": 3479
+    },
+    {
+      "file": "1866-astra-merge-codeql-fixture.log.txt",
+      "sha256": "01de6114a8ebfe212d2d5b79498603fcbb0f549eaa7a7129da8d5e6553e3e730",
+      "bytes": 324
+    },
+    {
+      "file": "1866-astra-merge-guidance.log.txt",
+      "sha256": "53a89c4b3ae9b732876424a38603069ef6d15fdefe2102afbd55b9739a85b267",
+      "bytes": 532
+    },
+    {
+      "file": "1866-astra-provenance-repro.log.txt",
+      "sha256": "1db480c1d93541ece071a36660c9f4f0e328556444806002841ccd79ab9d3385",
+      "bytes": 308
+    },
+    {
+      "file": "1866-full-unit-green.log.txt",
+      "sha256": "db6a34571d25a42cdc67dda14a744e6f8e77214f8788124a47630c97830e4c02",
+      "bytes": 82268
+    },
+    {
+      "file": "1866-run-clean.py.txt",
+      "sha256": "22edb63e1c94726f51d5b0c4b15be0e6eff27e658ca738d9ab1b7950980df255",
+      "bytes": 242
+    },
+    {
+      "file": "1866-merge1868-full-integration.log.txt",
+      "sha256": "80fc984c0993ccff30f2c96c73bc941332952da43509de0bce3e47e34aabea8d",
+      "bytes": 22420
+    },
+    {
+      "file": "1866-ci-e841-fast.log.txt",
+      "sha256": "82bcd58a3a28a40d5f3f1f157993fbcae3a9a9b2415953a315ef62d77d149e97",
+      "bytes": 399189
+    },
+    {
+      "file": "1866-ci-e841-green-state.json.txt",
+      "sha256": "0e8bc506883d0957bb92c51bf33c22cf71c9e8486c883f591c9f9d9c62077b83",
+      "bytes": 2818
+    }
+  ]
+}

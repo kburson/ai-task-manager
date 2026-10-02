@@ -5,6 +5,7 @@
 //   AC2 round-trip       — Rank written to the shim reads back equal to <n>
 //   AC3 arg validation   — missing / non-numeric arg exits non-zero with usage
 //   AC4 unconfigured     — no Rank field id → warn + exit 0, no write attempted
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -18,7 +19,9 @@ const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const SCRIPT = path.resolve(__dir, '../../../gh/set-rank.mjs');
 
 async function run(args, env = {}) {
-  return pexec('node', [SCRIPT, ...args], { env: { ...process.env, ...env } });
+  return pexec('node', unitRuntimeEntrypointArgs(SCRIPT, args), {
+    env: { ...process.env, ...env },
+  });
 }
 async function runExpectFail(args, env = {}) {
   try {

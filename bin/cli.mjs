@@ -1788,6 +1788,7 @@ function cmdRepair(args) {
   banner('Repairing task-tracker config', `target: ${targetDir}`);
   try {
     execFileSync('node', [repairScript], {
+      cwd: targetDir,
       stdio: 'inherit',
       env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: targetDir },
     });

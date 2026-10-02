@@ -12,6 +12,11 @@
 //     with an ExitError sentinel; cfg without a repo makes runCommitTrace throw
 //     synchronously, so the catch path is exercised without any real `gh` call.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import path from 'node:path';

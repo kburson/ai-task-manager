@@ -1,0 +1,245 @@
+Started #1857.
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+Resumed #1857.
+✔ question hooks close only their own actor interval and resume without charging the wait (1218.481708ms)
+✔ question reply ambiguity retains the original row and replays before resuming (1160.729625ms)
+✔ question marker cannot substitute another event for the frozen resume (761.596042ms)
+✔ question hook respects its own manual pause without creating a resume marker (547.688417ms)
+✔ flush preserves genuine own wall interval and unknown estimate despite another actor tail (642.483542ms)
+✔ first attributed interruption retains observed cursor delta without a fabricated opener (405.775125ms)
+✔ update preserves cumulative actor cursor and unknown total after an unavailable estimate (530.35825ms)
+✔ real start pause and resume retain one actor identity and explicit current boundaries (797.703333ms)
+✔ phase boundary flushes own actor interval and shared lifecycle rows do not duplicate actor work (285.493583ms)
+✔ Test interlock records actual verification engagement from a paused own binding (328.089708ms)
+✔ status distinguishes missing activity observation from zero work (213.464541ms)
+✔ failed Test execution retains both its failure and actual actor work (636.436583ms)
+✔ session tracking initializes a versioned own cursor and refuses corrupt existing authority (388.140666ms)
+✔ failed publication retains original row and cursor, then exact replay precedes new work (1074.101792ms)
+✔ publication cannot overwrite a concurrently changed own timing boundary (240.3915ms)
+✔ Review human handoff flushes actual actor work before pausing its own binding (340.432125ms)
+✔ compaction hooks use the same actor journal and never resume a paused binding (493.770708ms)
+✔ session restart records unknown prior work without synthesizing historical active or idle time (554.163667ms)
+✔ actual hook entrypoint refuses a foreign payload actor before mutating timing state (415.651292ms)
+✔ actual idle SessionStart preserves cumulative actor word evidence (719.783291ms)
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+✔ review reproduction: legacy session cursor survives first actor flush (1035.778291ms)
+✔ explicit pause after Test handoff is idempotent (876.299ms)
+✔ explicit pause after Review handoff is idempotent (560.77125ms)
+✔ production Test sandbox admits real Git identity outside artifact roots (331.261041ms)
+✔ upgrade cursor is scoped to the state-owning project, not ambient root (332.495417ms)
+✔ upgrade refuses invalid own cursor and never imports global timing history (341.844ms)
+Stopped #1857: +0 active min, +0 words. Use "/task resume <N>" to return to it later.
+✔ paused binding does not publish unmatched stop (1452.559417ms)
+✔ paused binding does not publish unmatched switch-out:#1861 (378.30625ms)
+✔ paused binding does not publish unmatched switch-out (437.538125ms)
+✔ production root aliases refuse artifact-contained forged authority before state access (872.554333ms)
+✔ production root aliases refuse physical artifact aliases (183.86725ms)
+✔ same physical worktree override resolves root from a subdirectory (331.470708ms)
+✔ foreign overrides require exact registered admission and conflicting aliases refuse (1492.188958ms)
+✔ shadowed unsafe aliases never escape validation (267.053959ms)
+✔ a marker directory with only HEAD is not a Git identity (21.976042ms)
+✔ registered foreign admission is scoped and requires a fresh linked Git worktree (437.247292ms)
+✔ an unavailable unrelated registered worktree does not poison a valid root (189.170667ms)
+✔ a linked checkout cannot import a main root located under artifacts (159.06025ms)
+✔ durable layout separates linked local state from main shared state without creating stores (74.400208ms)
+✔ uninitialized durable storage refuses without importing volatile state (42.092875ms)
+✔ durable reads refuse corrupt control, unsupported schema and partial publication (358.170791ms)
+✔ activated stores require valid records and never recover authority from volatile bytes (439.999666ms)
+✔ runtime overrides reject volatile, foreign and physical alias destinations (265.484667ms)
+✔ runtime override ancestry checks repeated directory components (60.908334ms)
+✔ a dangling control alias refuses before uninitialized-store classification (43.144333ms)
+✔ a final runtime record alias refuses even when its target exists (78.13475ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.scratch/test/aitm-1857-close-wiring-2GE9nd for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.scratch/test/aitm-1857-close-wiring-5eSsHi for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/.scratch/test/aitm-1857-close-wiring-iAMnq1 for #1857
+[task-tracker] ⛔ Refusing to finalize #1857: close-estimation-delivery-authority:lineage-unavailable. Completion outcome evidence did not converge; local state remains active for retry.
+#1857 closed-issue finalize failed at ensureOutcome: completion outcome evidence did not converge. Local task state was retained for retry.
+✔ #1857 no-command child Close uses posted deliverable and exact accepted Test Review heads (459.593041ms)
+✔ #1857 child outcome callback obtains the existing lineage gate exact census (253.852584ms)
+✔ #1857 skipped child lineage cannot become canonical outcome authority (260.524083ms)
+✔ pending flush preserves exact evidence across every publication and cursor crash boundary (40.307583ms)
+✔ publication failure leaves the cursor unchanged and conflicting or corrupt recovery refuses (2.347042ms)
+✔ parses only worktree records from NUL-delimited porcelain (1.027209ms)
+✔ selects exact project-local tokenized sandboxes only when their PID is dead (0.339208ms)
+✔ retains a candidate when the liveness probe cannot prove death (0.095917ms)
+✔ attempts every proven stale registration even when one removal fails (0.213792ms)
+✔ inventory failure is non-fatal and performs no removal (0.129708ms)
+✔ new sandbox namespace selects only registered exact-parent dead owners (0.126542ms)
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] ⛔ Refusing to close #925: review-authorization-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] ⛔ Refusing to close #925: directory-approval-evidence-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: directory-review-evidence-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: directory-review-evidence-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: directory-review-evidence-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 recovery completed after posting the timing audit.
+#925 recovery completed after posting the timing audit.
+#925 closed-issue aberration failed at postTimingAudit: postTimingAudit returned a failed result. Local task state was retained for retry.
+#925 closed-issue aberration failed at postTimingAudit: postTimingAudit returned a failed result. Local task state was retained for retry.
+#925 closed-issue aberration failed at postTimingAudit: postTimingAudit returned a failed result. Local task state was retained for retry.
+✔ finalize passes the configured tail profile and explicit review authority (116.331166ms)
+✔ stale close approval refuses after fresh Test and Agent Review evidence (33.334167ms)
+✔ #1403 close authorizes review against accepted delivery SHA after local HEAD advances (5.853791ms)
+✔ close consumes marker-free exact-head directory human authority (11.523208ms)
+✔ production close derives accepted head from marker-free directory Review evidence (8.848541ms)
+✔ production close resolves directory authority from immutable Test SHA after local HEAD advances (4.778834ms)
+✔ production close refuses directory Review without directory Approval despite body approval (3.814125ms)
+✔ close fails closed for stale or malformed marker-free directory authority (15.440583ms)
+✔ verb entry rejects a empty string tail profile before every observable effect (6.254792ms)
+✔ verb entry rejects a null tail profile before every observable effect (5.528667ms)
+✔ verb entry rejects a false tail profile before every observable effect (6.630959ms)
+✔ verb entry rejects a zero tail profile before every observable effect (10.176375ms)
+✔ verb entry rejects a negative zero tail profile before every observable effect (4.766458ms)
+✔ verb entry rejects a zero bigint tail profile before every observable effect (2.257959ms)
+✔ verb entry rejects a NaN tail profile before every observable effect (3.297666ms)
+✔ verb entry rejects a object tail profile before every observable effect (9.229084ms)
+✔ verb entry rejects a unknown string tail profile before every observable effect (5.161917ms)
+✔ lifecycle reconcile delegates through the grouped issue-body mutator (4.166208ms)
+✔ transaction prefix does not satisfy exact timing transaction lookup (92.0655ms)
+✔ incidental prose does not satisfy exact timing transaction lookup (14.826834ms)
+✔ false timing audit fails and leaves durable recovery pending at Review (13.753875ms)
+✔ failed timing audit fails and leaves durable recovery pending at Review (4.722542ms)
+✔ queued timing audit fails and leaves durable recovery pending at Review (9.770083ms)
+#925 is closed for not_planned — left issue and board untouched.
+#925 is closed and Done but its body could not be read for transaction inspection: transient body outage
+No convergence mutation was attempted; retry later.
+#925 recovery completed after reopening the issue, restoring the board to Review, and posting the timing audit.
+#925 child inventory is unknown: GraphQL unavailable
+No convergence mutation was attempted; retry later.
+#925 recovery completed after posting the timing audit.
+#925 recovery completed after restoring the board to Review and posting the timing audit.
+#925 recovery completed without repeating live-state repair or timing effects.
+#925 recovery completed after reopening the issue and posting the timing audit.
+#925 recovery completed after reopening the issue and posting the timing audit.
+#925 does not have a restartable Delivered close transaction: delivered-close-supersession:no-stale-transaction
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:fresh-authority
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:dirty-worktree
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:terminal-prefix
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: close-delivery-receipt:test-sha-mismatch
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: list unavailable
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: create unavailable
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: read unavailable
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:comment-readback
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:body-write
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:body-readback
+No convergence mutation was attempted; retry later.
+Closed #925.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:duplicate-evidence
+No convergence mutation was attempted; retry later.
+Closed #925.
+[task-tracker] ⛔ Refusing to close #925: delivered-close-transaction-accepted-sha-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: recovery marker readback mismatch for transaction: expected 5fab7e69-6aba-4fe3-86dc-552a068186b9, got tx-stale. Local task state was retained for retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: recovery marker readback mismatch for phase: expected intent, got reopened. Local task state was retained for retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: recovery marker mutation failed for phase intent: expected status ok/no-op with verified body. Local task state was retained for retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: recovery marker mutation failed for phase intent: expected status ok/no-op with verified body. Local task state was retained for retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: issueBodyMutator.mutate capability is required for recovery persistence. Local task state was retained for retry.
+#925 closed-issue finalize failed at emitClosePair: terminal timing issue:wrap was not durably posted: network down. Local task state was retained for retry.
+[task-tracker] ⛔ Refusing to close #925: terminal timing issue:wrap was not durably posted: network down. Issue left OPEN; retry after timing evidence is reachable.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:input. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:lineage. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:missing. Run `/task deliver` until a verified exact-head receipt exists, then retry. If a delivery intent is pending because an invariant failed, prepare an exact waiver with `/task workflow-exception prepare #N --input-file <proposal.json>`.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:malformed. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:duplicate. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:conflicting. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:ambiguous-pr. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:not-merged. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:branch-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:base-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:head-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:issue-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:pr-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:merge-commit-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:merge-commit-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+✔ close asks the outcome runtime about forecast-free epics and permits a legacy skip (4.480458ms)
+✔ close passes explicit reopened-cycle correction authority to the outcome runtime (0.704917ms)
+✔ close uses the frozen Plan forecast and refuses a drifted ready marker (2.332333ms)
+✔ close refuses an adaptive ready forecast without frozen Plan lineage (0.26375ms)
+✔ primary convergence resolves the issue worktree instead of inheriting the caller directory (0.135792ms)
+✔ primary convergence fails closed when issue worktree registration is unavailable (0.102375ms)
+✔ dead issue returns without body or child reads (90.043542ms)
+✔ completed issue already at Done fails closed when transaction inspection is unavailable (8.687ms)
+✔ pending recovery on a completed issue already at Done resumes before noop (184.622792ms)
+✔ completed not-Done issue refuses an unknown strict child snapshot (14.428084ms)
+✔ pending recovery on an open issue resumes from its serialized phase (9.06075ms)
+✔ pending recovery outranks close-issue for an open issue already at Done (8.281292ms)
+✔ retry after a successful timing post does not duplicate the transaction audit (49.038416ms)
+✔ pending recovery on a still-closed issue preserves its durable transaction (6.302ms)
+✔ complete recovery is not reused when a later close is a new aberration (8.939375ms)
+✔ stale restart refuses unsafe live state before audit or terminal mutation (558.966334ms)
+✔ stale restart refuses terminal prefixes and stale delivery authority (57.644833ms)
+✔ stale restart fails closed across comment and body persistence failures (402.163708ms)
+✔ stale restart reuses matching evidence and rejects duplicates before body mutation (232.736625ms)
+✔ stale restart is incompatible with force, repair, answer, and disposition lanes (73.960625ms)
+✔ ordinary close adopts a same-SHA Done board and refuses stale SHA without restart writes (17.437166ms)
+✔ mismatched transaction recovery mutation refuses before later effects (3.444ms)
+✔ mismatched phase recovery mutation refuses before later effects (9.576666ms)
+✔ failed status recovery mutation refuses before later effects (9.270917ms)
+✔ failed result recovery mutation refuses before later effects (28.138208ms)
+✔ recovery persistence requires the grouped issue-body mutator capability (7.231792ms)
+✔ explicit close has no direct issue-body mutator import or fallback (9.346416ms)
+✔ v1 estimation outcome is required before the terminal Done move (10.978125ms)
+✔ receipt authorization precedes outcome; Done precedes Delivered disposition (9.132541ms)
+✔ convergence close synchronizes terminal timing before freezing its outcome (14.506083ms)
+✔ convergence refuses completion when a terminal timing row is only queued (11.671959ms)
+✔ board-Done open-issue convergence refuses GitHub close when terminal timing is queued (29.01475ms)
+✔ delivery receipt input refusal precedes every specified side effect (66.001292ms)
+✔ delivery receipt lineage refusal precedes every specified side effect (26.58625ms)
+✔ delivery receipt missing refusal precedes every specified side effect (18.051459ms)
+✔ delivery receipt malformed refusal precedes every specified side effect (14.805583ms)
+✔ delivery receipt duplicate refusal precedes every specified side effect (15.964458ms)
+✔ delivery receipt conflicting refusal precedes every specified side effect (3.473875ms)
+✔ delivery receipt ambiguous-pr refusal precedes every specified side effect (51.614083ms)
+✔ delivery receipt not-merged refusal precedes every specified side effect (111.737917ms)
+✔ delivery receipt branch-mismatch refusal precedes every specified side effect (8.130667ms)
+✔ delivery receipt base-mismatch refusal precedes every specified side effect (15.113375ms)
+✔ delivery receipt head-mismatch refusal precedes every specified side effect (11.183708ms)
+✔ delivery receipt issue-mismatch refusal precedes every specified side effect (8.860959ms)
+✔ delivery receipt pr-mismatch refusal precedes every specified side effect (7.132541ms)
+✔ delivery receipt merge-commit-missing refusal precedes every specified side effect (5.671375ms)
+✔ delivery receipt merge-commit-mismatch refusal precedes every specified side effect (12.538209ms)
+✔ AC1: two auto-token calls with identical inputs yield different paths (0.617084ms)
+✔ AC2: explicit token is deterministic; distinct tokens never alias (0.134416ms)
+✔ AC3 regression: run B reclaim target never names run A live worktree (0.117458ms)
+ℹ tests 130
+ℹ suites 0
+ℹ pass 130
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12531.921709

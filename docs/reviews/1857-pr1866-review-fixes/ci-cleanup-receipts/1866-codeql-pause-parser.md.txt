@@ -1,0 +1,12 @@
+# PR1866 CodeQL pause marker parser
+
+Authorized paths only:
+- scripts/task-tracker/lib/timing-rows.mjs
+- scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs
+
+Root cause: KV regex nested repeated groups allowed zero-width inter-field whitespace, so long repeated !a= values could be repartitioned exponentially when no closing comment existed. Require at least one whitespace between successive key/value fields, with one initial field; value and separator alphabets are disjoint. Removed lookaheads only because existing parsePauseMarkers already validates from/until existence and finite strictly increasing timestamps after extraction. No timestamp/missing-key guard weakened. Preserved any-order keys, optional reason, arbitrary nonwhitespace values, dot-dot compatibility.
+
+Meaningful RED: new spawnSync test uses 100000 repeated !a= chains and a 2000ms timeout, asserting no valid marker and successful recovery to a following valid marker. Before correction ETIMEDOUT (/private/tmp/1866-pause-red.log). After correction same bounded test passes. Added explicit until/reason/from ordering and reversed-order missing-reason coverage. Existing malformed/missing/reversed timestamps and downstream pause arithmetic tests retained.
+
+GREEN command: /usr/bin/python3 /private/tmp/1866-run-clean.py node --test scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs scripts/tests/unit/task-tracker/lib/timing-rows.test.mjs scripts/tests/unit/task-tracker/lib/timing-rows-seconds.test.mjs
+Result:32/32pass, /private/tmp/1866-pause-green.log. Prettier check and git diff --check pass. No commit, stage, push, recapture, aggregate suite or GitHub actions.

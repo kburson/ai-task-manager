@@ -1,3 +1,14 @@
+import { validateOutcomeDeliveryProof } from './outcome-delivery-proof.mjs';
+import { isKnownTimingEvent, isEmittableTimingEvent } from '../timing-events/index.mjs';
+import { createHash } from 'node:crypto';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import { deriveActorEngagement } from '../timing-engagement.mjs';
+import {
+  parseTimingRow,
+  isTableTimingTimestamp,
+  timingTimestampToMs,
+} from '../timing-row-reader.mjs';
+
 export const OUTCOME_RECORD_TYPE = 'estimation-outcome';
 export const OUTCOME_SCHEMA = 'aitm.estimation-outcome/v1';
 
@@ -27,7 +38,8 @@ function closeEnough(left, right) {
 }
 
 export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
-  if (payload?.schema !== OUTCOME_SCHEMA) fail('outcome-schema');
+  const incomplete = isIncompleteOutcome(payload);
+  if (!incomplete && payload?.schema !== OUTCOME_SCHEMA) fail('outcome-schema');
   exact(
     payload,
     [
@@ -41,13 +53,17 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
       'landscape',
       'schema',
       'variance',
+      ...(incomplete ? ['telemetry'] : []),
     ],
     'outcome-keys'
   );
   if (!Number.isInteger(payload.issue) || payload.issue <= 0) fail('outcome-issue');
   if (expectedIssue !== undefined && payload.issue !== expectedIssue) fail('issue-correlation');
   if (!new Set(['story', 'epic-orchestration']).has(payload.kind)) fail('outcome-kind');
-  if (payload.kind === 'story') {
+  if (
+    payload.kind === 'story' &&
+    !(incomplete && payload.telemetry?.forecastStatus === 'legacy-none')
+  ) {
     if (
       typeof payload.forecastRecordId !== 'string' ||
       !RECORD_ID_RE.test(payload.forecastRecordId)
@@ -72,11 +88,18 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
     ['commands', 'engagedHours', 'reviewFixCycles', 'stages'],
     'outcome-actual'
   );
-  finite(payload.actual.engagedHours, 'outcome-actual-hours');
+  if (incomplete) {
+    if (payload.actual.engagedHours !== null) fail('telemetry-total');
+  } else finite(payload.actual.engagedHours, 'outcome-actual-hours');
   finite(payload.actual.reviewFixCycles, 'outcome-review-cycles', { integer: true });
   exact(payload.actual.stages, ['develop', 'plan', 'review', 'test'], 'outcome-stages');
-  for (const value of Object.values(payload.actual.stages)) finite(value, 'outcome-stage-hours');
+  for (const value of Object.values(payload.actual.stages)) {
+    if (incomplete) {
+      if (value !== null) fail('telemetry-stage-total');
+    } else finite(value, 'outcome-stage-hours');
+  }
   if (
+    !incomplete &&
     !closeEnough(
       Object.values(payload.actual.stages).reduce((sum, value) => sum + value, 0),
       payload.actual.engagedHours
@@ -155,7 +178,9 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
   ) {
     fail('outcome-child-records');
   }
-  if (payload.kind === 'story') {
+  if (incomplete) {
+    if (payload.variance !== null) fail('telemetry-variance');
+  } else if (payload.kind === 'story') {
     exact(payload.variance, ['vsAiP50Hours', 'vsAiP80Hours'], 'outcome-variance');
     for (const value of Object.values(payload.variance))
       if (typeof value !== 'number' || !Number.isFinite(value)) fail('outcome-variance-hours');
@@ -166,9 +191,13 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
     ['avoidableProcessWasteHours', 'drivers', 'necessaryHours', 'unclassifiedHours'],
     'outcome-cost'
   );
-  for (const key of ['necessaryHours', 'avoidableProcessWasteHours', 'unclassifiedHours'])
-    finite(payload.costClassification[key], 'outcome-cost-hours');
+  for (const key of ['necessaryHours', 'avoidableProcessWasteHours', 'unclassifiedHours']) {
+    if (incomplete) {
+      if (payload.costClassification[key] !== null) fail('telemetry-cost');
+    } else finite(payload.costClassification[key], 'outcome-cost-hours');
+  }
   if (
+    !incomplete &&
     !closeEnough(
       payload.costClassification.necessaryHours +
         payload.costClassification.avoidableProcessWasteHours +
@@ -184,5 +213,220 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
       fail('outcome-cost-driver-kind');
     finite(driver.hours, 'outcome-cost-driver-hours');
   }
+  if (incomplete) {
+    if (payload.costClassification.drivers.length) fail('telemetry-cost-drivers');
+    validateIncompleteTelemetry(payload);
+  }
   return payload;
+}
+
+export const LEGACY_INCOMPLETE_OUTCOME_SCHEMA = 'aitm.estimation-outcome/v2';
+export const INCOMPLETE_OUTCOME_SCHEMA = 'aitm.estimation-outcome/v3';
+export function isIncompleteOutcome(payload) {
+  return [LEGACY_INCOMPLETE_OUTCOME_SCHEMA, INCOMPLETE_OUTCOME_SCHEMA].includes(payload?.schema);
+}
+
+function validCalendarTimestamp(value) {
+  const parts = String(value).match(
+    new RegExp(
+      '^([0-9]{4})-([0-9]{2})-([0-9]{2})[ T]([0-9]{2}):([0-9]{2}):([0-9]{2})(?:[.][0-9]{1,3})? ?(Z|[+-]([0-9]{2}):([0-9]{2}))$'
+    )
+  );
+  if (!parts) return false;
+  const [, year, month, day, hour, minute, second, , offsetHour, offsetMinute] = parts;
+  const leap = Number(year) % 4 === 0 && (Number(year) % 100 !== 0 || Number(year) % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return (
+    Number(month) >= 1 &&
+    Number(month) <= 12 &&
+    Number(day) >= 1 &&
+    Number(day) <= days[Number(month) - 1] &&
+    Number(hour) < 24 &&
+    Number(minute) < 60 &&
+    Number(second) < 60 &&
+    (offsetHour === undefined || (Number(offsetHour) < 24 && Number(offsetMinute) < 60))
+  );
+}
+
+function validatedOutcomeTimingRow(line) {
+  const row = parseTimingRow(line);
+  const iso = new RegExp(
+    '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:[.][0-9]{1,3})?(?:Z|[+-][0-9]{2}:[0-9]{2})$'
+  );
+  if (
+    !row ||
+    !(isTableTimingTimestamp(row.ts) || iso.test(row.ts)) ||
+    !Number.isFinite(timingTimestampToMs(row.ts)) ||
+    !validCalendarTimestamp(row.ts) ||
+    !isKnownTimingEvent(row.event) ||
+    row.cells.length < 8
+  )
+    fail('telemetry-invalid-row');
+  return row;
+}
+// Every table data row contributes evidence or refuses. Headers/separators are
+// syntax, never a reason to silently discard malformed work.
+export function readOutcomeTimingRows(body) {
+  const rows = [];
+  for (const line of String(body).split('\n')) {
+    const text = line.trim();
+    if (!text.startsWith('|')) {
+      if (text.includes('aitm-actor:') || text.includes('aitm-engagement:'))
+        fail('telemetry-invalid-row');
+      continue;
+    }
+    if (new RegExp('^[|][ :|-]+$').test(text)) continue;
+    const row = parseTimingRow(text);
+    if (row?.ts === 'Timestamp' && row.event === 'event' && !row.actorKey) continue;
+    rows.push(validatedOutcomeTimingRow(text));
+  }
+  return rows;
+}
+
+// A pure snapshot projection, not publication authority. Runtime callers must
+// establish the canonical comment and later verify the exact immutable prefix.
+export function deriveIncompleteTelemetry({ source, verificationSha } = {}) {
+  exact(source, ['repository', 'commentNodeId', 'snapshot'], 'telemetry-source');
+  if (
+    typeof source.repository !== 'string' ||
+    !new RegExp('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$').test(source.repository) ||
+    typeof source.commentNodeId !== 'string' ||
+    !new RegExp('^IC_[A-Za-z0-9_-]+$').test(source.commentNodeId) ||
+    typeof source.snapshot !== 'string' ||
+    !source.snapshot.endsWith('\n') ||
+    !SHA_RE.test(verificationSha)
+  )
+    fail('telemetry-source');
+  const rows = readOutcomeTimingRows(source.snapshot);
+  if (!rows.length) fail('telemetry-empty');
+  const cutoff = rows.at(-1).ts;
+  const engagement = deriveActorEngagement(rows, cutoff);
+  if (engagement.failures.length) fail('telemetry-invalid-evidence');
+  const representedMs = ['plan', 'develop', 'test', 'review'].reduce(
+    (sum, stage) => sum + (engagement.byPhase[stage]?.engagedMs ?? 0),
+    0
+  );
+  const outsideOutcomeStages = representedMs !== engagement.engagedMs;
+  if (engagement.complete && !outsideOutcomeStages) fail('telemetry-not-incomplete');
+  const reasons = [
+    ...(engagement.unknownRows ? ['legacy-attribution-unknown'] : []),
+    ...(outsideOutcomeStages ? ['engagement-outside-outcome-stages'] : []),
+    ...(engagement.incompleteActors.length ? ['open-actor-interval'] : []),
+  ];
+  if (!reasons.length) fail('telemetry-reason');
+  return {
+    status: 'incomplete',
+    reasons,
+    verificationSha,
+    knownEngagedMs: engagement.engagedMs,
+    intervals: engagement.intervals,
+    source: {
+      ...source,
+      cutoff,
+      digest: createHash('sha256').update(source.snapshot).digest('hex'),
+    },
+  };
+}
+function validateIncompleteTelemetry(payload) {
+  const telemetry = payload.telemetry;
+  const current = payload.schema === INCOMPLETE_OUTCOME_SCHEMA;
+  exact(
+    telemetry,
+    [
+      'status',
+      'reasons',
+      'verificationSha',
+      'knownEngagedMs',
+      'intervals',
+      'source',
+      ...(current ? ['verification', 'forecastStatus'] : []),
+    ],
+    'telemetry-keys'
+  );
+  exact(
+    telemetry.source,
+    ['repository', 'commentNodeId', 'snapshot', 'cutoff', 'digest'],
+    'telemetry-source'
+  );
+  const { repository, commentNodeId, snapshot } = telemetry.source;
+  const expected = {
+    ...deriveIncompleteTelemetry({
+      source: { repository, commentNodeId, snapshot },
+      verificationSha: telemetry.verificationSha,
+    }),
+    ...(current
+      ? { verification: telemetry.verification, forecastStatus: telemetry.forecastStatus }
+      : {}),
+  };
+  const proof = telemetry.verification;
+  let requiresTestCommand = true;
+  if (current) {
+    ({ requiresTestCommand } = validateOutcomeDeliveryProof(proof, {
+      kind: payload.kind,
+      issue: payload.issue,
+      repository,
+      verificationSha: telemetry.verificationSha,
+    }));
+    if (
+      telemetry.forecastStatus !==
+      (payload.kind === 'epic-orchestration'
+        ? 'epic-not-applicable'
+        : payload.forecastRecordId === null
+          ? 'legacy-none'
+          : 'frozen')
+    )
+      fail('telemetry-forecast-status');
+  }
+  if (canonicalRecordJson(expected) !== canonicalRecordJson(telemetry))
+    fail('telemetry-projection');
+  if (
+    requiresTestCommand &&
+    !payload.actual.commands.some((command) =>
+      command.executions.some(
+        (execution) =>
+          execution.commitSha === telemetry.verificationSha &&
+          execution.exitCode === 0 &&
+          (!current || (execution.stage === 'test' && execution.receiptId === proof.recordId))
+      )
+    )
+  )
+    fail('telemetry-verification');
+}
+
+export function validateOutcomeTimingSource(payload, context = {}) {
+  validateEstimationOutcome(payload, { expectedIssue: context.issue });
+  if (!isIncompleteOutcome(payload)) fail('telemetry-schema');
+  const { source, verificationSha } = payload.telemetry;
+  if (
+    context.repository !== source.repository ||
+    context.commentNodeId !== source.commentNodeId ||
+    context.verificationSha !== verificationSha ||
+    context.forecastRecordId !== payload.forecastRecordId ||
+    typeof context.body !== 'string'
+  )
+    fail('telemetry-source-lineage');
+  const snapshotLines = source.snapshot.split('\n');
+  const snapshotRows = readOutcomeTimingRows(source.snapshot);
+  const lastData = snapshotLines.findLastIndex((line) => line.trim() === snapshotRows.at(-1)?.raw);
+  const prefix = snapshotLines.slice(0, lastData + 1).join('\n') + '\n';
+  const suffix = snapshotLines.slice(lastData + 1).join('\n');
+  if (
+    !context.body.startsWith(prefix) ||
+    !context.body.endsWith(suffix) ||
+    context.body.length < prefix.length + suffix.length
+  )
+    fail('telemetry-source-lineage');
+  const tail = context.body.slice(prefix.length, suffix.length ? -suffix.length : undefined);
+  let prior = timingTimestampToMs(source.cutoff);
+  for (const line of tail.split('\n')) {
+    if (line === '') continue;
+    const row = validatedOutcomeTimingRow(line);
+    const ms = timingTimestampToMs(row.ts);
+    if (ms < prior || !isEmittableTimingEvent(row.event)) fail('telemetry-source-successor');
+    prior = ms;
+  }
+  const currentRows = readOutcomeTimingRows(context.body);
+  const current = deriveActorEngagement(currentRows, currentRows.at(-1)?.ts);
+  if (current.failures.length) fail('telemetry-source-successor');
+  return { status: 'matched', sourceDigest: source.digest, successor: tail.length > 0 };
 }

@@ -1,0 +1,13 @@
+# PR1866 evidence-v2 permission sandbox adaptation
+
+Changed only helpers/evidence-v2/sandbox.mjs, process-bootstrap.mjs, git-boundary.mjs and integration/task-tracker/lib/evidence-v2/isolation.test.mjs under scripts/tests. No production changes or authority adapters.
+
+Original real-dispatcher test reproduced ROOT_IDENTITY_MISMATCH (Git could not verify). Root causes traced independently:
+1. Git guard treated standalone rev-parse --git-dir identity observation as global location override. Allow only exact standalone --git-dir under rev-parse; global and equals forms remain refused.
+2. Node26 propagates original permission launch flags into NODE_OPTIONS on dispatcher import. Check now permits only byte-identical immutable launch permission flags from execArgv before preload. Arbitrary --require NODE_OPTIONS remains refused. No transport registration change.
+3. Runtime root guard scans enclosing .git markers. Repo-nested permission fixture required reading production ancestor Git metadata; refuse that broad grant. Root authorized canonical mkdtempOutsideRepo exception with explicit reason. Fixture still owns real source Git, isolated bare remote and empty hooks. Each launch proves enclosing ancestor .git markers absent before granting exact marker reads. Production toolRoot/.git remains protected and explicitly tested.
+4. Sandbox child supplies own claude actor and runId session identity.
+
+Regression coverage retains existing storage-link, alternates, executable config, network, arbitrary process, filesystem, production issue, remote and hook refusals. Adds actual harmless complete runtime rev-parse/worktree census observations; global and equals Git-directory override refusals; injected NODE_OPTIONS refusal; production .git read denial.
+
+Verification: clean-environment node --test isolation.test.mjs rehearsal-cli.test.mjs, 7/7 passed, 0 failures/skips, exit0. Log /private/tmp/1866-isolation-rehearsal.log. Initial red /private/tmp/1866-isolation-red.log. ESLint and git diff --check passed.

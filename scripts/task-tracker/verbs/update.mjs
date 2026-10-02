@@ -1,11 +1,4 @@
 import { loadState, saveState } from '../state.mjs';
-import {
-  currentSessionId,
-  jsonlPath,
-  markerPathFor,
-  saveMarker,
-  countWords,
-} from '../word-counter.mjs';
 import { timingPostWarningSuffix } from '../lib/timing-post-outcome.mjs';
 import { heartbeatBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
 
@@ -18,22 +11,29 @@ export async function verbUpdate(ctx) {
     return;
   }
   const description = rest.join(' ').trim() || 'checkpoint';
-  const { deltaMin, idleMin, deltaWallMin, deltaWords, wordMarker, ts, post } =
-    await flushActiveToGH(s, 'update', description);
-  const totalActiveMinutes = (s.totalActiveMinutes || 0) + deltaMin;
-  const sid = currentSessionId();
-  let wordsAtStart = wordMarker;
-  if (sid) {
-    const { totalLines, count } = countWords(jsonlPath(sid), 0);
-    saveMarker(markerPathFor(sid), totalLines, count, s.active);
-    wordsAtStart = count;
-  }
+  const {
+    deltaMin: activeEstimateMin,
+    idleMin: idleEstimateMin,
+    deltaWallMin,
+    deltaWords,
+    wordMarker,
+    ts,
+    post,
+  } = await flushActiveToGH(s, 'update', description);
+  const totalActiveEstimate =
+    activeEstimateMin === null || s.totalActiveMinutes === null
+      ? null
+      : (s.totalActiveMinutes ?? 0) + activeEstimateMin;
+  const totalActiveMinutes = totalActiveEstimate ?? 'Unknown';
+  const deltaMin = activeEstimateMin ?? 'Unknown';
+  const idleMin = idleEstimateMin ?? 'Unknown';
+  const wordsAtStart = wordMarker;
   saveState(
     {
       ...s,
       entryStartTs: ts,
       wordsAtEntryStart: wordsAtStart,
-      totalActiveMinutes,
+      totalActiveMinutes: totalActiveEstimate,
     },
     statePath
   );

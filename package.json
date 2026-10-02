@@ -68,6 +68,7 @@
     "!scripts/task-tracker/measure-guidance-context.mjs",
     "!scripts/tests/**",
     "!scripts/maintenance/**",
+    "!scripts/research/**",
     "!**/*.test.mjs",
     "statusline/",
     "docs/README.md",

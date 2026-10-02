@@ -5,17 +5,24 @@
 // bucket's original (stale) ts — that trips the freshness guard (which no
 // flag defeats) and deadlocks `/task new`. Instead the elapsed bucket time is
 // reconciled as a single fresh-stamped idle row. See issue #234.
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import { strict as assert } from 'node:assert';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import { verbNew } from '../../../../task-tracker/verbs/new.mjs';
 import { parseDurationSeconds } from '../../../../task-tracker/lib/timing-rows.mjs';
 
 function parseRow(row) {
   // | ts | event | activeMin | idleMin | dWords | wMarker | desc | <!-- ... -->
   const cells = row
-    .replace(/<!--.*?-->\s*$/, '')
+    .replace(/<!--.*?-->\s*$/s, '')
     .split('|')
     .map((c) => c.trim());
   // cells[0] is '' (leading pipe)
@@ -38,7 +45,8 @@ const dir = mkdtempProjectIsolated('aitm-aged-bucket-');
 // process.cwd() and pollutes the live worktree's session-tracking marker with
 // the fake #999 issue, breaking every later state-reading test in the run.
 process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
-const statePath = path.join(dir, 'state.json');
+process.chdir(dir);
+const statePath = path.join(dir, '.tmp', 'aitm', 'state', 'state.json');
 
 // Bucket opened 10 minutes ago — well beyond the 60s freshness window.
 const TEN_MIN_MS = 10 * 60 * 1000;
@@ -54,9 +62,8 @@ mkdirSync(plansDir, { recursive: true });
 const savedPlanFile = path.join(plansDir, '20260619-aged-bucket-promotion.md');
 writeFileSync(savedPlanFile, '# Aged bucket promotion\n\n## Scope\nregression test\n', 'utf8');
 
-writeFileSync(
-  statePath,
-  JSON.stringify({
+saveState(
+  {
     active: 'discover',
     lastActive: null,
     entryStartTs: null,
@@ -67,8 +74,8 @@ writeFileSync(
       entries: [{ ts: startedAt, event: 'discover-start', deltaMin: null, deltaWords: null }],
       savedPlanFile,
     },
-  }),
-  'utf8'
+  },
+  statePath
 );
 
 const rows = [];

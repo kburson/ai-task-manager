@@ -407,7 +407,19 @@ test('archived recertification binds every obligation and its recorded public CL
   }
 });
 
-test('recertification refuses a relabeled or altered lifecycle capture', async () => {
+test('recertification refuses a relabeled or altered lifecycle capture', async (t) => {
+  // #1857: current replay uses an isolated fixture actor; archived captures
+  // and their original provenance assertions remain unchanged.
+  const keys = ['AI_TASK_MANAGER_SESSION_ID', 'AI_TASK_MANAGER_APP_NAME'];
+  const prior = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-guidance-replay';
+  process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
+  t.after(() => {
+    for (const [key, value] of Object.entries(prior)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
   const { buildCurrentRecertificationDecision } =
     await import('../../../../maintenance/measure-guidance-candidate.mjs');
   const committed = JSON.parse(

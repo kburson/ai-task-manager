@@ -13,6 +13,7 @@
 //   5. Valid backward rework transition (test→develop) with --from →
 //      permitted.
 
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -66,7 +67,7 @@ function cleanEnv(sandbox, extra = {}) {
 }
 
 async function run(args, env) {
-  return pexec(process.execPath, [SCRIPT, ...args], { env, timeout: 10000 });
+  return pexec(process.execPath, unitRuntimeEntrypointArgs(SCRIPT, args), { env, timeout: 10000 });
 }
 
 async function runExpectFail(args, env) {

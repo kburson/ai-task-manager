@@ -4,6 +4,11 @@
 // and that the migrated verb runs against a small hand-built fixture instead of
 // the full runtime context (AC3).
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync, writeFileSync } from 'node:fs';

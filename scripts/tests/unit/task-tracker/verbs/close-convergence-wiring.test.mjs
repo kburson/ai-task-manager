@@ -1,7 +1,7 @@
 // @story #925
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
-import { test } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
 
 import {
   readUnauthorizedCloseRecovery,
@@ -671,6 +671,15 @@ test('convergence close synchronizes terminal timing before freezing its outcome
   assert.ok(
     closeIssueBranch.indexOf('emitReviewToDoneClosePair') >= 0,
     'board-Done convergence must emit the close pair before its outcome'
+  );
+
+  const drain = closeIssueBranch.indexOf(
+    'await flushCloseTimingOrThrow({ closeTarget, flushQueueFor })'
+  );
+  const firstOutcome = closeIssueBranch.indexOf('ctx.assertFieldsPersisted');
+  assert.ok(
+    drain >= 0 && firstOutcome > drain,
+    'pending original rows must drain before the first incomplete outcome can freeze'
   );
 
   const convergence = source.indexOf('runClosedIssueConvergence(');

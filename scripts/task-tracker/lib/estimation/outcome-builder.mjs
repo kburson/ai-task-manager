@@ -1,4 +1,8 @@
-import { validateEstimationOutcome } from './outcome-record.mjs';
+import {
+  validateEstimationOutcome,
+  deriveIncompleteTelemetry,
+  INCOMPLETE_OUTCOME_SCHEMA,
+} from './outcome-record.mjs';
 
 const STAGES = ['plan', 'develop', 'test', 'review'];
 const RECORD_ID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
@@ -15,6 +19,8 @@ export function buildEstimationOutcome({
   forecast,
   timing,
   verification = [],
+  verificationSha,
+  verificationProvenance,
   diff,
   review,
   cost = {},
@@ -22,18 +28,41 @@ export function buildEstimationOutcome({
   childOutcomeRecordIds = [],
 } = {}) {
   if (!Number.isInteger(issue) || issue <= 0) fail('input');
-  if (kind === 'story' && forecast?.payload?.issue !== issue) fail('input');
+  if (
+    kind === 'story' &&
+    !(forecast === null && timing?.source) &&
+    forecast?.payload?.issue !== issue
+  )
+    fail('input');
   if (kind === 'epic-orchestration' && forecast !== null) fail('input');
   if (!new Set(['story', 'epic-orchestration']).has(kind)) fail('input');
-  if (!timing?.stagesMs || !diff || !review) fail('evidence');
+  const telemetry = timing?.source
+    ? {
+        ...deriveIncompleteTelemetry({ source: timing.source, verificationSha }),
+        verification: structuredClone(verificationProvenance),
+        forecastStatus:
+          kind === 'epic-orchestration'
+            ? 'epic-not-applicable'
+            : forecast === null
+              ? 'legacy-none'
+              : 'frozen',
+      }
+    : null;
+  if ((!timing?.stagesMs && !telemetry) || !diff || !review) fail('evidence');
   const stages = {};
   for (const stage of STAGES) {
+    if (telemetry) {
+      stages[stage] = null;
+      continue;
+    }
     const value = timing.stagesMs[stage];
     if (!Number.isInteger(value) || value < 0) fail('timing');
     stages[stage] = round(value / 3_600_000);
   }
-  const engagedHours = round(Object.values(stages).reduce((sum, value) => sum + value, 0));
-  if (engagedHours <= 0) fail('zero-time');
+  const engagedHours = telemetry
+    ? null
+    : round(Object.values(stages).reduce((sum, value) => sum + value, 0));
+  if (!telemetry && engagedHours <= 0) fail('zero-time');
   if (!Array.isArray(verification)) fail('verification');
   const commands = verification.map((command) => ({
     classification: command.classification,
@@ -41,13 +70,16 @@ export function buildEstimationOutcome({
     attempts: command.attempts,
     executions: structuredClone(command.executions ?? []),
   }));
-  const avoidableProcessWasteHours = cost.avoidableProcessWasteHours ?? 0;
+  const avoidableProcessWasteHours = telemetry ? null : (cost.avoidableProcessWasteHours ?? 0);
   // Necessary work requires affirmative classification. Any engaged time not
   // explicitly identified as necessary or avoidable remains unknown, never
   // silently promoted into the learning cohort as necessary implementation.
-  const unclassifiedHours =
-    cost.unclassifiedHours ?? round(engagedHours - avoidableProcessWasteHours);
-  const necessaryHours = round(engagedHours - avoidableProcessWasteHours - unclassifiedHours);
+  const unclassifiedHours = telemetry
+    ? null
+    : (cost.unclassifiedHours ?? round(engagedHours - avoidableProcessWasteHours));
+  const necessaryHours = telemetry
+    ? null
+    : round(engagedHours - avoidableProcessWasteHours - unclassifiedHours);
   if (necessaryHours < 0) fail('cost-total');
   if (
     !Array.isArray(childOutcomeRecordIds) ||
@@ -56,13 +88,14 @@ export function buildEstimationOutcome({
     fail('children');
   if (kind === 'story' && childOutcomeRecordIds.length > 0) fail('children');
   const payload = {
-    schema: 'aitm.estimation-outcome/v1',
+    schema: telemetry ? INCOMPLETE_OUTCOME_SCHEMA : 'aitm.estimation-outcome/v1',
+    ...(telemetry ? { telemetry } : {}),
     issue,
     kind,
-    forecastRecordId: kind === 'story' ? forecast.recordId : null,
-    humanPlanHours: kind === 'story' ? forecast.payload.plan.humanHours : null,
+    forecastRecordId: kind === 'story' && forecast ? forecast.recordId : null,
+    humanPlanHours: kind === 'story' && forecast ? forecast.payload.plan.humanHours : null,
     aiForecast:
-      kind === 'story'
+      kind === 'story' && forecast
         ? {
             p50EngagedHours: forecast.payload.ai.p50EngagedHours,
             p80EngagedHours: forecast.payload.ai.p80EngagedHours,
@@ -77,7 +110,7 @@ export function buildEstimationOutcome({
       childOutcomeRecordIds: [...childOutcomeRecordIds],
     },
     variance:
-      kind === 'story'
+      !telemetry && kind === 'story'
         ? {
             vsAiP50Hours: round(engagedHours - forecast.payload.ai.p50EngagedHours),
             vsAiP80Hours: round(engagedHours - forecast.payload.ai.p80EngagedHours),
@@ -87,7 +120,7 @@ export function buildEstimationOutcome({
       necessaryHours,
       avoidableProcessWasteHours,
       unclassifiedHours,
-      drivers: cost.drivers ?? [],
+      drivers: telemetry ? [] : (cost.drivers ?? []),
     },
   };
   validateEstimationOutcome(payload, { expectedIssue: issue });

@@ -1,16 +1,17 @@
 // @story #200
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync,
-  writeFileSync,
-  chmodSync,
-  readFileSync,
-  existsSync,
-  mkdirSync,
-} from 'node:fs';
+import { cpSync, writeFileSync, chmodSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 import { verifyIssueBody, REQUIRED_SECTIONS } from '../../../../gh/lib/issue-body-verifier.mjs';
 import { CANONICAL_USER_STORY_TEMPLATE } from '../../../../task-tracker/lib/user-story-author.mjs';
@@ -288,7 +289,7 @@ test('verifyIssueBody: tolerates lifecycle marker blocks between sections', () =
 // ── round-trip: preflight fragment path output passes verifier ─────────────
 
 test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', () => {
-  const tmp = mkdtempSync(join(projectScratchDir('test'), 'aitm-rt-'));
+  const tmp = mkdtempProjectIsolated('aitm-rt-');
   const storyFile = join(tmp, 'story.md');
   const scopeFile = join(tmp, 'scope.md');
   const acFile = join(tmp, 'ac.md');
@@ -355,10 +356,13 @@ exit 1
 }
 
 function setupSandbox() {
-  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-vci-'));
+  const temp = mkdtempProjectIsolated('aitm-vci-');
   const binDir = join(temp, 'bin');
   mkdirSync(binDir, { recursive: true });
   mkdirSync(join(temp, '.ai-task-manager'), { recursive: true });
+  cpSync(join(repoRoot, '.ai-task-manager/templates'), join(temp, '.ai-task-manager/templates'), {
+    recursive: true,
+  });
   writeFileSync(
     join(temp, '.ai-task-manager/task-tracker.json'),
     JSON.stringify({ repo: 'kburson/ai-task-manager', projectId: 'PVT_TEST', assignee: '@me' })

@@ -4,6 +4,11 @@
 // folded into `count`, and full-expansion (stay + full tool_use inputs + full
 // tool_result outputs) returned as `fullExpansion`. Split out of
 // word-counter.test.mjs to stay under the 400-line per-file cap.
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';

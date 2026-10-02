@@ -1,4 +1,9 @@
 // @story #756
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {

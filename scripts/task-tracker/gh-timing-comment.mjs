@@ -1,6 +1,7 @@
 // GH timing comment — locate/create/append.
 // GH I/O uses `gh` CLI via execFile with timeout.
 
+import { timingActorMarker, timingEngagementMarker } from './lib/timing-actor.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
@@ -137,6 +138,8 @@ export function buildRow({
   fullWordMarker,
   description = '',
   phase,
+  actorKey,
+  engagement,
 }) {
   const tsMs = tsToMs(ts);
   if (!Number.isFinite(tsMs)) {
@@ -169,7 +172,11 @@ export function buildRow({
   let activeCell;
   let idleCell;
   let trailingMarker = '';
-  if (Number.isFinite(Number(activeSec)) || Number.isFinite(Number(idleSec))) {
+  if (engagement && !actorKey) throw new TypeError('timing-evidence:actor-required');
+  if (actorKey && (activeSec === null || idleSec === null)) {
+    activeCell = activeSec === null ? 'Unknown' : formatDurationSeconds(activeSec ?? 0);
+    idleCell = idleSec === null ? 'Unknown' : formatDurationSeconds(idleSec ?? 0);
+  } else if (Number.isFinite(Number(activeSec)) || Number.isFinite(Number(idleSec))) {
     const aSec = Number.isFinite(Number(activeSec))
       ? Math.max(0, Math.floor(Number(activeSec)))
       : 0;
@@ -193,7 +200,14 @@ export function buildRow({
       : deltaWordsFull === undefined
         ? ''
         : ` ${fmtNumBlankZero(deltaWordsFull)} |`;
-  return `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${fullCell}${trailingMarker}`;
+  if (actorKey)
+    trailingMarker =
+      timingActorMarker(actorKey) +
+      (engagement ? timingEngagementMarker(engagement) : '') +
+      trailingMarker;
+  const row = `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${fullCell}${trailingMarker}`;
+  if (actorKey) parseTimingRow(row);
+  return row;
 }
 
 // #981 — narrow, explicit exemption from buildRow's retroactive-timestamp
@@ -295,13 +309,17 @@ export function buildFlushRow({
   fullWordMarker,
   description = '',
   phase,
+  actorKey,
+  engagement,
 }) {
-  const toSec = (min) => Math.max(0, Math.round(Number(min) || 0) * 60);
+  const toSec = (min) => (min === null ? null : Math.max(0, Math.round(Number(min) || 0) * 60));
   return buildRow({
     ts,
     event,
     activeSec: toSec(activeMin),
     idleSec: toSec(idleMin),
+    actorKey,
+    engagement,
     deltaWords,
     deltaWordsFull,
     wordMarker,
@@ -498,6 +516,7 @@ function normalizeAdjacentWordDeltas(lines) {
   return lines.map((line) => {
     const parsed = parseTimingRow(line);
     if (!parsed || !isTableTimingTimestamp(parsed.ts)) return line;
+    if (parsed.actorKey) return line;
     const current = numericWordMarker(parsed.wordMarker);
     const delta = previous === null || current === null ? 0 : Math.max(0, current - previous);
     if (current !== null) previous = current;
@@ -558,12 +577,75 @@ function carryForwardWordMarker(body, row) {
 //   • no open interruption → loud refusal via DuplicateStartError (AC3).
 // This makes a duplicate `start` impossible by construction, independent of any
 // upstream read/resolve state.
+
+function appendActorRow(body, row) {
+  const normalized = ensureTimingRowFullMarkerCell(row);
+  const incoming = parseTimingRow(normalized);
+  const lines = body.split('\n');
+  const records = lines
+    .map(parseTimingRow)
+    .filter((entry) => entry && isTableTimingTimestamp(entry.ts));
+  const own = records.filter((entry) => entry.actorKey === incoming.actorKey);
+  if (own.some((entry) => entry.raw === incoming.raw)) return body;
+  if (
+    incoming.engagement &&
+    own.some(
+      (entry) =>
+        entry.engagement &&
+        entry.engagement.startMs === incoming.engagement.startMs &&
+        entry.engagement.endMs === incoming.engagement.endMs
+    )
+  ) {
+    const same = own.find(
+      (entry) =>
+        entry.engagement &&
+        entry.engagement.startMs === incoming.engagement.startMs &&
+        entry.engagement.endMs === incoming.engagement.endMs
+    );
+    if (
+      JSON.stringify(same.engagement) === JSON.stringify(incoming.engagement) &&
+      same.marker === incoming.marker &&
+      same.cells.every((cell, index) => index === 5 || cell === incoming.cells[index])
+    )
+      return body;
+    throw new TypeError('timing-evidence:conflicting-interval');
+  }
+  if (incoming.event === 'start' && own.length) {
+    throw new DuplicateStartError('refusing duplicate actor start');
+  }
+  let effective = normalized;
+  const prior = own.at(-1);
+  let delta = null;
+  if (incoming.engagement?.wordStart !== null && incoming.engagement?.wordStart !== undefined) {
+    delta = incoming.engagement.wordEnd - incoming.engagement.wordStart;
+  } else if (prior) {
+    const before = numericWordMarker(prior.wordMarker);
+    const after = numericWordMarker(incoming.wordMarker);
+    if (before !== null && after !== null && after >= before) delta = after - before;
+  }
+  effective = replaceTimingRowCell(
+    effective,
+    5,
+    delta === null ? ' — ' : ' ' + delta.toLocaleString('en-US') + ' '
+  );
+  const incomingMs = _tsToMs(incoming.ts);
+  const later = lines.findIndex((line) => {
+    const parsed = parseTimingRow(line);
+    return parsed && isTableTimingTimestamp(parsed.ts) && _tsToMs(parsed.ts) > incomingMs;
+  });
+  let lastTable = -1;
+  for (let i = 0; i < lines.length; i++) if (lines[i].startsWith('|')) lastTable = i;
+  lines.splice(later < 0 ? lastTable + 1 : later, 0, effective);
+  return lines.join('\n').trimEnd() + '\n';
+}
+
 function appendRow(body, row) {
   body = normalizeTimingSchema(body);
   if (shouldSuppressTimingAppend(body, rowEventSlug(row))) {
     return body;
   }
 
+  if (parseTimingRow(row)?.actorKey) return appendActorRow(body, row);
   let effectiveRow = ensureTimingRowFullMarkerCell(row);
   const incomingEvent = rowEventSlug(effectiveRow);
   if (incomingEvent === 'review:approved') {
@@ -737,15 +819,60 @@ export async function postTimingEvent({
   retries = 2,
   lock = true,
   projDir,
+  deps = {},
 } = {}) {
   const work = async () => {
-    const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
+    const find = deps.findTimingComment ?? findTimingComment;
+    const update = deps.updateTimingComment ?? updateTimingComment;
+    const create = deps.createTimingComment ?? createTimingComment;
+    if (parseTimingRow(row)?.actorKey) {
+      const issue = Number(String(issueNumber).replace(/^#/, ''));
+      const read = deps.readCanonicalTimingSource ?? readCanonicalTimingSource;
+      const observe = async () => {
+        const result = await read({ issueNumber: issue, repo, timeoutMs });
+        if (result?.status === 'error')
+          throw result.error ?? new TypeError('timing-publication:source');
+        if (result?.status === 'absent' && result.source === null) return null;
+        const source = result?.source;
+        if (
+          result?.status !== 'found' ||
+          source?.repository !== repo ||
+          source.issue !== issue ||
+          typeof source.commentNodeId !== 'string' ||
+          !source.commentNodeId ||
+          typeof source.body !== 'string'
+        ) {
+          throw new TypeError('timing-publication:source');
+        }
+        return source;
+      };
+      const existing = await observe();
+      const updated = appendRow(existing?.body ?? buildInitialComment(), row);
+      if (existing) {
+        // A lost response may already have committed these exact immutable
+        // bytes. Re-observe instead of issuing another remote mutation.
+        if (updated !== existing.body)
+          await update(existing.commentNodeId, repo, updated, { timeoutMs });
+      } else {
+        await create(issue, repo, updated, { timeoutMs });
+      }
+      const observed = await observe();
+      if (
+        !observed ||
+        (existing && observed.commentNodeId !== existing.commentNodeId) ||
+        appendRow(observed.body, row) !== observed.body
+      ) {
+        throw new TypeError('timing-publication:readback');
+      }
+      return;
+    }
+    const existing = await find(issueNumber, repo, { timeoutMs });
     if (existing) {
       const updated = appendRow(existing.body, row);
-      await updateTimingComment(existing.id, repo, updated, { timeoutMs });
+      await update(existing.id, repo, updated, { timeoutMs });
     } else {
       const initial = appendRow(buildInitialComment(), row);
-      await createTimingComment(issueNumber, repo, initial, { timeoutMs });
+      await create(issueNumber, repo, initial, { timeoutMs });
     }
   };
   if (!lock) {
@@ -815,6 +942,32 @@ export function renderTimingSingletonMarkdown({ timingBody, timingProjection } =
   ) {
     throw new TypeError('timing-singleton-projection:input');
   }
+  const totals = timingProjection.totals;
+  if (
+    [totals.totalActiveSec, totals.totalIdleSec, totals.engagedSec, totals.planMin].some(
+      (value) => value === null
+    )
+  ) {
+    const duration = (value) =>
+      value === null ? 'Unknown' : formatDurationSeconds(Math.round(value));
+    return [
+      timingBody.trimEnd(),
+      '',
+      '### Normalized timing projection',
+      '',
+      '- Total active: ' + duration(totals.totalActiveSec),
+      '- Total idle: ' + duration(totals.totalIdleSec),
+      '- Engaged: ' + duration(totals.engagedSec),
+      '- Plan: ' + (totals.planMin === null ? 'Unknown' : totals.planMin + ' min'),
+      ...(Number.isFinite(totals.knownEngagedSec)
+        ? ['- Known engagement lower bound: ' + totals.knownEngagedSec + ' seconds']
+        : []),
+      ...(totals.telemetry?.reasons?.length
+        ? ['- Unavailable: ' + totals.telemetry.reasons.join(', ')]
+        : []),
+      '',
+    ].join(String.fromCharCode(10));
+  }
   const body = timingBody.endsWith('\n') ? timingBody : `${timingBody}\n`;
   return (
     `${body}\n### Normalized timing projection\n\n` +
@@ -839,3 +992,103 @@ export const __internals = {
   createTimingComment,
   updateTimingComment,
 };
+
+const CANONICAL_TIMING_QUERY =
+  'query($owner:String!,$name:String!,$issue:Int!,$after:String){repository(owner:$owner,name:$name){nameWithOwner issue(number:$issue){number comments(first:100,after:$after){totalCount nodes{id body} pageInfo{hasNextPage endCursor}}}}}';
+
+// Completion authority requires the entire comment census, not first-match
+// selection from an unverified partial list.
+export async function readCanonicalTimingSource({ issueNumber, repo, timeoutMs, deps = {} } = {}) {
+  try {
+    const issue = Number(issueNumber);
+    const parts = typeof repo === 'string' ? repo.split('/') : [];
+    if (
+      !Number.isSafeInteger(issue) ||
+      issue <= 0 ||
+      parts.length !== 2 ||
+      parts.some((part) => !part)
+    ) {
+      throw new TypeError('timing-source:input');
+    }
+    const [owner, name] = parts;
+    const graphql =
+      deps.graphql ??
+      (async ({ after }) =>
+        JSON.parse(
+          await ghExec(
+            [
+              'api',
+              'graphql',
+              '-f',
+              'query=' + CANONICAL_TIMING_QUERY,
+              '-f',
+              'owner=' + owner,
+              '-f',
+              'name=' + name,
+              '-F',
+              'issue=' + issue,
+              ...(after === null ? [] : ['-f', 'after=' + after]),
+            ],
+            { timeoutMs }
+          )
+        ));
+    const seenIds = new Set();
+    const seenCursors = new Set();
+    const hits = [];
+    let after = null;
+    let total = null;
+    for (let page = 0; page < 1000; page++) {
+      const response = await graphql({ owner, name, issue, after });
+      const repository = response?.data?.repository;
+      const remoteIssue = repository?.issue;
+      const comments = remoteIssue?.comments;
+      if (
+        response?.errors?.length ||
+        repository?.nameWithOwner !== repo ||
+        remoteIssue?.number !== issue ||
+        !Array.isArray(comments?.nodes) ||
+        !Number.isSafeInteger(comments.totalCount) ||
+        comments.totalCount < 0 ||
+        typeof comments.pageInfo?.hasNextPage !== 'boolean'
+      )
+        throw new TypeError('timing-source:census');
+      if (total === null) total = comments.totalCount;
+      if (comments.totalCount !== total) throw new TypeError('timing-source:census-changed');
+      for (const comment of comments.nodes) {
+        if (
+          typeof comment?.id !== 'string' ||
+          typeof comment.body !== 'string' ||
+          seenIds.has(comment.id)
+        )
+          throw new TypeError('timing-source:comment');
+        seenIds.add(comment.id);
+        if (
+          comment.body
+            .split('\n')
+            .some(
+              (line) => line.trim() === TIMING_HEADING || line.trim() === '## ' + TIMING_HEADING
+            )
+        )
+          hits.push(comment);
+      }
+      if (!comments.pageInfo.hasNextPage) {
+        if (seenIds.size !== total || hits.length > 1)
+          throw new TypeError('timing-source:ambiguous-or-incomplete');
+        if (!hits.length) return { status: 'absent', source: null, error: null };
+        return {
+          status: 'found',
+          source: { repository: repo, issue, commentNodeId: hits[0].id, body: hits[0].body },
+          error: null,
+        };
+      }
+      const cursor = comments.pageInfo.endCursor;
+      if (typeof cursor !== 'string' || !cursor || seenCursors.has(cursor))
+        throw new TypeError('timing-source:cursor');
+      seenCursors.add(cursor);
+      after = cursor;
+    }
+    throw new TypeError('timing-source:census-limit');
+  } catch (error) {
+    return { status: 'error', source: null, error };
+  }
+}

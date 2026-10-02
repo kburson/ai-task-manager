@@ -22,6 +22,7 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { artifactShellTargets, artifactPathPolicy } from './lib/artifact-write-policy.mjs';
 import { splitCommandSegments } from './lib/gh-edit-guard.mjs';
 import { discoverBashActivity, inspectQuotedHeredocs } from './lib/mutation-context.mjs';
 
@@ -282,25 +283,13 @@ export function extractWriteTargets(command) {
 // @story #1848
 // Closed shell forms: incidental scratch paths never authorize other effects.
 export function scratchShellTargets(command) {
-  if (typeof command !== 'string') return null;
-  const target = '(?:\\.scratch|\\.tmp)(?:/[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*)*';
-  const heredoc = command.match(
-    new RegExp(
-      '^\\s*cat\\s*>\\s*(' + target + ")\\s*<<'([A-Za-z_][A-Za-z0-9_]*)'\\n([\\s\\S]*)\\n\\2\\s*$"
-    )
-  );
-  if (heredoc) {
-    if (heredoc[3].split('\n').includes(heredoc[2])) return null;
-    return [heredoc[1]];
-  }
-  const mkdir = command.match(
-    new RegExp('^\\s*mkdir\\s+(?:-p\\s+)?(' + target + '(?:\\s+' + target + ')*)\\s*$')
-  );
-  if (mkdir) return mkdir[1].trim().split(/\s+/);
-  const echo = command.match(
-    new RegExp("^\\s*echo\\s+(?:[A-Za-z0-9_ .-]+|'[^'\\n]*')\\s*>>?\\s*(" + target + ')\\s*$')
-  );
-  return echo ? [echo[1]] : null;
+  const targets = artifactShellTargets(command);
+  return targets?.every(
+    (target) =>
+      /^(?:\.scratch|\.tmp)(?:\/|$)/.test(target) && artifactPathPolicy(target) === 'allow'
+  )
+    ? targets
+    : null;
 }
 
 export function classifyBash(command, policy = DEFAULT_POLICY) {

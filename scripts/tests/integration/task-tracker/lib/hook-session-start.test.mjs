@@ -247,3 +247,17 @@ test('buildOrphanRecoveryRowSpecs: above threshold posts an honest pause/resumed
   assert.equal(specs[1].wordMarker, 7);
   assert.equal(specs[1].fullWordMarker, 14);
 });
+
+test('terminal state lookup accepts the actual hash-prefixed binding reference', async () => {
+  let called = false;
+  const result = await fetchIssueState('#1857', {
+    repo: 'o/r',
+    run: async (command, args) => {
+      called = true;
+      assert.equal(args[2], '1857');
+      return { stdout: 'CLOSED' };
+    },
+  });
+  assert.equal(called, true);
+  assert.equal(result, 'CLOSED');
+});

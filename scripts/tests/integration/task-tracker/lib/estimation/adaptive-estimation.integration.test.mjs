@@ -480,7 +480,7 @@ test('default close runtime emits a child-referencing epic outcome without using
   const result = await runtime.ensure({
     issueNumber: 1067,
     forecastRecordId: legacyParentForecastId,
-    body: 'epic body',
+    body: '## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="epic" -->',
   });
   assert.equal(result.status, 'written');
   assert.equal(written[0].envelope.payload.kind, 'epic-orchestration');
