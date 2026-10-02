@@ -55,7 +55,7 @@
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/close.mjs",
-        "sha256": "sha256:38759ddcd3eab4e456611cbd2496068de568059264bf3b712e6c9accf8fcea12"
+        "sha256": "sha256:6534ab60e849faa4117206cc1e006de5f807ba1a41023ddcccc37764567584b4"
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/deliver.mjs",
@@ -73,7 +73,7 @@
     "fakeGhSha256": "sha256:b8c907132aa8fdacc4cb1fcbdfecdb25163aa93254062812b1561b226fbb8b2e",
     "fixedClockSha256": "sha256:fce21e3d55321b7163b369b88ba40e26c93984bda024d7ff5f84dc6e8a87705a",
     "transcriptSha256": "sha256:ff0aabfd6dca104869d33e8434b74435148d053b8dab83ce57e81896335a4653",
-    "sourceInputsSha256": "sha256:7d5c3b5e8a78ede0ee5f9ed476c2dbabcdc7e03b3ae3adf359c4c4625aac42e7"
+    "sourceInputsSha256": "sha256:6a4f6df31dc5d7d355a01df6cea3cb46c24d9bf9ee7c7b58564800be61dfc1af"
   },
   "events": [
     {
