@@ -1,0 +1,69 @@
+⚠ [aitm:word-measurement] codex-transcript-unresolved sid=fixture-absolute-word-markers.test
+[dependency-disposition] #1142: binding remains active; retry dependency projection (dependency-disposition:config)
+Started #1142.
+[dependency-disposition] #1142: binding remains active; retry dependency projection (dependency-disposition:config)
+Resumed #1142.
+[resume] #1142: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[dependency-disposition] #1142: binding remains active; retry dependency projection (dependency-disposition:config)
+Started #1142.
+✔ new timing comments name the cumulative Full Word Marker column (0.568166ms)
+✔ an appended row carries both absolute markers monotonically (17.555959ms)
+✔ legacy full deltas migrate to unavailable instead of fabricated cumulative values (0.3545ms)
+✔ an explicit unavailable full marker is not replaced by a prior numeric observation (0.386709ms)
+✔ the real review-approved and issue-wrap producer preserves a known full marker (1.626333ms)
+✔ bankTranscriptTail keeps durable markers independent across actor session ids (374.574084ms)
+✔ bankTranscriptTail preserves a legacy per-session full cursor above global state (107.616292ms)
+✔ bankTranscriptTail reports unavailable Codex input without advancing durable cursors (256.282708ms)
+✔ a fresh governed bind emits the available full-expansion marker (145.712666ms)
+✔ normal pause resume banks the unread away-period tail from the stored cursor (152.680959ms)
+✔ explicit target resume banks the unread away-period tail from the stored cursor (189.307917ms)
+✔ recorded runtime context refuses production source before context construction (319.746875ms)
+✔ recorded context rejects storage links, alternates, executable config and remote escape (569.978125ms)
+✔ cold process denies network, arbitrary subprocesses and production filesystem access (659.707625ms)
+✔ Git executable options and remote hooks refuse before native execution (1022.122083ms)
+✔ real dispatcher runs in a fresh recorded context and refuses production issue preflight (5764.676667ms)
+[dependency-disposition] #1142: binding remains active; retry dependency projection (dependency-disposition:config)
+Resumed #1142.
+✔ departure rows flush both absolute markers (19.322958ms)
+✔ a lifecycle opener after departure is preceded by canonical resumed (1.635209ms)
+✔ departure-to-resume marker growth is excluded from own-issue phase words (0.29375ms)
+✔ real pause and switch-out flushes preserve both markers while away growth stays excluded (832.128084ms)
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+✔ verificationActivityTimestamps accepts only established verification headings (1.977292ms)
+✔ collectResumeActivityEvidence combines and deduplicates comment and attributed commit times (0.241625ms)
+✔ collectResumeActivityEvidence reports none after a complete empty lookup (0.101917ms)
+✔ collectResumeActivityEvidence reports unknown when commit attribution fails without comment proof (0.111209ms)
+✔ verification comment proof remains found when commit attribution is unavailable (0.097458ms)
+[dependency-disposition] #1077: binding remains active; retry dependency projection (dependency-disposition:config)
+Resumed #1077.
+✔ verbResume does not synthesize idle over a #1077-shaped gap with durable activity (280.004292ms)
+[dependency-disposition] #1077: binding remains active; retry dependency projection (dependency-disposition:config)
+Resumed #1077.
+✔ verbResume refuses retroactive idle for own actor history despite no activity (178.119417ms)
+Resumed #1077.
+✔ verbResume refuses retroactive idle without querying unknown activity (153.149958ms)
+[dependency-disposition] #1077: binding remains active; retry dependency projection (dependency-disposition:config)
+Started #1077.
+✔ legacy untagged history cannot fabricate a current actor retroactive departure (159.492667ms)
+✔ parsePauseMarkers: dot-dot back-compat form (2.069666ms)
+✔ parsePauseMarkers: kv form with reason (0.200375ms)
+✔ parsePauseMarkers: kv form without reason (0.075625ms)
+✔ parsePauseMarkers: kv form rejects missing timestamp (0.148125ms)
+✔ parsePauseMarkers: rejects until <= from (0.138583ms)
+✔ parsePauseMarkers: rejects garbage timestamps (0.081917ms)
+✔ parsePauseMarkers: handles both forms together (0.084875ms)
+✔ pauseSpansBetween: kv-form span fully inside window (0.471709ms)
+✔ pauseSpansBetween: partial-overlap is pro-rated (0.09525ms)
+✔ pauseSpansBetween: span outside window returns nothing (0.11175ms)
+✔ deriveStateMoveDelta: subtracts kv-form pause from window (0.561042ms)
+✔ applyPauseSpansToRows: rollup drops engaged time by 20 min (0.566125ms)
+✔ parsePauseMarkers: kv fields permit any order and preserve optional reason (0.106167ms)
+✔ parsePauseMarkers: malformed key chains finish within a bounded subprocess (70.696959ms)
+ℹ tests 43
+ℹ suites 0
+ℹ pass 43
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8476.991791

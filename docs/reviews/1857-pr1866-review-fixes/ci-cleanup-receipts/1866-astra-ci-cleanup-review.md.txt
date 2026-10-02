@@ -1,0 +1,53 @@
+# PR 1866 CI fixture cleanup — independent Astra review
+
+## Assessment
+
+No actionable defect found in the reviewed cleanup. The explicit fixture actor setup is appropriate for the actor-owned state contract. This assessment covers only the new test helper and its 36 current unit-test call sites; it is not whole-PR, epic-completion, release, or integration approval.
+
+## Reviewed candidate
+
+- Worktree: `/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager`.
+- Base HEAD: `0cf1905c95772ea85370d560095903daf371761d`.
+- Tracked diff SHA-256: `6104b15de67376f94293028c24cc8f60de9a799c0c994899a1e49747f72ea9be`.
+- New helper `scripts/tests/helpers/fixture-actor.mjs` SHA-256: `637cf6c6b1f12eed204696724c47c26262ac8e393c9943352b3b6c30d518d273`.
+- Exact call-site inventory: `/private/tmp/1857-unit-cleanup-files.json` (36 files).
+- Snapshot manifest: `/private/tmp/1866-astra-ci-cleanup-snapshot.json`.
+
+Rechecked candidate diff/helper hashes immediately before writing this report. Every tracked change is the same five-line story-tag/import/initializer block. Removing that block reproduces the HEAD bytes in every one of the 36 files; no assertion, mock result, expectation, skip, or test body changed.
+
+## Review evidence
+
+1. **Actor ownership and ambient identity.** Helper lines 6–10 overwrite both `AI_TASK_MANAGER_SESSION_ID` and `AI_TASK_MANAGER_APP_NAME` with an explicit fixture identity. All 36 current basenames, hence generated session IDs, are distinct. This lets existing real `saveState`/marker operations establish their own actor instead of relying on an absent or inherited session. It does not disable production actor validation.
+2. **Process scope.** `scripts/run-tests.mjs:166–175` runs each test file in a separate child process. The helper's process-global environment assignment therefore does not spill into later files through the repository runner. Subprocess-based cross-close coverage inherits the fixture identity and still asserts the specific issue-binding mismatch and exit code.
+3. **Identity fallback tests remain meaningful.** The word-counter test explicitly sets its Codex provider and clears explicit, Claude, and Codex identity variables before testing transcript fallback and the default-session sentinel. It restores the saved fixture identity afterward. Adding the helper does not cause those fallback assertions to resolve via its explicit identity.
+4. **State-sensitive tests still reach real actor state.** State, binding-survives-Test, Review timing, Update, and checklist tests use `saveState` to seed actor-owned state. Read-back, elapsed/word-marker, body-mutation, side-effect, and refusal assertions remain in place. The focused run exercises positive behavior as well as refusal/no-op cases.
+5. **Legacy shared-state fixtures.** Some existing coverage/Close repair fixtures still write compatibility JSON directly; that does not create an actor binding. I checked their relevant assertions and explicit target/dependency injection rather than assuming the JSON supplied effective actor state. For example, Close repair verifies terminal effects and the injected timing replay with an explicit target; coverage Review verifies actual move, log-time and review-pass row effects. These tests should not be cited as general proof that legacy shared active state is authoritative. This limitation predates the helper and is not a cleanup regression.
+6. **Scope and safety.** No production files changed. The helper does not make tests hermetic against every possible inherited environment variable; the reviewed claim is ownership of actor identity. Existing test fixtures still own project roots and subprocess doubles. No live runtime command, issue/lifecycle mutation, source edit, staging, commit, or remote review comment was performed by this review.
+
+## Independent verification
+
+Created `/private/tmp/1866-astra-ci-cleanup-head` from `git archive HEAD`, applied the exact tracked diff, and copied the new helper. The snapshot has its own empty fixture Git root and local dependency copies. Used `/private/tmp/1866-run-clean.py` to strip inherited AITM/task-tracker/Claude/Codex/Git/TT identity and runtime variables.
+
+Command, run from that snapshot:
+
+```sh
+python3 /private/tmp/1866-run-clean.py node --test \
+  scripts/tests/unit/task-tracker/lib/word-counter.test.mjs \
+  scripts/tests/unit/task-tracker/lib/state.test.mjs \
+  scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs \
+  scripts/tests/unit/task-tracker/lib/close-repair.test.mjs \
+  scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs \
+  scripts/tests/unit/task-tracker/lib/test-407-binding-survives.test.mjs \
+  scripts/tests/unit/task-tracker/verbs/coverage-update.test.mjs \
+  scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs \
+  scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs \
+  scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs
+```
+
+Result: exit 0; **61 tests passed, 0 failed, 0 skipped**, across 10 files. Log: `/private/tmp/1866-astra-ci-cleanup-focused.log`.
+
+Controller-run evidence inspected, not independently rerun: `/private/tmp/1857-cleanup-full-unit.log` ends with **all 936 unit test files passed**. `/private/tmp/1857-cleanup-lint-final.log` reaches the final successful guidance-release check; controller reports exit 0. Integration log `/private/tmp/1857-cleanup-full-integration.log` still showed only the 230-file lane header when inspected, so no integration success is asserted here.
+
+## Limits
+
+No concurrent full-suite run was added. This is a bounded review of identity fixture cleanup, not a re-review of all production code in PR 1866, implementation of remaining #1857 child scope, or confirmation of remote CI. Broader readiness remains contingent on the controller's final verification results and exact committed candidate.

@@ -1,0 +1,61 @@
+⚠ [aitm:word-measurement] codex-transcript-unresolved sid=019fbf00-unavailable-codex-bank
+[dependency-disposition] #1142: binding remains active; retry dependency projection (dependency-disposition:config)
+Started #1142.
+[dependency-disposition] #1142: binding remains active; retry dependency projection (dependency-disposition:config)
+Resumed #1142.
+[resume] #1142: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[dependency-disposition] #1142: binding remains active; retry dependency projection (dependency-disposition:config)
+Started #1142.
+✔ new timing comments name the cumulative Full Word Marker column (0.840458ms)
+✔ an appended row carries both absolute markers monotonically (27.317083ms)
+✔ legacy full deltas migrate to unavailable instead of fabricated cumulative values (0.557833ms)
+✔ an explicit unavailable full marker is not replaced by a prior numeric observation (0.495042ms)
+✔ the real review-approved and issue-wrap producer preserves a known full marker (0.942125ms)
+✔ bankTranscriptTail keeps durable markers independent across actor session ids (1071.837ms)
+✔ bankTranscriptTail preserves a legacy per-session full cursor above global state (300.463625ms)
+✔ bankTranscriptTail reports unavailable Codex input without advancing durable cursors (522.778084ms)
+✔ a fresh governed bind emits the available full-expansion marker (213.5575ms)
+✔ normal pause resume banks the unread away-period tail from the stored cursor (269.769625ms)
+✔ explicit target resume banks the unread away-period tail from the stored cursor (323.143042ms)
+✔ parsePauseMarkers: malformed key chains finish within a bounded subprocess (95.499792ms)
+[dependency-disposition] #1077: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #1077: binding remains active; retry dependency projection (dependency-disposition:config)
+⚠ [aitm:word-measurement] codex-transcript-unresolved sid=terminal-review-handoff-test
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+✔ review waiver opens the same approval handoff as a completed semantic review (2.422625ms)
+✔ terminal review outcome distinguishes passed and waived authority (0.716875ms)
+✔ Review waiver emitter and terminal parser preserve structured authority revision (113.268958ms)
+✔ a later lifecycle event closes the typed terminal review outcome (0.207916ms)
+✔ delivery retains waived authority across approval but not wrap-up (0.165291ms)
+✔ stop keeps a stale worktree bound after durable review:passed (542.828834ms)
+[dependency-disposition] #1421: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #1421: binding remains active; retry dependency projection (dependency-disposition:config)
+✔ numbered start reopens one local span after terminal Review handoff (575.406416ms)
+✔ locked append reduces the #1077 handoff to canonical terminal rows (1.975375ms)
+✔ issue:wrap closes a review:passed handoff without synthesizing resumed (0.6695ms)
+✔ locked append treats the first issue:closed row as an irreversible terminal seal (0.819375ms)
+✔ prose and malformed rows mentioning issue:closed do not create a terminal seal (0.28825ms)
+✔ locked append carries durable markers and derives delta without changing event evidence (0.404625ms)
+✔ explicit non-terminal stop retains its existing flush and unbind behavior (61.2915ms)
+✔ Stop hook remains a non-writer (0.814125ms)
+✔ parsePauseMarkers: dot-dot back-compat form (3.153ms)
+✔ parsePauseMarkers: kv form with reason (0.201375ms)
+✔ parsePauseMarkers: kv form without reason (0.075042ms)
+✔ parsePauseMarkers: kv form rejects missing timestamp (0.070375ms)
+✔ parsePauseMarkers: rejects until <= from (0.081958ms)
+✔ parsePauseMarkers: rejects garbage timestamps (0.192541ms)
+✔ parsePauseMarkers: handles both forms together (0.100292ms)
+✔ pauseSpansBetween: kv-form span fully inside window (0.715792ms)
+✔ pauseSpansBetween: partial-overlap is pro-rated (0.508334ms)
+✔ pauseSpansBetween: span outside window returns nothing (0.30925ms)
+✔ deriveStateMoveDelta: subtracts kv-form pause from window (0.689625ms)
+✔ applyPauseSpansToRows: rollup drops engaged time by 20 min (1.138084ms)
+✔ parsePauseMarkers: kv fields permit any order and preserve optional reason (0.122958ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2922.195792

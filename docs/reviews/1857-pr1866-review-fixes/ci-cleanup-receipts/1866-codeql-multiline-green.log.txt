@@ -1,0 +1,11 @@
+Active: #999. Created with title: "Aged bucket promotion".
+discover-promote-aged-bucket.test.mjs: all passed
+✔ scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs (348.244625ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 353.117

@@ -1,0 +1,442 @@
+orchestrators.test.mjs: ok
+✔ move-state: agent-context call (no env, no TTY) is refused with exit 3 (370.290084ms)
+✔ move-state: chokepoint call (AITM_INTERNAL=1) moves and prints confirmation (863.374542ms)
+✔ move-state: illegal matrix transition is refused with exit 5 (533.504458ms)
+✔ move-state: valid forward transition (refine → ready-for-plan) succeeds (446.378958ms)
+✔ promote: recorded=done is terminal-refused (forward-only) (69.225917ms)
+✔ promote: board/recorded divergence is drift-refused with both states (83.914709ms)
+✔ promote: no recorded marker and no live board item is an error (32.558292ms)
+✔ promote: unknown recorded state is an error (31.280167ms)
+✔ promote: delegate-timeout policy — test gets none, close gets a bounded budget (0.362041ms)
+✔ close: no active task and no target prints "no active task" and does nothing (74.113792ms)
+✔ close: an active review issue runs the terminal done move after the wrap rows (288.538542ms)
+close-emission-order.test.mjs: ok
+Closed #999.
+Closed #999.
+Closed #999.
+✔ buildReviewToDoneClosePair emits review:approved then issue:wrap (22.127042ms)
+✔ verbClose emits review:approved + issue:wrap before the done board move (256.784667ms)
+✔ combined close + done-move stream is review:approved → issue:wrap → issue:closed (0.553209ms)
+✔ #692 AC2 — retried close does not re-emit an existing review:approved/issue:wrap pair (693.894166ms)
+✔ #692 AC3 — review:approved active duration derives from the timing comment (260.058166ms)
+✔ POST-FIX: cursor advances → monotonic cumulative marker, per-segment Δ, no double-count (147.235042ms)
+✔ POST-FIX: a no-growth flush yields Δ Words=0 and a flat (non-regressing) marker (60.764625ms)
+✔ PRE-FIX reproduction: a frozen cursor double-counts earlier segments in Δ Words (65.644917ms)
+close-cross-close.test.mjs: all passed
+✔ source: no `closingDifferentIssue` references remain (dead-code check) (0.553167ms)
+✔ source: bind-mismatch refusal now lives in the shared preflight helper (0.124542ms)
+✔ source: preflight bind-mismatch uses exit(7) (0.144875ms)
+✔ refuses cross-close: exit 7, PROMPT_REQUIRED on stdout (via dispatcher preflight) (1138.213625ms)
+✔ allows close when target equals s.active (no refusal) (321.020167ms)
+✔ allows close when s.active is null and target is given (285.159916ms)
+close-repair.test.mjs: all passed
+✔ #708 AC2 (baseline): board=Done + issue=CLOSED without --repair → noop short-circuit (no timing flush) (404.875959ms)
+✔ #708 AC2: same state WITH --repair → bypasses noop and replays the full atomic close (743.121667ms)
+✔ #708 AC4: `--repair` is documented in the close verb help output (0.703875ms)
+consecutive-promotes-no-reconcile: ok
+✔ scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs (2401.900209ms)
+coverage-block.test.mjs: defined
+✔ block helpers parse, sort, deduplicate, and resolve the active fallback (2.55ms)
+✔ runBlock validates target, refs, config, self-reference, and existence (0.392875ms)
+[task-tracker] ✓ #5 blocked by #7
+[task-tracker] ✓ #5 native blockers already converged
+✔ runBlock uses the default validator and accepts a closed issue (447.094833ms)
+✔ runBlock returns an idempotent exact-set result (0.374208ms)
+✔ verbBlock covers usage, success, and core failure exits (665.126333ms)
+✔ buildDeferredReviewRow: null spec → null (0.562875ms)
+✔ buildDeferredReviewRow: flush kind → buildFlushRow row (19.384208ms)
+✔ buildDeferredReviewRow: row kind → buildRow row (0.179ms)
+✔ no target → exit 1 (53.355167ms)
+✔ preflight refusal → exit 4 (110.656083ms)
+✔ validateBody gate refusal → exit 4 (91.317667ms)
+✔ non-empty clean gate body passes validateBody (no refusal) (948.587291ms)
+✔ dod-verified guard refusal → exit 4 (else timing branch) (68.485166ms)
+✔ HEAD drift from aitm-test-started → exit 4 (107.761666ms)
+✔ unbacked checkbox → failures revert to Develop, exit 3 (95.92425ms)
+✔ epic child not in review → exit 3 (85.443833ms)
+✔ completeness guard refusal → exit 4 (96.609042ms)
+✔ runMoveState refuses the review move → propagates its status (102.248375ms)
+✔ success: all checks pass → moves to Review, prompts approval (416.381416ms)
+✔ success via else branch (target not the active session) (361.708292ms)
+[task-tracker] warn: back-reference comment on #88 failed: comment boom
+✔ parseArgs: positional dead + --by (5.154625ms)
+✔ parseArgs: dead falls back to active when no positional (0.112542ms)
+✔ parseArgs: byProvided false when --by absent (0.06825ms)
+✔ parseArgs: strips leading # on both args (0.070458ms)
+✔ runSupersede: missing deadIssue throws (0.401458ms)
+✔ runSupersede: missing byIssue throws (0.101875ms)
+✔ runSupersede: self-supersede throws (0.0825ms)
+✔ runSupersede: missing cfg.repo throws (0.100334ms)
+✔ runSupersede: superseder-missing — no writes (0.214041ms)
+✔ runSupersede: transition-failed — marker stamped, no audit/close (0.355542ms)
+✔ runSupersede: superseded happy path — stamp + audit + close + back-ref (0.227583ms)
+✔ runSupersede: back-reference comment failure is tolerated (2.171208ms)
+✔ verbSupersede: no dead issue → usage, exit 2 (2.719125ms)
+✔ verbSupersede: --by missing → usage, exit 2 (0.487ms)
+✔ verbSupersede: success → no exit (4.015ms)
+✔ verbSupersede: non-superseded result → exit 1 (2.776834ms)
+✔ verbSupersede: thrown error → exit 1 (0.884167ms)
+✔ runSupersede: default I/O helpers drive a fake gh end-to-end (1768.178ms)
+coverage-unblock.test.mjs: defined
+[task-tracker] ✓ #5 removed native blockers #7
+[task-tracker] ✓ #5 removed native blockers #7, #9
+[task-tracker] ✓ #5 has no matching native blockers to remove
+✔ unblock parser distinguishes selective and clear-all requests (1.979958ms)
+✔ runUnblock validates target, config, and direct invalid refs (0.461625ms)
+✔ runUnblock selectively removes, clears all, and reports idempotence (0.399916ms)
+✔ verbUnblock covers usage, success, and core failure exits (266.011292ms)
+Cancelled discovery bucket. No timing rows recorded.
+No active discovery bucket to cancel.
+discover-cancel.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/discover-cancel.test.mjs (710.28525ms)
+✔ re-run of a complete move is a no-op (no rows/markers/status/sentinel rewrite) (20.799708ms)
+✔ partial move (sentinel absent) rolls forward through the saga (0.560041ms)
+✔ same-target replay repairs a post-Status partial move with the existing transition ID (0.197917ms)
+✔ same-target replay without a recoverable partial move remains a strict no-op (0.124042ms)
+✔ production completion probe recovers only the latest fully-evidenced entry identity (311.968833ms)
+✔ production completion probe recovers a demotion with target-bound timing evidence (197.441916ms)
+✔ s.active === target: C6 no longer calls flushActiveToGH (deferral seam removed) (126.378792ms)
+✔ a paused binding opens a timing segment before automated Review work (132.32775ms)
+✔ review handoff policy pauses only when human approval is required (0.503334ms)
+✔ s.active === target: safePostTiming NOT called before SKIP_NETWORK block (75.950917ms)
+✔ hasAgentTiming branch: safePostTiming NOT called before SKIP_NETWORK block (70.94425ms)
+✔ else branch: safePostTiming NOT called before SKIP_NETWORK block (102.098416ms)
+✔ gate-failure timeline: the only timing row is review:failed (0.908166ms)
+✔ gate-failure timeline: the marker stamp precedes the review:failed row (0.148666ms)
+✔ gate-failure timeline: no state-change row is emitted at all (D2) (0.136584ms)
+✔ gate-failure timeline: no demote is driven, with or without extraArgs (D3) (0.487917ms)
+✔ gate-failure timeline: a mutate throw is best-effort and does not lose the row (0.449625ms)
+✔ gate-pass timeline: the only timing row is review:passed (0.522708ms)
+✔ #1458 — resident pass prepares durable evidence before the pass callback (2.667166ms)
+✔ gate-pass timeline: the row description records the validator set and result=pass (0.156792ms)
+✔ gate-pass timeline: an empty validator set is recorded as "none", still result=pass (0.079917ms)
+✔ gate-pass timeline: no failure or state-change row leaks from the pass path (0.0725ms)
+save-plan.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/save-plan.test.mjs (323.72775ms)
+state.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/state.test.mjs (527.063167ms)
+test-407-binding-survives.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/test-407-binding-survives.test.mjs (274.212459ms)
+test-verb-injection.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs (3069.508375ms)
+word-counter-full-expansion.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/word-counter-full-expansion.test.mjs (214.217625ms)
+word-counter.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/word-counter.test.mjs (267.844709ms)
+✔ compaction advances only the line cursor and preserves both markers (98.928042ms)
+✔ Codex compacted replacement-history metadata is not counted twice (75.93675ms)
+check-verb-migration.test.mjs: defined
+[task-tracker] ✓ "already checked criterion" already checked on #777 (no-op)
+[task-tracker] ✓ "already checked criterion" already checked on #777 (no-op)
+✔ legacy `check` on an already-checked box does NOT uncheck (no toggle) (28.82375ms)
+✔ legacy `check` emits a deprecation notice on stderr (2.106416ms)
+✔ no instructional `task check "<label>"` toggle call site survives (1684.583083ms)
+✔ no "Toggle a checkbox" description survives (341.2635ms)
+close-converge-audit-emission.test.mjs: defined
+✔ Case A — converge with approved body emits BOTH review:approved and issue:wrap (#801 AC1) (431.74575ms)
+✔ Case B — converge with no approval marker WITHHOLDS review:approved, still emits issue:wrap (#801 AC2) (340.679084ms)
+✔ Case C — converge is idempotent when the pair already exists (#801 AC3) (226.025125ms)
+close-reconcile-lifecycle.test.mjs: defined
+✔ close on already-done issue (no drift) re-ticks strayed lifecycle DoD boxes (749.322875ms)
+✔ close on closed issue with lagging board (drift) reconciles after converging (260.908042ms)
+✔ reconcile drives an unticked real body to ticked story-closed + timing-flushed (#753 AC4) (2.690625ms)
+✔ reconcile does not fabricate an absent lifecycle box (#753 AC3) (0.632125ms)
+✔ reconcile is idempotent on already-ticked boxes (#753 AC3) (0.17375ms)
+✔ convergence decision for the happy path is unchanged by the #753 seam (#753 AC4) (0.898417ms)
+Closed #925.
+Closed #925.
+✔ projected close readiness bypasses only the configured approval refusal (1.057541ms)
+✔ gate-bypassed ordinary close ignores reviewer env and passes explicit authority (215.106583ms)
+✔ human-gate ordinary close without reviewer env passes explicit authority (57.893625ms)
+close-strip-labels.test.mjs: ok
+✔ closeLabelRemoveArgs builds the expected gh args (5.745459ms)
+✔ convergence close-issue path strips only ToDo after gh close (1104.736709ms)
+✔ main close path strips only ToDo after gh close (149.668292ms)
+✔ label-strip failure leaves close incomplete for a truthful retry (131.271959ms)
+coverage-ac-stamp.test.mjs: defined
+[task-tracker] ac-stamp: no active task
+[task-tracker] ac-stamp: no active task
+Usage: /task ac-stamp "<acceptance criterion label>"
+[task-tracker] ac-stamp: no Acceptance Criteria line carrying `aitm-verified-by` matching "totally absent label" found in #777 body.
+[task-tracker] ac-stamp on #777: running 1 verifier(s) for AC "cover the ac-stamp verb"…
+  ✗ node scripts/task-tracker/tools/coverage-threshold.mjs scripts/task-tracker/verbs/ac-stamp.mjs scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs 80 (exit=1)
+[task-tracker] ac-stamp: verifier `node scripts/task-tracker/tools/coverage-threshold.mjs scripts/task-tracker/verbs/ac-stamp.mjs scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs 80` failed (exit=1). No marker stamped.
+[task-tracker] ac-stamp on #777: running 1 verifier(s) for AC "cover the ac-stamp verb"…
+  ✓ node scripts/task-tracker/tools/coverage-threshold.mjs scripts/task-tracker/verbs/ac-stamp.mjs scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs 80 (exit=0)
+[task-tracker] ✓ ac-stamp on #777: run-props (key=e8e3ca61) upserted onto the AC line's aitm-verified marker (sha=abc1234).
+✔ no active task → exit 1 (12.288709ms)
+✔ discover bucket active → exit 1 (5.86625ms)
+✔ empty label → exit 1 (2.656834ms)
+✔ no AC line matching label → exit 1 (13.079459ms)
+✔ verifier non-zero exit → refuse, exit 1 (8.072791ms)
+✔ happy path: verifier passes → stamps marker, no exit (13.488875ms)
+coverage-check-verb.test.mjs: defined
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+no active task
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+no active task
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+Usage: /task ensureChecked "<label>"
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] checkbox "totally absent" not found in #777
+Checkboxes found:
+  "plain ac no verifier <!-- aitm-non-demonstrable -->"
+  "verified ac unchecked <!-- aitm-verified cmd="`echo ok`" -->"
+  "verified ac checked <!-- aitm-verified cmd="`echo ok`" -->"
+  "dup label"
+  "dup label"
+  "All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- dod:functional:tests -->"
+  "Acceptance criteria met <!-- dod:functional:acs -->"
+  "Lint and format checks pass <!-- aitm-verified cmd="`npm run lint`" --> <!-- dod:functional:lint -->"
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] checkbox "dup label" is ambiguous in #777: 2 lines share this visible label. Disambiguate with a longer label or the full line text.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+EVIDENCE_REQUIRED: [task-tracker] ✗ Refusing to tick AC "verified ac unchecked" on #777.
+  This acceptance criterion declares a verifier (aitm-verified cmd="…") but carries
+  no aitm-ac-evidence:abc61792 marker. Run `/task ac-stamp "verified ac unchecked"` to
+  execute `echo ok` in a sandbox; the evidence marker it stamps unlocks this tick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✓ "verified ac checked" already checked on #777 (no-op)
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✓ Checked "plain ac no verifier" on #777 (unverified — audit marker recorded)
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✗ Refusing to tick Functional DoD "All automated tests pass" on #777.
+  Key dod:functional:tests has no aitm-dod-evidence marker. Run
+  `/task dod-stamp tests` to execute the verifier in a sandbox; the
+  evidence marker it stamps unlocks this tick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+UNVERIFIED_HATCH_REFUSED: [task-tracker] ✗ Refusing --allow-unverified-ticks on AC "verified ac unchecked" in #777.
+  This acceptance criterion declares a verifier (aitm-verified cmd="…"), so it is
+  demonstrable — the unverified hatch is only for ACs carrying the
+  `<!-- aitm-non-demonstrable -->` opt-out marker or otherwise no machine verifier.
+  Run `/task ac-stamp "verified ac unchecked"` to execute `echo ok` and stamp real evidence instead.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✓ "verified ac checked" already checked on #777 (no-op)
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✓ Checked "plain ac no verifier" on #777 (unverified)
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✗ Refusing to tick Functional DoD "All automated tests pass" on #777.
+  Key dod:functional:tests has no aitm-dod-evidence marker. Run
+  `/task dod-stamp tests` to execute the verifier in a sandbox; the
+  evidence marker it stamps unlocks this tick.
+[task-tracker] batch tick on #777 refused: 1 evidence-gated label(s) lack evidence. Run `/task dod-stamp <key>` or `/task ac-stamp "<label>"` for each, then retry.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✗ checkbox "no such label" not found in #777
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✗ checkbox "dup label" is ambiguous in #777: 2 lines share this visible label.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+✔ verbCheck: no active task → exit 1 (6.749125ms)
+✔ verbCheck: discover bucket active → exit 1 (4.782542ms)
+✔ verbCheck: empty label → exit 1 (6.080583ms)
+✔ verbCheck: not-found label → exit 1 (8.787334ms)
+✔ verbCheck: ambiguous label → exit 1 (2.393375ms)
+✔ verbCheck: evidence-gated AC without stamp → exit 1 (7.094083ms)
+✔ verbCheck: happy path single toggle (uncheck) → no exit (5.691708ms)
+✔ verbCheck: --allow-unverified-ticks happy path → no exit (6.934542ms)
+✔ verbCheck: --allow-unverified-ticks on DoD item → refuse, exit 1 (2.820875ms)
+✔ verbCheck: --allow-unverified-ticks on verifier AC → refuse, exit 1 (5.957917ms)
+✔ verbCheck: batch happy path (uncheck) → no exit (3.845542ms)
+✔ verbCheck: batch with --allow-unverified-ticks → no exit (3.083125ms)
+✔ verbCheck: batch gate failure → exit 1 (5.354625ms)
+✔ verbCheck: batch not-found label → exit 1 (24.422625ms)
+✔ verbCheck: batch ambiguous label → exit 1 (5.535625ms)
+Usage: /task ensureChecked --label "<label>" [--label ...] | --labels-file <path>
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+✔ verbCheck: --labels-file empty + no --label → usage exit 1 (14.957625ms)
+[task-tracker] ✓ "verified ac checked" already checked on #777 (no-op)
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+✔ verbCheck: --labels-file with a label → no exit (4.357959ms)
+[task-tracker] ✓ Marked deep-dive-complete on #777 at 2026-10-02T15:07:10.103Z
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+stage-bound refusal: marking deep-dive complete via `/task ensureChecked "Deep dive complete"` is not permitted while #777 is in state `refine`.
+  To proceed: /task promote → plan, then retry.
+  Bypass (legacy artifacts only): add an `<!-- aitm-stage-bound-grandfather -->` marker to the body.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+✔ verbCheck: "deep dive complete" outside Refine → ensureDeepDive, no exit (545.526667ms)
+✔ verbCheck: "deep dive complete" while bound in Refine → refuse, exit 1 (10.809ms)
+[task-tracker] ✓ Marked discussion complete on #777 at 2026-10-02T15:07:10.653Z (token stripped, aitm-discussed stamped, Discuss label removed)
+
+✅ DISCUSSION RESOLVED — #777 · implementation may commence
+✔ verbCheck: "discussion complete" → marks discussed, no exit (237.903042ms)
+coverage-commit-trace.test.mjs: defined
+✔ runCommitTrace: happy path threads info through injected deps (18.395709ms)
+✔ runCommitTrace: strips leading # from issueNumber (12.939666ms)
+✔ runCommitTrace: throws without issueNumber (0.340791ms)
+✔ runCommitTrace: throws without cfg.repo (0.132583ms)
+Usage: /task commit-trace #N
+Usage: /task commit-trace #N
+commit-trace: commit-trace: cfg.repo is required
+Usage: /task commit-trace #N
+✔ runCommitTrace: falls back to getProjectDir() when projectDir omitted (505.050292ms)
+✔ verbCommitTrace: no target → usage, exit 1 (1.765375ms)
+✔ verbCommitTrace: discover bucket active + no positional → usage, exit 1 (1.17025ms)
+✔ verbCommitTrace: positional target but runCommitTrace throws → catch, exit 1 (0.487375ms)
+✔ verbCommitTrace: target resolved from state.active, then catch → exit 1 (0.302583ms)
+coverage-dod-stamp.test.mjs: defined
+[task-tracker] dod-stamp: no active task
+Usage: /task dod-stamp <key>
+  key ∈ { tests, lint, commits }
+[task-tracker] dod-stamp: unknown key "bogus"
+[task-tracker] dod-stamp: key "acs" is DERIVED — it is computed from the body at close time. Do not stamp manually; `/task close` will derive it.
+[task-tracker] dod-stamp: no `dod:functional:tests` line found in #777 body.
+[task-tracker] dod-stamp: `dod:functional:tests` line carries no verifier command. Add one (e.g. `<!-- aitm-verified cmd="\`npm test\`" -->`) before stamping.
+[task-tracker] dod-stamp tests on #777: running 1 verifier(s)…
+  ✗ node --test scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs (exit=1)
+[task-tracker] dod-stamp tests: verifier `node --test scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs` failed (exit=1). No marker stamped.
+[task-tracker] dod-stamp tests on #777: running 1 verifier(s)…
+  ✓ node --test scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs (exit=0)
+[task-tracker] ✓ dod-stamp tests on #777: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=abc1234).
+✔ no active task → exit 1 (45.860709ms)
+✔ empty key → exit 1 (9.441125ms)
+✔ unknown key → exit 1 (5.539375ms)
+✔ derived key (acs) → refuse, exit 1 (2.639916ms)
+✔ keyed line absent → exit 1 (11.856ms)
+✔ keyed line has no verifier command → exit 1 (2.342167ms)
+✔ verifier non-zero exit → refuse, exit 1 (5.074875ms)
+✔ happy path: verifier passes → stamps marker, no exit (10.000791ms)
+coverage-kind.test.mjs: defined
+[task-tracker] ✓ kind on #42: set to "audit".
+[task-tracker] ✓ kind on #99: cleared (code is the default lane).
+[task-tracker] ✓ kind on #42: set to "epic".
+✔ no args → usage error, exit 1 (0.741959ms)
+✔ one arg with no active task → exit 1 (17.164542ms)
+✔ invalid kind → exit 1 (0.175458ms)
+✔ invalid issue number → exit 1 (0.150542ms)
+✔ happy path: explicit target + non-code kind → sets marker (9.373ms)
+✔ happy path: one-arg active-bind form + code kind → clears marker (8.089791ms)
+✔ epic kind delegates all carriers to the shared metadata reconciler (0.649375ms)
+✔ epic body reconciliation appends the introduced DoD verifier with the next stable id (48.747292ms)
+✔ repeating epic body reconciliation is content-idempotent and Review preflight accepts it (42.775916ms)
+coverage-mirror-deep-dive.test.mjs: defined
+mirror-deep-dive: --from-comment <id|url|#issuecomment-<id>> or --repair-placement is required
+{
+  "status": "repaired"
+}
+mirror-deep-dive: --repair-placement and --from-comment are mutually exclusive
+mirror-deep-dive: no issue specified and no active binding — pass #N or /task start #N first
+✔ missing --from-comment → exit 2 (0.968083ms)
+✔ --repair-placement needs no source comment and uses the active target (11.337084ms)
+✔ repair and source-comment modes are mutually exclusive (0.189166ms)
+✔ no target and no active binding → exit 2 (1.558709ms)
+✔ target derived from active bind; unconfigured repo throws (2.827ms)
+✔ --from-comment= form + explicit #N → unconfigured repo throws (0.152333ms)
+{
+  "status": "mirrored",
+  "commentId": "777",
+  "url": "https://example/c/777"
+}
+✔ happy path: mirrors comment prose into the issue body, prints result (555.026292ms)
+coverage-update.test.mjs: defined
+✔ no active task → "nothing to update", no flush (19.561916ms)
+✔ active === discover → "nothing to update" (10.2425ms)
+✔ happy path: default "checkpoint" description, wall == active → no wall note (23.740041ms)
+✔ happy path: rest joins to description, wall != active → wall note shown (6.160083ms)
+dod-stamp-state-gate.test.mjs: defined
+[task-tracker] dod-stamp tests: restricted verifier command(s) [npm run test:all] require the issue to be in `test` (current: `develop`). Run `/task promote` to reach `test`, where a sandboxed suite run is the sanctioned path.
+[task-tracker] dod-stamp tests on #778: running 1 verifier(s)…
+  ✓ npm run test:all (exit=0)
+[task-tracker] ✓ dod-stamp tests on #778: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=abc1234).
+[task-tracker] ac-stamp: restricted verifier command(s) [npm run test:all] require the issue to be in `test` (current: `develop`). Run `/task promote` to reach `test`, where a sandboxed suite run is the sanctioned path.
+[task-tracker] ac-stamp on #780: running 1 verifier(s) for AC "full suite must pass"…
+  ✓ npm run test:all (exit=0)
+[task-tracker] ✓ ac-stamp on #780: run-props (key=3bdb5b17) upserted onto the AC line's aitm-verified marker (sha=abc1234).
+[task-tracker] dod-stamp tests on #781: reusing Test receipt 01KYZ7Q780EVG8H6VFPKESTKRR; standard commands were not rerun.
+[task-tracker] ✓ dod-stamp tests on #781: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).
+[task-tracker] dod-stamp tests: verifier command(s) [npm run test:all] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] dod-stamp tests on #783: reusing Test receipt 01KYZ7Q7802NBQTBHT0DMH920V; standard commands were not rerun.
+[task-tracker] ✓ dod-stamp tests on #783: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).
+[task-tracker] ac-stamp on #784: reusing Test receipt 01KYZ7Q7801MX7N3VAWT5J358R; standard commands were not rerun.
+[task-tracker] ✓ ac-stamp on #784: evidence stamped from Test receipt (sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).
+[task-tracker] dod-stamp tests: verifier command(s) [npm run lint] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] ac-stamp: verifier command(s) [npm run lint] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] dod-stamp tests: verifier command(s) [npm run test:all] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] ac-stamp: verifier command(s) [npm run test:all] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] dod-stamp tests: live issue state could not be resolved; verifier execution is refused.
+[task-tracker] ac-stamp: live issue state could not be resolved; verifier execution is refused.
+✔ dod-stamp tests: refuses in develop, verifier never runs (16.736542ms)
+✔ dod-stamp tests: proceeds normally once in test state (24.5565ms)
+✔ ac-stamp: refuses a restricted verifier command in develop, verifier never runs (6.873375ms)
+✔ ac-stamp: proceeds normally once in test state (51.286625ms)
+✔ dod-stamp tests: Review + valid receipt reuses and does not spawn npm (7.611875ms)
+✔ dod-stamp tests: Review + stale receipt refuses and does not spawn npm (2.651834ms)
+✔ dod-stamp tests: Test + valid receipt reuses and does not spawn npm (11.431041ms)
+✔ ac-stamp: Review + valid receipt reuses Test provenance and does not spawn npm (14.568083ms)
+✔ Review + uncovered lint refuses on both stamp surfaces without spawning npm (3.081083ms)
+✔ Review + issue-mismatched receipt refuses on both stamp surfaces (18.529708ms)
+✔ unavailable live state refuses on both stamp surfaces (6.157875ms)
+ensure-checked.test.mjs: defined
+[task-tracker] ✓ Checked "proven ac with execution proof" on #777
+[task-tracker] ✓ Checked "proven ac with execution proof" on #777
+[task-tracker] ✓ "proven ac with execution proof" already checked on #777 (no-op)
+[task-tracker] ✓ "verified ac checked" already checked on #777 (no-op)
+EVIDENCE_REQUIRED: [task-tracker] ✗ Refusing to tick AC "verified ac unchecked" on #777.
+  This acceptance criterion declares a verifier (aitm-verified cmd="…") but carries
+  no aitm-ac-evidence:abc61792 marker. Run `/task ac-stamp "verified ac unchecked"` to
+  execute `echo ok` in a sandbox; the evidence marker it stamps unlocks this tick.
+[task-tracker] ✓ Checked "plain ac no verifier" on #777 (unverified — audit marker recorded)
+UNVERIFIED_HATCH_REFUSED: [task-tracker] ✗ Refusing --allow-unverified-ticks on AC "undeclared ac no verifier no marker" in #777.
+  This acceptance criterion declares no verifier and carries no
+  `<!-- aitm-non-demonstrable -->` opt-out marker, so it is not yet classified as
+  demonstrable or honestly non-demonstrable. Either declare a verifier (aitm-verified
+  cmd="…") and run `/task ac-stamp "undeclared ac no verifier no marker"`, or add the opt-out marker to the line
+  if it is genuinely unverifiable.
+UNVERIFIED_HATCH_REFUSED: [task-tracker] ✗ Refusing --allow-unverified-ticks on AC "verified ac unchecked" in #777.
+  This acceptance criterion declares a verifier (aitm-verified cmd="…"), so it is
+  demonstrable — the unverified hatch is only for ACs carrying the
+  `<!-- aitm-non-demonstrable -->` opt-out marker or otherwise no machine verifier.
+  Run `/task ac-stamp "verified ac unchecked"` to execute `echo ok` and stamp real evidence instead.
+✔ setChecklistLine: ticks an unchecked line (changed) (2.488875ms)
+✔ setChecklistLine: already-checked is a byte-identical no-op (0.140875ms)
+✔ setChecklistLine: checked desired never unchecks a checked line (0.085667ms)
+✔ setChecklistLine: preserves trailing evidence markers on tick (0.255875ms)
+✔ setChecklistLine: not-found (0.1225ms)
+✔ setChecklistLine: ambiguous reports count (0.083917ms)
+✔ setChecklistLines: folds desired across labels, records per-label result (0.807625ms)
+✔ verbEnsureChecked: ticks a proof-bearing unchecked AC and writes [x] (31.14325ms)
+✔ verbEnsureChecked: idempotent re-run on already-checked is a no-op (25.512958ms)
+✔ verbEnsureChecked: never unchecks an already-checked AC (12.322ms)
+✔ verbEnsureChecked: evidence gate fires on verifier-AC transition → exit 1 (4.627041ms)
+✔ verbEnsureChecked: --allow-unverified-ticks hatch ticks a proofless AC (5.006667ms)
+✔ verbEnsureChecked: --allow-unverified-ticks refused on an undeclared AC (no verifier, no marker) → exit 1 (4.916292ms)
+✔ verbEnsureChecked: --allow-unverified-ticks refused on verifier AC → exit 1 (6.552042ms)
+[task-tracker] ✓ Marked deep-dive-complete on #777 at 2026-10-02T15:07:10.910Z
+✔ verbEnsureChecked: special-label "deep dive complete" routes to ensureDeepDive (492.517875ms)
+[task-tracker] ✓ Marked discussion complete on #777 at 2026-10-02T15:07:11.393Z (token stripped, aitm-discussed stamped, Discuss label removed)
+
+✅ DISCUSSION RESOLVED — #777 · implementation may commence
+✔ verbEnsureChecked: special-label "discussion complete" marks discussed (60.243791ms)
+ensure-unchecked.test.mjs: defined
+[task-tracker] ✓ Unchecked "verified ac checked" on #777
+[task-tracker] ✓ "plain ac no verifier" already unchecked on #777 (no-op)
+[task-tracker] ✓ "plain ac no verifier" already unchecked on #777 (no-op)
+[task-tracker] ✓ Unchecked "verified ac checked" on #777
+[task-tracker] checkbox "deep dive complete" not found in #777
+Checkboxes found:
+  "plain ac no verifier"
+  "verified ac checked <!-- aitm-verified cmd="`echo ok`" -->"
+[task-tracker] checkbox "discussion complete" not found in #777
+Checkboxes found:
+  "plain ac no verifier"
+  "verified ac checked <!-- aitm-verified cmd="`echo ok`" -->"
+✔ setChecklistLine: unchecks a checked line (changed) (1.235708ms)
+✔ setChecklistLine: already-unchecked is a byte-identical no-op (0.119959ms)
+✔ setChecklistLine: unchecked desired never checks an unchecked line (0.103625ms)
+✔ setChecklistLine: preserves trailing evidence markers on untick (0.089416ms)
+✔ setChecklistLines: folds untick across labels with per-label results (0.675708ms)
+✔ verbEnsureUnchecked: unchecks a checked AC and writes [ ] (13.988583ms)
+✔ verbEnsureUnchecked: idempotent re-run on already-unchecked is a no-op (4.484042ms)
+✔ verbEnsureUnchecked: never checks an unchecked AC (3.494125ms)
+✔ verbEnsureUnchecked: runs NO evidence gate when un-ticking a verifier AC (5.276875ms)
+✔ verbEnsureUnchecked: "deep dive complete" is ordinary text, not the marker route (2.241333ms)
+✔ verbEnsureUnchecked: "discussion complete" is ordinary text, not the discuss route (2.2565ms)
+✓ #996 rejected — moved back to Develop.
+✔ reject.mjs posts an audit row with event slug `rejected:develop`, not bare `develop` (88.411542ms)
+✔ a timing log containing a `rejected:develop` row passes timing-log-sequence validation (3.821ms)
+ℹ tests 225
+ℹ suites 0
+ℹ pass 225
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5256.795917

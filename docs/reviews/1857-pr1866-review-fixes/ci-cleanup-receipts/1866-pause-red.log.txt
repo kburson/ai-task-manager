@@ -1,0 +1,82 @@
+✔ parsePauseMarkers: dot-dot back-compat form (2.138125ms)
+✔ parsePauseMarkers: kv form with reason (0.260333ms)
+✔ parsePauseMarkers: kv form without reason (0.086959ms)
+✔ parsePauseMarkers: kv form rejects missing timestamp (0.068583ms)
+✔ parsePauseMarkers: rejects until <= from (0.095125ms)
+✔ parsePauseMarkers: rejects garbage timestamps (0.068ms)
+✔ parsePauseMarkers: handles both forms together (0.073583ms)
+✔ pauseSpansBetween: kv-form span fully inside window (0.46275ms)
+✔ pauseSpansBetween: partial-overlap is pro-rated (0.084292ms)
+✔ pauseSpansBetween: span outside window returns nothing (0.114958ms)
+✔ deriveStateMoveDelta: subtracts kv-form pause from window (0.530417ms)
+✔ applyPauseSpansToRows: rollup drops engaged time by 20 min (0.558334ms)
+✔ parsePauseMarkers: kv fields permit any order and preserve optional reason (0.093583ms)
+✖ parsePauseMarkers: malformed key chains finish within a bounded subprocess (2007.494959ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 13
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2110.898291
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs:134:1
+✖ parsePauseMarkers: malformed key chains finish within a bounded subprocess (2007.494959ms)
+  AssertionError [ERR_ASSERTION]: parser subprocess failed: Error: spawnSync /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node ETIMEDOUT
+  + actual - expected
+  
+  + Error: spawnSync /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node ETIMEDOUT
+  +     at Object.spawnSync (node:internal/child_process:1144:20)
+  +     at spawnSync (node:child_process:928:24)
+  +     at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs:144:18)
+  +     at Test.runInAsyncScope (node:async_hooks:226:14)
+  +     at Test.run (node:internal/test_runner/test:1402:25)
+  +     at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+  +     at Test.postRun (node:internal/test_runner/test:1542:19)
+  +     at Test.run (node:internal/test_runner/test:1467:12)
+  +     at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+  +   code: 'ETIMEDOUT',
+  +   errno: -60,
+  +   path: '/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node',
+  +   spawnargs: [
+  +     '--input-type=module',
+  +     '-e',
+  +     '\n' +
+  +       '    import { parsePauseMarkers } from "file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/task-tracker/lib/timing-rows.mjs";\n' +
+  +       "    import assert from 'node:assert/strict';\n" +
+  +       "    const malformed = '<!-- aitm-pause: from=2026-05-18T02:45:00Z until=2026-05-18T03:05:00Z a=' + '!a='.repeat(100000);\n" +
+  +       '    assert.deepEqual(parsePauseMarkers(malformed), []);\n' +
+  +       "    const valid = '<!-- aitm-pause: until=2026-05-18T03:05:00Z reason=question from=2026-05-18T02:45:00Z -->';\n" +
+  +       "    assert.equal(parsePauseMarkers(malformed + '> ' + valid).length, 1);\n" +
+  +       '  '
+  +   ],
+  +   syscall: 'spawnSync /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node'
+  + }
+  - undefined
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs:148:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: Error: spawnSync /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node ETIMEDOUT
+        at Object.spawnSync (node:internal/child_process:1144:20)
+        at spawnSync (node:child_process:928:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager/scripts/tests/unit/task-tracker/lib/pause-markers.test.mjs:144:18)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7),
+    expected: undefined,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

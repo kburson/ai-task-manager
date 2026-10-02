@@ -1,0 +1,7 @@
+{
+  "accepted": true,
+  "claimedCommit": "5de3d7536b6cc27f1b379258f59130869f372d6f",
+  "committedStaticHash": "sha256:2a09860784a87eeed7f41b028655c18e061d8b5564e3d648b1f29899c1f6b8a0",
+  "dirtyStaticHash": "sha256:c067a540ce0db5e2620dee71b64462cda64ae329931dc69d3ce35bfa21944d6f",
+  "reportedCommit": null
+}

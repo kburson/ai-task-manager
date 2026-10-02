@@ -1,0 +1,45 @@
+✔ verification outcomes retain exact SHA and reuse lineage and only same-SHA reruns are waste (6.464209ms)
+✔ verification outcomes reject malformed claimed receipts and preserve distinct command identities (0.903333ms)
+✔ exact final SHA requires a complete canonical Test receipt and rejects an arbitrary green probe (1.264709ms)
+✔ same SHA command identity is waste even when display classifications differ (0.308583ms)
+✔ epic child outcome discovery paginates children and delegates full comment reads to the record store (9.202375ms)
+✔ mixed legacy/adaptive epics reference adaptive child outcomes and ignore forecast-free legacy children (1.19825ms)
+✔ an epic with only forecast-free legacy children writes an empty aggregation outcome (1.3305ms)
+✔ runtime threads explicit reopened-close correction authority into the immutable outcome chain (1.829ms)
+✔ epic close fails closed when an adaptive child has a forecast but no outcome (0.194625ms)
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+✔ review reproduction: legacy session cursor survives first actor flush (533.028333ms)
+✔ explicit pause after Test handoff is idempotent (359.507208ms)
+✔ explicit pause after Review handoff is idempotent (300.038791ms)
+✔ production Test sandbox admits real Git identity outside artifact roots (281.749375ms)
+✔ upgrade cursor is scoped to the state-owning project, not ambient root (209.486833ms)
+✔ upgrade refuses invalid own cursor and never imports global timing history (170.3595ms)
+Stopped #1857: +0 active min, +0 words. Use "/task resume <N>" to return to it later.
+✔ paused binding does not publish unmatched stop (544.960667ms)
+✔ paused binding does not publish unmatched switch-out:#1861 (243.712083ms)
+✔ paused binding does not publish unmatched switch-out (239.043666ms)
+✔ runtime persists incomplete outcome with canonical Test proof then reuses it after valid close tail (54.85025ms)
+✔ incomplete runtime refuses missing or wrong-head Test proof and wrong forecast (2.955834ms)
+✔ closed actor engagement before Develop is not dropped from completion totals (3.492583ms)
+✔ Close accepts unknown totals only through real canonical runtime verification (5.755291ms)
+✔ Close refuses caller unavailable flags, wrong linkage and failed verification (5.585333ms)
+✔ Close rechecks explicit incomplete projection despite stale numeric fields and preserves marker failures (4.042916ms)
+✔ Close rejects changed canonical source and ambiguous outcome records on retry (14.545958ms)
+✔ forecast-free mixed actor history produces durable legacy-none evidence without inventing a forecast (5.083708ms)
+✔ forecast-free eligibility refuses malformed or partial adaptive claims and absent Test proof (0.484709ms)
+✔ legacy Plan approval without any forecast claim remains eligible for legacy-none (3.632042ms)
+✔ genuine forecast-free issue-resident delivery carries no invented Test command (5.911ms)
+✔ legacy-none refuses a concurrent forecast after immutable outcome publication (2.095916ms)
+✔ resident delivery refuses wrong receipt identity or missing accepted heads (1.26975ms)
+✔ real Git issue-resident lanes prove zero issue commits without an invented sandbox (361.816458ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3366.923167

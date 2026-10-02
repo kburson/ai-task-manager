@@ -1,0 +1,40 @@
+✔ parsePauseMarkers: dot-dot back-compat form (1.861708ms)
+✔ parsePauseMarkers: kv form with reason (0.162792ms)
+✔ parsePauseMarkers: kv form without reason (0.063583ms)
+✔ parsePauseMarkers: kv form rejects missing timestamp (0.062958ms)
+✔ parsePauseMarkers: rejects until <= from (0.090125ms)
+✔ parsePauseMarkers: rejects garbage timestamps (0.060125ms)
+✔ parsePauseMarkers: handles both forms together (0.059958ms)
+✔ pauseSpansBetween: kv-form span fully inside window (0.420417ms)
+✔ pauseSpansBetween: partial-overlap is pro-rated (0.078125ms)
+✔ pauseSpansBetween: span outside window returns nothing (0.114875ms)
+✔ deriveStateMoveDelta: subtracts kv-form pause from window (0.481791ms)
+✔ applyPauseSpansToRows: rollup drops engaged time by 20 min (0.530833ms)
+✔ parsePauseMarkers: kv fields permit any order and preserve optional reason (0.092875ms)
+✔ parsePauseMarkers: malformed key chains finish within a bounded subprocess (51.055042ms)
+✔ computeStateMoveDelta returns zero when prev missing (0.910084ms)
+✔ computeStateMoveDelta returns wall-clock delta in seconds (0.211208ms)
+✔ computeStateMoveDelta returns zero when now <= prev (0.065ms)
+✔ computeStateMoveDelta subtracts pause spans (0.068208ms)
+✔ computeStateMoveDelta clamps pause overflow to total (0.072708ms)
+✔ computeStateMoveDelta accepts {from,until} pause spans (0.072333ms)
+✔ formatHMS boundary cases (0.101958ms)
+✔ lastRowTsFromBody picks the most recent table row timestamp (0.538083ms)
+✔ lastRowTsFromBody returns null when no rows (0.070916ms)
+✔ pauseSpansBetween extracts seconds within window (1.526084ms)
+✔ parseRowSecMarker / formatRowSecMarker roundtrip (0.480209ms)
+✔ parseRowSecMarker returns null without marker (0.121ms)
+✔ formatDurationSeconds renders the Xh Ym Zs form (0.549541ms)
+✔ formatDurationSeconds handles boundary cases (0.105ms)
+✔ parseDurationSeconds inverts formatDurationSeconds on boundaries (0.149458ms)
+✔ parseDurationSeconds(format(n)) === n for 0 <= n <= 86400 (5.86275ms)
+✔ formatDurationSeconds rejects invalid input (0.599459ms)
+✔ parseDurationSeconds rejects malformed strings (0.775708ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 179.893375
