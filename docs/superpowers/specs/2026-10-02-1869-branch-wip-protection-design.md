@@ -52,7 +52,7 @@ merges that combined work into its target.
 
 Proposed compatibility detail for future refinement: nested epics use their own
 `feature/epic/<epic-id>/parent` branch targeting their immediate parent epic's
-parent branch. Reparenting must reconcile existing WIP, branch names, PR targets,
+parent branch. Changing the parent must reconcile existing WIP, branch names, PR targets,
 and ownership before proceeding.
 
 ## Session pickup and branch recovery
@@ -173,7 +173,7 @@ lifecycle operation for app-managed worktrees.
 
 Cleanup is resumable. Distinguish merge verification, remote deletion, closure,
 and local removal. A failure preserves delivery evidence and reports its pending
-step. Do not remerge, reopen a PR, or recreate an origin branch to retry cleanup.
+step. Do not merge again, reopen a PR, or recreate an origin branch to retry cleanup.
 Preserve durable AITM provenance.
 
 ## Existing AITM integration points
@@ -272,7 +272,7 @@ Reconcile these policy differences during Refine before either scope is frozen:
   artifact commit, remote push, PR creation and issue reference must not be
   independently duplicated by competing commands.
 
-Keep #1768 and #1869 separately tracked for now; do not convert or reparent them
+Keep #1768 and #1869 separately tracked for now; do not convert them or change their parents
 without a refined scope decision. If their shared intake boundary requires a
 coordinated delivery, an umbrella epic can retain both existing issues and split
 small children by artifact contracts, branch/worktree recovery, transition WIP
