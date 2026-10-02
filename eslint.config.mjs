@@ -6,6 +6,7 @@ export default [
     ignores: [
       'node_modules/**',
       '.tmp/**',
+      '.ai-task-manager/runtime/test-fixtures/**',
       '.scratch/**',
       '.worktrees/**',
       '.claude/worktrees/**',

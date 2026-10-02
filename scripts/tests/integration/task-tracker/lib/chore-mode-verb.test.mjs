@@ -9,6 +9,11 @@
 //   - `chore-mode off --resume` invokes verbStart for the previous issue
 //   - `chore-mode status` formats the current record
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { after, before, beforeEach, test } from 'node:test';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
@@ -24,6 +29,7 @@ import {
   choreModeStatus,
   formatStatus,
 } from '../../../../task-tracker/verbs/chore-mode.mjs';
+import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 import { readChoreMode } from '../../../../task-tracker/lib/chore-mode.mjs';
 
 let featureFixture;
@@ -47,7 +53,7 @@ function statePath(root) {
 
 function writeState(root, payload) {
   mkdirSync(path.dirname(statePath(root)), { recursive: true });
-  writeFileSync(statePath(root), JSON.stringify(payload, null, 2));
+  saveState(payload, statePath(root));
 }
 
 // Stub writable stream that captures output.
@@ -106,7 +112,7 @@ test('chore-mode on writes active=true with reason and previousIssue', async () 
     assert.equal(cm.reason, 'docs sweep');
     assert.equal(cm.since, '2026-06-07T02:00:00Z');
     // Active task was detached.
-    const persisted = JSON.parse(readFileSync(statePath(root), 'utf8'));
+    const persisted = loadState(statePath(root));
     assert.equal(persisted.active, null);
     assert.equal(persisted.lastActive, '#999');
     assert.match(out.text(), /chore-mode: on/);
@@ -139,7 +145,7 @@ test('chore-mode on stays local while another worktree agent is active', async (
     assert.equal(rc, 0);
     assert.equal(readChoreMode(root).active, true);
     assert.equal(readChoreMode(sibling).active, false);
-    assert.equal(JSON.parse(readFileSync(statePath(sibling), 'utf8')).active, '#888');
+    assert.equal(loadState(statePath(sibling)).active, '#888');
     assert.equal(err.text(), '');
   } finally {
     rmSync(root, { recursive: true, force: true });

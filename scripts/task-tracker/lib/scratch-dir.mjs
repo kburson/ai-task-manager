@@ -151,8 +151,10 @@ export function mkdtempProjectIsolated(prefix, purpose = 'test') {
 // Escape hatch: tests that exercise the "outside any git repo" path need a
 // directory the repo-walker can't ascend out of. On a repo-rooted machine the
 // only such location is the OS temp dir. Use this ONLY for "no git repo
-// found" assertions; everything else must go through `projectScratchDir` or
-// `mkdtempProjectIsolated`. The `lint:tmp` guard allowlists this helper.
+// found" assertions and permission rehearsals that must prove no production
+// Git ancestor exists. Rehearsals retain exact filesystem grants and transport
+// refusals; other fixtures use `projectScratchDir` or `mkdtempProjectIsolated`.
+// The `lint:tmp` guard allowlists this helper.
 export function mkdtempOutsideRepo(prefix) {
   return mkdtempSync(path.join(systemTmpdir(), prefix));
 }

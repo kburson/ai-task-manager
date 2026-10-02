@@ -10,9 +10,15 @@
 //   Branch 3 — not discover, no arg → exits 1 with guidance
 //   Branch legacy — not discover, plain title arg → returns title
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { saveState } from '../../../../task-tracker/state.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
@@ -229,15 +235,17 @@ async function captureExit(fn) {
 // Branch 1b — discover state, no savedPlanFile → exits 1
 {
   const dir = mkdtempProjectIsolated('nfp-branch1b-');
-  const statePath = path.join(dir, 'state.json');
-  writeFileSync(
-    statePath,
-    JSON.stringify({
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
+  process.chdir(dir);
+  const statePath = path.join(dir, '.tmp', 'aitm', 'state', 'state.json');
+  mkdirSync(path.dirname(statePath), { recursive: true });
+  saveState(
+    {
       active: 'discover',
       lastActive: null,
       discoverBucket: { startedAt: new Date().toISOString(), wordsAtStart: 0, entries: [] },
-    }),
-    'utf8'
+    },
+    statePath
   );
 
   const { exitCode, stderr } = await captureExit(async () => {
@@ -268,12 +276,11 @@ async function captureExit(fn) {
 // Branch 2b — .md arg given but file does not exist → exits 1
 {
   const dir = mkdtempProjectIsolated('nfp-branch2b-');
-  const statePath = path.join(dir, 'state.json');
-  writeFileSync(
-    statePath,
-    JSON.stringify({ active: null, lastActive: null, discoverBucket: null }),
-    'utf8'
-  );
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
+  process.chdir(dir);
+  const statePath = path.join(dir, '.tmp', 'aitm', 'state', 'state.json');
+  mkdirSync(path.dirname(statePath), { recursive: true });
+  saveState({ active: null, lastActive: null, discoverBucket: null }, statePath);
 
   const { exitCode, stderr } = await captureExit(async () => {
     const { verbNew } = await import('../../../../task-tracker/verbs/new.mjs');
@@ -303,12 +310,11 @@ async function captureExit(fn) {
 // Branch 3 — not discover, no arg → exits 1 with guidance
 {
   const dir = mkdtempProjectIsolated('nfp-branch3-');
-  const statePath = path.join(dir, 'state.json');
-  writeFileSync(
-    statePath,
-    JSON.stringify({ active: null, lastActive: null, discoverBucket: null }),
-    'utf8'
-  );
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
+  process.chdir(dir);
+  const statePath = path.join(dir, '.tmp', 'aitm', 'state', 'state.json');
+  mkdirSync(path.dirname(statePath), { recursive: true });
+  saveState({ active: null, lastActive: null, discoverBucket: null }, statePath);
 
   const { exitCode, stderr } = await captureExit(async () => {
     const { verbNew } = await import('../../../../task-tracker/verbs/new.mjs');
@@ -339,12 +345,11 @@ async function captureExit(fn) {
 {
   process.env.TT_FAKE_NEW_ISSUE = '#99';
   const dir = mkdtempProjectIsolated('nfp-branch2-');
-  const statePath = path.join(dir, 'state.json');
-  writeFileSync(
-    statePath,
-    JSON.stringify({ active: null, lastActive: null, discoverBucket: null }),
-    'utf8'
-  );
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
+  process.chdir(dir);
+  const statePath = path.join(dir, '.tmp', 'aitm', 'state', 'state.json');
+  mkdirSync(path.dirname(statePath), { recursive: true });
+  saveState({ active: null, lastActive: null, discoverBucket: null }, statePath);
 
   const planPath = path.join(dir, 'plan-branch-two.md');
   writeFileSync(planPath, '# Branch Two Plan\n\n## Scope\ndemo\n', 'utf8');

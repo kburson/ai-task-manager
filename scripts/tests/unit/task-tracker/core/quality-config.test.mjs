@@ -81,8 +81,8 @@ const sharedIgnores = ['node_modules', 'tmp', '.worktrees', '.claude/worktrees']
 const eslintCfg = readFileSync(path.join(repoRoot, 'eslint.config.mjs'), 'utf8');
 const mdCfg = readFileSync(path.join(repoRoot, '.markdownlint-cli2.jsonc'), 'utf8');
 for (const ig of sharedIgnores) {
-  assert.match(eslintCfg, new RegExp(ig.replace(/\./g, '\\.')), `eslint must ignore ${ig}`);
-  assert.match(mdCfg, new RegExp(ig.replace(/\./g, '\\.')), `markdownlint must ignore ${ig}`);
+  assert.match(eslintCfg, new RegExp(RegExp.escape(ig)), `eslint must ignore ${ig}`);
+  assert.match(mdCfg, new RegExp(RegExp.escape(ig)), `markdownlint must ignore ${ig}`);
   assert.ok(
     (cspell.ignorePaths || []).some((p) => p.includes(ig)),
     `cspell must ignore ${ig}`

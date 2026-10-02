@@ -30,8 +30,9 @@ import { PHASE_EVENTS } from '../phase-events.mjs';
 const PAUSE_MARKER_RE = /<!--\s*aitm-pause:\s*([^\s>]+?)\.\.([^\s>]+?)\s*-->/g;
 // D3 design-doc form: `<!-- aitm-pause: from=<ISO> until=<ISO> [reason=<slug>] -->`.
 // Keys may appear in any order; reason is optional. Values are non-whitespace runs.
-const PAUSE_MARKER_KV_RE =
-  /<!--\s*aitm-pause:\s+(?=[^>]*\bfrom=)(?=[^>]*\buntil=)((?:\s*[a-z]+=\S+)+)\s*-->/g;
+// Require whitespace between fields: optional separators let a value containing
+// repeated key-like text repartition exponentially when the closing comment is absent.
+const PAUSE_MARKER_KV_RE = /<!--\s*aitm-pause:\s+([a-z]+=\S+(?:\s+[a-z]+=\S+)*)\s*-->/g;
 const ROW_SEC_RE = /<!--\s*row-sec:\s*a=(-?\d+)\s+i=(-?\d+)\s*-->/;
 
 export function formatHMS(sec) {

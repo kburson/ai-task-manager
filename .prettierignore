@@ -32,3 +32,9 @@ docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-author-response-*.md
 docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-reviewer-response-*.md
 docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-review-manifest.md
 docs/superpowers/plans/2026-10-01-1857-remaining-work-decomposition.md
+
+# Exact byte replay for the current committed guidance capture.
+scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json
+scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json
+scripts/tests/fixtures/1857/1866-current/lifecycle-transcript-final.json
+.ai-task-manager/runtime/test-fixtures/

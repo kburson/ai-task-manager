@@ -20,6 +20,12 @@
 // Production assembles `ctx` with no `deps` key, so the seam is a pure
 // testability affordance — real runs spawn `gh`/subprocesses exactly as before.
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
@@ -281,6 +287,7 @@ test('syncTrackerState: syncs the tracker ledger for the new state', () => {
   const sandbox = mkdtempProjectIsolated('cache-unpark-');
   const savedProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
+  process.chdir(sandbox);
   try {
     // #218 strips `state` from the on-disk ledger (issue body is source of
     // truth), so the observable effect is that the load→save round-trip runs

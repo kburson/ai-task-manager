@@ -1,12 +1,20 @@
 #!/usr/bin/env node
 // @story #1095
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 
+import { saveState } from '../../../../task-tracker/state.mjs';
+import { timingActorMarker } from '../../../../task-tracker/lib/timing-actor.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import {
   collectResumeActivityEvidence,
@@ -15,22 +23,27 @@ import {
 
 const sandbox = mkdtempProjectIsolated('resume-auto-gap-activity-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
+process.chdir(sandbox);
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(sandbox, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
 
 let stateSequence = 0;
 function makeState() {
-  const statePath = path.join(sandbox, `state-${stateSequence++}.json`);
-  writeFileSync(statePath, JSON.stringify({ active: null, lastActive: '#1077' }));
+  const statePath = path.join(sandbox, `.tmp/aitm/state/state-${stateSequence++}.json`);
+  saveState({ active: null, lastActive: '#1077' }, statePath);
   return statePath;
 }
 
-function timingBody(startedAt) {
+function timingBody(startedAt, { legacy = false } = {}) {
+  const actor = timingActorMarker({
+    provider: process.env.AI_TASK_MANAGER_APP_NAME,
+    sid: process.env.AI_TASK_MANAGER_SESSION_ID,
+  });
   return [
     '| Timestamp | Event | Active | Idle | ΔWords | Word Marker | Description |',
     '| --- | --- | --- | --- | --- | --- | --- |',
-    `| ${startedAt} | develop:started |  |  |  | 12,345 | row |`,
+    `| ${startedAt} | develop:started |  |  |  | 12,345 | row |${legacy ? '' : actor}`,
   ].join('\n');
 }
 
@@ -161,7 +174,7 @@ test('verbResume does not synthesize idle over a #1077-shaped gap with durable a
     },
   });
 
-  assert.equal(collectorCalls, 1);
+  assert.equal(collectorCalls, 0, 'actor history cannot authorize retrospective idle synthesis');
   assert.equal(
     posts.some(({ row }) => row.includes('pause:auto-detected-gap')),
     false
@@ -172,7 +185,7 @@ test('verbResume does not synthesize idle over a #1077-shaped gap with durable a
   );
 });
 
-test('verbResume preserves synthetic recovery for a complete no-activity lookup', async () => {
+test('verbResume refuses retroactive idle for own actor history despite no activity', async () => {
   process.env.AI_TASK_MANAGER_SESSION_ID = `resume-no-activity-${stateSequence}`;
   const bindNow = new Date();
   const startedAt = new Date(bindNow.getTime() - 11 * 60 * 60_000).toISOString();
@@ -199,16 +212,16 @@ test('verbResume preserves synthetic recovery for a complete no-activity lookup'
 
   assert.equal(
     posts.some(({ row }) => row.includes('pause:auto-detected-gap')),
-    true
+    false
   );
   assert.equal(
     posts.some(({ row }) => row.includes('| resumed |')),
     true
   );
-  assert.equal(posts.length, 2);
+  assert.equal(posts.length, 1);
 });
 
-test('verbResume warns and refuses idle synthesis when same-issue activity is unknown', async () => {
+test('verbResume refuses retroactive idle without querying unknown activity', async () => {
   process.env.AI_TASK_MANAGER_SESSION_ID = `resume-unknown-activity-${stateSequence}`;
   const bindNow = new Date();
   const startedAt = new Date(bindNow.getTime() - 11 * 60 * 60_000).toISOString();
@@ -255,7 +268,49 @@ test('verbResume warns and refuses idle synthesis when same-issue activity is un
     posts.some(({ row }) => row.includes('| resumed |')),
     true
   );
-  assert.match(stderr, /same-issue activity evidence unavailable/);
+  assert.doesNotMatch(stderr, /same-issue activity evidence unavailable/);
 });
 
-test.after(() => rmSync(sandbox, { recursive: true, force: true }));
+test('legacy untagged history cannot fabricate a current actor retroactive departure', async () => {
+  process.env.AI_TASK_MANAGER_SESSION_ID = `resume-legacy-${stateSequence}`;
+  const bindNow = new Date();
+  const startedAt = new Date(bindNow.getTime() - 11 * 60 * 60_000).toISOString();
+  const body = timingBody(startedAt, { legacy: true });
+  const posts = [];
+  let collectorCalls = 0;
+  await verbResume({
+    rest: ['#1077'],
+    cfg: { repo: 'owner/repo' },
+    statePath: makeState(),
+    projectDir: sandbox,
+    role: 'agent',
+    drainQueueIfAny: async () => {},
+    claimBindingOccupancy: () => ({ status: 'claimed' }),
+    safePostTiming: async (issue, row) => posts.push({ issue, row }),
+    nowIso: () => bindNow.toISOString(),
+    seedKanban: async () => {},
+    readTimingCommentBody: async () => ({ status: 'found', body, error: null, comments: [] }),
+    collectResumeActivityEvidence: async () => {
+      collectorCalls += 1;
+      return { status: 'none', timestamps: [] };
+    },
+  });
+  assert.equal(collectorCalls, 0, 'untagged historical work is not attributed to this actor');
+  assert.equal(posts.length, 1);
+  assert.match(posts[0].row, /\| start \|/);
+  assert.ok(
+    posts[0].row.includes(
+      timingActorMarker({
+        provider: process.env.AI_TASK_MANAGER_APP_NAME,
+        sid: process.env.AI_TASK_MANAGER_SESSION_ID,
+      })
+    )
+  );
+  assert.doesNotMatch(posts[0].row, /pause:auto-detected-gap/);
+  assert.equal(timingBody(startedAt, { legacy: true }), body, 'legacy source is unchanged');
+});
+
+test.after(() => {
+  process.chdir(fixtureOriginalCwd);
+  rmSync(sandbox, { recursive: true, force: true });
+});

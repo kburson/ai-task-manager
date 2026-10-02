@@ -73,6 +73,8 @@ export function guardGitInvocation(context, rawArgs, options = {}) {
       throw rehearsalRefusal('production-path');
     if (arg.includes('..') && !containedBy(context.root, path.resolve(cwd, arg)))
       throw rehearsalRefusal('production-path');
+    // rev-parse's standalone --git-dir observes identity; global/value overrides remain refused.
+    if (verb === 'rev-parse' && raw === '--git-dir') continue;
     if (/^--(?:git-dir|work-tree|config-env|exec-path|upload-pack|receive-pack)(?:=|$)/.test(raw))
       throw rehearsalRefusal('git-override');
   }

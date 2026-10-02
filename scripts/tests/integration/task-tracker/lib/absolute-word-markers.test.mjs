@@ -1,4 +1,10 @@
 // @story #1142
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import assert from 'node:assert/strict';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -146,7 +152,7 @@ test('the real review-approved and issue-wrap producer preserves a known full ma
   );
 });
 
-test('bankTranscriptTail carries both durable markers across session ids', () => {
+test('bankTranscriptTail keeps durable markers independent across actor session ids', () => {
   const projectDir = mkdtempProjectIsolated('absolute-bank-1142-', 'test');
   const transcriptDir = path.join(projectDir, 'transcripts');
   const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
@@ -158,36 +164,47 @@ test('bankTranscriptTail carries both durable markers across session ids', () =>
   };
   mkdirSync(transcriptDir, { recursive: true });
   process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.chdir(projectDir);
   process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
   process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
   try {
-    saveState(
-      { active: '#1142', lastActive: '#1142', lastWordMarker: 100, lastFullWordMarker: 200 },
-      statePath
-    );
-    for (const [sid, text] of [
-      ['absolute-bank-one', 'one two three'],
-      ['absolute-bank-two', 'four five'],
-    ]) {
+    const actors = [
+      ['absolute-bank-one', 'one two three', 100, 200],
+      ['absolute-bank-two', 'four five', 20, 40],
+    ];
+    for (const [sid, text, words, fullWords] of actors) {
       process.env.AI_TASK_MANAGER_SESSION_ID = sid;
+      saveState(
+        {
+          active: '#1142',
+          lastActive: '#1142',
+          lastWordMarker: words,
+          lastFullWordMarker: fullWords,
+        },
+        statePath
+      );
       writeFileSync(
         path.join(transcriptDir, `${sid}.jsonl`),
         `${JSON.stringify({ type: 'assistant', message: { content: text } })}\n`,
         'utf8'
       );
-      const current = loadState(statePath);
-      saveMarker(
-        markerPathFor(sid),
-        0,
-        current.lastWordMarker,
-        '#1142',
-        current.lastFullWordMarker
+      saveMarker(markerPathFor(sid), 0, words, '#1142', fullWords);
+      const banked = bankTranscriptTail(projectDir);
+      const count = text.split(' ').length;
+      assert.equal(banked.marker, words + count);
+      assert.equal(banked.fullMarker, fullWords + count);
+      assert.equal(
+        bankTranscriptTail(projectDir).marker,
+        words + count,
+        'banking again is idempotent'
       );
-      bankTranscriptTail(projectDir);
     }
-    const state = loadState(statePath);
-    assert.equal(state.lastWordMarker, 105);
-    assert.equal(state.lastFullWordMarker, 205);
+    for (const [sid, text, words, fullWords] of actors) {
+      process.env.AI_TASK_MANAGER_SESSION_ID = sid;
+      const state = loadState(statePath);
+      assert.equal(state.lastWordMarker, words + text.split(' ').length);
+      assert.equal(state.lastFullWordMarker, fullWords + text.split(' ').length);
+    }
   } finally {
     for (const [key, value] of Object.entries({
       AI_TASK_MANAGER_PROJECT_DIR: priorEnv.projectDir,
@@ -198,6 +215,7 @@ test('bankTranscriptTail carries both durable markers across session ids', () =>
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    process.chdir(fixtureOriginalCwd);
     rmSync(projectDir, { recursive: true, force: true });
   }
 });
@@ -220,6 +238,7 @@ test('bankTranscriptTail preserves a legacy per-session full cursor above global
     'utf8'
   );
   process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.chdir(projectDir);
   process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
   process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
   process.env.AI_TASK_MANAGER_SESSION_ID = sid;
@@ -240,6 +259,7 @@ test('bankTranscriptTail preserves a legacy per-session full cursor above global
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    process.chdir(fixtureOriginalCwd);
     rmSync(projectDir, { recursive: true, force: true });
   }
 });
@@ -252,12 +272,15 @@ test('bankTranscriptTail reports unavailable Codex input without advancing durab
     projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
     appName: process.env.AI_TASK_MANAGER_APP_NAME,
     sid: process.env.CODEX_THREAD_ID,
+    actorSid: process.env.AI_TASK_MANAGER_SESSION_ID,
     home: process.env.HOME,
     userProfile: process.env.USERPROFILE,
   };
   process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.chdir(projectDir);
   process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
   process.env.CODEX_THREAD_ID = sid;
+  process.env.AI_TASK_MANAGER_SESSION_ID = sid;
   process.env.HOME = projectDir;
   process.env.USERPROFILE = projectDir;
   try {
@@ -266,6 +289,7 @@ test('bankTranscriptTail reports unavailable Codex input without advancing durab
       statePath
     );
     saveMarker(markerPathFor(sid), 4, 100, '#1142', 200);
+    const storedMarker = loadMarker(markerPathFor(sid));
     const banked = bankTranscriptTail(projectDir);
     const state = loadState(statePath);
     assert.equal(banked.transcriptStatus, 'unavailable');
@@ -274,17 +298,20 @@ test('bankTranscriptTail reports unavailable Codex input without advancing durab
     assert.equal(banked.fullMarker, 200);
     assert.equal(state.lastWordMarker, 100);
     assert.equal(state.lastFullWordMarker, 200);
+    assert.deepEqual(loadMarker(markerPathFor(sid)), storedMarker);
   } finally {
     for (const [key, value] of Object.entries({
       AI_TASK_MANAGER_PROJECT_DIR: priorEnv.projectDir,
       AI_TASK_MANAGER_APP_NAME: priorEnv.appName,
       CODEX_THREAD_ID: priorEnv.sid,
+      AI_TASK_MANAGER_SESSION_ID: priorEnv.actorSid,
       HOME: priorEnv.home,
       USERPROFILE: priorEnv.userProfile,
     })) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    process.chdir(fixtureOriginalCwd);
     rmSync(projectDir, { recursive: true, force: true });
   }
 });
@@ -293,7 +320,7 @@ test('a fresh governed bind emits the available full-expansion marker', async ()
   const projectDir = mkdtempProjectIsolated('absolute-bind-1142-', 'test');
   const transcriptDir = path.join(projectDir, 'transcripts');
   const sid = 'absolute-bind-1142';
-  const statePath = path.join(projectDir, 'state.json');
+  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
   const priorEnv = {
     projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
     transcriptDir: process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR,
@@ -306,12 +333,13 @@ test('a fresh governed bind emits the available full-expansion marker', async ()
     `${JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'one two three' }] } })}\n`,
     'utf8'
   );
-  writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }), 'utf8');
   process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.chdir(projectDir);
   process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
   process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
   process.env.AI_TASK_MANAGER_SESSION_ID = sid;
   try {
+    saveState({ active: null, lastActive: null }, statePath);
     const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
     const posts = [];
     await verbResume({
@@ -338,6 +366,7 @@ test('a fresh governed bind emits the available full-expansion marker', async ()
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    process.chdir(fixtureOriginalCwd);
     rmSync(projectDir, { recursive: true, force: true });
   }
 });
@@ -368,6 +397,7 @@ async function runResumeTailCase({ explicitTarget }) {
     'utf8'
   );
   process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.chdir(projectDir);
   process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
   process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
   process.env.AI_TASK_MANAGER_SESSION_ID = sid;
@@ -425,6 +455,7 @@ async function runResumeTailCase({ explicitTarget }) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    process.chdir(fixtureOriginalCwd);
     rmSync(projectDir, { recursive: true, force: true });
   }
 }

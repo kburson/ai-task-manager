@@ -7,6 +7,12 @@
 // and warning against demoting. These tests cover the pure hint lib and the
 // integration point where `verbResume` prints the attached hint.
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import { after, describe, test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
@@ -81,6 +87,7 @@ test('reviewRemediationHint returns null when the hint does not apply', () => {
 
 const tmp = mkdtempProjectIsolated('tt-bind-hint-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+process.chdir(tmp);
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 

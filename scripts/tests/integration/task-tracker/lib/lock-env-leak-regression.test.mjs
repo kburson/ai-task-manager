@@ -17,6 +17,11 @@
 //   2. As a negative control, with the flag passed through → move-state skips
 //      acquisition and exits 0, demonstrating the leak the scrub defends against.
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
@@ -24,7 +29,10 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { issueLockPath } from '../../../../task-tracker/issue-mutator-lock.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -33,7 +41,7 @@ const MOVE_STATE = path.resolve(__dir, '../../helpers/move-state-cli.mjs');
 const REPO_ROOT = path.resolve(__dir, '../../../..');
 
 function setupProjectDir() {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-leak-'));
+  const dir = mkdtempProjectIsolated('tt-leak-');
   const cfgDir = path.join(dir, '.ai-task-manager');
   mkdirSync(cfgDir, { recursive: true });
   writeFileSync(
@@ -72,7 +80,7 @@ function runMoveState(projDir, issue, { scrub }) {
   return spawnSync(process.execPath, [MOVE_STATE, String(issue), 'refine'], {
     env,
     encoding: 'utf8',
-    cwd: REPO_ROOT,
+    cwd: projDir,
   });
 }
 

@@ -1,12 +1,21 @@
 // @story #1107
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { loadState, saveState } from '../../../../task-tracker/state.mjs';
+import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const tmp = mkdtempProjectIsolated('timing-degraded-write-visibility-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+process.chdir(tmp);
 process.env.TT_SKIP_NETWORK = '1';
 
 mkdirSync(path.join(tmp, '.ai-task-manager'), { recursive: true });
@@ -65,8 +74,19 @@ assert.equal(
   const ctx = buildContext(['status']);
   ctx.safePostTiming = async () => postFailure;
 
+  saveState(
+    {
+      active: '#1107',
+      lastActive: '#1107',
+      entryStartTs: new Date(Date.now() - 1_000).toISOString(),
+      wordsAtEntryStart: 0,
+      lastWordMarker: 0,
+      lastFullWordMarker: 0,
+    },
+    ctx.statePath
+  );
   const result = await ctx.flushActiveToGH(
-    { active: '#1107', entryStartTs: null, lastWordMarker: 0 },
+    loadState(ctx.statePath),
     'pause:question',
     'pause for question'
   );
@@ -76,20 +96,23 @@ assert.equal(
     postFailure,
     'flushActiveToGH must preserve the durable post outcome for its caller'
   );
+  const row = parseTimingRow(result.row);
+  assert.equal(row.event, 'pause:question');
+  assert.ok(row.actorKey, 'queued flush retains its own actor attribution');
+  assert.ok(row.engagement, 'queued flush preserves the genuinely bound interval');
 }
 
 {
   const statePath = path.join(tmp, '.tmp', 'aitm', 'state', 'pause-state.json');
   mkdirSync(path.dirname(statePath), { recursive: true });
-  writeFileSync(
-    statePath,
-    JSON.stringify({
+  saveState(
+    {
       active: '#1107',
       lastActive: '#1107',
       entryStartTs: new Date().toISOString(),
       wordsAtEntryStart: 0,
-    }),
-    'utf8'
+    },
+    statePath
   );
 
   const lines = [];
@@ -129,16 +152,15 @@ for (const [name, verb, expectedPrefix] of [
 ]) {
   const statePath = path.join(tmp, '.tmp', 'aitm', 'state', `${name}-state.json`);
   mkdirSync(path.dirname(statePath), { recursive: true });
-  writeFileSync(
-    statePath,
-    JSON.stringify({
+  saveState(
+    {
       active: '#1107',
       lastActive: '#1107',
       entryStartTs: new Date().toISOString(),
       wordsAtEntryStart: 0,
       totalActiveMinutes: 0,
-    }),
-    'utf8'
+    },
+    statePath
   );
 
   const lines = [];
@@ -178,4 +200,6 @@ for (const [name, verb, expectedPrefix] of [
   );
 }
 
+process.chdir(fixtureOriginalCwd);
+rmSync(tmp, { recursive: true, force: true });
 console.log('timing-degraded-write-visibility.test.mjs: all passed');

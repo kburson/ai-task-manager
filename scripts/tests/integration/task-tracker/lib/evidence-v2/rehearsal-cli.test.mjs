@@ -1,10 +1,18 @@
 // @story #1501
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../../task-tracker/lib/scratch-dir.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '../../../../../..');
 const CLI = path.join(ROOT, 'scripts/maintenance/rehearse-evidence-v2.mjs');
@@ -21,7 +29,7 @@ const git = (cwd, args) =>
     },
   }).trim();
 function fixture() {
-  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-1501-cli-'));
+  const root = mkdtempProjectIsolated('aitm-1501-cli-');
   const source = path.join(root, 'source');
   const output = path.join(root, 'output');
   mkdirSync(source);
