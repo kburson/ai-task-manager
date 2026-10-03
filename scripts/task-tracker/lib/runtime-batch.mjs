@@ -139,6 +139,8 @@ function validateMembers(members) {
     const content = member.after || member.before;
     if (
       !descriptor ||
+      (member.after === null &&
+        ['state', 'queue', 'fleet', 'occupancy'].includes(descriptor.family)) ||
       (descriptor.scope === 'shared' && roots.projectRoot !== roots.mainRoot) ||
       !content ||
       !descriptor.validate(Buffer.from(content.bytes, 'base64'))

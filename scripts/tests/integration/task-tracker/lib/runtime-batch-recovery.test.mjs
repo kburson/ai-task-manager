@@ -87,6 +87,31 @@ test('the complete validation set and expected-before assertion refuse before an
   }
 });
 
+const mandatoryRecords = [
+  'state/task-tracker-state.json',
+  'state/task-tracker-queue.json',
+  'fleet/task-fleet.json',
+  'fleet/occupancy.json',
+];
+for (const relative of mandatoryRecords) {
+  test(`batch deletion refuses mandatory ${relative} before changing any records`, async () => {
+    const root = await createActivatedRuntimeRootFixture('1861-batch-required-');
+    try {
+      const store = path.join(root, '.ai-task-manager/runtime/store');
+      const before = mandatoryRecords.map((record) => readFileSync(path.join(store, record)));
+      assert.throws(
+        () => writeRuntimeRecordBatch([{ target: path.join(store, relative), bytes: null }]),
+        { code: 'RUNTIME_STATE_CORRUPT' }
+      );
+      for (const [index, record] of mandatoryRecords.entries())
+        assert.deepEqual(readFileSync(path.join(store, record)), before[index]);
+      assert.deepEqual(readRuntimeJsonRecord(statePath(root)), {});
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
+
 test('deletion remains journaled and completed retry cannot restore an older outcome over later writes', async () => {
   const root = await createActivatedRuntimeRootFixture('1861-batch-delete-');
   try {
