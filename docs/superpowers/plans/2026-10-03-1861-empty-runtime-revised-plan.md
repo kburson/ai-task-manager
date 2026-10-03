@@ -10,7 +10,7 @@
 
 **Spec:** [accepted empty-runtime amendment](../specs/2026-10-02-1861-explicit-empty-runtime-design.md), SHA-256 `fa2f1291dc351f1d9c543b73ae73777774b768abcc14d061c5d69cd6e6d0a94c`; [kernel design](../specs/2026-10-02-1861-runtime-kernel-design.md); [accepted decomposition](2026-10-01-1857-remaining-work-decomposition.md). Read all three before execution. Preserve the historical [kernel plan](2026-10-02-1861-runtime-kernel.md).
 
-Status: review draft; implementation admission incomplete. Manual Claude/author consensus accepts the amendment bytes, not this Plan or package XPR. This additive plan supersedes the historical kernel plan's unsupported empty-initialization assumption only after governed approval. Existing kernel implementation retains its original credit; tasks below require fresh evidence and repairs, not reimplementation of already delivered behavior.
+Status: accepted for execution by the human in this chat. The user confirmed that the amendment plan was already reviewed and accepted, retained #1861 as one story at estimate 20.5h, and directed execution. Manual Claude/author consensus remains acceptance of the amendment bytes only; it is not package XPR. This additive plan supersedes the historical kernel plan's unsupported empty-initialization assumption. Existing kernel implementation retains its original credit; tasks below require fresh evidence and repairs, not reimplementation of already delivered behavior.
 
 ## Scope
 
@@ -20,11 +20,11 @@ C1 owns complete all-root absence observation, fixed main publication/recovery, 
 
 Actual chat cwd, branch and native scoped-first hooks were verified in `/Users/kpburson/.codex/worktrees/8dae/ai-task-manager`, branch `codex/1857-continuation`, at `c9e87d4a70dad4391a98e7d7cc98a1bbd9f217fe`. Delivered lifecycle executable is `node node_modules/@kburson/ai-task-manager/bin/aitm.mjs`, resolving to `.scratch/1857-delivered-control`. Candidate source is not the live lifecycle executable. The current genuine session is resumed on #1861; all five ACs remain unticked and Develop exit is blocked.
 
-Before production source edits:
+Execution admission and retained prerequisites:
 
-- [ ] Human review confirms this Plan and the accepted amendment's ownership/requirement mapping. Freeze the activation union, linked-v2, protected namespace and grammar with affected C2/C3/C4 acceptance reopened; do not launch those children.
-- [ ] Record a governed whole-C1 forecast and revised Plan approval through a supported lifecycle route. Current `plan-estimate` requires Plan; `demote` supports Test/Review to Develop, not Develop to Plan. Legacy forecast adoption and historical approval repair cannot approve new scope. Resolve this through a registered, reviewed authority route; no direct state jump or fabricated repair receipt.
-- [ ] Resolve decomposition. The preview below exceeds 24h, and this five-task plan has multiple verification groups. Prefer a governed decomposition of independently useful outcomes; keeping #1861 intact requires an explicit complete approved decomposition waiver. Neither a child graph change nor a waiver is recorded here.
+- [x] Human confirmation: the amendment plan is reviewed and accepted; execute #1861 intact at its existing 20.5h estimate. No decomposition or waiver is requested. The five implementation tasks are execution phases of the same kernel outcome; they do not create five independently acceptable stories.
+- [ ] Record the current human confirmation and this exact Plan binding through the delivered issue-record commands. Preserve historical forecast/approval provenance; no new Full-Auto marker, revised forecast, state jump or repair receipt is inferred.
+- [ ] Retain the activation union, linked-v2, protected namespace and grammar handoff. Affected C2/C3/C4 acceptance must account for changed contracts before adoption; do not launch those children.
 - [ ] Finalize the task-owned isolation wrapper/profile against the exact executable candidate and retain harmless canonical-runner canary evidence. A feasibility canary passed on this host; it grants no candidate-test acceptance.
 - [ ] Refresh the deep dive and source/Plan binding through the scoped control, retaining historical timing and approvals. Verify the current genuine issue/worktree/timer again after any admission pause.
 
@@ -32,11 +32,12 @@ Before production source edits:
 
 - Priority: P1 (current authority).
 - Size: XL (current authority and preview).
-- Estimate: current governed 20.5h; revised whole-C1 preview 42.5h, not converged or approved.
+- Estimate: 20.5h, the existing governed estimate explicitly retained by the user.
+- Rank: 1, set by the user because C1 is the epic's first and most important dependency. Rank against assigned work and dependency urgency; unassigned parking ranks do not set the active queue.
 - Execution: native implementation in this assigned chat after admission; final PR review GPT-6.1 Sol / Extra High after CI green.
 - Forecast input: `.scratch/gh/1861-revised-plan-estimation-input.json`, schema `aitm.plan-estimation-input/v1`.
 - Rubric preview: live record `01M3ZCCKBVEY3HYS94J584FKX4`, v289, read from #1091; canonical forecast model, Refine L/12h, no comparable outcomes asserted. Preview includes original kernel/prerequisites, all amendment work, isolation, review and cloud attribution. It is not remaining engagement or measured time.
-- Preview result: XL/42.5 human hours; AI P50 11.5h/P80 12.5h; split recommendation because dependency breadth 9 exceeds 8. Publish a fresh governed result before approval; these numbers do not overwrite current fields or historical records.
+- Historical preview result: XL/42.5 human hours; AI P50 11.5h/P80 12.5h. This unapproved preview did not converge through AITM and does not replace the 20.5h estimate or reopen the accepted story boundary. Retain its raw evidence for audit; it is superseded as the execution/decomposition decision by the user's explicit clarification.
 - Review transport: manual numbered files through the user. Preserve unresolved `review-f977a983ac4c88bc6d28ace380504db4` and private evidence; never replay or report manual acceptance as package-authenticated XPR.
 
 ## Story Intent
@@ -46,7 +47,7 @@ Before production source edits:
 - **Need:** fresh installations and proven total loss lack authority, and process death can interrupt publication
 - **Value or failure prevented:** ordinary commands refuse partial or conflicting authority instead of consuming it
 
-The seven semantic checks are grounded in the parent R2/R3 and current C1 ACs: the operator is the stakeholder; explicit complete publication is the capability; absence/interruption is the need; refusing contradictory/inherited authority is the value; the specs/ACs support those claims; C2/C3/C4 contribute distinct adoption/cleanup/forwarding outcomes; the story is independently readable. This source remains proposed until the live linked Plan and story binding are governed.
+The seven semantic checks are grounded in the parent R2/R3 and current C1 ACs: the operator is the stakeholder; explicit complete publication is the capability; absence/interruption is the need; refusing contradictory/inherited authority is the value; the specs/ACs support those claims; C2/C3/C4 contribute distinct adoption/cleanup/forwarding outcomes; the story is independently readable. The live linked Plan and human confirmation must identify these exact bytes without rewriting historical lifecycle evidence.
 
 ## Global Constraints
 
@@ -534,8 +535,10 @@ Existing issue vc:1 targeted kernel inventory plus new empty/activation/bootstra
 
 Before each commit compare the private preservation baseline, protected refs and staged index entries. Stage exact admitted new files and scoped hunks only. Use an exact-path `git commit --only` when necessary to leave the staged actor-flush rename untouched. For shared mixed files, prepare a C1-only index blob from reviewed before/after hunks and verify unstaged bytes remain exact; do not commit the native whole-file consumer WIP. Use `[#1861]` messages, delivered commit-trace if native routing misses the actual commit, and preserve attribution. No authoring credit is assigned to inherited WIP.
 
-## Self-review and decision required
+## Self-review and human decision
 
-Coverage: Intent/alternatives/absence → Task 1; plan/interfaces/main publication/recovery/ancestors/concurrency → Task 2; activation/control/linked/history/same-path/v1 → Task 3; grammar/identity/status → Task 4; original kernel/prerequisites/cloud/review/reconciliation handoffs → Task 5. All five Review Focus classes have explicit tests. API names, sync/async boundaries, root-keyed IDs and real activation references are consistent. No production source is changed by this draft.
+Coverage: Intent/alternatives/absence → Task 1; plan/interfaces/main publication/recovery/ancestors/concurrency → Task 2; activation/control/linked/history/same-path/v1 → Task 3; grammar/identity/status → Task 4; original kernel/prerequisites/cloud/review/reconciliation handoffs → Task 5. All five Review Focus classes have explicit tests. API names, sync/async boundaries, root-keyed IDs and real activation references are consistent. The Plan itself changes no production source.
 
-This is a five-task, multi-group, XL/42.5h preview. The canonical decomposition result is expected to require splitting; do not hide headings, combine unrelated verification groups or reuse the old 20.5h to evade it. A decomposition decision, supported revised forecast/approval authority, exact-candidate isolation qualification and human Plan review remain required. The draft is ready for review and a concrete scope decision; it is not an executable admission receipt.
+Ruling (2026-10-03): retain #1861 as the accepted cohesive kernel outcome at XL/20.5h and rank 1. The user expressly confirmed accepted amendment Plan review and rejected decomposition. The earlier kernel review already established that implementation and crash proof are inseparable; counting execution phases and shared dependencies as new independently useful outcomes reopened that settled boundary unnecessarily. The unapproved 42.5h preview is not live estimate authority. Cost if the retained estimate proves insufficient: report actual scope/engagement evidence and reassess with the user; do not silently overwrite the estimate, split the graph or reduce acceptance.
+
+The human confirmation is execution authority in this session, not a fabricated Claude Plan verdict, package XPR acceptance, registered revised forecast, historical approval marker, test receipt or delivery. Preserve the original artifacts and their provenance. Exact-candidate confinement, complete applicable verification, cloud evidence and final code review remain necessary. No further Plan/decomposition confirmation is requested.
