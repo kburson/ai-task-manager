@@ -23,3 +23,9 @@ The shell artifact guard receives one attributable repair: a lexical scratch tar
 The original native source WIP, staged actor-flush test rename, configuration edits, backups, private fixtures and protected recovery refs remain intact. Only admitted paths and hunks enter this commit. Native source files are restored byte for byte after the scoped commit, so remaining native differences include later-child work and original formatting. Cloud CI verifies the committed snapshot, not that remaining WIP.
 
 The cloud evidence import boundary remains unresolved in the delivered lifecycle control. Do not run its complete Test lanes locally or substitute handwritten receipt authority. Obtain cloud acceptance, independent PR review, and a supported Test transition before claiming delivery or closure.
+
+## Package boundary amendment
+
+The operator requested README-only package documentation on 2026-10-03. All docs remain in Git; package.json excludes docs/** and README documentation links use hosted repository URLs. The optional operational memory seed therefore remains repository material rather than bundled installation content. Runtime skills, templates and instructions still ship. This removes 129 entries and 1,680,611 unpacked bytes: 895 becomes 766, within the existing ceiling without a budget increase. The 15 admitted kernel additions remain required packed entries.
+
+Package-boundary and memory-seed package assertions pass. The earlier fresh local selection completed 914 files with one failure in the command-exit help fixture; that fixture now provides its own actor identity and its focused case passes. Scoped lint and format pass. The package-manifest delta escalates canonical TIA to unit, integration and slow lanes; those full lanes are cloud-only. Cloud verification of the next pushed SHA is pending. No Pages or wiki publication is claimed.
