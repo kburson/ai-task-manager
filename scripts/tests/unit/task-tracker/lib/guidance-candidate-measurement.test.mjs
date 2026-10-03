@@ -1,3 +1,4 @@
+// @story #1861
 // @story #1659
 // @story #1767
 // @story #1859
@@ -15,6 +16,7 @@ import {
 import path from 'node:path';
 import test, { after } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { archivedObligationMapRoot } from '../../../helpers/guidance-capture-provenance.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
@@ -422,25 +424,32 @@ test('recertification refuses a relabeled or altered lifecycle capture', async (
   });
   const { buildCurrentRecertificationDecision } =
     await import('../../../../maintenance/measure-guidance-candidate.mjs');
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot }),
+    /guidance-feasibility:obligation-map-drift/
+  );
+  const archived = archivedObligationMapRoot(projectRoot);
+  t.after(archived.cleanup);
   const committed = JSON.parse(
     readFileSync(path.join(fixtureRoot, 'actual-explain-traffic-recertification.json'), 'utf8')
   );
   const modeDrift = structuredClone(committed);
   modeDrift.identity.mode = 'historical';
   assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: modeDrift }),
+    () => buildCurrentRecertificationDecision({ projectRoot: archived.root, capture: modeDrift }),
     /guidance-feasibility:capture-mode/
   );
   const transcriptDrift = structuredClone(committed);
   transcriptDrift.events.find(({ name }) => name === 'lifecycle-close').typed.status = 'blocked';
   assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: transcriptDrift }),
+    () =>
+      buildCurrentRecertificationDecision({ projectRoot: archived.root, capture: transcriptDrift }),
     /guidance-feasibility:capture-transcript-digest/
   );
   const sourceDrift = structuredClone(committed);
   sourceDrift.identity.implementationFiles[0].sha256 = `sha256:${'0'.repeat(64)}`;
   assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: sourceDrift }),
+    () => buildCurrentRecertificationDecision({ projectRoot: archived.root, capture: sourceDrift }),
     /guidance-feasibility:capture-committed-source/
   );
   const selfConsistentDrift = structuredClone(committed);
@@ -450,7 +459,11 @@ test('recertification refuses a relabeled or altered lifecycle capture', async (
     .update(JSON.stringify(selfConsistentDrift.events))
     .digest('hex')}`;
   assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: selfConsistentDrift }),
+    () =>
+      buildCurrentRecertificationDecision({
+        projectRoot: archived.root,
+        capture: selfConsistentDrift,
+      }),
     /capture-replay/
   );
 });

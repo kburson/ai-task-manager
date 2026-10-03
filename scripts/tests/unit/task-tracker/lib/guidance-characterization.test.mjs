@@ -1,3 +1,4 @@
+// @story #1861
 // @story #1660
 // @story #1859
 import assert from 'node:assert/strict';
@@ -368,11 +369,12 @@ test('historical foundation stays immutable and obsolete recertification cannot 
   );
 
   // The #1767 capture predates this catalog and is historical evidence. The
-  // final release capture has its own current acceptance gate; do not relabel
+  // README-only routing also changed the obligation map; its pinned hash
+  // refuses this obsolete certificate before replay. Do not relabel
   // this older capture or turn a failed replay into a fabricated recertification.
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot }),
-    /guidance-feasibility:capture-replay-identity:initialFixtureSha256/
+    /guidance-feasibility:obligation-map-drift/
   );
   for (const args of [
     ['--all', '--json'],
@@ -387,7 +389,7 @@ test('historical foundation stays immutable and obsolete recertification cannot 
     });
     assert.equal(status, 1);
     assert.equal(stdout, '');
-    assert.match(stderr, /guidance-feasibility:capture-replay-identity:initialFixtureSha256/);
+    assert.match(stderr, /guidance-feasibility:obligation-map-drift/);
   }
 
   let stderr = '';

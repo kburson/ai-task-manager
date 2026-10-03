@@ -1,3 +1,4 @@
+// @story #1861
 // @story #1496
 // cspell:ignore NOSYSTEM
 import { randomUUID } from 'node:crypto';
@@ -130,6 +131,7 @@ export function createSandbox({
         'instructions',
         'docs',
         'package.json',
+        'README.md',
         ...dependencies,
       ].map((name) => `--allow-fs-read=${path.join(toolRoot, name)}`);
       const ancestorMarkerReads = [];
