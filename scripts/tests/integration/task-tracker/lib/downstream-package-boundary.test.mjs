@@ -1,12 +1,12 @@
 // @story #1631
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { parseNpmPackReport } from '../../../helpers/npm-pack-report.mjs';
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
@@ -160,7 +160,7 @@ for (const [name, output] of [
 // Catches a reintroduced package lifecycle, retired seed hook, or unscoped
 // consumer path even when the checkout's dogfood self-link masks that defect.
 test('restrictive downstream tarball install runs CLI and generated provider hooks without an alias', (t) => {
-  const sandbox = mkdtempSync(join(projectScratchDir('test'), 'downstream-package-'));
+  const sandbox = createRuntimeRootFixture('downstream-package-');
   const packDir = join(sandbox, 'pack');
   const consumerDir = join(sandbox, 'consumer');
   mkdirSync(packDir, { recursive: true });

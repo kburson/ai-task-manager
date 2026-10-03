@@ -305,6 +305,48 @@ function journalDeps({ projectDir, journalPath } = {}) {
   };
 }
 
+// #1857: validate historical bytes without executing their migration or granting trust.
+export function validateReadyForPlanMigrationJournal(journal) {
+  const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!object(journal) || !object(journal.plan) || !object(journal.items))
+    fail('journal shape is malformed');
+  const plan = journal.plan;
+  if (plan.schema !== 'aitm.ready-for-plan-migration-plan/v1' || plan.writes !== 0)
+    fail('journal plan schema is unsupported');
+  for (const key of ['projectId', 'statusFieldId', 'backlogOptionId', 'assignedOptionId']) {
+    if (typeof plan[key] !== 'string' || !plan[key]) fail('journal plan identity is malformed');
+  }
+  if (!Array.isArray(plan.items) || !object(plan.option) || !object(plan.views))
+    fail('journal plan inventory is malformed');
+  const stable = {
+    schema: plan.schema,
+    projectId: plan.projectId,
+    statusFieldId: plan.statusFieldId,
+    backlogOptionId: plan.backlogOptionId,
+    assignedOptionId: plan.assignedOptionId,
+    items: plan.items,
+    option: plan.option,
+    views: plan.views,
+  };
+  if (digestPlan(stable) !== plan.digest) fail('journal plan digest mismatch');
+  if (
+    plan.option.id !== plan.assignedOptionId ||
+    plan.option.beforeName !== 'Assigned' ||
+    plan.option.afterName !== 'Ready for Planning' ||
+    JSON.stringify(plan.option.order) !== JSON.stringify(EXPECTED_STATUS_ORDER) ||
+    !Array.isArray(plan.option.options)
+  )
+    fail('journal option contract is malformed');
+  assertUniqueInventory(plan.items);
+  for (const item of plan.items) normalizeInventoryItem(item, plan.assignedOptionId);
+  const ids = new Set(plan.items.map((item) => item.itemId));
+  for (const [id, evidence] of Object.entries(journal.items)) {
+    if (!ids.has(id) || !object(evidence)) fail('journal item identity is malformed');
+  }
+  assertJournal(journal, plan);
+  return journal;
+}
+
 function assertJournal(journal, plan) {
   if (journal.planDigest !== plan.digest) fail('journal belongs to a different inventory plan');
   if (!MIGRATION_PHASES.includes(journal.phase)) fail('journal phase is malformed');

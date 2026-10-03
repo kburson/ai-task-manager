@@ -348,7 +348,7 @@ test('admission inventory accounts for every canonical command, alias, and class
     }
     if (entry.gateCall === null) assert.ok(entry.exception, entry.path);
   }
-  assert.equal(VERBS.size, 74);
+  assert.equal(VERBS.size, 75);
   // #1848 adds the bounded draft-branch standalone route.
   assert.equal(Object.keys(SCRIPTS).length, 24);
   assert.deepEqual(
@@ -373,12 +373,23 @@ test('every registered operational token refuses an invalid catalog', () => {
   const dir = invalidProject();
   try {
     for (const token of [...VERBS, ...Object.keys(SCRIPTS)].filter(
-      (name) => !['aitm', 'ai-task-manager', 'guidance'].includes(name)
+      (name) => !['aitm', 'ai-task-manager', 'guidance', 'migrate-runtime'].includes(name)
     )) {
       const result = invoke([token], dir);
       assert.equal(result.status, 1, `${token}: ${result.stderr}`);
       assert.match(result.stderr, /AITM guidance catalog is invalid/, token);
     }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('registered runtime status remains available with an invalid guidance catalog', () => {
+  const dir = invalidProject();
+  try {
+    const result = invoke(['migrate-runtime', 'status'], dir);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).schema, 'aitm.runtime-bootstrap-status/v1');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

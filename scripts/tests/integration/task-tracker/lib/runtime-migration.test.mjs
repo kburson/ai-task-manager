@@ -34,6 +34,7 @@ test('migration bootstrap admits exact registered forms without reading corrupt 
       'transaction-1',
       '--approved-plan',
       digest,
+      ...(mode === 'apply' ? ['--plan-file', path.join(root, 'approved-plan.json')] : []),
     ];
     assert.equal(classify({ executable, physicalRoots, argv }).approvedPlanDigest, digest);
     assert.equal(classify({ executable, physicalRoots, argv: argv.slice(0, -2) }), null);
@@ -66,6 +67,45 @@ test('bootstrap rejects wrong executable, wrappers, extra tokens and ambiguous a
     null
   );
   assert.equal(classify({ executable, physicalRoots, argv: 'migrate-runtime plan' }), null);
+});
+
+test('bootstrap accepts exact-hash legacy trust planning and never requires volatile input on resume', async () => {
+  const { classifyRuntimeMigrationInvocation: classify } = await admission();
+  const file = path.join(root, 'observed-plan.json');
+  const argv = ['migrate-runtime', 'plan', '--trust-plan', file, '--approved-plan', digest];
+  const selected = classify({ executable, physicalRoots, argv });
+  assert.equal(selected?.trustPlanFile, file);
+  assert.equal(selected.approvedPlanDigest, digest);
+  assert.equal(classify({ executable, physicalRoots, argv: argv.slice(0, -2) }), null);
+  assert.equal(
+    classify({ executable, physicalRoots, argv: ['migrate-runtime', 'plan', '--plan-file', file] }),
+    null
+  );
+  assert.equal(
+    classify({
+      executable,
+      physicalRoots,
+      argv: ['migrate-runtime', 'apply', '--transaction', 'one', '--approved-plan', digest],
+    }),
+    null
+  );
+  assert.equal(
+    classify({
+      executable,
+      physicalRoots,
+      argv: [
+        'migrate-runtime',
+        'resume',
+        '--transaction',
+        'one',
+        '--approved-plan',
+        digest,
+        '--plan-file',
+        file,
+      ],
+    }),
+    null
+  );
 });
 
 test('bootstrap rejects artifact-root identity even when it contains a real Git repository', async () => {
@@ -176,7 +216,10 @@ test('fencing drains existing leases and prevents new writers without accepting 
       assert.equal(result.leases.length, 1);
       await assert.rejects(
         withRuntimeWriterLease(
-          { ...physicalRoots, adapters: { identity: () => writer } },
+          {
+            ...physicalRoots,
+            adapters: { identity: () => ({ ...writer, processToken: 'new-writer' }) },
+          },
           async () => {}
         ),
         { code: 'RUNTIME_TRANSACTION_INCOMPLETE' }
@@ -225,6 +268,47 @@ test('known cooperative in-flight writers drain under a fence while unknown olde
     claims: [{ provider: owner.provider, sid: owner.sid }],
   });
   assert.equal((await fenceRuntimeWriters(input)).status, 'quiesced');
+});
+
+test('nested synchronous and asynchronous writers share the outer lease through publication', async () => {
+  const { withRuntimeWriterLease, withRuntimeWriterLeaseSync, fenceRuntimeWriters } =
+    await import('../../../../task-tracker/lib/runtime-migration-lock.mjs');
+  const { readdirSync } = await import('node:fs');
+  const roots = coordinationFixture();
+  const owner = {
+    provider: 'fixture',
+    sid: 'nested',
+    pid: process.pid,
+    processToken: 'nested-process',
+  };
+  const selected = { ...roots, adapters: { identity: () => owner } };
+  const directory = path.join(roots.mainRoot, '.ai-task-manager/runtime/migrations/writers');
+  await withRuntimeWriterLease(selected, async () => {
+    const original = readdirSync(directory);
+    assert.equal(original.length, 1);
+    await fenceRuntimeWriters({
+      ...roots,
+      transactionId: 'nested-fence',
+      approvedPlanDigest: digest,
+      adapters: {
+        identity: () => owner,
+        writerCensus: () => ({ complete: true, writers: [], claims: [] }),
+      },
+    });
+    assert.equal(
+      withRuntimeWriterLeaseSync(selected, () => {
+        assert.deepEqual(readdirSync(directory), original);
+        return 17;
+      }),
+      17
+    );
+    await withRuntimeWriterLease(selected, async () => {
+      await Promise.resolve();
+      assert.deepEqual(readdirSync(directory), original);
+    });
+    assert.deepEqual(readdirSync(directory), original);
+  });
+  assert.deepEqual(readdirSync(directory), []);
 });
 
 test('corrupt and aliased fence records cannot be treated as an absent fence', async () => {
@@ -286,7 +370,7 @@ test('coordinator release preserves replaced ownership instead of unlinking anot
   const roots = coordinationFixture();
   const ownerFile = path.join(
     roots.mainRoot,
-    '.ai-task-manager/runtime/migrations/coordinator.lock/owner.json'
+    '.ai-task-manager/runtime/migrations/coordinator.lock'
   );
   const owner = {
     provider: 'fixture',
@@ -303,7 +387,8 @@ test('coordinator release preserves replaced ownership instead of unlinking anot
       adapters: {
         identity: () => owner,
         writerCensus: () => {
-          writeFileSync(ownerFile, JSON.stringify(replacement));
+          const record = JSON.parse(readFileSync(ownerFile, 'utf8'));
+          writeFileSync(ownerFile, JSON.stringify({ ...record, owner: replacement }));
           return { complete: true, writers: [], claims: [] };
         },
       },
@@ -311,7 +396,7 @@ test('coordinator release preserves replaced ownership instead of unlinking anot
     { code: 'RUNTIME_MIGRATION_CONFLICT' }
   );
   assert.equal(existsSync(ownerFile), true);
-  assert.deepEqual(JSON.parse(readFileSync(ownerFile, 'utf8')), replacement);
+  assert.deepEqual(JSON.parse(readFileSync(ownerFile, 'utf8')).owner, replacement);
 });
 
 test('malformed owners and foreign-root lease records fail closed before fencing', async () => {

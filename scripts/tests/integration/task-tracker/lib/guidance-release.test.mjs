@@ -7,7 +7,6 @@ import path from 'node:path';
 import { test } from 'node:test';
 
 import { GUIDANCE_CONTEXT_BUDGETS } from '../../../../task-tracker/lib/context-budgets.mjs';
-import { captureGuidanceLifecycle } from '../../../helpers/capture-guidance-release.mjs';
 import { buildGuidanceContextReport } from '../../../../task-tracker/measure-guidance-context.mjs';
 import { formatReleaseMeasurement, measure } from '../../../../task-tracker/measure-context.mjs';
 import { buildPairedContext } from '../../../helpers/guidance-paired-context.mjs';
@@ -151,15 +150,39 @@ test('final release requires a complete installed-byte and public-CLI capture', 
   );
 });
 
-test('final package and public-CLI capture regenerate byte for byte', () => {
+test('committed final package and public-CLI archive regenerate byte for byte from its source commit', () => {
   const expected = readFileSync(
     path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json'),
     'utf8'
   );
-  assert.equal(
-    `${JSON.stringify(captureGuidanceLifecycle({ mode: 'final' }), null, 2)}\n`,
-    expected
+  const manifest = JSON.parse(
+    readFileSync(
+      path.resolve('scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json'),
+      'utf8'
+    )
   );
+  const fixture = mkdtempProjectIsolated('guidance-pinned-release-');
+  try {
+    // Regenerate immutable evidence with its immutable implementation. Changed
+    // candidate sources require a new capture and cannot inherit this receipt.
+    execFileSync('git', ['fetch', '--no-tags', path.resolve('.'), manifest.sourceCommit], {
+      cwd: fixture,
+    });
+    execFileSync('git', ['checkout', '-q', '--detach', 'FETCH_HEAD'], { cwd: fixture });
+    assert.equal(
+      execFileSync('git', ['rev-parse', 'HEAD'], { cwd: fixture, encoding: 'utf8' }).trim(),
+      manifest.sourceCommit
+    );
+    assertCurrentCaptureSources(JSON.parse(expected), manifest.sourceCommit, fixture);
+    const regenerated = execFileSync(
+      process.execPath,
+      [path.join(fixture, 'scripts/tests/helpers/capture-guidance-release.mjs'), '--final'],
+      { cwd: fixture, encoding: 'utf8', timeout: 600_000, maxBuffer: 8 * 1024 * 1024 }
+    );
+    assert.equal(regenerated, expected);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
 });
 
 test('fixed release measurement refuses a missing required instruction file', () => {

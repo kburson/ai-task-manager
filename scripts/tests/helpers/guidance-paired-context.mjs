@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { assertCurrentCaptureSources } from './guidance-capture-provenance.mjs';
+import { assertCapturedCommitSources } from './guidance-capture-provenance.mjs';
 
 import {
   measureAgentVisible,
@@ -211,7 +211,7 @@ export function buildPairedContext({
     )
       throw new Error('paired context: final capture identity drift');
     try {
-      currentSourceCommit = assertCurrentCaptureSources(capture, manifest.sourceCommit, ROOT);
+      currentSourceCommit = assertCapturedCommitSources(capture, manifest.sourceCommit, ROOT);
     } catch {
       throw new Error('paired context: final capture identity drift');
     }

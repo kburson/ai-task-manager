@@ -6,10 +6,18 @@
 // deps.mutateIssueBody seam. The gate block's interior needs the session
 // review-gate ON (disabled here), so its write throws and is caught — covered
 // as the fail-closed / force-continue branches, not its happy interior.
+import {
+  createCloseFixture,
+  tmpState,
+  makeDirtyRepo,
+} from '../../../helpers/close-state-fixture.mjs';
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { test as integrationTest } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import '../../../fixtures/offline-gh-auto.mjs';
-import { readFileSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, mkdirSync, realpathSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import {
@@ -25,7 +33,7 @@ import {
   verbClose,
   tickLifecycleOnClose,
 } from '../../../../task-tracker/verbs/close.mjs';
-import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { activateRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
 
 // Review-approval marker + populated aitm-fields (engagedTime non-null) so
@@ -47,22 +55,6 @@ const baseState = (active = '#5') => ({
   wordsAtEntryStart: 0,
   lastWordMarker: 0,
 });
-
-function tmpState(state, dir = createRuntimeRootFixture('aitm-613-')) {
-  const statePath = join(dir, '.tmp', 'aitm', 'state', 'state.json');
-  mkdirSync(dirname(statePath), { recursive: true });
-  writeFileSync(statePath, JSON.stringify(state));
-  return { statePath, dir };
-}
-
-function makeDirtyRepo() {
-  const dir = createRuntimeRootFixture('aitm-613-dirty-');
-  execFileSync('git', ['init', '-q'], { cwd: dir });
-  execFileSync('git', ['config', 'user.email', 't@t.t'], { cwd: dir });
-  execFileSync('git', ['config', 'user.name', 't'], { cwd: dir });
-  writeFileSync(join(dir, 'dirty.txt'), 'uncommitted\n'); // untracked → dirty
-  return dir;
-}
 
 function makeCtx(statePath, dir, over = {}) {
   const ctx = {
@@ -150,7 +142,7 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
   const stdout = [],
     stderr = [];
   try {
-    dir = dirty ? makeDirtyRepo() : createRuntimeRootFixture('aitm-613-');
+    dir = dirty ? makeDirtyRepo() : createCloseFixture('aitm-613-');
     ({ statePath } = tmpState(state, dir));
     assert.equal(projectDirForState(statePath), dir);
     process.chdir(dir);
@@ -170,7 +162,7 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
     if (!new RegExp('__exit_[0-9]+__').test(err.message)) thrown = err;
   } finally {
     try {
-      if (statePath) finalState = JSON.parse(readFileSync(statePath, 'utf8'));
+      if (statePath) finalState = loadState(statePath);
     } finally {
       process.exit = real.exit;
       console.log = real.log;
@@ -802,45 +794,49 @@ test('tickLifecycleOnClose: mutate throws → best-effort swallow', async () => 
 
 console.log('coverage-close.test.mjs: defined');
 
-test('nested fixture state never reads or clears its isolated parent session', () => {
-  const outer = mkdtempOutsideRepo('aitm-1857-parent-');
-  const child = join(outer, '.ai-task-manager', 'runtime', 'test-fixtures', 'child');
-  const priorCwd = process.cwd(),
-    priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
-  try {
-    mkdirSync(child, { recursive: true });
-    execFileSync('git', ['init', '-q', outer]);
-    execFileSync('git', ['init', '-q', child]);
-    const sentinel = join(
-      outer,
-      '.tmp',
-      'aitm',
-      'sessions',
-      currentSessionId(),
-      'active-task.json'
-    );
-    mkdirSync(dirname(sentinel), { recursive: true });
-    const bytes = JSON.stringify({
-      issue: '#9001',
-      entryStartTs: '2026-01-01T00:00:00.000Z',
-      wordsAtStart: 17,
-    });
-    writeFileSync(sentinel, bytes);
-    const { statePath } = tmpState({ active: null }, child);
-    assert.equal(
-      projectDirForState(statePath),
-      child,
-      'fixture state must select its own exact root before any state read/write'
-    );
-    process.chdir(child);
-    process.env.AI_TASK_MANAGER_PROJECT_DIR = child;
-    assert.equal(loadState(statePath).active, null);
-    clearActive(statePath);
-    assert.equal(readFileSync(sentinel, 'utf8'), bytes);
-  } finally {
-    process.chdir(priorCwd);
-    if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
-    else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
-    rmSync(outer, { recursive: true, force: true });
+integrationTest(
+  'nested fixture state never reads or clears its isolated parent session',
+  async () => {
+    const outer = realpathSync(mkdtempOutsideRepo('aitm-1857-parent-'));
+    const child = join(outer, '.ai-task-manager', 'runtime', 'test-fixtures', 'child');
+    const priorCwd = process.cwd(),
+      priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    try {
+      mkdirSync(child, { recursive: true });
+      execFileSync('git', ['init', '-q', outer]);
+      execFileSync('git', ['init', '-q', child]);
+      await activateRuntimeRootFixture(child);
+      const sentinel = join(
+        outer,
+        '.tmp',
+        'aitm',
+        'sessions',
+        currentSessionId(),
+        'active-task.json'
+      );
+      mkdirSync(dirname(sentinel), { recursive: true });
+      const bytes = JSON.stringify({
+        issue: '#9001',
+        entryStartTs: '2026-01-01T00:00:00.000Z',
+        wordsAtStart: 17,
+      });
+      writeFileSync(sentinel, bytes);
+      const { statePath } = tmpState({ active: null }, child);
+      assert.equal(
+        projectDirForState(statePath),
+        child,
+        'fixture state must select its own exact root before any state read/write'
+      );
+      process.chdir(child);
+      process.env.AI_TASK_MANAGER_PROJECT_DIR = child;
+      assert.equal(loadState(statePath).active, null);
+      clearActive(statePath);
+      assert.equal(readFileSync(sentinel, 'utf8'), bytes);
+    } finally {
+      process.chdir(priorCwd);
+      if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+      else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
+      rmSync(outer, { recursive: true, force: true });
+    }
   }
-});
+);

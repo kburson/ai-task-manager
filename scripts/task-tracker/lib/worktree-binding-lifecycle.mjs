@@ -50,6 +50,10 @@ export function readClosedBindingLedger(mainWorktreePath, deps = {}) {
   } catch (error) {
     throw new Error(`closed-bindings:invalid-json: ${error?.message || String(error)}`);
   }
+  return validateClosedBindingLedger(value);
+}
+
+export function validateClosedBindingLedger(value) {
   if (value?.schema !== CLOSED_BINDINGS_SCHEMA || !object(value.sessions)) {
     throw new Error('closed-bindings:invalid-schema');
   }

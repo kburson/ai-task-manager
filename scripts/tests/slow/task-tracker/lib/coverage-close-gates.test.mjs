@@ -8,6 +8,8 @@ import { execFile } from 'node:child_process';
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import { promisify } from 'node:util';
+import { rmSync } from 'node:fs';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 
 import {
   shaFreshGate,
@@ -348,20 +350,35 @@ test('runCloseGates: dirty touched file blocks close; clean deps → ok', async 
 // Default git-backed I/O helpers, driven against the real repo: only
 // `listComments` is injected; the other deps fall through to real git defaults.
 test('commitsOnTrunkGate: cfg.trunkRef short-circuits defaultResolveTrunkRef', async () => {
-  const sha = await headSha();
-  const r = await commitsOnTrunkGate({
-    cfg: { ...cfg, trunkRef: 'trunk' },
-    issueNumber: 1,
-    projectDir: process.cwd(),
-    deps: { listComments: async () => commitTrail([sha]) },
-  });
-  // #733 — the real default engine is trunk-scoped message attribution: #1's
-  // work is either attributed on trunk (ok) or absent (message-based blocker).
-  assert.ok(
-    r.ok === true || /close-no-attributed-commit-on-trunk/.test(r.blocker || ''),
-    JSON.stringify(r)
-  ); // #729/#733
-  assert.equal(r.trunkRef, 'trunk');
+  const projectDir = createRuntimeRootFixture('close-explicit-trunk-');
+  try {
+    await pexec('git', ['branch', '-M', 'trunk'], { cwd: projectDir });
+    await pexec(
+      'git',
+      [
+        '-c',
+        'user.name=fixture',
+        '-c',
+        'user.email=fixture@example.test',
+        'commit',
+        '--allow-empty',
+        '-qm',
+        '[#1] fixture attribution',
+      ],
+      { cwd: projectDir }
+    );
+    const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
+    const r = await commitsOnTrunkGate({
+      cfg: { ...cfg, trunkRef: 'trunk' },
+      issueNumber: 1,
+      projectDir,
+      deps: { listComments: async () => commitTrail([stdout.trim()]) },
+    });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    assert.equal(r.trunkRef, 'trunk');
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
 });
 
 test('commitsOnTrunkGate: default trunk-ref resolution + default attributingCommits (real git)', async () => {

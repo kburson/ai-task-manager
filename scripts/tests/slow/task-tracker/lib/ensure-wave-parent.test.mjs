@@ -13,16 +13,8 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  chmodSync,
-  rmSync,
-  existsSync,
-} from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
+import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -207,10 +199,12 @@ async function runHelper(sandbox, binDir, args) {
     PATH: `${binDir}:${process.env.PATH}`,
     AITM_GH_TEST_DOUBLE_BIN: binDir,
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
+    AI_TASK_MANAGER_SESSION_ID: 'ensure-wave-parent-fixture',
+    AI_TASK_MANAGER_APP_NAME: 'claude',
     TT_SKIP_NETWORK: '1',
   };
   try {
-    const r = await pexec('node', [HELPER, ...args], { env, timeout: 30000 });
+    const r = await pexec('node', [HELPER, ...args], { env, cwd: sandbox, timeout: 30000 });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout || '', stderr: err.stderr || '' };
@@ -228,7 +222,7 @@ function readCalls(callsLog) {
 
 // ─── Test 1: Solo-wave happy path ─────────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-1-'));
+  const sandbox = await createLegacyRootFixture('tt-ewp-1-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
@@ -257,7 +251,7 @@ function readCalls(callsLog) {
 
 // ─── Test 2: All-parented passthrough ─────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-2-'));
+  const sandbox = await createLegacyRootFixture('tt-ewp-2-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
@@ -286,7 +280,7 @@ function readCalls(callsLog) {
 
 // ─── Test 3: Mixed fan-out rejection ──────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-3-'));
+  const sandbox = await createLegacyRootFixture('tt-ewp-3-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
@@ -305,7 +299,7 @@ function readCalls(callsLog) {
 
 // ─── Test 4: Multi-parent rejection ───────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-4-'));
+  const sandbox = await createLegacyRootFixture('tt-ewp-4-');
   try {
     writeConfig(sandbox);
     const { binDir } = makeGhShim(sandbox, {
@@ -322,7 +316,7 @@ function readCalls(callsLog) {
 
 // ─── Test 5: Single-issue passthrough ─────────────────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-5-'));
+  const sandbox = await createLegacyRootFixture('tt-ewp-5-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, { parents: { 50: null } });
@@ -339,7 +333,7 @@ function readCalls(callsLog) {
 
 // ─── Test 6: Idempotency — existing wave-id reused ────────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-6-'));
+  const sandbox = await createLegacyRootFixture('tt-ewp-6-');
   try {
     writeConfig(sandbox);
     // compute the wave-id the helper will compute for [60, 61]
@@ -373,7 +367,7 @@ function readCalls(callsLog) {
 
 // ─── Test 7 (#459 Bug B): search query must NOT contain HTML comment syntax ────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-7-'));
+  const sandbox = await createLegacyRootFixture('tt-ewp-7-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {

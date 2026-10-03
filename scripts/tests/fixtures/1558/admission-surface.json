@@ -458,6 +458,14 @@
       "fixtureId": "invalid-tracked-override"
     },
     {
+      "token": "migrate-runtime",
+      "canonical": "migrate-runtime",
+      "route": "verbs/migrate-runtime.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
       "token": "mirror-deep-dive",
       "canonical": "mirror-deep-dive",
       "route": "verbs/mirror-deep-dive.mjs",
@@ -919,7 +927,8 @@
         "../scripts/task-tracker/lib/runtime-storage.mjs",
         "../scripts/task-tracker/lib/worktree-binding-guard.mjs",
         "../scripts/lib/self-doc.mjs",
-        "../guidance/admission.mjs"
+        "../guidance/admission.mjs",
+        "../scripts/task-tracker/lib/runtime-migration-admission.mjs"
       ],
       "firstPotentialEffect": "prepareActionCaptureEnv or child spawn",
       "gateCall": "admitGuidance",
@@ -2530,6 +2539,34 @@
       "gateCall": "enforceDirectGuidance",
       "exception": null,
       "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/migrate-runtime.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": [
+        "../paths.mjs",
+        "../config.mjs",
+        "../lib/runtime-migration-timing.mjs",
+        "node:fs",
+        "node:path",
+        "node:url",
+        "../lib/runtime-migration-admission.mjs",
+        "../lib/runtime-storage.mjs",
+        "../lib/runtime-migration-plan.mjs",
+        "../lib/runtime-migration-input.mjs",
+        "../lib/runtime-writer-census.mjs",
+        "../lib/runtime-migration-lock.mjs",
+        "../lib/runtime-migration-lock.mjs",
+        "../lib/runtime-initialize.mjs",
+        "../lib/runtime-initialization-record.mjs",
+        "../lib/runtime-migration-apply.mjs",
+        "../lib/runtime-batch.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Import-only runtime bootstrap handler; executable and physical roots are admitted by the registered AITM router.",
+      "fixtureId": null
     },
     {
       "path": "scripts/task-tracker/verbs/park.mjs",

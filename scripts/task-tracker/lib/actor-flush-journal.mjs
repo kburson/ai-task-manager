@@ -33,7 +33,7 @@ function keys(value, expected) {
 function digest(payload) {
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
-function validate(record, identity) {
+export function validateActorFlushJournal(record, identity) {
   if (
     !keys(record, ['schema', 'actor', 'provider', 'sid', 'digest', 'payload']) ||
     record.schema !== SCHEMA ||
@@ -123,7 +123,7 @@ export function readActorFlushJournal(file, identity) {
   } catch {
     fail();
   }
-  return validate(record, identity);
+  return validateActorFlushJournal(record, identity);
 }
 function prepare(file, identity, candidate) {
   return withLock(file, () => {
@@ -133,7 +133,7 @@ function prepare(file, identity, candidate) {
       return existing;
     }
     if (!candidate) return null;
-    const record = validate(
+    const record = validateActorFlushJournal(
       {
         schema: SCHEMA,
         actor: timingActorKey(identity),

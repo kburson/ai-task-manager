@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { classifyKnownLegacyRuntimeRecord } from './runtime-migration-catalog.mjs';
 import {
   resolveRuntimeRoot,
   runtimeStoragePaths,
@@ -52,7 +53,7 @@ function maybeStat(file) {
   }
 }
 
-function inventory(directory, blocker, visit) {
+function inventory(directory, blocker, visit, allowedNames = null) {
   const stat = maybeStat(directory);
   if (!stat) return;
   if (stat.isSymbolicLink()) {
@@ -65,9 +66,12 @@ function inventory(directory, blocker, visit) {
   }
   const walk = (cursor) => {
     for (const name of readdirSync(cursor).sort()) {
+      if (cursor === directory && allowedNames && !allowedNames.includes(name)) continue;
       const file = path.join(cursor, name);
       const entry = lstatSync(file);
       if (entry.isSymbolicLink()) blocker('source-alias', file);
+      else if (entry.isDirectory() && name.endsWith('.lock'))
+        blocker('source-lock-recovery-required', file);
       else if (entry.isDirectory()) walk(file);
       else if (entry.isFile()) visit(file, path.relative(directory, file));
       else blocker('source-shape', file);
@@ -89,7 +93,13 @@ export async function planRuntimeMigration({ projectRoot, mainRoot, adapters = {
     block('root-unavailable', unavailable);
   const rootIdentities = [];
   for (const root of roots) {
-    const selected = resolveRuntimeRoot({ cwd: root, env: {} });
+    let selected;
+    try {
+      selected = resolveRuntimeRoot({ cwd: root, env: {} });
+    } catch (error) {
+      block('root-unadmittable', root, error.code || 'ROOT_IDENTITY_MISMATCH');
+      continue;
+    }
     if (selected.mainRoot !== layout.mainRoot) {
       block('root-identity-mismatch', root);
       continue;
@@ -112,31 +122,30 @@ export async function planRuntimeMigration({ projectRoot, mainRoot, adapters = {
         block('destination-unsafe', destination, error.code);
       }
     }
-    for (const directory of ['.ai-task-manager', '.claude']) {
-      for (const name of [
-        'task-tracker-state.json',
-        'task-tracker-queue.json',
-        'task-fleet.json',
-        'occupancy.json',
-        'orchestrator.lock',
-        'sessions',
-        'gates',
-        'locks',
-        'app',
-        'cache',
-      ]) {
-        const old = path.join(root, directory, name);
-        try {
-          assertRuntimeStoragePath(old, root, 'RUNTIME_CONTROL_INVALID');
-          if (maybeStat(old)) block('legacy-source-outside-inventory', old);
-        } catch (error) {
-          block('source-alias', old, error.code);
-        }
-      }
-    }
     for (const legacy of [
       { base: path.join(root, '.tmp', 'aitm'), kind: 'volatile-runtime' },
       { base: path.join(root, '.db', 'aitm'), kind: 'legacy-durable' },
+      ...['.ai-task-manager', '.claude'].map((directory) => ({
+        base: path.join(root, directory),
+        kind: 'legacy-root',
+        allowedNames: [
+          'task-tracker-state.json',
+          'task-tracker-queue.json',
+          'task-fleet.json',
+          'occupancy.json',
+          'orchestrator.lock',
+          'closed-bindings.json',
+          'state',
+          'fleet',
+          'sessions',
+          'gates',
+          'locks',
+          'app',
+          'cache',
+          'draft-branch',
+          'action-capture',
+        ],
+      })),
     ]) {
       try {
         assertRuntimeStoragePath(legacy.base, root, 'RUNTIME_CONTROL_INVALID');
@@ -144,77 +153,101 @@ export async function planRuntimeMigration({ projectRoot, mainRoot, adapters = {
         block('source-alias', legacy.base, error.code);
         continue;
       }
-      inventory(legacy.base, block, (source, relative) => {
-        const classified = adapters.classifyLegacy?.({
-          root,
-          mainRoot,
-          source,
-          relative,
-          kind: legacy.kind,
-        });
-        if (
-          !classified ||
-          typeof classified.destination !== 'string' ||
-          typeof classified.validate !== 'function'
-        ) {
-          block('unknown-source', source);
-          return;
-        }
-        if (
-          !Object.hasOwn(FAMILY_SCOPES, classified.family) ||
-          FAMILY_SCOPES[classified.family] !== classified.scope
-        ) {
-          block('unsupported-classification', source);
-          return;
-        }
-        const destinationRoot = classified.scope === 'shared' ? mainRoot : root;
-        const store = runtimeStoragePaths({ projectRoot: destinationRoot, mainRoot }).localRoot;
-        const destination = path.resolve(store, classified.destination);
-        try {
-          assertRuntimeStoragePath(destination, store, 'RUNTIME_OVERRIDE_UNSAFE');
-        } catch (error) {
-          block('destination-unsafe', destination, error.code);
-          return;
-        }
-        if (
-          path.isAbsolute(classified.destination) ||
-          classified.destination.split(path.sep).includes('..')
-        ) {
-          block('destination-unsafe', destination);
-          return;
-        }
-        const bytes = readFileSync(source);
-        const digest = runtimeMigrationDigest(bytes);
-        let supported = false;
-        try {
-          supported = classified.validate(bytes.toString('utf8')) === true;
-        } catch {
-          /* retain unsupported input */
-        }
-        if (!supported) {
-          block('unsupported-schema', source);
-          return;
-        }
-        const trust =
-          adapters.trustLegacy?.({ source, digest, root, family: classified.family }) ??
-          'unresolved';
-        if (trust !== 'explicit-operator-trust') block('legacy-trust-required', source);
-        if (destinations.has(destination)) block('ambiguous-source', destination);
-        destinations.add(destination);
-        files.push({
-          source,
-          destination,
-          root,
-          destinationRoot,
-          family: classified.family,
-          digest,
-          size: bytes.length,
-          trust,
-        });
-      });
+      inventory(
+        legacy.base,
+        block,
+        (source, relative) => {
+          const classified = (adapters.classifyLegacy || classifyKnownLegacyRuntimeRecord)({
+            root,
+            mainRoot,
+            source,
+            relative,
+            kind: legacy.kind,
+          });
+          if (
+            !classified ||
+            typeof classified.destination !== 'string' ||
+            typeof classified.validate !== 'function'
+          ) {
+            block('unknown-source', source);
+            return;
+          }
+          if (
+            !Object.hasOwn(FAMILY_SCOPES, classified.family) ||
+            FAMILY_SCOPES[classified.family] !== classified.scope
+          ) {
+            block('unsupported-classification', source);
+            return;
+          }
+          const destinationRoot = classified.scope === 'shared' ? mainRoot : root;
+          const store = classified.scope === 'shared' ? layout.sharedRoot : rootLayout.localRoot;
+          const destination = path.resolve(store, classified.destination);
+          try {
+            assertRuntimeStoragePath(destination, store, 'RUNTIME_OVERRIDE_UNSAFE');
+          } catch (error) {
+            block('destination-unsafe', destination, error.code);
+            return;
+          }
+          if (
+            path.isAbsolute(classified.destination) ||
+            classified.destination.split(path.sep).includes('..')
+          ) {
+            block('destination-unsafe', destination);
+            return;
+          }
+          const bytes = readFileSync(source);
+          const digest = runtimeMigrationDigest(bytes);
+          let supported = false;
+          try {
+            // Record families own decoding; binary capture payloads must remain byte-exact.
+            supported = classified.validate(bytes) === true;
+          } catch {
+            /* retain unsupported input */
+          }
+          if (!supported) {
+            block('unsupported-schema', source);
+            return;
+          }
+          const trust =
+            adapters.trustLegacy?.({ source, digest, root, family: classified.family }) ??
+            'unresolved';
+          if (trust !== 'explicit-operator-trust') block('legacy-trust-required', source);
+          if (destinations.has(destination)) block('ambiguous-source', destination);
+          destinations.add(destination);
+          files.push({
+            source,
+            destination,
+            root,
+            destinationRoot,
+            family: classified.family,
+            digest,
+            size: bytes.length,
+            trust,
+          });
+        },
+        legacy.allowedNames
+      );
     }
   }
-  const census = await adapters.writerCensus?.();
+  const census = await adapters.writerCensus?.({
+    roots,
+    files,
+    projectRoot: layout.projectRoot,
+    mainRoot: layout.mainRoot,
+    owner: adapters.identity?.(),
+  });
+  try {
+    const finalIdentity = resolveRuntimeRoot({ cwd: projectRoot, env: {} });
+    if (
+      runtimeMigrationDigest(finalIdentity.worktreeIdentity) !==
+        runtimeMigrationDigest(identity.worktreeIdentity) ||
+      finalIdentity.projectRoot !== identity.projectRoot ||
+      finalIdentity.mainRoot !== identity.mainRoot
+    )
+      block('root-census-changed', projectRoot);
+  } catch (error) {
+    block('root-census-unavailable', projectRoot, error.code || 'ROOT_IDENTITY_MISMATCH');
+  }
   if (
     !census ||
     census.complete !== true ||

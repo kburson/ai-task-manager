@@ -12,6 +12,11 @@
 //   gate toggle.
 
 import { strict as assert } from 'node:assert';
+import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
@@ -114,13 +119,17 @@ process.exit(0);
     gitShim,
     `#!/usr/bin/env node
 import fs from 'node:fs';
-const argv = process.argv.slice(2);
+import { spawnSync } from 'node:child_process';
+const rawArgv = process.argv.slice(2);
+const argv = [...rawArgv];
+while (argv[0] === '-C' || argv[0] === '-c') argv.splice(0, 2);
 if (argv[0] === 'branch' && argv[1] === '--show-current') fs.writeSync(1, 'trunk\\n');
 else if (argv[0] === 'rev-parse' && argv[1] === 'HEAD') fs.writeSync(1, ${JSON.stringify(`${HEAD}\n`)});
 else if (argv[0] === 'rev-parse' && argv[1] === '--show-toplevel') fs.writeSync(1, ${JSON.stringify(`${sandbox}\n`)});
 else if (argv[0] === 'status') fs.writeSync(1, '');
-else if (argv[0] === 'worktree' && argv[1] === 'list') fs.writeSync(1, ${JSON.stringify(`${sandbox} ${HEAD} [trunk]\n`)});
+else if (argv[0] === 'worktree' && argv[1] === 'list') { const r = spawnSync('/usr/bin/git', rawArgv, {stdio:'inherit'}); process.exit(r.status ?? 1); }
 else if (argv[0] === 'log') fs.writeSync(1, '[#201] test\\n');
+else { const r = spawnSync('/usr/bin/git', rawArgv, {stdio:'inherit'}); process.exit(r.status ?? 1); }
 process.exit(0);
 `
   );
@@ -137,7 +146,11 @@ async function run(sandbox, binDir, args) {
     TT_SKIP_NETWORK: '',
   };
   try {
-    const r = await pexec('node', [CLI, ...args], { env, cwd: sandbox, timeout: 30000 });
+    const r = await pexec('node', unitRuntimeEntrypointArgs(CLI, args), {
+      env,
+      cwd: sandbox,
+      timeout: 30000,
+    });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout || '', stderr: err.stderr || '' };
@@ -167,20 +180,20 @@ const BODY_WITH_FULL_AUTO_MARKER =
   `\n<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" approved-sha="${HEAD}" full-auto="yes" signals="session=1" -->\n`;
 
 function writeState(sandbox, issueNum) {
-  writeFileSync(
-    path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
-    JSON.stringify({
+  saveState(
+    {
       active: `#${issueNum}`,
       lastActive: `#${issueNum}`,
       entryStartTs: null,
       wordsAtEntryStart: 0,
-    })
+    },
+    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
   );
 }
 
 // ─── Test 1: missing immutable approval refuses before prompt/mutation ───────
 {
-  const sandbox = mkdtempProjectIsolated('tt-gate-1-');
+  const sandbox = await createLegacyRootFixture('tt-gate-1-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 201);
@@ -200,7 +213,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 2: --answer cannot manufacture immutable approval ─────────────────
 {
-  const sandbox = mkdtempProjectIsolated('tt-gate-2-');
+  const sandbox = await createLegacyRootFixture('tt-gate-2-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 202);
@@ -220,7 +233,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 3: gateReviewToDone=false cannot bypass immutable authorization ────
 {
-  const sandbox = mkdtempProjectIsolated('tt-gate-3-');
+  const sandbox = await createLegacyRootFixture('tt-gate-3-');
   try {
     writeConfig(sandbox, { gateReviewToDone: false });
     writeState(sandbox, 203);
@@ -243,7 +256,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 4: exact-SHA human approval passes immutable authorization ─────────
 {
-  const sandbox = mkdtempProjectIsolated('tt-gate-4-');
+  const sandbox = await createLegacyRootFixture('tt-gate-4-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 204);
@@ -266,12 +279,13 @@ function writeState(sandbox, issueNum) {
 //     at a clean sandbox, a cwd-relative `.tmp/aitm/gates/*.json` that flips
 //     reviewToDone=false cannot create immutable approval evidence. ──────────
 {
-  const sandbox = mkdtempProjectIsolated('tt-gate-5-');
-  const hostileCwd = mkdtempProjectIsolated('tt-gate-5-cwd-');
+  const sandbox = await createLegacyRootFixture('tt-gate-5-');
+  const hostileCwd = await createLegacyRootFixture('tt-gate-5-cwd-');
   try {
     // Clean project sandbox explicitly requires manual task review. A hostile
     // gate file outside the project must not override that project policy.
     writeConfig(sandbox, { gateReviewToDone: true });
+    process.env.AI_TASK_MANAGER_SESSION_ID = 'hostile-cwd-sid-682';
     writeState(sandbox, 205);
     const { binDir } = makeGhShim(sandbox, {
       bodyOnView: BODY_WITH_FULL_AUTO_MARKER,
@@ -316,9 +330,9 @@ function writeState(sandbox, issueNum) {
     }
 
     assert.equal(r.code, 1, `expected exit 1; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
-    assert.match(r.stderr, /review-authorization-missing/);
+    assert.match(r.stderr, /ROOT_IDENTITY_MISMATCH/);
     assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED/);
-    console.log('test 5 passed: hostile cwd session file cannot enable Full-Auto standing');
+    console.log('test 5 passed: foreign runtime identity refuses hostile cwd gate files');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
     rmSync(hostileCwd, { recursive: true, force: true });

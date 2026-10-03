@@ -5,7 +5,7 @@ import {
   readFileSync,
   readdirSync,
   unlinkSync,
-  rmdirSync,
+  linkSync,
   openSync,
   writeFileSync,
   fsyncSync,
@@ -14,7 +14,9 @@ import {
   lstatSync,
 } from 'node:fs';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
+import { hostname } from 'node:os';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { detectProvider } from '../../providers/index.mjs';
 import { resolveSessionId, FALLBACK_SESSION_ID } from './session-id.mjs';
 import {
@@ -25,7 +27,7 @@ import {
 
 const processToken = randomUUID();
 const sameOwner = (a, b) =>
-  ['provider', 'sid', 'pid', 'processToken'].every((key) => a?.[key] === b?.[key]);
+  ['provider', 'sid', 'pid', 'processToken', 'host'].every((key) => a?.[key] === b?.[key]);
 const fail = (code, message) => {
   throw new RuntimeRootError(code, message);
 };
@@ -36,6 +38,7 @@ const validOwner = (value) =>
     (key) => typeof value[key] === 'string' && value[key]
   ) &&
   value.sid !== FALLBACK_SESSION_ID &&
+  (value.host === undefined || (typeof value.host === 'string' && value.host.length > 0)) &&
   Number.isSafeInteger(value.pid) &&
   value.pid > 0;
 
@@ -47,16 +50,9 @@ function identity(adapters) {
         sid: resolveSessionId(),
         pid: process.pid,
         processToken,
+        host: hostname(),
       };
-  if (
-    !isObject(value) ||
-    !['provider', 'sid', 'processToken'].every(
-      (key) => typeof value[key] === 'string' && value[key]
-    ) ||
-    value.sid === FALLBACK_SESSION_ID ||
-    !Number.isSafeInteger(value.pid) ||
-    value.pid <= 0
-  ) {
+  if (!validOwner(value)) {
     fail(
       'RUNTIME_MIGRATION_IDENTITY_REQUIRED',
       'A genuine process and provider session are required'
@@ -67,7 +63,79 @@ function identity(adapters) {
     sid: value.sid,
     pid: value.pid,
     processToken: value.processToken,
+    ...(value.host === undefined ? {} : { host: value.host }),
   };
+}
+
+function syncDirectory(directory) {
+  const fd = openSync(directory, 'r');
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function publishExclusiveJson(file, value) {
+  const prepared = file + '.' + randomUUID() + '.pending';
+  const fd = openSync(prepared, 'wx', 0o600);
+  try {
+    writeFileSync(fd, JSON.stringify(value) + '\n');
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+  try {
+    linkSync(prepared, file);
+    syncDirectory(path.dirname(file));
+  } finally {
+    unlinkSync(prepared);
+  }
+}
+
+function claimCoordinatorRecovery(directory, previous, owner, adapters) {
+  let previousReceipt = null;
+  for (let generation = 0; generation < 10000; generation++) {
+    const receipt = path.join(
+      directory,
+      previous.digest.slice(7) + '-' + String(generation).padStart(6, '0') + '.json'
+    );
+    assertRuntimeStoragePath(receipt, directory, 'RUNTIME_CONTROL_INVALID');
+    const earlier = readRecord(receipt, true);
+    if (earlier) {
+      if (
+        earlier.schema !== 'aitm.runtime-coordinator-recovery/v1' ||
+        earlier.phase !== 'prepared' ||
+        earlier.previous?.digest !== previous.digest ||
+        !validOwner(earlier.owner) ||
+        earlier.previousReceipt !== previousReceipt
+      )
+        fail('RUNTIME_MIGRATION_CONFLICT', 'Recovery history is changed or already complete');
+      assertRecoveryOwner(earlier.owner, {
+        ...adapters,
+        observeOwner: adapters.observeOwner || observeLocalRuntimeOwner,
+      });
+      previousReceipt = receipt;
+      continue;
+    }
+    const evidence = {
+      schema: 'aitm.runtime-coordinator-recovery/v1',
+      phase: 'prepared',
+      previous,
+      owner,
+      previousReceipt,
+      observedAt: new Date().toISOString(),
+    };
+    try {
+      publishExclusiveJson(receipt, evidence);
+    } catch (error) {
+      if (error.code === 'EEXIST')
+        fail('RUNTIME_MIGRATION_BUSY', 'Another recovery claimed this exact coordinator');
+      throw error;
+    }
+    return { receipt, evidence };
+  }
+  fail('RUNTIME_CONTROL_INVALID', 'Recovery history exceeds supported bound');
 }
 
 function locations(input) {
@@ -81,7 +149,36 @@ function locations(input) {
   };
   for (const target of Object.values(paths))
     assertRuntimeStoragePath(target, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
-  return { ...paths, registeredRoots: layout.registeredRoots };
+  return {
+    ...paths,
+    registeredRoots: layout.registeredRoots,
+    coordinatorContext: {
+      transactionId: input.transactionId ?? null,
+      planDigest: input.approvedPlanDigest ?? null,
+    },
+  };
+}
+
+function operationLocations(input) {
+  if (typeof input.recordKey !== 'string' || !/^[a-f0-9]{64}$/.test(input.recordKey))
+    fail('RUNTIME_CONTROL_INVALID', 'Operation recovery requires an exact record key');
+  const common = locations(input);
+  const base = path.join(common.base, 'operation-locks', input.recordKey);
+  assertRuntimeStoragePath(base, common.base, 'RUNTIME_CONTROL_INVALID');
+  return {
+    ...common,
+    base,
+    lock: path.join(base, 'coordinator.lock'),
+    coordinatorContext: { transactionId: null, planDigest: null },
+  };
+}
+
+export function inspectRuntimeOperationLock(input) {
+  return coordinatorSnapshot(operationLocations(input));
+}
+
+export function recoverRuntimeOperationLock(input) {
+  return recoverCoordinatorAt(input, operationLocations(input));
 }
 
 function atomicJson(file, value) {
@@ -114,37 +211,185 @@ function readRecord(file, optional = false) {
   }
 }
 
-function coordinated(paths, owner, operation) {
-  mkdirSync(paths.base, { recursive: true });
+function coordinatorDigest(value) {
+  return 'sha256:' + createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function coordinatorSnapshot(paths) {
+  assertRuntimeStoragePath(paths.lock, paths.base, 'RUNTIME_CONTROL_INVALID');
+  let stat;
   try {
-    mkdirSync(paths.lock);
+    stat = lstatSync(paths.lock);
   } catch (error) {
-    if (error.code === 'EEXIST')
-      fail(
-        'RUNTIME_MIGRATION_BUSY',
-        'Coordinator ownership requires explicit recovery; age is not authority'
-      );
+    if (error.code === 'ENOENT') return { status: 'absent' };
     throw error;
   }
-  const ownerFile = path.join(paths.lock, 'owner.json');
-  const originalLock = lstatSync(paths.lock);
+  if (stat.isDirectory())
+    return { status: 'legacy-directory', identity: { dev: stat.dev, ino: stat.ino } };
+  if (!stat.isFile())
+    fail('RUNTIME_CONTROL_INVALID', 'Coordinator must be a regular protected record');
+  const bytes = readFileSync(paths.lock);
+  let record;
   try {
-    atomicJson(ownerFile, owner);
-    return operation();
-  } finally {
-    assertRuntimeStoragePath(ownerFile, paths.base, 'RUNTIME_MIGRATION_CONFLICT');
-    const currentLock = lstatSync(paths.lock);
-    const currentOwner = readRecord(ownerFile);
-    if (
-      currentLock.dev !== originalLock.dev ||
-      currentLock.ino !== originalLock.ino ||
-      !sameOwner(currentOwner, owner)
-    ) {
-      fail('RUNTIME_MIGRATION_CONFLICT', 'Coordinator ownership changed; preserve for recovery');
-    }
-    unlinkSync(ownerFile);
-    rmdirSync(paths.lock);
+    record = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  } catch {
+    fail('RUNTIME_CONTROL_INVALID', 'Unreadable coordinator record');
   }
+  if (
+    !isObject(record) ||
+    record.schema !== 'aitm.runtime-coordinator/v1' ||
+    !validOwner(record.owner) ||
+    Object.keys(record).sort().join(',') !== 'owner,planDigest,schema,transactionId' ||
+    !(
+      (record.transactionId === null && record.planDigest === null) ||
+      (typeof record.transactionId === 'string' &&
+        /^[a-zA-Z0-9][a-zA-Z0-9-]{0,95}$/.test(record.transactionId) &&
+        typeof record.planDigest === 'string' &&
+        /^sha256:[a-f0-9]{64}$/.test(record.planDigest))
+    )
+  )
+    fail('RUNTIME_CONTROL_INVALID', 'Unsupported coordinator record');
+  const identity = { dev: stat.dev, ino: stat.ino };
+  const original = bytes.toString('utf8');
+  return {
+    status: 'owned',
+    identity,
+    record,
+    bytes: original,
+    digest: coordinatorDigest({ identity, bytes: original }),
+  };
+}
+
+function coordinated(
+  paths,
+  owner,
+  operation,
+  { retainOnAsync = false, awaitOperation = false, acquisitionWaitMs = 0 } = {}
+) {
+  mkdirSync(paths.base, { recursive: true });
+  const prepared = path.join(paths.base, '.coordinator-owner-' + randomUUID() + '.pending');
+  const record = { schema: 'aitm.runtime-coordinator/v1', owner, ...paths.coordinatorContext };
+  // Publish a fully fsynced owner with link(2)'s exclusive destination creation.
+  // There is no new empty coordinator directory or partially written lock.
+  const fd = openSync(prepared, 'wx', 0o600);
+  try {
+    writeFileSync(fd, JSON.stringify(record) + '\n');
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+  try {
+    const deadline = performance.now() + acquisitionWaitMs;
+    const sleeper = new Int32Array(new SharedArrayBuffer(4));
+    for (;;) {
+      try {
+        linkSync(prepared, paths.lock);
+        break;
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+        if (performance.now() >= deadline)
+          fail(
+            'RUNTIME_MIGRATION_BUSY',
+            'Coordinator ownership requires explicit recovery; age is not authority'
+          );
+        // Wait for exclusive admission only. Never replay a mutation or remove
+        // a competing owner; a retained coordinator still requires recovery.
+        Atomics.wait(sleeper, 0, 0, 10);
+      }
+    }
+  } finally {
+    unlinkSync(prepared);
+  }
+  syncDirectory(paths.base);
+  const original = coordinatorSnapshot(paths);
+  const release = () => {
+    const current = coordinatorSnapshot(paths);
+    if (current.status !== 'owned' || current.digest !== original.digest)
+      fail('RUNTIME_MIGRATION_CONFLICT', 'Coordinator ownership changed; preserve for recovery');
+    unlinkSync(paths.lock);
+    syncDirectory(paths.base);
+  };
+  let retained = false;
+  try {
+    const result = operation();
+    if (awaitOperation) {
+      retained = true;
+      return Promise.resolve(result).finally(release);
+    }
+    if (retainOnAsync && result && typeof result.then === 'function') {
+      retained = true;
+      fail(
+        'RUNTIME_SYNC_WRITER_ASYNC',
+        'Synchronous record mutation returned a promise; ownership retained for recovery'
+      );
+    }
+    return result;
+  } finally {
+    if (!retained) release();
+  }
+}
+
+export function inspectRuntimeCoordinator(input) {
+  return coordinatorSnapshot(locations(input));
+}
+
+export function observeLocalRuntimeOwner(owner) {
+  if (!validOwner(owner) || owner.host !== hostname()) return { status: 'unknown' };
+  try {
+    process.kill(owner.pid, 0);
+    // A live PID, including a reused PID, never proves the recorded owner died.
+    return { status: 'live', identity: owner };
+  } catch (error) {
+    return error.code === 'ESRCH' ? { status: 'dead', identity: owner } : { status: 'unknown' };
+  }
+}
+
+export function recoverRuntimeCoordinator(input) {
+  return recoverCoordinatorAt(input, locations(input));
+}
+
+function recoverCoordinatorAt(input, paths) {
+  const owner = identity(input.adapters || {});
+  const previous = coordinatorSnapshot(paths);
+  if (previous.status !== 'owned')
+    fail(
+      'RUNTIME_COORDINATOR_RECOVERY_REQUIRED',
+      'Absent or legacy ownerless coordination needs explicit reconciliation; preserve its bytes'
+    );
+  if (
+    previous.digest !== input.expectedDigest ||
+    previous.record.transactionId !== (input.transactionId ?? null) ||
+    previous.record.planDigest !== (input.approvedPlanDigest ?? null)
+  )
+    fail(
+      'RUNTIME_MIGRATION_CONFLICT',
+      'Recovery requires the exact observed coordinator inode, owner and transaction'
+    );
+  const observed = (input.adapters?.observeOwner || observeLocalRuntimeOwner)(
+    previous.record.owner
+  );
+  if (observed?.status !== 'dead' || !sameOwner(observed.identity, previous.record.owner))
+    fail(
+      'RUNTIME_MIGRATION_OWNER_UNCONFIRMED',
+      'Coordinator death is unconfirmed; live, reused and foreign PIDs cannot authorize recovery'
+    );
+  const directory = path.join(paths.base, 'coordinator-recoveries');
+  assertRuntimeStoragePath(directory, paths.base, 'RUNTIME_CONTROL_INVALID');
+  mkdirSync(directory, { recursive: true });
+  const { receipt, evidence } = claimCoordinatorRecovery(
+    directory,
+    previous,
+    owner,
+    input.adapters || {}
+  );
+  input.adapters?.faultSync?.('after-recovery-claim', { receipt });
+  const current = coordinatorSnapshot(paths);
+  if (current.status !== 'owned' || current.digest !== previous.digest)
+    fail('RUNTIME_MIGRATION_CONFLICT', 'Coordinator changed during recovery; evidence preserved');
+  unlinkSync(paths.lock);
+  syncDirectory(paths.base);
+  atomicJson(receipt, { ...evidence, phase: 'complete', completedAt: new Date().toISOString() });
+  return { status: 'recovered', receipt };
 }
 
 function readFence(paths) {
@@ -162,6 +407,10 @@ function readFence(paths) {
   return value;
 }
 
+export function inspectRuntimeFence(input) {
+  return readFence(locations(input));
+}
+
 function leases(paths) {
   mkdirSync(paths.writers, { recursive: true });
   return readdirSync(paths.writers).map((name) => {
@@ -169,6 +418,7 @@ function leases(paths) {
       fail('RUNTIME_CONTROL_INVALID', 'Unknown writer lease entry');
     const value = readRecord(path.join(paths.writers, name));
     if (
+      !isObject(value) ||
       value.schema !== 'aitm.runtime-writer/v1' ||
       !validOwner(value.owner) ||
       typeof value.projectRoot !== 'string' ||
@@ -178,6 +428,108 @@ function leases(paths) {
       fail('RUNTIME_CONTROL_INVALID', 'Unsupported writer lease');
     }
     return value;
+  });
+}
+
+export function inspectRuntimeWriterLeases(input) {
+  const paths = locations(input);
+  try {
+    lstatSync(paths.writers);
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+  return leases(paths).map((record) => {
+    const file = path.join(paths.writers, record.leaseId + '.json');
+    assertRuntimeStoragePath(file, paths.base, 'RUNTIME_CONTROL_INVALID');
+    const stat = lstatSync(file);
+    const bytes = readFileSync(file, 'utf8');
+    return {
+      record,
+      bytes,
+      identity: { dev: stat.dev, ino: stat.ino },
+      digest: coordinatorDigest({ identity: { dev: stat.dev, ino: stat.ino }, bytes }),
+    };
+  });
+}
+
+export function recoverRuntimeWriterLease(input) {
+  const paths = locations(input);
+  const owner = identity(input.adapters || {});
+  if (
+    typeof input.leaseId !== 'string' ||
+    !/^[a-f0-9-]+$/.test(input.leaseId) ||
+    typeof input.expectedDigest !== 'string' ||
+    !/^sha256:[a-f0-9]{64}$/.test(input.expectedDigest)
+  )
+    fail('RUNTIME_MIGRATION_CONFLICT', 'Exact lease identity and observation digest are required');
+  return coordinated(paths, owner, () => {
+    const directory = path.join(paths.base, 'writer-recoveries');
+    const receipt = path.join(
+      directory,
+      input.leaseId + '-' + input.expectedDigest.slice(7) + '.json'
+    );
+    assertRuntimeStoragePath(receipt, paths.base, 'RUNTIME_CONTROL_INVALID');
+    const earlier = readRecord(receipt, true);
+    if (
+      earlier &&
+      (earlier.schema !== 'aitm.runtime-writer-recovery/v1' ||
+        !['prepared', 'complete'].includes(earlier.phase) ||
+        earlier.previous?.digest !== input.expectedDigest ||
+        earlier.previous?.record?.leaseId !== input.leaseId ||
+        !validOwner(earlier.owner))
+    )
+      fail('RUNTIME_CONTROL_INVALID', 'Writer recovery journal is malformed');
+    const previous = inspectRuntimeWriterLeases(input).find(
+      (entry) => entry.record.leaseId === input.leaseId
+    );
+    if (!previous) {
+      if (!earlier)
+        fail('RUNTIME_MIGRATION_CONFLICT', 'Missing lease has no protected recovery journal');
+      if (earlier.phase === 'prepared') {
+        assertRecoveryOwner(earlier.owner, {
+          ...input.adapters,
+          observeOwner: input.adapters?.observeOwner || observeLocalRuntimeOwner,
+        });
+        writeMigrationRecord(receipt, {
+          ...earlier,
+          phase: 'complete',
+          completedAt: new Date().toISOString(),
+        });
+      }
+      return { status: 'recovered', receipt };
+    }
+    if (previous.digest !== input.expectedDigest || earlier?.phase === 'complete')
+      fail('RUNTIME_MIGRATION_CONFLICT', 'Writer lease changed after observation');
+    const observation = (input.adapters?.observeOwner || observeLocalRuntimeOwner)(
+      previous.record.owner
+    );
+    if (observation?.status !== 'dead' || !sameOwner(observation.identity, previous.record.owner))
+      fail('RUNTIME_MIGRATION_OWNER_UNCONFIRMED', 'Writer death is unconfirmed');
+    if (earlier)
+      assertRecoveryOwner(earlier.owner, {
+        ...input.adapters,
+        observeOwner: input.adapters?.observeOwner || observeLocalRuntimeOwner,
+      });
+    mkdirSync(directory, { recursive: true });
+    const evidence = earlier || {
+      schema: 'aitm.runtime-writer-recovery/v1',
+      phase: 'prepared',
+      previous,
+      owner,
+    };
+    if (!earlier) publishExclusiveJson(receipt, evidence);
+    input.adapters?.faultSync?.('after-writer-recovery-claim');
+    const current = inspectRuntimeWriterLeases(input).find(
+      (entry) => entry.record.leaseId === input.leaseId
+    );
+    if (current?.digest !== previous.digest)
+      fail('RUNTIME_MIGRATION_CONFLICT', 'Writer changed during recovery');
+    unlinkSync(path.join(paths.writers, input.leaseId + '.json'));
+    syncDirectory(paths.writers);
+    input.adapters?.faultSync?.('after-writer-recovery-release');
+    atomicJson(receipt, { ...evidence, phase: 'complete', completedAt: new Date().toISOString() });
+    return { status: 'recovered', receipt };
   });
 }
 
@@ -198,42 +550,142 @@ function acquireWriterLease(input) {
     });
   });
   return () =>
-    coordinated(paths, owner, () => {
-      assertRuntimeStoragePath(file, paths.base, 'RUNTIME_MIGRATION_CONFLICT');
-      const lease = readRecord(file);
-      if (!sameOwner(lease.owner, owner) || lease.leaseId !== leaseId) {
-        fail('RUNTIME_MIGRATION_CONFLICT', 'Writer lease identity changed');
-      }
-      unlinkSync(file);
-    });
+    coordinated(
+      paths,
+      owner,
+      () => {
+        assertRuntimeStoragePath(file, paths.base, 'RUNTIME_MIGRATION_CONFLICT');
+        const lease = readRecord(file);
+        if (!isObject(lease) || !sameOwner(lease.owner, owner) || lease.leaseId !== leaseId) {
+          fail('RUNTIME_MIGRATION_CONFLICT', 'Writer lease identity changed');
+        }
+        unlinkSync(file);
+      },
+      { acquisitionWaitMs: 3_000 }
+    );
+}
+
+const writerScope = new AsyncLocalStorage();
+
+export function hasRuntimeWriterLease(input) {
+  const layout = runtimeStoragePaths(input);
+  const held = writerScope.getStore()?.get(layout.projectRoot);
+  return Boolean(
+    held && held.references > 0 && sameOwner(held.owner, identity(input.adapters || {}))
+  );
+}
+
+function scopedLease(input) {
+  const owner = identity(input.adapters || {});
+  const layout = runtimeStoragePaths(input);
+  const key = layout.projectRoot;
+  const inherited = writerScope.getStore() || new Map();
+  let held = inherited.get(key);
+  if (!held || held.references === 0 || !sameOwner(held.owner, owner)) {
+    held = {
+      owner,
+      references: 0,
+      retained: false,
+      release: acquireWriterLease({ ...input, projectRoot: layout.projectRoot }),
+    };
+  }
+  held.references++;
+  const scope = new Map(inherited);
+  scope.set(key, held);
+  return {
+    scope,
+    retain: () => {
+      held.retained = true;
+    },
+    release: () => {
+      held.references--;
+      if (held.references === 0 && !held.retained) held.release();
+    },
+  };
 }
 
 export async function withRuntimeWriterLease(input, operation) {
-  const release = acquireWriterLease(input);
+  const lease = scopedLease(input);
   try {
-    return await operation();
+    return await writerScope.run(lease.scope, operation);
   } finally {
-    release();
+    lease.release();
   }
 }
 
 export function withRuntimeWriterLeaseSync(input, operation) {
-  const release = acquireWriterLease(input);
-  let safeToRelease = true;
+  const lease = scopedLease(input);
   try {
-    const result = operation();
+    const result = writerScope.run(lease.scope, operation);
     if (result && typeof result.then === 'function') {
       // Retain authority evidence: an accidentally unawaited writer may still run.
-      safeToRelease = false;
+      lease.retain();
       fail(
         'RUNTIME_SYNC_WRITER_ASYNC',
         'Synchronous writer returned a promise; lease retained for recovery'
       );
     }
     return result;
+  } catch (error) {
+    if (error?.code === 'RUNTIME_SYNC_WRITER_ASYNC') lease.retain();
+    throw error;
   } finally {
-    if (safeToRelease) release();
+    lease.release();
   }
+}
+
+const mutationScope = new AsyncLocalStorage();
+const operationScope = new AsyncLocalStorage();
+
+export function withRuntimeOperationLock(input, operation) {
+  if (!hasRuntimeWriterLease(input))
+    fail(
+      'RUNTIME_MIGRATION_IDENTITY_REQUIRED',
+      'Operation lock requires its whole-operation writer lease'
+    );
+  const owner = identity(input.adapters || {});
+  const paths = operationLocations(input);
+  const key = paths.lock;
+  const inherited = operationScope.getStore() || new Map();
+  const held = inherited.get(key);
+  if (held) {
+    if (!sameOwner(held.owner, owner) || coordinatorSnapshot(paths).digest !== held.digest)
+      fail('RUNTIME_MIGRATION_CONFLICT', 'Nested operation ownership changed');
+    return operation();
+  }
+  return coordinated(
+    paths,
+    owner,
+    () => {
+      const scope = new Map(inherited);
+      scope.set(key, { owner, digest: coordinatorSnapshot(paths).digest });
+      return operationScope.run(scope, operation);
+    },
+    { awaitOperation: true }
+  );
+}
+
+export function withRuntimeStoreLockSync(input, operation) {
+  const layout = runtimeStoragePaths(input);
+  const held = writerScope.getStore()?.get(layout.projectRoot);
+  const owner = identity(input.adapters || {});
+  if (!held || held.references < 1 || !sameOwner(held.owner, owner))
+    fail(
+      'RUNTIME_MIGRATION_IDENTITY_REQUIRED',
+      'Record mutation requires its active whole-operation writer lease'
+    );
+  const inherited = mutationScope.getStore() || new Map();
+  const existing = inherited.get(layout.mainRoot);
+  if (existing) {
+    if (!sameOwner(existing, owner))
+      fail('RUNTIME_MIGRATION_CONFLICT', 'Nested mutation owner changed');
+    return operation();
+  }
+  const scope = new Map(inherited);
+  scope.set(layout.mainRoot, owner);
+  return coordinated(locations(input), owner, () => mutationScope.run(scope, operation), {
+    retainOnAsync: true,
+  });
 }
 
 export async function fenceRuntimeWriters(input) {
@@ -299,6 +751,7 @@ export async function fenceRuntimeWriters(input) {
 }
 
 export const writeMigrationRecord = atomicJson;
+export const writeMigrationRecordExclusive = publishExclusiveJson;
 export const readMigrationRecord = readRecord;
 export const observeMigrationIdentity = identity;
 export const isRuntimeMigrationOwner = validOwner;

@@ -186,10 +186,7 @@ test('classifier scope/family is closed and old shared or Claude state cannot di
     writeFileSync(file, '{}');
   }
   const plan = await planRuntimeMigration({ ...roots, adapters });
-  assert.equal(
-    plan.blockers.filter((item) => item.code === 'legacy-source-outside-inventory').length,
-    2
-  );
+  assert.equal(plan.blockers.filter((item) => item.code === 'unknown-source').length, 2);
 });
 
 function transactionAdapters(extra = {}) {
@@ -387,6 +384,11 @@ test('a crash before ordinary manifest creation retains an exact durable bootstr
   const status = await readRuntimeMigrationStatus({ ...roots, transactionId });
   assert.equal(status.status, 'prepared');
   assert.equal(status.checkpoint, 'bootstrap-only');
+  const { readRuntimeMigrationSnapshot } =
+    await import('../../../../task-tracker/lib/runtime-migration-apply.mjs');
+  const snapshot = readRuntimeMigrationSnapshot({ ...roots, transactionId });
+  assert.deepEqual(snapshot.plan, plan);
+  assert.equal(snapshot.manifest.checkpoint, 'bootstrap-only');
   assert.equal(
     existsSync(path.join(roots.mainRoot, '.ai-task-manager/runtime/migrations/fence.json')),
     false
@@ -639,3 +641,176 @@ test('a corrupt retained fence cannot masquerade as an already released fence', 
   });
   assert.equal(existsSync(fence), false);
 });
+
+test('protected migration timing keeps pending provenance and confirms later ordinary coverage without a second charge', async () => {
+  const { planRuntimeMigration, applyRuntimeMigration, resumeRuntimeMigration } = await engine();
+  const { reconcileRuntimeMigrationTiming } =
+    await import('../../../../task-tracker/lib/runtime-migration-timing.mjs');
+  const { buildRow } = await import('../../../../task-tracker/gh-timing-comment.mjs');
+  const { timingActorKey } = await import('../../../../task-tracker/lib/timing-actor.mjs');
+  const roots = repository('timing-canonical-coverage');
+  seed(roots);
+  let visible = false;
+  const selected = transactionAdapters({
+    writerCensus: () => ({
+      complete: true,
+      writers: [],
+      claims: [
+        {
+          provider: 'fixture',
+          sid: 'migrator',
+          projectRoot: roots.projectRoot,
+          issue: '1857',
+          entryStartTs: '2026-09-30T00:00:00Z',
+          reason: 'session-binding',
+        },
+      ],
+    }),
+    publishTiming: (record) =>
+      reconcileRuntimeMigrationTiming({
+        ...record,
+        repository: 'o/r',
+        readTimingSource: async () => {
+          if (!visible) return { status: 'absent' };
+          const interval = record.intervals[0];
+          const body =
+            buildRow({
+              ts: interval.endedAt,
+              event: 'pause:blocked',
+              actorKey: timingActorKey(interval.owner),
+              activeSec: null,
+              idleSec: 0,
+              wordMarker: 0,
+              engagement: {
+                startMs: Date.parse(interval.startedAt),
+                endMs: Date.parse(interval.endedAt),
+                activeEstimateSec: null,
+                wordStart: null,
+                wordEnd: null,
+                fullWordStart: null,
+                fullWordEnd: null,
+              },
+            }) + '\n';
+          return {
+            status: 'found',
+            source: { repository: 'o/r', issue: 1857, commentNodeId: 'IC_fixture', body },
+          };
+        },
+      }),
+  });
+  const plan = await planRuntimeMigration({ ...roots, adapters: selected });
+  const first = await applyRuntimeMigration({
+    plan,
+    approvedPlanDigest: plan.digest,
+    adapters: selected,
+  });
+  assert.equal(first.timing.publication.status, 'pending');
+  assert.equal(first.timing.publication.reason, 'canonical-timing-unavailable');
+  visible = true;
+  const resumed = await resumeRuntimeMigration({
+    ...roots,
+    transactionId: first.transactionId,
+    approvedPlanDigest: plan.digest,
+    adapters: selected,
+  });
+  assert.equal(resumed.timing.publication.status, 'confirmed');
+  assert.equal(resumed.timing.publication.basis, 'canonical-ordinary-actor-coverage');
+  assert.equal(resumed.timing.publication.coverage[0].addedMs, 0);
+  assert.equal(resumed.timing.completionTail.status, 'unresolved');
+  assert.equal(resumed.timing.intervals.length, 1);
+});
+
+for (const boundary of [
+  'after-bootstrap',
+  'after-fence',
+  'after-root-stage',
+  'after-root-publish',
+  'before-activation',
+  'after-manifest-complete',
+  'after-timing-publish',
+  'before-fence-release',
+]) {
+  test(
+    'real SIGKILL migration boundary ' +
+      boundary +
+      ' retains exact source and eventually completes',
+    async () => {
+      const { spawn } = await import('node:child_process');
+      const { once } = await import('node:events');
+      const { assertRuntimeReadable } =
+        await import('../../../../task-tracker/lib/runtime-storage.mjs');
+      const coordination = await import('../../../../task-tracker/lib/runtime-migration-lock.mjs');
+      const { planRuntimeMigration, resumeRuntimeMigration, readRuntimeMigrationStatus } =
+        await engine();
+      const roots = repository('kill-' + boundary);
+      const source = seed(roots);
+      const original = readFileSync(source);
+      const selected = {
+        trustLegacy: () => 'explicit-operator-trust',
+        writerCensus: () => ({ complete: true, writers: [], claims: [] }),
+        observeOwner: coordination.observeLocalRuntimeOwner,
+        publishTiming: async () => ({ status: 'confirmed' }),
+      };
+      const plan = await planRuntimeMigration({ ...roots, adapters: selected });
+      const url = new URL(
+        '../../../../task-tracker/lib/runtime-migration-apply.mjs',
+        import.meta.url
+      ).href;
+      const code = `import { applyRuntimeMigration } from ${JSON.stringify(url)};
+      const [plan, boundary] = JSON.parse(process.argv[1]);
+      const die = (point) => { if (point === boundary) process.kill(process.pid, 'SIGKILL'); };
+      await applyRuntimeMigration({ plan, approvedPlanDigest: plan.digest, adapters: {
+        trustLegacy: () => 'explicit-operator-trust', writerCensus: () => ({ complete: true, writers: [], claims: [] }),
+        publishTiming: async () => ({ status: 'confirmed' }), fault: die, faultSync: die
+      } });`;
+      const child = spawn(
+        process.execPath,
+        ['--input-type=module', '-e', code, JSON.stringify([plan, boundary])],
+        { stdio: ['ignore', 'pipe', 'pipe'] }
+      );
+      const exited = once(child, 'exit');
+      let stderr = '';
+      child.stderr.on('data', (chunk) => {
+        stderr += chunk;
+      });
+      try {
+        const [exitCode, signal] = await exited;
+        assert.equal(exitCode, null, stderr);
+        assert.equal(signal, 'SIGKILL', stderr);
+        assert.deepEqual(readFileSync(source), original);
+        const transactionId = 'migration-' + plan.digest.slice(7, 39);
+        const status = await readRuntimeMigrationStatus({ ...roots, transactionId });
+        assert.equal(status.owner.pid, child.pid);
+        if (status.status !== 'complete')
+          assert.throws(
+            () => assertRuntimeReadable(roots),
+            (error) => error.code?.startsWith('RUNTIME_')
+          );
+        const coordinator = coordination.inspectRuntimeCoordinator(roots);
+        if (coordinator.status === 'owned')
+          coordination.recoverRuntimeCoordinator({
+            ...roots,
+            expectedDigest: coordinator.digest,
+            transactionId: coordinator.record.transactionId,
+            approvedPlanDigest: coordinator.record.planDigest,
+          });
+        const input = {
+          ...roots,
+          transactionId,
+          approvedPlanDigest: plan.digest,
+          adapters: selected,
+        };
+        assert.equal((await resumeRuntimeMigration(input)).status, 'complete');
+        assertRuntimeReadable(roots);
+        for (const file of plan.files)
+          assert.deepEqual(readFileSync(file.destination), readFileSync(file.source));
+        assert.equal(coordination.inspectRuntimeFence(roots), null);
+        assert.equal((await resumeRuntimeMigration(input)).status, 'complete');
+        assert.deepEqual(readFileSync(source), original);
+      } finally {
+        child.kill('SIGKILL');
+        await exited;
+      }
+    }
+  );
+}

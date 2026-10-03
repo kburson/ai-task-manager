@@ -427,6 +427,22 @@ function runRegisteredTaskHub(operation) {
 
 if (_isMain)
   runRegisteredTaskHub(async () => {
+    if (process.argv[2] === 'migrate-runtime' && !earlyHelpTarget(process.argv.slice(2))) {
+      try {
+        const { verbMigrateRuntime } = await import('./verbs/migrate-runtime.mjs');
+        const result = await verbMigrateRuntime(process.argv.slice(2));
+        process.stdout.write(JSON.stringify(result, null, 2) + String.fromCharCode(10));
+      } catch (error) {
+        process.stderr.write(
+          (error.code || 'RUNTIME_MIGRATION_FAILED') +
+            ': ' +
+            error.message +
+            String.fromCharCode(10)
+        );
+        process.exitCode = 1;
+      }
+      return;
+    }
     const admission = admitGuidance({ argv: process.argv.slice(2), surface: 'task-hub' });
     if (!admission.admitted) {
       process.stderr.write(admission.diagnostic);
@@ -681,6 +697,8 @@ if (_isMain)
           await ctx.runLogIssueTime(target);
           break;
         }
+        case 'migrate-runtime':
+          throw new Error('Runtime bootstrap must dispatch before ordinary runtime context');
         case 'migrate':
           await ctx.runMigrate(ctx.rest);
           break;

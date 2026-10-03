@@ -5,7 +5,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { capturedCommitBytes } from './captured-commit-bytes.mjs';
 const digest = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
-export function assertCurrentCaptureSources(capture, sourceCommit, projectRoot) {
+export function assertCapturedCommitSources(
+  capture,
+  sourceCommit,
+  projectRoot,
+  { requireLive = false } = {}
+) {
   if (!/^[0-9a-f]{40}$/.test(sourceCommit ?? ''))
     throw new Error('current guidance: invalid source commit');
   const records = [
@@ -17,11 +22,15 @@ export function assertCurrentCaptureSources(capture, sourceCommit, projectRoot) 
   ];
   for (const file of records) {
     if (
-      digest(readFileSync(path.join(projectRoot, file.path))) !== file.sha256 ||
+      (requireLive && digest(readFileSync(path.join(projectRoot, file.path))) !== file.sha256) ||
       digest(capturedCommitBytes(projectRoot, sourceCommit, file.path)) !== file.sha256
     ) {
       throw new Error(`current guidance: uncommitted captured source ${file.path}`);
     }
   }
   return sourceCommit;
+}
+
+export function assertCurrentCaptureSources(capture, sourceCommit, projectRoot) {
+  return assertCapturedCommitSources(capture, sourceCommit, projectRoot, { requireLive: true });
 }

@@ -628,6 +628,15 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Lists configuration, updates one setting, or initializes project configuration.'],
     ['Prints current values, the changed setting, or interview results.']
   ),
+  'migrate-runtime': contract(
+    [
+      'Physical registered roots are required; apply requires an exact trusted plan and genuine quiescent writer census.',
+    ],
+    [
+      'Plans and inspects without importing state; explicit apply or resume publishes only the approved recoverable transaction.',
+    ],
+    ['Prints a JSON plan, transaction status, or typed refusal.']
+  ),
   migrate: contract(
     [
       'Repository and target Project configuration must be available; --dry-run may be used for preview.',
@@ -754,6 +763,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   'user-story': Object.freeze(['new', 'refine', 'plan']),
   config: Object.freeze(['status', 'migrate']),
   migrate: Object.freeze(['config', 'board']),
+  'migrate-runtime': Object.freeze(['fleet', 'status']),
   fleet: Object.freeze(['status', 'board']),
   occupancy: Object.freeze(['fleet', 'stop']),
   log: Object.freeze(['status', 'words-count']),
@@ -921,6 +931,7 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
     ),
   ]),
   migrate: Object.freeze([]),
+  'migrate-runtime': Object.freeze([]),
   fleet: Object.freeze([
     positional(
       '[prune | release-closed-binding #N]',
