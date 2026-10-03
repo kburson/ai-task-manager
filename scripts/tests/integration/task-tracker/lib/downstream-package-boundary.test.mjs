@@ -323,7 +323,10 @@ test('restrictive downstream tarball install runs CLI and generated provider hoo
       const router = readFileSync(routerPath, 'utf8');
       const shared = readFileSync(join(installedRoot, 'skill/shared/SKILL.md'), 'utf8');
       assert.equal(firstInstalledReference(shared, '/shared/router.md', consumerDir), routerPath);
-      firstInstalledReference(router, '/docs/DESIGN.md', consumerDir);
+      firstInstalledReference(router, '/README.md', consumerDir);
+      assert.ok(
+        router.includes('https://github.com/kburson/ai-task-manager/blob/trunk/docs/DESIGN.md')
+      );
       if (provider !== 'grok') {
         const scriptRoot = firstInstalledReference(canonical, '/scripts/', consumerDir);
         assert.ok(existsSync(join(scriptRoot, 'task-tracker/task-tracker.mjs')));
@@ -343,18 +346,12 @@ test('restrictive downstream tarball install runs CLI and generated provider hoo
       const memory = commands(settings, 'SessionStart').find((command) =>
         command.includes('/memory-index.mjs')
       );
-      assert.ok(memory, 'memory seed selection must install the index hook');
-      const result = executeGenerated(
+      assert.equal(
         memory,
-        { hook_event_name: 'SessionStart' },
-        consumerDir,
-        env
+        undefined,
+        'a package without bundled memory must not install an empty index hook'
       );
-      assert.equal(result.stderr, '');
-      assert.match(
-        JSON.parse(result.stdout).hookSpecificOutput.additionalContext,
-        /Operational-lessons memory index/
-      );
+      assert.equal(existsSync(join(installedRoot, 'docs')), false);
 
       const guard = commands(settings, 'PreToolUse').find((command) =>
         command.includes('/bash-guard.mjs')

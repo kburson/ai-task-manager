@@ -34,3 +34,14 @@ export function assertCapturedCommitSources(
 export function assertCurrentCaptureSources(capture, sourceCommit, projectRoot) {
   return assertCapturedCommitSources(capture, sourceCommit, projectRoot, { requireLive: true });
 }
+
+// Retain the original archive identity while regenerating it from a published,
+// byte-equivalent squash commit. Every captured input must match before use.
+export function publishedCaptureSource(capture, sourceCommit, projectRoot) {
+  const published =
+    sourceCommit === 'e545522e467e484bd96db3b327fc8ccd0047c086'
+      ? '171c7d93866f67b58effa635be5ae737f54ef9eb'
+      : sourceCommit;
+  assertCapturedCommitSources(capture, published, projectRoot);
+  return published;
+}

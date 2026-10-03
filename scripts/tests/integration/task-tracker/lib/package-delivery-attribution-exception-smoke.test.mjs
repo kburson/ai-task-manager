@@ -47,7 +47,6 @@ test('packed delivery exception runtime and guide support installed CLI help', (
       'scripts/task-tracker/lib/delivery-attribution-exception.mjs',
       'scripts/task-tracker/lib/delivery-attribution-exception-record.mjs',
       'skill/shared/rules/deliver.md',
-      'docs/guides/workflow.md',
     ]) {
       assert.ok(entries.has(required), `tarball omits ${required}`);
     }

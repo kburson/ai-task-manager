@@ -46,7 +46,6 @@ test('npm pack excludes the test corpus while retaining required runtime files a
     'package/scripts/task-tracker/lib/occupancy.mjs',
     'package/scripts/task-tracker/lib/apply-patch-targets.mjs',
     'package/skill/adapters/grok/SKILL.md',
-    'package/docs/guides/grok-provider.md',
   ]) {
     assert.ok(packed.has(required), `npm pack retains required runtime asset: ${required}`);
   }

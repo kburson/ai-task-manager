@@ -9,8 +9,8 @@
       "protocolAnchor": "Never touch source files, run tests, edit issue bodies",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["router"]
     },
@@ -22,8 +22,8 @@
       "protocolAnchor": "Before any blocking user prompt",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["router"]
     },
@@ -35,8 +35,8 @@
       "protocolAnchor": "## Decision points",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["router"]
     },
@@ -48,8 +48,8 @@
       "protocolAnchor": "## Recovery protocol (post-Compact / post-Clear)",
       "guidanceId": "protocol.receipts",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "shared-decision-boundary"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["router"]
     },
@@ -61,8 +61,8 @@
       "guidanceId": "action.bind",
       "actionId": "bind",
       "documentation": {
-        "path": "docs/guides/workflow.md",
-        "anchor": "kanban-board-states"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -73,8 +73,8 @@
       "guidanceId": "action.bind",
       "actionId": "bind",
       "documentation": {
-        "path": "docs/guides/workflow.md",
-        "anchor": "kanban-board-states"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -85,8 +85,8 @@
       "protocolAnchor": "before** any deep-dive or refine",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -97,8 +97,8 @@
       "protocolAnchor": "create a worktree first",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -109,8 +109,8 @@
       "protocolAnchor": "do NOT load or",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -121,8 +121,8 @@
       "protocolAnchor": "re-run `/task #N` to re-register",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -132,8 +132,8 @@
       "enforcementPath": "scripts/task-tracker/source-edit-gate.mjs",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -143,8 +143,8 @@
       "enforcementPath": "scripts/task-tracker/lib/review-preflight.mjs",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -155,8 +155,8 @@
       "guidanceId": "action.promote",
       "actionId": "promote",
       "documentation": {
-        "path": "docs/guides/guard-architecture.md",
-        "anchor": "the-exitentry-slot-model"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -167,8 +167,8 @@
       "guidanceId": "transition.plan-to-develop",
       "actionId": "promote",
       "documentation": {
-        "path": "docs/guides/guard-architecture.md",
-        "anchor": "the-exitentry-slot-model"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -180,8 +180,8 @@
       "actionId": "promote",
       "guardId": "plan-exit-plan-approved",
       "documentation": {
-        "path": "docs/guides/guard-architecture.md",
-        "anchor": "the-exitentry-slot-model"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -192,8 +192,8 @@
       "guidanceId": "action.test",
       "actionId": "test",
       "documentation": {
-        "path": "docs/guides/guard-architecture.md",
-        "anchor": "the-exitentry-slot-model"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -204,21 +204,21 @@
       "guidanceId": "action.review",
       "actionId": "review",
       "documentation": {
-        "path": "docs/guides/workflow.md",
-        "anchor": "kanban-board-states"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
       "id": "review.approval",
       "sourcePath": "skill/shared/rules/review.md",
-      "sourceAnchor": "Approve** → `/task approve #N`",
+      "sourceAnchor": "Approve** \u2192 `/task approve #N`",
       "enforcementPath": "scripts/task-tracker/states/review.mjs",
       "guidanceId": "transition.review-approval",
       "actionId": "deliver",
       "guardId": "review-exit-review-approved",
       "documentation": {
-        "path": "docs/guides/guard-architecture.md",
-        "anchor": "the-exitentry-slot-model"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -230,21 +230,21 @@
       "guidanceId": "action.review",
       "actionId": "review",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "review-and-close-human-boundaries"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
       "id": "review.reject",
       "sourcePath": "skill/shared/rules/review.md",
-      "sourceAnchor": "**Reject** → ask follow-up",
+      "sourceAnchor": "**Reject** \u2192 ask follow-up",
       "retainedProtocolRule": "skill/shared/rules/review.md",
       "protocolAnchor": "ask follow-up for the rejection reason",
       "guidanceId": "action.review",
       "actionId": "review",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "review-and-close-human-boundaries"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -256,8 +256,8 @@
       "guidanceId": "action.review",
       "actionId": "review",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "review-and-close-human-boundaries"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -269,8 +269,8 @@
       "guidanceId": "action.deliver",
       "actionId": "deliver",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "shared-decision-boundary"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["claude", "codex"]
     },
@@ -283,8 +283,8 @@
       "guidanceId": "action.deliver",
       "actionId": "deliver",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "shared-decision-boundary"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["claude", "codex"]
     },
@@ -297,8 +297,8 @@
       "guidanceId": "action.deliver",
       "actionId": "deliver",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "shared-decision-boundary"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["claude", "codex"]
     },
@@ -311,8 +311,8 @@
       "actionId": "close",
       "guardId": "review-exit-review-approved",
       "documentation": {
-        "path": "docs/guides/guard-architecture.md",
-        "anchor": "the-exitentry-slot-model"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -324,8 +324,8 @@
       "guidanceId": "action.close",
       "actionId": "close",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "review-and-close-human-boundaries"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -336,8 +336,8 @@
       "guidanceId": "action.close",
       "actionId": "close",
       "documentation": {
-        "path": "docs/guides/guard-architecture.md",
-        "anchor": "the-exitentry-slot-model"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -347,20 +347,20 @@
       "enforcementPath": "scripts/task-tracker/commit-trail-handler.mjs",
       "guidanceId": "protocol.commit-trail",
       "documentation": {
-        "path": "docs/guides/workflow.md",
-        "anchor": "kanban-board-states"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
       "id": "session.track",
       "sourcePath": "skill/shared/router.md",
-      "sourceAnchor": "Track before you start — no untracked work.",
+      "sourceAnchor": "Track before you start \u2014 no untracked work.",
       "retainedProtocolRule": "skill/shared/router.md",
       "protocolAnchor": "No issue, no work.",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["router"]
     },
@@ -371,8 +371,8 @@
       "enforcementPath": "scripts/task-tracker/bash-guard.mjs",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -383,8 +383,8 @@
       "guidanceId": "action.close",
       "actionId": "close",
       "documentation": {
-        "path": "docs/guides/guard-architecture.md",
-        "anchor": "the-exitentry-slot-model"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -395,8 +395,8 @@
       "protocolAnchor": "Agent picking up a sub-issue",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["router"]
     },
@@ -408,8 +408,8 @@
       "protocolAnchor": "STOP and report `STATUS: BLOCKED",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["pickup"]
     },
@@ -420,8 +420,8 @@
       "enforcementPath": "scripts/task-tracker/verbs/close.mjs",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     },
     {
@@ -432,34 +432,34 @@
       "protocolAnchor": "tick no AC/DoD box until every sub-issue reaches Review",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["pickup"]
     },
     {
       "id": "pickup.checkpoint",
       "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
-      "sourceAnchor": "Checkpoint Pause — re-read the conversation queue",
+      "sourceAnchor": "Checkpoint Pause \u2014 re-read the conversation queue",
       "retainedProtocolRule": ".ai-task-manager/templates/pickup-directive.md",
       "protocolAnchor": "Before any `/task` state move",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["pickup"]
     },
     {
       "id": "pickup.mistake",
       "sourcePath": ".ai-task-manager/templates/pickup-directive.md",
-      "sourceAnchor": "On mistakes — STOP, surface what/why",
+      "sourceAnchor": "On mistakes \u2014 STOP, surface what/why",
       "retainedProtocolRule": ".ai-task-manager/templates/pickup-directive.md",
       "protocolAnchor": "wait for instruction",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["pickup"]
     },
@@ -471,8 +471,8 @@
       "protocolAnchor": "edit live bodies only through `mutateIssueBody`",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["pickup"]
     },
@@ -484,21 +484,21 @@
       "protocolAnchor": "reporting `CODE_COMPLETE`",
       "guidanceId": "protocol.pickup",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["pickup"]
     },
     {
       "id": "state.reconcile",
       "sourcePath": "skill/shared/rules/state-walk.md",
-      "sourceAnchor": "Board ↔ local field-DB disagreement.",
+      "sourceAnchor": "Board \u2194 local field-DB disagreement.",
       "retainedProtocolRule": "skill/shared/rules/state-walk.md",
       "protocolAnchor": "Run before any other verb on a drifted issue.",
       "guidanceId": "protocol.session",
       "documentation": {
-        "path": "docs/guides/ask-the-script.md",
-        "anchor": "session-and-pickup-protocol"
+        "path": "README.md",
+        "anchor": "design-and-references"
       },
       "proposedStatic": ["router"]
     },
@@ -510,8 +510,8 @@
       "guidanceId": "action.review",
       "actionId": "review",
       "documentation": {
-        "path": "docs/guides/workflow.md",
-        "anchor": "kanban-board-states"
+        "path": "README.md",
+        "anchor": "design-and-references"
       }
     }
   ]

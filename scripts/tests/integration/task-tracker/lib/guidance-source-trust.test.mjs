@@ -31,15 +31,7 @@ function fixture() {
   writeFileSync(path.join(packageRoot, 'guidance/source.mjs'), '// fixture module\n');
   writeFileSync(path.join(packageRoot, 'instructions/aitm-guidance.yml'), source);
   writeFileSync(path.join(packageRoot, 'instructions/aitm-guidance.release.json'), manifest);
-  for (const doc of [
-    'workflow.md',
-    'guard-architecture.md',
-    'ask-the-script.md',
-    'reviewed-scope-evidence.md',
-  ]) {
-    mkdirSync(path.join(packageRoot, 'docs/guides'), { recursive: true });
-    copyFileSync(path.join(root, 'docs/guides', doc), path.join(packageRoot, 'docs/guides', doc));
-  }
+  copyFileSync(path.join(root, 'README.md'), path.join(packageRoot, 'README.md'));
   return {
     dir,
     packageRoot,
@@ -105,7 +97,8 @@ test('human explanation exposes closed guidance fields and fingerprints', () => 
     assert.deepEqual(report.triggers, ['Before moving an issue forward one state.']);
     assert.match(report.execution[0], /one legal step/);
     assert.equal(report.examples[0].command, 'npx aitm promote 1676');
-    assert.equal(report.references[0].path, 'docs/guides/guard-architecture.md');
+    assert.equal(report.references[0].path, 'README.md');
+    assert.equal(report.references[0].anchor, 'design-and-references');
     assert.match(report.fingerprints.humanDigest, /^sha256:[a-f0-9]{64}$/);
     assert.match(report.fingerprints.entryDigest, /^sha256:[a-f0-9]{64}$/);
     assert.match(report.fingerprints.catalogDigest, /^sha256:[a-f0-9]{64}$/);
