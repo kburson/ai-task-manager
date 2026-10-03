@@ -1,9 +1,10 @@
 // @story #1857
 // Read-only planning precedes fenced application. No automatic legacy import.
 import { createHash } from 'node:crypto';
-import { lstatSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { classifyKnownLegacyRuntimeRecord } from './runtime-migration-catalog.mjs';
+import { observeRuntimeAuthorityInventory } from './runtime-authority-census.mjs';
 import {
   resolveRuntimeRoot,
   runtimeStoragePaths,
@@ -44,190 +45,88 @@ const FAMILY_SCOPES = Object.freeze({
   'ready-for-plan-journal': 'shared',
 });
 
-function maybeStat(file) {
-  try {
-    return lstatSync(file);
-  } catch (error) {
-    if (error.code === 'ENOENT') return null;
-    throw error;
-  }
-}
-
-function inventory(directory, blocker, visit, allowedNames = null) {
-  const stat = maybeStat(directory);
-  if (!stat) return;
-  if (stat.isSymbolicLink()) {
-    blocker('source-alias', directory);
-    return;
-  }
-  if (!stat.isDirectory()) {
-    blocker('source-shape', directory);
-    return;
-  }
-  const walk = (cursor) => {
-    for (const name of readdirSync(cursor).sort()) {
-      if (cursor === directory && allowedNames && !allowedNames.includes(name)) continue;
-      const file = path.join(cursor, name);
-      const entry = lstatSync(file);
-      if (entry.isSymbolicLink()) blocker('source-alias', file);
-      else if (entry.isDirectory() && name.endsWith('.lock'))
-        blocker('source-lock-recovery-required', file);
-      else if (entry.isDirectory()) walk(file);
-      else if (entry.isFile()) visit(file, path.relative(directory, file));
-      else blocker('source-shape', file);
-    }
-  };
-  walk(directory);
-}
-
 export async function planRuntimeMigration({ projectRoot, mainRoot, adapters = {} }) {
-  const identity = resolveRuntimeRoot({ cwd: projectRoot, env: {} });
-  const layout = runtimeStoragePaths({ projectRoot, mainRoot });
+  const observation = observeRuntimeAuthorityInventory({ projectRoot, mainRoot });
+  const { identity, layout, roots, rootIdentities } = observation;
   const blockers = [];
   const files = [];
   const destinations = new Set();
   const block = (code, target, detail) =>
     blockers.push({ code, target, ...(detail ? { detail } : {}) });
-  const roots = [...identity.worktreeIdentity.registeredRoots].sort();
-  for (const unavailable of identity.worktreeIdentity.unavailableRoots)
-    block('root-unavailable', unavailable);
-  const rootIdentities = [];
-  for (const root of roots) {
-    let selected;
-    try {
-      selected = resolveRuntimeRoot({ cwd: root, env: {} });
-    } catch (error) {
-      block('root-unadmittable', root, error.code || 'ROOT_IDENTITY_MISMATCH');
-      continue;
-    }
-    if (selected.mainRoot !== layout.mainRoot) {
-      block('root-identity-mismatch', root);
-      continue;
-    }
-    rootIdentities.push({
-      projectRoot: selected.projectRoot,
-      gitDir: selected.worktreeIdentity.gitDir,
-      commonDir: selected.worktreeIdentity.commonDir,
+  const visit = (source, relative, root, sourceKind) => {
+    const rootLayout = observation.rootLayouts.get(root);
+    const classified = (adapters.classifyLegacy || classifyKnownLegacyRuntimeRecord)({
+      root,
+      mainRoot,
+      source,
+      relative,
+      kind: sourceKind,
     });
-    const rootLayout = runtimeStoragePaths({ projectRoot: root, mainRoot });
-    for (const destination of [rootLayout.controlPath, rootLayout.localRoot]) {
-      try {
-        assertRuntimeStoragePath(
-          destination,
-          rootLayout.localRuntimeRoot,
-          'RUNTIME_CONTROL_INVALID'
-        );
-        if (maybeStat(destination)) block('destination-exists', destination);
-      } catch (error) {
-        block('destination-unsafe', destination, error.code);
-      }
+    if (
+      !classified ||
+      typeof classified.destination !== 'string' ||
+      typeof classified.validate !== 'function'
+    ) {
+      block('unknown-source', source);
+      return;
     }
-    for (const legacy of [
-      { base: path.join(root, '.tmp', 'aitm'), kind: 'volatile-runtime' },
-      { base: path.join(root, '.db', 'aitm'), kind: 'legacy-durable' },
-      ...['.ai-task-manager', '.claude'].map((directory) => ({
-        base: path.join(root, directory),
-        kind: 'legacy-root',
-        allowedNames: [
-          'task-tracker-state.json',
-          'task-tracker-queue.json',
-          'task-fleet.json',
-          'occupancy.json',
-          'orchestrator.lock',
-          'closed-bindings.json',
-          'state',
-          'fleet',
-          'sessions',
-          'gates',
-          'locks',
-          'app',
-          'cache',
-          'draft-branch',
-          'action-capture',
-        ],
-      })),
-    ]) {
-      try {
-        assertRuntimeStoragePath(legacy.base, root, 'RUNTIME_CONTROL_INVALID');
-      } catch (error) {
-        block('source-alias', legacy.base, error.code);
-        continue;
-      }
-      inventory(
-        legacy.base,
-        block,
-        (source, relative) => {
-          const classified = (adapters.classifyLegacy || classifyKnownLegacyRuntimeRecord)({
-            root,
-            mainRoot,
-            source,
-            relative,
-            kind: legacy.kind,
-          });
-          if (
-            !classified ||
-            typeof classified.destination !== 'string' ||
-            typeof classified.validate !== 'function'
-          ) {
-            block('unknown-source', source);
-            return;
-          }
-          if (
-            !Object.hasOwn(FAMILY_SCOPES, classified.family) ||
-            FAMILY_SCOPES[classified.family] !== classified.scope
-          ) {
-            block('unsupported-classification', source);
-            return;
-          }
-          const destinationRoot = classified.scope === 'shared' ? mainRoot : root;
-          const store = classified.scope === 'shared' ? layout.sharedRoot : rootLayout.localRoot;
-          const destination = path.resolve(store, classified.destination);
-          try {
-            assertRuntimeStoragePath(destination, store, 'RUNTIME_OVERRIDE_UNSAFE');
-          } catch (error) {
-            block('destination-unsafe', destination, error.code);
-            return;
-          }
-          if (
-            path.isAbsolute(classified.destination) ||
-            classified.destination.split(path.sep).includes('..')
-          ) {
-            block('destination-unsafe', destination);
-            return;
-          }
-          const bytes = readFileSync(source);
-          const digest = runtimeMigrationDigest(bytes);
-          let supported = false;
-          try {
-            // Record families own decoding; binary capture payloads must remain byte-exact.
-            supported = classified.validate(bytes) === true;
-          } catch {
-            /* retain unsupported input */
-          }
-          if (!supported) {
-            block('unsupported-schema', source);
-            return;
-          }
-          const trust =
-            adapters.trustLegacy?.({ source, digest, root, family: classified.family }) ??
-            'unresolved';
-          if (trust !== 'explicit-operator-trust') block('legacy-trust-required', source);
-          if (destinations.has(destination)) block('ambiguous-source', destination);
-          destinations.add(destination);
-          files.push({
-            source,
-            destination,
-            root,
-            destinationRoot,
-            family: classified.family,
-            digest,
-            size: bytes.length,
-            trust,
-          });
-        },
-        legacy.allowedNames
-      );
+    if (
+      !Object.hasOwn(FAMILY_SCOPES, classified.family) ||
+      FAMILY_SCOPES[classified.family] !== classified.scope
+    ) {
+      block('unsupported-classification', source);
+      return;
     }
+    const destinationRoot = classified.scope === 'shared' ? mainRoot : root;
+    const store = classified.scope === 'shared' ? layout.sharedRoot : rootLayout.localRoot;
+    const destination = path.resolve(store, classified.destination);
+    try {
+      assertRuntimeStoragePath(destination, store, 'RUNTIME_OVERRIDE_UNSAFE');
+    } catch (error) {
+      block('destination-unsafe', destination, error.code);
+      return;
+    }
+    if (
+      path.isAbsolute(classified.destination) ||
+      classified.destination.split(path.sep).includes('..')
+    ) {
+      block('destination-unsafe', destination);
+      return;
+    }
+    const bytes = readFileSync(source);
+    const digest = runtimeMigrationDigest(bytes);
+    let supported = false;
+    try {
+      // Record families own decoding; binary capture payloads must remain byte-exact.
+      supported = classified.validate(bytes) === true;
+    } catch {
+      /* retain unsupported input */
+    }
+    if (!supported) {
+      block('unsupported-schema', source);
+      return;
+    }
+    const trust =
+      adapters.trustLegacy?.({ source, digest, root, family: classified.family }) ?? 'unresolved';
+    if (trust !== 'explicit-operator-trust') block('legacy-trust-required', source);
+    if (destinations.has(destination)) block('ambiguous-source', destination);
+    destinations.add(destination);
+    files.push({
+      source,
+      destination,
+      root,
+      destinationRoot,
+      family: classified.family,
+      digest,
+      size: bytes.length,
+      trust,
+    });
+  };
+  for (const event of observation.events) {
+    if (event.kind === 'blocker') {
+      const { code, target, detail } = event.value;
+      block(code, target, detail);
+    } else visit(event.source, event.relative, event.root, event.sourceKind);
   }
   const census = await adapters.writerCensus?.({
     roots,
