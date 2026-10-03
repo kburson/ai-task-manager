@@ -93,7 +93,8 @@ test('supported legacy roots have an explicit byte-preserving route and duplicat
     writeFileSync(source, bytes);
     writeFileSync(path.join(root, '.claude/config.json'), '{"trackedConfig":true}');
     const plan = await planRuntimeMigration({ projectRoot: root, mainRoot: root, adapters });
-    assert.deepEqual(plan.blockers, []);
+    assert.equal(plan.blockers.length, 3);
+    assert.ok(plan.blockers.every((entry) => entry.code === 'required-record-missing'));
     assert.equal(plan.files.length, 1);
     assert.equal(plan.files[0].source, source);
     assert.equal(
@@ -179,7 +180,8 @@ test('capture catalog accepts actual producer records and validates each stored 
       mainRoot: legacyRoot,
       adapters,
     });
-    assert.deepEqual(plan.blockers, []);
+    assert.equal(plan.blockers.length, 4);
+    assert.ok(plan.blockers.every((entry) => entry.code === 'required-record-missing'));
     assert.equal(plan.files.length, files.length);
     assert.equal(
       plan.files.find((entry) => entry.source.endsWith('/stdin.bin')).size,
@@ -238,7 +240,8 @@ test('migration classifiers receive exact binary capture bytes without text deco
         }),
       },
     });
-    assert.deepEqual(plan.blockers, []);
+    assert.equal(plan.blockers.length, 4);
+    assert.ok(plan.blockers.every((entry) => entry.code === 'required-record-missing'));
     assert.equal(plan.files[0].size, bytes.length);
     assert.deepEqual(readFileSync(source), bytes);
   } finally {

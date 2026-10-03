@@ -816,3 +816,62 @@ for (const boundary of [
     }
   );
 }
+
+test('sparse legacy migration refuses before creating any publication authority', async () => {
+  const { planRuntimeMigration, applyRuntimeMigration } = await engine();
+  const roots = repository('sparse-required');
+  const source = seed(roots);
+  rmSync(path.join(roots.projectRoot, '.tmp/aitm/state/task-tracker-queue.json'));
+  const before = readFileSync(source);
+  const plan = await planRuntimeMigration({ ...roots, adapters });
+  assert.ok(plan.blockers.some((item) => item.code === 'required-record-missing'));
+  await assert.rejects(applyRuntimeMigration({ plan, approvedPlanDigest: plan.digest, adapters }), {
+    code: 'RUNTIME_MIGRATION_BLOCKED',
+  });
+  assert.deepEqual(readFileSync(source), before);
+  assert.equal(existsSync(path.join(roots.projectRoot, '.ai-task-manager/runtime')), false);
+});
+
+for (const replacement of ['foreign', 'malformed', 'missing']) {
+  test(`migration resume preserves ${replacement} control on an already published root`, async () => {
+    const { planRuntimeMigration, applyRuntimeMigration, resumeRuntimeMigration } = await engine();
+    const roots = repository('published-control-' + replacement);
+    seed(roots);
+    const selected = transactionAdapters({
+      fault: (point) => {
+        if (point === 'after-root-publish') throw new Error('fixture publication interruption');
+      },
+    });
+    const plan = await planRuntimeMigration({ ...roots, adapters: selected });
+    await assert.rejects(
+      applyRuntimeMigration({ plan, approvedPlanDigest: plan.digest, adapters: selected }),
+      /fixture publication interruption/
+    );
+    const control = path.join(roots.projectRoot, '.ai-task-manager/runtime/control.json');
+    const state = path.join(
+      roots.projectRoot,
+      '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+    );
+    const before = readFileSync(state);
+    if (replacement === 'missing') rmSync(control);
+    else
+      writeFileSync(
+        control,
+        replacement === 'malformed'
+          ? '{broken'
+          : JSON.stringify({ ...JSON.parse(readFileSync(control)), transactionId: 'foreign' })
+      );
+    const conflicting = existsSync(control) ? readFileSync(control) : null;
+    await assert.rejects(
+      resumeRuntimeMigration({
+        ...roots,
+        transactionId: 'migration-' + plan.digest.slice(7, 39),
+        approvedPlanDigest: plan.digest,
+        adapters: transactionAdapters(),
+      }),
+      { code: 'RUNTIME_MIGRATION_CONFLICT' }
+    );
+    assert.deepEqual(readFileSync(state), before);
+    assert.deepEqual(existsSync(control) ? readFileSync(control) : null, conflicting);
+  });
+}

@@ -81,6 +81,35 @@ export function planRuntimeInitialization(input) {
   );
   if (original.roots.includes(layout.projectRoot) || exists(file))
     fail('RUNTIME_CONTROL_INVALID', 'Protected root history proves this is not a fresh worktree');
+  const legacyTargets = [path.join(layout.projectRoot, '.db', 'aitm')];
+  const legacyNames = [
+    'task-tracker-state.json',
+    'task-tracker-queue.json',
+    'task-fleet.json',
+    'occupancy.json',
+    'orchestrator.lock',
+    'closed-bindings.json',
+    'state',
+    'fleet',
+    'sessions',
+    'gates',
+    'locks',
+    'app',
+    'cache',
+    'draft-branch',
+    'action-capture',
+  ];
+  for (const directory of ['.claude', '.ai-task-manager'])
+    for (const name of legacyNames)
+      legacyTargets.push(path.join(layout.projectRoot, directory, name));
+  for (const target of legacyTargets) {
+    assertRuntimeStoragePath(target, layout.projectRoot, 'RUNTIME_INITIALIZATION_REFUSED');
+    if (exists(target))
+      fail(
+        'RUNTIME_INITIALIZATION_REFUSED',
+        'Durable legacy evidence requires explicit reconciliation'
+      );
+  }
   const plan = {
     schema: 'aitm.runtime-initialization-plan/v1',
     id: runtimeInitializationId(layout.projectRoot),

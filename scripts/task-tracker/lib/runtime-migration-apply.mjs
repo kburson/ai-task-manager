@@ -333,6 +333,37 @@ async function continuePublication({ plan, approvedPlanDigest, adapters, paths, 
   const transactionId = manifest.transactionId;
   const save = () => writeMigrationRecord(paths.manifest, manifest);
   const stages = new Map();
+  // Validate the whole control set before replay changes any root. Published
+  // stores must retain the original prepared/active ownership evidence.
+  for (const root of plan.roots) {
+    const layout = runtimeStoragePaths({ projectRoot: root, mainRoot: plan.mainRoot });
+    assertRuntimeStoragePath(
+      layout.controlPath,
+      layout.localRuntimeRoot,
+      'RUNTIME_MIGRATION_CONFLICT'
+    );
+    if (!exists(layout.controlPath)) {
+      if (exists(layout.localRoot))
+        fail('RUNTIME_MIGRATION_CONFLICT', 'Published root control is missing');
+      continue;
+    }
+    let control;
+    try {
+      control = readMigrationRecord(layout.controlPath);
+    } catch {
+      fail('RUNTIME_MIGRATION_CONFLICT', 'Root control is malformed');
+    }
+    if (
+      !control ||
+      control.schema !== 'aitm.runtime-control/v1' ||
+      !['prepared', 'active'].includes(control.status) ||
+      control.transactionId !== transactionId ||
+      control.planDigest !== approvedPlanDigest ||
+      control.projectRoot !== root ||
+      control.mainRoot !== plan.mainRoot
+    )
+      fail('RUNTIME_MIGRATION_CONFLICT', 'A different control owns the root');
+  }
   for (const file of plan.files) {
     assertRuntimeStoragePath(file.source, file.root, 'RUNTIME_CONTROL_INVALID');
     if (

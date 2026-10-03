@@ -3,10 +3,13 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import {
+  createRuntimeRootFixture,
+  createActivatedRuntimeRootFixture,
+} from '../../../helpers/runtime-root-fixture.mjs';
 import { planRuntimeMigration } from '../../../../task-tracker/lib/runtime-migration-plan.mjs';
 import { applyRuntimeMigration } from '../../../../task-tracker/lib/runtime-migration-apply.mjs';
 import { resumeRuntimeMigration } from '../../../../task-tracker/lib/runtime-migration-apply.mjs';
@@ -204,6 +207,93 @@ test('a fresh registered worktree initializes empty local authority without chan
     assert.throws(() => planRuntimeInitialization({ projectRoot: linked, mainRoot }), {
       code: 'RUNTIME_CONTROL_INVALID',
     });
+  } finally {
+    rmSync(linked, { recursive: true, force: true });
+    rmSync(mainRoot, { recursive: true, force: true });
+  }
+});
+
+for (const relative of [
+  '.db/aitm/ready-for-plan-migration.json',
+  '.claude/task-tracker-state.json',
+  '.ai-task-manager/task-tracker-state.json',
+]) {
+  test(`empty linked initialization refuses existing durable evidence at ${relative}`, async () => {
+    const { planRuntimeInitialization } =
+      await import('../../../../task-tracker/lib/runtime-initialize.mjs');
+    const mainRoot = await createActivatedRuntimeRootFixture('1861-durable-initialize-');
+    const linked = mainRoot + '-linked';
+    try {
+      execFileSync('git', [
+        '-C',
+        mainRoot,
+        '-c',
+        'user.name=Fixture',
+        '-c',
+        'user.email=fixture@example.invalid',
+        'commit',
+        '--allow-empty',
+        '-qm',
+        'fixture',
+      ]);
+      execFileSync('git', ['-C', mainRoot, 'worktree', 'add', '--detach', linked], {
+        stdio: 'pipe',
+      });
+      const evidence = path.join(linked, relative);
+      mkdirSync(path.dirname(evidence), { recursive: true });
+      writeFileSync(evidence, 'protected legacy bytes');
+      assert.throws(() => planRuntimeInitialization({ projectRoot: linked, mainRoot }), {
+        code: 'RUNTIME_INITIALIZATION_REFUSED',
+      });
+      assert.equal(readFileSync(evidence, 'utf8'), 'protected legacy bytes');
+    } finally {
+      rmSync(linked, { recursive: true, force: true });
+      rmSync(mainRoot, { recursive: true, force: true });
+    }
+  });
+}
+
+test('empty linked initialization rechecks durable absence before applying an approved plan', async () => {
+  const { planRuntimeInitialization, applyRuntimeInitialization } =
+    await import('../../../../task-tracker/lib/runtime-initialize.mjs');
+  const mainRoot = await createActivatedRuntimeRootFixture('1861-late-durable-');
+  const linked = mainRoot + '-linked';
+  try {
+    execFileSync('git', [
+      '-C',
+      mainRoot,
+      '-c',
+      'user.name=Fixture',
+      '-c',
+      'user.email=fixture@example.invalid',
+      'commit',
+      '--allow-empty',
+      '-qm',
+      'fixture',
+    ]);
+    execFileSync('git', ['-C', mainRoot, 'worktree', 'add', '--detach', linked], { stdio: 'pipe' });
+    const plan = planRuntimeInitialization({ projectRoot: linked, mainRoot });
+    const evidence = path.join(linked, '.db/aitm/ready-for-plan-migration.json');
+    mkdirSync(path.dirname(evidence), { recursive: true });
+    writeFileSync(evidence, 'arrived after planning');
+    await assert.rejects(
+      applyRuntimeInitialization({
+        plan,
+        approvedPlanDigest: plan.digest,
+        adapters: {
+          identity: () => ({
+            provider: 'fixture',
+            sid: 'late-initializer',
+            pid: process.pid,
+            processToken: 'late-process',
+          }),
+        },
+      }),
+      { code: 'RUNTIME_INITIALIZATION_REFUSED' }
+    );
+    assert.equal(readFileSync(evidence, 'utf8'), 'arrived after planning');
+    assert.equal(existsSync(path.join(linked, '.ai-task-manager/runtime/control.json')), false);
+    assert.equal(existsSync(path.join(linked, '.ai-task-manager/runtime/store')), false);
   } finally {
     rmSync(linked, { recursive: true, force: true });
     rmSync(mainRoot, { recursive: true, force: true });

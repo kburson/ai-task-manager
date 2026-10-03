@@ -19,7 +19,7 @@ Actual cwd `/Users/kpburson/.codex/worktrees/8dae/ai-task-manager`, branch `code
 
 `writeRuntimeRecordBatch(records, options)` is synchronous. Ordered records are `{ target, bytes, actorIdentity?, expectedDigest? }`. bytes is a Buffer for publication or null for deletion. expectedDigest, if supplied, is the exact before-byte digest or null for required absence. `writeRuntimeJsonBatch` serializes JSON `{ target, value, actorIdentity?, expectedDigest? }` entries and delegates. No async callback is accepted.
 
-Targets must resolve to physically registered roots with the same main Git owner and supported durable-store records, including capture binary payloads. Validate the whole batch before publication. Duplicate targets, unknown schemas, scope mismatches, symlinks and expected-before conflicts refuse. Capture validation sees proposed sibling bytes where supplied; deletion validates the original supported record. No arbitrary caller validator grants authority.
+Targets must resolve to physically registered roots with the same main Git owner and supported durable-store records, including capture binary payloads. Validate the whole batch before publication. Duplicate targets, unknown schemas, scope mismatches, symlinks and expected-before conflicts refuse. Capture validation sees proposed sibling bytes where supplied; deletion validates the original supported record and refuses removal of mandatory state, queue, fleet or occupancy. Optional bindings and complete capture bundles remain deletable. No arbitrary caller validator grants authority.
 
 The protected journal is under the physical main owner's durable runtime at `batches/<operationId>/journal.json`. Its versioned schema records operation ID, genuine owner, physical roots, activation generation and every member's exact before identity/bytes or absence and after bytes/digest or deletion. Publish and fsync the complete journal before changing any member. Existing whole-operation leases for all roots plus main-owner store coordination serialize against migration and other batches. Ordinary readers refuse unfinished/malformed batches and pending publication artifacts. Completed receipts remain audit evidence.
 
@@ -35,7 +35,7 @@ Refusals: `RUNTIME_BATCH_INCOMPLETE` ordinary reads, `RUNTIME_BATCH_CONFLICT` ch
 
 Real SIGKILL cases cover migration bootstrap journal, fence, staged root, each root publication, control activation, complete manifest, timing publication and fence release. Initialization covers claim, stage, publication, completed journal and competing recovery claim. Verify original source/record bytes, controls, read refusal, exact owner observations, supported recovery and eventual completion. Thrown fault injection is supplemental.
 
-Completed/no-fence migration permits timing-only retry against proven successor generations/census without republishing stores. Retained fences require original roots. New linked roots initialize explicitly. Partial loss refuses; proven empty total absence remains the existing admitted case.
+Completed/no-fence migration permits timing-only retry against proven successor generations/census without republishing stores. Retained fences require original roots. New linked roots initialize explicitly. Partial loss refuses. Proven empty total absence is an accepted requirement; PR review found that the fresh-main admission route is missing and remains an acceptance blocker. Linked-root empty initialization refuses protected durable or historical legacy evidence at planning and apply-time recheck.
 
 ## Budget and acceptance
 

@@ -271,6 +271,15 @@ export async function planRuntimeMigration({ projectRoot, mainRoot, adapters = {
       block('writers-active', mainRoot);
     }
   }
+  for (const { projectRoot: root } of rootIdentities) {
+    const required = ['state/task-tracker-state.json', 'state/task-tracker-queue.json'];
+    if (root === layout.mainRoot) required.push('fleet/task-fleet.json', 'fleet/occupancy.json');
+    const store = runtimeStoragePaths({ projectRoot: root, mainRoot: layout.mainRoot }).localRoot;
+    for (const relative of required) {
+      const target = path.join(store, relative);
+      if (!destinations.has(target)) block('required-record-missing', target);
+    }
+  }
   if (files.length === 0) block('canonical-reconciliation-required', mainRoot);
   const plan = {
     schema: 'aitm.runtime-migration-plan/v1',
