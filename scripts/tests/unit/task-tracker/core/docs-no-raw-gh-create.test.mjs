@@ -18,9 +18,17 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import {
+  readFileSync,
+  readdirSync,
+  statSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  mkdtempSync,
+} from 'node:fs';
 // @story #1873
-import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -138,7 +146,7 @@ test('inline prohibition mentions are preserved and never flagged', () => {
 
 // #1873 A current-doc scan must not follow ephemeral evidence or test hosts.
 test('ignored artifact documents are excluded while current documentation stays visible', () => {
-  const fixture = createRuntimeRootFixture('doc-policy-scan-');
+  const fixture = mkdtempSync(path.join(projectScratchDir('test'), 'doc-policy-scan-'));
   try {
     const command = 'gh issue' + ' create';
     for (const file of [

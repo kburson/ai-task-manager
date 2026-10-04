@@ -198,18 +198,23 @@ function migrateLegacyFields(parsed) {
 export function projectDirForState(statePath) {
   const abs = path.isAbsolute(statePath) ? statePath : path.resolve(statePath);
   const norm = abs.split(path.sep).join('/');
+  // #1873 A sanctioned isolated test host bounds all ancestor state lookup.
+  const runtimeHostIdx = Math.max(
+    norm.lastIndexOf(SHARED_DIR_SEGMENT + 'runtime/test-sandboxes/'),
+    norm.lastIndexOf(SHARED_DIR_SEGMENT + 'runtime/test-fixtures/')
+  );
   // #573: the state file now lives under `<projDir>/.tmp/aitm/state/`. Anchor on
   // the rightmost `/.tmp/aitm/` segment first (worktree-local wins over main, per
   // #332). Checked before the legacy `.ai-task-manager/`/`.claude/` containers so
   // a relocated state path resolves to its true project root.
   const tmpIdx = norm.lastIndexOf(TMP_AITM_SEGMENT);
-  if (tmpIdx !== -1) return abs.slice(0, tmpIdx);
+  if (tmpIdx > runtimeHostIdx) return abs.slice(0, tmpIdx);
   // `.ai-task-manager/` is always a real state container — anchor on the
   // rightmost one (worktree-local wins over main, per #332).
   // #1873 — runtime test hosts are metadata directories, not state containers.
   for (let from = norm.length; ;) {
     const idx = norm.lastIndexOf(SHARED_DIR_SEGMENT, from);
-    if (idx === -1) break;
+    if (idx <= runtimeHostIdx) break;
     const after = norm.slice(idx + SHARED_DIR_SEGMENT.length);
     if (!after.startsWith('runtime/test-sandboxes/') && !after.startsWith('runtime/test-fixtures/'))
       return abs.slice(0, idx);
@@ -224,7 +229,7 @@ export function projectDirForState(statePath) {
   // followed by the state file, so it still anchors correctly. (#486 follow-up)
   for (let from = norm.length; ;) {
     const idx = norm.lastIndexOf('/.claude/', from);
-    if (idx === -1) break;
+    if (idx <= runtimeHostIdx) break;
     const after = norm.slice(idx + '/.claude/'.length);
     if (!after.startsWith('worktrees/')) return abs.slice(0, idx);
     from = idx - 1;

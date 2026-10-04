@@ -6,8 +6,7 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import {
   loadState,
@@ -20,7 +19,10 @@ import {
   durableWordMarkers,
 } from '../../../../task-tracker/state.mjs';
 
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-'));
+// #1873 Pure filesystem state fixtures own a sanctioned runtime host; no Git.
+const fixtureParent = path.join(process.cwd(), '.ai-task-manager', 'runtime', 'test-fixtures');
+mkdirSync(fixtureParent, { recursive: true });
+const tmp = mkdtempSync(path.join(fixtureParent, 'tt-state-'));
 const statePath = path.join(tmp, 'state.json');
 const preferredStatePath = path.join(tmp, '.ai-task-manager', 'task-tracker-state.json');
 const legacyStatePath = path.join(tmp, '.claude', 'task-tracker-state.json');
@@ -123,7 +125,7 @@ assert.equal(s.active, '#201');
 // '.ai-task-manager/task-tracker-state.json' relative to repo root.
 {
   const cwdBefore = process.cwd();
-  const relTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-rel-'));
+  const relTmp = mkdtempSync(path.join(fixtureParent, 'tt-state-rel-'));
   // #273 — sid resolution now consults the provider registry env keys
   // (CLAUDE_CODE_SESSION_ID, CLAUDE_SESSION_ID, CODEX_THREAD_ID,
   // CODEX_SESSION_ID, plus AI_TASK_MANAGER_SESSION_ID). Save+restore so this test pins the
@@ -210,7 +212,7 @@ assert.equal(
 // and returns 0 when the project has no state yet.
 {
   const cwdBefore = process.cwd();
-  const dwTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-dw-'));
+  const dwTmp = mkdtempSync(path.join(fixtureParent, 'tt-state-dw-'));
   const savedEnv = {
     CLAUDE_CODE_SESSION_ID: process.env.CLAUDE_CODE_SESSION_ID,
     CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID,

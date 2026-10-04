@@ -104,3 +104,20 @@ test('projectDirForState: nested runtime fixture owns its state rather than the 
   assert.equal(projectDirForState(`${root}/.ai-task-manager/task-tracker-state.json`), root);
   assert.equal(projectDirForState(`${root}/state.json`), root);
 });
+
+// #1873 Runtime-host isolation applies to every ancestor state container.
+test('projectDirForState: outer Claude containers cannot capture plain runtime fixture state', () => {
+  for (const namespace of ['test-sandboxes', 'test-fixtures']) {
+    const root = `/Users/alice/.claude/source/.ai-task-manager/runtime/${namespace}/verification`;
+    const fixture = `${root}/.scratch/test/state-fixture`;
+    assert.equal(projectDirForState(`${fixture}/state.json`), fixture);
+    assert.equal(projectDirForState(`${root}/.claude/task-tracker-state.json`), root);
+    assert.equal(projectDirForState(`${root}/.ai-task-manager/task-tracker-state.json`), root);
+  }
+});
+
+test('projectDirForState: outer runtime ledger containers cannot capture fixture state', () => {
+  const root = '/repo/.tmp/aitm/source/.ai-task-manager/runtime/test-sandboxes/verification';
+  assert.equal(projectDirForState(`${root}/state.json`), root);
+  assert.equal(projectDirForState(`${root}/.tmp/aitm/state/task-tracker-state.json`), root);
+});
