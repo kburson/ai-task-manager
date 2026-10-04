@@ -300,6 +300,48 @@ test('a registered exact generation refresh requires positive discharge, preserv
   assert.equal(f.posts, 2);
 });
 
+test('generation refresh cannot extend authorization expiry or reserve a publication', async () => {
+  const f = fixture(),
+    p = await prepared(f);
+  await record(f, p);
+  const next = await prepared(f, 'expiry-refresh');
+  next.proposal.bindings[1].sessionId = 'native-replacement';
+  next.proposal.bindings[1].generation = 'new-generation';
+  next.proposal.expiresAt = '2026-10-04T02:00:00.000Z';
+  const { rankWaveDigest } = await import('../../../../task-tracker/lib/epic-rank-wave-policy.mjs');
+  f.runtime.observeDischarge = async () => ({
+    verified: true,
+    issue: 144,
+    oldGeneration: 'gen-144',
+    oldSessionId: 'native-144',
+    overlapping: false,
+  });
+  let reservations = 0;
+  const reserve = f.runtime.reserveOperation;
+  f.runtime.reserveOperation = async (...args) => {
+    reservations++;
+    return reserve(...args);
+  };
+  const result = await executeRankWaveWrite({
+    action: 'refresh',
+    repository: 'o/r',
+    epic: 107,
+    now: at,
+    runtime: f.runtime,
+    input: {
+      schema: 'aitm.epic-wave-request/v1',
+      proposal: next.proposal,
+      expectedProposalDigest: rankWaveDigest(next.proposal),
+      source: f.comments[0].wave.record.source,
+      previousDigest: f.comments[0].wave.digest,
+    },
+  });
+  assert.equal(result.status, 'blocked');
+  assert.equal(result.code, 'rank-wave-refresh-scope-or-discharge');
+  assert.equal(reservations, 0);
+  assert.equal(f.posts, 1);
+});
+
 test('fresh observation after comment write prevents publishing a graph that changed in flight', async () => {
   const f = fixture(),
     p = await prepared(f),

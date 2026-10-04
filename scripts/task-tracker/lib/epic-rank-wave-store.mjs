@@ -404,7 +404,8 @@ async function writeLocked({ action, repository, epic, input, now, runtime }) {
       !same(prior.record.graph, proposal.graph) ||
       !same(prior.record.members, proposal.members) ||
       !same(prior.record.source, input.source) ||
-      !same(prior.record.parent, proposal.parent)
+      !same(prior.record.parent, proposal.parent) ||
+      prior.record.expiresAt !== proposal.expiresAt
     )
       return blocked('refresh-scope-or-discharge');
     const next = proposal.bindings.find((b) => b.issue === discharge.issue);

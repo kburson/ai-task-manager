@@ -1,4 +1,4 @@
-// @story #1673
+// @story #1673 #1872
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -348,7 +348,7 @@ test('admission inventory accounts for every canonical command, alias, and class
     }
     if (entry.gateCall === null) assert.ok(entry.exception, entry.path);
   }
-  assert.equal(VERBS.size, 74);
+  assert.equal(VERBS.size, 75);
   // #1848 adds the bounded draft-branch standalone route.
   assert.equal(Object.keys(SCRIPTS).length, 24);
   assert.deepEqual(
