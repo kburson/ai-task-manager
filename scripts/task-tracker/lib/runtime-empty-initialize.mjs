@@ -32,7 +32,12 @@ import {
 export { inspectEmptyRuntimeInitialization } from './runtime-empty-recovery.mjs';
 import { validEmptyRuntimePlan, emptyRuntimeControl } from './runtime-empty-record.mjs';
 import { randomUUID } from 'node:crypto';
-import { RuntimeRootError, assertRuntimeStoreRecords } from './runtime-storage.mjs';
+import {
+  RuntimeRootError,
+  assertRuntimeReadable,
+  readRuntimeActivationRoot,
+  resolveRuntimeRoot,
+} from './runtime-storage.mjs';
 import { INITIAL_RUNTIME_RECORDS } from './runtime-initialization-record.mjs';
 import { observeRuntimeAuthorityCensus } from './runtime-authority-census.mjs';
 import {
@@ -263,14 +268,24 @@ export async function resumeEmptyRuntimeInitialization({
   if (observed.digest !== observedDigest)
     emptyFailure('RUNTIME_MIGRATION_CONFLICT', 'Protected empty observation changed');
   const active = emptyStat(paths.controlPath) && JSON.parse(readFileSync(paths.controlPath));
-  if (
-    journal.status === 'complete' &&
-    emptyRuntimeDigest(active) === emptyRuntimeDigest(emptyRuntimeControl(journal.plan, 'active'))
-  ) {
-    // Completed retries validate current catalog records; no absence replay or
-    // publication overwrites legitimate records written after activation.
-    assertEmptyAncestors(paths, journal);
-    assertRuntimeStoreRecords(paths);
+  if (journal.status === 'complete' && active?.status === 'active') {
+    const current = resolveRuntimeRoot({ cwd: mainRoot, env: {} });
+    const physical = {
+      projectRoot: current.projectRoot,
+      gitDir: current.worktreeIdentity.gitDir,
+      commonDir: current.worktreeIdentity.commonDir,
+    };
+    if (emptyRuntimeDigest(physical) !== emptyRuntimeDigest(journal.plan.mainIdentity))
+      emptyFailure(
+        'RUNTIME_MIGRATION_CONFLICT',
+        'Completed empty receipt physical identity changed'
+      );
+    // The real current proof admits original or successor generation; retry has
+    // no authority to republish fixed stores or replay the old absence census.
+    const admitted = readRuntimeActivationRoot({ projectRoot, mainRoot });
+    if (admitted.activation.kind === 'empty' && admitted.activation.id === operationId)
+      assertEmptyAncestors(paths, journal);
+    assertRuntimeReadable({ projectRoot, mainRoot });
     return { status: 'complete', operationId, journal: paths.journalPath };
   }
   assertEmptyConflictSet(paths, journal);

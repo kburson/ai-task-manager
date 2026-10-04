@@ -254,3 +254,19 @@ for (const kind of [
     assert.deepEqual(snapshotTree(f.root), before);
     assert.deepEqual(snapshotTree(f.linked), local);
   });
+
+// A null main control must remain a typed protected refusal, including migration-v1 activation observations.
+test('null main migration control refuses activation and ordinary main reads without writes', async (t) => {
+  const f = fixture(t);
+  addLinked(f);
+  await activateRuntimeRootFixture(f.root, [f.linked]);
+  writeFileSync(path.join(f.root, '.ai-task-manager/runtime/control.json'), 'null');
+  const before = snapshotTree(f.root);
+  assert.throws(() => storage.readRuntimeActivationRoot(f.local), {
+    code: 'RUNTIME_CONTROL_INVALID',
+  });
+  assert.throws(() => storage.assertRuntimeReadable({ projectRoot: f.root, mainRoot: f.root }), {
+    code: 'RUNTIME_CONTROL_INVALID',
+  });
+  assert.deepEqual(snapshotTree(f.root), before);
+});

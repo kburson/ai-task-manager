@@ -233,8 +233,14 @@ export function writeRuntimeRecordBatch(records, options = {}) {
           dev: stat.dev,
           ino: stat.ino,
           controlDigest: runtimeBatchDigest(bytes),
-          transactionId: control.transactionId,
-          planDigest: control.planDigest,
+          transactionId:
+            control.schema === 'aitm.runtime-control/v2'
+              ? control.activation.id
+              : control.transactionId,
+          planDigest:
+            control.schema === 'aitm.runtime-control/v2'
+              ? control.activation.digest
+              : control.planDigest,
         };
       }),
       members,

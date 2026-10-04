@@ -235,44 +235,32 @@ export async function observeRuntimeAuthorityCensus({ projectRoot, mainRoot, ada
   blockers.push(...observeRuntimeAuthorityRootDrift(observed));
   for (const item of observed.authority)
     if (item.present) blockers.push({ code: 'authority-present', target: item.target });
-  if (
-    !writerObservation ||
-    writerObservation.complete !== true ||
-    !Array.isArray(writerObservation.writers) ||
-    !Array.isArray(writerObservation.claims)
-  )
-    blockers.push({ code: 'writer-census-unknown', target: mainRoot });
-  else {
-    const same = (writer) =>
-      ['provider', 'sid', 'pid', 'processToken'].every(
-        (key) => owner[key] && writer[key] === owner[key]
-      );
-    if (
-      writerObservation.writers.some((writer) => !same(writer)) ||
-      writerObservation.claims.some(
-        (claim) => claim.provider !== owner.provider || claim.sid !== owner.sid
-      )
-    )
-      blockers.push({ code: 'writers-active', target: mainRoot });
-  }
-  // The current authenticated invoker is diagnostic, not an approved future owner.
-  const canonicalWriters =
+  const sameInvoker = (writer) =>
+    writer &&
+    ['provider', 'sid', 'pid', 'processToken', 'host'].every(
+      (key) => owner[key] && writer[key] === owner[key]
+    );
+  const complete =
     writerObservation &&
+    writerObservation.complete === true &&
     Array.isArray(writerObservation.writers) &&
-    Array.isArray(writerObservation.claims)
-      ? {
-          ...writerObservation,
-          writers: writerObservation.writers.filter(
-            (writer) =>
-              !['provider', 'sid', 'pid', 'processToken'].every(
-                (key) => owner[key] && writer[key] === owner[key]
-              )
-          ),
-          claims: writerObservation.claims.filter(
-            (claim) => claim.provider !== owner.provider || claim.sid !== owner.sid
-          ),
-        }
-      : { complete: false };
+    Array.isArray(writerObservation.claims) &&
+    Array.isArray(writerObservation.unknown) &&
+    writerObservation.unknown.length === 0;
+  if (!complete) blockers.push({ code: 'writer-census-unknown', target: mainRoot });
+  else if (
+    writerObservation.writers.some((writer) => !sameInvoker(writer)) ||
+    writerObservation.claims.some((claim) => !sameInvoker(claim))
+  )
+    blockers.push({ code: 'writers-active', target: mainRoot });
+  // The exact authenticated current process is diagnostic, never a future owner grant.
+  const canonicalWriters = complete
+    ? {
+        ...writerObservation,
+        writers: writerObservation.writers.filter((writer) => !sameInvoker(writer)),
+        claims: writerObservation.claims.filter((claim) => !sameInvoker(claim)),
+      }
+    : { complete: false };
   return {
     ...observed,
     mainIdentity: observed.rootIdentities.find(

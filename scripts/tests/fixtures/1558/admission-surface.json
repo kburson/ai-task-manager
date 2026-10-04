@@ -2561,6 +2561,8 @@
         "../lib/runtime-initialize.mjs",
         "../lib/runtime-initialization-record.mjs",
         "../lib/runtime-migration-apply.mjs",
+        "../lib/runtime-empty-initialize.mjs",
+        "../lib/runtime-empty-record.mjs",
         "../lib/runtime-batch.mjs"
       ],
       "firstPotentialEffect": "internal invocation",

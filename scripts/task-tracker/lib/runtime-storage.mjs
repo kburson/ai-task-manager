@@ -381,7 +381,7 @@ export function assertRuntimeReadable(roots) {
     layout.localRuntimeRoot,
     'RUNTIME_CONTROL_INVALID'
   );
-  if (candidateControl.schema === 'aitm.runtime-control/v2') {
+  if (candidateControl?.schema === 'aitm.runtime-control/v2') {
     const main = readRuntimeActivationRoot(roots);
     if (
       !validEmptyRuntimeControl(candidateControl) ||

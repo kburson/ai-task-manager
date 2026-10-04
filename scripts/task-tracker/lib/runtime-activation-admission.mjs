@@ -118,7 +118,7 @@ export function readRuntimeMainActivation(layout, primitives) {
   }
   const control = read(controlFile, layout.sharedRuntimeRoot, primitives);
   let activation, originalRoots, originalRootIdentities;
-  if (control.schema === 'aitm.runtime-control/v2') {
+  if (control?.schema === 'aitm.runtime-control/v2') {
     if (
       !validEmptyRuntimeControl(control) ||
       control.projectRoot !== layout.mainRoot ||

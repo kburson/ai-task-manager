@@ -1,5 +1,6 @@
 // @story #1861
 import test from 'node:test';
+import { hostname } from 'node:os';
 import assert from 'node:assert/strict';
 import { mkdirSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
@@ -17,6 +18,7 @@ const adapters = {
     sid: 'empty-plan-contract',
     pid: process.pid,
     processToken: 'fixture-empty-plan',
+    host: hostname(),
   }),
   writerCensus: () => ({ complete: true, writers: [], claims: [], unknown: [] }),
 };
@@ -188,8 +190,8 @@ test('stable absence projection excludes only the authenticated current invoker 
     '../../../../task-tracker/lib/runtime-empty-initialize.mjs',
     import.meta.url
   ).href;
-  const script = `import {planEmptyRuntimeInitialization} from ${JSON.stringify(executable)};
-    const root=process.argv[1];const owner={provider:'fixture',sid:'fixture-'+process.pid,pid:process.pid,processToken:'token-'+process.pid};
+  const script = `import {hostname} from 'node:os';import {planEmptyRuntimeInitialization} from ${JSON.stringify(executable)};
+    const root=process.argv[1];const owner={provider:'fixture',sid:'fixture-'+process.pid,pid:process.pid,processToken:'token-'+process.pid,host:hostname()};
     const plan=await planEmptyRuntimeInitialization({projectRoot:root,mainRoot:root,adapters:{identity:()=>owner,writerCensus:()=>({complete:true,writers:[owner],claims:[],unknown:[]})}});
     console.log(JSON.stringify({pid:process.pid,digest:plan.observationDigest}));`;
   const run = () => {
