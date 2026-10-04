@@ -40,6 +40,7 @@ import { withRegisteredForeignWorktreeAdmission } from '../scripts/task-tracker/
 import { parseForeignWorktreeOverride } from '../scripts/task-tracker/lib/worktree-binding-guard.mjs';
 import { emitSelfDoc } from '../scripts/lib/self-doc.mjs';
 import { admitGuidance, classifyGuidanceRoute } from '../guidance/admission.mjs';
+import { parseRuntimeMigrationInvocation } from '../scripts/task-tracker/lib/runtime-migration-admission.mjs';
 
 const HELP_NAMES = new Set(['help', '?', '--help', '-h', undefined, '']);
 // Flag-shaped help tokens task-tracker recognizes only in the command-help slot.
@@ -130,6 +131,16 @@ export function run(argv = process.argv.slice(2)) {
 
 function runInvocation(argv) {
   const [name, ...rest] = argv;
+  if (
+    name === 'migrate-runtime' &&
+    !parseRuntimeMigrationInvocation(argv) &&
+    !(rest.length === 1 && (HELP_FLAGS.has(rest[0]) || isHelpWord(rest[0])))
+  ) {
+    process.stderr.write(
+      'RUNTIME_MIGRATION_USAGE: unsupported migrate-runtime arguments' + String.fromCharCode(10)
+    );
+    return 2;
+  }
   const recovery = classifyGuidanceRoute(argv) === 'recovery';
   if (kind(name)) {
     const admission = admitGuidance({ argv });

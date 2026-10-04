@@ -1,0 +1,243 @@
+{
+  "$comment": "cspell:disable - Complete observed verification evidence.",
+  "schema": "aitm.manual-verification-evidence/v1",
+  "label": "v1-admission-source",
+  "base": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "candidateKind": "mutable owned overlay on native Git base; archived candidate Git HEAD is not tested source authority",
+  "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+  "sourcePaths": [
+    {
+      "path": "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+      "sha256": "fd13abbdbd183668c11f11a7b048ae2fd2512c1397e3eb1a3d8ce86d53fec221"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-storage.mjs",
+      "sha256": "dcac66bdfffa0359c9d1c4436ab0cc4271008521b9b59ee672286c734b11aac2"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-initialize.mjs",
+      "sha256": "48fa47f865c9d409f94617ee2defa64da1b218263cb1d2c93ea3b5ab95d24b33"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+      "sha256": "cc4c8a7eb4fb39c696f22d59ca4836946c90c13f480a32d764d9936fd565fcc5"
+    }
+  ],
+  "command": {
+    "program": "/usr/bin/sandbox-exec",
+    "args": [
+      "-f",
+      "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/profile.sb",
+      "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+      "--test",
+      "...all canonical selected files"
+    ],
+    "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0",
+    "genuineNativeIdentityInherited": false
+  },
+  "selection": {
+    "changedPaths": [
+      "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+      "scripts/task-tracker/lib/runtime-storage.mjs",
+      "scripts/task-tracker/lib/runtime-initialize.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+    ],
+    "selectedFiles": 909,
+    "escalated": false
+  },
+  "result": {
+    "status": 1,
+    "signal": null,
+    "stdoutHash": "b2df9389569dfbbbbe195f840b91dc0c556d6b304d28dbb273d24b4e1b5fc5c8",
+    "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "counters": {
+    "tests": 6652,
+    "suites": 79,
+    "pass": 5773,
+    "fail": 879,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 295738.903667
+  },
+  "disposition": "Complete 909-file canonical affected scope, no escalation. Aggregate remains failed; 878 located blocks and one unlocated aggregate failure retained.",
+  "privateArtifacts": [
+    {
+      "file": ".scratch/gh/1861-v1-admission-source-selection.json",
+      "bytes": 586193,
+      "sha256": "12a0918bddc04884cd3db941a28d1f4d4d5a024eb77597b88a20c24cf29e22bb"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-source-manifest.json",
+      "bytes": 70807,
+      "sha256": "aafec1e71e2d9c45f9ac52c33c74ab73e422bf911f0f97be43caff784d7b7cc0"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-source-result.json",
+      "bytes": 204,
+      "sha256": "e2578331679bb0e314f09e006a62b2ac50f14c4dd99912d80a6788128b62fb16"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-source.stdout.log",
+      "bytes": 2280051,
+      "sha256": "b2df9389569dfbbbbe195f840b91dc0c556d6b304d28dbb273d24b4e1b5fc5c8"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-source.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "locatedFailureBlocks": 878,
+  "unlocatedAggregateFailureCount": 1,
+  "failureBlocksCanonicalSha256": "a9203a2387da7b03ae0aa2c8f92650f22f201ac79e0d34c438f99fc7a14915a3",
+  "parts": [
+    {
+      "file": "v1-admission-source/failures-01.json",
+      "bytes": 97446,
+      "sha256": "48334e154f45843b6045f44bfb11c777c4add98374f41c28e638a5fb80f0064d",
+      "findings": 49
+    },
+    {
+      "file": "v1-admission-source/failures-02.json",
+      "bytes": 97268,
+      "sha256": "151f64c1e7fd4cb3d53e0d1ab831fbd66ef34bb47b0c015cfb1f4cf8cae17d07",
+      "findings": 46
+    },
+    {
+      "file": "v1-admission-source/failures-03.json",
+      "bytes": 96095,
+      "sha256": "77c34376dcde622c0ef392b4d4ab37ceb86c9e3d3a90d9850b5b52df6bf7dd8f",
+      "findings": 52
+    },
+    {
+      "file": "v1-admission-source/failures-04.json",
+      "bytes": 97377,
+      "sha256": "a7a561134adab96f170328c23bba54e7176d9b57d84bb015d38fd3a3669e1800",
+      "findings": 15
+    },
+    {
+      "file": "v1-admission-source/failures-05.json",
+      "bytes": 97635,
+      "sha256": "3abb2ec10e571cf5c56e4157f9ee802dcc10c537b09f3d3e74525204eaaf08bd",
+      "findings": 57
+    },
+    {
+      "file": "v1-admission-source/failures-06.json",
+      "bytes": 96565,
+      "sha256": "94e85fd36988c613cd1facca6c76b82efe168d456e8281d7f1c2ce2689ce5d03",
+      "findings": 56
+    },
+    {
+      "file": "v1-admission-source/failures-07.json",
+      "bytes": 97391,
+      "sha256": "a1c390699da8d3cc282ed166950262bda84a55ab6ac9f2241bf70501613e5d1a",
+      "findings": 49
+    },
+    {
+      "file": "v1-admission-source/failures-08.json",
+      "bytes": 97951,
+      "sha256": "1c8d6f89f1aa244c704b19daa85e0fa1f839fe53ff85ca59b457d024adf3a568",
+      "findings": 61
+    },
+    {
+      "file": "v1-admission-source/failures-09.json",
+      "bytes": 97876,
+      "sha256": "53cfa0b9a7ee4251616a1a6badf2e02b52558c6e8fbb309002409fe0a7846928",
+      "findings": 44
+    },
+    {
+      "file": "v1-admission-source/failures-10.json",
+      "bytes": 97400,
+      "sha256": "b255a4dbad87d481f47cc9b9f11e174ce7c013d35a73d97a88ae5e556f75f138",
+      "findings": 60
+    },
+    {
+      "file": "v1-admission-source/failures-11.json",
+      "bytes": 97303,
+      "sha256": "b55679145ae2445a81f6d6b26d1e80781b30431f01ddfaf68b6344d2aa156923",
+      "findings": 53
+    },
+    {
+      "file": "v1-admission-source/failures-12.json",
+      "bytes": 96751,
+      "sha256": "2e751ece6bbfe292050ac1d1adfdfcfbdc433ca2108fe6d0e35e00250c8eccb7",
+      "findings": 54
+    },
+    {
+      "file": "v1-admission-source/failures-13.json",
+      "bytes": 97128,
+      "sha256": "495d310dab7e154eaed35516f95e3dac582340933be47ccde517747ebc1160fa",
+      "findings": 55
+    },
+    {
+      "file": "v1-admission-source/failures-14.json",
+      "bytes": 98129,
+      "sha256": "6d0a5caa351c546b824ed5e868a302ed190d62898be55cf7098b6437dbc257ef",
+      "findings": 33
+    },
+    {
+      "file": "v1-admission-source/failures-15.json",
+      "bytes": 97535,
+      "sha256": "69aff06d46b286fbb67e4cbea14a3dcf0cfd9b656ea7dc2b4d635df45bceb01f",
+      "findings": 35
+    },
+    {
+      "file": "v1-admission-source/failures-16.json",
+      "bytes": 97560,
+      "sha256": "45d12313fb5d43cf01ded605dea6c09dabd54eb36210f7fd06a3a34da6676dfe",
+      "findings": 44
+    },
+    {
+      "file": "v1-admission-source/failures-17.json",
+      "bytes": 96513,
+      "sha256": "1d63901b38ca6ffd7990863c72b5ec41096334b09b3b423d9ffa673dac43bf7a",
+      "findings": 49
+    },
+    {
+      "file": "v1-admission-source/failures-18.json",
+      "bytes": 96950,
+      "sha256": "e6117c034cae340090608bcb9be7a762ba9d2083b15f3ee6f8305aba3c29eba9",
+      "findings": 52
+    },
+    {
+      "file": "v1-admission-source/failures-19.json",
+      "bytes": 29223,
+      "sha256": "62b856a4317e8a6994b570490d96219c02c3c46c5a29e994851c139aeaa4099f",
+      "findings": 14
+    }
+  ],
+  "selectedFileParts": [
+    {
+      "file": "v1-admission-source/selected-files-01.json",
+      "bytes": 28007,
+      "sha256": "704da56c15b08eac4164c373536aada9d9b0ae2e1a57779eecc4ce13de18bcb0"
+    },
+    {
+      "file": "v1-admission-source/selected-files-02.json",
+      "bytes": 26661,
+      "sha256": "e794ecd5c2d8a86ae7aee47b56747643ef4cc992eba8f0ba5aa583e33367f063"
+    },
+    {
+      "file": "v1-admission-source/selected-files-03.json",
+      "bytes": 15904,
+      "sha256": "fd9de58a96e2e2d52cf4faab47974432ff9fa74afe5874d607af1e96b86c113f"
+    }
+  ],
+  "observedEPERMBlocks": 727,
+  "historicalComparison": {
+    "comparison": "historical 20334 full canonical scope, not contemporaneous baseline or attribution",
+    "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+    "prior": 873,
+    "currentLocated": 878,
+    "extra": [
+      "test at scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:346:1\n✖ live unleased Node process in an empty root blocks production writer census (135.07925ms)\n  AssertionError [ERR_ASSERTION]: [{\"reason\":\"process-observation-incomplete\"},{\"reason\":\"process-census-unavailable\"}]\n  \n  false !== true\n  \n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:376:12)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n",
+      "test at scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:264:1\n✖ durable reads validate real queue generations and individual authority fields (158.379458ms)\n  Error [RuntimeRootError]: Protected activation proof is missing: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/root-1857-LxQXiG/.ai-task-manager/runtime/migrations/fixture-transaction/bootstrap.json\n      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:39:9)\n      at read (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs:30:5)\n      at readRuntimeMainActivation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs:188:23)\n      at readRuntimeActivationRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:325:10)\n      at Module.assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:434:3)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:270:24)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    code: 'RUNTIME_CONTROL_INVALID'\n  }\n",
+      "test at scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:282:1\n✖ durable reads refuse corrupt control, unsupported schema and partial publication (349.957542ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    Comparison {\n  +   code: 'RUNTIME_CONTROL_INVALID'\n  -   code: 'RUNTIME_TRANSACTION_INCOMPLETE'\n    }\n  \n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:295:12)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: RuntimeRootError: Protected activation proof is missing: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/root-1857-LxQXiG/.ai-task-manager/runtime/migrations/fixture-transaction/bootstrap.json\n        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:39:9)\n        at read (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs:30:5)\n        at readRuntimeMainActivation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs:188:23)\n        at readRuntimeActivationRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:325:10)\n        at Module.assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:434:3)\n        at assert.throws.code.code (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:295:33)\n        at getActual (node:assert:580:5)\n        at strict.throws (node:assert:728:24)\n        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:295:12)\n        at async Test.run (node:internal/test_runner/test:1409:7),\n    expected: { code: 'RUNTIME_TRANSACTION_INCOMPLETE' },\n    operator: 'throws',\n    diff: 'simple'\n  }\n",
+      "test at scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:299:1\n✖ activated stores require valid records and never recover authority from volatile bytes (172.64925ms)\n  Error [RuntimeRootError]: Protected activation proof is missing: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/root-1857-LxQXiG/.ai-task-manager/runtime/migrations/fixture-transaction/bootstrap.json\n      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:39:9)\n      at read (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs:30:5)\n      at readRuntimeMainActivation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs:188:23)\n      at readRuntimeActivationRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:325:10)\n      at Module.assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:434:3)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:303:24)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    code: 'RUNTIME_CONTROL_INVALID'\n  }\n",
+      "test at scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:378:1\n✖ a final runtime record alias refuses even when its target exists (144.179375ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    Comparison {\n  +   code: 'RUNTIME_CONTROL_INVALID'\n  -   code: 'RUNTIME_STATE_CORRUPT'\n    }\n  \n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:385:10)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: RuntimeRootError: Protected activation proof is missing: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/root-1857-LxQXiG/.ai-task-manager/runtime/migrations/fixture-transaction/bootstrap.json\n        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:39:9)\n        at read (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs:30:5)\n        at readRuntimeMainActivation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs:188:23)\n        at readRuntimeActivationRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:325:10)\n        at Module.assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:434:3)\n        at assert.throws.code (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:385:31)\n        at getActual (node:assert:580:5)\n        at strict.throws (node:assert:728:24)\n        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:385:10)\n        at async Test.run (node:internal/test_runner/test:1409:7),\n    expected: { code: 'RUNTIME_STATE_CORRUPT' },\n    operator: 'throws',\n    diff: 'simple'\n  }\n"
+    ]
+  },
+  "attribution": "Historical label comparison is not a contemporaneous baseline. Four owned storage tests lacked genuine protected migration bootstrap; actual producer conversion verified separately. Production process observation remains refused. Other failures are preserved, not waived or all attributed to confinement."
+}

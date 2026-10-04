@@ -306,6 +306,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
       verb: 'migrate',
       dispatch: 'inline',
     },
+    {
+      verb: 'migrate-runtime',
+      dispatch: 'verbs/migrate-runtime.mjs',
+    },
   ].map((entry) => Object.freeze(entry))
 );
 

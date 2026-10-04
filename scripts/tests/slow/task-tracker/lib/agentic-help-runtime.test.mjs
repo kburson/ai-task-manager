@@ -286,6 +286,8 @@ test('routed task wrappers propagate command return codes', () => {
       JSON.stringify({ active: '#123', lastActive: '#123' })
     );
     const result = run(AITM, ['pull-next'], temp, {
+      AI_TASK_MANAGER_APP_NAME: 'claude',
+      AI_TASK_MANAGER_SESSION_ID: 'fixture-task-exit',
       TT_SKIP_FIELD_SELF_CHECK: '1',
       TT_SKIP_NETWORK: '1',
     });
@@ -293,6 +295,8 @@ test('routed task wrappers propagate command return codes', () => {
     assert.match(result.stderr, /Usage: \/task pull-next/);
     for (const verb of ['promote', 'demote', 'plan-approve', 'approve']) {
       const missingTarget = run(AITM, [verb], temp, {
+        AI_TASK_MANAGER_APP_NAME: 'claude',
+        AI_TASK_MANAGER_SESSION_ID: 'fixture-task-exit',
         TT_SKIP_FIELD_SELF_CHECK: '1',
         TT_SKIP_NETWORK: '1',
       });

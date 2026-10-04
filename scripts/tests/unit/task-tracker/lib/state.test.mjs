@@ -7,7 +7,10 @@ initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempOutsideRepo,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
   loadState,
@@ -20,8 +23,9 @@ import {
   durableWordMarkers,
 } from '../../../../task-tracker/state.mjs';
 
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-'));
-const statePath = path.join(tmp, 'state.json');
+// Legacy path anchoring must not inherit a surrounding .ai-task-manager container.
+const tmp = mkdtempOutsideRepo('tt-state-');
+const statePath = path.join(tmp, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
 const preferredStatePath = path.join(tmp, '.ai-task-manager', 'task-tracker-state.json');
 const legacyStatePath = path.join(tmp, '.claude', 'task-tracker-state.json');
 

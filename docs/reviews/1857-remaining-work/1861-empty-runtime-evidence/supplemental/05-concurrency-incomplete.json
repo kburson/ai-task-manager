@@ -1,0 +1,17 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-supplement/v1",
+  "issue": 1861,
+  "originalPosition": 4,
+  "evidence": {
+    "phase": "Task 5 fixture-only incomplete run",
+    "raw": ".scratch/gh/1861-compatibility-concurrency.stdout.log",
+    "result": {
+      "status": null,
+      "signal": "SIGTERM",
+      "reason": "Owned test waited for async after-bootstrap; production boundary is faultSync. Fixture hang diagnosed; run not complete or passing.",
+      "pids": [32848, 32665, 29902]
+    },
+    "reason": "Fixture waited on asynchronous after-bootstrap, which is a synchronous production boundary; corrected to actual async after-fence. No completion or green claimed."
+  }
+}

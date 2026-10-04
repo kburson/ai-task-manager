@@ -15,7 +15,12 @@
 //         `save-plan` clears the matching draft on finalize; clearing a missing
 //         draft is a no-op.
 
-import { test } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -31,13 +36,13 @@ import {
   saveDraftFile,
 } from '../../../../task-tracker/lib/draft-file.mjs';
 import { savePlanFile } from '../../../../task-tracker/lib/plan-file.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const ROOT = path.resolve(__dir, '../../../..');
 
 function tmpProject() {
-  return mkdtempProjectIsolated('discover-autosave-');
+  return createActivatedUnitRuntimeRoot('discover-autosave-');
 }
 
 // ── AC1 — incremental autosave under docs/plans/.drafts/ ────────────────────
@@ -149,13 +154,13 @@ test('AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears 
   const statePath = path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   try {
     mkdirSync(path.dirname(statePath), { recursive: true });
-    writeFileSync(
-      statePath,
-      JSON.stringify({
+    saveState(
+      {
         active: 'discover',
         lastActive: null,
         discoverBucket: { startedAt: '2026-06-27T19:50:05.626Z', wordsAtStart: 0, entries: [] },
-      }) + '\n'
+      },
+      statePath
     );
 
     const draftSrc = path.join(projectDir, 'brainstorm.md');
@@ -168,7 +173,7 @@ test('AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears 
     assert.ok(existsSync(draftPath), 'save-draft wrote the tracked draft');
 
     // Bucket carries the resolved slug so finalize can find the draft.
-    const afterDraft = JSON.parse(readFileSync(statePath, 'utf8'));
+    const afterDraft = loadState(statePath);
     assert.equal(afterDraft.discoverBucket.draftSlug, 'autosave-story');
 
     const planSrc = path.join(projectDir, 'final-plan.md');

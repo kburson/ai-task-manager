@@ -1,0 +1,696 @@
+{
+  "$comment": "cspell:disable - Complete observed cloud failure and qualified fixture runs are preserved review evidence.",
+  "schema": "aitm.manual-verification-evidence/v1",
+  "base": "1007a928b88c5431ed0565794af5512ddba5d639",
+  "productionChanged": false,
+  "cloud": {
+    "run": {
+      "conclusion": "failure",
+      "databaseId": 37176549612,
+      "headSha": "1007a928b88c5431ed0565794af5512ddba5d639",
+      "jobs": [
+        {
+          "completedAt": "2026-10-04T04:17:27Z",
+          "conclusion": "success",
+          "databaseId": 111360229801,
+          "name": "Guidance cache runtime budget",
+          "startedAt": "2026-10-04T04:16:56Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-04T04:16:58Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-04T04:16:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:00Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v5",
+              "number": 2,
+              "startedAt": "2026-10-04T04:16:58Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:02Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-node@v5",
+              "number": 3,
+              "startedAt": "2026-10-04T04:17:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:10Z",
+              "conclusion": "success",
+              "name": "Run npm ci",
+              "number": 4,
+              "startedAt": "2026-10-04T04:17:02Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:18Z",
+              "conclusion": "success",
+              "name": "Measure five fresh-process cache cases",
+              "number": 5,
+              "startedAt": "2026-10-04T04:17:10Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:25Z",
+              "conclusion": "success",
+              "name": "Enforce CI-derived budget with 20 percent headroom",
+              "number": 6,
+              "startedAt": "2026-10-04T04:17:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:25Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-node@v5",
+              "number": 11,
+              "startedAt": "2026-10-04T04:17:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:26Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v5",
+              "number": 12,
+              "startedAt": "2026-10-04T04:17:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:26Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 13,
+              "startedAt": "2026-10-04T04:17:26Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kburson/ai-task-manager/actions/runs/37176549612/job/111360229801"
+        },
+        {
+          "completedAt": "2026-10-04T04:17:57Z",
+          "conclusion": "success",
+          "databaseId": 111360229880,
+          "name": "npm 12.0.2 / Node 26 pack compatibility",
+          "startedAt": "2026-10-04T04:16:57Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-04T04:16:58Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-04T04:16:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:01Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v5",
+              "number": 2,
+              "startedAt": "2026-10-04T04:16:58Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:07Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-node@v5",
+              "number": 3,
+              "startedAt": "2026-10-04T04:17:01Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:10Z",
+              "conclusion": "success",
+              "name": "Run npm install --global \"npm@12.0.2\"",
+              "number": 4,
+              "startedAt": "2026-10-04T04:17:07Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:11Z",
+              "conclusion": "success",
+              "name": "Run test \"$(npm --version)\" = \"12.0.2\"",
+              "number": 5,
+              "startedAt": "2026-10-04T04:17:10Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:13Z",
+              "conclusion": "success",
+              "name": "Run npm ci",
+              "number": 6,
+              "startedAt": "2026-10-04T04:17:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:54Z",
+              "conclusion": "success",
+              "name": "npm pack report compatibility tests",
+              "number": 7,
+              "startedAt": "2026-10-04T04:17:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:55Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-node@v5",
+              "number": 13,
+              "startedAt": "2026-10-04T04:17:54Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:55Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v5",
+              "number": 14,
+              "startedAt": "2026-10-04T04:17:55Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:55Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 15,
+              "startedAt": "2026-10-04T04:17:55Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kburson/ai-task-manager/actions/runs/37176549612/job/111360229880"
+        },
+        {
+          "completedAt": "2026-10-04T04:27:55Z",
+          "conclusion": "failure",
+          "databaseId": 111360229893,
+          "name": "Fast lane (format, lint, unit + integration)",
+          "startedAt": "2026-10-04T04:16:56Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-04T04:16:58Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-04T04:16:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:01Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v5",
+              "number": 2,
+              "startedAt": "2026-10-04T04:16:58Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:01Z",
+              "conclusion": "success",
+              "name": "Materialize local trunk ref for real-git tests (#745)",
+              "number": 3,
+              "startedAt": "2026-10-04T04:17:01Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:02Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-node@v5",
+              "number": 4,
+              "startedAt": "2026-10-04T04:17:01Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:11Z",
+              "conclusion": "success",
+              "name": "Run npm ci",
+              "number": 5,
+              "startedAt": "2026-10-04T04:17:02Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:13Z",
+              "conclusion": "success",
+              "name": "Prepare runtime dependency cache for offline package tests",
+              "number": 6,
+              "startedAt": "2026-10-04T04:17:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:50Z",
+              "conclusion": "success",
+              "name": "Run npm run format:check",
+              "number": 7,
+              "startedAt": "2026-10-04T04:17:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:18:36Z",
+              "conclusion": "success",
+              "name": "Run npm run lint",
+              "number": 8,
+              "startedAt": "2026-10-04T04:17:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:18:37Z",
+              "conclusion": "success",
+              "name": "Memory-seed index parity (#728)",
+              "number": 9,
+              "startedAt": "2026-10-04T04:18:36Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:18:37Z",
+              "conclusion": "success",
+              "name": "Classify docs-only pull request",
+              "number": 10,
+              "startedAt": "2026-10-04T04:18:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:20:08Z",
+              "conclusion": "success",
+              "name": "Unit tests",
+              "number": 11,
+              "startedAt": "2026-10-04T04:18:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:27:54Z",
+              "conclusion": "failure",
+              "name": "Integration tests",
+              "number": 12,
+              "startedAt": "2026-10-04T04:20:08Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:27:54Z",
+              "conclusion": "skipped",
+              "name": "Post Run actions/setup-node@v5",
+              "number": 23,
+              "startedAt": "2026-10-04T04:27:54Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:27:54Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v5",
+              "number": 24,
+              "startedAt": "2026-10-04T04:27:54Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:27:54Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 25,
+              "startedAt": "2026-10-04T04:27:54Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kburson/ai-task-manager/actions/runs/37176549612/job/111360229893"
+        },
+        {
+          "completedAt": "2026-10-04T04:17:28Z",
+          "conclusion": "success",
+          "databaseId": 111360229907,
+          "name": "npm 11.8.0 / Node 24 pack compatibility",
+          "startedAt": "2026-10-04T04:16:57Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-04T04:16:59Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-04T04:16:58Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:02Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v5",
+              "number": 2,
+              "startedAt": "2026-10-04T04:16:59Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:04Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-node@v5",
+              "number": 3,
+              "startedAt": "2026-10-04T04:17:02Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:09Z",
+              "conclusion": "success",
+              "name": "Run npm install --global \"npm@11.8.0\"",
+              "number": 4,
+              "startedAt": "2026-10-04T04:17:04Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:09Z",
+              "conclusion": "success",
+              "name": "Run test \"$(npm --version)\" = \"11.8.0\"",
+              "number": 5,
+              "startedAt": "2026-10-04T04:17:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:17Z",
+              "conclusion": "success",
+              "name": "Run npm ci",
+              "number": 6,
+              "startedAt": "2026-10-04T04:17:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:25Z",
+              "conclusion": "success",
+              "name": "npm pack report compatibility tests",
+              "number": 7,
+              "startedAt": "2026-10-04T04:17:17Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:25Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-node@v5",
+              "number": 13,
+              "startedAt": "2026-10-04T04:17:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:25Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v5",
+              "number": 14,
+              "startedAt": "2026-10-04T04:17:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:25Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 15,
+              "startedAt": "2026-10-04T04:17:25Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kburson/ai-task-manager/actions/runs/37176549612/job/111360229907"
+        },
+        {
+          "completedAt": "2026-10-04T04:23:03Z",
+          "conclusion": "success",
+          "databaseId": 111360229917,
+          "name": "Slow lane (slow tests only)",
+          "startedAt": "2026-10-04T04:16:58Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-04T04:17:01Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-04T04:16:59Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:03Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v5",
+              "number": 2,
+              "startedAt": "2026-10-04T04:17:01Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:06Z",
+              "conclusion": "success",
+              "name": "Materialize local trunk ref for real-git tests (#745)",
+              "number": 3,
+              "startedAt": "2026-10-04T04:17:03Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:09Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-node@v5",
+              "number": 4,
+              "startedAt": "2026-10-04T04:17:06Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:17:17Z",
+              "conclusion": "success",
+              "name": "Run npm ci",
+              "number": 5,
+              "startedAt": "2026-10-04T04:17:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:23:00Z",
+              "conclusion": "success",
+              "name": "Run npm run test:slow",
+              "number": 6,
+              "startedAt": "2026-10-04T04:17:17Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:23:00Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-node@v5",
+              "number": 11,
+              "startedAt": "2026-10-04T04:23:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:23:00Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v5",
+              "number": 12,
+              "startedAt": "2026-10-04T04:23:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-04T04:23:00Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 13,
+              "startedAt": "2026-10-04T04:23:00Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/kburson/ai-task-manager/actions/runs/37176549612/job/111360229917"
+        },
+        {
+          "completedAt": "2026-10-04T04:16:54Z",
+          "conclusion": "skipped",
+          "databaseId": 111360230394,
+          "name": "Guidance publication gate",
+          "startedAt": "2026-10-04T04:16:55Z",
+          "status": "completed",
+          "steps": [],
+          "url": "https://github.com/kburson/ai-task-manager/actions/runs/37176549612/job/111360230394"
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/kburson/ai-task-manager/actions/runs/37176549612"
+    },
+    "raw": {
+      "path": ".scratch/gh/1861-1007-cloud-fast.log",
+      "bytes": 243796,
+      "sha256": "b4bcd212b9bacaa7bc3f04c648bdf3f40e9b8dd03caefa5dd88b8f43e97a5b8c"
+    },
+    "completeFailedFileOutput": "2026-10-04T04:27:54.3769065Z ── scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs ──\n2026-10-04T04:27:54.3769808Z ✔ resume refuses unbound first pending artifacts after a real SIGKILL (234.08734ms)\n2026-10-04T04:27:54.3770544Z ✔ SIGKILL at after-empty-first-journal preserves exact empty recovery (445.86829ms)\n2026-10-04T04:27:54.3771261Z ✔ SIGKILL at after-empty-stage-record preserves exact empty recovery (451.950022ms)\n2026-10-04T04:27:54.3771953Z ✔ SIGKILL at after-empty-staging preserves exact empty recovery (453.803762ms)\n2026-10-04T04:27:54.3772690Z ✔ SIGKILL at after-empty-prepared-control preserves exact empty recovery (482.961032ms)\n2026-10-04T04:27:54.3773423Z ✔ SIGKILL at after-empty-store-rename preserves exact empty recovery (461.933666ms)\n2026-10-04T04:27:54.3774160Z ✔ SIGKILL at after-empty-complete-journal preserves exact empty recovery (483.659328ms)\n2026-10-04T04:27:54.3775053Z ✔ SIGKILL at after-empty-active-control preserves exact empty recovery (432.174008ms)\n2026-10-04T04:27:54.3776023Z ✔ staged byte conflict refuses recovery without changing any file (223.698383ms)\n2026-10-04T04:27:54.3777037Z ✔ unexpected ancestor sibling is never adopted by empty recovery (209.050204ms)\n2026-10-04T04:27:54.3777817Z ✔ SIGKILLed empty resumer requires its own exact death before another recovery (629.411727ms)\n2026-10-04T04:27:54.3778646Z ✔ SIGKILL during coordinator recovery claim retains a resumable ordered history (509.960862ms)\n2026-10-04T04:27:54.3779461Z ✔ live empty publisher cannot be recovered and all protected bytes stay unchanged (195.837996ms)\n2026-10-04T04:27:54.3780171Z ✔ closed empty journal refuses stage-path without writes (191.509102ms)\n2026-10-04T04:27:54.3780793Z ✔ closed empty journal refuses owner-extra without writes (194.480193ms)\n2026-10-04T04:27:54.3781417Z ✔ closed empty journal refuses owner-history without writes (192.462978ms)\n2026-10-04T04:27:54.3782222Z ✖ registered recovery completes an exact dead receipt after durable coordinator removal (3060.263624ms)\n2026-10-04T04:27:54.3782742Z ℹ tests 17\n2026-10-04T04:27:54.3782971Z ℹ suites 0\n2026-10-04T04:27:54.3783188Z ℹ pass 16\n2026-10-04T04:27:54.3783409Z ℹ fail 1\n2026-10-04T04:27:54.3783628Z ℹ cancelled 0\n2026-10-04T04:27:54.3783856Z ℹ skipped 0\n2026-10-04T04:27:54.3784083Z ℹ todo 0\n2026-10-04T04:27:54.3784334Z ℹ duration_ms 8862.120589\n2026-10-04T04:27:54.3784497Z \n2026-10-04T04:27:54.3784611Z ✖ failing tests:\n2026-10-04T04:27:54.3784749Z \n2026-10-04T04:27:54.3785129Z test at scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs:307:1\n2026-10-04T04:27:54.3786312Z ✖ registered recovery completes an exact dead receipt after durable coordinator removal (3060.263624ms)\n2026-10-04T04:27:54.3787045Z   AssertionError [ERR_ASSERTION]: Expected \"actual\" to be strictly unequal to: 0\n2026-10-04T04:27:54.3788089Z       at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs:399:10)\n2026-10-04T04:27:54.3789042Z       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n2026-10-04T04:27:54.3789586Z       at async Test.run (node:internal/test_runner/test:1409:7)\n2026-10-04T04:27:54.3790120Z       at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n2026-10-04T04:27:54.3790560Z     generatedMessage: true,\n2026-10-04T04:27:54.3790826Z     code: 'ERR_ASSERTION',\n2026-10-04T04:27:54.3791077Z     actual: 0,\n2026-10-04T04:27:54.3791291Z     expected: 0,\n2026-10-04T04:27:54.3791547Z     operator: 'notStrictEqual',\n2026-10-04T04:27:54.3791812Z     diff: 'simple'\n2026-10-04T04:27:54.3792029Z   }\n2026-10-04T04:27:54.3792144Z \n2026-10-04T04:27:54.3804342Z ##[error]Process completed with exit code 1.",
+    "counts": {
+      "unitFiles": 941,
+      "integrationFiles": 253,
+      "failedFiles": 1
+    },
+    "slow": {
+      "head": "1007a928b88c5431ed0565794af5512ddba5d639",
+      "run": 37176549612,
+      "job": 111360229917,
+      "bytes": 23858,
+      "sha256": "0441571fa92526bb927bb13093a8ecbd603ccfcc0cb75aee088a6a7e9fdd06f8",
+      "census": ["2026-10-04T04:23:00.2061976Z All 55 test files passed."]
+    }
+  },
+  "diagnosis": {
+    "observed": "The registered command returned success when the test recreated original coordinator bytes; assertion399 required refusal. The failed log did not include inode telemetry.",
+    "inference": "The unchanged owned recovery branch requires the exact dev/ino plus bytes digest. Recreating a file does not guarantee a different inode; the fixture failed to establish its replacement-identity precondition.",
+    "correction": "Retain a read-only descriptor to keep the original inode allocated, then explicitly assert identical bytes and a different physical identity before the unchanged registered refusal and whole-tree preservation assertions.",
+    "boundary": "No runtime schema, v1 digest, command grammar, observer, accepted requirement or recovery behavior changed. This does not certify arbitrary manual protected proof rewriting or broaden genuine-host admission."
+  },
+  "runs": [
+    {
+      "label": "replacement-fixture-before",
+      "selection": {
+        "base": "1007a928b88c5431ed0565794af5512ddba5d639",
+        "changedPaths": ["scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"],
+        "selection": {
+          "tests": [
+            "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+          ],
+          "lanes": [],
+          "reasons": [
+            {
+              "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+              "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+              "signal": "manifest",
+              "reason": "current test tree authority change"
+            },
+            {
+              "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+              "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+              "signal": "changed-test",
+              "reason": "changed or newly discovered test"
+            }
+          ],
+          "escalated": false
+        }
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "sha256": "ab3e4c8784fa8691434701a7a4fb33cc47d31c7323ffdf0f1e6001210640efe5"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 71,
+        "signal": null,
+        "stdoutHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderrHash": "d34a4e4359a4dc36526cf5b363da32f7b7594a3a09eea17cbdfd6425b052d93e"
+      },
+      "stdout": "",
+      "stderr": "sandbox-exec: sandbox_apply: Operation not permitted\n",
+      "rawReferences": {
+        "stdout": ".scratch/gh/1861-replacement-fixture-before.stdout.log",
+        "stderr": ".scratch/gh/1861-replacement-fixture-before.stderr.log"
+      }
+    },
+    {
+      "label": "replacement-fixture-before-host",
+      "selection": {
+        "base": "1007a928b88c5431ed0565794af5512ddba5d639",
+        "changedPaths": ["scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"],
+        "selection": {
+          "tests": [
+            "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+          ],
+          "lanes": [],
+          "reasons": [
+            {
+              "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+              "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+              "signal": "manifest",
+              "reason": "current test tree authority change"
+            },
+            {
+              "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+              "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+              "signal": "changed-test",
+              "reason": "changed or newly discovered test"
+            }
+          ],
+          "escalated": false
+        }
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "sha256": "ab3e4c8784fa8691434701a7a4fb33cc47d31c7323ffdf0f1e6001210640efe5"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 0,
+        "signal": null,
+        "stdoutHash": "6a459da46a48a8c95c4567e0d4198d433919655b59f2b9006188cf4b5a5e53bf",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": "✔ layout audit rejects a discovered test outside the canonical lane tree (285.981542ms)\n✔ layout audit rejects a test placed directly in a canonical lane root (107.654709ms)\n✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (96.944792ms)\n✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (339.924792ms)\n✔ feature-oriented files keep semantic ownership after their lane correction (1.947ms)\n✔ current test-tree baseline is well formed (1.960458ms)\n✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.826334ms)\n✔ AC1: no *.test.mjs file remains directly in a lane root (0.462ms)\n✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (5.5315ms)\n✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (12.250541ms)\n✔ resume refuses unbound first pending artifacts after a real SIGKILL (766.511875ms)\n✔ SIGKILL at after-empty-first-journal preserves exact empty recovery (1317.914375ms)\n✔ SIGKILL at after-empty-stage-record preserves exact empty recovery (1292.465083ms)\n✔ SIGKILL at after-empty-staging preserves exact empty recovery (1261.840833ms)\n✔ SIGKILL at after-empty-prepared-control preserves exact empty recovery (2666.162375ms)\n✔ SIGKILL at after-empty-store-rename preserves exact empty recovery (1362.720417ms)\n✔ SIGKILL at after-empty-complete-journal preserves exact empty recovery (1850.62325ms)\n✔ SIGKILL at after-empty-active-control preserves exact empty recovery (3104.495166ms)\n✔ staged byte conflict refuses recovery without changing any file (751.560125ms)\n✔ unexpected ancestor sibling is never adopted by empty recovery (806.065583ms)\n✔ SIGKILLed empty resumer requires its own exact death before another recovery (1798.302167ms)\n✔ SIGKILL during coordinator recovery claim retains a resumable ordered history (1284.250292ms)\n✔ live empty publisher cannot be recovered and all protected bytes stay unchanged (475.08075ms)\n✔ closed empty journal refuses stage-path without writes (1616.079917ms)\n✔ closed empty journal refuses owner-extra without writes (832.059084ms)\n✔ closed empty journal refuses owner-history without writes (921.864625ms)\n✔ registered recovery completes an exact dead receipt after durable coordinator removal (9542.86175ms)\nℹ tests 27\nℹ suites 0\nℹ pass 27\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 31734.055125\n",
+      "stderr": "",
+      "rawReferences": {
+        "stdout": ".scratch/gh/1861-replacement-fixture-before-host.stdout.log",
+        "stderr": ".scratch/gh/1861-replacement-fixture-before-host.stderr.log"
+      }
+    },
+    {
+      "label": "replacement-fixture-fixed",
+      "selection": {
+        "base": "1007a928b88c5431ed0565794af5512ddba5d639",
+        "changedPaths": ["scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"],
+        "selection": {
+          "tests": [
+            "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+          ],
+          "lanes": [],
+          "reasons": [
+            {
+              "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+              "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+              "signal": "manifest",
+              "reason": "current test tree authority change"
+            },
+            {
+              "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+              "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+              "signal": "changed-test",
+              "reason": "changed or newly discovered test"
+            }
+          ],
+          "escalated": false
+        }
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "sha256": "79c1200a710ef2d6203043789dec4ba81440cd9cf50289a2b481df9f0520db80"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 0,
+        "signal": null,
+        "stdoutHash": "edd8afe4fd977bdbad7d839c35516d746133edd92591d68ff4e6ea4e7993fd3c",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": "✔ layout audit rejects a discovered test outside the canonical lane tree (309.488958ms)\n✔ layout audit rejects a test placed directly in a canonical lane root (104.451ms)\n✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (100.469167ms)\n✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (216.935334ms)\n✔ feature-oriented files keep semantic ownership after their lane correction (1.811292ms)\n✔ current test-tree baseline is well formed (2.065416ms)\n✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.392167ms)\n✔ AC1: no *.test.mjs file remains directly in a lane root (0.623333ms)\n✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (8.691834ms)\n✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (19.988375ms)\n✔ resume refuses unbound first pending artifacts after a real SIGKILL (653.233458ms)\n✔ SIGKILL at after-empty-first-journal preserves exact empty recovery (1667.746209ms)\n✔ SIGKILL at after-empty-stage-record preserves exact empty recovery (1587.704917ms)\n✔ SIGKILL at after-empty-staging preserves exact empty recovery (1680.585792ms)\n✔ SIGKILL at after-empty-prepared-control preserves exact empty recovery (2448.916791ms)\n✔ SIGKILL at after-empty-store-rename preserves exact empty recovery (2016.685292ms)\n✔ SIGKILL at after-empty-complete-journal preserves exact empty recovery (3187.644125ms)\n✔ SIGKILL at after-empty-active-control preserves exact empty recovery (5263.459791ms)\n✔ staged byte conflict refuses recovery without changing any file (756.82725ms)\n✔ unexpected ancestor sibling is never adopted by empty recovery (640.440792ms)\n✔ SIGKILLed empty resumer requires its own exact death before another recovery (1904.590084ms)\n✔ SIGKILL during coordinator recovery claim retains a resumable ordered history (1438.899875ms)\n✔ live empty publisher cannot be recovered and all protected bytes stay unchanged (505.330625ms)\n✔ closed empty journal refuses stage-path without writes (744.79925ms)\n✔ closed empty journal refuses owner-extra without writes (729.2695ms)\n✔ closed empty journal refuses owner-history without writes (1056.290167ms)\n✔ registered recovery completes an exact dead receipt after durable coordinator removal (7654.227791ms)\nℹ tests 27\nℹ suites 0\nℹ pass 27\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 34033.190833\n",
+      "stderr": "",
+      "rawReferences": {
+        "stdout": ".scratch/gh/1861-replacement-fixture-fixed.stdout.log",
+        "stderr": ".scratch/gh/1861-replacement-fixture-fixed.stderr.log"
+      }
+    }
+  ],
+  "classification": "The outer launcher refused sandbox-exec with status71 before tests. The unchanged macOS baseline and corrected macOS scope each passed27/27; Linux cloud17/16/1 is retained as the actual failure, not a fabricated local RED. All runs identify their mutable test overlay and unchanged qualified profile."
+}

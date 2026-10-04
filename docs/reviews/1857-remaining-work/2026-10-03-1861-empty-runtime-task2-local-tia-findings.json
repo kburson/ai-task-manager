@@ -1,0 +1,597 @@
+{
+  "schema": "aitm.manual-evidence-index/v1",
+  "issue": 1861,
+  "source": {
+    "commit": "20334bf5162d8851c42df0a84ad7c4ad389f9bec",
+    "path": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-task2-local-tia-findings.json",
+    "bytes": 1562105,
+    "sha256": "676c9a16d648daeb374a5a9916f39e900a3858580c1aaef8d35ba22897a0a0a8",
+    "canonicalJSONSha256": "9abc22c13e2d3ef8e2ab3b81af1082326ba55b674a8fa44fa34cebe5fc6d762c"
+  },
+  "partition": {
+    "maxSubsetBytes": 98304,
+    "totalRuns": 15,
+    "totalLocatedFindings": 4450,
+    "originalRootKeys": [
+      "issue",
+      "phase",
+      "base",
+      "selectionFileCount",
+      "runner",
+      "locatedFailureSummaries",
+      "unlocatedAggregateFailureCount",
+      "attribution",
+      "privateRawEvidence",
+      "findings",
+      "followupRuns",
+      "supplementalFailureEvidence"
+    ],
+    "ordering": "positions are zero-based indices in the original run findings array",
+    "categoryRule": "recorded-eperm iff the original sandboxDenied field is exactly true; other-failures otherwise",
+    "disposition": "Categories preserve prior observations; they do not waive, repair, or reattribute failures. Acceptance and delivery remain pending."
+  },
+  "runs": [
+    {
+      "id": "01-task2-recovery",
+      "originalPath": "",
+      "originalKeys": [
+        "issue",
+        "phase",
+        "base",
+        "selectionFileCount",
+        "runner",
+        "locatedFailureSummaries",
+        "unlocatedAggregateFailureCount",
+        "attribution",
+        "privateRawEvidence",
+        "findings",
+        "followupRuns",
+        "supplementalFailureEvidence"
+      ],
+      "metadata": {
+        "issue": 1861,
+        "phase": "Task 2 intermediate; not accepted",
+        "base": "914ae88921ee28a662a7d6fadcdbe047b2b1233c",
+        "selectionFileCount": 904,
+        "runner": {
+          "tests": 6584,
+          "pass": 5710,
+          "fail": 874,
+          "cancelled": 0,
+          "skipped": 0,
+          "exit": 1
+        },
+        "locatedFailureSummaries": 873,
+        "unlocatedAggregateFailureCount": 1,
+        "attribution": "Provisional: 727 located summaries include EPERM. Other failures require exact-head cloud/source attribution. No inherited failure is counted as repaired.",
+        "privateRawEvidence": {
+          "stdout": ".scratch/gh/1861-empty-task2-recovery.stdout.log",
+          "stdoutSha256": "b94509067270858cf87b8e1d2c266d74fd4daee8c1e0a7feade7c0547ae16e7e",
+          "stderr": ".scratch/gh/1861-empty-task2-recovery.stderr.log",
+          "selection": ".scratch/gh/1861-empty-task2-recovery-selection.json",
+          "result": ".scratch/gh/1861-empty-task2-recovery-result.json"
+        }
+      },
+      "locatedFindingCount": 873,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-01.json",
+          "sha256": "191c64c9a1e71509ea56adcad73e5f21b0761745d662bf8724bbd9d20883a1e1",
+          "bytes": 81077,
+          "category": "recorded-eperm",
+          "findings": 214
+        },
+        {
+          "file": "1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-02.json",
+          "sha256": "e9aeaf12c030eafc90e961703990557abe7a5a70ce2fd9c573332d78b98dcf27",
+          "bytes": 80830,
+          "category": "recorded-eperm",
+          "findings": 239
+        },
+        {
+          "file": "1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-03.json",
+          "sha256": "e60dbc1f24b79af2086b63433a872751b0ccd14cb57bdc92bdaa25facc319f37",
+          "bytes": 80867,
+          "category": "recorded-eperm",
+          "findings": 243
+        },
+        {
+          "file": "1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-04.json",
+          "sha256": "a8abb5db43989cac0bb14df33f173e42ceb182f7cefda48296dc2be7955ef857",
+          "bytes": 11175,
+          "category": "recorded-eperm",
+          "findings": 31
+        },
+        {
+          "file": "1861-empty-runtime-evidence/01-task2-recovery/other-failures-01.json",
+          "sha256": "91a2aa1306260706760254be8e38c1d968479b0ff3fae52cf84e98297c39ff68",
+          "bytes": 38440,
+          "category": "other-failures",
+          "findings": 146
+        }
+      ]
+    },
+    {
+      "id": "02-linked-first",
+      "originalPath": "/followupRuns/0",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 3 intermediate, not accepted",
+        "base": "e30a8a70a5e3780325e705af8eaf244990c95ba2",
+        "selectionFileCount": 906,
+        "runner": {
+          "tests": 6608,
+          "pass": 5734,
+          "fail": 874,
+          "cancelled": 0,
+          "skipped": 0,
+          "exit": 1
+        },
+        "raw": ".scratch/gh/1861-linked-first.stdout.log"
+      },
+      "locatedFindingCount": 873,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/02-linked-first/recorded-eperm-01.json",
+          "sha256": "dbbb8e88a001132ab4f4a8ce5237fd656495528d07eb85d8d32f41d547c00766",
+          "bytes": 81083,
+          "category": "recorded-eperm",
+          "findings": 214
+        },
+        {
+          "file": "1861-empty-runtime-evidence/02-linked-first/recorded-eperm-02.json",
+          "sha256": "1a9af80b73c1adc958b0d632732b4194ae9bfa54fe7d78e5aa7d1f3654236cbc",
+          "bytes": 80851,
+          "category": "recorded-eperm",
+          "findings": 239
+        },
+        {
+          "file": "1861-empty-runtime-evidence/02-linked-first/recorded-eperm-03.json",
+          "sha256": "b945d8d2291ffeec79d10b6c14854e0461999caff0f714a01777a782a1673c05",
+          "bytes": 80854,
+          "category": "recorded-eperm",
+          "findings": 243
+        },
+        {
+          "file": "1861-empty-runtime-evidence/02-linked-first/recorded-eperm-04.json",
+          "sha256": "0aee7d94cd61b472aeb605ab82f9d7ba13afd6ac3eb4c0d3161a59a7546df3c1",
+          "bytes": 11188,
+          "category": "recorded-eperm",
+          "findings": 31
+        },
+        {
+          "file": "1861-empty-runtime-evidence/02-linked-first/other-failures-01.json",
+          "sha256": "4a58db6d291be4d2cb2893ee17bed62597ad4f214c32a7f8db903346b1b7e878",
+          "bytes": 40739,
+          "category": "other-failures",
+          "findings": 146
+        }
+      ]
+    },
+    {
+      "id": "03-linked-status-first",
+      "originalPath": "/followupRuns/1",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 3 linked-status repair; not accepted",
+        "base": "49d2dd69eb3fca9ae93fb9f4a04b8f925da1c649",
+        "selectionFileCount": 906,
+        "runner": {
+          "tests": 6613,
+          "pass": 5739,
+          "fail": 874,
+          "cancelled": 0,
+          "skipped": 0,
+          "exit": 1
+        },
+        "raw": ".scratch/gh/1861-linked-status-first.stdout.log"
+      },
+      "locatedFindingCount": 873,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-01.json",
+          "sha256": "5dec5334419759e685c105dc5f464f5ab8b28d2efdfee4e30d8d39c5304d7f72",
+          "bytes": 81065,
+          "category": "recorded-eperm",
+          "findings": 214
+        },
+        {
+          "file": "1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-02.json",
+          "sha256": "91b112e2b08760c4b1498b2da5841694f62af3eaa53e857874b001b206029b11",
+          "bytes": 80865,
+          "category": "recorded-eperm",
+          "findings": 239
+        },
+        {
+          "file": "1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-03.json",
+          "sha256": "f7ff49a5e60e47131b1564512026d1655c8f26806e95d7644f37a0c97f0cdd6f",
+          "bytes": 80879,
+          "category": "recorded-eperm",
+          "findings": 243
+        },
+        {
+          "file": "1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-04.json",
+          "sha256": "0c383b55b41953defaa20b6e637f602d21b0dd9430e8fc1f828e099f18dd214d",
+          "bytes": 11186,
+          "category": "recorded-eperm",
+          "findings": 31
+        },
+        {
+          "file": "1861-empty-runtime-evidence/03-linked-status-first/other-failures-01.json",
+          "sha256": "3e971a8085228fe8bd33f0ea1f906106d24eff71b1900872729ceb9c6dd77308",
+          "bytes": 40756,
+          "category": "other-failures",
+          "findings": 146
+        }
+      ]
+    },
+    {
+      "id": "04-bootstrap-first",
+      "originalPath": "/followupRuns/2",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 4 intermediate, not accepted",
+        "base": "09755817baad2fd141114e64d4fab125c28f8588",
+        "selectionFileCount": 293,
+        "runner": {
+          "tests": 2383,
+          "pass": 1910,
+          "fail": 473,
+          "cancelled": 0,
+          "skipped": 0,
+          "exit": 1
+        },
+        "raw": ".scratch/gh/1861-bootstrap-first.stdout.log"
+      },
+      "locatedFindingCount": 473,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-01.json",
+          "sha256": "4c14f495c0fe99812060dd8ee1e9a36b8442dfdc522299a073bb4b210519ccec",
+          "bytes": 81004,
+          "category": "recorded-eperm",
+          "findings": 238
+        },
+        {
+          "file": "1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-02.json",
+          "sha256": "bd5789817c2638f480f10431e447db46b986ee43a8d220b843b9e91eeed3b10b",
+          "bytes": 62749,
+          "category": "recorded-eperm",
+          "findings": 189
+        },
+        {
+          "file": "1861-empty-runtime-evidence/04-bootstrap-first/other-failures-01.json",
+          "sha256": "c28d83cad0686a5f4e95f0c6100f6202b384ca2aad1f0ff55a7e03026718194b",
+          "bytes": 13682,
+          "category": "other-failures",
+          "findings": 46
+        }
+      ]
+    },
+    {
+      "id": "05-bootstrap-next",
+      "originalPath": "/followupRuns/3",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 4 intermediate, not accepted",
+        "base": "09755817baad2fd141114e64d4fab125c28f8588",
+        "selectionFileCount": 293,
+        "runner": {
+          "tests": 2385,
+          "pass": 1913,
+          "fail": 472,
+          "cancelled": 0,
+          "skipped": 0,
+          "exit": 1
+        },
+        "raw": ".scratch/gh/1861-bootstrap-next.stdout.log"
+      },
+      "locatedFindingCount": 472,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-01.json",
+          "sha256": "51fea1a01f1ddbb045ae61eb9be8c6846da64960b0b8dd5918e032db0a62fec0",
+          "bytes": 80713,
+          "category": "recorded-eperm",
+          "findings": 237
+        },
+        {
+          "file": "1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-02.json",
+          "sha256": "4fe32c98de25a33e1c28b0089c2812ff4bdfa6c8f5448cf14bc5d172554f4cf8",
+          "bytes": 63068,
+          "category": "recorded-eperm",
+          "findings": 190
+        },
+        {
+          "file": "1861-empty-runtime-evidence/05-bootstrap-next/other-failures-01.json",
+          "sha256": "316a2bd2797ecb89687d8d3213928e77bf73cb633a64d7310582448c59519940",
+          "bytes": 13243,
+          "category": "other-failures",
+          "findings": 45
+        }
+      ]
+    },
+    {
+      "id": "06-compatibility-red",
+      "originalPath": "/followupRuns/4",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 2,
+        "runner": { "tests": 19, "pass": 11, "fail": 8, "cancelled": 0, "skipped": 0, "exit": 1 },
+        "raw": ".scratch/gh/1861-compatibility-red.stdout.log"
+      },
+      "locatedFindingCount": 8,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/06-compatibility-red/other-failures-01.json",
+          "sha256": "2aaf5891424bb1fb97b92fff29f8f614852f2035435aea82b5034e054348bd8f",
+          "bytes": 3045,
+          "category": "other-failures",
+          "findings": 8
+        }
+      ]
+    },
+    {
+      "id": "07-compatibility-retry-red",
+      "originalPath": "/followupRuns/5",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 2,
+        "runner": { "tests": 19, "pass": 18, "fail": 1, "cancelled": 0, "skipped": 0, "exit": 1 },
+        "raw": ".scratch/gh/1861-compatibility-retry-red.stdout.log"
+      },
+      "locatedFindingCount": 1,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/07-compatibility-retry-red/other-failures-01.json",
+          "sha256": "10ac35c9cf1f1f8ace63605504938b68d17e068c11edbf14dbc58745d28f5a37",
+          "bytes": 618,
+          "category": "other-failures",
+          "findings": 1
+        }
+      ]
+    },
+    {
+      "id": "08-compatibility-first",
+      "originalPath": "/followupRuns/6",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 17,
+        "runner": { "tests": 132, "pass": 132, "fail": 0, "cancelled": 0, "skipped": 0, "exit": 0 },
+        "raw": ".scratch/gh/1861-compatibility-first.stdout.log"
+      },
+      "locatedFindingCount": 0,
+      "parts": []
+    },
+    {
+      "id": "09-compatibility-successor-red",
+      "originalPath": "/followupRuns/7",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 2,
+        "runner": { "tests": 20, "pass": 19, "fail": 1, "cancelled": 0, "skipped": 0, "exit": 1 },
+        "raw": ".scratch/gh/1861-compatibility-successor-red.stdout.log"
+      },
+      "locatedFindingCount": 1,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/09-compatibility-successor-red/other-failures-01.json",
+          "sha256": "018d36a9c770eb6a418faee4f705b60b8b4397419a20a49e892ce6f301f1aa33",
+          "bytes": 543,
+          "category": "other-failures",
+          "findings": 1
+        }
+      ]
+    },
+    {
+      "id": "10-compatibility-successor",
+      "originalPath": "/followupRuns/8",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 17,
+        "runner": { "tests": 133, "pass": 133, "fail": 0, "cancelled": 0, "skipped": 0, "exit": 0 },
+        "raw": ".scratch/gh/1861-compatibility-successor.stdout.log"
+      },
+      "locatedFindingCount": 0,
+      "parts": []
+    },
+    {
+      "id": "11-compatibility-concurrency-next",
+      "originalPath": "/followupRuns/9",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 2,
+        "runner": { "tests": 22, "pass": 22, "fail": 0, "cancelled": 0, "skipped": 0, "exit": 0 },
+        "raw": ".scratch/gh/1861-compatibility-concurrency-next.stdout.log"
+      },
+      "locatedFindingCount": 0,
+      "parts": []
+    },
+    {
+      "id": "12-null-control-red",
+      "originalPath": "/followupRuns/10",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 2,
+        "runner": { "tests": 26, "pass": 25, "fail": 1, "cancelled": 0, "skipped": 0, "exit": 1 },
+        "raw": ".scratch/gh/1861-null-control-red.stdout.log"
+      },
+      "locatedFindingCount": 1,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/12-null-control-red/other-failures-01.json",
+          "sha256": "93dfcd89aa3e0228ecb503eb2b2ae30082b7065e50e6af6c9b00bcc252133633",
+          "bytes": 626,
+          "category": "other-failures",
+          "findings": 1
+        }
+      ]
+    },
+    {
+      "id": "13-task5-first",
+      "originalPath": "/followupRuns/11",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 908,
+        "runner": {
+          "tests": 6638,
+          "pass": 5764,
+          "fail": 874,
+          "cancelled": 0,
+          "skipped": 0,
+          "exit": 1
+        },
+        "raw": ".scratch/gh/1861-task5-first.stdout.log"
+      },
+      "locatedFindingCount": 873,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/13-task5-first/recorded-eperm-01.json",
+          "sha256": "9cc7cf9c5673048e6ffa2df92b0822c4f132a601a24eeea59d298384436f2a78",
+          "bytes": 81099,
+          "category": "recorded-eperm",
+          "findings": 214
+        },
+        {
+          "file": "1861-empty-runtime-evidence/13-task5-first/recorded-eperm-02.json",
+          "sha256": "3427fbc07b8cf9d6d98dfcf6825b5e81a18ffbb286632eeb78abb2002838aec1",
+          "bytes": 80887,
+          "category": "recorded-eperm",
+          "findings": 239
+        },
+        {
+          "file": "1861-empty-runtime-evidence/13-task5-first/recorded-eperm-03.json",
+          "sha256": "6b2a71a4ed5ed0e622f1746cd8c8aed411c8f84b1b8015a74eddcfeaeaa5a7cb",
+          "bytes": 80868,
+          "category": "recorded-eperm",
+          "findings": 243
+        },
+        {
+          "file": "1861-empty-runtime-evidence/13-task5-first/recorded-eperm-04.json",
+          "sha256": "03bd2abb08c6d931e9acca65ed9ba45b4a2b0acc5f9eb3281adb0d900832dd4d",
+          "bytes": 11184,
+          "category": "recorded-eperm",
+          "findings": 31
+        },
+        {
+          "file": "1861-empty-runtime-evidence/13-task5-first/other-failures-01.json",
+          "sha256": "92d868045760d389c835c6a49b9e21a33224b742cf7f7eb6599a3df028710789",
+          "bytes": 40835,
+          "category": "other-failures",
+          "findings": 146
+        }
+      ]
+    },
+    {
+      "id": "14-final-cases",
+      "originalPath": "/followupRuns/12",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 3,
+        "runner": { "tests": 29, "pass": 28, "fail": 1, "cancelled": 0, "skipped": 0, "exit": 1 },
+        "raw": ".scratch/gh/1861-final-cases.stdout.log"
+      },
+      "locatedFindingCount": 1,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/14-final-cases/other-failures-01.json",
+          "sha256": "a42705efdd8c3bf1fcd5f1c72ba4c9932b5b9390d0a84ba86d4d9b4fee1cf8c5",
+          "bytes": 637,
+          "category": "other-failures",
+          "findings": 1
+        }
+      ]
+    },
+    {
+      "id": "15-final-cases-observed",
+      "originalPath": "/followupRuns/13",
+      "originalKeys": ["phase", "base", "selectionFileCount", "runner", "raw", "findings"],
+      "metadata": {
+        "phase": "Task 5 candidate, acceptance pending",
+        "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+        "selectionFileCount": 3,
+        "runner": { "tests": 29, "pass": 28, "fail": 1, "cancelled": 0, "skipped": 0, "exit": 1 },
+        "raw": ".scratch/gh/1861-final-cases-observed.stdout.log"
+      },
+      "locatedFindingCount": 1,
+      "parts": [
+        {
+          "file": "1861-empty-runtime-evidence/15-final-cases-observed/other-failures-01.json",
+          "sha256": "55475dd40a716b218c96223b26b13cd21a45ca2b4a3076738b316d222964d190",
+          "bytes": 668,
+          "category": "other-failures",
+          "findings": 1
+        }
+      ]
+    }
+  ],
+  "supplementalFailureEvidence": [
+    {
+      "file": "1861-empty-runtime-evidence/supplemental/01-linked-history-first.json",
+      "sha256": "d7cf1855dc5e07aa735774dc01eaf253b0733d0607b74ea870b807802750ea83",
+      "bytes": 470,
+      "id": "01-linked-history-first",
+      "originalPosition": 0
+    },
+    {
+      "file": "1861-empty-runtime-evidence/supplemental/02-linked-status-red.json",
+      "sha256": "9ba724ea3b93e91fb0c1ccc0b7bb88dbc2306c4e85a5af44a8e7464c9fd82201",
+      "bytes": 499,
+      "id": "02-linked-status-red",
+      "originalPosition": 1
+    },
+    {
+      "file": "1861-empty-runtime-evidence/supplemental/03-admission-table.json",
+      "sha256": "f0d5e5c3691e5c2b8ed4f146823b4d39eed6d191b2fe28264cd5fd3be27eb3fb",
+      "bytes": 411,
+      "id": "03-admission-table",
+      "originalPosition": 2
+    },
+    {
+      "file": "1861-empty-runtime-evidence/supplemental/04-admission-table-fixed.json",
+      "sha256": "b3b6b84b7ad18e1a67053212182ec4886287338575102955160c3f40948aa9b0",
+      "bytes": 448,
+      "id": "04-admission-table-fixed",
+      "originalPosition": 3
+    },
+    {
+      "file": "1861-empty-runtime-evidence/supplemental/05-concurrency-incomplete.json",
+      "sha256": "539d4fa20768b3586cb39efc2c2b6ced93b1192689dd67d2c0e92242ab7b2960",
+      "bytes": 753,
+      "id": "05-concurrency-incomplete",
+      "originalPosition": 4
+    },
+    {
+      "file": "1861-empty-runtime-evidence/supplemental/06-genuine-host-refusal.json",
+      "sha256": "a38b19af47e8664d073e0dcc60681dc1fd467a2e1dbfbb31beafa6539de30604",
+      "bytes": 610,
+      "id": "06-genuine-host-refusal",
+      "originalPosition": 5
+    },
+    {
+      "file": "1861-empty-runtime-evidence/supplemental/07-cloud-ad03-red.json",
+      "sha256": "13d90c0050c496c63f03afa4874c54a52d5995454c0f9d35e1953c5c8f9d0ef9",
+      "bytes": 934,
+      "id": "07-cloud-ad03-red",
+      "originalPosition": 6
+    }
+  ]
+}

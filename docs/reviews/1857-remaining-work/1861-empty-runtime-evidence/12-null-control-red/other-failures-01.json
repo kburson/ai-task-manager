@@ -1,0 +1,16 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-findings/v1",
+  "issue": 1861,
+  "runId": "12-null-control-red",
+  "category": "other-failures",
+  "positions": [0],
+  "findings": [
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs:259:1",
+      "finding": "✖ null main migration control refuses activation and ordinary main reads without writes (1236.816792ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:"
+    }
+  ]
+}

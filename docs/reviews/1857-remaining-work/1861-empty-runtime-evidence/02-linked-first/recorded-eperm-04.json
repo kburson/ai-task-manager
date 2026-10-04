@@ -1,0 +1,199 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-findings/v1",
+  "issue": 1861,
+  "runId": "02-linked-first",
+  "category": "recorded-eperm",
+  "positions": [
+    836, 837, 838, 839, 840, 841, 844, 845, 846, 850, 851, 852, 853, 854, 855, 857, 858, 859, 860,
+    861, 862, 863, 864, 865, 866, 867, 868, 869, 870, 871, 872
+  ],
+  "findings": [
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs:564:3",
+      "finding": "✖ approval persists task linked intent and revalidates each observation once (0.666542ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs:599:3",
+      "finding": "✖ approval refuses fresh path changes with zero writes (0.258791ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs:599:3",
+      "finding": "✖ approval refuses fresh selector changes with zero writes (0.119167ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs:599:3",
+      "finding": "✖ approval refuses fresh duplicate changes with zero writes (0.107208ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs:599:3",
+      "finding": "✖ approval refuses fresh file changes with zero writes (0.100708ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs:599:3",
+      "finding": "✖ approval refuses fresh key changes with zero writes (0.097292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:54:1",
+      "finding": "✖ the test delegate runs inside promote-held lock instead of deadlocking (140.365625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/inspect'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:83:1",
+      "finding": "✖ the test delegate still acquires for real when promote is not holding (95.377792ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/inspect'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:109:1",
+      "finding": "✖ a promote frame on a different issue does not wave the delegate through (100.378416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/inspect'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:142:1",
+      "finding": "✖ writes canonical deterministic fragments for sanctioned creation (0.353083ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:176:1",
+      "finding": "✖ sanctioned dry-run body preserves exact task verifiers behind AC citations (0.17675ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-body-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:201:1",
+      "finding": "✖ sanctioned creator still refuses explicitly supplied administrative prose (0.158458ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-refusal-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:287:1",
+      "finding": "✖ bad final task causes zero fragment, preflight, and create calls (0.399666ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:364:1",
+      "finding": "✖ dry-run preflights every child and performs no live create (0.264792ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:387:1",
+      "finding": "✖ reads proposal text from the pinned HEAD commit rather than the working tree (0.136875ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:460:1",
+      "finding": "✖ human dry-run output exposes complete proposals and future creator argv (0.114958ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:476:1",
+      "finding": "✖ hidden and placeholder Governing-spec metadata fall back to the sanctioned default (0.120916ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:503:1",
+      "finding": "✖ confirm validates all drafts before the first live creation (0.159333ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:526:1",
+      "finding": "✖ confirm performs no live creation when any draft preflight fails (0.132541ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:544:1",
+      "finding": "✖ refuses unresolved parent provenance before any creator call (0.102833ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:562:1",
+      "finding": "✖ refuses malformed resolved parent provenance (0.089208ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:572:1",
+      "finding": "✖ confirm stops on partial live failure and retains created issue numbers (0.105375ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdtemp '<candidate>/.scratch/split-plan-run-test-XXXXXX'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs:65:1",
+      "finding": "✖ runVerbTest: an allowlist-rejected VC alongside a passing VC yields status \"passed\", not \"failed\" (148.348292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs:79:1",
+      "finding": "✖ runVerbTest: an allowlist-rejected VC alone (no other commands) yields status \"passed\" (161.637708ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs:88:1",
+      "finding": "✖ runVerbTest: a genuine nonzero-exit failure alongside a rejected VC still yields status \"failed\" (100.287625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs:102:1",
+      "finding": "✖ runVerbTest: a metacharacter/injection-vector rejection is NOT excluded from the gate — status stays \"failed\" (111.604708ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs:78:1",
+      "finding": "✖ #952: pre-#864 body — sandbox never sees npm run test:all, both lanes run (179.104542ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs:114:1",
+      "finding": "✖ #1557: Test entry repairs an unchecked provenance-only declaration before moving (136.0075ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs:148:1",
+      "finding": "✖ #952: already-migrated body — idempotent, no extra migration write (65.26175ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/tools/compare-test-fixtures.test.mjs:82:1",
+      "finding": "✖ runBenchmark owns explicit worktrees, alternates samples, and cleans both refs (0.447542ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/benchmark'"
+    },
+    {
+      "location": "scripts/tests/unit/tools/compare-test-fixtures.test.mjs:117:1",
+      "finding": "✖ runBenchmark retains partial samples, failure detail, and cleanup in JSON shape (0.173542ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/benchmark'"
+    }
+  ]
+}

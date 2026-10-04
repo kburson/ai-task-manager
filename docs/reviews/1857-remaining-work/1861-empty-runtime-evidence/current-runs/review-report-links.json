@@ -1,0 +1,91 @@
+{
+  "$comment": "cspell:disable - Complete observed lint diagnostics and output references are preserved review evidence.",
+  "schema": "aitm.manual-verification-evidence/v1",
+  "head": "7beeb4d38c726d773e7f9224175b6da701deb035",
+  "sourceChanged": false,
+  "cloud": {
+    "run": 37175557126,
+    "job": 111357316149,
+    "failedStep": "Run npm run lint",
+    "formatPassed": true,
+    "jsLintPassed": true,
+    "markdownFindings": [
+      "2026-10-04T03:58:32.7012644Z docs/reviews/1857-remaining-work/1861-final-code-review/reviewer-response-r1.md:7:5 error MD034/no-bare-urls Bare URL used [Context: \"https://github.com/kburson/ai-...\"]",
+      "2026-10-04T03:58:32.7015137Z docs/reviews/1857-remaining-work/1861-final-code-review/reviewer-response-r1.md:22:39 error MD034/no-bare-urls Bare URL used [Context: \"https://github.com/kburson/ai-...\"]"
+    ],
+    "unitAndIntegration": "not run after lint failure",
+    "raw": ".scratch/gh/1861-7beeb-cloud-fast.log",
+    "rawBytes": 49463,
+    "sha256": "a1f5e958d9eb36c1b58d419c8c97e41728d2c38100fc4b719876ecceeb4bec2f"
+  },
+  "correction": "The earlier local markdownlint-cli2.mjs module invocation did not execute package.bin. The actual markdownlint-cli2-bin.mjs now executes and validates all833 Markdown files with zero issues. Two report URLs were formatted as links; reviewer meaning and source implementation are unchanged.",
+  "markdownCLI": {
+    "raw": ".scratch/gh/1861-review-markdown-cli.log",
+    "sha256": "0ad845c81b337ac3923df5a55163652db2045fe1936648682f5c5bc31686780e",
+    "files": 833,
+    "issues": 0,
+    "status": 0
+  },
+  "fullQualifiedLocalLint": {
+    "result": {
+      "status": 1,
+      "signal": null,
+      "stdoutSha256": "ea9046ee4b81eafebd988da1f1a05a6741e02327c80798bf608237ea202a26ed",
+      "stderrSha256": "ca93dbbc6f39547c813dbf9652de8219ddc96dcf0ee16d235a00026571b9655c"
+    },
+    "stdoutRaw": ".scratch/gh/1861-review-full-lint.stdout.log",
+    "stderrRaw": ".scratch/gh/1861-review-full-lint.stderr.log",
+    "stdoutSha256": "ea9046ee4b81eafebd988da1f1a05a6741e02327c80798bf608237ea202a26ed",
+    "stderrSha256": "ca93dbbc6f39547c813dbf9652de8219ddc96dcf0ee16d235a00026571b9655c",
+    "completeStdout": "\n/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-2KCQWx/scripts/gh/shebang-late.test.mjs\n  3:2  error  Parsing error: Unexpected character '!'\n\n/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-9TIEdX/scripts/gh/shebang-late.test.mjs\n  3:2  error  Parsing error: Unexpected character '!'\n\n/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-PR0Twb/scripts/gh/shebang-late.test.mjs\n  3:2  error  Parsing error: Unexpected character '!'\n\n/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-mfnObz/scripts/gh/shebang-late.test.mjs\n  3:2  error  Parsing error: Unexpected character '!'\n\n/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-qrW9Vd/scripts/gh/shebang-late.test.mjs\n  3:2  error  Parsing error: Unexpected character '!'\n\n/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-wXlp74/scripts/gh/shebang-late.test.mjs\n  3:2  error  Parsing error: Unexpected character '!'\n\n✖ 6 problems (6 errors, 0 warnings)\n\n",
+    "completeStderr": "npm notice run @kburson/ai-task-manager@0.1.0 lint\nnpm notice run npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals && npm run lint:guidance-release\nnpm notice run @kburson/ai-task-manager@0.1.0 lint:js\nnpm notice run eslint .\n",
+    "disposition": "All six reported parsing errors are intentionally malformed, untracked audit-story-tags-shebang-late fixtures retained in the disposable candidate output namespace from earlier tests. Preserve them; do not alter global discovery/configuration or claim full local lint GREEN. Exact clean committed source requires cloud lint."
+  },
+  "canonicalDocDelta": {
+    "base": "7beeb4d38c726d773e7f9224175b6da701deb035",
+    "changedPaths": [
+      "docs/reviews/1857-remaining-work/1861-final-code-review/reviewer-response-r1.md",
+      "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md",
+      "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+      "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+      "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/review-report-links.json"
+    ],
+    "selection": {
+      "tests": [],
+      "lanes": [],
+      "reasons": [
+        {
+          "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/review-report-links.json",
+          "test": null,
+          "signal": "no-verification-impact",
+          "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+        },
+        {
+          "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+          "test": null,
+          "signal": "no-verification-impact",
+          "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+        },
+        {
+          "changedPath": "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md",
+          "test": null,
+          "signal": "no-verification-impact",
+          "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+        },
+        {
+          "changedPath": "docs/reviews/1857-remaining-work/1861-final-code-review/reviewer-response-r1.md",
+          "test": null,
+          "signal": "no-verification-impact",
+          "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+        },
+        {
+          "changedPath": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+          "test": null,
+          "signal": "no-verification-impact",
+          "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+        }
+      ],
+      "escalated": false
+    }
+  }
+}

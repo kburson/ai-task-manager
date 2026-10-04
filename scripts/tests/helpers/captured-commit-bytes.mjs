@@ -8,6 +8,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const REBASED_EQUIVALENTS = new Map([
+  // #1861: PR #1866 was squashed; all 20 captured sources match its trunk commit.
+  ['e545522e467e484bd96db3b327fc8ccd0047c086', '171c7d93866f67b58effa635be5ae737f54ef9eb'],
   ['1b300cd8121b33631c5c3119daed583eb1d636fb', '4f10bb5d59c47ac91cc3fdd15b0695d5cac2a0fa'],
   ['a38843a639df71cced9f2ee5a40c46fe34ca2f00', 'f65be7720912f989e127a5adf64cef4426f0255a'],
 ]);

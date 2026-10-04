@@ -1,0 +1,18 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-supplement/v1",
+  "issue": 1861,
+  "originalPosition": 1,
+  "evidence": {
+    "raw": ".scratch/gh/1861-linked-status-red.stdout.log",
+    "tests": 23,
+    "pass": 19,
+    "fail": 4,
+    "additionalFailures": [
+      "late active-control replay",
+      "extra completed control field",
+      "wrong completed control root",
+      "missing local queue in completed status"
+    ]
+  }
+}

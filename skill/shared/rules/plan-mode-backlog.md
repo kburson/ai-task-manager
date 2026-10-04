@@ -41,7 +41,7 @@ When assembling a real body, run the script without `--check-only` and capture s
 
 ## Label setup (once, before any issue create)
 
-See [`docs/label-setup.md`](../../../docs/label-setup.md) — master plan label, purpose label inference table, config reads, GraphQL field-ID lookup.
+See [`docs/label-setup.md`](https://github.com/kburson/ai-task-manager/blob/trunk/docs/label-setup.md) — master plan label, purpose label inference table, config reads, GraphQL field-ID lookup.
 
 ## Project Tether — MANDATORY
 

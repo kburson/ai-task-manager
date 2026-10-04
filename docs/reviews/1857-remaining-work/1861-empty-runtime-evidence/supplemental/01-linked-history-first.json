@@ -1,0 +1,13 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-supplement/v1",
+  "issue": 1861,
+  "originalPosition": 0,
+  "evidence": {
+    "raw": ".scratch/gh/1861-linked-history-first.stdout.log",
+    "tests": 6610,
+    "pass": 5735,
+    "fail": 875,
+    "additionalFailure": "runtime-linked-empty-crash.test.mjs: killed resumer after active linked control attempted prepared-control replay; later repaired"
+  }
+}

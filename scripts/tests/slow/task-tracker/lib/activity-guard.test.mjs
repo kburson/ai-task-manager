@@ -8,13 +8,22 @@
 // test sets up a temp git repo so the guard sees a known state.
 
 import { test } from 'node:test';
+import { makeRepo, makeRepoNoState } from '../../../helpers/activity-guard-fixture.mjs';
+import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdirSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import url from 'node:url';
+
+import {
+  createRuntimeRootFixture,
+  activateRuntimeRootFixture,
+} from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { statePath, activeTaskPath } from '../../../../task-tracker/paths.mjs';
+initializeFixtureActor(import.meta.url);
 
 const GUARD = path.resolve(
   url.fileURLToPath(new URL('.', import.meta.url)),
@@ -30,29 +39,6 @@ const BASH_GUARD = path.join(path.dirname(GUARD), 'bash-guard.mjs');
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function makeRepo({ state } = {}) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
-  // Init bare git repo so `git rev-parse --show-toplevel` works.
-  spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
-  mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
-  // #573: the global ledger lives under `.tmp/aitm/state/`.
-  mkdirSync(path.join(dir, '.tmp', 'aitm', 'state'), { recursive: true });
-  const stateObj = { active: '#65', lastActive: '#65' };
-  if (state !== undefined) stateObj.state = state;
-  writeFileSync(
-    path.join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
-    JSON.stringify(stateObj)
-  );
-  return dir;
-}
-
-function makeRepoNoState() {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
-  spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
-  // No state file at all.
-  return dir;
-}
 
 function runGuard({ cwd, payload, stdinRaw, env = process.env, guardPath = GUARD }) {
   const stdin = stdinRaw !== undefined ? stdinRaw : JSON.stringify(payload);
@@ -91,8 +77,8 @@ function cleanup(dir) {
 // Pass cases
 // ---------------------------------------------------------------------------
 
-test('Edit src/foo.ts in develop → pass', () => {
-  const dir = makeRepo({ state: 'develop' });
+test('Edit src/foo.ts in develop → pass', async () => {
+  const dir = await makeRepo({ state: 'develop' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -104,8 +90,8 @@ test('Edit src/foo.ts in develop → pass', () => {
   }
 });
 
-test('Edit docs/notes.md in plan without current-session binding → allow', () => {
-  const dir = makeRepo({ state: 'plan' });
+test('Edit docs/notes.md in plan without current-session binding → allow', async () => {
+  const dir = await makeRepo({ state: 'plan' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -118,8 +104,8 @@ test('Edit docs/notes.md in plan without current-session binding → allow', () 
   }
 });
 
-test('Edit docs/notes.md in refine without an exact binding → allow', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Edit docs/notes.md in refine without an exact binding → allow', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -132,8 +118,8 @@ test('Edit docs/notes.md in refine without an exact binding → allow', () => {
   }
 });
 
-test('Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -148,8 +134,8 @@ test('Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass', () => {
   }
 });
 
-test('Bash npm test in test → pass', () => {
-  const dir = makeRepo({ state: 'test' });
+test('Bash npm test in test → pass', async () => {
+  const dir = await makeRepo({ state: 'test' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -161,8 +147,8 @@ test('Bash npm test in test → pass', () => {
   }
 });
 
-test('Bash READ command (cat README.md) in done → pass', () => {
-  const dir = makeRepo({ state: 'done' });
+test('Bash READ command (cat README.md) in done → pass', async () => {
+  const dir = await makeRepo({ state: 'done' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -174,8 +160,8 @@ test('Bash READ command (cat README.md) in done → pass', () => {
   }
 });
 
-test('Write .scratch/gh/foo.txt in develop → pass (scratch carve-out)', () => {
-  const dir = makeRepo({ state: 'develop' });
+test('Write .scratch/gh/foo.txt in develop → pass (scratch carve-out)', async () => {
+  const dir = await makeRepo({ state: 'develop' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -187,8 +173,8 @@ test('Write .scratch/gh/foo.txt in develop → pass (scratch carve-out)', () => 
   }
 });
 
-test('Write .scratch/plan/draft.md in refine → pass (scratch carve-out)', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Write .scratch/plan/draft.md in refine → pass (scratch carve-out)', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -200,8 +186,8 @@ test('Write .scratch/plan/draft.md in refine → pass (scratch carve-out)', () =
   }
 });
 
-test('Write absolute .scratch/ path → pass (scratch carve-out)', () => {
-  const dir = makeRepo({ state: 'done' });
+test('Write absolute .scratch/ path → pass (scratch carve-out)', async () => {
+  const dir = await makeRepo({ state: 'done' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -216,8 +202,8 @@ test('Write absolute .scratch/ path → pass (scratch carve-out)', () => {
   }
 });
 
-test('Write .tmp/aitm runtime path in refine → pass', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Write .tmp/aitm runtime path in refine → pass', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -236,8 +222,8 @@ test('Write .tmp/aitm runtime path in refine → pass', () => {
 // Block cases
 // ---------------------------------------------------------------------------
 
-test('Edit src/foo.ts in refine → block; suggests develop', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Edit src/foo.ts in refine → block; suggests develop', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -256,8 +242,8 @@ test('Edit src/foo.ts in refine → block; suggests develop', () => {
   }
 });
 
-test('Edit src/foo.ts in test → block; suggests develop', () => {
-  const dir = makeRepo({ state: 'test' });
+test('Edit src/foo.ts in test → block; suggests develop', async () => {
+  const dir = await makeRepo({ state: 'test' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -274,8 +260,8 @@ test('Edit src/foo.ts in test → block; suggests develop', () => {
   }
 });
 
-test('Bash heredoc to src/ in refine → block', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Bash heredoc to src/ in refine → block', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -292,8 +278,8 @@ test('Bash heredoc to src/ in refine → block', () => {
   }
 });
 
-test('Bash npm run build in refine → block', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Bash npm run build in refine → block', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -307,8 +293,8 @@ test('Bash npm run build in refine → block', () => {
   }
 });
 
-test('Bash git commit in refine → block (COMMIT_CODE)', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Bash git commit in refine → block (COMMIT_CODE)', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -326,8 +312,8 @@ test('Bash git commit in refine → block (COMMIT_CODE)', () => {
 // No-active-task policy
 // ---------------------------------------------------------------------------
 
-test('Edit src/foo.ts with active issue but no state field → block; suggest reconcile', () => {
-  const dir = makeRepo({/* no state */});
+test('Edit src/foo.ts with active issue but no state field → block; suggest reconcile', async () => {
+  const dir = await makeRepo({/* no state */});
   try {
     const r = runGuard({
       cwd: dir,
@@ -343,8 +329,8 @@ test('Edit src/foo.ts with active issue but no state field → block; suggest re
   }
 });
 
-test('Edit src/foo.ts with no state file at all → block (no-active-task)', () => {
-  const dir = makeRepoNoState();
+test('Edit src/foo.ts with an empty admitted ledger → block (no-active-task)', async () => {
+  const dir = await makeRepoNoState();
   try {
     const r = runGuard({
       cwd: dir,
@@ -358,8 +344,8 @@ test('Edit src/foo.ts with no state file at all → block (no-active-task)', () 
   }
 });
 
-test('Edit docs/notes.md with active issue but no state → allow', () => {
-  const dir = makeRepo({/* no state */});
+test('Edit docs/notes.md with active issue but no state → allow', async () => {
+  const dir = await makeRepo({/* no state */});
   try {
     const r = runGuard({
       cwd: dir,
@@ -372,9 +358,9 @@ test('Edit docs/notes.md with active issue but no state → allow', () => {
   }
 });
 
-test('Read with no active task is universally allowed; no state file → pass', () => {
+test('Read with no active task and an empty admitted ledger → pass', async () => {
   // Sanity check that READ_* still bypasses the no-state branch.
-  const dir = makeRepoNoState();
+  const dir = await makeRepoNoState();
   try {
     const r = runGuard({
       cwd: dir,
@@ -390,8 +376,8 @@ test('Read with no active task is universally allowed; no state file → pass', 
 // Protocol / malformed input
 // ---------------------------------------------------------------------------
 
-test("malformed stdin JSON → pass (don't deadlock)", () => {
-  const dir = makeRepo({ state: 'refine' });
+test("malformed stdin JSON → pass (don't deadlock)", async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({ cwd: dir, stdinRaw: 'not-json{' });
     assert.deepEqual([r.code, r.stdout], [0, '']);
@@ -400,8 +386,8 @@ test("malformed stdin JSON → pass (don't deadlock)", () => {
   }
 });
 
-test('unknown tool_name → pass-through', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('unknown tool_name → pass-through', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -413,8 +399,8 @@ test('unknown tool_name → pass-through', () => {
   }
 });
 
-test('Edit with missing file_path → pass (avoid false-positive)', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Edit with missing file_path → pass (avoid false-positive)', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -426,8 +412,8 @@ test('Edit with missing file_path → pass (avoid false-positive)', () => {
   }
 });
 
-test('Edit with absolute path inside project root → normalized + blocked in refine', () => {
-  const dir = makeRepo({ state: 'refine' });
+test('Edit with absolute path inside project root → normalized + blocked in refine', async () => {
+  const dir = await makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -448,16 +434,13 @@ test('Edit with absolute path inside project root → normalized + blocked in re
 // Per-session kanbanState derived cache (#218 follow-up)
 // ---------------------------------------------------------------------------
 
-function writeSessionCache(dir, sid, record) {
-  // #573: per-session caches live under `.tmp/aitm/sessions/`.
-  const sessDir = path.join(dir, '.tmp', 'aitm', 'sessions', sid);
-  mkdirSync(sessDir, { recursive: true });
-  writeFileSync(path.join(sessDir, 'active-task.json'), JSON.stringify(record));
+async function writeSessionCache(dir, sid, record) {
+  await setActiveTask(sid, record, dir);
 }
 
-test('session kanbanState cache supplies state when global state field is absent', () => {
-  const dir = makeRepo({/* no legacy state */});
-  writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'develop' });
+test('session kanbanState cache supplies state when global state field is absent', async () => {
+  const dir = await makeRepo({/* no legacy state */});
+  await writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'develop' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -469,11 +452,11 @@ test('session kanbanState cache supplies state when global state field is absent
   }
 });
 
-test('session kanbanState overrides legacy global state when both present', () => {
+test('session kanbanState overrides legacy global state when both present', async () => {
   // Legacy says develop (would allow), session cache says refine (would block).
   // Session cache wins (it mirrors the body-marker source of truth).
-  const dir = makeRepo({ state: 'develop' });
-  writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'refine' });
+  const dir = await makeRepo({ state: 'develop' });
+  await writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'refine' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -487,9 +470,9 @@ test('session kanbanState overrides legacy global state when both present', () =
   }
 });
 
-test('session cache for a different issue is ignored', () => {
-  const dir = makeRepo({/* no legacy state */});
-  writeSessionCache(dir, 'sess-a', { issue: '#999', kanbanState: 'develop' });
+test('session cache for a different issue is ignored', async () => {
+  const dir = await makeRepo({/* no legacy state */});
+  await writeSessionCache(dir, 'sess-a', { issue: '#999', kanbanState: 'develop' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -503,9 +486,9 @@ test('session cache for a different issue is ignored', () => {
   }
 });
 
-test('session cache with invalid kanbanState is ignored; falls back', () => {
-  const dir = makeRepo({/* no legacy state */});
-  writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'bogus' });
+test('session cache with invalid kanbanState is ignored; falls back', async () => {
+  const dir = await makeRepo({/* no legacy state */});
+  await writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'bogus' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -519,13 +502,13 @@ test('session cache with invalid kanbanState is ignored; falls back', () => {
   }
 });
 
-test('most-recently-modified session cache wins when multiple match', () => {
-  const dir = makeRepo({/* no legacy state */});
+test('most-recently-modified session cache wins when multiple match', async () => {
+  const dir = await makeRepo({/* no legacy state */});
   // Older cache says refine
-  writeSessionCache(dir, 'sess-old', { issue: '#65', kanbanState: 'refine' });
+  await writeSessionCache(dir, 'sess-old', { issue: '#65', kanbanState: 'refine' });
   // Force a measurable mtime gap, then write newer cache saying develop.
   spawnSync('sleep', ['0.05']);
-  writeSessionCache(dir, 'sess-new', { issue: '#65', kanbanState: 'develop' });
+  await writeSessionCache(dir, 'sess-new', { issue: '#65', kanbanState: 'develop' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -537,8 +520,8 @@ test('most-recently-modified session cache wins when multiple match', () => {
   }
 });
 
-test('invalid state value in state file with active issue → block; suggest reconcile', () => {
-  const dir = makeRepo({ state: 'bogus-state' });
+test('invalid state value in state file with active issue → block; suggest reconcile', async () => {
+  const dir = await makeRepo({ state: 'bogus-state' });
   try {
     const r = runGuard({
       cwd: dir,
@@ -554,8 +537,8 @@ test('invalid state value in state file with active issue → block; suggest rec
 });
 
 for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
-  test(`linked ${draftingState} document commit uses payload worktree and exact owner`, () => {
-    const root = makeRepo({ state: draftingState });
+  test(`linked ${draftingState} document commit uses payload worktree and exact owner`, async () => {
+    const root = createRuntimeRootFixture('aitm-activity-linked-');
     const binary = 'g' + 'it';
     const verb = 'com' + 'mit';
     const run = (cwd, ...args) => spawnSync(binary, args, { cwd, encoding: 'utf8' });
@@ -570,6 +553,7 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
         0
       );
       assert.equal(run(root, 'worktree', 'add', '-q', '-b', 'work/1830', child).status, 0);
+      await activateRuntimeRootFixture(root, [child]);
       mkdirSync(path.join(child, 'docs'));
       writeFileSync(path.join(child, 'docs', 'plan.md'), 'plan');
       run(child, 'add', 'docs/plan.md');
@@ -579,7 +563,7 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
         JSON.stringify({ repo: 'owner/repo', projectId: 'PVT_test' })
       );
       const sid = 'activity-plan-1830';
-      setActiveTask(
+      await setActiveTask(
         sid,
         {
           issue: '#1830',
@@ -767,7 +751,7 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
       assert.equal(mixed.decision?.decision, 'block');
       assert.match(mixed.decision.reason, /COMMIT_CODE/);
       run(child, 'reset', '-q', '--', 'docs/run.mjs');
-      setActiveTask(
+      await setActiveTask(
         sid,
         { issue: '#1830', kanbanState: 'review', worktreePath: child, worktreeBranch: 'work/1830' },
         child
@@ -775,10 +759,10 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
       const review = runGuard({ cwd: root, payload, env });
       assert.equal(review.decision?.decision, 'block');
       assert.match(review.decision.reason, /state differs|COMMIT_DOCS/);
-      const statePath = path.join(child, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
-      mkdirSync(path.dirname(statePath), { recursive: true });
-      writeFileSync(statePath, JSON.stringify({ choreMode: { active: true } }));
-      setActiveTask(sid, { issue: null }, child);
+      const choreStatePath = statePath(child);
+      mkdirSync(path.dirname(choreStatePath), { recursive: true });
+      writeFileSync(choreStatePath, JSON.stringify({ choreMode: { active: true } }));
+      await setActiveTask(sid, { issue: null }, child);
       const unboundChore = runGuard({ cwd: root, payload, env });
       assert.equal(unboundChore.decision?.decision, 'block');
     } finally {
@@ -789,11 +773,11 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
 }
 
 // @story #1848
-test('native hook session selects its own state instead of an environment session', () => {
-  const dir = makeRepo({ state: 'develop' });
+test('native hook session selects its own state instead of an environment session', async () => {
+  const dir = await makeRepo({ state: 'develop' });
   try {
-    setActiveTask('payload-session', { issue: '#65', kanbanState: 'develop' }, dir);
-    setActiveTask('environment-session', { issue: '#65', kanbanState: 'backlog' }, dir);
+    await setActiveTask('payload-session', { issue: '#65', kanbanState: 'develop' }, dir);
+    await setActiveTask('environment-session', { issue: '#65', kanbanState: 'backlog' }, dir);
     const env = { ...process.env, AI_TASK_MANAGER_SESSION_ID: 'environment-session' };
     const payload = {
       session_id: 'payload-session',
@@ -801,7 +785,10 @@ test('native hook session selects its own state instead of an environment sessio
       tool_input: { file_path: 'src/foo.ts' },
     };
     assert.equal(runGuard({ cwd: dir, payload, env }).decision, null);
-    setActiveTask('payload-session', { issue: '#65', kanbanState: null }, dir);
+    const bindingPath = activeTaskPath('payload-session', dir);
+    const corrupt = JSON.parse(readFileSync(bindingPath, 'utf8'));
+    corrupt.kanbanState = null;
+    writeFileSync(bindingPath, JSON.stringify(corrupt));
     assert.equal(runGuard({ cwd: dir, payload, env }).decision?.decision, 'block');
   } finally {
     cleanup(dir);
@@ -809,8 +796,8 @@ test('native hook session selects its own state instead of an environment sessio
 });
 
 // @story #1848
-test('scratch shell allowance validates physical targets and preserves early code restrictions', () => {
-  const dir = makeRepo({ state: 'backlog' });
+test('scratch shell allowance validates physical targets and preserves early code restrictions', async () => {
+  const dir = await makeRepo({ state: 'backlog' });
   try {
     mkdirSync(path.join(dir, '.scratch'));
     mkdirSync(path.join(dir, 'src'));
@@ -851,8 +838,8 @@ test('scratch shell allowance validates physical targets and preserves early cod
 });
 
 // @story #1848
-test('Bash scope guard does not execute quoted cat payload examples as issue commands', () => {
-  const dir = makeRepo({ state: 'backlog' });
+test('Bash scope guard does not execute quoted cat payload examples as issue commands', async () => {
+  const dir = await makeRepo({ state: 'backlog' });
   try {
     const command = "cat > docs/draft.md <<'EOF'\ngh issue create --title example\nEOF";
     const payload = { tool_name: 'Bash', tool_input: { command } };
@@ -863,10 +850,10 @@ test('Bash scope guard does not execute quoted cat payload examples as issue com
 });
 
 // @story #1848
-test('Plan runner does not bypass exact document binding', () => {
-  const dir = makeRepo({ state: 'plan', activeIssue: '#65' });
+test('Plan runner does not bypass exact document binding', async () => {
+  const dir = await makeRepo({ state: 'plan', activeIssue: '#65' });
   try {
-    setActiveTask('incomplete-plan', { issue: '#65', kanbanState: 'plan' }, dir);
+    await setActiveTask('incomplete-plan', { issue: '#65', kanbanState: 'plan' }, dir);
     const result = runGuard({
       cwd: dir,
       payload: {

@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 // @story #309
 import { strict as assert } from 'node:assert';
+import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
+initializeFixtureActor(import.meta.url);
 import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -11,14 +15,23 @@ import {
 } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-const pexec = promisify(execFile);
+const nativeExec = promisify(execFile);
+const admittedRoots = new Set();
+function pexec(command, args, options) {
+  const fixtureArgs =
+    args[0] === CLI && admittedRoots.has(options.cwd)
+      ? unitRuntimeEntrypointArgs(CLI, args.slice(1))
+      : args;
+  return nativeExec(command, fixtureArgs, options);
+}
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
 // #442 — this sandbox binds #999/#108 via the CLI, which registers a fleet
 // entry; git-isolate it so registerTask cannot escape into the live registry.
-const sandbox = mkdtempProjectIsolated('tt-cli-');
+const sandbox = await createCommittedLegacyRootFixture('tt-cli-');
+admittedRoots.add(sandbox);
 mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
 writeFileSync(
   path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -107,7 +120,8 @@ assert.match(r5.stdout, /Active: #999/);
 // makes `start #N` switch like `resume #N`.
 // #442 — this sandbox binds #200/#201/#202 via the CLI, which registers a fleet
 // entry; git-isolate it so registerTask cannot escape into the live registry.
-const startSwitchSandbox = mkdtempProjectIsolated('tt-start-switch-');
+const startSwitchSandbox = await createCommittedLegacyRootFixture('tt-start-switch-');
+admittedRoots.add(startSwitchSandbox);
 mkdirSync(path.join(startSwitchSandbox, '.ai-task-manager'), { recursive: true });
 writeFileSync(
   path.join(startSwitchSandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -180,7 +194,8 @@ rmSync(sandbox, { recursive: true });
 // ---- Uninitialized guard tests ----
 // Dir has .ai-task-manager/ but no task-tracker.json — fail-closed `config-not-found`.
 // fleet-sandbox-ok: deliberately uninitialized (no task-tracker.json) — every verb fails config-not-found before reaching registerTask, so no leak is possible.
-const noRepoDirBase = mkdtempSync(path.join(projectScratchDir('test'), 'tt-norepo-'));
+const noRepoDirBase = await createCommittedLegacyRootFixture('tt-norepo-');
+admittedRoots.add(noRepoDirBase);
 mkdirSync(path.join(noRepoDirBase, '.ai-task-manager'), { recursive: true });
 const noRepoEnv = {
   ...process.env,
@@ -226,7 +241,8 @@ rmSync(noRepoDirBase, { recursive: true });
 // Worktree pipeline regression guard. Must exit non-zero with "config-not-found at <path>"
 // when an agent boots into a worktree that wasn't seeded with .ai-task-manager/.
 // fleet-sandbox-ok: deliberately unseeded worktree — --role agent must fail config-not-found before reaching registerTask, so no leak is possible.
-const bareWorktree = mkdtempSync(path.join(projectScratchDir('test'), 'tt-bare-wt-'));
+const bareWorktree = await createCommittedLegacyRootFixture('tt-bare-wt-');
+admittedRoots.add(bareWorktree);
 const bareEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: bareWorktree, TT_SKIP_NETWORK: '1' };
 try {
   await pexec('node', [CLI, '#42', '--role', 'agent'], { env: bareEnv, cwd: bareWorktree });

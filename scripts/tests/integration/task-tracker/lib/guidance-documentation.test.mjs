@@ -1,4 +1,4 @@
-// @story #1671
+// @story #1861 #1671
 
 import assert from 'node:assert/strict';
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -61,5 +61,17 @@ test('fenced Markdown headings do not create documentation anchors', () => {
       { packageRoot }
     ).ok,
     true
+  );
+});
+
+test('README reference works in an installed package without docs', () => {
+  const packageRoot = mkdtempProjectIsolated('guidance-readme-');
+  writeFileSync(path.join(packageRoot, 'README.md'), '# Package\n\n## Design and References\n');
+  assert.deepEqual(
+    resolveDocumentationReference(
+      { path: 'README.md', anchor: 'design-and-references' },
+      { packageRoot }
+    ),
+    { ok: true, path: 'README.md', anchor: 'design-and-references' }
   );
 });

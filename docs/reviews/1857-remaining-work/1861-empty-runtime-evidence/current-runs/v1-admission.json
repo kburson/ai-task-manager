@@ -1,0 +1,439 @@
+{
+  "$comment": "cspell:disable - Focused actual verification index.",
+  "schema": "aitm.manual-verification-evidence-index/v1",
+  "issue": 1861,
+  "base": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "maxSubsetBytes": 98304,
+  "runs": [
+    {
+      "file": "v1-admission/v1-admission-red.json",
+      "bytes": 9398,
+      "sha256": "bb6a728c48fa404c6ef266290e888fe53016d4d2ef2d6e7b27e5da80e77845f5",
+      "label": "v1-admission-red",
+      "counters": {
+        "tests": 12,
+        "suites": 0,
+        "pass": 10,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 2335.700209
+      },
+      "selectedFiles": 2,
+      "status": 1
+    },
+    {
+      "file": "v1-admission/v1-admission-red-bound.json",
+      "bytes": 9604,
+      "sha256": "16aaaac16ef6530f2f185d16969fc5c4c3b44247f48bdf04f8709a2a4b839e06",
+      "label": "v1-admission-red-bound",
+      "counters": {
+        "tests": 12,
+        "suites": 0,
+        "pass": 10,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 3153.138667
+      },
+      "selectedFiles": 2,
+      "status": 1
+    },
+    {
+      "file": "v1-admission/v1-admission-red-host.json",
+      "bytes": 7104,
+      "sha256": "d585fc15b4966dacc48ca7a0ffd73ac29162de20d1103c67398961b68f833bb8",
+      "label": "v1-admission-red-host",
+      "counters": {
+        "tests": 12,
+        "suites": 0,
+        "pass": 10,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 3588.899
+      },
+      "selectedFiles": 2,
+      "status": 1
+    },
+    {
+      "file": "v1-admission/v1-admission-green.json",
+      "bytes": 5167,
+      "sha256": "47837cb8ddf4572ae93f9b086e7af6dcf8c29269decb1cebc2a365366e10c8b7",
+      "label": "v1-admission-green",
+      "counters": {
+        "tests": 12,
+        "suites": 0,
+        "pass": 12,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 3641.559084
+      },
+      "selectedFiles": 2,
+      "status": 0
+    },
+    {
+      "file": "v1-admission/v1-admission-validation-red.json",
+      "bytes": 7881,
+      "sha256": "c3f2ff120b3607b5092fc07a1b7ddb6a5a522d8096e74d17b3dcaf68b8814ac7",
+      "label": "v1-admission-validation-red",
+      "counters": {
+        "tests": 13,
+        "suites": 0,
+        "pass": 12,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 5522.102792
+      },
+      "selectedFiles": 2,
+      "status": 1
+    },
+    {
+      "file": "v1-admission/v1-admission-validation-green.json",
+      "bytes": 5339,
+      "sha256": "1b22a970a813c1a7413e331244c751eb67fcd2a3b882d500679f1dbc0846ae96",
+      "label": "v1-admission-validation-green",
+      "counters": {
+        "tests": 13,
+        "suites": 0,
+        "pass": 13,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 5657.608958
+      },
+      "selectedFiles": 2,
+      "status": 0
+    },
+    {
+      "file": "v1-admission/v1-admission-source.json",
+      "bytes": 20640,
+      "sha256": "8269e05ef1d1af965b0d137529885c3478bd76104547994be09fe0f6f4e053df",
+      "label": "v1-admission-source",
+      "counters": {
+        "tests": 6652,
+        "suites": 79,
+        "pass": 5773,
+        "fail": 879,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 295738.903667
+      },
+      "selectedFiles": 909,
+      "status": 1
+    },
+    {
+      "file": "v1-admission/v1-admission-fixture-green.json",
+      "bytes": 15956,
+      "sha256": "1fa24ea86a6e49f45c75d76f75b923118a8ea87d6cd25a32e43858e244f6ece3",
+      "label": "v1-admission-fixture-green",
+      "counters": {
+        "tests": 31,
+        "suites": 0,
+        "pass": 26,
+        "fail": 5,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 5367.217334
+      },
+      "selectedFiles": 3,
+      "status": 1
+    },
+    {
+      "file": "v1-admission/v1-admission-fixture-fixed.json",
+      "bytes": 8002,
+      "sha256": "5c35bbf66a3f3e60d25696fc16fcaccf17b6b56c3b37170dd3696d1de180d6bb",
+      "label": "v1-admission-fixture-fixed",
+      "counters": {
+        "tests": 31,
+        "suites": 0,
+        "pass": 31,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 5388.181
+      },
+      "selectedFiles": 3,
+      "status": 0
+    }
+  ],
+  "deliveryBoundaries": {
+    "file": "v1-admission/delivery-boundaries.json",
+    "bytes": 10043,
+    "sha256": "ae5b50e3e30ee80ddf010904143d8ec43931923f6850e0eedb0ae4e5762c1d56"
+  },
+  "staticChecks": [
+    {
+      "name": "lint",
+      "status": 0,
+      "stdout": ""
+    },
+    {
+      "name": "format",
+      "status": 0,
+      "stdout": "Checking formatting...\nAll matched files use Prettier code style!\n"
+    }
+  ],
+  "sourceIdentity": "Per-run hashes identify mutable owned overlays. Fresh exact-head cloud remains required. Original 4450 historical findings and index remain unchanged.",
+  "documentVerification": {
+    "setupFailure": {
+      "code": "ERR_PACKAGE_PATH_NOT_EXPORTED",
+      "package": "markdownlint-cli2/package.json",
+      "checksLaunched": false,
+      "correction": "Resolve actual package.bin from on-disk package.json rather than an unexported require subpath."
+    },
+    "firstActualChecks": [
+      {
+        "name": "format",
+        "script": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/node_modules/prettier/bin/prettier.cjs",
+        "args": [
+          "--check",
+          "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+          "scripts/task-tracker/lib/runtime-storage.mjs",
+          "scripts/task-tracker/lib/runtime-initialize.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-bound.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-host.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-red.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-01.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-02.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-03.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-04.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-05.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-06.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-07.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-08.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-09.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-10.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-11.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-12.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-13.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-14.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-15.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-16.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-17.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-18.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-19.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-01.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-02.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-03.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-source.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-fixture-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-fixture-fixed.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/delivery-boundaries.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+          "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md"
+        ],
+        "status": 1,
+        "stdout": "Checking formatting...\n",
+        "stderr": "[warn] docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red.json\n[warn] docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-bound.json\n[warn] docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-host.json\n[warn] docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-green.json\n[warn] docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-red.json\n[warn] docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-green.json\n[warn] Code style issues found in 6 files. Run Prettier with --write to fix.\n"
+      },
+      {
+        "name": "markdown",
+        "script": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/node_modules/markdownlint-cli2/markdownlint-cli2-bin.mjs",
+        "args": [
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+          "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md"
+        ],
+        "status": 0,
+        "stdout": "markdownlint-cli2 v0.23.2 (markdownlint v0.41.1)\nFinding: docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md **/*.md !.tmp/** !.scratch/** !node_modules/** !.git/** !.worktrees/** !.claude/worktrees/** !reports/** !coverage/** !output/** !docs/postmortems/** !docs/ai-memory/** !docs/peer-reviews/** !docs/reviews/1857-expanded/**/review-*-author-response-*.md !docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-author-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-reviewer-*-review.md !docs/superpowers/reviews/**/*-review-*-author-response-*.md !docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md !docs/superpowers/reviews/**/review-*-author-response-*.md !docs/superpowers/reviews/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md !docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md !docs/superpowers/reviews/1219/**/protocol-runs/** !.ai-task-manager/memory/** !.superpowers/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/** !.ai-task-manager/runtime/test-fixtures/**\nLinting: 833 files\nSummary: 0 issues in 0 files\n"
+      },
+      {
+        "name": "spelling",
+        "script": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/node_modules/cspell/bin.mjs",
+        "args": [
+          "--no-progress",
+          "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+          "scripts/task-tracker/lib/runtime-storage.mjs",
+          "scripts/task-tracker/lib/runtime-initialize.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-bound.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-host.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-red.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-01.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-02.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-03.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-04.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-05.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-06.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-07.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-08.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-09.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-10.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-11.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-12.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-13.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-14.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-15.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-16.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-17.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-18.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-19.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-01.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-02.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-03.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-source.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-fixture-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-fixture-fixed.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/delivery-boundaries.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+          "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md"
+        ],
+        "status": 1,
+        "stdout": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-01.json:117:58 - Unknown word (preslim)\n",
+        "stderr": "CSpell: Files checked: 40, Issues found: 1 in 1 file.\n"
+      }
+    ],
+    "correction": "Use destination-effective Prettier CLI configuration, retain raw evidence bytes, refresh subset digests, and add spelling directive only to verbatim selected-path inventory.",
+    "secondActualChecks": [
+      {
+        "name": "format",
+        "script": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/node_modules/prettier/bin/prettier.cjs",
+        "args": [
+          "--check",
+          "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+          "scripts/task-tracker/lib/runtime-storage.mjs",
+          "scripts/task-tracker/lib/runtime-initialize.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-bound.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-host.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-red.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-01.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-02.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-03.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-04.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-05.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-06.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-07.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-08.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-09.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-10.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-11.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-12.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-13.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-14.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-15.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-16.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-17.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-18.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-19.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-01.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-02.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-03.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-source.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-fixture-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-fixture-fixed.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/delivery-boundaries.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+          "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md"
+        ],
+        "status": 0,
+        "stdout": "Checking formatting...\nAll matched files use Prettier code style!\n"
+      },
+      {
+        "name": "markdown",
+        "script": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/node_modules/markdownlint-cli2/markdownlint-cli2-bin.mjs",
+        "args": [
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+          "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md"
+        ],
+        "status": 0,
+        "stdout": "markdownlint-cli2 v0.23.2 (markdownlint v0.41.1)\nFinding: docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md **/*.md !.tmp/** !.scratch/** !node_modules/** !.git/** !.worktrees/** !.claude/worktrees/** !reports/** !coverage/** !output/** !docs/postmortems/** !docs/ai-memory/** !docs/peer-reviews/** !docs/reviews/1857-expanded/**/review-*-author-response-*.md !docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-author-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-reviewer-*-review.md !docs/superpowers/reviews/**/*-review-*-author-response-*.md !docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md !docs/superpowers/reviews/**/review-*-author-response-*.md !docs/superpowers/reviews/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md !docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md !docs/superpowers/reviews/1219/**/protocol-runs/** !.ai-task-manager/memory/** !.superpowers/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/** !.ai-task-manager/runtime/test-fixtures/**\nLinting: 833 files\nSummary: 0 issues in 0 files\n"
+      },
+      {
+        "name": "spelling",
+        "script": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/node_modules/cspell/bin.mjs",
+        "args": [
+          "--no-progress",
+          "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+          "scripts/task-tracker/lib/runtime-storage.mjs",
+          "scripts/task-tracker/lib/runtime-initialize.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-bound.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-red-host.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-red.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-validation-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-01.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-02.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-03.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-04.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-05.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-06.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-07.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-08.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-09.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-10.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-11.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-12.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-13.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-14.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-15.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-16.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-17.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-18.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/failures-19.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-01.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-02.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-03.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-source.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-fixture-green.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/v1-admission-fixture-fixed.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission/delivery-boundaries.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission.json",
+          "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+          "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md"
+        ],
+        "status": 1,
+        "stdout": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/v1-admission-source/selected-files-01.json:117:58 - Unknown word (preslim)\n",
+        "stderr": "CSpell: Files checked: 40, Issues found: 1 in 1 file.\n"
+      }
+    ],
+    "finalDirectivePlacement": "Put spelling directive before verbatim inventory text; source test paths remain unchanged.",
+    "finalChecks": [
+      {
+        "name": "format",
+        "status": 0,
+        "stdout": "Checking formatting...\nAll matched files use Prettier code style!\n"
+      },
+      {
+        "name": "spelling",
+        "status": 0,
+        "stdout": ""
+      }
+    ],
+    "documentationSelection": {
+      "selectedFiles": 0,
+      "escalated": false,
+      "privateFile": ".scratch/gh/1861-v1-admission-doc-selection.json"
+    }
+  }
+}

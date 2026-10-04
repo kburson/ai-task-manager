@@ -1,0 +1,103 @@
+{
+  "$comment": "cspell:disable - Complete observed verification evidence.",
+  "schema": "aitm.manual-verification-evidence/v1",
+  "label": "v1-admission-red-host",
+  "base": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "candidateKind": "mutable owned overlay on native Git base; archived candidate Git HEAD is not tested source authority",
+  "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+  "sourcePaths": [
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+      "sha256": "320cf4a87b03c6ea03eddb37c41f56d5641fd40aab0fb441233803b04fc5c516"
+    }
+  ],
+  "command": {
+    "program": "/usr/bin/sandbox-exec",
+    "args": [
+      "-f",
+      "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/profile.sb",
+      "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+      "--test",
+      "...all canonical selected files"
+    ],
+    "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0",
+    "genuineNativeIdentityInherited": false
+  },
+  "selection": {
+    "changedPaths": ["scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"],
+    "selectedFiles": 2,
+    "escalated": false
+  },
+  "result": {
+    "status": 1,
+    "signal": null,
+    "stdoutHash": "3196f3b33ffb4b60b3fe0ddc9e898fd4f764ced1a2d33de27999f9af54de2184",
+    "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "counters": {
+    "tests": 12,
+    "suites": 0,
+    "pass": 10,
+    "fail": 2,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 3588.899
+  },
+  "disposition": "Both actual contract failures reproduced: stale original v1 Git identity admitted and active killed v1 recovery admitted.",
+  "privateArtifacts": [
+    {
+      "file": ".scratch/gh/1861-v1-admission-red-host-selection.json",
+      "bytes": 987,
+      "sha256": "997629b0e1e4ab4c7022b3d651f555258c70121c91891dad3a03c0f9b5c0b1e7"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-red-host-manifest.json",
+      "bytes": 460,
+      "sha256": "0c4bfc62c880f918ff196ca687321b758f510ec819c042e80ab5e7db82218bb5"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-red-host-result.json",
+      "bytes": 204,
+      "sha256": "9a6f65dbd8387d0dc6bd11a6abd01955e7165457c046ad74a208e14e1179fa1a"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-red-host.stdout.log",
+      "bytes": 3070,
+      "sha256": "3196f3b33ffb4b60b3fe0ddc9e898fd4f764ced1a2d33de27999f9af54de2184"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-red-host.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "completeSelection": {
+    "base": "bdb21d38f038583686bb1589d39f406bf11e2745",
+    "changedPaths": ["scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"],
+    "selection": {
+      "tests": [
+        "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+      ],
+      "lanes": [],
+      "reasons": [
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "signal": "manifest",
+          "reason": "current test tree authority change"
+        },
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "test": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "signal": "changed-test",
+          "reason": "changed or newly discovered test"
+        }
+      ],
+      "escalated": false
+    }
+  },
+  "completeStdout": "✔ layout audit rejects a discovered test outside the canonical lane tree (315.338417ms)\n✔ layout audit rejects a test placed directly in a canonical lane root (134.752083ms)\n✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (147.486667ms)\n✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (241.005292ms)\n✔ feature-oriented files keep semantic ownership after their lane correction (1.421458ms)\n✔ current test-tree baseline is well formed (1.156166ms)\n✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.290041ms)\n✔ AC1: no *.test.mjs file remains directly in a lane root (0.274375ms)\n✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (5.1675ms)\n✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (9.814875ms)\n✖ migration-v1 original root recreation with unchanged runtime bytes refuses ordinary reads (1831.715084ms)\n✖ migration-v1 killed linked resumer after active control fences ordinary reads until recovery finishes (1635.400666ms)\nℹ tests 12\nℹ suites 0\nℹ pass 10\nℹ fail 2\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 3588.899\n\n✖ failing tests:\n\ntest at scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs:25:1\n✖ migration-v1 original root recreation with unchanged runtime bytes refuses ordinary reads (1831.715084ms)\n  AssertionError [ERR_ASSERTION]: Missing expected exception.\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs:39:10)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: { code: 'RUNTIME_CONTROL_INVALID' },\n    operator: 'throws',\n    diff: 'simple'\n  }\n\ntest at scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs:43:1\n✖ migration-v1 killed linked resumer after active control fences ordinary reads until recovery finishes (1635.400666ms)\n  AssertionError [ERR_ASSERTION]: Missing expected exception.\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs:73:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: { code: 'RUNTIME_TRANSACTION_INCOMPLETE' },\n    operator: 'throws',\n    diff: 'simple'\n  }\n",
+  "completeStderr": ""
+}

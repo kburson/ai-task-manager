@@ -1,5 +1,6 @@
 // @story #123
 import assert from 'node:assert/strict';
+import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
 import { mkdtempSync, writeFileSync, chmodSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -40,8 +41,8 @@ const FIELDS_NO_ENGAGED = [
 // Stateful, `-q .body`-aware `gh` shim (#409). It stores the body pushed via
 // `gh issue edit --body-file -` to a state file and serves it back, so the
 // write path now exercises mutateIssueBody's fetch → push → verify loop.
-function makeEnv({ initialBody, fieldNodes }) {
-  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-log-time-test-'));
+async function makeEnv({ initialBody, fieldNodes }) {
+  const temp = await createCommittedLegacyRootFixture('aitm-log-time-test-');
   const binDir = join(temp, 'bin');
   const callLog = join(temp, 'gh-calls.log');
   const stateBody = join(temp, 'body-state.txt');
@@ -77,6 +78,10 @@ function makeEnv({ initialBody, fieldNodes }) {
     `  process.exit(0);\n` +
     `}\n` +
     `if (args[0] === 'issue' && args[1] === 'edit') { process.exit(0); }\n` +
+    `if (args[0] === 'api' && args[1] === 'graphql' && args.some(a => a.startsWith('query=') && a.includes('comments'))) {\n` +
+    `  process.stdout.write(JSON.stringify({ data: { repository: { nameWithOwner: 'owner/repo', issue: { number: 999, comments: { totalCount: 1, pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'timing-999', body: COMMENTS }] } } } } }));\n` +
+    `  process.exit(0);\n` +
+    `}\n` +
     `if (args[0] === 'api' && args[1] === 'graphql') {\n` +
     `  const input = fs.readFileSync(0, 'utf8');\n` +
     `  if (input.includes('projectItems')) {\n` +
@@ -93,7 +98,7 @@ function makeEnv({ initialBody, fieldNodes }) {
   chmodSync(ghMock, 0o755);
 
   const aitm = join(temp, '.ai-task-manager');
-  mkdirSync(aitm);
+  mkdirSync(aitm, { recursive: true });
   writeFileSync(
     join(aitm, 'task-tracker.json'),
     JSON.stringify({
@@ -108,20 +113,23 @@ function makeEnv({ initialBody, fieldNodes }) {
     ...process.env,
     PATH: `${binDir}:${process.env.PATH}`,
     AITM_GH_TEST_DOUBLE_BIN: binDir,
+    AI_TASK_MANAGER_PROJECT_DIR: temp,
+    AI_TASK_MANAGER_SESSION_ID: 'log-time',
+    AI_TASK_MANAGER_APP_NAME: 'claude',
   };
   return { temp, callLog, stateBody, env };
 }
 
 // 1. --dry-run shows startTime from earliest timing row without writing
 {
-  const { env, stateBody } = makeEnv({
+  const { env, stateBody } = await makeEnv({
     initialBody: BODY_NO_START,
     fieldNodes: FIELDS_WITH_ENGAGED,
   });
   const result = spawnSync(process.execPath, [script, '999', '--dry-run'], {
     encoding: 'utf8',
     env,
-    cwd: repoRoot,
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR,
   });
 
   assert.equal(result.status, 0, `dry-run failed\n${result.stderr}`);
@@ -133,14 +141,14 @@ function makeEnv({ initialBody, fieldNodes }) {
 
 // 2. Live run repairs startTime AND routes the body write through mutateIssueBody
 {
-  const { callLog, stateBody, env } = makeEnv({
+  const { callLog, stateBody, env } = await makeEnv({
     initialBody: BODY_NO_START,
     fieldNodes: FIELDS_WITH_ENGAGED,
   });
   const result = spawnSync(process.execPath, [script, '999'], {
     encoding: 'utf8',
     env,
-    cwd: repoRoot,
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR,
   });
 
   assert.equal(result.status, 0, `live run failed\n${result.stderr}\n${result.stdout}`);
@@ -168,11 +176,14 @@ function makeEnv({ initialBody, fieldNodes }) {
 
 // 3. No startTime repair when already set in the issue body DB
 {
-  const { env, callLog } = makeEnv({ initialBody: BODY_WITH_START, fieldNodes: FIELDS_NO_ENGAGED });
+  const { env, callLog } = await makeEnv({
+    initialBody: BODY_WITH_START,
+    fieldNodes: FIELDS_NO_ENGAGED,
+  });
   const result = spawnSync(process.execPath, [script, '999'], {
     encoding: 'utf8',
     env,
-    cwd: repoRoot,
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR,
   });
 
   assert.equal(result.status, 0, `noop run failed\n${result.stderr}\n${result.stdout}`);

@@ -10,7 +10,9 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = new URL('../../../../..', import.meta.url).pathname;
@@ -52,8 +54,8 @@ function canonicalBody(scope) {
   );
 }
 
-function setup({ withProjectId = true, tetherExitCode = 0, ghCreateOverride = null } = {}) {
-  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-create-'));
+async function setup({ withProjectId = true, tetherExitCode = 0, ghCreateOverride = null } = {}) {
+  const temp = await createLegacyRootFixture('aitm-create-');
   const binDir = join(temp, 'bin');
   mkdirSync(binDir, { recursive: true });
   mkdirSync(join(temp, '.ai-task-manager'), { recursive: true });
@@ -112,8 +114,8 @@ function readLines(file) {
   return readFileSync(file, 'utf8').trim().split('\n').filter(Boolean);
 }
 
-test('happy path: creates, tethers, substitutes placeholders', () => {
-  const ctx = setup();
+test('happy path: creates, tethers, substitutes placeholders', async () => {
+  const ctx = await setup();
   const bodyFile = join(ctx.temp, 'body.md');
   writeFileSync(bodyFile, canonicalBody('Issue <this-issue-#> closes <parent-epic-#>.'));
 
@@ -178,8 +180,8 @@ test('happy path: creates, tethers, substitutes placeholders', () => {
 
 // #793 — an explicit --assignee <login> is still honored and forwarded to
 // `gh issue create`. Assignment is opt-in, not defaulted-off.
-test('explicit --assignee is forwarded to gh issue create', () => {
-  const ctx = setup();
+test('explicit --assignee is forwarded to gh issue create', async () => {
+  const ctx = await setup();
   const bodyFile = join(ctx.temp, 'body.md');
   writeFileSync(bodyFile, canonicalBody('x'));
 
@@ -205,8 +207,8 @@ test('explicit --assignee is forwarded to gh issue create', () => {
   assert.match(ghCalls[0], /--assignee octocat/);
 });
 
-test('missing projectId: exits non-zero before calling gh', () => {
-  const ctx = setup({ withProjectId: false });
+test('missing projectId: exits non-zero before calling gh', async () => {
+  const ctx = await setup({ withProjectId: false });
   const bodyFile = join(ctx.temp, 'body.md');
   writeFileSync(bodyFile, canonicalBody('x'));
 
@@ -227,8 +229,8 @@ test('missing projectId: exits non-zero before calling gh', () => {
   assert.equal(readLines(ctx.ghCallsLog).length, 0, 'gh must NOT be called when projectId missing');
 });
 
-test('tether failure: prints recovery command and exits non-zero', () => {
-  const ctx = setup({ tetherExitCode: 7 });
+test('tether failure: prints recovery command and exits non-zero', async () => {
+  const ctx = await setup({ tetherExitCode: 7 });
   const bodyFile = join(ctx.temp, 'body.md');
   writeFileSync(bodyFile, canonicalBody('no placeholders here'));
 
@@ -255,8 +257,8 @@ test('tether failure: prints recovery command and exits non-zero', () => {
   assert.match(result.stderr, /--issue 9999/);
 });
 
-test('--parent flag forwards to project-tether', () => {
-  const ctx = setup();
+test('--parent flag forwards to project-tether', async () => {
+  const ctx = await setup();
   const bodyFile = join(ctx.temp, 'body.md');
   writeFileSync(bodyFile, canonicalBody('no placeholders'));
 
@@ -282,8 +284,8 @@ test('--parent flag forwards to project-tether', () => {
   assert.match(tetherCalls[0], /--parent 42/);
 });
 
-test('--no-tether: skips tether step entirely', () => {
-  const ctx = setup({ withProjectId: false });
+test('--no-tether: skips tether step entirely', async () => {
+  const ctx = await setup({ withProjectId: false });
   const bodyFile = join(ctx.temp, 'body.md');
   writeFileSync(bodyFile, canonicalBody('x'));
 
@@ -311,7 +313,7 @@ test('--no-tether: skips tether step entirely', () => {
 
 // #247 — a Done epic must not grow new children. The parent-state gate fires
 // before body materialization, so the sub-issue is never created.
-test('--shape sub-issue: refuses creation under a Done parent epic', () => {
+test('--shape sub-issue: refuses creation under a Done parent epic', async () => {
   // Fake gh returns a project Status of "Done" for the parent epic's graphql
   // query, and would echo a created-issue URL if creation were (wrongly) reached.
   const doneParentGh = `
@@ -327,7 +329,7 @@ fi
 echo "unexpected gh call: $*" >&2
 exit 1
 `;
-  const ctx = setup({ ghCreateOverride: doneParentGh });
+  const ctx = await setup({ ghCreateOverride: doneParentGh });
 
   const result = spawnSync(
     'node',
@@ -374,7 +376,7 @@ exit 1
 });
 
 // #247 — the gate can be overridden for legitimate internal/testing use.
-test('--shape sub-issue: AITM_SKIP_PARENT_STATE_GATE=1 bypasses the Done-parent check', () => {
+test('--shape sub-issue: AITM_SKIP_PARENT_STATE_GATE=1 bypasses the Done-parent check', async () => {
   const doneParentGh = `
 if [[ "$1" == "api" && "$2" == "graphql" ]]; then
   cat >/dev/null
@@ -384,7 +386,7 @@ fi
 echo "unexpected gh call: $*" >&2
 exit 1
 `;
-  const ctx = setup({ ghCreateOverride: doneParentGh });
+  const ctx = await setup({ ghCreateOverride: doneParentGh });
   // With the gate bypassed, execution proceeds to body materialization; we stop
   // there by pointing --scope-file at a missing path so preflight fails (exit
   // != 2). The point is only that the refusal message does NOT appear.

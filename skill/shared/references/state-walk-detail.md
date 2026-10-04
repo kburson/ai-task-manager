@@ -80,7 +80,7 @@ it never refreshes approval implicitly.
 
 ## Estimation comment surfaces
 
-See [`docs/guides/workflow.md`](../../../docs/guides/workflow.md) → Three-stage estimation for the comment-emitting verbs (`/task promote` from Plan, `/task close`) and their bypass envs.
+See [`docs/guides/workflow.md`](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/workflow.md) → Three-stage estimation for the comment-emitting verbs (`/task promote` from Plan, `/task close`) and their bypass envs.
 
 ## Scratch directories during state walks
 

@@ -1,4 +1,4 @@
-// @story #728 #1615
+// @story #1861 #728 #1615
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -13,20 +13,17 @@ import { parseNpmPackReport } from '../../../helpers/npm-pack-report.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url)) + '/..';
 const ROOT = join(HERE, '..', '..', '..', '..');
 
-test('package.json files[] ships docs/ai-memory but excludes archive/', () => {
+test('package.json excludes repository documentation and memory seeds', () => {
   const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   const files = manifest.files ?? [];
-  assert.ok(
-    files.includes('docs/ai-memory/'),
-    'files[] must include docs/ai-memory/ so the durable memory seed ships'
-  );
-  assert.ok(
-    files.includes('!docs/ai-memory/archive/**'),
-    'files[] must exclude docs/ai-memory/archive/** — the archive corpus never ships'
+  assert.ok(files.includes('!docs/**'));
+  assert.deepEqual(
+    files.filter((file) => file.startsWith('docs/')),
+    []
   );
 });
 
-test('npm pack tarball contains the seed index + durable facts, no archive', () => {
+test('npm pack leaves repository memory seeds out of the runtime package', () => {
   // `npm pack --dry-run --json` resolves the real published file list offline
   // (no tarball written, no registry contact) and reports it as JSON.
   const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -39,25 +36,8 @@ test('npm pack tarball contains the seed index + durable facts, no archive', () 
   });
   const entries = report.files.map((f) => f.path);
 
-  assert.ok(
-    entries.includes('docs/ai-memory/MEMORY.md'),
-    'the packed tarball must contain the MEMORY.md index'
-  );
-  const durable = entries.filter(
-    (p) =>
-      p.startsWith('docs/ai-memory/') &&
-      p.endsWith('.md') &&
-      !p.startsWith('docs/ai-memory/archive/') &&
-      p !== 'docs/ai-memory/MEMORY.md'
-  );
-  assert.ok(
-    durable.length > 0,
-    'the packed tarball must contain at least one durable memory-fact file'
-  );
-  const archived = entries.filter((p) => p.startsWith('docs/ai-memory/archive/'));
   assert.deepEqual(
-    archived,
-    [],
-    `no docs/ai-memory/archive/ file may ship; found: ${archived.join(', ')}`
+    entries.filter((entry) => entry.startsWith('docs/ai-memory/')),
+    []
   );
 });

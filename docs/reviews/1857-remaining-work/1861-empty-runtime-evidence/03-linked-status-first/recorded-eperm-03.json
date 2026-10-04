@@ -1,0 +1,1482 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-findings/v1",
+  "issue": 1861,
+  "runId": "03-linked-status-first",
+  "category": "recorded-eperm",
+  "positions": [
+    572, 573, 574, 575, 576, 577, 578, 579, 580, 581, 582, 583, 584, 585, 588, 589, 590, 591, 592,
+    593, 594, 595, 596, 597, 598, 599, 600, 601, 602, 603, 604, 605, 606, 607, 608, 609, 610, 611,
+    612, 617, 622, 623, 624, 625, 626, 627, 628, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640,
+    641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 652, 653, 654, 655, 656, 657, 658, 659,
+    660, 661, 662, 663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674, 675, 676, 677, 678,
+    679, 680, 681, 682, 683, 684, 685, 686, 687, 688, 689, 690, 691, 692, 693, 694, 695, 696, 697,
+    698, 699, 700, 701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 716,
+    717, 718, 719, 720, 721, 722, 723, 724, 725, 727, 728, 729, 730, 731, 732, 733, 735, 736, 737,
+    738, 739, 740, 741, 742, 743, 744, 745, 746, 747, 748, 749, 750, 751, 752, 753, 754, 755, 756,
+    757, 758, 759, 760, 762, 763, 764, 765, 766, 767, 768, 769, 770, 775, 776, 777, 778, 779, 780,
+    781, 782, 783, 784, 785, 786, 787, 788, 789, 790, 792, 793, 794, 795, 796, 797, 798, 799, 800,
+    801, 802, 803, 804, 805, 806, 807, 808, 809, 810, 811, 812, 813, 814, 815, 816, 817, 818, 819,
+    820, 821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 835
+  ],
+  "findings": [
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/story-intent-source.test.mjs:145:1",
+      "finding": "✖ refuses duplicate, blank, template, missing selectors and conflicting plan keys (0.9005ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs:81:3",
+      "finding": "✖ renders a solo shape without plan metadata input (114.975416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs:108:3",
+      "finding": "✖ preserves optional early planning input (90.62125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs:130:3",
+      "finding": "✖ rejects empty and prose-only Story Origin fragments (252.877292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs:153:3",
+      "finding": "✖ renders a populated stub origin and an empty plan section (553.804459ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: node:fs:1734"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs:161:3",
+      "finding": "✖ uses the resolved issue kind in a stub origin (471.24225ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: node:fs:1734"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs:167:3",
+      "finding": "✖ derives a non-stub render kind from Story Origin (110.968375ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs:189:3",
+      "finding": "✖ rejects an explicit kind that conflicts with Story Origin (146.553416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs:212:3",
+      "finding": "✖ records a sub-issue parent inside Story Origin (110.823625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/sync-templates.test.mjs:10:1",
+      "finding": "✖ default manifest creates and refreshes defect and plan templates (147.519416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/sync-templates.test.mjs:37:1",
+      "finding": "✖ syncTemplates: a deliberately stale mirror is made byte-identical to its template (74.906625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/sync-templates.test.mjs:63:1",
+      "finding": "✖ syncTemplates: an already-identical mirror reports unchanged (idempotent) (141.350459ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/sync-templates.test.mjs:83:1",
+      "finding": "✖ syncTemplates: creates the mirror file when absent (183.202375ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/sync-templates.test.mjs:101:1",
+      "finding": "✖ syncTemplates: stamps the pickup directive when a package version is supplied (167.531041ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:103:1",
+      "finding": "✖ verbTest: no-vc body returns no-vc status (does not create worktree) (99.319ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:119:1",
+      "finding": "✖ verbTest: detects lifecycle pretick → un-ticks, writes body, posts regression comment (#139) (79.497417ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:149:1",
+      "finding": "✖ verbTest: no pretick → no regression comment posted (#139) (108.104125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:160:1",
+      "finding": "✖ verbTest #937: Test becomes current before sandbox proof is stamped (90.684666ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:205:1",
+      "finding": "✖ verbTest #406: sandbox green but moveState refuses → status move-failed, no passed banner (125.180292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:232:1",
+      "finding": "✖ verbTest #444: benign test→test self-loop → status reverified (in-place re-verify) (102.086708ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:256:1",
+      "finding": "✖ verbTest #406: structured ok:true move → status passed (112.750458ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:268:1",
+      "finding": "✖ verbTest #406: legacy stub moveState returning undefined still reports passed (161.118416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:278:1",
+      "finding": "✖ #1015 successful Test entry posts the New Automated Tests report (242.975667ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:296:1",
+      "finding": "✖ #1015 Test self-loop runs the idempotent New Automated Tests poster (130.949083ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:314:1",
+      "finding": "✖ #1015 New Automated Tests post failure does not reverse a successful Test entry (180.30575ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:332:1",
+      "finding": "✖ #1015 refused Test move does not post New Automated Tests (171.919834ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:350:1",
+      "finding": "✖ #1015 successful move attempts New Automated Tests before a result-comment failure (149.873834ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:375:1",
+      "finding": "✖ #1015 successful move attempts New Automated Tests before a timing-log failure (147.85175ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs:403:1",
+      "finding": "✖ verbTest: sandbox isolation — locally-passing env-dependent command fails in sandbox (84.6355ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs:122:1",
+      "finding": "✖ retry-then-succeed: transient npm ci failure is retried, run reaches Test (84.274125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs:143:1",
+      "finding": "✖ real-red first occurrence: a genuine verification red rolls back without retry (112.265292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs:175:1",
+      "finding": "✖ durable diagnostics: exhausted setup retries record step + exit + stderr tail and re-throw (140.246125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs:138:1",
+      "finding": "✖ verbTest #1218: invalid provider refuses before sandbox setup or state movement (132.2605ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs:184:1",
+      "finding": "✖ verbTest #1412: crash recovery runs before the current sandbox is created (87.6855ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs:194:1",
+      "finding": "✖ verbTest: green path stamps marker, posts success comment, moves develop→test, logs time (132.143625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs:253:1",
+      "finding": "✖ verbTest #937: red source result enters Test then explicitly demotes without a DoD marker (96.318917ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs:291:1",
+      "finding": "✖ verbTest: worktree cleanup runs even when sandbox exec throws (167.709792ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs:302:1",
+      "finding": "✖ verbTest #937: sandbox-setup crash stays in Test and posts test-aborted audit (122.49075ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs:323:1",
+      "finding": "✖ verbTest #937: sandbox-exec crash stays in Test without demotion (258.533125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/versioned-issue-write-pexec.test.mjs:43:1",
+      "finding": "✖ versionedWriteBody uses injected pexec for fetch, stdin push, and verify fetch (170.241834ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/word-marker-compaction.test.mjs:17:1",
+      "finding": "✖ compaction advances only the line cursor and preserves both markers (29.029125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/word-marker-compaction.test.mjs:31:1",
+      "finding": "✖ Codex compacted replacement-history metadata is not counted twice (33.7485ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/worktree-seed.test.mjs:17:1",
+      "finding": "✖ dev root, no node_modules/ai-task-manager → missing-link (114.680542ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/worktree-seed.test.mjs:26:1",
+      "finding": "✖ dev root, self-link resolves to root → seeded (131.927666ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/worktree-seed.test.mjs:37:1",
+      "finding": "✖ dev root, link resolves OUTSIDE root → foreign-link (the trunk trap) (109.682458ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/worktree-seed.test.mjs:50:1",
+      "finding": "✖ consumer root (no .git), nothing installed → deps-missing (107.923833ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/worktree-seed.test.mjs:59:1",
+      "finding": "✖ consumer root, real install present → not-applicable (486.121917ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:61:1",
+      "finding": "✖ runApprove in human mode posts notes with human source from stdin drivers (2.844459ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '.tmp/aitm/locks'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:78:1",
+      "finding": "✖ runApprove in full-auto mode posts notes with auto source and derived drivers (0.251416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '.tmp/aitm/locks'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:94:1",
+      "finding": "✖ runApprove in human mode skips notes comment when no drivers entered (0.146958ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '.tmp/aitm/locks'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:106:1",
+      "finding": "✖ runApprove still ticks lifecycle even if notes-post fails (0.13975ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '.tmp/aitm/locks'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs:282:1",
+      "finding": "✖ runApprove reconciles timing after first approval and on an already-approved retry (159.600458ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs:315:1",
+      "finding": "✖ runApprove refreshes stale Full-Auto approval carriers after lifecycle invalidation (132.062791ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs:364:1",
+      "finding": "✖ runApprove removes a legacy unbounded Full-Auto footnote during stale re-approval (183.707042ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/check-verb-migration.test.mjs:150:1",
+      "finding": "✖ legacy `check` on an already-checked box does NOT uncheck (no toggle) (0.292167ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/check-verb-migration.test.mjs:159:1",
+      "finding": "✖ legacy `check` emits a deprecation notice on stderr (0.036084ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/check-verb-migration.test.mjs:188:1",
+      "finding": "✖ no instructional `task check \"<label>\"` toggle call site survives (0.031917ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/check-verb-migration.test.mjs:193:1",
+      "finding": "✖ no \"Toggle a checkbox\" description survives (0.031833ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:133:1",
+      "finding": "✖ Case A — converge with approved body emits BOTH review:approved and issue:wrap (#801 AC1) (71.276375ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:142:1",
+      "finding": "✖ Case B — converge with no approval marker WITHHOLDS review:approved, still emits issue:wrap (#801 AC2) (29.077375ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:157:1",
+      "finding": "✖ Case C — converge is idempotent when the pair already exists (#801 AC3) (52.590125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ finalize passes the configured tail profile and explicit review authority (14.933208ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ stale close approval refuses after fresh Test and Agent Review evidence (1.211292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ #1403 close authorizes review against accepted delivery SHA after local HEAD advances (1.24925ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ close consumes marker-free exact-head directory human authority (0.649167ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ production close derives accepted head from marker-free directory Review evidence (0.686ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ production close resolves directory authority from immutable Test SHA after local HEAD advances (0.766041ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ production close refuses directory Review without directory Approval despite body approval (0.886042ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ close fails closed for stale or malformed marker-free directory authority (0.452292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ verb entry rejects a empty string tail profile before every observable effect (0.884709ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /invalid move-tail profile|unknown move-tail profile/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ verb entry rejects a null tail profile before every observable effect (0.518292ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /invalid move-tail profile|unknown move-tail profile/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ verb entry rejects a false tail profile before every observable effect (1.94325ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /invalid move-tail profile|unknown move-tail profile/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ verb entry rejects a zero tail profile before every observable effect (0.790208ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /invalid move-tail profile|unknown move-tail profile/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ verb entry rejects a negative zero tail profile before every observable effect (0.933708ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /invalid move-tail profile|unknown move-tail profile/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ verb entry rejects a zero bigint tail profile before every observable effect (1.171666ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /invalid move-tail profile|unknown move-tail profile/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ verb entry rejects a NaN tail profile before every observable effect (0.871417ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /invalid move-tail profile|unknown move-tail profile/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ verb entry rejects a object tail profile before every observable effect (0.345416ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /invalid move-tail profile|unknown move-tail profile/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ verb entry rejects a unknown string tail profile before every observable effect (0.217584ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /invalid move-tail profile|unknown move-tail profile/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ lifecycle reconcile delegates through the grouped issue-body mutator (0.723292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ transaction prefix does not satisfy exact timing transaction lookup (3.26125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ incidental prose does not satisfy exact timing transaction lookup (0.416292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ false timing audit fails and leaves durable recovery pending at Review (0.239625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ failed timing audit fails and leaves durable recovery pending at Review (1.014625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ queued timing audit fails and leaves durable recovery pending at Review (0.744125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ dead issue returns without body or child reads (13.606875ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ completed issue already at Done fails closed when transaction inspection is unavailable (1.391625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ pending recovery on a completed issue already at Done resumes before noop (2.743209ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ completed not-Done issue refuses an unknown strict child snapshot (0.305208ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ pending recovery on an open issue resumes from its serialized phase (0.3835ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ pending recovery outranks close-issue for an open issue already at Done (0.2495ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ retry after a successful timing post does not duplicate the transaction audit (0.231958ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ pending recovery on a still-closed issue preserves its durable transaction (0.226666ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ complete recovery is not reused when a later close is a new aberration (0.366791ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ stale restart refuses unsafe live state before audit or terminal mutation (0.675125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ stale restart refuses terminal prefixes and stale delivery authority (0.368917ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ stale restart fails closed across comment and body persistence failures (0.740791ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ stale restart reuses matching evidence and rejects duplicates before body mutation (1.984083ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ stale restart is incompatible with force, repair, answer, and disposition lanes (0.613167ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /delivered-close-supersession:incompatible-flags/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ ordinary close adopts a same-SHA Done board and refuses stale SHA without restart writes (0.309416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ mismatched transaction recovery mutation refuses before later effects (6.188ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ mismatched phase recovery mutation refuses before later effects (0.829291ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ failed status recovery mutation refuses before later effects (5.600417ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ failed result recovery mutation refuses before later effects (36.377416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ recovery persistence requires the grouped issue-body mutator capability (9.947042ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ convergence refuses completion when a terminal timing row is only queued (0.389459ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ board-Done open-issue convergence refuses GitHub close when terminal timing is queued (0.247834ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt input refusal precedes every specified side effect (0.236333ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt lineage refusal precedes every specified side effect (0.193167ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt missing refusal precedes every specified side effect (0.158333ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt malformed refusal precedes every specified side effect (0.158459ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt duplicate refusal precedes every specified side effect (0.159125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt conflicting refusal precedes every specified side effect (0.211708ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt ambiguous-pr refusal precedes every specified side effect (0.171666ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt not-merged refusal precedes every specified side effect (0.16175ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt branch-mismatch refusal precedes every specified side effect (1.211792ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt base-mismatch refusal precedes every specified side effect (1.3855ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt head-mismatch refusal precedes every specified side effect (0.755709ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt issue-mismatch refusal precedes every specified side effect (0.787584ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt pr-mismatch refusal precedes every specified side effect (0.799667ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt merge-commit-missing refusal precedes every specified side effect (0.263833ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ delivery receipt merge-commit-mismatch refusal precedes every specified side effect (0.182083ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ completed Delivered close retry performs no terminal mutation (17.806875ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ successful Delivered close persists a complete terminal transaction (0.805291ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ explicit restart audits a stale pre-terminal transaction before replacing and replaying it (0.503208ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ restart adopts an audit-backed replacement body after the body-write response was lost (1.2925ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ partial Delivered close runs only the missing terminal suffix (0.355416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ Done-board open-issue retry resumes at issue close without replaying earlier steps (0.28025ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ closed Done retry resumes only labels and binding from durable issue step (0.258333ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ closed not-Done issue resumes its delivered-close transaction (0.28275ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ open Review partial retry rechecks lifecycle authority before a pending board effect (0.285167ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ pending Delivered disposition is adopted without overwriting it (0.265583ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ durable effects without checkpoints are observed and adopted before replay (0.291459ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ newer binding conflict survives a terminal close retry untouched (0.240458ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ stale pre-close binding residue resumes without refreshing close authority (0.221833ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ Done-state durable retry bypasses ordinary Review gates without force or renewed approval (0.278417ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ disposition read outage after transaction discovery fails closed (0.259834ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ label cleanup failure leaves labels and binding transaction steps pending (0.219834ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ markerless open Done close is adopted into a complete durable transaction (0.198333ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ receipt-gate injection does not implicitly bypass fresh verification (1.647291ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ lost transaction-checkpoint response is adopted without repeating durable effects (1.156958ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /delivered close transaction write did not return authoritative body/. Input:"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ the close verb replaces the audited transaction and resumes the unchanged saga (5.852125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/close-pexec-offline.test.mjs:21:1",
+      "finding": "✖ tickLifecycleOnClose stays offline through the injected pexec seam (155.815125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ stale restart composes one immutable reopened recovery with a partial replacement (18.420042ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ recovery-backed stale restart reuses the second link after a lost response (1.653709ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ recovery-backed stale restart resumes durable progress after the second link (0.618958ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ recovery-backed stale restart refuses contradictions before persistence (0.911416ms)",
+      "sandboxDenied": true,
+      "detail": "  AssertionError [ERR_ASSERTION]: duplicate recovery"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ #1490: Delivered survives recovery mint, timing checkpoint, and stale retry (2.642834ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ gate-bypassed ordinary close ignores reviewer env and passes explicit authority (1.500792ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ human-gate ordinary close without reviewer env passes explicit authority (0.573125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs:156:1",
+      "finding": "✖ no active task → exit 1 (0.300041ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs:163:1",
+      "finding": "✖ discover bucket active → exit 1 (0.037084ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs:170:1",
+      "finding": "✖ empty label → exit 1 (0.0325ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs:177:1",
+      "finding": "✖ no AC line matching label → exit 1 (0.027958ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs:188:1",
+      "finding": "✖ verifier non-zero exit → refuse, exit 1 (0.033125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs:199:1",
+      "finding": "✖ happy path: verifier passes → stamps marker, no exit (0.024875ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:167:1",
+      "finding": "✖ verbCheck: no active task → exit 1 (1.261083ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:174:1",
+      "finding": "✖ verbCheck: discover bucket active → exit 1 (0.133709ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:181:1",
+      "finding": "✖ verbCheck: empty label → exit 1 (0.09ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:186:1",
+      "finding": "✖ verbCheck: not-found label → exit 1 (0.093416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:197:1",
+      "finding": "✖ verbCheck: ambiguous label → exit 1 (0.103583ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:204:1",
+      "finding": "✖ verbCheck: evidence-gated AC without stamp → exit 1 (0.077208ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:211:1",
+      "finding": "✖ verbCheck: happy path single toggle (uncheck) → no exit (0.0735ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:226:1",
+      "finding": "✖ verbCheck: --allow-unverified-ticks happy path → no exit (0.084584ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:238:1",
+      "finding": "✖ verbCheck: --allow-unverified-ticks on DoD item → refuse, exit 1 (0.158417ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:249:1",
+      "finding": "✖ verbCheck: --allow-unverified-ticks on verifier AC → refuse, exit 1 (0.119ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:260:1",
+      "finding": "✖ verbCheck: batch happy path (uncheck) → no exit (0.064166ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:272:1",
+      "finding": "✖ verbCheck: batch with --allow-unverified-ticks → no exit (0.057584ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:284:1",
+      "finding": "✖ verbCheck: batch gate failure → exit 1 (0.056958ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:295:1",
+      "finding": "✖ verbCheck: batch not-found label → exit 1 (0.057333ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:307:1",
+      "finding": "✖ verbCheck: batch ambiguous label → exit 1 (0.056833ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:319:1",
+      "finding": "✖ verbCheck: --labels-file empty + no --label → usage exit 1 (0.421042ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:332:1",
+      "finding": "✖ verbCheck: --labels-file with a label → no exit (0.042292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:346:1",
+      "finding": "✖ verbCheck: \"deep dive complete\" outside Refine → ensureDeepDive, no exit (0.020083ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:358:1",
+      "finding": "✖ verbCheck: \"deep dive complete\" while bound in Refine → refuse, exit 1 (0.024375ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs:376:1",
+      "finding": "✖ verbCheck: \"discussion complete\" → marks discussed, no exit (0.046875ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ set valid key → writes via setConfigValue, prints value (8.87575ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:154:1",
+      "finding": "✖ no active task → exit 1 (0.325584ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:161:1",
+      "finding": "✖ empty key → exit 1 (0.042208ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:168:1",
+      "finding": "✖ unknown key → exit 1 (0.030583ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:175:1",
+      "finding": "✖ derived key (acs) → refuse, exit 1 (0.026625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:182:1",
+      "finding": "✖ keyed line absent → exit 1 (0.03325ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:193:1",
+      "finding": "✖ keyed line has no verifier command → exit 1 (0.025458ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:204:1",
+      "finding": "✖ verifier non-zero exit → refuse, exit 1 (0.092791ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:215:1",
+      "finding": "✖ happy path: verifier passes → stamps marker, no exit (0.189833ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:148:1",
+      "finding": "✖ no args → usage error, exit 1 (0.417958ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:153:1",
+      "finding": "✖ one arg with no active task → exit 1 (0.054833ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:160:1",
+      "finding": "✖ invalid kind → exit 1 (0.033542ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:165:1",
+      "finding": "✖ invalid issue number → exit 1 (0.030959ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:170:1",
+      "finding": "✖ happy path: explicit target + non-code kind → sets marker (0.040125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:179:1",
+      "finding": "✖ happy path: one-arg active-bind form + code kind → clears marker (0.03625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:190:1",
+      "finding": "✖ epic kind delegates all carriers to the shared metadata reconciler (0.027167ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:209:1",
+      "finding": "✖ epic body reconciliation appends the introduced DoD verifier with the next stable id (0.189625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:220:1",
+      "finding": "✖ repeating epic body reconciliation is content-idempotent and Review preflight accepts it (0.393459ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs:108:1",
+      "finding": "✖ missing --from-comment → exit 2 (0.404542ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs:113:1",
+      "finding": "✖ --repair-placement needs no source comment and uses the active target (0.200625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs:131:1",
+      "finding": "✖ repair and source-comment modes are mutually exclusive (0.041417ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs:139:1",
+      "finding": "✖ no target and no active binding → exit 2 (0.547792ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs:148:1",
+      "finding": "✖ target derived from active bind; unconfigured repo throws (0.071958ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs:160:1",
+      "finding": "✖ --from-comment= form + explicit #N → unconfigured repo throws (0.113292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs:166:1",
+      "finding": "✖ happy path: mirrors comment prose into the issue body, prints result (0.049167ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ no active task → \"nothing to update\", no flush (2.895916ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.tmp/aitm/sessions/fixture-coverage-update.test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ active === discover → \"nothing to update\" (0.408708ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.tmp/aitm/sessions/fixture-coverage-update.test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ happy path: default \"checkpoint\" description, wall == active → no wall note (0.293625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.tmp/aitm/sessions/fixture-coverage-update.test'"
+    },
+    {
+      "location": "scripts/tests/helpers/unit-runtime-root.mjs:84:10",
+      "finding": "✖ happy path: rest joins to description, wall != active → wall note shown (0.220959ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.tmp/aitm/sessions/fixture-coverage-update.test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:202:1",
+      "finding": "✖ dod-stamp tests: refuses in develop, verifier never runs (1.171083ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:218:1",
+      "finding": "✖ dod-stamp tests: proceeds normally once in test state (0.2215ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:237:1",
+      "finding": "✖ ac-stamp: refuses a restricted verifier command in develop, verifier never runs (0.194416ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:253:1",
+      "finding": "✖ ac-stamp: proceeds normally once in test state (0.210167ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:277:1",
+      "finding": "✖ dod-stamp tests: Review + valid receipt reuses and does not spawn npm (5.943166ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:308:1",
+      "finding": "✖ dod-stamp tests: Review + stale receipt refuses and does not spawn npm (0.132458ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:327:1",
+      "finding": "✖ dod-stamp tests: Test + valid receipt reuses and does not spawn npm (0.076417ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:350:1",
+      "finding": "✖ ac-stamp: Review + valid receipt reuses Test provenance and does not spawn npm (0.073ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:381:1",
+      "finding": "✖ Review + uncovered lint refuses on both stamp surfaces without spawning npm (0.214292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:402:1",
+      "finding": "✖ Review + issue-mismatched receipt refuses on both stamp surfaces (0.420125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs:424:1",
+      "finding": "✖ unavailable live state refuses on both stamp surfaces (0.262958ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:80:1",
+      "finding": "✖ setChecklistLine: ticks an unchecked line (changed) (0.390042ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:88:1",
+      "finding": "✖ setChecklistLine: already-checked is a byte-identical no-op (0.039708ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:97:1",
+      "finding": "✖ setChecklistLine: checked desired never unchecks a checked line (0.029209ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:102:1",
+      "finding": "✖ setChecklistLine: preserves trailing evidence markers on tick (0.02925ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:108:1",
+      "finding": "✖ setChecklistLine: not-found (0.037417ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:112:1",
+      "finding": "✖ setChecklistLine: ambiguous reports count (0.029584ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:118:1",
+      "finding": "✖ setChecklistLines: folds desired across labels, records per-label result (0.027ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:224:1",
+      "finding": "✖ verbEnsureChecked: ticks a proof-bearing unchecked AC and writes [x] (0.032125ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:233:1",
+      "finding": "✖ verbEnsureChecked: idempotent re-run on already-checked is a no-op (0.046834ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:247:1",
+      "finding": "✖ verbEnsureChecked: never unchecks an already-checked AC (0.045625ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:260:1",
+      "finding": "✖ verbEnsureChecked: evidence gate fires on verifier-AC transition → exit 1 (0.03575ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:269:1",
+      "finding": "✖ verbEnsureChecked: --allow-unverified-ticks hatch ticks a proofless AC (0.020375ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:284:1",
+      "finding": "✖ verbEnsureChecked: --allow-unverified-ticks refused on an undeclared AC (no verifier, no marker) → exit 1 (0.023833ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:297:1",
+      "finding": "✖ verbEnsureChecked: --allow-unverified-ticks refused on verifier AC → exit 1 (0.016417ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:309:1",
+      "finding": "✖ verbEnsureChecked: special-label \"deep dive complete\" routes to ensureDeepDive (0.016709ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:322:1",
+      "finding": "✖ verbEnsureChecked: special-label \"discussion complete\" marks discussed (0.016667ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:54:1",
+      "finding": "✖ setChecklistLine: unchecks a checked line (changed) (0.35575ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:62:1",
+      "finding": "✖ setChecklistLine: already-unchecked is a byte-identical no-op (0.102417ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:71:1",
+      "finding": "✖ setChecklistLine: unchecked desired never checks an unchecked line (0.03475ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:76:1",
+      "finding": "✖ setChecklistLine: preserves trailing evidence markers on untick (0.028875ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:82:1",
+      "finding": "✖ setChecklistLines: folds untick across labels with per-label results (0.042042ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:185:1",
+      "finding": "✖ verbEnsureUnchecked: unchecks a checked AC and writes [ ] (0.033292ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:198:1",
+      "finding": "✖ verbEnsureUnchecked: idempotent re-run on already-unchecked is a no-op (0.02575ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:207:1",
+      "finding": "✖ verbEnsureUnchecked: never checks an unchecked AC (0.025375ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:216:1",
+      "finding": "✖ verbEnsureUnchecked: runs NO evidence gate when un-ticking a verifier AC (0.05ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:231:1",
+      "finding": "✖ verbEnsureUnchecked: \"deep dive complete\" is ordinary text, not the marker route (0.048917ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs:247:1",
+      "finding": "✖ verbEnsureUnchecked: \"discussion complete\" is ordinary text, not the discuss route (0.026375ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs:564:3",
+      "finding": "✖ approval persists root linked intent and revalidates each observation once (1.142ms)",
+      "sandboxDenied": true,
+      "detail": "  Error: EPERM: operation not permitted, mkdir '<candidate>/.scratch/test'"
+    }
+  ]
+}

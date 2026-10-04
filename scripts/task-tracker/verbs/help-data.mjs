@@ -991,6 +991,31 @@ export const VERB_REFERENCE = {
     usage: '/task config [<key> <value> | init]',
     examples: ['/task config', '/task config assignee @me', '/task config init'],
   },
+  'migrate-runtime': {
+    topic: 'meta',
+    summary: 'Plan, inspect, migrate, or explicitly initialize and recover durable runtime.',
+    usage:
+      '/task migrate-runtime <plan|status|apply|resume|initialize-plan|initialize-apply|initialize-resume|batch-status|batch-resume> [--operation <UUID>] [--observed <sha256:digest>] [--transaction <id>] [--approved-plan <sha256:digest>] [--plan-file <path>] [--trust-plan <path>]',
+    flags: [
+      {
+        flag: '--trust-plan <path>',
+        desc: 'acknowledge only exact legacy source hashes in an observed plan; pair with its approved digest',
+      },
+      {
+        flag: '--plan-file <path>',
+        desc: 'exact trusted plan artifact for apply; resume uses only the durable journal',
+      },
+    ],
+    examples: [
+      '/task migrate-runtime initialize-plan',
+      '/task migrate-runtime initialize-apply --plan-file <path> --approved-plan <sha256:digest>',
+      '/task migrate-runtime initialize-resume --operation <UUID> --observed <sha256:digest> --approved-plan <sha256:digest>',
+      '/task migrate-runtime batch-status --operation <UUID>',
+      '/task migrate-runtime batch-resume --operation <UUID> --observed <sha256:digest>',
+      '/task migrate-runtime plan',
+      '/task migrate-runtime status',
+    ],
+  },
   migrate: {
     topic: 'meta',
     summary: 'Migrate repo issues into the selected/configured project.',

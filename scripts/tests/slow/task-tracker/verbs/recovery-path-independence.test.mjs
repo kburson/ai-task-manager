@@ -22,6 +22,7 @@
 // is recorded in the Full-Auto audit comment.
 
 import { strict as assert } from 'node:assert';
+import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -191,15 +192,20 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
 
-test('AC (#572): main-anchored resolvers build under the passed main path regardless of cwd', () => {
-  // #573 — fleet/lock relocated under `.tmp/aitm/fleet/`; the MAIN-worktree
-  // anchor is preserved so sibling worktrees still share one registry/lock.
-  const main = fleetPath('/abs/main/worktree');
-  assert.equal(main, path.join('/abs/main/worktree', '.tmp', 'aitm', 'fleet', 'task-fleet.json'));
-  const lock = orchestratorLockPath('/abs/main/worktree');
-  assert.equal(lock, path.join('/abs/main/worktree', '.tmp', 'aitm', 'fleet', 'orchestrator.lock'));
-  // Distinct main path → distinct resolution; the helper owns layout, not anchor.
-  assert.notEqual(fleetPath('/abs/other'), main);
+test('AC (#572): main-anchored resolvers use an actual owning root', async () => {
+  const root = await createCommittedLegacyRootFixture('main-path-');
+  const other = await createCommittedLegacyRootFixture('other-path-');
+  try {
+    assert.equal(fleetPath(root), path.join(root, '.tmp', 'aitm', 'fleet', 'task-fleet.json'));
+    assert.equal(
+      orchestratorLockPath(root),
+      path.join(root, '.tmp', 'aitm', 'fleet', 'orchestrator.lock')
+    );
+    assert.notEqual(fleetPath(other), fleetPath(root));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(other, { recursive: true, force: true });
+  }
 });
 
 test('AC (#572): findMainWorktreePath anchors fleet/lock to MAIN from a sibling worktree cwd', () => {
@@ -288,11 +294,22 @@ test('AC (#574): relocated .ai-task-manager/templates survive a fresh worktree c
   }
 });
 
-test('AC (#572): getProjectDir precedence — AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd', () => {
-  assert.equal(
-    getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: '/a', CLAUDE_PROJECT_DIR: '/b' }, '/c'),
-    '/a'
-  );
-  assert.equal(getProjectDir({ CLAUDE_PROJECT_DIR: '/b' }, '/c'), '/b');
-  assert.equal(getProjectDir({}, '/c'), '/c');
+test('AC (#572): getProjectDir verifies every alias against the physical invoking root', async () => {
+  const root = await createCommittedLegacyRootFixture('project-alias-');
+  const other = await createCommittedLegacyRootFixture('foreign-alias-');
+  try {
+    assert.equal(
+      getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: root, CLAUDE_PROJECT_DIR: root }, root),
+      root
+    );
+    assert.equal(getProjectDir({ CLAUDE_PROJECT_DIR: root }, root), root);
+    assert.equal(getProjectDir({}, root), root);
+    assert.throws(
+      () => getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: root, CLAUDE_PROJECT_DIR: other }, root),
+      { code: 'ROOT_IDENTITY_MISMATCH' }
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(other, { recursive: true, force: true });
+  }
 });

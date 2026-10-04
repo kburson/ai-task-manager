@@ -17,7 +17,15 @@
 //      successful close (board → done) still reports `promoted`.
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+  withUnitRuntimeRoot,
+  unitRuntimeEntrypointArgs,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
+initializeFixtureActor(import.meta.url);
 import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -35,7 +43,7 @@ const TT = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 // ─── Shared sandbox helpers (mirrors dirty-workspace-gate.test.mjs) ──────────
 
 function setupSandbox() {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-710-'));
+  const sandbox = createActivatedUnitRuntimeRoot('aitm-710-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -81,21 +89,21 @@ process.exit(0);
 }
 
 async function setActive(sandbox, issue) {
-  const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
-  mkdirSync(path.dirname(statePath), { recursive: true });
-  writeFileSync(
-    statePath,
-    JSON.stringify({
-      active: `#${issue}`,
-      lastActive: `#${issue}`,
-      entryStartTs: new Date().toISOString(),
-      wordsAtEntryStart: 0,
-    })
+  await withUnitRuntimeRoot(() =>
+    saveState(
+      {
+        active: `#${issue}`,
+        lastActive: `#${issue}`,
+        entryStartTs: new Date().toISOString(),
+        wordsAtEntryStart: 0,
+      },
+      path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+    )
   );
 }
 
 async function runClose(script, args, { sandbox, binDir, env = {} } = {}) {
-  const result = await pexec(process.execPath, [script, ...args], {
+  const result = await pexec(process.execPath, unitRuntimeEntrypointArgs(script, args), {
     cwd: sandbox,
     env: {
       ...process.env,
@@ -136,6 +144,8 @@ function makePromoteDeps({ live = 'review', liveAfter, spawnCode = 0 } = {}) {
     calls,
     deps: {
       projectDir: process.cwd(),
+      migrationFreezeActive: () => false,
+      loadSession: () => null,
       assertBound: () => {},
       fetchIssueBody: async () => ({ body: reviewBody() }),
       mutateIssueBody: async ({ mutate }) => {

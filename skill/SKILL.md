@@ -24,4 +24,4 @@ Frequently-loaded skill detail files carry a `<!-- aitm-skill-version: X.Y.Z -->
 
 After the final implementation commit, use `npx aitm ensureChecked "<single Scope label>" --reviewed-evidence .scratch/evidence/step.json` in the bound Develop/Test checkout. The canonical manifest attributes operator inspection or historical command output and hashes retained local artifacts; it does not claim a new command execution. This flag accepts one narrative Scope item only, with no batch or override flags. `check` shares this deprecated alias; `ensureUnchecked` retains the pointer and does not accept the flag. AC, DoD and verifier-bearing targets retain their existing stampers.
 
-See [Reviewed Scope evidence](../docs/guides/reviewed-scope-evidence.md) for canonical JSON, provenance, artifact retention, refresh and partial-write recovery.
+See [Reviewed Scope evidence](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/reviewed-scope-evidence.md) for canonical JSON, provenance, artifact retention, refresh and partial-write recovery.

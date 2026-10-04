@@ -16,10 +16,11 @@ import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import {
-  projectScratchDir,
-  mkdtempProjectIsolated,
-} from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { loadState } from '../../../../task-tracker/state.mjs';
+import { statePath } from '../../../../task-tracker/paths.mjs';
+initializeFixtureActor(import.meta.url);
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,8 +28,9 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
-function makeSandbox(prefix) {
-  const dir = mkdtempProjectIsolated(prefix);
+async function makeSandbox(prefix) {
+  const dir = await createCommittedLegacyRootFixture(prefix);
+  writeFileSync(path.join(dir, '.git/info/exclude'), '.ai-task-manager/\n.tmp/\n');
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(dir, '.ai-task-manager', 'task-tracker.json'),
@@ -38,30 +40,12 @@ function makeSandbox(prefix) {
 }
 
 function readState(dir) {
-  // Per-session migration (#212): bound-issue triple lives in
-  // <root>/.tmp/aitm/sessions/<sid>/active-task.json (#573). Fall back to the
-  // relocated global ledger if a session record isn't present.
-  const sid = process.env.CLAUDE_SESSION_ID || 'default-session';
-  const sessionPath = path.join(dir, '.tmp', 'aitm', 'sessions', sid, 'active-task.json');
-  const globalPath = path.join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
-  const globalRaw = (() => {
-    try {
-      return JSON.parse(readFileSync(globalPath, 'utf8'));
-    } catch {
-      return {};
-    }
-  })();
-  try {
-    const session = JSON.parse(readFileSync(sessionPath, 'utf8'));
-    return { ...globalRaw, active: session.issue ?? null };
-  } catch {
-    return { active: globalRaw.active ?? null, ...globalRaw };
-  }
+  return loadState(statePath(dir));
 }
 
-const parent = makeSandbox('tt-iso-parent-');
-const childA = makeSandbox('tt-iso-child-a-');
-const childB = makeSandbox('tt-iso-child-b-');
+const parent = await makeSandbox('tt-iso-parent-');
+const childA = await makeSandbox('tt-iso-child-a-');
+const childB = await makeSandbox('tt-iso-child-b-');
 
 const baseEnv = { ...process.env, TT_SKIP_NETWORK: '1' };
 

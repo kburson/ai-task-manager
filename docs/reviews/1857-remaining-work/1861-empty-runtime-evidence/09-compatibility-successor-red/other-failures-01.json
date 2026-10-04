@@ -1,0 +1,16 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-findings/v1",
+  "issue": 1861,
+  "runId": "09-compatibility-successor-red",
+  "category": "other-failures",
+  "positions": [0],
+  "findings": [
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:58:1",
+      "finding": "✖ completed empty retry preserves a real migration successor generation (1732.074375ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    }
+  ]
+}

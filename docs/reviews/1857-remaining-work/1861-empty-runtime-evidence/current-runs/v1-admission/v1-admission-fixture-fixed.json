@@ -1,0 +1,126 @@
+{
+  "$comment": "cspell:disable - Complete observed verification evidence.",
+  "schema": "aitm.manual-verification-evidence/v1",
+  "label": "v1-admission-fixture-fixed",
+  "base": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "candidateKind": "mutable owned overlay on native Git base; archived candidate Git HEAD is not tested source authority",
+  "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+  "sourcePaths": [
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+      "sha256": "0819720855b91ef7ba1d869e567fb45fc20c9e0dfa25c0d1065418d92bb389d3"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+      "sha256": "cc4c8a7eb4fb39c696f22d59ca4836946c90c13f480a32d764d9936fd565fcc5"
+    }
+  ],
+  "command": {
+    "program": "/usr/bin/sandbox-exec",
+    "args": [
+      "-f",
+      "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/profile.sb",
+      "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+      "--test",
+      "...all canonical selected files"
+    ],
+    "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0",
+    "genuineNativeIdentityInherited": false
+  },
+  "selection": {
+    "changedPaths": [
+      "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+    ],
+    "selectedFiles": 3,
+    "escalated": false
+  },
+  "result": {
+    "status": 0,
+    "signal": null,
+    "stdoutHash": "2f406430b14b5e474bd50a857f91b4e5d871cc2ffbf63f8ed5bd0c2a5d3dbe4b",
+    "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "counters": {
+    "tests": 31,
+    "suites": 0,
+    "pass": 31,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 5388.181
+  },
+  "disposition": "Top-level cleanup corrects lifecycle; complete canonical three-file scope passes 31 tests.",
+  "privateArtifacts": [
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-fixed-selection.json",
+      "bytes": 1696,
+      "sha256": "3c905fa472806d3358ac8071e5a74bd4434d9af7c04b009cbfa3e7405e60587a"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-fixed-manifest.json",
+      "bytes": 716,
+      "sha256": "4c4451417b64767d4a9b2dc66e93cd63b30546510767c5b3b37fd8005685dc56"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-fixed-result.json",
+      "bytes": 204,
+      "sha256": "28f1d00c5a6e5ff5d816ce1460446719ba63424ece1288113b7b55ee6a61f3b1"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-fixed.stdout.log",
+      "bytes": 2961,
+      "sha256": "2f406430b14b5e474bd50a857f91b4e5d871cc2ffbf63f8ed5bd0c2a5d3dbe4b"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-fixed.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "completeSelection": {
+    "base": "bdb21d38f038583686bb1589d39f406bf11e2745",
+    "changedPaths": [
+      "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+    ],
+    "selection": {
+      "tests": [
+        "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+        "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+      ],
+      "lanes": [],
+      "reasons": [
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "signal": "manifest",
+          "reason": "current test tree authority change"
+        },
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "test": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "signal": "changed-test",
+          "reason": "changed or newly discovered test"
+        },
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "signal": "manifest",
+          "reason": "current test tree authority change"
+        },
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "test": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "signal": "changed-test",
+          "reason": "changed or newly discovered test"
+        }
+      ],
+      "escalated": false
+    }
+  },
+  "completeStdout": "✔ layout audit rejects a discovered test outside the canonical lane tree (242.665125ms)\n✔ layout audit rejects a test placed directly in a canonical lane root (112.19975ms)\n✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (125.718125ms)\n✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (243.535959ms)\n✔ feature-oriented files keep semantic ownership after their lane correction (1.61075ms)\n✔ current test-tree baseline is well formed (2.52525ms)\n✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.436916ms)\n✔ AC1: no *.test.mjs file remains directly in a lane root (1.031208ms)\n✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (6.617625ms)\n✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (11.254416ms)\n✔ production root aliases refuse artifact-contained forged authority before state access (289.86875ms)\n✔ production root aliases refuse physical artifact aliases (77.61025ms)\n✔ same physical worktree override resolves root from a subdirectory (159.527625ms)\n✔ foreign overrides require exact registered admission and conflicting aliases refuse (460.846542ms)\n✔ shadowed unsafe aliases never escape validation (92.452333ms)\n✔ a marker directory with only HEAD is not a Git identity (8.306917ms)\n✔ registered foreign admission is scoped and requires a fresh linked Git worktree (224.290833ms)\n✔ an unavailable unrelated registered worktree does not poison a valid root (85.351417ms)\n✔ a linked checkout cannot import a main root located under artifacts (129.428959ms)\n✔ durable layout separates linked local state from main shared state without creating stores (38.533625ms)\n✔ uninitialized durable storage refuses without importing volatile state (63.387125ms)\n✔ durable reads validate real queue generations and individual authority fields (1470.961ms)\n✔ durable reads refuse corrupt control, unsupported schema and partial publication (222.794958ms)\n✔ activated stores require valid records and never recover authority from volatile bytes (653.96525ms)\n✔ runtime overrides reject volatile, foreign and physical alias destinations (102.397792ms)\n✔ runtime override ancestry checks repeated directory components (79.998667ms)\n✔ a dangling control alias refuses before uninitialized-store classification (33.699125ms)\n✔ a final runtime record alias refuses even when its target exists (117.357083ms)\n✔ migration-v1 original root recreation with unchanged runtime bytes refuses ordinary reads (1634.351708ms)\n✔ migration-v1 killed linked resumer after active control fences ordinary reads until recovery finishes (2207.207625ms)\n✔ migration-v1 null linked recovery proof produces a typed protected refusal (1457.878333ms)\nℹ tests 31\nℹ suites 0\nℹ pass 31\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 5388.181\n",
+  "completeStderr": ""
+}

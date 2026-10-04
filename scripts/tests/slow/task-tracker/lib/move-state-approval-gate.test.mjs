@@ -14,6 +14,9 @@
 //      without the approval line, so backwards transitions still work.
 
 import { strict as assert } from 'node:assert';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
@@ -85,8 +88,8 @@ function currentApprovedBody() {
   return `${body}\n${buildPlanApprovedMarker('2026-05-11T00:00:00.000Z', resolveStoryIntentSource({ body, projectDir: process.cwd() }).binding)}\n`;
 }
 
-function makeSandbox(body, { currentState = 'Analyze' } = {}) {
-  const sandbox = mkdtempProjectIsolated('tt-approval-gate-');
+async function makeSandbox(body, { currentState = 'Analyze' } = {}) {
+  const sandbox = await createLegacyRootFixture('move-state-approval-gate-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -279,6 +282,7 @@ process.exit(0);
 
 async function runMove(sandbox, binDir, args, extraEnv = {}) {
   return pexec('node', [SCRIPT, ...args, '--item-id', 'PVTI_test'], {
+    cwd: sandbox,
     env: {
       ...process.env,
       AITM_INTERNAL: '1',
@@ -302,7 +306,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 1. Body without approval line, current state = Analyze -> blocked
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /BLOCKED:.*plan -> develop requires/);
@@ -313,7 +317,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 2. Body WITH approval marker -> success
 {
   const body = currentApprovedBody();
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const r = await runMove(sandbox, binDir, ['100', 'develop']);
   assert.match(r.stdout, /moved to: develop/);
   rmSync(sandbox, { recursive: true });
@@ -322,7 +326,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 3. TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored — gate refuses regardless
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop'], {
     TASK_TRACKER_FORCE_DONE: '1',
   });
@@ -335,7 +339,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 //    so a transition back to develop from test succeeds without approval line.
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Test' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Test' });
   const r = await runMove(sandbox, binDir, ['100', 'develop']);
   assert.match(r.stdout, /moved to: develop/);
   assert.doesNotMatch(r.stderr, /BLOCKED: plan -> develop/);
@@ -353,7 +357,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
     '<!-- aitm-entered-plan: 2026-05-09T09:45:00Z -->',
   ].join('\n');
   const bodyNoDeepDive = `## Acceptance Criteria\n- [ ] AC\n\n${entryMarkers}\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
-  const { sandbox, binDir } = makeSandbox(bodyNoDeepDive, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(bodyNoDeepDive, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /aitm-deep-dive-complete/);
@@ -387,7 +391,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
     '<!-- ai-task-manager:fields:end -->',
   ].join('\n');
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${thinDeepDive}\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /deep-dive-complete/);
@@ -397,7 +401,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 7. Both markers present + adequate section -> success
 {
   const body = currentApprovedBody();
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const r = await runMove(sandbox, binDir, ['100', 'develop']);
   assert.match(r.stdout, /moved to: develop/);
   assert.doesNotMatch(r.stderr, /BLOCKED/);

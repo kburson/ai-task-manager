@@ -1,0 +1,23 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-supplement/v1",
+  "issue": 1861,
+  "originalPosition": 6,
+  "evidence": {
+    "phase": "Cloud ad03 integration RED",
+    "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+    "raw": ".scratch/gh/1861-ad03-cloud-fast.log",
+    "findings": [
+      {
+        "location": "guidance-admission.test.mjs:342",
+        "finding": "admission inventory accounts for every canonical command, alias, and classified executable",
+        "detail": "migrate-runtime static import inventory lacked the two new empty bootstrap modules"
+      },
+      {
+        "location": "runtime-migration-transaction.test.mjs:592",
+        "finding": "recovery refuses malformed protected journals and controls without changing evidence",
+        "detail": "null control produced TypeError instead of RUNTIME_CONTROL_INVALID"
+      }
+    ]
+  }
+}

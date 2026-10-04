@@ -1,6 +1,6 @@
 # Worker Report Template
 
-Workers paste this back to the orchestrator as their final message. One report per worker per task. See [`docs/guides/worker-context-contract.md`](../docs/guides/worker-context-contract.md) §4 for field semantics and §10 for length thresholds.
+Workers paste this back to the orchestrator as their final message. One report per worker per task. See [`docs/guides/worker-context-contract.md`](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/worker-context-contract.md) §4 for field semantics and §10 for length thresholds.
 
 Replace every `<…>` with concrete values. Use `none` for fields that genuinely do not apply — do not omit field headings.
 

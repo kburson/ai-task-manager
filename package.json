@@ -71,16 +71,9 @@
     "!scripts/research/**",
     "!**/*.test.mjs",
     "statusline/",
-    "docs/README.md",
-    "docs/QUICKSTART.md",
-    "docs/DESIGN.md",
-    "docs/guides/",
-    "docs/superpowers/specs/delivered/2026-09-14-1624-workflow-exceptions-design.md",
-    "docs/introduction/",
     "instructions/",
-    "docs/ai-memory/",
-    "!docs/ai-memory/archive/**",
-    "templates/"
+    "templates/",
+    "!docs/**"
   ],
   "keywords": [
     "claude",
