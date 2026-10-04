@@ -350,3 +350,74 @@ test('member-scoped reversals apply to the current wave and ignore disjoint chil
     'verified'
   );
 });
+
+test('explicit matching wave reversals refuse across ordinary human phrasings', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const reversal of [
+    'Hold off on epic #107 rank 2.',
+    'Do not proceed with epic #107 rank 2 in parallel.',
+    'Epic #107 rank 2 is not approved.',
+    'Pause epic #107 rank 2.',
+    "Let's go sequential for epic #107 rank 2.",
+  ]) {
+    assert.equal(
+      (await verify([original, human('Please inspect CI.'), human(reversal)], { order: [0] }))
+        .status,
+      'blocked',
+      reversal
+    );
+  }
+});
+
+test('direct full scope needs an unqualified permission rather than a conditional or deferred request', async () => {
+  for (const request of [
+    "Let's not run parallel epic #107 rank 2 children [140,144,145] until CI is green.",
+    "We shouldn't run parallel epic #107 rank 2 children [140,144,145].",
+    'Run parallel epic #107 rank 2 children [140,144,145] later.',
+  ]) {
+    assert.equal((await verify([human(request)])).status, 'blocked', request);
+  }
+});
+
+test('yes to a sequential or negative assistant proposal cannot authorize parallel admission', async () => {
+  for (const proposal of [
+    'Should I keep epic #107 rank 2 children [140,144,145] sequential instead of parallel?',
+    'Do you want me to hold off on parallel epic #107 rank 2 children [140,144,145]?',
+    'Should I forbid parallel epic #107 rank 2 children [140,144,145]?',
+    'Run parallel epic #107 rank 2 children [140,144,145] later?',
+  ]) {
+    assert.equal((await verify([assistant(proposal), human('Yes.')])).status, 'blocked', proposal);
+  }
+});
+
+test('sequential test instructions and answers to unrelated later questions preserve wave authority', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'Run the unit tests sequentially.',
+    'Keep the Test-stage runs one at a time.',
+  ]) {
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'verified', text);
+  }
+  assert.equal(
+    (await verify([original, assistant('Should I push?'), human('No.')], { order: [0] })).status,
+    'verified'
+  );
+});
+
+test('a yes cannot be attached to an older proposal by omitting the actual intervening assistant question', async () => {
+  const messages = [
+    assistant('Enable parallel epic #107 rank 2 children [140,144,145].'),
+    assistant('Should I run lint?'),
+    human('Yes.'),
+  ];
+  assert.equal((await verify(messages, { order: [0, 2] })).status, 'blocked');
+});
+
+test('positive permission questions remain usable as exact displayed proposals', async () => {
+  for (const proposal of [
+    'Should I enable parallel epic #107 rank 2 children [140,144,145]?',
+    'Do you want me to run parallel epic #107 rank 2 children [140,144,145]?',
+  ]) {
+    assert.equal((await verify([assistant(proposal), human('Yes.')])).status, 'verified', proposal);
+  }
+});

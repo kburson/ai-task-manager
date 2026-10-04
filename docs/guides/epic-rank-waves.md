@@ -206,3 +206,12 @@ mutation failure. `lock-show` reports ownership without asserting admission
 readiness. All comment transport errors currently lack definitive no-write
 proof and remain indeterminate: inspect the original operation and reconcile
 an actual matching comment with `resume`; do not retry by changing IDs.
+
+A direct permission must be an unqualified instruction or explicit approval;
+questions, negation and deferred/conditional requests cannot grant admission.
+A displayed proposal must have positive permission intent. Whole replies such
+as `Yes.` or an exact choice must correlate with the actual preceding assistant
+message in the native transcript. Omitting an intervening question cannot attach
+its answer to an older proposal. A terse unscoped reversal applies only when it
+immediately follows the last referenced message without another assistant turn;
+sequential test-run instructions do not withdraw parallel-story permission.

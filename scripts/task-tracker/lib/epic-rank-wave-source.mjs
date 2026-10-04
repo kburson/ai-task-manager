@@ -103,6 +103,15 @@ export function createRankWaveSourceLoader({ resolveTranscriptPath, resolveRepos
         role: payload.role,
         statement,
         index: previous,
+        previousAssistantId:
+          events
+            .slice(0, previous)
+            .findLast(
+              (event) =>
+                event.type === 'response_item' &&
+                event.payload?.type === 'message' &&
+                event.payload.role === 'assistant'
+            )?.payload.id ?? null,
         submittedAt: matches[0].event.timestamp,
       });
     }
@@ -118,6 +127,15 @@ export function createRankWaveSourceLoader({ resolveTranscriptPath, resolveRepos
     )
       throw new Error('rank-wave: source newer than observation cutoff');
     const first = messages[0].index;
+    const last = messages.at(-1).index;
+    const nextMessage = events
+      .slice(last + 1)
+      .find(
+        (event) =>
+          event.type === 'response_item' &&
+          event.payload?.type === 'message' &&
+          ['assistant', 'user'].includes(event.payload.role)
+      );
     const ids = new Set(source.messages.map((m) => m.messageId));
     const laterHumans = events
       .slice(first + 1)
@@ -138,12 +156,12 @@ export function createRankWaveSourceLoader({ resolveTranscriptPath, resolveRepos
     // but retain at most one relevant reversal; unrelated chat length cannot
     // expire a grant or conceal a reversal after an arbitrary count cutoff.
     const subsequentStatements = [];
-    for (const [index, event] of observed.entries()) {
+    for (const event of observed) {
       const statement = (event.payload.content ?? [])
         .filter((b) => b.type === 'input_text' && !isInjection(b.text))
         .map((b) => b.text.trim())
         .join('\n\n');
-      if (scope && contradictsWave(statement, scope, purpose, index === 0)) {
+      if (scope && contradictsWave(statement, scope, purpose, event === nextMessage)) {
         subsequentStatements.push(statement);
         break;
       }
@@ -203,6 +221,26 @@ function hasIntent(statement, purpose) {
     ? /\b(?:revoke|withdraw)\b/i.test(statement)
     : /\b(?:parallel|concurrent(?:ly)?|rank[- ]wave)\b/i.test(statement);
 }
+function permissiveProposal(statement, purpose) {
+  if (!hasIntent(statement, purpose) || contradicts(statement, purpose)) return false;
+  const label = /^\s*[A-Z](?:[).:]|\s*(?:—|\(Recommended\)))/i;
+  const labeled = label.test(statement);
+  const text = statement
+    .trim()
+    .replace(label, '')
+    .replace(/^\s*(?:\(Recommended\))?\s*[:—]?\s*/, '')
+    .replace(
+      /^(?:should|may|can|could) (?:I|we)\s+|^do you want (?:me|us) to\s+|^would you like (?:me|us) to\s+/i,
+      ''
+    );
+  if (/\b(?:later|until|after|if|unless|when|once|pending)\b/i.test(text)) return false;
+  return (
+    directPermission(text, purpose) ||
+    (labeled &&
+      purpose === 'authorize' &&
+      /^(?:parallel|concurrent(?:ly)?|rank[- ]wave)\b/i.test(text))
+  );
+}
 function proposals(statement, purpose) {
   const lines = statement.split('\n');
   const labeled = lines.filter((line) =>
@@ -214,7 +252,7 @@ function proposals(statement, purpose) {
         label: null,
         recommended: false,
         scope: partialScope(statement),
-        intent: hasIntent(statement, purpose),
+        intent: permissiveProposal(statement, purpose),
         ambiguous: (statement.match(/\?/g) ?? []).length > 1,
       },
     ];
@@ -222,7 +260,7 @@ function proposals(statement, purpose) {
     label: line.trim()[0].toUpperCase(),
     recommended: /\(Recommended\)/i.test(line),
     scope: partialScope(line),
-    intent: hasIntent(line, purpose),
+    intent: permissiveProposal(line, purpose),
     ambiguous: (statement.match(/\?/g) ?? []).length > 1,
   }));
 }
@@ -242,7 +280,7 @@ function humanText(statement) {
 }
 function contradicts(text, purpose) {
   return (
-    /(?:\bdo not\b|\bdon't\b|\bnever\b|\bno\b|\bnot yet\b|\bcancel\b|\bnot approved?\b|\bhold off\b|\bwait\b)/i.test(
+    /(?:\bdo not\b|\bdon't\b|\bnever\b|\bno\b|\bnot\b|n['’]t\b|\bpause\b|\bcancel\b|\bnot approved?\b|\bhold off\b|\bwait\b)/i.test(
       text
     ) ||
     (purpose === 'authorize' &&
@@ -250,6 +288,16 @@ function contradicts(text, purpose) {
   );
 }
 
+function directPermission(text, purpose) {
+  if (/\bnot\b|n['’]t\b|\b(?:later|until|after|if|unless|when|once|pending)\b/i.test(text))
+    return false;
+  const verbs =
+    purpose === 'revoke' ? 'revoke|withdraw' : 'enable|authorize|approve|allow|run|proceed';
+  return new RegExp(
+    `^(?:yes[, ]+)?(?:please\\s+)?(?:(?:I|we)\\s+(?:explicitly\\s+)?(?:authorize|approve|allow)|(?:you\\s+(?:may|can)\\s+|(?:I|we)\\s+want\\s+to\\s+|let['’]s\\s+)?(?:${verbs}))\\b`,
+    'i'
+  ).test(text.trim());
+}
 function wholeAffirmation(text, purpose) {
   const verbs =
     purpose === 'revoke'
@@ -282,8 +330,8 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   );
   if (members.length && !members.some((member) => scope.members.includes(member))) return false;
   const scoped = epics.length > 0 || ranks.length > 0 || members.length > 0;
-  const wave =
-    /\b(?:parallel|concurrent(?:ly)?|wave|stories|sequential(?:ly)?|one at a time)\b/i.test(text);
+  const wave = /\b(?:parallel|concurrent(?:ly)?|wave|stories|children|members)\b/i.test(text);
+  if (scoped && contradicts(text, purpose)) return true;
   const negate = "(?:do not|don't|never|no longer)";
   const negatedRevocation = new RegExp(`\\b${negate}\\s+(?:revoke|withdraw)\\b`, 'i').test(text);
   const negatedStop = new RegExp(`\\b${negate}\\s+(?:stop|cancel)\\b`, 'i').test(text);
@@ -316,7 +364,7 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   // a contextual reply. Incidental words in later work instructions are not.
   return (
     immediateReply &&
-    /^(?:actually[, ]+)?(?:don't|do not (?:enable|run|approve) (?:it|this)|don't (?:enable|run|approve) (?:it|this)|hold off|wait|cancel(?: it)?|no(?:,? not yet)?)[.!]?$/i.test(
+    /^(?:actually[, ]+)?(?:don't|do not (?:enable|run|approve) (?:it|this)|don't (?:enable|run|approve) (?:it|this)|hold off|wait|cancel(?: it)?|no(?:,? not yet)?|(?:run|go|switch to|use|keep it) (?:sequential(?:ly)?|one at a time)(?: instead)?)[.!]?$/i.test(
       text.trim()
     )
   );
@@ -346,9 +394,11 @@ export async function verifyRankWaveSource({
     let humanIntent = false;
     let authorizedAt = null;
     let proposal = null;
+    let proposalMessageId = null;
     for (const message of context.messages) {
       if (message.role === 'assistant') {
         proposal = proposals(message.statement, purpose);
+        proposalMessageId = message.messageId;
         continue;
       }
       if (message.role !== 'user') return blocked('source-not-human');
@@ -373,9 +423,9 @@ export async function verifyRankWaveSource({
       if (text.includes('?') && affirmative) return blocked('source-ambiguous');
       if (
         complete(humanScope) &&
-        affirmative &&
         humanIntent &&
-        (complete(partial) || wholeAffirmation(text, purpose))
+        ((complete(partial) && directPermission(text, purpose)) ||
+          (wholeAffirmation(text, purpose) && hasIntent(text, purpose)))
       ) {
         authorized = true;
         authorizedAt = message.submittedAt;
@@ -387,6 +437,8 @@ export async function verifyRankWaveSource({
         )?.[1]
         ?.toUpperCase();
       if (proposal && (wholeAffirmation(text, purpose) || selection) && !complete(partial)) {
+        if (message.previousAssistantId !== proposalMessageId)
+          return blocked('source-context-mismatch');
         if (text.includes('?')) return blocked('source-ambiguous');
         const choices = proposal.filter((p) => complete(p.scope) && p.intent);
         if (!selection && (choices.length !== proposal.length || proposal.some((p) => p.ambiguous)))
