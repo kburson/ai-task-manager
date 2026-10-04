@@ -281,7 +281,7 @@ function humanText(statement) {
 }
 function contradicts(text, purpose) {
   return (
-    /(?:\bdo not\b|\bdon't\b|\bnever\b|\bno\b|\bnot\b|n['’]t\b|\bpause\b|\bcancel\b|\bnot approved?\b|\bhold off\b|\bwait\b)/i.test(
+    /(?:\bdo not\b|\bdon['’]?t\b|\bnever\b|\bno\b|\bnot\b|n['’]t\b|\bpause\b|\bcancel\b|\bnot approved?\b|\bhold off\b|\bwait\b)/i.test(
       text
     ) ||
     (purpose === 'authorize' &&
@@ -341,19 +341,29 @@ function wholeAffirmation(text, purpose) {
     'i'
   ).test(text.trim());
 }
-function admissionTarget(text) {
-  // A withdrawal is broader than a grant: unfamiliar qualifiers cannot keep
-  // revoked authority alive. Exempt only an explicitly named other activity
-  // in this object, before conditions such as waiting until CI passes.
-  const object = withoutScopeTokens(text)
-    .split(/\b(?:until|while|before|after)\b/i)[0]
-    .replace(/^(?:(?:on|with|for|the|this|these|our|my|any)\s+)+/i, '')
+function principalObject(text) {
+  return text
+    .split(
+      /\b(?:until|while|before|after|because|since|so|as|pending|till|unless|if|once|when)\b|,(?!\s*#?\d+\b)|[—:]|\s+and\s+(?=(?:close|push|merge|review|test|check|build)\b)/i
+    )[0]
     .trim();
-  return !/^(?:reviewing|testing|checking|building|scanning|closing|pushing|merging)\b|\b(?:CI|PRs?|pull requests?|timer|tests?|lint|checks?|builds?|reviews?|scans?|close|push|merges?)\b/i.test(
+}
+function admissionTarget(text) {
+  // Only the head activity is neutral. A CI/test/review reason appended to
+  // an admission object cannot conceal its withdrawal.
+  const object = withoutScopeTokens(principalObject(text))
+    .replace(/^(?:(?:on|with|for|the|this|these|our|my|any)\s+)+/i, '')
+    .replace(/^(?:(?:stories|children|members)['’]s?|['’]s)\s+/i, '')
+    .replace(
+      /^(?:(?:unit|integration|slow|local|cloud|automated|remaining|additional|focused|full)\s+)+/i,
+      ''
+    )
+    .trim();
+  return !/^(?:reviewing|testing|checking|building|scanning|closing|pushing|merging|CI|PRs?|pull requests?|timer|tests?|lint|checks?|builds?|reviews?|scans?|close|push|merges?)\b/i.test(
     object
   );
 }
-function contradictsWaveClause(text, scope, purpose) {
+function reversalScope(text, scope) {
   const epics = [...text.matchAll(/\b(?:epic|parent)\s*#?(\d+)\b/gi)].map((m) => Number(m[1]));
   const ranks = [
     ...text.matchAll(
@@ -370,12 +380,17 @@ function contradictsWaveClause(text, scope, purpose) {
     (ranks.length && !ranks.includes(scope.rank)) ||
     (members.length && !members.some((member) => scope.members.includes(member)))
   )
-    return false;
+    return { matches: false, admissionSpecific: false };
   const scoped = epics.length > 0 || ranks.length > 0 || members.length > 0;
   const wave = /\b(?:parallel|concurrent(?:ly)?|wave|stories|children|members|admissions?)\b/i.test(
     text
   );
-  if (!scoped && !wave) return false;
+  return {
+    matches: scoped || wave,
+    admissionSpecific: ranks.length > 0 || members.length > 0 || wave,
+  };
+}
+function contradictsWaveClause(text, scope, purpose) {
   const verbs = [
     ...text.matchAll(
       /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|switch(?: to)?|use|keep|go)\s+/gi
@@ -387,8 +402,16 @@ function contradictsWaveClause(text, scope, purpose) {
       match.index + match[0].length,
       verbs[index + 1]?.index ?? text.length
     );
-    const negated = /(?:do not|don't|never|no longer)\s+$/i.test(text.slice(0, match.index));
-    if (!admissionTarget(object)) continue;
+    const negated =
+      /(?:do not|don['’]?t|n['’]t|never|no longer)\s+(?:(?:actually|really|ever|please)\s+)*$/i.test(
+        text.slice(0, match.index)
+      );
+    const target = principalObject(object);
+    const reference = /\b(?:it|this|them)\b/i.test(target);
+    const relevant =
+      reversalScope(target, scope).matches ||
+      (reference && reversalScope(text.slice(0, match.index) + target, scope).matches);
+    if (!relevant || !admissionTarget(object)) continue;
     if (purpose === 'revoke') {
       if (negated && /^(?:revoke|withdraw)$/.test(verb)) return true;
       continue;
@@ -404,12 +427,12 @@ function contradictsWaveClause(text, scope, purpose) {
       return true;
   }
   if (purpose === 'revoke') return false;
-  const unapproved = text.match(/^(.*?)\s+(?:is|are)\s+not approved?\b/i);
-  return (
-    !!unapproved &&
-    (ranks.length > 0 || members.length > 0 || wave) &&
-    admissionTarget(unapproved[1])
-  );
+  for (const unapproved of text.matchAll(/(.*?)\s+(?:is|are)\s+not approved?\b/gi)) {
+    const subject = unapproved[1];
+    const relevant = reversalScope(subject, scope);
+    if (relevant.matches && relevant.admissionSpecific && admissionTarget(subject)) return true;
+  }
+  return false;
 }
 function contradictsWave(statement, scope, purpose, immediateReply) {
   const text = humanText(statement);
@@ -417,7 +440,7 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   // clause must never cancel a genuine reversal elsewhere in the message.
   const clauses = text
     .split(
-      /[.;!?\n]+|,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don't|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)|\s+and\s+(?=(?:I\s+)?(?:do not|don't|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)/i
+      /[.;!?\n]+|,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)|\s+and\s+(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)/i
     )
     .map((part) => part.trim())
     .filter(Boolean);
@@ -425,12 +448,14 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   if (!immediateReply) return false;
   const reply = text.trim();
   if (
-    /^(?:actually[, ]+)?(?:don't|hold off|wait|cancel(?: it)?|no(?:,? not yet)?)[.!]?$/i.test(reply)
+    /^(?:actually[, ]+)?(?:don['’]?t|hold off|wait|cancel(?: it)?|no(?:,? not yet)?)[.!]?$/i.test(
+      reply
+    )
   )
     return true;
   return (
     purpose === 'authorize' &&
-    /^(?:actually[, ]+)?(?:do not (?:enable|run|approve) (?:it|this)|don't (?:enable|run|approve) (?:it|this)|(?:run|go|switch to|use|keep it) (?:sequential(?:ly)?|one at a time)(?: instead)?)[.!]?$/i.test(
+    /^(?:actually[, ]+)?(?:do not (?:enable|run|approve) (?:it|this)|don['’]?t (?:enable|run|approve) (?:it|this)|(?:run|go|switch to|use|keep it) (?:sequential(?:ly)?|one at a time)(?: instead)?)[.!]?$/i.test(
       reply
     )
   );

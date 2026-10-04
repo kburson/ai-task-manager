@@ -597,3 +597,29 @@ test('each reversal verb keeps its own object when joined with an extra polite p
   ])
     assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
 });
+
+test('a reason or unrelated follow-on operation cannot conceal withdrawal of admission', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'Pause epic #107 rank 2 because CI is red.',
+    'Hold off on epic #107 rank 2, the tests are flaky.',
+    'Stop rank 2 so I can review the diff.',
+    'Pause the parallel stories pending review.',
+    'Hold off on rank 2 till CI is fixed.',
+    'Cancel the rank 2 wave since the build is broken.',
+    'Hold off on epic #107 rank 2 and close the session.',
+    'Pause epic #107 rank 2 because epic #108 rank 3 CI is red.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+});
+
+test('ordinary smart punctuation and negation modifiers cannot conceal a withdrawal', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'Don’t run rank 2 in parallel anymore.',
+    'Never mind, don’t run rank 2.',
+    'Do not actually run rank 2.',
+    'dont run rank 2.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+});
