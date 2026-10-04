@@ -12,7 +12,14 @@ import { hashAuthorizationStatement } from '../../../../task-tracker/lib/workflo
 const scope = { repository: 'o/r', epic: 107, rank: 2, members: [140, 144, 145] };
 async function verify(
   messages,
-  { order, metadata = 'o/r', changeHash = false, purpose = 'authorize', notBefore = null } = {}
+  {
+    order,
+    metadata = 'o/r',
+    changeHash = false,
+    purpose = 'authorize',
+    notBefore = null,
+    through = null,
+  } = {}
 ) {
   const dir = makeScratchDir('rank-wave-source');
   const file = path.join(dir, 'native.jsonl');
@@ -54,6 +61,7 @@ async function verify(
       scope,
       purpose,
       notBefore,
+      through,
       recordingActor: 'codex/session:recorder',
       loadContext,
     });
@@ -205,6 +213,57 @@ test('sequential intent, unrelated yes and selecting an enable proposal cannot b
         { purpose: 'revoke' }
       )
     ).status,
+    'blocked'
+  );
+});
+
+test('single-letter words and qualified questions do not select a labeled authorization', async () => {
+  const proposal =
+    'A (Recommended): parallel epic #107 rank 2 children [140,144,145].\nI: parallel epic #107 rank 2 children [140,144,145].';
+  for (const reply of [
+    'A bit premature, hold off',
+    'a quick question first',
+    'I think this needs more discussion',
+    'A. Can we approve this later?',
+    'yes, but hold off',
+  ]) {
+    assert.equal((await verify([assistant(proposal), human(reply)])).status, 'blocked', reply);
+  }
+  for (const reply of ['A', 'A.', 'A. Authorize it.']) {
+    assert.equal((await verify([assistant(proposal), human(reply)])).status, 'verified', reply);
+  }
+});
+
+test('omitting a later human reversal from references cannot preserve authorization', async () => {
+  for (const reversal of [
+    "Actually don't",
+    'Do not enable it.',
+    'Hold off',
+    'Run sequentially instead.',
+  ]) {
+    const result = await verify(
+      [human('Run parallel epic #107 rank 2 children [140,144,145].'), human(reversal)],
+      { order: [0] }
+    );
+    assert.equal(result.status, 'blocked', reversal);
+  }
+});
+
+test('historical verification respects the record cutoff and rejects a source newer than that record', async () => {
+  const messages = [
+    {
+      ...human('Run parallel epic #107 rank 2 children [140,144,145].'),
+      at: '2026-10-04T01:00:00.000Z',
+    },
+    { ...human('Do not enable it.'), at: '2026-10-04T03:00:00.000Z' },
+  ];
+  assert.equal(
+    (await verify(messages, { order: [0], through: '2026-10-04T02:00:00.000Z' })).status,
+    'verified'
+  );
+  assert.equal((await verify(messages, { order: [0] })).status, 'blocked');
+  assert.equal(
+    (await verify([messages[0]], { through: '2026-10-04T00:00:00.000Z' })).status,
     'blocked'
   );
 });

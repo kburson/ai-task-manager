@@ -669,7 +669,7 @@ export const VERB_CONTRACTS = Object.freeze({
       'Mutations require genuine parent authority, exact source context and the common physical parent admission lock.',
     ],
     [
-      'Prepare/show read authority; record/revoke/refresh append immutable scoped records; resume repairs the same operation without another comment. No lifecycle state is changed.',
+      'Prepare/show read authority; record/revoke/refresh append immutable scoped records; resume repairs the same operation without another comment; lock-show inspects ownership and lock-release requires genuine parent authority and exact dead-holder evidence. No lifecycle state is changed.',
     ],
     ['Prints typed proposal, publication, refusal or indeterminate results.'],
     [exit(4, 'wave obligation refused'), exit(6, 'original comment write outcome indeterminate')]
@@ -894,7 +894,10 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
     positional('#N', 'Issue number whose marker-owned comment will be upserted.'),
   ]),
   'epic-wave': Object.freeze([
-    positional('<prepare|record|resume|refresh|show|revoke>', 'Rank-wave operation.'),
+    positional(
+      '<prepare|record|resume|refresh|show|revoke|lock-show|lock-release>',
+      'Rank-wave operation.'
+    ),
     positional('<epic>', 'Exact parent issue number.'),
   ]),
   'workflow-exception': Object.freeze([

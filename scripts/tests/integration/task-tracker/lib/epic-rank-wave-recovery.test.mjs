@@ -516,3 +516,48 @@ test('parent generation drift after comment publication refuses pointer adoption
   assert.equal(result.code, 'rank-wave-parent-binding-changed');
   assert.equal(f.posts, 1);
 });
+
+test('fresh human reauthorization supersedes unavailable historical transcripts without trusting a comment as authority', async () => {
+  const f = fixture(),
+    p = await prepared(f);
+  assert.equal((await record(f, p)).status, 'recorded');
+  const prior = f.comments[0].wave;
+  f.runtime.verifySource = async ({ source, notBefore }) => {
+    if (source.sessionId === 'real') return { status: 'blocked', code: 'source-host-unavailable' };
+    assert.equal(source.sessionId, 'current-human');
+    if (notBefore !== null) assert.equal(notBefore, at);
+    return { status: 'verified' };
+  };
+  const inspect = () =>
+    inspectRankWavePublication({
+      repository: 'o/r',
+      epic: 107,
+      rank: 2,
+      now: '2026-10-04T02:00:00.000Z',
+      runtime: f.runtime,
+    });
+  assert.equal((await inspect()).status, 'blocked');
+  const current = await prepared(f, 'fresh-authority');
+  const result = await executeRankWaveWrite({
+    action: 'record',
+    repository: 'o/r',
+    epic: 107,
+    now: '2026-10-04T02:00:00.000Z',
+    runtime: f.runtime,
+    input: {
+      schema: 'aitm.epic-wave-request/v1',
+      proposal: current.proposal,
+      expectedProposalDigest: current.digest,
+      previousDigest: prior.digest,
+      source: {
+        schema: 'aitm.rank-wave-source/v1',
+        sessionId: 'current-human',
+        messages: [{ messageId: 'current-message', statementHash: 'sha256:' + 'a'.repeat(64) }],
+      },
+    },
+  });
+  assert.equal(result.status, 'recorded', JSON.stringify(result));
+  assert.equal((await inspect()).status, 'ready');
+  f.runtime.verifySource = async () => ({ status: 'blocked', code: 'source-host-unavailable' });
+  assert.equal((await inspect()).status, 'blocked');
+});

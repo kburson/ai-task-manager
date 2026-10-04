@@ -113,3 +113,49 @@ test('real child mapping retains adopted graph identity through AC stamping, Rev
   );
   assert.equal(reconcileRankWaveRefinement(changed, records)[0].hasCurrentRefinement, false);
 });
+
+test('legacy mapping rejects size and estimate drift; scoped rank-wave mapping accepts only Plan-or-later projection', async () => {
+  const { mapSubIssueNodes } = await import('../../../../gh/lib/wave-admission.mjs');
+  const clean = stampRefinementSnapshot(
+    body.replace('<!-- aitm-fields', '## Plan Metadata\n\n<!-- aitm-fields'),
+    { labels }
+  );
+  const changed = clean.replace('"size":"S","estimate":2', '"size":"M","estimate":4');
+  const node = (state) => ({
+    number: 144,
+    state: 'OPEN',
+    body: changed,
+    labels: { nodes: labels.map((name) => ({ name })), pageInfo: { hasNextPage: false } },
+    projectItems: {
+      nodes: [
+        {
+          project: { id: 'P' },
+          fieldValues: {
+            nodes: [
+              { name: state, field: { name: 'Status' } },
+              { number: 2, field: { name: 'Rank' } },
+            ],
+          },
+        },
+      ],
+    },
+  });
+  assert.equal(
+    mapSubIssueNodes([node('Develop')], { projectId: 'P' })[0].hasCurrentRefinement,
+    false
+  );
+  assert.equal(
+    mapSubIssueNodes([node('Develop')], { projectId: 'P' }, { allowPlanProjection: true })[0]
+      .hasCurrentRefinement,
+    true,
+    JSON.stringify(mapSubIssueNodes([node('Develop')], { projectId: 'P' }))
+  );
+  assert.equal(
+    mapSubIssueNodes(
+      [node('Ready for Planning')],
+      { projectId: 'P' },
+      { allowPlanProjection: true }
+    )[0].hasCurrentRefinement,
+    false
+  );
+});

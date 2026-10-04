@@ -95,6 +95,9 @@ test('serialized public Promote takes the common parent lock before the child lo
     deps: {
       projectDir: '/unused',
       fetchParentIssue: async () => 107,
+      fetchIssueBody: async () => ({
+        body: '<!-- aitm-last-known-state state="plan" ts="2026-10-04T01:00:00.000Z" -->',
+      }),
       withEpicAdmissionLock: async (options, fn) => {
         order.push(`parent:${options.epic}`);
         return fn(context);
@@ -213,4 +216,30 @@ test('Explain collector, direct Plan and pull-next agree without admitting a sec
     if (status !== 'ready') assert.equal(explanation.blockers[0].code, direct.code);
     assert.deepEqual(explainEffects, []);
   }
+});
+
+test('state drift to admission while holding a child-only lock refuses before the runner, without reversing lock order', async () => {
+  const { runSerializedPromote } = await import('../../../../task-tracker/verbs/promote.mjs');
+  let reads = 0,
+    effects = 0;
+  const result = await runSerializedPromote({
+    issueNumber: 144,
+    cfg: { repo: 'o/r' },
+    deps: {
+      projectDir: '/unused',
+      fetchParentIssue: async () => 107,
+      fetchIssueBody: async () => ({
+        body: `<!-- aitm-last-known-state state="${reads++ ? 'plan' : 'develop'}" ts="2026-10-04T01:00:00.000Z" -->`,
+      }),
+      withIssueLock: async (_, fn) => fn(),
+      withEpicAdmissionLock: async () => {
+        throw new Error('parent must not be acquired under child lock');
+      },
+      promoteRunner: async () => {
+        effects++;
+      },
+    },
+  });
+  assert.equal(result.code, 'admission-state-changed');
+  assert.equal(effects, 0);
 });

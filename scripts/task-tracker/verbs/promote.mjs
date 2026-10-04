@@ -739,11 +739,35 @@ export async function runSerializedPromote({ issueNumber, cfg, deps = {} }) {
   });
   const childLock = deps.withIssueLock ?? withIssueLock;
   const runner = deps.promoteRunner ?? runPromote;
-  const run = (context) =>
-    childLock({ issue: issueNumber, verb: 'promote', projDir: projectDir }, () =>
-      runner({ issueNumber, cfg, deps: { ...deps, projectDir, admissionLockContext: context } })
+  const admissionState = (state) => ['ready-for-plan', 'plan'].includes(normalizeStateId(state));
+  const readState = async () => {
+    const { body } = await (deps.fetchIssueBody ?? defaultFetchIssueBody)({
+      issueNumber,
+      repo: cfg.repo,
+    });
+    return (
+      readLastKnownState(body).state ??
+      (await (deps.getLiveState ?? defaultGetLiveState)({ issueNumber, cfg }))
     );
+  };
+  const run = (context) =>
+    childLock({ issue: issueNumber, verb: 'promote', projDir: projectDir }, async () => {
+      // Never acquire a parent lock while holding the child lock. A changed
+      // admission state must be retried through the parent-before-child route.
+      if (parent !== null && !context && admissionState(await readState()))
+        return {
+          status: 'guard-refused',
+          code: 'admission-state-changed',
+          message: 'promote: admission state changed; retry with parent admission serialization',
+        };
+      return runner({
+        issueNumber,
+        cfg,
+        deps: { ...deps, projectDir, admissionLockContext: context },
+      });
+    });
   if (parent === null) return run(null);
+  if (!admissionState(await readState())) return run(null);
   return (deps.withEpicAdmissionLock ?? withEpicAdmissionLock)(
     { projectDir, epic: parent, context: deps.admissionLockContext },
     run

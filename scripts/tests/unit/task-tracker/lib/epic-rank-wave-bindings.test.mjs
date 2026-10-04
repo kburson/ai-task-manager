@@ -205,3 +205,35 @@ test('default observation derives handoff only from real parent replacement clai
     undefined
   );
 });
+
+test('an idle Ready-for-Planning peer retains native lineage while the target and executing peers require live claims', async () => {
+  const f = fixture();
+  f.children[0].boardState = 'ready-for-plan';
+  f.observations.get(140).active = null;
+  f.observations.get(140).occupancy = null;
+  assert.equal((await check(f)).ok, true);
+  for (const phase of ['plan', 'develop']) {
+    f.children[0].boardState = phase;
+    assert.equal((await check(f)).ok, false, phase);
+  }
+  f.children[0].boardState = 'ready-for-plan';
+  assert.equal(
+    (
+      await verifyRankWaveBindings({
+        ...f,
+        parent,
+        target: 140,
+        observe: async (b) => f.observations.get(b.issue),
+      })
+    ).ok,
+    false
+  );
+});
+
+test('Claude native transcript lookup uses its dotted-worktree project directory encoding', async () => {
+  const { nativeRankWaveTranscript } =
+    await import('../../../../task-tracker/lib/epic-rank-wave-bindings.mjs');
+  const b = { ...binding(144), provider: 'claude', worktree: '/clone/.worktrees/child-144' };
+  const file = nativeRankWaveTranscript(b, { home: '/fixture-home' });
+  assert.equal(file, '/fixture-home/.claude/projects/-clone--worktrees-child-144/native-144.jsonl');
+});

@@ -147,3 +147,60 @@ expired authority, lower ranks not Done, dependencies, identity collisions and
 unverified generations. A refused write exits 4; an indeterminate write exits 6.
 Explain preserves the `rank-wave-admission-refused` blocker and its exact
 reason. Repair the named obligation through its registered action, then retry.
+
+### Recovering a crashed admission holder
+
+The parent lock covers wave writes and the R4P-to-Plan and Plan-to-Develop
+admission edges. A child's long Test or Close delegate holds only its child
+issue lock, so peers can continue admission. Detached lifecycle checkouts can
+resolve the common lock, but detached branches remain invalid wave bindings.
+
+Use `npx aitm epic-wave lock-show 107 --json` to inspect the physical common-dir
+lock. This operation is read-only and takes no input file. To release a crashed
+holder, bind the genuine parent through the task workflow and save the exact
+returned observation in a request with schema
+`aitm.epic-admission-lock-release/v1` and an `observation` property. Then run
+`npx aitm epic-wave lock-release 107 --input-file .scratch/gh/dead-lock.json --json`.
+Release rechecks the same host, a provably dead PID, exact holder bytes, and the
+observed directory and file identities. It retains a read-only holder descriptor
+through the effect. Live, foreign-host, unknown or physically replaced evidence
+refuses; automatic admission never evicts a holder. Unknown ownership needs
+investigation, not deletion or a manufactured observation.
+
+### Source retention and replacement authority
+
+Retain native transcripts for current authority on the admission host. Missing
+current native source still refuses: a GitHub comment or its digest alone
+cannot replace authentic human authority. Historical revision structure,
+digests and immutable comment provenance remain verified in full. Refresh
+inherits its latest authorization source and cannot become a new permission.
+
+If a superseded transcript is unavailable, prepare and record a new proposal
+with a fresh authentic human instruction later than the previous revision and
+its exact `previousDigest`. The new authorization supersedes the old human
+scope; readers verify the new source and retain all historical records. This
+registered path also allows a new genuine parent session to adopt the exact
+proposal with fresh human authority. Refresh cannot replace the parent. Edited,
+missing or conflicting comment history remains a refusal.
+
+Authorization references cannot omit a later human reversal. The host examines
+up to 64 subsequent unreferenced human statements for contradictions; exceeding
+that bound requires referencing a current instruction. Referenced statements
+alone can grant authority. Historical verification uses the record's creation
+cutoff; current admission also checks subsequent instructions. Quoted and
+injected material remains untrusted. A labeled selection must be the entire
+reply or a label with a simple affirmative response, never a single-letter word
+at the beginning of ordinary prose.
+
+Priority and issue-label changes are refinement changes, including adding a
+CI label. They require a fresh proposal and authorization; BLOCKED is excluded
+because it is handled by separate governed dependency evidence. Legacy epics
+retain strict refinement checks. Plan size/estimate projection applies only to
+the rank-wave adapter's Plan-or-later observations.
+
+`show` prints valid revoked, expired and incomplete states with exit 4 because
+none supplies ready admission authority. This is a read-only result, not a
+mutation failure. `lock-show` reports ownership without asserting admission
+readiness. All comment transport errors currently lack definitive no-write
+proof and remain indeterminate: inspect the original operation and reconcile
+an actual matching comment with `resume`; do not retry by changing IDs.

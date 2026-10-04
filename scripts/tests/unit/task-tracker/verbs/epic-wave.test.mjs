@@ -53,3 +53,32 @@ test('operator catalog exposes scoped authority, recovery and no lifecycle mutat
   assert.match(JSON.stringify(help), /resume/);
   assert.match(JSON.stringify(help), /immutable/);
 });
+
+test('registered lock inspection is read-only and release requires parent authority and exact observation', async () => {
+  const observation = { schema: 'aitm.epic-admission-lock/v1', status: 'dead' };
+  const calls = [];
+  const runtime = {
+    inspectLock: () => observation,
+    assertParent: async () => {
+      calls.push('parent');
+    },
+    releaseLock: (value) => {
+      assert.deepEqual(value, observation);
+      calls.push('release');
+      return { status: 'released' };
+    },
+  };
+  const ctx = { rest: ['lock-show', '107', '--json'], cfg: { repo: 'o/r' } };
+  assert.deepEqual(await runEpicWave(ctx, { runtime }), observation);
+  assert.deepEqual(calls, []);
+  ctx.rest = ['lock-release', '107', '--input-file', 'observed.json'];
+  const readFile = () =>
+    JSON.stringify({ schema: 'aitm.epic-admission-lock-release/v1', observation });
+  assert.equal((await runEpicWave(ctx, { runtime, readFile })).status, 'released');
+  assert.deepEqual(calls, ['parent', 'release']);
+  runtime.assertParent = async () => {
+    throw new Error('foreign parent');
+  };
+  await assert.rejects(runEpicWave(ctx, { runtime, readFile }), /foreign parent/);
+  assert.deepEqual(calls, ['parent', 'release']);
+});

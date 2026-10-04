@@ -21,9 +21,9 @@ export async function observeRankWaveAdmission({
     epic: parentEpicNumber,
     rank:
       deps.rank ??
-      (await runtime.readSnapshot(parentEpicNumber, null)).children.find(
-        (c) => c.number === Number(issueNumber)
-      )?.rank,
+      (
+        await runtime.readSnapshot(parentEpicNumber, null, { includeBindings: false })
+      ).children.find((c) => c.number === Number(issueNumber))?.rank,
     now: new Date().toISOString(),
     runtime,
   });

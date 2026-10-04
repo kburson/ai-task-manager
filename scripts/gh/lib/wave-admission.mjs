@@ -97,7 +97,11 @@ export async function defaultFetchSiblings({
   if (!projectId) throw new Error('wave-admission: projectId is required');
   const nodes = await fetchAllSubIssueNodes({ parentEpicNumber, repo, projectId });
   const fullCfg = { ...cfg, repo, projectId };
-  return enrichSiblingDependencies(mapSubIssueNodes(nodes, fullCfg), fullCfg, deps);
+  return enrichSiblingDependencies(
+    mapSubIssueNodes(nodes, fullCfg, { allowPlanProjection: deps.allowPlanProjection === true }),
+    fullCfg,
+    deps
+  );
 }
 
 export async function enrichSiblingDependencies(children, cfg, deps = {}) {
@@ -456,7 +460,7 @@ async function fetchSubIssueIdentities({ owner, repoName, parentEpicNumber, gqlF
  *   boardState:string, closeReason:string|null, recoveryPhase:string|null,
  *   recoveryTx:string|null}>}
  */
-export function mapSubIssueNodes(subs, cfgOrProjectId) {
+export function mapSubIssueNodes(subs, cfgOrProjectId, { allowPlanProjection = false } = {}) {
   const cfg =
     typeof cfgOrProjectId === 'string'
       ? { projectId: cfgOrProjectId }
@@ -564,7 +568,8 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
     } else {
       const verified = verifyRefinementSnapshot(sub.body, {
         labels: labels.nodes.map((label) => label?.name).filter(Boolean),
-        allowPlanProjection: true,
+        allowPlanProjection:
+          allowPlanProjection && ['plan', 'develop', 'test', 'review'].includes(boardState),
       });
       const snapshotRank = verified.snapshot?.fields?.rank;
       if (!verified.ok) childEvidenceError = verified.reason;

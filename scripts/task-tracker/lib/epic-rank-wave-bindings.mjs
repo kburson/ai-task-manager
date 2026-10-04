@@ -17,6 +17,19 @@ import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 export function rankWaveGitEnv() {
   return Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
 }
+export function discoverRankWaveCommonDir(worktree) {
+  return realpathSync(
+    String(
+      execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+        cwd: realpathSync(worktree),
+        env: rankWaveGitEnv(),
+        encoding: 'utf8',
+        timeout: 10000,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+    ).trim()
+  );
+}
 export function discoverRankWavePhysical(worktree) {
   const options = {
     cwd: realpathSync(worktree),
@@ -32,17 +45,17 @@ export function discoverRankWavePhysical(worktree) {
   if (!branch || branch === 'HEAD') throw new Error('rank-wave: detached worktree');
   return { worktree: root, branch, commonDir };
 }
-export function nativeRankWaveTranscript(binding) {
+export function nativeRankWaveTranscript(binding, { home = homedir() } = {}) {
   return resolveTranscriptPath({
     adapter: getProvider(binding.provider),
     sid: binding.sessionId,
-    homedir: homedir(),
-    projectKey: binding.worktree.replace(/[\\/:]/g, '-'),
+    homedir: home,
+    projectKey: binding.worktree.replace(/[^a-zA-Z0-9]/g, '-'),
     cwd: binding.worktree,
   });
 }
-export async function observeRankWaveNative(binding) {
-  const file = nativeRankWaveTranscript(binding);
+export async function observeRankWaveNative(binding, { home = homedir() } = {}) {
+  const file = nativeRankWaveTranscript(binding, { home });
   if (!file) throw new Error('rank-wave: native transcript unavailable');
   const events = (await readFile(file, 'utf8'))
     .split(/\r?\n/)
@@ -202,6 +215,7 @@ export async function verifyRankWaveBindings({
       if (!child) return failure('binding-member-missing', binding.issue);
       if (isStrictCompletedDone(child)) continue;
       const phase = normalizeStateId(child.boardState);
+      if (phase === 'ready-for-plan' && binding.issue !== target) continue;
       if (
         ['test', 'review'].includes(phase) &&
         binding.issue !== target &&

@@ -11,7 +11,18 @@ import {
 
 export function parseEpicWaveArgs(rest = []) {
   const [action, ...args] = rest;
-  if (!['prepare', 'record', 'resume', 'refresh', 'show', 'revoke'].includes(action))
+  if (
+    ![
+      'prepare',
+      'record',
+      'resume',
+      'refresh',
+      'show',
+      'revoke',
+      'lock-show',
+      'lock-release',
+    ].includes(action)
+  )
     throw new TypeError('epic-wave: action');
   let epic = null,
     inputFile = null,
@@ -29,7 +40,7 @@ export function parseEpicWaveArgs(rest = []) {
     else if (arg === '--json' && !json) json = true;
     else throw new TypeError('epic-wave: unknown or duplicate argument');
   }
-  if (!Number.isSafeInteger(epic) || (action !== 'show' && !inputFile))
+  if (!Number.isSafeInteger(epic) || (!['show', 'lock-show'].includes(action) && !inputFile))
     throw new TypeError('epic-wave: issue or input');
   return { action, epic, inputFile, json };
 }
@@ -42,6 +53,17 @@ export async function runEpicWave(ctx, deps = {}) {
   const repository = ctx.cfg.repo,
     epic = args.epic;
   const now = (deps.now ?? (() => new Date().toISOString()))();
+  if (args.action === 'lock-show') {
+    if (input) throw new TypeError('epic-wave: lock-show takes no input');
+    return runtime.inspectLock();
+  }
+  if (args.action === 'lock-release') {
+    exactRankWaveKeys(input, ['schema', 'observation']);
+    if (input.schema !== 'aitm.epic-admission-lock-release/v1')
+      throw new TypeError('epic-wave: lock-release schema');
+    await runtime.assertParent(epic);
+    return runtime.releaseLock(input.observation);
+  }
   if (['prepare', 'show'].includes(args.action)) {
     if (!input) throw new TypeError('epic-wave: read selector requires --input-file');
     exactRankWaveKeys(
@@ -71,6 +93,9 @@ export async function runEpicWave(ctx, deps = {}) {
 export async function verbEpicWave(ctx) {
   const result = await runEpicWave(ctx);
   console.log(JSON.stringify({ schema: 'aitm.epic-wave-result/v1', ...result }));
-  if (!['prepared', 'recorded', 'ready', 'legacy', 'ungranted'].includes(result.status))
+  if (
+    !['prepared', 'recorded', 'ready', 'legacy', 'ungranted', 'released'].includes(result.status) &&
+    parseEpicWaveArgs(ctx.rest).action !== 'lock-show'
+  )
     process.exitCode = result.status === 'indeterminate' ? 6 : 4;
 }

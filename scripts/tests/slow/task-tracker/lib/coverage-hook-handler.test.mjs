@@ -225,7 +225,7 @@ test('SessionStart: active task with stale entryStartTs → recovery banner', ()
     state: { active: '#7', entryStartTs: pastTs, wordsAtEntryStart: 0, lastWordMarker: 0 },
     jsonlLines: [{ type: 'user', message: { content: 'hello world from the test transcript' } }],
   });
-  assert.match(out, /#7: (?:recovered-unknown|paused)/);
+  assert.match(out, /#7: recovered-unknown\. Prior unobserved session time remains Unknown\./);
 });
 
 test('SessionStart: active task with no entryStartTs → active banner, no recovery time', () => {
@@ -233,7 +233,7 @@ test('SessionStart: active task with no entryStartTs → active banner, no recov
     state: { active: '#7', entryStartTs: null, wordsAtEntryStart: 0, lastWordMarker: 0 },
     jsonlLines: [{ type: 'user', message: { content: 'a few words here' } }],
   });
-  assert.match(out, /#7: (?:recovered-unknown|paused)/);
+  assert.match(out, /#7: paused/);
 });
 
 test('SessionStart with a paused interval preserves its unconsumed cursor tail', () => {

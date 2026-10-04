@@ -126,22 +126,13 @@ function publicationMatches(body, selected, comments) {
 }
 function sourceNotBefore(record, previous) {
   if (!previous) return null;
-  if (
-    record.action === 'revoke' ||
-    (record.action === 'authorize' &&
-      (previous.action === 'revoke' ||
-        ['graph', 'members', 'bindings', 'parent'].some(
-          (key) => !same(record[key], previous[key])
-        )))
-  )
-    return previous.createdAt;
-  if (
-    record.action === 'authorize' &&
-    previous.expiresAt !== null &&
-    Date.parse(record.createdAt) >= Date.parse(previous.expiresAt)
-  )
+  if (record.action === 'revoke') return previous.createdAt;
+  if (record.action !== 'authorize') return null;
+  // Replacing authority requires a newer human source, including unchanged
+  // scope. An expired grant also requires permission after its expiry.
+  if (previous.expiresAt !== null && Date.parse(record.createdAt) >= Date.parse(previous.expiresAt))
     return previous.expiresAt;
-  return null;
+  return previous.createdAt;
 }
 async function verifyHistorySources(comments, { repository, epic, rank, now, runtime }) {
   const selected = selectRankWaveRecord(
@@ -153,22 +144,28 @@ async function verifyHistorySources(comments, { repository, epic, rank, now, run
     .map((c) => c.wave.record)
     .filter((r) => r.rank === rank)
     .sort((a, b) => a.revision - b.revision);
-  for (let i = 0; i < records.length; i++) {
-    const r = records[i],
-      source = await runtime.verifySource({
-        source: r.source,
-        scope: scope(r),
-        recordingActor: r.recordingActor,
-        purpose: r.action === 'revoke' ? 'revoke' : 'authorize',
-        notBefore: sourceNotBefore(r, records[i - 1]),
-      });
+  // Structural integrity and append-only scope are checked for every revision
+  // above. A refresh inherits authority from its latest authorize record; a
+  // new authorization supersedes old human scope only with a fresh source.
+  let anchor = records.length - 1;
+  while (anchor >= 0 && records[anchor].action === 'refresh') anchor--;
+  if (anchor >= 0) {
+    const r = records[anchor];
+    const source = await runtime.verifySource({
+      source: r.source,
+      scope: scope(r),
+      recordingActor: r.recordingActor,
+      purpose: r.action === 'revoke' ? 'revoke' : 'authorize',
+      notBefore: sourceNotBefore(r, records[anchor - 1]),
+      through: r.createdAt,
+    });
     if (source?.status !== 'verified') return blocked('source-unverified');
   }
   return null;
 }
 export async function inspectRankWavePublication({ repository, epic, rank, now, runtime } = {}) {
   try {
-    const snapshot = await runtime.readSnapshot(epic, rank);
+    let snapshot = await runtime.readSnapshot(epic, rank, { includeBindings: false });
     const comments = await history(runtime, epic);
     const selected = selectRankWaveRecord(
       comments.map((c) => c.wave),
@@ -222,6 +219,7 @@ export async function inspectRankWavePublication({ repository, epic, rank, now, 
       return { status: 'ungranted', snapshot, graph: plan.graph };
     }
     if (selected.status !== 'ready') return { ...selected, snapshot };
+    snapshot = await runtime.readSnapshot(epic, rank);
     const refusal = await verified({ record: selected.record, snapshot, runtime });
     if (refusal) return refusal;
     if (!publicationMatches(snapshot.body, selected, comments))

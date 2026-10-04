@@ -221,3 +221,154 @@ test('cross-process fixture transports quoted paths as data without constructing
     rmSync(r.dir, { recursive: true, force: true });
   }
 });
+
+test('a long child Develop-to-Test promote leaves the parent admission lock available to peers', async () => {
+  const { runSerializedPromote } = await import('../../../../task-tracker/verbs/promote.mjs');
+  const r = repo();
+  let release, entered;
+  const completed = new Promise((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise((resolve) => {
+    entered = resolve;
+  });
+  const pending = runSerializedPromote({
+    issueNumber: 140,
+    cfg: { repo: 'o/r' },
+    deps: {
+      projectDir: r.a,
+      fetchParentIssue: async () => 107,
+      fetchIssueBody: async () => ({
+        body: '<!-- aitm-last-known-state state="develop" ts="2026-10-04T01:00:00.000Z" -->',
+      }),
+      promoteRunner: async ({ deps }) => {
+        entered();
+        await completed;
+        assert.equal(deps.admissionLockContext, null);
+        return { status: 'promoted' };
+      },
+    },
+  });
+  try {
+    await started;
+    assert.equal(
+      await withEpicAdmissionLock(
+        { projectDir: r.b, epic: 107, timeoutMs: 50 },
+        async () => 'peer admitted'
+      ),
+      'peer admitted'
+    );
+  } finally {
+    release();
+    await pending;
+    rmSync(r.dir, { recursive: true, force: true });
+  }
+});
+
+test('detached lifecycle checkouts resolve the common lock without becoming valid wave bindings', async () => {
+  const r = repo();
+  try {
+    execFileSync('git', ['checkout', '--detach'], { cwd: r.b, stdio: 'pipe' });
+    assert.equal(
+      admissionLockPath({ projectDir: r.a, epic: 107 }),
+      admissionLockPath({ projectDir: r.b, epic: 107 })
+    );
+    assert.throws(() => discoverRankWavePhysical(r.b), /detached/);
+  } finally {
+    rmSync(r.dir, { recursive: true, force: true });
+  }
+});
+
+test('registered dead-holder recovery preserves live and physically replaced holder evidence', async () => {
+  const { inspectEpicAdmissionLock, releaseEpicAdmissionLock } =
+    await import('../../../../task-tracker/lib/epic-admission-lock.mjs');
+  const { hostname } = await import('node:os');
+  const { openSync, closeSync } = await import('node:fs');
+  const r = repo();
+  try {
+    const lock = admissionLockPath({ projectDir: r.a, epic: 107 });
+    mkdirSync(lock, { recursive: true });
+    const deadPid = Number(
+      execFileSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], {
+        encoding: 'utf8',
+      })
+    );
+    const holderFile = path.join(lock, 'holder.json');
+    const bytes = JSON.stringify({
+      pid: deadPid,
+      host: hostname(),
+      token: 'dead-holder',
+      createdAt: new Date().toISOString(),
+    });
+    writeFileSync(holderFile, bytes);
+    const observation = inspectEpicAdmissionLock({ projectDir: r.a, epic: 107 });
+    assert.equal(observation.status, 'dead');
+    const fd = openSync(holderFile, 'r');
+    try {
+      rmSync(holderFile);
+      writeFileSync(holderFile, bytes);
+      const replacement = inspectEpicAdmissionLock({ projectDir: r.a, epic: 107 });
+      assert.notEqual(replacement.identity.file.ino, observation.identity.file.ino);
+      assert.equal(
+        releaseEpicAdmissionLock({ projectDir: r.a, epic: 107, observation }).status,
+        'blocked'
+      );
+    } finally {
+      closeSync(fd);
+    }
+    writeFileSync(
+      holderFile,
+      JSON.stringify({ pid: process.pid, host: hostname(), token: 'live-holder' })
+    );
+    const live = inspectEpicAdmissionLock({ projectDir: r.a, epic: 107 });
+    assert.equal(live.status, 'live');
+    assert.equal(
+      releaseEpicAdmissionLock({ projectDir: r.a, epic: 107, observation: live }).status,
+      'blocked'
+    );
+    writeFileSync(holderFile, bytes);
+    const dead = inspectEpicAdmissionLock({ projectDir: r.b, epic: 107 });
+    assert.equal(
+      releaseEpicAdmissionLock({ projectDir: r.b, epic: 107, observation: dead }).status,
+      'released'
+    );
+    assert.equal(await withEpicAdmissionLock({ projectDir: r.a, epic: 107 }, async () => 42), 42);
+  } finally {
+    rmSync(r.dir, { recursive: true, force: true });
+  }
+});
+
+test('a new holder gets its own publication grace after prior known contention', async () => {
+  const { hostname } = await import('node:os');
+  const r = repo();
+  const lock = admissionLockPath({ projectDir: r.a, epic: 107 });
+  try {
+    mkdirSync(lock, { recursive: true });
+    writeFileSync(
+      path.join(lock, 'holder.json'),
+      JSON.stringify({ pid: process.pid, host: hostname(), token: 'known' })
+    );
+    const waiting = withEpicAdmissionLock(
+      { projectDir: r.b, epic: 107, timeoutMs: 600 },
+      async () => 'acquired'
+    );
+    const result = waiting.then(
+      (value) => ({ value }),
+      (error) => ({ error })
+    );
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    rmSync(lock, { recursive: true });
+    mkdirSync(lock);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    writeFileSync(
+      path.join(lock, 'holder.json'),
+      JSON.stringify({ pid: process.pid, host: hostname(), token: 'next' })
+    );
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    rmSync(lock, { recursive: true });
+    const settled = await result;
+    assert.equal(settled.value, 'acquired', settled.error?.message);
+  } finally {
+    rmSync(r.dir, { recursive: true, force: true });
+  }
+});

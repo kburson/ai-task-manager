@@ -25,7 +25,11 @@ import {
   rankWaveGitEnv,
 } from './epic-rank-wave-bindings.mjs';
 import { createRankWaveSourceLoader, verifyRankWaveSource } from './epic-rank-wave-source.mjs';
-import { withEpicAdmissionLock } from './epic-admission-lock.mjs';
+import {
+  withEpicAdmissionLock,
+  inspectEpicAdmissionLock,
+  releaseEpicAdmissionLock,
+} from './epic-admission-lock.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import {
   createAitmRecordEnvelope,
@@ -69,12 +73,16 @@ function bindingFor(issue, location, occupancy) {
     generation: occupancy.bindingGenerationId,
   };
 }
-export function createRankWaveRuntime(ctx, { admissionLockContext = null } = {}) {
+export function createRankWaveRuntime(ctx, { admissionLockContext = null, ports = {} } = {}) {
   const repository = ctx.cfg.repo,
     projectDir = ctx.projectDir ?? getProjectDir();
   const sid = currentSessionId(),
     provider = aiAppName();
-  const graphql = ({ query, variables }) => gql(query, variables).then((data) => ({ data }));
+  const transport = ports.run ?? run;
+  const graphql =
+    ports.graphql ?? (({ query, variables }) => gql(query, variables).then((data) => ({ data })));
+  const rowsAt =
+    ports.rows ?? (() => readOccupancy(occupancyPath(findMainWorktreePath(projectDir))));
   const loadContext = createRankWaveSourceLoader({
     resolveTranscriptPath: async (id) =>
       resolveTranscriptPath({
@@ -87,7 +95,7 @@ export function createRankWaveRuntime(ctx, { admissionLockContext = null } = {})
     resolveRepository: rankWaveRepositoryAt,
   });
   async function fetchBody(issue) {
-    const { stdout } = await run('gh', [
+    const { stdout } = await transport('gh', [
       'issue',
       'view',
       String(issue),
@@ -120,16 +128,25 @@ export function createRankWaveRuntime(ctx, { admissionLockContext = null } = {})
         return { commentNodeId: r.commentNodeId, wave: r.envelope.payload, body: r.body };
       });
   }
-  async function readSnapshot(epic, rank) {
+  async function readSnapshot(epic, rank, { includeBindings = true } = {}) {
     const body = await fetchBody(epic);
-    let children = await enrichChildrenWithBlockedBy({
-      children: await fetchEpicChildren({ cfg: ctx.cfg, parentEpicNumber: epic }),
-      cfg: ctx.cfg,
-    });
-    const rows = readOccupancy(occupancyPath(findMainWorktreePath(projectDir)));
+    let children = await (
+      ports.children ??
+      (async (epic) =>
+        enrichChildrenWithBlockedBy({
+          children: await fetchEpicChildren({
+            cfg: ctx.cfg,
+            parentEpicNumber: epic,
+            deps: { waveAdmission: { allowPlanProjection: includeBindings } },
+          }),
+          cfg: ctx.cfg,
+        }))
+    )(epic);
     const comments = await listRecords(epic);
     const retained = comments.map((c) => c.wave.record).sort((a, b) => b.revision - a.revision);
     children = reconcileRankWaveRefinement(children, retained);
+    if (!includeBindings) return { body, children };
+    const rows = rowsAt();
     const memberNumbers = children
       .filter((c) => c.rank === rank)
       .map((c) => c.number)
@@ -168,7 +185,7 @@ export function createRankWaveRuntime(ctx, { admissionLockContext = null } = {})
     recordingActor: `${provider}/session:${sid}`,
     async assertParent(epic) {
       assertGovernedMutationSession(loadState(ctx.statePath), epic);
-      const rows = readOccupancy(occupancyPath(findMainWorktreePath(projectDir)));
+      const rows = rowsAt();
       const active = getActiveTask(sid, projectDir),
         claim = rows[String(epic)];
       if (
@@ -188,6 +205,9 @@ export function createRankWaveRuntime(ctx, { admissionLockContext = null } = {})
       if (!observation.native.verified)
         throw new Error('rank-wave: parent native identity unavailable');
     },
+    inspectLock: () => inspectEpicAdmissionLock({ projectDir, epic: ctx.waveEpic }),
+    releaseLock: (observation) =>
+      releaseEpicAdmissionLock({ projectDir, epic: ctx.waveEpic, observation }),
     readSnapshot,
     listRecords,
     verifySource: (args) => verifyRankWaveSource({ ...args, loadContext }),
@@ -238,7 +258,7 @@ export function createRankWaveRuntime(ctx, { admissionLockContext = null } = {})
         graphql,
         rest: {
           async createIssueComment({ repository, issue, body }) {
-            const { stdout } = await run('gh', [
+            const { stdout } = await transport('gh', [
               'api',
               `repos/${repository}/issues/${issue}/comments`,
               '--method',

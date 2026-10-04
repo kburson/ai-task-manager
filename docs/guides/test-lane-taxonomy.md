@@ -85,3 +85,11 @@ including a timing or isolation refusal after passing assertions, still fails.
 Receipts distinguish the actual tested checkout from the PR source head and
 include the workflow run ID, attempt and actual runner environment. These CI
 result artifacts do not impersonate local AITM Test receipts.
+
+### Rerunning grouped CI
+
+Use **Re-run all jobs** after a failed grouped run. Aggregates require every
+worker receipt from the same run attempt and tested commit. GitHub's **Re-run
+failed jobs** retains successful workers from an earlier attempt, so the
+aggregate will correctly refuse their missing current-attempt receipts. Do not
+mix attempts or copy an old receipt to satisfy the aggregate.

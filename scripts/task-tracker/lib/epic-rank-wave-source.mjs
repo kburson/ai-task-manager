@@ -38,7 +38,7 @@ export function validateRankWaveSource(source) {
 }
 
 export function createRankWaveSourceLoader({ resolveTranscriptPath, resolveRepository } = {}) {
-  return async (source) => {
+  return async (source, { through = null } = {}) => {
     validateRankWaveSource(source);
     const transcriptPath = await resolveTranscriptPath(source.sessionId);
     if (!transcriptPath) throw new Error('rank-wave: source host unavailable');
@@ -106,7 +106,43 @@ export function createRankWaveSourceLoader({ resolveTranscriptPath, resolveRepos
         submittedAt: matches[0].event.timestamp,
       });
     }
-    return { repository, messages };
+    if (through !== null && !Number.isFinite(Date.parse(through)))
+      throw new Error('rank-wave: source observation cutoff');
+    if (
+      through !== null &&
+      messages.some(
+        (m) =>
+          !Number.isFinite(Date.parse(m.submittedAt)) ||
+          Date.parse(m.submittedAt) > Date.parse(through)
+      )
+    )
+      throw new Error('rank-wave: source newer than observation cutoff');
+    const first = messages[0].index;
+    const ids = new Set(source.messages.map((m) => m.messageId));
+    const laterHumans = events
+      .slice(first + 1)
+      .filter(
+        (e) =>
+          e.type === 'response_item' &&
+          e.payload?.type === 'message' &&
+          e.payload.role === 'user' &&
+          !ids.has(e.payload.id)
+      );
+    const observed = laterHumans.filter((e) => {
+      if (through === null) return true;
+      if (!Number.isFinite(Date.parse(e.timestamp)))
+        throw new Error('rank-wave: source chronology unavailable');
+      return Date.parse(e.timestamp) <= Date.parse(through);
+    });
+    if (observed.length > 64)
+      throw new Error('rank-wave: subsequent human context bound; reference a current instruction');
+    const subsequentStatements = observed.map((e) =>
+      (e.payload.content ?? [])
+        .filter((b) => b.type === 'input_text' && !isInjection(b.text))
+        .map((b) => b.text.trim())
+        .join('\n\n')
+    );
+    return { repository, messages, subsequentStatements };
   };
 }
 
@@ -185,6 +221,27 @@ function proposals(statement, purpose) {
   }));
 }
 
+function humanText(statement) {
+  let fenced = false;
+  return statement
+    .split('\n')
+    .filter((line) => {
+      if (/^\s*```/.test(line)) {
+        fenced = !fenced;
+        return false;
+      }
+      return !fenced && !/^\s*[>"']/.test(line);
+    })
+    .join('\n');
+}
+function contradicts(text, purpose) {
+  return (
+    /(?:\bdo not\b|\bdon't\b|\bcancel\b|\bnot approved?\b|\bhold off\b|\bwait\b)/i.test(text) ||
+    (purpose === 'authorize' &&
+      /\b(?:sequential(?:ly)?|one at a time|revoke|withdraw)\b/i.test(text))
+  );
+}
+
 export async function verifyRankWaveSource({
   source,
   scope,
@@ -192,14 +249,29 @@ export async function verifyRankWaveSource({
   loadContext,
   purpose = 'authorize',
   notBefore = null,
+  through = null,
 } = {}) {
   try {
     validateRankWaveSource(source);
     if (!['authorize', 'revoke'].includes(purpose)) return blocked('source-purpose');
     if (!recordingActor || typeof loadContext !== 'function')
       return blocked('source-adapter-unavailable');
-    const context = await loadContext(source);
+    const context = await loadContext(source, { through });
     if (context.repository !== scope.repository) return blocked('source-repository-mismatch');
+    for (const statement of context.subsequentStatements ?? []) {
+      const text = humanText(statement);
+      const partial = partialScope(text);
+      // Explicitly unrelated epic instructions cannot reverse this wave.
+      if (partial.epic !== undefined && partial.epic !== scope.epic) continue;
+      if (contradicts(text, purpose)) return blocked('source-contradiction');
+      if (
+        hasIntent(text, purpose) &&
+        Object.entries(partial).some(
+          ([key, value]) => canonicalRecordJson(value) !== canonicalRecordJson(scope[key])
+        )
+      )
+        return blocked('source-contradiction');
+    }
     const humanScope = {};
     let authorized = false;
     let humanIntent = false;
@@ -211,26 +283,11 @@ export async function verifyRankWaveSource({
         continue;
       }
       if (message.role !== 'user') return blocked('source-not-human');
-      let fenced = false;
-      const text = message.statement
-        .split('\n')
-        .filter((line) => {
-          if (/^\s*```/.test(line)) {
-            fenced = !fenced;
-            return false;
-          }
-          return !fenced && !/^\s*[>"']/.test(line);
-        })
-        .join('\n');
+      const text = humanText(message.statement);
       if (/\b(?:forwarded message|the (?:human|user) (?:said|approved))\b/i.test(text))
         return blocked('source-relay');
-      if (purpose === 'authorize' && /\b(?:sequential(?:ly)?|one at a time)\b/i.test(text))
-        return blocked('source-contradiction');
       humanIntent ||= hasIntent(text, purpose);
-      if (/(?:\bdo not\b|\bdon't\b|\bcancel\b|\bnot approved?\b)/i.test(text))
-        return blocked('source-contradiction');
-      if (purpose === 'authorize' && /\brevoke\b/i.test(text))
-        return blocked('source-contradiction');
+      if (contradicts(text, purpose)) return blocked('source-contradiction');
       const partial = partialScope(text);
       for (const [key, value] of Object.entries(partial)) {
         if (
@@ -250,9 +307,12 @@ export async function verifyRankWaveSource({
       }
       const selection = text
         .trim()
-        .match(/^([A-Z])(?:[).:]|\s|$)/i)?.[1]
+        .match(
+          /^([A-Z])\s*[).:]?(?:\s*(?:yes|(?:authorize|approve|allow|enable|run|proceed)(?:\s+(?:it|this))?)[.!]?)?$/i
+        )?.[1]
         ?.toUpperCase();
       if (proposal && (affirmative || selection) && !complete(partial)) {
+        if (text.includes('?')) return blocked('source-ambiguous');
         const choices = proposal.filter((p) => complete(p.scope) && p.intent);
         if (!selection && (choices.length !== proposal.length || proposal.some((p) => p.ambiguous)))
           return blocked('source-ambiguous');
