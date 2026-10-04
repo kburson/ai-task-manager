@@ -338,7 +338,7 @@ test('a source merge with an unintegrated secondary parent refuses before conten
   const { input } = mergedBaseFixture();
   input.sourceCommits[1].parents[1] = sha('9');
   input.compareContent = async () => {
-    assert.fail('unadmitted history reached content proof');
+    assert.fail('unverified source history reached content proof');
   };
   await assert.rejects(() => verifyObservedIntegration(input), {
     message: 'delivery-integration:source-inventory',
