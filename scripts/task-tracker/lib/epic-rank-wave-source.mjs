@@ -420,9 +420,10 @@ function contradictsWaveClause(text, scope, purpose, precedingClauses = '') {
             principalObject(text.slice(match.index + match[1].length, next.index)),
             scope
           ).specified ||
-          !/\b(?:the|a|an|this|that|its|my|our|your|their)\s+["“‘`(]*\s*$/i.test(
+          (!/(?:\b(?:the|a|an|this|that|its|my|our|your|their)\s+["“‘`(]*\s*|["“‘`(]\s*)$/i.test(
             text.slice(0, next.index)
-          )
+          ) &&
+            !/^["”`)/]/.test(text.slice(next.index + next[1].length)))
       );
     const object = text.slice(match.index + match[1].length, nextCommand?.index ?? text.length);
     const negated =

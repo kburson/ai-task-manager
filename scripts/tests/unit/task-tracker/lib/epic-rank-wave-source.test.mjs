@@ -731,6 +731,9 @@ test('a verb-shaped noun cannot cut the scope off its preceding withdrawal', asy
     'Cancel rank 2 and the "run" for epic #108 rank 3.',
     'Stop rank 2 and the "run" for children [160,161].',
     'Withdraw my "go" for rank 2.',
+    'Withdraw "go" for rank 2.',
+    'Cancel `run` for rank 2.',
+    'Pause run/build for rank 2.',
   ])
     assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
   assert.equal(
