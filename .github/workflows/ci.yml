@@ -177,7 +177,7 @@ jobs:
            !contains(github.event.pull_request.labels.*.name, 'docs-only'))
         run: |
           mkdir -p .tmp/aitm
-          node scripts/ci/test-shards.mjs plan "${{ matrix.lane }}" "${{ matrix.total }}" > .tmp/aitm/shard-plan.json
+          node scripts/maintenance/ci-test-shards.mjs plan "${{ matrix.lane }}" "${{ matrix.total }}" > .tmp/aitm/shard-plan.json
       - name: Execute collection group
         if: >-
           github.event_name != 'pull_request' ||
@@ -240,8 +240,8 @@ jobs:
       - name: Validate complete disjoint lane coverage
         if: needs.fast-tests.outputs.skip_tests != 'true'
         run: |
-          node scripts/ci/test-shards.mjs verify unit 1 .tmp/aitm/ci-results/unit
-          node scripts/ci/test-shards.mjs verify integration 3 .tmp/aitm/ci-results/integration
+          node scripts/maintenance/ci-test-shards.mjs verify unit 1 .tmp/aitm/ci-results/unit
+          node scripts/maintenance/ci-test-shards.mjs verify integration 3 .tmp/aitm/ci-results/integration
       - uses: actions/upload-artifact@v4
         if: needs.fast-tests.outputs.skip_tests != 'true'
         with:
@@ -312,7 +312,7 @@ jobs:
       - name: Prepare complete collection plan
         run: |
           mkdir -p .tmp/aitm
-          node scripts/ci/test-shards.mjs plan slow 3 > .tmp/aitm/shard-plan.json
+          node scripts/maintenance/ci-test-shards.mjs plan slow 3 > .tmp/aitm/shard-plan.json
       - name: Execute slow collection group
         run: |
           set +e
@@ -358,7 +358,7 @@ jobs:
           pattern: ci-slow-group-*-${{ github.run_attempt }}
           path: .tmp/aitm/ci-results/slow
       - name: Validate complete disjoint slow coverage
-        run: node scripts/ci/test-shards.mjs verify slow 3 .tmp/aitm/ci-results/slow
+        run: node scripts/maintenance/ci-test-shards.mjs verify slow 3 .tmp/aitm/ci-results/slow
       - uses: actions/upload-artifact@v4
         with:
           name: ci-slow-receipt-${{ github.run_attempt }}

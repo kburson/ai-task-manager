@@ -1482,6 +1482,7 @@
         "./run-tests-report.mjs",
         "./gh/lib/with-retry.mjs",
         "./run-tests-lanes.mjs",
+        "./run-tests-shards.mjs",
         "./run-tests-ceiling.mjs",
         "./lib/self-doc.mjs",
         "./run-tests-timing.mjs"

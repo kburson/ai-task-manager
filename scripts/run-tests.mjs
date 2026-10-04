@@ -59,7 +59,7 @@ import {
 } from './run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
-import { planShards } from './ci/test-shards.mjs';
+import { planShards } from './run-tests-shards.mjs';
 import { evaluateSections, formatSectionSummary } from './run-tests-ceiling.mjs';
 import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';
 import {

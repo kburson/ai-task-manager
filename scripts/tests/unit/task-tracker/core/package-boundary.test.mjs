@@ -381,7 +381,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     runtimeRootAllowance +
     actorRuntimeEntries.length +
     8 + // #1859: six reviewed-scope modules, readiness guard and operator guide.
-    11; // #1872: ten runtime admission modules and the operator guide.
+    12; // #1872: ten admission modules, the collection grouping module and operator guide.
+  assert.ok(files.includes('scripts/run-tests-shards.mjs'));
+  assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +

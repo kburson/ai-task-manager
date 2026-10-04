@@ -1,7 +1,7 @@
 // @story #1872
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { planShards, validateShardReceipts } from '../../../../ci/test-shards.mjs';
+import { planShards, validateShardReceipts } from '../../../../run-tests-shards.mjs';
 
 const groups = [
   [
