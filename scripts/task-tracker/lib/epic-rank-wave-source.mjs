@@ -309,7 +309,7 @@ function withoutScopeTokens(text) {
 function parallelAdmissionObject(text) {
   // Only scope tokens and an explicit admission/isolation phrase are allowed.
   // No wildcard or operation-name denylist can reinterpret CI/tests/merges.
-  return /^(?:the )?(?:parallel|concurrent(?:ly)?|rank[- ]wave)(?: (?:stories|children|members|wave|admissions?|execution))?(?: in isolated worktrees)?(?: in parallel)?[.!?]?$|^in parallel[.!?]?$/i.test(
+  return /^(?:the )?(?:(?:parallel|concurrent(?:ly)?|rank[- ]wave)(?: (?:stories|children|members|wave|admissions?|execution))?(?: for)?(?: in parallel)?(?: in isolated worktrees)?|in parallel(?: in isolated worktrees)?)[.!?]?$/i.test(
     withoutScopeTokens(text)
   );
 }
@@ -342,19 +342,24 @@ function wholeAffirmation(text, purpose) {
   ).test(text.trim());
 }
 function admissionTarget(text) {
-  const remaining = withoutScopeTokens(text)
-    .replace(/^(?:(?:on|with|for|the|this|these|our|any)\s+)+/i, '')
-    .replace(/\s+(?:until|while|before|after)\b.*$/i, '')
+  // A withdrawal is broader than a grant: unfamiliar qualifiers cannot keep
+  // revoked authority alive. Exempt only an explicitly named other activity
+  // in this object, before conditions such as waiting until CI passes.
+  const object = withoutScopeTokens(text)
+    .split(/\b(?:until|while|before|after)\b/i)[0]
+    .replace(/^(?:(?:on|with|for|the|this|these|our|my|any)\s+)+/i, '')
     .trim();
-  return /^(?:(?:parallel|concurrent(?:ly)?|wave|stories|children|members|epic|rank|authorization|permission|grant|admissions?|it|this|for|in|the)\s*)*$/i.test(
-    remaining
+  return !/^(?:reviewing|testing|checking|building|scanning|closing|pushing|merging)\b|\b(?:CI|PRs?|pull requests?|timer|tests?|lint|checks?|builds?|reviews?|scans?|close|push|merges?)\b/i.test(
+    object
   );
 }
 function contradictsWaveClause(text, scope, purpose) {
   const epics = [...text.matchAll(/\b(?:epic|parent)\s*#?(\d+)\b/gi)].map((m) => Number(m[1]));
-  const ranks = [...text.matchAll(/\brank(?:[-\s]+(?:level|wave))?\s*[:=]?\s*#?(\d+)\b/gi)].map(
-    (m) => Number(m[1])
-  );
+  const ranks = [
+    ...text.matchAll(
+      /\branks?(?:[-\s]+(?:level|wave))?\s*[:=]?\s*(#?\d+(?:(?:\s*[,/]\s*|\s+and\s+)#?\d+)*)\b/gi
+    ),
+  ].flatMap((match) => [...match[1].matchAll(/\d+/g)].map((m) => Number(m[0])));
   const members = [
     ...text.matchAll(
       /\b(?:children|members|stories)\s*[:=]?\s*(\[[\d\s,#/]+\]|#?\d+(?:(?:\s*[,/]\s*|\s+and\s+)#?\d+)*)/gi
@@ -371,34 +376,35 @@ function contradictsWaveClause(text, scope, purpose) {
     text
   );
   if (!scoped && !wave) return false;
-  const prefix = "^(?:actually[, ]+)?(?:please\\s+)?(?:let['’]s\\s+)?";
-  const negative = text.match(
-    new RegExp(
-      `${prefix}(?:do not|don't|never|no longer)\\s+(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start)\\s+(.+)$`,
-      'i'
+  const verbs = [
+    ...text.matchAll(
+      /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|switch(?: to)?|use|keep|go)\s+/gi
+    ),
+  ];
+  for (const [index, match] of verbs.entries()) {
+    const verb = match[1].toLowerCase();
+    const object = text.slice(
+      match.index + match[0].length,
+      verbs[index + 1]?.index ?? text.length
+    );
+    const negated = /(?:do not|don't|never|no longer)\s+$/i.test(text.slice(0, match.index));
+    if (!admissionTarget(object)) continue;
+    if (purpose === 'revoke') {
+      if (negated && /^(?:revoke|withdraw)$/.test(verb)) return true;
+      continue;
+    }
+    if (/^(?:revoke|withdraw|cancel|stop|hold off|wait on|pause)$/.test(verb)) {
+      if (!negated) return true;
+    } else if (negated) return true;
+    if (
+      !negated &&
+      /^(?:run|execute|switch(?: to)?|use|keep|go)$/.test(verb) &&
+      /\b(?:sequential(?:ly)?|serial(?:ly)?|one at a time|one by one)\b/i.test(object)
     )
-  );
-  if (negative && admissionTarget(negative[2])) {
-    return purpose === 'revoke'
-      ? /^(?:revoke|withdraw)$/i.test(negative[1])
-      : !/^(?:revoke|withdraw)$/i.test(negative[1]);
+      return true;
   }
   if (purpose === 'revoke') return false;
-  const positive = text.match(
-    new RegExp(
-      `${prefix}(?:revoke|withdraw|cancel|stop|hold off(?: on)?|wait on|pause)\\s+(.+)$`,
-      'i'
-    )
-  );
-  if (positive && admissionTarget(positive[1])) return true;
-  const sequential = text.match(
-    new RegExp(
-      `${prefix}(?:run|execute|switch(?: to)?|use|keep|go)\\s+(.*?)\\b(?:sequential(?:ly)?|serial(?:ly)?|one at a time|one by one)\\b(?:\\s+instead)?(?:\\s+for)?(.*)$`,
-      'i'
-    )
-  );
-  if (sequential && admissionTarget(`${sequential[1]} ${sequential[2]}`)) return true;
-  const unapproved = text.match(/^(.*?)\s+(?:is|are)\s+not approved?(?: yet)?$/i);
+  const unapproved = text.match(/^(.*?)\s+(?:is|are)\s+not approved?\b/i);
   return (
     !!unapproved &&
     (ranks.length > 0 || members.length > 0 || wave) &&
@@ -410,7 +416,9 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   // Negation and operational objects belong to their own clause. A neutral
   // clause must never cancel a genuine reversal elsewhere in the message.
   const clauses = text
-    .split(/[.;!?\n]+|,?\s+but\s+/i)
+    .split(
+      /[.;!?\n]+|,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don't|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)|\s+and\s+(?=(?:I\s+)?(?:do not|don't|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)/i
+    )
     .map((part) => part.trim())
     .filter(Boolean);
   if (clauses.some((clause) => contradictsWaveClause(clause, scope, purpose))) return true;

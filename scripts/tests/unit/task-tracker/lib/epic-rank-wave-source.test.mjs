@@ -557,3 +557,43 @@ test('sequential agreement does not reverse an authentic revocation', async () =
     'verified'
   );
 });
+
+test('ordinary leading, trailing, possessive and joined reversal wording cannot preserve withdrawn authority', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'Hold off on epic #107 rank 2 for now.',
+    'Stop rank 2 for now.',
+    'Hold off on the parallel stories for now.',
+    'Hold off on rank 2 and rank 3.',
+    'Pause epic #107 ranks 2 and 3.',
+    "Don't run rank 2 in parallel anymore.",
+    'Do not proceed with epic #107 rank 2 yet.',
+    "Don't approve rank 2 yet.",
+    'Withdraw my approval for rank 2.',
+    'I revoke the rank 2 permission.',
+    'OK, hold off on epic #107 rank 2.',
+    "Never mind, don't run rank 2.",
+    'Rank 2 is not approved anymore.',
+    "Don't wait for CI, pause epic #107 rank 2.",
+    'Tests pass and pause epic #107 rank 2.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+});
+
+test('natural admission articles, isolation order and explicit approval remain unambiguous', async () => {
+  for (const text of [
+    'Run the epic #107 rank 2 children [140,144,145] in parallel.',
+    'Run epic #107 rank 2 children [140,144,145] in parallel in isolated worktrees.',
+    'Approve parallel admission for epic #107 rank 2 children [140,144,145].',
+  ])
+    assert.equal((await verify([human(text)])).status, 'verified', text);
+});
+
+test('each reversal verb keeps its own object when joined with an extra polite prefix', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    "Don't stop CI, and please pause epic #107 rank 2.",
+    'Run unit tests sequentially and please run epic #107 rank 2 stories sequentially.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+});
