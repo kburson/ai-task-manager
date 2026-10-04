@@ -56,3 +56,9 @@ Ruling: preserve the owning section rather than only the policy line, because ex
 Ruling: normalize trailing blank lines to a fixed point because the new preservation regression exposed V6 accumulating a final blank line on its second pass. The cost is a canonical trailing-newline representation; protected non-empty positions and raw policy lines remain unchanged.
 
 Ruling: fetch the genuine immutable final-guidance-capture source in CI verification jobs. CI failed three integration files because the original pre-squash commit was absent, and all 21 tests in those files passed after fetching it locally. Frozen captures and their checksum/provenance guards are unchanged. The cost is one explicit historical object fetch per applicable CI job. The first local canonical run was interrupted and is not accepted as green evidence.
+
+Ruling: clear inherited project-root aliases only at the test-child boundary, using the shared alias catalog. Canonical verification legitimately sets its own sandbox root, but forwarding that authority into independent fixtures tests the parent binding rather than the fixture. Credentials, actual provider/session identity, and explicit fixture root overlays remain intact. The cost is that fixtures must declare their own authority instead of depending on parent settings.
+
+Ruling: replace the legacy create-issue fixture's scratch directory with the existing Git-backed runtime fixture helper. The CLI correctly rejects scratch-root authority; relaxing that production guard would conceal the defect. The cost is one local Git initialization per fixture.
+
+Ruling: relocate the genuine issue binding to a shorter source checkout through stop and resume with confirmed relocation. This avoids exceeding the filesystem component limit for encoded session paths without changing session identity, path encoding, or historical evidence. The old checkout and receipts remain preserved.

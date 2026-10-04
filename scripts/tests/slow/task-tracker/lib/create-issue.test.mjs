@@ -1,16 +1,9 @@
 // @story #29
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync,
-  writeFileSync,
-  chmodSync,
-  readFileSync,
-  existsSync,
-  mkdirSync,
-} from 'node:fs';
+import { writeFileSync, chmodSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = new URL('../../../../..', import.meta.url).pathname;
@@ -53,7 +46,7 @@ function canonicalBody(scope) {
 }
 
 function setup({ withProjectId = true, tetherExitCode = 0, ghCreateOverride = null } = {}) {
-  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-create-'));
+  const temp = createRuntimeRootFixture('aitm-create-');
   const binDir = join(temp, 'bin');
   mkdirSync(binDir, { recursive: true });
   mkdirSync(join(temp, '.ai-task-manager'), { recursive: true });
