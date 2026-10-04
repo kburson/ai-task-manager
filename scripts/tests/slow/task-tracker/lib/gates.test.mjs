@@ -118,6 +118,7 @@ process.exit(0);
   writeFileSync(
     gitShim,
     `#!/usr/bin/env node
+import fs from 'node:fs';
 import {spawnSync} from 'node:child_process';
 const argv = process.argv.slice(2);
 if (argv.includes('--show-toplevel') || (argv.includes('worktree') && argv.includes('-z'))) {

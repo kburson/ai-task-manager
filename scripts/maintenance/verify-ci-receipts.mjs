@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { laneFiles } from '../run-tests-lanes.mjs';
+import { configPath } from '../task-tracker/paths.mjs';
 import { validateShardReceipts } from '../run-tests-shards.mjs';
 
 const LANES = ['unit', 'integration', 'slow'];
@@ -73,7 +74,7 @@ export function verifyCurrentCloudReceipts({ projectDir = process.cwd() } = {}) 
   if (!/^[a-f0-9]{40}$/.test(head)) fail('source head');
   if (execute('git', ['status', '--porcelain', '--untracked-files=no']).trim())
     fail('dirty source');
-  const repository = json(path.join(projectDir, '.ai-task-manager/task-tracker.json')).repo;
+  const repository = json(configPath(projectDir)).repo;
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) fail('repository');
   const remote = execute('git', ['config', '--get', 'remote.origin.url']).trim();
   if (

@@ -124,6 +124,7 @@ process.exit(0);
   writeFileSync(
     ghShim,
     `#!/usr/bin/env node
+import fs from 'node:fs';
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 // Only read stdin for graphql (which uses --input -); otherwise it would hang

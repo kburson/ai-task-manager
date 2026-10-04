@@ -247,6 +247,8 @@ try {
     writeFileSync(
       shim,
       `#!/usr/bin/env node
+import fs from 'node:fs';
+import {spawnSync} from 'node:child_process';
 const args = process.argv.slice(2);
 if(args.includes('--show-toplevel')||(args.includes('worktree')&&args.includes('-z'))) {const result=spawnSync(${JSON.stringify(fixtureGitExecutable)},args,{stdio:'inherit'});process.exit(result.status??1);}
 const i = args.indexOf('status');
