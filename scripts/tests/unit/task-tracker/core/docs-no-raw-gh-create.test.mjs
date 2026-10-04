@@ -18,7 +18,9 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+// @story #1873
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,20 +33,24 @@ const REPO_ROOT = path.resolve(__dirname, '../../../..');
 // `worktrees` covers .claude/worktrees — sandbox/worktree copies of the repo,
 // not canonical current docs.
 const IGNORED_DIRS = new Set(['node_modules', '.git', '.tmp', 'archive', 'worktrees']);
-const IGNORED_REL = new Set([path.join('docs', 'archive')]);
+const IGNORED_REL = new Set([
+  path.join('docs', 'archive'),
+  '.scratch',
+  path.join('.ai-task-manager', 'runtime'),
+]);
 
 // A runnable raw-create command line: the line *starts* with `gh issue create`
 // (after optional indentation). Inline mentions and `Bash(gh issue create*)`
 // allow-rules never start a line with the bare command, so they don't match.
 const RAW_CREATE_CMD = /^\s*gh issue create\b/m;
 
-function isIgnoredDir(absDir) {
-  const rel = path.relative(REPO_ROOT, absDir);
+function isIgnoredDir(absDir, root = REPO_ROOT) {
+  const rel = path.relative(root, absDir);
   if (IGNORED_REL.has(rel)) return true;
   return rel.split(path.sep).some((seg) => IGNORED_DIRS.has(seg));
 }
 
-function collectCurrentMarkdown(dir = REPO_ROOT, acc = []) {
+function collectCurrentMarkdown(dir = REPO_ROOT, acc = [], root = REPO_ROOT) {
   for (const entry of readdirSync(dir)) {
     const abs = path.join(dir, entry);
     let st;
@@ -54,8 +60,8 @@ function collectCurrentMarkdown(dir = REPO_ROOT, acc = []) {
       continue;
     }
     if (st.isDirectory()) {
-      if (IGNORED_DIRS.has(entry) || isIgnoredDir(abs)) continue;
-      collectCurrentMarkdown(abs, acc);
+      if (IGNORED_DIRS.has(entry) || isIgnoredDir(abs, root)) continue;
+      collectCurrentMarkdown(abs, acc, root);
     } else if (entry.endsWith('.md')) {
       acc.push(abs);
     }
@@ -127,5 +133,33 @@ test('inline prohibition mentions are preserved and never flagged', () => {
       !src.split('\n').some((line) => /^\s*gh issue create\b/.test(line)),
       `${rel}'s inline prohibition must not be mistaken for a runnable command line`
     );
+  }
+});
+
+// #1873 A current-doc scan must not follow ephemeral evidence or test hosts.
+test('ignored artifact documents are excluded while current documentation stays visible', () => {
+  const fixture = createRuntimeRootFixture('doc-policy-scan-');
+  try {
+    const command = 'gh issue' + ' create';
+    for (const file of [
+      '.scratch/negative.md',
+      '.ai-task-manager/runtime/negative.md',
+      'docs/current.md',
+    ]) {
+      const target = path.join(fixture, file);
+      mkdirSync(path.dirname(target), { recursive: true });
+      writeFileSync(target, command + ' --title negative-control\n');
+    }
+    const scanned = collectCurrentMarkdown(fixture, [], fixture).map((file) =>
+      path.relative(fixture, file)
+    );
+    assert.deepEqual(scanned, ['docs/current.md']);
+    assert.equal(
+      RAW_CREATE_CMD.test(readFileSync(path.join(fixture, scanned[0]), 'utf8')),
+      true,
+      'current raw-create guidance remains detectable'
+    );
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
   }
 });

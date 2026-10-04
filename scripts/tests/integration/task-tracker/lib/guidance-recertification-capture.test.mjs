@@ -5,6 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+// @story #1873
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url, 'codex');
+import { captureGuidanceLifecycle as captureProductionLifecycle } from '../../../../maintenance/capture-guidance-lifecycle.mjs';
 
 import {
   captureGuidanceLifecycle,
@@ -97,7 +101,16 @@ test('current recertification captures complete simulated authority without exec
 
 test('current recertification replays start from identical current authority bytes', () => {
   const first = capture();
-  const second = captureGuidanceLifecycle({ mode: 'recertification' });
+  const second = captureProductionLifecycle({
+    mode: 'recertification',
+    expectedInitialFixtureSha256: first.identity.initialFixtureSha256,
+  });
+  assert.equal(validateLifecycleTranscript(second), true);
+  assert.equal(
+    second.events.filter(({ kind }) => kind !== 'transition').length,
+    17,
+    'a matching initial fixture must still execute the complete public CLI replay'
+  );
   assert.equal(second.identity.initialFixtureSha256, first.identity.initialFixtureSha256);
   assert.equal(second.identity.initialBodySha256, first.identity.initialBodySha256);
   assert.deepEqual(

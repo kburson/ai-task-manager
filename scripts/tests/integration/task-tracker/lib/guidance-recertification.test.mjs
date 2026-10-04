@@ -9,7 +9,10 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import test from 'node:test';
+import test, { mock } from 'node:test';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+import { captureGuidanceLifecycle } from '../../../../maintenance/capture-guidance-lifecycle.mjs';
 import { fileURLToPath } from 'node:url';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
@@ -119,4 +122,28 @@ test('historical foundation stays immutable while current commands refuse obsole
   });
   assert.notEqual(invalid, 0);
   assert.match(stderr, /usage: measure-guidance-candidate/);
+});
+
+// #1873 Known initial-fixture drift must refuse before any public CLI event.
+test('#1873 initial fixture mismatch refuses before public CLI replay', () => {
+  const actualSpawn = childProcess.spawnSync;
+  const probe = mock.method(childProcess, 'spawnSync', (command, args, options) => {
+    if (args?.[0] === path.join(projectRoot, 'bin/aitm.mjs'))
+      throw new Error('unexpected public CLI replay before initial fixture refusal');
+    return actualSpawn(command, args, options);
+  });
+  syncBuiltinESMExports();
+  try {
+    assert.throws(
+      () =>
+        captureGuidanceLifecycle({
+          mode: 'recertification',
+          expectedInitialFixtureSha256: 'sha256:' + '0'.repeat(64),
+        }),
+      new RegExp('capture:initial-fixture-mismatch')
+    );
+  } finally {
+    probe.mock.restore();
+    syncBuiltinESMExports();
+  }
 });

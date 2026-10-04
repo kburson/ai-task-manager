@@ -440,10 +440,20 @@ if (args[0] === 'api' && args[1] === 'graphql') {
 `;
 }
 
-export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
+export function captureGuidanceLifecycle({
+  mode = 'historical',
+  expectedInitialFixtureSha256,
+} = {}) {
   if (!['historical', 'recertification'].includes(mode)) {
     throw new TypeError(`capture:mode:${mode}`);
   }
+  // #1873 Refuse known obsolete authority before launching any CLI replay.
+  if (
+    expectedInitialFixtureSha256 !== undefined &&
+    (typeof expectedInitialFixtureSha256 !== 'string' ||
+      !new RegExp('^sha256:[0-9a-f]{64}$').test(expectedInitialFixtureSha256))
+  )
+    throw new TypeError('capture:expected-initial-fixture');
   const fixtureDir = mkdtempProjectIsolated('aitm-guidance-lifecycle-');
   const config = {
     repo: 'example/project',
@@ -502,6 +512,11 @@ export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
       snapshot.head = git(['rev-parse', 'HEAD'], fixtureDir);
       writeSnapshot();
     }
+    if (
+      expectedInitialFixtureSha256 !== undefined &&
+      snapshotIdentity(snapshot).sha256 !== expectedInitialFixtureSha256
+    )
+      throw new TypeError('capture:initial-fixture-mismatch');
     const baseEnv = {
       ...process.env,
       AI_TASK_MANAGER_PROJECT_DIR: fixtureDir,
