@@ -112,8 +112,8 @@ test('process census separates actual current/registered router ancestry from un
   assert.equal(changing.complete, false);
 });
 
-// Omitting Node 26's kernel thread label would admit an unleased live writer as quiescent.
-for (const executable of ['node', 'node-MainThread'])
+// Omitting a supported Node kernel thread label would admit an unleased live writer as quiescent.
+for (const executable of ['node', 'node-MainThread', 'MainThread'])
   test('process census observes an unleased writer with label ' + executable, async () => {
     const { observeRuntimeProcesses } =
       await import('../../../../task-tracker/lib/runtime-process-census.mjs');

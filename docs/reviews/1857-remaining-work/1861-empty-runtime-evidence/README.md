@@ -53,3 +53,5 @@ The in-file spelling directive applies only to verbatim evidence text. It change
 ## Subsequent focused evidence
 
 [Node 26 census repair](current-runs/node-label-census.json) preserves the later exact-head cloud failure, complete local RED/affected/unit runs, findings and raw-output hashes. It is separate from the original 39-subset reconstruction; the original records and index remain unchanged.
+
+[Node 24 observed-label correction](current-runs/node24-mainthread-census.json) retains the actual failed cloud diagnostic, corrected attribution and complete later regression/affected/unit runs. The earlier Node 26 repair remains preserved as an incomplete first diagnosis.

@@ -1,0 +1,130 @@
+{
+  "$comment": "cspell:disable -- Preserve complete observed evidence.",
+  "schema": "aitm.manual-evidence-run-collection/v1",
+  "issue": 1861,
+  "attributionCorrectionOf": "node-label-census.json",
+  "correction": "Fast CI uses Node 24.21.0 and its actual process label MainThread. The first repair established Node 26 label support but did not fix the observed fast-CI label.",
+  "primarySource": {
+    "url": "https://github.com/nodejs/node/blob/v24.21.0/src/node.cc",
+    "line": 1286,
+    "gitBlob": "838106acff8fda886a11a28e9f23f47588a2e8d4",
+    "observation": "uv_thread_setname(\"MainThread\")"
+  },
+  "cloudRed": {
+    "head": "d8f885592c6dc24a3418861802768fc2efbf742b",
+    "url": "https://github.com/kburson/ai-task-manager/actions/runs/37171375679",
+    "conclusion": "failure",
+    "unit": {
+      "files": 941,
+      "failedFiles": 0
+    },
+    "integration": {
+      "files": 253,
+      "failedFiles": 1
+    },
+    "slow": {
+      "files": 55,
+      "failedFiles": 0
+    },
+    "failingFileRunner": {
+      "tests": 13,
+      "pass": 12,
+      "fail": 1,
+      "cancelled": 0,
+      "skipped": 0,
+      "exit": 1
+    },
+    "raw": ".scratch/gh/1861-d8f-cloud-fast.log",
+    "rawSha256": "7432d3a2b77ecdbfd7b20e385e91cd92b506a805407da380b3d468532b4420d0",
+    "findings": [
+      {
+        "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:346:1",
+        "finding": "✖ live unleased Node process in an empty root blocks production writer census (55.914979ms)",
+        "detail": "assert.ok at :377:12: real child missing from a complete census",
+        "diagnostic": {
+          "childPid": 65536,
+          "root": "/home/runner/work/ai-task-manager/ai-task-manager/.ai-task-manager/runtime/test-fixtures/empty-unleased-process-wRNnbE",
+          "census": {
+            "complete": true,
+            "writers": [],
+            "claims": [],
+            "unknown": []
+          },
+          "snapshot": "65536   64698 MainThread      /opt/hostedtoolcache/node/24.21.0/x64/bin/node -e process.stdout.write('HELD');setInterval(()=>{},1000);"
+        }
+      }
+    ]
+  },
+  "localRuns": [
+    {
+      "label": "mainthread-red",
+      "base": "d8f885592c6dc24a3418861802768fc2efbf742b",
+      "selectionFileCount": 2,
+      "runner": {
+        "tests": 16,
+        "pass": 15,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "exit": 1
+      },
+      "raw": ".scratch/gh/1861-mainthread-red.stdout.log",
+      "stdoutSha256": "28434272eec3f81bf639daa6b3c65bc087f27aab19e21f69541b8098d62a7e0f",
+      "privateSelection": ".scratch/gh/1861-mainthread-red-selection.json",
+      "privateResult": ".scratch/gh/1861-mainthread-red-result.json",
+      "findings": [
+        {
+          "location": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs:117:3",
+          "finding": "✖ process census observes an unleased writer with label MainThread (0.914208ms)",
+          "detail": "  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:"
+        }
+      ],
+      "unlocatedAggregateFailureCount": 0
+    },
+    {
+      "label": "mainthread-green",
+      "base": "d8f885592c6dc24a3418861802768fc2efbf742b",
+      "selectionFileCount": 14,
+      "runner": {
+        "tests": 121,
+        "pass": 120,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "exit": 1
+      },
+      "raw": ".scratch/gh/1861-mainthread-green.stdout.log",
+      "stdoutSha256": "04c8cc1054810c369d282a1e96de75ed17544deb3a665820d897782d01f58a45",
+      "privateSelection": ".scratch/gh/1861-mainthread-green-selection.json",
+      "privateResult": ".scratch/gh/1861-mainthread-green-result.json",
+      "findings": [
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:346:1",
+          "finding": "✖ live unleased Node process in an empty root blocks production writer census (105.2945ms)",
+          "detail": "  AssertionError [ERR_ASSERTION]: [{\"reason\":\"process-observation-incomplete\"},{\"reason\":\"process-census-unavailable\"}]"
+        }
+      ],
+      "unlocatedAggregateFailureCount": 0
+    },
+    {
+      "label": "mainthread-unit-final",
+      "base": "d8f885592c6dc24a3418861802768fc2efbf742b",
+      "selectionFileCount": 2,
+      "runner": {
+        "tests": 16,
+        "pass": 16,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      "raw": ".scratch/gh/1861-mainthread-unit-final.stdout.log",
+      "stdoutSha256": "a95d991cbee5d468f712c511dff7764caffedbddf8e078aa7d0f2cb455494e31",
+      "privateSelection": ".scratch/gh/1861-mainthread-unit-final-selection.json",
+      "privateResult": ".scratch/gh/1861-mainthread-unit-final-result.json",
+      "findings": [],
+      "unlocatedAggregateFailureCount": 0
+    }
+  ],
+  "disposition": "Observed Node 24 and supported Node 26 labels are recognized. Complete unit scope passed; complete affected local scope remains failed at the unchanged macOS observer/profile boundary. Fresh cloud, positive genuine-host proof, independent review and governed Test ingestion remain pending."
+}
