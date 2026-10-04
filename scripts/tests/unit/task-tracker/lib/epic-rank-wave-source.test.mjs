@@ -421,3 +421,68 @@ test('positive permission questions remain usable as exact displayed proposals',
     assert.equal((await verify([assistant(proposal), human('Yes.')])).status, 'verified', proposal);
   }
 });
+
+test('parallel test commands, comparative wording and alternative choices do not grant admission', async () => {
+  for (const text of [
+    'Run epic #107 rank 2 children [140,144,145] one by one rather than in parallel.',
+    'Run the unit tests for epic #107 rank 2 children [140,144,145] in parallel.',
+    'Run parallel unit tests for epic #107 rank 2 children [140,144,145].',
+  ])
+    assert.equal((await verify([human(text)])).status, 'blocked', text);
+  for (const text of [
+    'Should I run epic #107 rank 2 children [140,144,145] individually instead of in parallel?',
+    'Should I run parallel epic #107 rank 2 children [140,144,145] or stagger them?',
+    'A: parallel epic #107 rank 2 children [140,144,145] or staggered execution.',
+    'A: parallel unit tests for epic #107 rank 2 children [140,144,145].',
+  ])
+    assert.equal(
+      (await verify([assistant(text), human(text.startsWith('A:') ? 'A' : 'Yes.')])).status,
+      'blocked',
+      text
+    );
+});
+
+test('scoped status and negative revocation chatter preserve genuine wave permission', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    "Don't close epic #107 yet.",
+    'Epic #107 has no open PRs.',
+    "rank 2 tests aren't passing",
+    "Don't revoke epic #107 rank 2.",
+    "Run the stories' tests sequentially for epic #107 rank 2.",
+    'Run unit tests for children [140,144,145] one at a time.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'verified', text);
+});
+
+test('agreement with an authentic revocation does not contradict that revocation', async () => {
+  assert.equal(
+    (
+      await verify(
+        [
+          human('Revoke epic #107 rank 2 children [140,144,145].'),
+          human("Don't restart epic #107 rank 2."),
+        ],
+        { order: [0], purpose: 'revoke' }
+      )
+    ).status,
+    'verified'
+  );
+});
+
+test('direct trailing parallel execution retains explicit admission intent', async () => {
+  assert.equal(
+    (await verify([human('Run epic #107 rank 2 children [140,144,145] in parallel.')])).status,
+    'verified'
+  );
+});
+
+test('negated pause and approval of tests remain distinct from withdrawal of admission', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    "Don't pause epic #107 rank 2.",
+    "Don't hold off on epic #107 rank 2.",
+    'Epic #107 rank 2 tests are not approved.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'verified', text);
+});

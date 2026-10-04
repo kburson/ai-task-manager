@@ -214,4 +214,6 @@ as `Yes.` or an exact choice must correlate with the actual preceding assistant
 message in the native transcript. Omitting an intervening question cannot attach
 its answer to an older proposal. A terse unscoped reversal applies only when it
 immediately follows the last referenced message without another assistant turn;
-sequential test-run instructions do not withdraw parallel-story permission.
+sequential test-run instructions and neutral scoped status messages do not
+withdraw parallel-story permission. Positive permission must describe story
+admission, not parallel tests, and comparative or either-or proposals refuse.

@@ -238,7 +238,8 @@ function permissiveProposal(statement, purpose) {
     directPermission(text, purpose) ||
     (labeled &&
       purpose === 'authorize' &&
-      /^(?:parallel|concurrent(?:ly)?|rank[- ]wave)\b/i.test(text))
+      unqualifiedPermission(text) &&
+      parallelAdmissionObject(text))
   );
 }
 function proposals(statement, purpose) {
@@ -288,15 +289,39 @@ function contradicts(text, purpose) {
   );
 }
 
+function unqualifiedPermission(text) {
+  return !/\bnot\b|n['’]t\b|\b(?:later|until|after|if|unless|when|once|pending|rather than|instead of|than|versus|vs|without|except|or|individually|one by one)\b/i.test(
+    text
+  );
+}
+function parallelAdmissionObject(text) {
+  // Parallelism must describe admitting stories, not running their tests or
+  // another operation that merely mentions the same epic/rank/member scope.
+  if (/\b(?:tests?|lint|checks?|builds?|reviews?|scans?)\b/i.test(text)) return false;
+  const object = '(?:epic|parent|rank|children|members|stories|wave|admissions?|execution)';
+  return (
+    new RegExp(
+      `^(?:the\\s+)?(?:parallel|concurrent(?:ly)?|rank[- ]wave)\\b(?:\\s+${object}\\b|[.!?]?$)`,
+      'i'
+    ).test(text.trim()) ||
+    new RegExp(`^(?:the\\s+)?${object}\\b.+\\bin\\s+parallel[.!?]?$`, 'i').test(text.trim())
+  );
+}
 function directPermission(text, purpose) {
-  if (/\bnot\b|n['’]t\b|\b(?:later|until|after|if|unless|when|once|pending)\b/i.test(text))
-    return false;
+  if (!unqualifiedPermission(text)) return false;
   const verbs =
-    purpose === 'revoke' ? 'revoke|withdraw' : 'enable|authorize|approve|allow|run|proceed';
-  return new RegExp(
-    `^(?:yes[, ]+)?(?:please\\s+)?(?:(?:I|we)\\s+(?:explicitly\\s+)?(?:authorize|approve|allow)|(?:you\\s+(?:may|can)\\s+|(?:I|we)\\s+want\\s+to\\s+|let['’]s\\s+)?(?:${verbs}))\\b`,
-    'i'
-  ).test(text.trim());
+    purpose === 'revoke'
+      ? 'revoke|withdraw'
+      : 'enable|authorize|approve|allow|run|proceed(?: with)?';
+  const directive = text
+    .trim()
+    .match(
+      new RegExp(
+        `^(?:yes[, ]+)?(?:please\\s+)?(?:(?:I|we)\\s+(?:explicitly\\s+)?(?:authorize|approve|allow)|(?:you\\s+(?:may|can)\\s+|(?:I|we)\\s+want\\s+to\\s+|let['’]s\\s+)?(?:${verbs}))\\s+(.+)$`,
+        'i'
+      )
+    );
+  return !!directive && (purpose === 'revoke' || parallelAdmissionObject(directive[1]));
 }
 function wholeAffirmation(text, purpose) {
   const verbs =
@@ -331,16 +356,18 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   if (members.length && !members.some((member) => scope.members.includes(member))) return false;
   const scoped = epics.length > 0 || ranks.length > 0 || members.length > 0;
   const wave = /\b(?:parallel|concurrent(?:ly)?|wave|stories|children|members)\b/i.test(text);
-  if (scoped && contradicts(text, purpose)) return true;
   const negate = "(?:do not|don't|never|no longer)";
   const negatedRevocation = new RegExp(`\\b${negate}\\s+(?:revoke|withdraw)\\b`, 'i').test(text);
-  const negatedStop = new RegExp(`\\b${negate}\\s+(?:stop|cancel)\\b`, 'i').test(text);
+  const negatedStop = new RegExp(
+    `\\b${negate}\\s+(?:stop|cancel|pause|hold off|wait)\\b`,
+    'i'
+  ).test(text);
   const permissionReversal = new RegExp(
     `\\b${negate}\\s+(?:enable|authorize|allow|approve)\\b`,
     'i'
   ).test(text);
   const executionReversal = new RegExp(
-    `\\b${negate}\\s+(?:run|execute)\\s+(?:(?:the|this|these|our|any)\\s+)?(?:parallel|concurrent|epic|rank|children|members|stories|wave|it|this)\\b`,
+    `\\b${negate}\\s+(?:run|execute|proceed|start)\\s+(?:with\\s+)?(?:(?:the|this|these|our|any)\\s+)?(?:parallel|concurrent|epic|rank|children|members|stories|wave|it|this)\\b`,
     'i'
   ).test(text);
   const reversal =
@@ -351,14 +378,26 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
           text
         ) &&
           !negatedStop) ||
-        /\b(?:run|execute|switch|use|keep)\b.*\b(?:sequential(?:ly)?|one at a time)\b/i.test(
+        (/\b(?:run|execute|switch|use|keep|go)\b.*\b(?:sequential(?:ly)?|one at a time)\b/i.test(
           text
-        ) ||
+        ) &&
+          !/\b(?:tests?|lint|checks?|builds?|reviews?|scans?)\b.*\b(?:sequential(?:ly)?|one at a time)\b/i.test(
+            text
+          )) ||
         permissionReversal ||
         executionReversal ||
-        /\b(?:hold off|wait)(?:\s+on)?\s+(?:(?:the|this|these|our)\s+)?(?:parallel|concurrent|wave|stories)\b/i.test(
+        (/\b(?:hold off|wait)(?:\s+(?:on|for))?\s+(?:(?:the|this|these|our)\s+)?(?:parallel|concurrent|epic|rank|children|members|wave|stories)\b/i.test(
           text
-        );
+        ) &&
+          !negatedStop) ||
+        (/\bpause\s+(?:(?:the|this|these|our)\s+)?(?:parallel|concurrent|epic|rank|children|members|wave|stories)\b/i.test(
+          text
+        ) &&
+          !negatedStop) ||
+        (/\b(?:is|are)\s+not approved?\b/i.test(text) &&
+          !/\b(?:tests?|lint|checks?|builds?|reviews?|scans?)\b/i.test(
+            text.split(/\b(?:is|are)\s+not approved?\b/i)[0]
+          ));
   if ((scoped || wave) && reversal) return true;
   // A terse reversal immediately following the referenced authorization is
   // a contextual reply. Incidental words in later work instructions are not.
