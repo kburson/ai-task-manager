@@ -5,7 +5,7 @@ import { fork } from 'node:child_process';
 import { hostname } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { writeFileSync, readFileSync, rmSync, mkdirSync } from 'node:fs';
+import { writeFileSync, readFileSync, rmSync, mkdirSync, openSync, closeSync } from 'node:fs';
 import path from 'node:path';
 import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { snapshotTree } from '../../../helpers/runtime-empty-contract-fixture.mjs';
@@ -309,6 +309,12 @@ test('registered recovery completes an exact dead receipt after durable coordina
   const f = await fixture(t);
   await killAtBoundary(f, 'after-empty-first-journal');
   const original = inspectRuntimeCoordinator(f.input);
+  // Keep the original inode allocated so replacement identity differs on every filesystem.
+  const originalFile = openSync(
+    path.join(f.root, '.ai-task-manager/runtime/migrations/coordinator.lock'),
+    'r'
+  );
+  t.after(() => closeSync(originalFile));
   const child = fork(childFile, [f.file, 'unused', 'resume-after-coordinator-release'], {
     cwd: f.root,
     env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, LANG: process.env.LANG },
@@ -394,9 +400,16 @@ test('registered recovery completes an exact dead receipt after durable coordina
   }
   const replacementLock = path.join(f.root, '.ai-task-manager/runtime/migrations/coordinator.lock');
   writeFileSync(replacementLock, original.bytes);
+  const replacement = inspectRuntimeCoordinator(f.input);
+  assert.equal(replacement.bytes, original.bytes);
+  assert.notDeepEqual(replacement.identity, original.identity);
   const replacementTree = snapshotTree(f.root),
     refusedReplacement = invoke(original.digest);
-  assert.notEqual(refusedReplacement.status, 0);
+  assert.notEqual(
+    refusedReplacement.status,
+    0,
+    refusedReplacement.stderr + refusedReplacement.stdout
+  );
   assert.match(refusedReplacement.stderr, new RegExp('RUNTIME_MIGRATION_CONFLICT'));
   assert.deepEqual(snapshotTree(f.root), replacementTree);
   rmSync(replacementLock);
