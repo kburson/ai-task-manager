@@ -1,8 +1,11 @@
 // @story #1767
 // @story #1857
+// @story #1872
 // Actual Git/public-CLI replay belongs to integration, not the pure unit lane.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -12,13 +15,80 @@ const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
 // Ambient actor validation can refuse before replay; a valid actor reaches the
 // archived capture's exact identity guard. Both must refuse obsolete evidence.
 const obsoleteReplayRefusal =
-  /TIMING_ACTOR_INVALID|Invalid timing actor|guidance-feasibility:capture-replay-identity:(?:scenarioManifestSha256|initialFixtureSha256|initialBodySha256|configSha256|fakeGhSha256)/;
+  /TIMING_ACTOR_INVALID|Invalid timing actor|guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml|guidance-feasibility:capture-replay-identity:(?:scenarioManifestSha256|initialFixtureSha256|initialBodySha256|configSha256|fakeGhSha256)/;
 function json(file) {
   return JSON.parse(readFileSync(path.join(fixtureRoot, file), 'utf8'));
 }
 async function measurementTool() {
   return import('../../../../maintenance/measure-guidance-candidate.mjs');
 }
+
+test('obsolete catalog input refuses before launching public CLI replay', async (t) => {
+  const original = childProcess.spawnSync;
+  let cliCalls = 0;
+  t.mock.method(childProcess, 'spawnSync', function (command, args, ...rest) {
+    if (command === process.execPath && args?.[0] === path.join(projectRoot, 'bin/aitm.mjs'))
+      cliCalls += 1;
+    return original.call(this, command, args, ...rest);
+  });
+  syncBuiltinESMExports();
+  t.after(() => {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+  });
+  const { buildCurrentRecertificationDecision } = await measurementTool();
+  const capture = json('actual-explain-traffic-recertification.json');
+  const catalog = capture.identity.implementationFiles.find(
+    ({ path: sourcePath }) => sourcePath === 'instructions/aitm-guidance.yml'
+  );
+  assert.notEqual(
+    catalog.sha256,
+    `sha256:${createHash('sha256')
+      .update(readFileSync(path.join(projectRoot, catalog.path)))
+      .digest('hex')}`
+  );
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot, capture }),
+    /guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml/
+  );
+  assert.equal(cliCalls, 0);
+});
+
+test('matching catalog inputs still launch actual replay and refuse fabricated current provenance', async (t) => {
+  const original = childProcess.spawnSync;
+  let cliCalls = 0;
+  t.mock.method(childProcess, 'spawnSync', function (command, args, ...rest) {
+    if (command === process.execPath && args?.[0] === path.join(projectRoot, 'bin/aitm.mjs'))
+      cliCalls += 1;
+    return original.call(this, command, args, ...rest);
+  });
+  syncBuiltinESMExports();
+  t.after(() => {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+  });
+  const { buildCurrentRecertificationDecision } = await measurementTool();
+  const capture = json('actual-explain-traffic-recertification.json');
+  // A self-consistent source relabel is insufficient: actual CLI events and
+  // initial fixture identity must still be replayed before any current GO.
+  capture.identity.sourceCommit = original('git', ['rev-parse', 'HEAD'], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  }).stdout.trim();
+  for (const record of capture.identity.implementationFiles) {
+    const committed = original('git', ['show', `${capture.identity.sourceCommit}:${record.path}`], {
+      cwd: projectRoot,
+      encoding: null,
+    });
+    assert.equal(committed.status, 0);
+    record.sha256 = `sha256:${createHash('sha256').update(committed.stdout).digest('hex')}`;
+  }
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot, capture }),
+    /capture-replay-identity|Invalid timing actor|TIMING_ACTOR_INVALID/
+  );
+  assert.ok(cliCalls > 0, 'matching inputs must not bypass real CLI replay');
+});
 
 test('archived recertification binds every obligation and refuses current replay identity drift', async () => {
   const { buildCurrentRecertificationDecision } =
