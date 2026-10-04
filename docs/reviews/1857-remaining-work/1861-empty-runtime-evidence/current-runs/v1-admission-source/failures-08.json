@@ -1,0 +1,495 @@
+{
+  "$comment": "cspell:disable - Exact observed failure blocks.",
+  "schema": "aitm.manual-failure-subset/v1",
+  "run": "v1-admission-source",
+  "findings": [
+    {
+      "position": 324,
+      "location": "scripts/tests/unit/task-tracker/core/activity-policy-extra-globs.test.mjs:140:1",
+      "name": "no policy file → DEFAULT_POLICY unchanged",
+      "durationMs": 137.816917,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/activity-policy-extra-globs.test.mjs:140:1\n✖ no policy file → DEFAULT_POLICY unchanged (137.816917ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/activity-policy-extra-globs.test.mjs:141:37)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 325,
+      "location": "scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:82:1",
+      "name": "verbClose emits review:approved + issue:wrap before the done board move",
+      "durationMs": 60.633416,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:82:1\n✖ verbClose emits review:approved + issue:wrap before the done board move (60.633416ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeStatePath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:76:32)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:85:30)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 326,
+      "location": "scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:229:1",
+      "name": "#692 AC2 — retried close does not re-emit an existing review:approved/issue:wrap pair",
+      "durationMs": 47.326541,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:229:1\n✖ #692 AC2 — retried close does not re-emit an existing review:approved/issue:wrap pair (47.326541ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeStatePath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:76:32)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:232:30)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 327,
+      "location": "scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:312:1",
+      "name": "#692 AC3 — review:approved active duration derives from the timing comment",
+      "durationMs": 26.542291,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:312:1\n✖ #692 AC3 — review:approved active duration derives from the timing comment (26.542291ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeStatePath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:76:32)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs:315:30)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 328,
+      "location": "scripts/tests/unit/task-tracker/core/config-full-auto-merge.test.mjs:27:1",
+      "name": "AC1/AC3: fullAutoMerge is nullable by default and explicit project policy survives load",
+      "durationMs": 141.476834,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/config-full-auto-merge.test.mjs:27:1\n✖ AC1/AC3: fullAutoMerge is nullable by default and explicit project policy survives load (141.476834ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at fixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/config-full-auto-merge.test.mjs:19:32)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/config-full-auto-merge.test.mjs:28:14)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.start (node:internal/test_runner/test:1262:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 329,
+      "location": "scripts/tests/unit/task-tracker/core/config-full-auto-merge.test.mjs:55:1",
+      "name": "AC2: sanctioned config setter persists an object and rejects malformed values atomically",
+      "durationMs": 132.53475,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/config-full-auto-merge.test.mjs:55:1\n✖ AC2: sanctioned config setter persists an object and rejects malformed values atomically (132.53475ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at fixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/config-full-auto-merge.test.mjs:19:32)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/config-full-auto-merge.test.mjs:56:14)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 330,
+      "location": "scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs",
+      "durationMs": 369.202542,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs (369.202542ms)\n  'test failed'\n"
+    },
+    {
+      "position": 331,
+      "location": "scripts/tests/unit/task-tracker/core/gh-timing-comment-issue-number.test.mjs:37:1",
+      "name": "Timing Log GitHub helpers accept numeric, string, and hash-prefixed issue identifiers",
+      "durationMs": 204.284334,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/gh-timing-comment-issue-number.test.mjs:37:1\n✖ Timing Log GitHub helpers accept numeric, string, and hash-prefixed issue identifiers (204.284334ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at installGhShim (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/gh-timing-comment-issue-number.test.mjs:19:32)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/gh-timing-comment-issue-number.test.mjs:38:28)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.start (node:internal/test_runner/test:1262:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 332,
+      "location": "scripts/tests/unit/task-tracker/core/measure-context.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/core/measure-context.test.mjs",
+      "durationMs": 784.24325,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/measure-context.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/core/measure-context.test.mjs (784.24325ms)\n  'test failed'\n"
+    },
+    {
+      "position": 333,
+      "location": "scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:56:1",
+      "name": "POST-FIX: cursor advances → monotonic cumulative marker, per-segment Δ, no double-count",
+      "durationMs": 47.075666,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:56:1\n✖ POST-FIX: cursor advances → monotonic cumulative marker, per-segment Δ, no double-count (47.075666ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at withFixtures (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:46:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:57:3)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.start (node:internal/test_runner/test:1262:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 334,
+      "location": "scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:106:1",
+      "name": "POST-FIX: a no-growth flush yields Δ Words=0 and a flat (non-regressing) marker",
+      "durationMs": 30.725375,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:106:1\n✖ POST-FIX: a no-growth flush yields Δ Words=0 and a flat (non-regressing) marker (30.725375ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at withFixtures (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:46:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:107:3)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 335,
+      "location": "scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:125:1",
+      "name": "PRE-FIX reproduction: a frozen cursor double-counts earlier segments in Δ Words",
+      "durationMs": 26.945375,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:125:1\n✖ PRE-FIX reproduction: a frozen cursor double-counts earlier segments in Δ Words (26.945375ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at withFixtures (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:46:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs:126:3)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 336,
+      "location": "scripts/tests/unit/task-tracker/epic-verify-trail-render.test.mjs:147:5",
+      "name": "renders the epic-trail DoD line + a VC entry whose command has no forbidden < / > token",
+      "durationMs": 173.103292,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/epic-verify-trail-render.test.mjs:147:5\n✖ renders the epic-trail DoD line + a VC entry whose command has no forbidden < / > token (173.103292ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/epic-verify-trail-render.test.mjs:148:41)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.start (node:internal/test_runner/test:1262:17)\n      at node:internal/test_runner/test:1903:71\n      at node:internal/per_context/primordials:504:82\n      at new Promise (<anonymous>)\n      at new SafePromise (node:internal/per_context/primordials:478:3) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 337,
+      "location": "scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:67:1",
+      "name": "the complete guard pipeline runs while the issue boundary lock is held",
+      "durationMs": 210.869542,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:67:1\n✖ the complete guard pipeline runs while the issue boundary lock is held (210.869542ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:71:3)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n        at mkdirSync (node:fs:1734:26)\n        at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/issue-mutator-lock.mjs:275:3)\n        at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/gh/move-state.mjs:450:18)\n        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:72:5)\n        at Test.runInAsyncScope (node:async_hooks:226:14)\n        at Test.run (node:internal/test_runner/test:1402:25)\n        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n        at Test.postRun (node:internal/test_runner/test:1542:19)\n        at Test.run (node:internal/test_runner/test:1467:12)\n        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7),\n    operator: 'rejects',\n    diff: 'simple'\n  }\n"
+    },
+    {
+      "position": 338,
+      "location": "scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13",
+      "name": "environment-only Shelve context is unauthorized",
+      "durationMs": 790.049792,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13\n✖ environment-only Shelve context is unauthorized (790.049792ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:110:7)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n        at mkdirSync (node:fs:1734:26)\n        at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/issue-mutator-lock.mjs:275:3)\n        at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/gh/move-state.mjs:450:18)\n        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:111:9)\n        at Test.runInAsyncScope (node:async_hooks:226:14)\n        at Test.run (node:internal/test_runner/test:1402:25)\n        at Test.start (node:internal/test_runner/test:1262:17)\n        at TestContext.test (node:internal/test_runner/test:400:20)\n        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13)\n        at Test.runInAsyncScope (node:async_hooks:226:14),\n    operator: 'rejects',\n    diff: 'simple'\n  }\n"
+    },
+    {
+      "position": 339,
+      "location": "scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13",
+      "name": "a freshly forged Symbol is unauthorized",
+      "durationMs": 728.832416,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13\n✖ a freshly forged Symbol is unauthorized (728.832416ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:110:7)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n        at mkdirSync (node:fs:1734:26)\n        at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/issue-mutator-lock.mjs:275:3)\n        at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/gh/move-state.mjs:450:18)\n        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:111:9)\n        at Test.runInAsyncScope (node:async_hooks:226:14)\n        at Test.run (node:internal/test_runner/test:1402:25)\n        at Test.start (node:internal/test_runner/test:1262:17)\n        at TestContext.test (node:internal/test_runner/test:400:20)\n        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13)\n        at async Test.run (node:internal/test_runner/test:1409:7),\n    operator: 'rejects',\n    diff: 'simple'\n  }\n"
+    },
+    {
+      "position": 340,
+      "location": "scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13",
+      "name": "the exact exported capability is authorized",
+      "durationMs": 308.283167,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13\n✖ the exact exported capability is authorized (308.283167ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:110:7)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n        at mkdirSync (node:fs:1734:26)\n        at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/issue-mutator-lock.mjs:275:3)\n        at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/gh/move-state.mjs:450:18)\n        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:111:9)\n        at Test.runInAsyncScope (node:async_hooks:226:14)\n        at Test.run (node:internal/test_runner/test:1402:25)\n        at Test.start (node:internal/test_runner/test:1262:17)\n        at TestContext.test (node:internal/test_runner/test:400:20)\n        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13)\n        at async Test.run (node:internal/test_runner/test:1409:7),\n    operator: 'rejects',\n    diff: 'simple'\n  }\n"
+    },
+    {
+      "position": 341,
+      "location": "scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:61:1",
+      "name": "move to review while already in review exits 0 as a no-op (the reported defect)",
+      "durationMs": 273.099917,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:61:1\n✖ move to review while already in review exits 0 as a no-op (the reported defect) (273.099917ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n      at mkdirSync (node:fs:1734:26)\n      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/issue-mutator-lock.mjs:275:3)\n      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/gh/move-state.mjs:450:18)\n      at runHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:44:18)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:62:42)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.start (node:internal/test_runner/test:1262:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n  }\n"
+    },
+    {
+      "position": 342,
+      "location": "scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:70:1",
+      "name": "the no-op path performs no move — no entry stamp, no timing row, no board write",
+      "durationMs": 453.571833,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:70:1\n✖ the no-op path performs no move — no entry stamp, no timing row, no board write (453.571833ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n      at mkdirSync (node:fs:1734:26)\n      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/issue-mutator-lock.mjs:275:3)\n      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/gh/move-state.mjs:450:18)\n      at runHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:44:18)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:71:28)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n  }\n"
+    },
+    {
+      "position": 343,
+      "location": "scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:81:1",
+      "name": "every state is re-runnable in place, not just review",
+      "durationMs": 203.141042,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:81:1\n✖ every state is re-runnable in place, not just review (203.141042ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n      at mkdirSync (node:fs:1734:26)\n      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/issue-mutator-lock.mjs:275:3)\n      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/gh/move-state.mjs:450:18)\n      at runHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:44:18)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:83:36)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n  }\n"
+    },
+    {
+      "position": 344,
+      "location": "scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:95:1",
+      "name": "the structured result reads as success, so verb guards do not treat it as a refusal",
+      "durationMs": 805.235917,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:95:1\n✖ the structured result reads as success, so verb guards do not treat it as a refusal (805.235917ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n      at mkdirSync (node:fs:1734:26)\n      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/issue-mutator-lock.mjs:275:3)\n      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/gh/move-state.mjs:450:18)\n      at runMoveStateInProcess (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/runtime.mjs:186:18)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:96:21)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.tmp/aitm/locks'\n  }\n"
+    },
+    {
+      "position": 345,
+      "location": "scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:177:3",
+      "name": "code (default) renders the tests item AND its two-lane verification commands",
+      "durationMs": 127.03325,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:177:3\n✖ code (default) renders the tests item AND its two-lane verification commands (127.03325ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:42:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:178:16)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.start (node:internal/test_runner/test:1262:17)\n      at node:internal/test_runner/test:1903:71\n      at node:internal/per_context/primordials:504:82\n      at new Promise (<anonymous>) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 346,
+      "location": "scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:192:5",
+      "name": "spike omits the tests item AND drops its derived test commands",
+      "durationMs": 97.955958,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:192:5\n✖ spike omits the tests item AND drops its derived test commands (97.955958ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:42:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:193:18)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Promise.all (index 0) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 347,
+      "location": "scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:192:5",
+      "name": "research omits the tests item AND drops its derived test commands",
+      "durationMs": 467.568875,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:192:5\n✖ research omits the tests item AND drops its derived test commands (467.568875ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:42:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:193:18)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 348,
+      "location": "scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:259:3",
+      "name": "default output === explicit --kind code output, for each shape",
+      "durationMs": 215.541167,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:259:3\n✖ default output === explicit --kind code output, for each shape (215.541167ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:42:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/kind-aware-dod.test.mjs:261:18)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Promise.all (index 0) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 349,
+      "location": "scripts/tests/unit/task-tracker/lib/active-time.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/active-time.test.mjs",
+      "durationMs": 1542.439333,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/active-time.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/active-time.test.mjs (1542.439333ms)\n  'test failed'\n"
+    },
+    {
+      "position": 350,
+      "location": "scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:255:1",
+      "name": "loadPolicy: missing file returns DEFAULT_POLICY",
+      "durationMs": 290.562833,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:255:1\n✖ loadPolicy: missing file returns DEFAULT_POLICY (290.562833ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:256:37)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 351,
+      "location": "scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:261:1",
+      "name": "loadPolicy: present file is parsed",
+      "durationMs": 322.561,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:261:1\n✖ loadPolicy: present file is parsed (322.561ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:262:37)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 352,
+      "location": "scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:277:1",
+      "name": "loadPolicy: invalid json falls back to DEFAULT_POLICY",
+      "durationMs": 394.078958,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:277:1\n✖ loadPolicy: invalid json falls back to DEFAULT_POLICY (394.078958ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:278:37)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 353,
+      "location": "scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:323:1",
+      "name": "invocation directory uses supplied workdir then cwd with relative bases",
+      "durationMs": 202.595708,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:323:1\n✖ invocation directory uses supplied workdir then cwd with relative bases (202.595708ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:324:38)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 354,
+      "location": "scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:356:1",
+      "name": "mutation target requires both lexical and physical worktree containment",
+      "durationMs": 125.418166,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:356:1\n✖ mutation target requires both lexical and physical worktree containment (125.418166ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:357:38)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 355,
+      "location": "scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:421:1",
+      "name": "real staged index classifies regular Markdown and mixed source separately",
+      "durationMs": 214.585416,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:421:1\n✖ real staged index classifies regular Markdown and mixed source separately (214.585416ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs:422:37)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 356,
+      "location": "scripts/tests/unit/task-tracker/lib/activity-policy-classify-edit.test.mjs:149:1",
+      "name": "loadPolicy: configGlobs override propagates from project-local file",
+      "durationMs": 461.803875,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/activity-policy-classify-edit.test.mjs:149:1\n✖ loadPolicy: configGlobs override propagates from project-local file (461.803875ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/activity-policy-classify-edit.test.mjs:150:37)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 357,
+      "location": "scripts/tests/unit/task-tracker/lib/activity-policy-classify-edit.test.mjs:162:1",
+      "name": "loadPolicy: missing configGlobs falls back to defaults",
+      "durationMs": 420.591,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/activity-policy-classify-edit.test.mjs:162:1\n✖ loadPolicy: missing configGlobs falls back to defaults (420.591ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/activity-policy-classify-edit.test.mjs:163:37)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 358,
+      "location": "scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs",
+      "durationMs": 1184.261708,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs (1184.261708ms)\n  'test failed'\n"
+    },
+    {
+      "position": 359,
+      "location": "scripts/tests/unit/task-tracker/lib/audit-lane-e2e-494.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/audit-lane-e2e-494.test.mjs",
+      "durationMs": 418.384541,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/audit-lane-e2e-494.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/audit-lane-e2e-494.test.mjs (418.384541ms)\n  'test failed'\n"
+    },
+    {
+      "position": 360,
+      "location": "scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:28:1",
+      "name": "writer + reader resolve identical sid (no env, no transcripts)",
+      "durationMs": 184.774625,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:28:1\n✖ writer + reader resolve identical sid (no env, no transcripts) (184.774625ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeProjDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:23:38)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:29:15)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.start (node:internal/test_runner/test:1262:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 361,
+      "location": "scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:36:1",
+      "name": "writer-resolved sid points at the same file the reader scans",
+      "durationMs": 260.445166,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:36:1\n✖ writer-resolved sid points at the same file the reader scans (260.445166ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeProjDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:23:38)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:37:19)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 362,
+      "location": "scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:61:1",
+      "name": "explicit orchestrator env var lands writer and reader on the same dir",
+      "durationMs": 93.732792,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:61:1\n✖ explicit orchestrator env var lands writer and reader on the same dir (93.732792ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeProjDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:23:38)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs:62:19)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 363,
+      "location": "scripts/tests/unit/task-tracker/lib/claude-bash-allowlist.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/claude-bash-allowlist.test.mjs",
+      "durationMs": 261.92325,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/claude-bash-allowlist.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/claude-bash-allowlist.test.mjs (261.92325ms)\n  'test failed'\n"
+    },
+    {
+      "position": 364,
+      "location": "scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:191:1",
+      "name": "refuses cross-close: exit 7, PROMPT_REQUIRED on stdout (via dispatcher preflight)",
+      "durationMs": 40.752959,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:191:1\n✖ refuses cross-close: exit 7, PROMPT_REQUIRED on stdout (via dispatcher preflight) (40.752959ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at makeDispatcherSandbox (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:163:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:192:19)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 365,
+      "location": "scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:207:1",
+      "name": "allows close when target equals s.active (no refusal)",
+      "durationMs": 43.684458,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:207:1\n✖ allows close when target equals s.active (no refusal) (43.684458ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at withRealStateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:144:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:208:25)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 366,
+      "location": "scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:225:1",
+      "name": "allows close when s.active is null and target is given",
+      "durationMs": 56.89175,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:225:1\n✖ allows close when s.active is null and target is given (56.89175ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at withRealStateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:144:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs:226:25)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 367,
+      "location": "scripts/tests/unit/task-tracker/lib/close-drain.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/close-drain.test.mjs",
+      "durationMs": 337.944958,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/close-drain.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/close-drain.test.mjs (337.944958ms)\n  'test failed'\n"
+    },
+    {
+      "position": 368,
+      "location": "scripts/tests/unit/task-tracker/lib/close-repair.test.mjs:208:1",
+      "name": "#708 AC2 (baseline): board=Done + issue=CLOSED without --repair → noop short-circuit (no timing flush)",
+      "durationMs": 0.349292,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/close-repair.test.mjs:208:1\n✖ #708 AC2 (baseline): board=Done + issue=CLOSED without --repair → noop short-circuit (no timing flush) (0.349292ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at installStubGh (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/fixtures/stub-gh.mjs:115:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/close-repair.test.mjs:48:12)\n      at TestHook.runInAsyncScope (node:async_hooks:226:14)\n      at TestHook.run (node:internal/test_runner/test:1402:25)\n      at TestHook.run (node:internal/test_runner/test:1757:18)\n      at TestHook.run (node:internal/util:581:20)\n      at Test.createHook (node:internal/test_runner/test:1117:33)\n      at node:internal/test_runner/harness:426:12 {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 369,
+      "location": "scripts/tests/unit/task-tracker/lib/close-repair.test.mjs:241:1",
+      "name": "#708 AC2: same state WITH --repair → bypasses noop and replays the full atomic close",
+      "durationMs": 0.419,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/close-repair.test.mjs:241:1\n✖ #708 AC2: same state WITH --repair → bypasses noop and replays the full atomic close (0.419ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at installStubGh (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/fixtures/stub-gh.mjs:115:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/close-repair.test.mjs:48:12)\n      at TestHook.runInAsyncScope (node:async_hooks:226:14)\n      at TestHook.run (node:internal/test_runner/test:1402:25)\n      at TestHook.run (node:internal/test_runner/test:1757:18)\n      at TestHook.run (node:internal/util:581:20)\n      at Test.createHook (node:internal/test_runner/test:1117:33)\n      at node:internal/test_runner/harness:426:12 {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 370,
+      "location": "scripts/tests/unit/task-tracker/lib/close-repair.test.mjs:286:1",
+      "name": "#708 AC4: `--repair` is documented in the close verb help output",
+      "durationMs": 0.487458,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/close-repair.test.mjs:286:1\n✖ #708 AC4: `--repair` is documented in the close verb help output (0.487458ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at installStubGh (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/fixtures/stub-gh.mjs:115:37)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/close-repair.test.mjs:48:12)\n      at TestHook.runInAsyncScope (node:async_hooks:226:14)\n      at TestHook.run (node:internal/test_runner/test:1402:25)\n      at TestHook.run (node:internal/test_runner/test:1757:18)\n      at TestHook.run (node:internal/util:581:20)\n      at Test.createHook (node:internal/test_runner/test:1117:33)\n      at node:internal/test_runner/harness:426:12 {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 371,
+      "location": "scripts/tests/unit/task-tracker/lib/codex-superpowers.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/codex-superpowers.test.mjs",
+      "durationMs": 300.455958,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/codex-superpowers.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/codex-superpowers.test.mjs (300.455958ms)\n  'test failed'\n"
+    },
+    {
+      "position": 372,
+      "location": "scripts/tests/unit/task-tracker/lib/commits-on-trunk-gate.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/commits-on-trunk-gate.test.mjs",
+      "durationMs": 319.930792,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/commits-on-trunk-gate.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/commits-on-trunk-gate.test.mjs (319.930792ms)\n  'test failed'\n"
+    },
+    {
+      "position": 373,
+      "location": "scripts/tests/unit/task-tracker/lib/config.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/config.test.mjs",
+      "durationMs": 171.851917,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/config.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/config.test.mjs (171.851917ms)\n  'test failed'\n"
+    },
+    {
+      "position": 374,
+      "location": "scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs",
+      "durationMs": 142.886042,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs (142.886042ms)\n  'test failed'\n"
+    },
+    {
+      "position": 375,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs",
+      "durationMs": 376.817334,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs (376.817334ms)\n  'test failed'\n"
+    },
+    {
+      "position": 376,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs",
+      "durationMs": 109.866042,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs (109.866042ms)\n  'test failed'\n"
+    },
+    {
+      "position": 377,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs",
+      "durationMs": 483.406292,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs (483.406292ms)\n  'test failed'\n"
+    },
+    {
+      "position": 378,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs",
+      "durationMs": 431.265125,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs (431.265125ms)\n  'test failed'\n"
+    },
+    {
+      "position": 379,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs",
+      "durationMs": 472.284583,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs (472.284583ms)\n  'test failed'\n"
+    },
+    {
+      "position": 380,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs",
+      "durationMs": 488.696041,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs (488.696041ms)\n  'test failed'\n"
+    },
+    {
+      "position": 381,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs",
+      "durationMs": 443.288166,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs (443.288166ms)\n  'test failed'\n"
+    },
+    {
+      "position": 382,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs",
+      "durationMs": 562.66775,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs (562.66775ms)\n  'test failed'\n"
+    },
+    {
+      "position": 383,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs:110:1",
+      "name": "verbUnblock covers usage, success, and core failure exits",
+      "durationMs": 221.875917,
+      "observedEPERM": true,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs:110:1\n✖ verbUnblock covers usage, success, and core failure exits (221.875917ms)\n  Error: EPERM: operation not permitted, mkdir '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n      at mkdirSync (node:fs:1734:26)\n      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/scratch-dir.mjs:45:25)\n      at tmpState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs:19:32)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs:112:42)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n      at Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -1,\n    code: 'EPERM',\n    syscall: 'mkdir',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.scratch/test'\n  }\n"
+    },
+    {
+      "position": 384,
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-verb-preflight.test.mjs:1:1",
+      "name": "scripts/tests/unit/task-tracker/lib/coverage-verb-preflight.test.mjs",
+      "durationMs": 534.42975,
+      "observedEPERM": false,
+      "completeRawBlock": "test at scripts/tests/unit/task-tracker/lib/coverage-verb-preflight.test.mjs:1:1\n✖ scripts/tests/unit/task-tracker/lib/coverage-verb-preflight.test.mjs (534.42975ms)\n  'test failed'\n"
+    }
+  ]
+}

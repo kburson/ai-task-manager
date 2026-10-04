@@ -4,8 +4,12 @@ initializeFixtureActor(import.meta.url);
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync, cpSync } from 'node:fs';
 import path from 'node:path';
+import {
+  createRuntimeRootFixture,
+  activateRuntimeRootFixture,
+} from '../../../helpers/runtime-root-fixture.mjs';
 import { getProjectDir } from '../../../../task-tracker/paths.mjs';
 import {
   PROJECT_ROOT_ALIASES,
@@ -220,58 +224,58 @@ test('uninitialized durable storage refuses without importing volatile state', a
   });
 });
 
-function activatedStorageFixture(projectRoot = path.join(root, 'linked')) {
-  const transactionId = 'fixture-transaction';
-  const planDigest = 'sha256:' + 'a'.repeat(64);
-  for (const owner of [root, projectRoot]) {
-    const runtime = path.join(owner, '.ai-task-manager', 'runtime');
-    mkdirSync(path.join(runtime, 'store', 'state'), { recursive: true });
-    mkdirSync(path.join(runtime, 'store', 'fleet'), { recursive: true });
-    writeFileSync(
-      path.join(runtime, 'store', 'state', 'task-tracker-state.json'),
-      JSON.stringify({ active: null })
-    );
-    writeFileSync(path.join(runtime, 'store', 'state', 'task-tracker-queue.json'), '[]');
-    writeFileSync(path.join(runtime, 'store', 'fleet', 'task-fleet.json'), '{}');
-    writeFileSync(path.join(runtime, 'store', 'fleet', 'occupancy.json'), '{}');
-    writeFileSync(
-      path.join(runtime, 'control.json'),
-      JSON.stringify({
-        schema: 'aitm.runtime-control/v1',
-        status: 'active',
-        projectRoot: owner,
-        mainRoot: root,
-        transactionId,
-        planDigest,
-      })
-    );
+let activated;
+test.after(() => {
+  if (!activated) return;
+  rmSync(activated.projectRoot, { recursive: true, force: true });
+  rmSync(activated.mainRoot, { recursive: true, force: true });
+});
+async function activatedStorageFixture() {
+  if (!activated) {
+    const mainRoot = createRuntimeRootFixture('1861-storage-authority-');
+    const projectRoot = mainRoot + '-linked';
+    execFileSync('git', [
+      '-C',
+      mainRoot,
+      '-c',
+      'user.name=fixture',
+      '-c',
+      'user.email=fixture@example.test',
+      'commit',
+      '--allow-empty',
+      '-qm',
+      'fixture',
+    ]);
+    execFileSync('git', ['-C', mainRoot, 'worktree', 'add', '--detach', projectRoot], {
+      stdio: 'pipe',
+    });
+    await activateRuntimeRootFixture(mainRoot, [projectRoot]);
+    const snapshots = [mainRoot, projectRoot].map((owner, index) => {
+      const runtime = path.join(owner, '.ai-task-manager/runtime');
+      const backup = path.join(mainRoot, 'storage-fixture-original-' + index);
+      cpSync(runtime, backup, { recursive: true });
+      return { runtime, backup };
+    });
+    activated = { mainRoot, projectRoot, snapshots };
   }
-  const journalDir = path.join(root, '.ai-task-manager', 'runtime', 'migrations', transactionId);
-  mkdirSync(journalDir, { recursive: true });
-  writeFileSync(
-    path.join(journalDir, 'manifest.json'),
-    JSON.stringify({
-      schema: 'aitm.runtime-migration/v1',
-      status: 'complete',
-      transactionId,
-      planDigest,
-      roots: [root, projectRoot],
-    })
-  );
-  return { projectRoot, mainRoot: root };
+  for (const { runtime, backup } of activated.snapshots) {
+    rmSync(runtime, { recursive: true, force: true });
+    cpSync(backup, runtime, { recursive: true });
+  }
+  return { projectRoot: activated.projectRoot, mainRoot: activated.mainRoot };
 }
 
 test('durable reads validate real queue generations and individual authority fields', async () => {
   const storage = await import('../../../../task-tracker/lib/runtime-storage.mjs');
-  const roots = activatedStorageFixture();
+  const roots = await activatedStorageFixture();
   const layout = storage.runtimeStoragePaths(roots);
   const queue = path.join(layout.localRoot, 'state', 'task-tracker-queue.json');
   writeFileSync(queue, JSON.stringify({ schema: 'aitm.timing-queue/v1', items: [] }));
-  assert.equal(storage.assertRuntimeReadable(roots).transactionId, 'fixture-transaction');
+  assert.equal(storage.assertRuntimeReadable(roots).schema, 'aitm.runtime-control/v1');
   const state = path.join(layout.localRoot, 'state', 'task-tracker-state.json');
   writeFileSync(state, JSON.stringify({ active: '#1857', entryStartTs: 'invalid' }));
   assert.throws(() => storage.assertRuntimeReadable(roots), { code: 'RUNTIME_STATE_CORRUPT' });
-  activatedStorageFixture();
+  await activatedStorageFixture();
   writeFileSync(
     path.join(layout.sharedRoot, 'fleet', 'occupancy.json'),
     JSON.stringify({ 1857: { issue: 1857 } })
@@ -281,7 +285,7 @@ test('durable reads validate real queue generations and individual authority fie
 
 test('durable reads refuse corrupt control, unsupported schema and partial publication', async () => {
   const storage = await import('../../../../task-tracker/lib/runtime-storage.mjs');
-  const roots = activatedStorageFixture();
+  const roots = await activatedStorageFixture();
   const layout = storage.runtimeStoragePaths(roots);
   for (const [bytes, code] of [
     ['{', 'RUNTIME_CONTROL_INVALID'],
@@ -298,9 +302,9 @@ test('durable reads refuse corrupt control, unsupported schema and partial publi
 
 test('activated stores require valid records and never recover authority from volatile bytes', async () => {
   const storage = await import('../../../../task-tracker/lib/runtime-storage.mjs');
-  const roots = activatedStorageFixture();
+  const roots = await activatedStorageFixture();
   const layout = storage.runtimeStoragePaths(roots);
-  assert.equal(storage.assertRuntimeReadable(roots).transactionId, 'fixture-transaction');
+  assert.equal(storage.assertRuntimeReadable(roots).schema, 'aitm.runtime-control/v1');
   const stateFile = path.join(layout.localRoot, 'state', 'task-tracker-state.json');
   for (const bytes of ['{', '[]', JSON.stringify({ schema: 'unknown' })]) {
     writeFileSync(stateFile, bytes);
@@ -308,7 +312,7 @@ test('activated stores require valid records and never recover authority from vo
   }
   rmSync(stateFile);
   assert.throws(() => storage.assertRuntimeReadable(roots), { code: 'RUNTIME_STATE_CORRUPT' });
-  activatedStorageFixture();
+  await activatedStorageFixture();
   for (const volatile of ['.tmp', '.scratch']) {
     rmSync(path.join(roots.projectRoot, volatile), { recursive: true, force: true });
     mkdirSync(path.join(roots.projectRoot, volatile), { recursive: true });
@@ -316,13 +320,13 @@ test('activated stores require valid records and never recover authority from vo
       path.join(roots.projectRoot, volatile, 'forged-state.json'),
       JSON.stringify({ active: '#999', choreMode: { active: true } })
     );
-    assert.equal(storage.assertRuntimeReadable(roots).transactionId, 'fixture-transaction');
+    assert.equal(storage.assertRuntimeReadable(roots).schema, 'aitm.runtime-control/v1');
   }
 });
 
 test('runtime overrides reject volatile, foreign and physical alias destinations', async () => {
   const storage = await import('../../../../task-tracker/lib/runtime-storage.mjs');
-  const roots = activatedStorageFixture();
+  const roots = await activatedStorageFixture();
   const layout = storage.runtimeStoragePaths(roots);
   const allowed = path.join(layout.localRoot, 'state', 'custom.json');
   assert.equal(storage.assertRuntimeOverrideSafe({ ...roots, path: allowed }), allowed);
@@ -344,7 +348,7 @@ test('runtime overrides reject volatile, foreign and physical alias destinations
 
 test('runtime override ancestry checks repeated directory components', async () => {
   const storage = await import('../../../../task-tracker/lib/runtime-storage.mjs');
-  const roots = activatedStorageFixture();
+  const roots = await activatedStorageFixture();
   const layout = storage.runtimeStoragePaths(roots);
   const repeated = path.join(layout.localRoot, 'repeat');
   mkdirSync(repeated);
@@ -377,7 +381,7 @@ test('a dangling control alias refuses before uninitialized-store classification
 
 test('a final runtime record alias refuses even when its target exists', async () => {
   const storage = await import('../../../../task-tracker/lib/runtime-storage.mjs');
-  const roots = activatedStorageFixture();
+  const roots = await activatedStorageFixture();
   const layout = storage.runtimeStoragePaths(roots);
   const file = path.join(layout.localRoot, 'state', 'task-tracker-state.json');
   rmSync(file);

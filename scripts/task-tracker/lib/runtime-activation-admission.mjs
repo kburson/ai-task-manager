@@ -10,6 +10,7 @@ import {
   emptyRuntimeKeys,
   validEmptyRuntimeOwner,
   validEmptyOperationId,
+  validEmptyDigest,
   validEmptyRuntimeJournal,
   validEmptyRuntimeControl,
   emptyRuntimeDigest,
@@ -305,4 +306,68 @@ export function inspectLinkedInitializationRecoveries(layout, journal, primitive
   if (latest.phase === 'complete' && journal.status !== 'complete')
     fail('RUNTIME_CONTROL_INVALID', 'Completed recovery disagrees with linked journal');
   return { active: latest.phase !== 'complete', ownerHistory };
+}
+
+// Preserve v1 receipt bytes and approval-only recovery while fencing unfinished claims.
+export function inspectMigrationInitializationRecoveries(layout, journal, primitives) {
+  const { assertPath, fail } = primitives;
+  const directory = assertPath(
+    path.join(layout.sharedRuntimeRoot, 'initialization-recoveries', journal.plan.id),
+    layout.sharedRuntimeRoot,
+    'RUNTIME_CONTROL_INVALID'
+  );
+  const stat = exists(directory);
+  if (!stat) {
+    if (journal.recoveryReceipt !== undefined)
+      fail('RUNTIME_CONTROL_INVALID', 'Legacy initialization recovery proof is missing');
+    return { active: false };
+  }
+  if (!stat.isDirectory())
+    fail('RUNTIME_CONTROL_INVALID', 'Invalid legacy initialization recovery directory');
+  const names = readdirSync(directory).sort();
+  if (!names.length || names.length > 10000)
+    fail('RUNTIME_CONTROL_INVALID', 'Unbound legacy initialization recovery ancestors');
+  let previousReceipt = null,
+    latest;
+  for (const [index, name] of names.entries()) {
+    if (name !== String(index).padStart(6, '0') + '.json')
+      fail('RUNTIME_CONTROL_INVALID', 'Unknown legacy initialization recovery artifact');
+    const file = path.join(directory, name),
+      record = read(file, layout.sharedRuntimeRoot, primitives);
+    const keys = [
+      'schema',
+      'phase',
+      'owner',
+      'planDigest',
+      'previousReceipt',
+      'previousJournalDigest',
+    ];
+    if (record?.phase !== 'active') keys.push('endedAt');
+    if (
+      !emptyRuntimeKeys(record, keys) ||
+      record.schema !== 'aitm.runtime-initialization-recovery/v1' ||
+      !['active', 'released', 'complete'].includes(record.phase) ||
+      !validEmptyRuntimeOwner(record.owner) ||
+      record.planDigest !== journal.plan.digest ||
+      record.previousReceipt !== previousReceipt ||
+      !validEmptyDigest(record.previousJournalDigest) ||
+      (record.phase !== 'active' &&
+        (typeof record.endedAt !== 'string' || !Number.isFinite(Date.parse(record.endedAt)))) ||
+      latest?.phase === 'complete'
+    )
+      fail('RUNTIME_CONTROL_INVALID', 'Invalid legacy initialization recovery chain');
+    previousReceipt = file;
+    latest = record;
+  }
+  const published =
+    journal.recoveryReceipt === previousReceipt &&
+    emptyRuntimeDigest(journal.owner) === emptyRuntimeDigest(latest.owner);
+  const unclaimed =
+    latest.phase === 'active' &&
+    runtimeInitializationDigest(journal) === latest.previousJournalDigest;
+  if (!published && !unclaimed)
+    fail('RUNTIME_CONTROL_INVALID', 'Legacy initialization journal disagrees with recovery claim');
+  if (latest.phase === 'complete' && journal.status !== 'complete')
+    fail('RUNTIME_CONTROL_INVALID', 'Completed legacy recovery disagrees with initialization');
+  return { active: latest.phase !== 'complete' };
 }

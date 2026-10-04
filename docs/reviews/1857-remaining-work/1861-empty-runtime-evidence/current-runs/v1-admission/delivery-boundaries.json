@@ -1,0 +1,65 @@
+{
+  "$comment": "cspell:disable - Actual delivery observations.",
+  "schema": "aitm.manual-verification-evidence/v1",
+  "at": "2026-10-04T06:31:50.242Z",
+  "head": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "gate": {
+    "ok": false,
+    "blockers": [
+      "code-complete-ac-unticked: Journal complete before/after identities and payloads before any member publication. Every interrupted binding/timing/global batch refuses ordinary reads; registered exact recovery is idempotent and refuses changed/conflicting bytes.",
+      "code-complete-ac-unticked: Coordinator/writer/operation/initialization ownership, pending publication artifacts and competing recovery claims have real SIGKILL cases. Only exact identity plus confirmed death admits recovery; live/reused PID, foreign host and unknown owner refuse.",
+      "code-complete-ac-unticked: Cover bootstrap/approved plan, stage copy, each root rename, control activation, manifest complete, timing retry and fence release with killed child processes. Thrown faults remain supplemental.",
+      "code-complete-ac-unticked: Completed no-fence timing retry tolerates proven successor generations and legitimate census evolution without republishing stores. Retained fence requires original roots. New roots initialize separately; partial loss refuses; explicit empty initialization requires proven total absence of legacy/durable data.",
+      "code-complete-ac-unticked: Synchronous promise misuse preserves recovery evidence. A lease alone is never multi-file atomic publication proof.",
+      "code-complete-dirty-files: commit some changes or stash them: docs/superpowers/specs/2026-10-02-1861-runtime-kernel-design.md, bin/aitm.mjs, cspell-dictionary.txt, docs/reviews/1857-remaining-work/2026-10-03-1861-delivery-snapshot.md, guidance/admission.mjs, scripts/task-tracker/lib/actor-flush-journal.mjs, scripts/task-tracker/lib/artifact-write-policy.mjs, scripts/task-tracker/lib/command-surface/catalog.mjs, scripts/task-tracker/lib/ready-for-plan-migration.mjs, scripts/task-tracker/lib/runtime-batch.mjs, scripts/task-tracker/lib/runtime-initialize.mjs, scripts/task-tracker/lib/runtime-migration-apply.mjs, scripts/task-tracker/lib/runtime-migration-plan.mjs, scripts/task-tracker/lib/runtime-migration-timing.mjs, scripts/task-tracker/lib/runtime-process-census.mjs, scripts/task-tracker/lib/runtime-record-catalog.mjs, scripts/task-tracker/lib/runtime-writer-census.mjs, scripts/task-tracker/lib/worktree-binding-lifecycle.mjs, scripts/task-tracker/task-tracker.mjs, scripts/task-tracker/verbs/help-data.mjs, scripts/task-tracker/verbs/migrate-runtime.mjs, scripts/tests/fixtures/1558/admission-surface.json, scripts/tests/helpers/activity-guard-fixture.mjs, scripts/tests/helpers/close-state-fixture.mjs, scripts/tests/helpers/guidance-capture-provenance.mjs, scripts/tests/helpers/guidance-paired-context.mjs, scripts/tests/helpers/runtime-root-fixture.mjs, scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs, scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-migration-successor-timing.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs, scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs, scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs, scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs, scripts/tests/slow/task-tracker/lib/cli.test.mjs, scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs, scripts/tests/slow/task-tracker/lib/create-issue.test.mjs, scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs, scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs, scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs, scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs, scripts/tests/slow/task-tracker/lib/gates.test.mjs, scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs, scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs, scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs, scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs, scripts/tests/slow/task-tracker/lib/move-state.test.mjs, scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs, scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs, scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs, scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs, scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs, scripts/tests/unit/task-tracker/lib/runtime-capture-catalog.test.mjs, scripts/tests/unit/task-tracker/lib/runtime-migration-timing.test.mjs, scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs, scripts/tests/unit/task-tracker/lib/runtime-record-catalog.test.mjs, scripts/tests/unit/task-tracker/lib/runtime-writer-census.test.mjs, scripts/tests/unit/task-tracker/lib/state.test.mjs, README.md, package.json, scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs, scripts/tests/unit/task-tracker/core/memory-seed-packaged.test.mjs, scripts/tests/unit/task-tracker/core/package-boundary.test.mjs, guidance/documentation.mjs, instructions/aitm-guidance.release.json, instructions/aitm-guidance.yml, scripts/tests/fixtures/1558/rule-guidance-map.json, scripts/tests/helpers/captured-commit-bytes.mjs, scripts/tests/integration/meta/package-test-corpus.test.mjs, scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs, scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs, scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs, scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs, scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs, scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs, scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs, skill/SKILL.md, skill/shared/references/state-walk-detail.md, skill/shared/router.md, skill/shared/rules/deliver.md, skill/shared/rules/plan-mode-backlog.md, templates/worker-report.md, scripts/tests/helpers/evidence-v2/sandbox.mjs, scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs, scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs, scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs"
+    ],
+    "shas": [
+      "93df478cee016f0381aeab1c6565734363a02269",
+      "dd6a9469ce6fdc149ee0a6d82f0a62fe742189c8",
+      "926ed714bfb190e10368cf07fb82c64b04728781",
+      "f60fc1e18537af84c87fb34c51a38ae72cc64325",
+      "014711b1032ab78a4c5dc741c38657e619ea01c9",
+      "20d21fe9ab6ccc24555043b3566a5aeaf30d98a9",
+      "5d8bd6d8c749ecd21cb93cb8b14bc936da2b00a3",
+      "a0db77fcffdda9596b2923191470010e19c266d6",
+      "5d34ff2a9d7d477c2e29cffb2db4aa3bcd9d651b",
+      "ea29cacc8d1bfe9aa4774bdb5cd7c03b06520091",
+      "c9e87d4a70dad4391a98e7d7cc98a1bbd9f217fe",
+      "e9748b9a0fa6fa5ac3941d1e290152ebd4a085cb",
+      "df0a8d61aae471f5dced11501586a3dbf0c2f157",
+      "914ae88921ee28a662a7d6fadcdbe047b2b1233c",
+      "e30a8a70a5e3780325e705af8eaf244990c95ba2",
+      "49d2dd69eb3fca9ae93fb9f4a04b8f925da1c649",
+      "09755817baad2fd141114e64d4fab125c28f8588",
+      "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+      "20334bf5162d8851c42df0a84ad7c4ad389f9bec",
+      "a471d10ba7c490aceeb6d47af3066779fe6b1259",
+      "d8f885592c6dc24a3418861802768fc2efbf742b",
+      "ec1298af3571ce98b2d82100d22e20f393b2b2eb",
+      "7beeb4d38c726d773e7f9224175b6da701deb035",
+      "1007a928b88c5431ed0565794af5512ddba5d639",
+      "bdb21d38f038583686bb1589d39f406bf11e2745"
+    ]
+  },
+  "privateSource": {
+    "file": ".scratch/gh/1861-live-delivery-diagnosis.json",
+    "bytes": 40868,
+    "sha256": "8299fef58b859567a534993b4ac930f06804ac967d5a1d421a609056afdd90e0"
+  },
+  "observerFeasibility": {
+    "at": "2026-10-04T06:45:30.419Z",
+    "kind": "effect-free-real-os-observer-feasibility-only",
+    "source": "/bin/ps",
+    "copy": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/gh/1861-os-observer-0d029a51-388b-4832-8b6f-e7e5acada17f/ps",
+    "sourceMode": 35309,
+    "copyMode": 33133,
+    "sha256": "3bbba882e30d91fc4ff6e6844ca7c59fef4351b9a3fea35dca55708d6d487d1c",
+    "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+    "changes": "Only setuid metadata omitted from byte-identical Apple ps copy; no census data or adapter supplied; no profile or runtime changes.",
+    "status": null,
+    "signal": "SIGKILL",
+    "stdout": "",
+    "stderr": ""
+  },
+  "authority": "OS-only feasibility probe killed without output; no native admission or census proof. Preserved WIP dirty-workspace gate is not waived. Local full lanes remain forbidden. Supported delivered cloud-to-Test ingestion not identified. No CODE_COMPLETE, Test transition, approval, merge or close."
+}

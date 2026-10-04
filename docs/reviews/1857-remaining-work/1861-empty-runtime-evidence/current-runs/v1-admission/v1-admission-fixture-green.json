@@ -1,0 +1,126 @@
+{
+  "$comment": "cspell:disable - Complete observed verification evidence.",
+  "schema": "aitm.manual-verification-evidence/v1",
+  "label": "v1-admission-fixture-green",
+  "base": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "candidateKind": "mutable owned overlay on native Git base; archived candidate Git HEAD is not tested source authority",
+  "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+  "sourcePaths": [
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+      "sha256": "c5f2f82752efe828c9eb1bea76cbcafed0f2267aecc41b2abde7770392f165d7"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+      "sha256": "cc4c8a7eb4fb39c696f22d59ca4836946c90c13f480a32d764d9936fd565fcc5"
+    }
+  ],
+  "command": {
+    "program": "/usr/bin/sandbox-exec",
+    "args": [
+      "-f",
+      "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/profile.sb",
+      "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node",
+      "--test",
+      "...all canonical selected files"
+    ],
+    "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0",
+    "genuineNativeIdentityInherited": false
+  },
+  "selection": {
+    "changedPaths": [
+      "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+    ],
+    "selectedFiles": 3,
+    "escalated": false
+  },
+  "result": {
+    "status": 1,
+    "signal": null,
+    "stdoutHash": "99ebb179fd5ed90c22acd92b3bbb64285493bee6aa8fe423a4069fb479528e42",
+    "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "counters": {
+    "tests": 31,
+    "suites": 0,
+    "pass": 26,
+    "fail": 5,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 5367.217334
+  },
+  "disposition": "Actual producer-based storage fixture exposes author cleanup bug: per-test cleanup deletes shared fixture. Fixture failure, not product RED.",
+  "privateArtifacts": [
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-green-selection.json",
+      "bytes": 1696,
+      "sha256": "3c905fa472806d3358ac8071e5a74bd4434d9af7c04b009cbfa3e7405e60587a"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-green-manifest.json",
+      "bytes": 716,
+      "sha256": "ae546b5eb961a1a3b8b7567da71a08cdd754e8f491e823857c4e13220009bfb9"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-green-result.json",
+      "bytes": 204,
+      "sha256": "2e304e5e9e1632b68195cae1cd8e382aeae6a410e424a27c49a8b9632a0e0c4a"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-green.stdout.log",
+      "bytes": 10784,
+      "sha256": "99ebb179fd5ed90c22acd92b3bbb64285493bee6aa8fe423a4069fb479528e42"
+    },
+    {
+      "file": ".scratch/gh/1861-v1-admission-fixture-green.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "completeSelection": {
+    "base": "bdb21d38f038583686bb1589d39f406bf11e2745",
+    "changedPaths": [
+      "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+    ],
+    "selection": {
+      "tests": [
+        "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+        "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+      ],
+      "lanes": [],
+      "reasons": [
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "signal": "manifest",
+          "reason": "current test tree authority change"
+        },
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "test": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+          "signal": "changed-test",
+          "reason": "changed or newly discovered test"
+        },
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "signal": "manifest",
+          "reason": "current test tree authority change"
+        },
+        {
+          "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "test": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+          "signal": "changed-test",
+          "reason": "changed or newly discovered test"
+        }
+      ],
+      "escalated": false
+    }
+  },
+  "completeStdout": "✔ layout audit rejects a discovered test outside the canonical lane tree (240.877959ms)\n✔ layout audit rejects a test placed directly in a canonical lane root (107.57775ms)\n✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (93.365041ms)\n✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (236.371833ms)\n✔ feature-oriented files keep semantic ownership after their lane correction (2.178084ms)\n✔ current test-tree baseline is well formed (1.455583ms)\n✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.4445ms)\n✔ AC1: no *.test.mjs file remains directly in a lane root (0.356042ms)\n✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (5.149708ms)\n✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (11.470709ms)\n✔ production root aliases refuse artifact-contained forged authority before state access (287.605541ms)\n✔ production root aliases refuse physical artifact aliases (65.744667ms)\n✔ same physical worktree override resolves root from a subdirectory (129.41725ms)\n✔ foreign overrides require exact registered admission and conflicting aliases refuse (481.653167ms)\n✔ shadowed unsafe aliases never escape validation (86.549ms)\n✔ a marker directory with only HEAD is not a Git identity (7.375167ms)\n✔ registered foreign admission is scoped and requires a fresh linked Git worktree (228.5725ms)\n✔ an unavailable unrelated registered worktree does not poison a valid root (63.181ms)\n✔ a linked checkout cannot import a main root located under artifacts (68.05875ms)\n✔ durable layout separates linked local state from main shared state without creating stores (32.10425ms)\n✔ uninitialized durable storage refuses without importing volatile state (48.94025ms)\n✔ durable reads validate real queue generations and individual authority fields (1532.905958ms)\n✖ durable reads refuse corrupt control, unsupported schema and partial publication (0.5155ms)\n✖ activated stores require valid records and never recover authority from volatile bytes (0.205042ms)\n✖ runtime overrides reject volatile, foreign and physical alias destinations (0.124666ms)\n✖ runtime override ancestry checks repeated directory components (0.098709ms)\n✔ a dangling control alias refuses before uninitialized-store classification (30.480209ms)\n✖ a final runtime record alias refuses even when its target exists (0.213458ms)\n✔ migration-v1 original root recreation with unchanged runtime bytes refuses ordinary reads (1511.541459ms)\n✔ migration-v1 killed linked resumer after active control fences ordinary reads until recovery finishes (2333.711708ms)\n✔ migration-v1 null linked recovery proof produces a typed protected refusal (1429.154166ms)\nℹ tests 31\nℹ suites 0\nℹ pass 26\nℹ fail 5\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 5367.217334\n\n✖ failing tests:\n\ntest at scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:262:1\n✖ durable reads refuse corrupt control, unsupported schema and partial publication (0.5155ms)\n  Error: ENOENT: no such file or directory, lstat '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)\n      at cpSync (node:fs:3823:3)\n      at activatedStorageFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:240:98)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:264:23)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -2,\n    code: 'ENOENT',\n    syscall: 'lstat',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n  }\n\ntest at scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:279:1\n✖ activated stores require valid records and never recover authority from volatile bytes (0.205042ms)\n  Error: ENOENT: no such file or directory, lstat '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)\n      at cpSync (node:fs:3823:3)\n      at activatedStorageFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:240:98)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:281:23)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -2,\n    code: 'ENOENT',\n    syscall: 'lstat',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n  }\n\ntest at scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:303:1\n✖ runtime overrides reject volatile, foreign and physical alias destinations (0.124666ms)\n  Error: ENOENT: no such file or directory, lstat '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)\n      at cpSync (node:fs:3823:3)\n      at activatedStorageFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:240:98)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:305:23)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -2,\n    code: 'ENOENT',\n    syscall: 'lstat',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n  }\n\ntest at scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:325:1\n✖ runtime override ancestry checks repeated directory components (0.098709ms)\n  Error: ENOENT: no such file or directory, lstat '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)\n      at cpSync (node:fs:3823:3)\n      at activatedStorageFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:240:98)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:327:23)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -2,\n    code: 'ENOENT',\n    syscall: 'lstat',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n  }\n\ntest at scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:358:1\n✖ a final runtime record alias refuses even when its target exists (0.213458ms)\n  Error: ENOENT: no such file or directory, lstat '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)\n      at cpSync (node:fs:3823:3)\n      at activatedStorageFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:240:98)\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs:360:23)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    errno: -2,\n    code: 'ENOENT',\n    syscall: 'lstat',\n    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/1861-storage-authority-AvkXD8/storage-fixture-original-0'\n  }\n",
+  "completeStderr": ""
+}

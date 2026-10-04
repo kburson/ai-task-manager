@@ -3,6 +3,7 @@ import {
   assertRuntimeEmptyAdmission,
   readRuntimeMainActivation,
   inspectLinkedInitializationRecoveries,
+  inspectMigrationInitializationRecoveries,
 } from './runtime-activation-admission.mjs';
 import { assertRuntimeBatchAdmission } from './runtime-batch-admission.mjs';
 // @story #1857
@@ -430,6 +431,7 @@ export function assertRuntimeReadable(roots) {
     assertRuntimeStoreRecords(layout);
     return { ...candidateControl, layout };
   }
+  readRuntimeActivationRoot(roots);
   const local = readControl(
     layout.controlPath,
     layout.projectRoot,
@@ -476,6 +478,13 @@ export function assertRuntimeReadable(roots) {
       journal.plan.commonDir !== identity.commonDir
     )
       fail('RUNTIME_CONTROL_INVALID', 'New-worktree initialization proof is invalid');
+    if (
+      inspectMigrationInitializationRecoveries(layout, journal, {
+        assertPath: assertStoragePath,
+        fail,
+      }).active
+    )
+      fail('RUNTIME_TRANSACTION_INCOMPLETE', 'Legacy linked recovery claim requires exact resume');
   } else if (local.initializationId !== undefined || local.initializationDigest !== undefined) {
     fail('RUNTIME_CONTROL_INVALID', 'Original migrated root cannot claim separate initialization');
   }

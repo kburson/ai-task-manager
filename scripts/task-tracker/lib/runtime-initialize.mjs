@@ -273,8 +273,7 @@ async function publish(journal, layout, adapters) {
   await adapters.fault?.('after-initialization-journal');
   writeMigrationRecord(layout.controlPath, { ...control, status: 'active' });
   await adapters.fault?.('after-initialization-control');
-  if (journal.schema !== 'aitm.runtime-initialization/v2' || !journal.recoveryReceipt)
-    assertRuntimeReadable(plan);
+  if (!journal.recoveryReceipt) assertRuntimeReadable(plan);
   return { status: 'complete', initializationId: plan.id, journal: file };
 }
 export async function applyRuntimeInitialization({ plan, approvedPlanDigest, adapters = {} }) {
@@ -364,17 +363,21 @@ export async function resumeRuntimeInitialization({
       assertRuntimeReadable({ projectRoot, mainRoot });
       return { status: 'complete', initializationId: journal.plan.id };
     }
-    return withRuntimeInitializationRecovery({ layout, journal, adapters }, async (owned) => {
-      if (
-        journal.status === 'complete' &&
-        exists(layout.controlPath) &&
-        readMigrationRecord(layout.controlPath).status === 'active'
-      ) {
-        assertRuntimeReadable({ projectRoot, mainRoot });
-        return { status: 'complete', initializationId: journal.plan.id };
+    const result = await withRuntimeInitializationRecovery(
+      { layout, journal, adapters },
+      async (owned) => {
+        if (
+          journal.status === 'complete' &&
+          exists(layout.controlPath) &&
+          readMigrationRecord(layout.controlPath).status === 'active'
+        ) {
+          return { status: 'complete', initializationId: journal.plan.id };
+        }
+        return publish(owned, layout, adapters);
       }
-      return publish(owned, layout, adapters);
-    });
+    );
+    assertRuntimeReadable({ projectRoot, mainRoot });
+    return result;
   });
 }
 

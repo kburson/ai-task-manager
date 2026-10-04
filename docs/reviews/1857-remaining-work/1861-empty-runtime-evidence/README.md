@@ -63,3 +63,9 @@ The in-file spelling directive applies only to verbatim evidence text. It change
 [Report-link verification correction](current-runs/review-report-links.json) preserves two failed cloud Markdown diagnostics, actual full833-file Markdown success, the documentation-only zero-test TIA selection and all six intentionally malformed retained-output lint findings. Source behavior and original evidence remain unchanged.
 
 [Replacement fixture portability](current-runs/replacement-fixture.json) preserves the complete failed Linux test output, unchanged and corrected27-test macOS selections, launcher refusal and exact fixture precondition correction. Production behavior and the original lossless historical partition remain unchanged.
+
+## V1 admission characterization and repair
+
+[Complete v1 repair receipts](current-runs/v1-admission.json) preserve actual original-root recreation, killed linked recovery after active control, malformed protected receipt, genuine producer-based storage fixture conversion and its cleanup correction. The final canonical three-file scope passed 31/31. The earlier complete 909-file canonical scope remained failed: 6652 tests, 5773 pass, 879 fail, 878 located blocks plus 1 unlocated aggregate failure. All located blocks retain exact raw detail and ordering in subsets of at most 96 KiB; no aggregate GREEN or broad failure waiver is claimed.
+
+The original v1 formats, digests and approval-only recovery grammar remain. These are current genuine v1 producer fixtures, not certification of archived producer replay. Positive native-host observation, governed cloud-to-Test ingestion and preserved-WIP dirty-workspace authority remain unresolved; exact-head cloud verification is required for this repair.
