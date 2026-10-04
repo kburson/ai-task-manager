@@ -1,5 +1,6 @@
 // @story #1861
-import { readFileSync } from 'node:fs';
+import fs, { readFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { hostname } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import * as empty from '../../../task-tracker/lib/runtime-empty-initialize.mjs';
@@ -9,6 +10,22 @@ import {
 } from '../../../task-tracker/lib/runtime-migration-lock.mjs';
 const [planFile, boundary, mode = 'apply', observedDigest] = process.argv.slice(2);
 const plan = JSON.parse(readFileSync(planFile));
+if (mode === 'resume-after-coordinator-release') {
+  const unlink = fs.unlinkSync,
+    close = fs.closeSync;
+  let released = false;
+  fs.unlinkSync = (file) => {
+    const result = unlink(file);
+    if (file.endsWith('coordinator.lock')) released = true;
+    return result;
+  };
+  fs.closeSync = (fd) => {
+    const result = close(fd);
+    if (released) process.kill(process.pid, 'SIGKILL');
+    return result;
+  };
+  syncBuiltinESMExports();
+}
 const owner = {
   provider: 'fixture',
   sid: 'empty-child-' + randomUUID(),

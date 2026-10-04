@@ -303,3 +303,117 @@ for (const mutation of ['stage-path', 'owner-extra', 'owner-history'])
     });
     assert.deepEqual(snapshotTree(f.root), before);
   });
+
+test('registered recovery completes an exact dead receipt after durable coordinator removal', async (t) => {
+  const { spawnSync } = await import('node:child_process');
+  const f = await fixture(t);
+  await killAtBoundary(f, 'after-empty-first-journal');
+  const original = inspectRuntimeCoordinator(f.input);
+  const child = fork(childFile, [f.file, 'unused', 'resume-after-coordinator-release'], {
+    cwd: f.root,
+    env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, LANG: process.env.LANG },
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+  });
+  const exited = new Promise((resolve) =>
+    child.once('exit', (code, signal) => resolve({ code, signal }))
+  );
+  t.after(async () => {
+    child.kill('SIGKILL');
+    await exited;
+  });
+  assert.deepEqual(await exited, { code: null, signal: 'SIGKILL' });
+  assert.equal(inspectRuntimeCoordinator(f.input).status, 'absent');
+  const observed = empty.inspectEmptyRuntimeInitialization(f.input),
+    before = snapshotTree(f.root);
+  await assert.rejects(
+    empty.resumeEmptyRuntimeInitialization({
+      ...f.input,
+      observedDigest: observed.digest,
+      approvedPlanDigest: f.plan.digest,
+      adapters,
+    }),
+    { code: 'RUNTIME_MIGRATION_CONFLICT' }
+  );
+  assert.deepEqual(snapshotTree(f.root), before);
+  const executable = fileURLToPath(new URL('../../../../../bin/aitm.mjs', import.meta.url));
+  // Isolated fixture session only; this is not genuine native-host admission.
+  const env = {
+    PATH: process.env.PATH,
+    TMPDIR: process.env.TMPDIR,
+    LANG: process.env.LANG,
+    CODEX_THREAD_ID: randomUUID(),
+  };
+  const invoke = (digest) =>
+    spawnSync(
+      process.execPath,
+      [
+        executable,
+        'migrate-runtime',
+        'recover-coordinator',
+        '--observed',
+        digest,
+        '--transaction',
+        f.plan.operationId,
+        '--approved-plan',
+        f.plan.digest,
+      ],
+      { cwd: f.root, env, encoding: 'utf8', timeout: 30000 }
+    );
+  const wrong = invoke('sha256:' + '0'.repeat(64));
+  assert.notEqual(wrong.status, 0);
+  assert.deepEqual(snapshotTree(f.root), before);
+  const priorReceipt = path.join(
+    f.root,
+    '.ai-task-manager/runtime/migrations/coordinator-recoveries',
+    original.digest.slice(7) + '-000000.json'
+  );
+  const originalReceipt = readFileSync(priorReceipt);
+  for (const mutate of [
+    (record) => {
+      record.owner.pid = process.pid;
+    },
+    (record) => {
+      record.owner.host = hostname() + '-foreign';
+    },
+    (record) => {
+      record.previous.bytes += ' ';
+    },
+    (record) => {
+      record.previousReceipt = priorReceipt;
+    },
+  ]) {
+    const record = JSON.parse(originalReceipt);
+    mutate(record);
+    writeFileSync(priorReceipt, JSON.stringify(record));
+    const conflictTree = snapshotTree(f.root);
+    const refused = invoke(original.digest);
+    assert.notEqual(refused.status, 0, refused.stdout);
+    assert.match(refused.stderr, new RegExp('RUNTIME_MIGRATION_(?:CONFLICT|OWNER_UNCONFIRMED)'));
+    assert.deepEqual(snapshotTree(f.root), conflictTree);
+    writeFileSync(priorReceipt, originalReceipt);
+  }
+  const replacementLock = path.join(f.root, '.ai-task-manager/runtime/migrations/coordinator.lock');
+  writeFileSync(replacementLock, original.bytes);
+  const replacementTree = snapshotTree(f.root),
+    refusedReplacement = invoke(original.digest);
+  assert.notEqual(refusedReplacement.status, 0);
+  assert.match(refusedReplacement.stderr, new RegExp('RUNTIME_MIGRATION_CONFLICT'));
+  assert.deepEqual(snapshotTree(f.root), replacementTree);
+  rmSync(replacementLock);
+  const completed = invoke(original.digest);
+  assert.equal(completed.status, 0, completed.stderr + completed.stdout);
+  const receipt = JSON.parse(completed.stdout).receipt;
+  assert.equal(JSON.parse(readFileSync(receipt)).phase, 'complete');
+  const completeTree = snapshotTree(f.root),
+    repeated = invoke(original.digest);
+  assert.equal(repeated.status, 0, repeated.stderr + repeated.stdout);
+  assert.deepEqual(snapshotTree(f.root), completeTree);
+  const next = empty.inspectEmptyRuntimeInitialization(f.input);
+  await empty.resumeEmptyRuntimeInitialization({
+    ...f.input,
+    observedDigest: next.digest,
+    approvedPlanDigest: f.plan.digest,
+    adapters,
+  });
+  assertRuntimeReadable(f.input);
+});

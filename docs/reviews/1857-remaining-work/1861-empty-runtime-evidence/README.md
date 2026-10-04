@@ -55,3 +55,7 @@ The in-file spelling directive applies only to verbatim evidence text. It change
 [Node 26 census repair](current-runs/node-label-census.json) preserves the later exact-head cloud failure, complete local RED/affected/unit runs, findings and raw-output hashes. It is separate from the original 39-subset reconstruction; the original records and index remain unchanged.
 
 [Node 24 observed-label correction](current-runs/node24-mainthread-census.json) retains the actual failed cloud diagnostic, corrected attribution and complete later regression/affected/unit runs. The earlier Node 26 repair remains preserved as an incomplete first diagnosis.
+
+## Final code review repair evidence
+
+[Complete focused repair receipts](current-runs/final-review-fix.json) retain the four Important findings' actual RED/GREEN runs, the initial invalid child-code fixture run, final19-file/152-test canonical selection and sole unchanged native process-observation failure. [Full reviewer report and all author dispositions](../1861-final-code-review/README.md) keep code review separate from accepted design review and Test/delivery authority. Original4450 findings remain lossless and unchanged.

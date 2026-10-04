@@ -327,3 +327,53 @@ for (const kind of ['extra-control-field', 'wrong-control-root', 'missing-queue'
     assert.deepEqual(snapshotTree(f.root), before);
     assert.deepEqual(snapshotTree(f.linked), local);
   });
+
+test('a real kill between linked receipt and owned journal remains exactly recoverable', async (t) => {
+  const f = await fixture(t),
+    first = await kill(f, 'after-initialization-stage');
+  recover(f);
+  const child = fork(childFile, [f.file, 'unused', 'resume-before-owned-journal'], {
+    cwd: f.root,
+    env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, LANG: process.env.LANG },
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+  });
+  const exited = new Promise((resolve) =>
+    child.once('exit', (code, signal) => resolve({ code, signal }))
+  );
+  t.after(async () => {
+    child.kill('SIGKILL');
+    await exited;
+  });
+  let diagnostic = '';
+  child.stderr.on('data', (bytes) => (diagnostic += bytes));
+  child.on('message', (message) => {
+    if (message.error) diagnostic += JSON.stringify(message.error);
+  });
+  assert.deepEqual(await exited, { code: null, signal: 'SIGKILL' }, diagnostic);
+  recover(f);
+  const observed = initialization.inspectRuntimeInitialization(f.input);
+  assert.equal(observed.journal.owner.pid, first);
+  await initialization.resumeRuntimeInitialization({
+    ...f.input,
+    observedDigest: observed.digest,
+    approvedPlanDigest: f.plan.digest,
+    adapters,
+  });
+  assertRuntimeReadable(f.input);
+  const complete = initialization.inspectRuntimeInitialization(f.input);
+  assert.deepEqual(
+    complete.journal.ownerHistory.map((owner) => owner.pid),
+    [first, child.pid, process.pid]
+  );
+  assert.equal(
+    (
+      await initialization.resumeRuntimeInitialization({
+        ...f.input,
+        observedDigest: complete.digest,
+        approvedPlanDigest: f.plan.digest,
+        adapters,
+      })
+    ).status,
+    'complete'
+  );
+});

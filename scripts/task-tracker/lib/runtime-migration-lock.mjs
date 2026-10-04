@@ -264,7 +264,7 @@ function coordinated(
   paths,
   owner,
   operation,
-  { retainOnAsync = false, awaitOperation = false, acquisitionWaitMs = 0 } = {}
+  { retainOnAsync = false, awaitOperation = false, acquisitionWaitMs = 0, retention } = {}
 ) {
   mkdirSync(paths.base, { recursive: true });
   const prepared = path.join(paths.base, '.coordinator-owner-' + randomUUID() + '.pending');
@@ -323,9 +323,19 @@ function coordinated(
         'Synchronous record mutation returned a promise; ownership retained for recovery'
       );
     }
+    if (retention?.retained) {
+      retained = true;
+      fail(
+        'RUNTIME_SYNC_WRITER_ASYNC',
+        'Nested synchronous mutation retained ownership for recovery'
+      );
+    }
     return result;
+  } catch (error) {
+    if (retainOnAsync && error?.code === 'RUNTIME_SYNC_WRITER_ASYNC') retained = true;
+    throw error;
   } finally {
-    if (!retained) release();
+    if (!retained && !retention?.retained) release();
   }
 }
 
@@ -348,9 +358,101 @@ export function recoverRuntimeCoordinator(input) {
   return recoverCoordinatorAt(input, locations(input));
 }
 
+function completeAbsentCoordinatorRecovery(input, paths, owner) {
+  if (!/^sha256:[a-f0-9]{64}$/.test(input.expectedDigest || ''))
+    fail('RUNTIME_MIGRATION_CONFLICT', 'Exact coordinator recovery digest is required');
+  const directory = path.join(paths.base, 'coordinator-recoveries');
+  assertRuntimeStoragePath(directory, paths.base, 'RUNTIME_CONTROL_INVALID');
+  let names;
+  try {
+    if (!lstatSync(directory).isDirectory())
+      fail('RUNTIME_CONTROL_INVALID', 'Recovery history must be a directory');
+    names = readdirSync(directory)
+      .filter((name) => name.startsWith(input.expectedDigest.slice(7) + '-'))
+      .sort();
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    names = [];
+  }
+  if (!names.length)
+    fail(
+      'RUNTIME_COORDINATOR_RECOVERY_REQUIRED',
+      'Absent coordination has no exact protected recovery proof'
+    );
+  let previousReceipt = null,
+    previous = null,
+    latest;
+  const observeOwner = input.adapters?.observeOwner || observeLocalRuntimeOwner;
+  for (const [generation, name] of names.entries()) {
+    const receipt = path.join(directory, name);
+    assertRuntimeStoragePath(receipt, directory, 'RUNTIME_CONTROL_INVALID');
+    const record = readRecord(receipt);
+    const proof = record?.previous;
+    let parsed;
+    try {
+      parsed = JSON.parse(proof?.bytes);
+    } catch {
+      /* refused below */
+    }
+    const keys = ['schema', 'phase', 'previous', 'owner', 'previousReceipt', 'observedAt'];
+    if (record?.phase === 'complete') keys.push('completedAt');
+    if (
+      name !==
+        input.expectedDigest.slice(7) + '-' + String(generation).padStart(6, '0') + '.json' ||
+      !isObject(record) ||
+      Object.keys(record).sort().join(',') !== keys.sort().join(',') ||
+      record.schema !== 'aitm.runtime-coordinator-recovery/v1' ||
+      !['prepared', 'complete'].includes(record.phase) ||
+      !validOwner(record.owner) ||
+      record.previousReceipt !== previousReceipt ||
+      !Number.isFinite(Date.parse(record.observedAt)) ||
+      (record.phase === 'complete' && !Number.isFinite(Date.parse(record.completedAt))) ||
+      proof?.status !== 'owned' ||
+      !isObject(proof.identity) ||
+      !['dev', 'ino'].every(
+        (key) => Number.isSafeInteger(proof.identity[key]) && proof.identity[key] >= 0
+      ) ||
+      typeof proof.bytes !== 'string' ||
+      proof.digest !== input.expectedDigest ||
+      coordinatorDigest({ identity: proof.identity, bytes: proof.bytes }) !== proof.digest ||
+      !isObject(parsed) ||
+      parsed.schema !== 'aitm.runtime-coordinator/v1' ||
+      !validOwner(parsed.owner) ||
+      Object.keys(parsed).sort().join(',') !== 'owner,planDigest,schema,transactionId' ||
+      JSON.stringify(parsed) !== JSON.stringify(proof.record) ||
+      parsed.transactionId !== (input.transactionId ?? null) ||
+      parsed.planDigest !== (input.approvedPlanDigest ?? null) ||
+      (previous && JSON.stringify(proof) !== JSON.stringify(previous)) ||
+      latest?.record.phase === 'complete'
+    )
+      fail('RUNTIME_MIGRATION_CONFLICT', 'Absent coordinator recovery history changed');
+    previous = proof;
+    previousReceipt = receipt;
+    latest = { receipt, record };
+  }
+  if (latest.record.phase === 'complete') return { status: 'recovered', receipt: latest.receipt };
+  const observed = observeOwner(previous.record.owner);
+  if (observed?.status !== 'dead' || !sameOwner(observed.identity, previous.record.owner))
+    fail('RUNTIME_MIGRATION_OWNER_UNCONFIRMED', 'Original coordinator death is unconfirmed');
+  const { receipt, evidence } = claimCoordinatorRecovery(
+    directory,
+    previous,
+    owner,
+    input.adapters || {}
+  );
+  if (coordinatorSnapshot(paths).status !== 'absent')
+    fail(
+      'RUNTIME_MIGRATION_CONFLICT',
+      'Replacement coordinator appeared; preserve recovery evidence'
+    );
+  atomicJson(receipt, { ...evidence, phase: 'complete', completedAt: new Date().toISOString() });
+  return { status: 'recovered', receipt };
+}
+
 function recoverCoordinatorAt(input, paths) {
   const owner = identity(input.adapters || {});
   const previous = coordinatorSnapshot(paths);
+  if (previous.status === 'absent') return completeAbsentCoordinatorRecovery(input, paths, owner);
   if (previous.status !== 'owned')
     fail(
       'RUNTIME_COORDINATOR_RECOVERY_REQUIRED',
@@ -388,6 +490,7 @@ function recoverCoordinatorAt(input, paths) {
     fail('RUNTIME_MIGRATION_CONFLICT', 'Coordinator changed during recovery; evidence preserved');
   unlinkSync(paths.lock);
   syncDirectory(paths.base);
+  input.adapters?.faultSync?.('after-coordinator-release', { receipt });
   atomicJson(receipt, { ...evidence, phase: 'complete', completedAt: new Date().toISOString() });
   return { status: 'recovered', receipt };
 }
@@ -688,16 +791,45 @@ export function withRuntimeStoreLockSync(input, operation) {
     );
   const inherited = mutationScope.getStore() || new Map();
   const existing = inherited.get(layout.mainRoot);
+  const paths = locations(input);
+  const run = (protection) => {
+    const retain = () => {
+      protection.retained = true;
+      protection.lease.retained = true;
+      held.retained = true;
+    };
+    try {
+      const result = operation();
+      if ((result && typeof result.then === 'function') || protection.retained) {
+        retain();
+        fail(
+          'RUNTIME_SYNC_WRITER_ASYNC',
+          'Nested synchronous mutation returned a promise; protection retained'
+        );
+      }
+      return result;
+    } catch (error) {
+      if (error?.code === 'RUNTIME_SYNC_WRITER_ASYNC') retain();
+      throw error;
+    }
+  };
   if (existing) {
-    if (!sameOwner(existing, owner))
-      fail('RUNTIME_MIGRATION_CONFLICT', 'Nested mutation owner changed');
-    return operation();
+    if (!sameOwner(existing.owner, owner) || coordinatorSnapshot(paths).digest !== existing.digest)
+      fail('RUNTIME_MIGRATION_CONFLICT', 'Nested mutation coordinator ownership changed');
+    return run(existing);
   }
+  const protection = { owner, digest: null, retained: false, lease: held };
   const scope = new Map(inherited);
-  scope.set(layout.mainRoot, owner);
-  return coordinated(locations(input), owner, () => mutationScope.run(scope, operation), {
-    retainOnAsync: true,
-  });
+  scope.set(layout.mainRoot, protection);
+  return coordinated(
+    paths,
+    owner,
+    () => {
+      protection.digest = coordinatorSnapshot(paths).digest;
+      return mutationScope.run(scope, () => run(protection));
+    },
+    { retainOnAsync: true, retention: protection }
+  );
 }
 
 export async function fenceRuntimeWriters(input) {

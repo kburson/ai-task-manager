@@ -447,6 +447,41 @@ test('binary capture validates proposed metadata and deletes the complete record
       { code: 'RUNTIME_STATE_CORRUPT' }
     );
     assert.deepEqual(readFileSync(binary), bytes);
+    const { snapshotTree } = await import('../../../helpers/runtime-empty-contract-fixture.mjs');
+    const unstore = { ...metadata, stdout: { ...stdout, file: null, stored: false } };
+    const badHash = { ...metadata, stdout: { ...stdout, sha256: 'sha256:' + '0'.repeat(64) } };
+    const missingStderr = { ...metadata, stderr: { ...stdout, file: 'stderr.bin' } };
+    for (const records of [
+      [{ target: binary, bytes: null }],
+      [{ target: outcome, bytes: null }],
+      [{ target: outcome, bytes: Buffer.from(JSON.stringify(unstore)) }],
+      [{ target: outcome, bytes: Buffer.from(JSON.stringify(badHash)) }],
+      [{ target: outcome, bytes: Buffer.from(JSON.stringify(missingStderr)) }],
+    ]) {
+      const before = snapshotTree(root);
+      assert.throws(
+        () =>
+          writeRuntimeRecordBatch([
+            {
+              target: statePath(root),
+              bytes: Buffer.from(JSON.stringify({ lastWordMarker: 1861 })),
+            },
+            ...records,
+          ]),
+        { code: 'RUNTIME_STATE_CORRUPT' }
+      );
+      assert.deepEqual(snapshotTree(root), before);
+    }
+    writeRuntimeRecordBatch([
+      { target: binary, bytes: null },
+      { target: outcome, bytes: Buffer.from(JSON.stringify(unstore)) },
+    ]);
+    assert.equal(existsSync(binary), false);
+    assert.equal(JSON.parse(readFileSync(outcome)).stdout.stored, false);
+    writeRuntimeRecordBatch([
+      { target: binary, bytes },
+      { target: outcome, bytes: Buffer.from(JSON.stringify(metadata)) },
+    ]);
     writeRuntimeRecordBatch([
       { target: binary, bytes: null },
       { target: outcome, bytes: null },

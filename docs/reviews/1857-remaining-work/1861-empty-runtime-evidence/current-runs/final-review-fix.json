@@ -1,0 +1,1027 @@
+{
+  "$comment": "cspell:disable - Verbatim observed names/errors/source identifiers are review evidence, not normalized prose.",
+  "schema": "aitm.manual-review-fix-evidence/v1",
+  "base": "ec1298af3571ce98b2d82100d22e20f393b2b2eb",
+  "authority": "mutable qualified candidate overlay; base is not the tested overlay commit; no Test receipt or acceptance",
+  "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+  "reviewHead": "ec1298af3571ce98b2d82100d22e20f393b2b2eb",
+  "sourcePaths": [
+    "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+    "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+    "scripts/task-tracker/lib/runtime-batch.mjs",
+    "scripts/tests/fixtures/runtime-empty/linked-publisher.mjs",
+    "scripts/tests/fixtures/runtime-empty/empty-publisher.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+  ],
+  "runs": [
+    {
+      "label": "review-i1-red",
+      "fixtureSyntaxOnly": false,
+      "selectedPaths": [
+        "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs"
+      ],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "sha256": "62b735ffc5487c95cd2e56f096a9e218037ab61613a1c6dd8fc9050ffbfa0d5d"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 1,
+        "signal": null,
+        "stdoutHash": "6d82c06f57749786da037c6511f171d6380e89823728c19bc0630495197d8b5d",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 24,
+        "suites": 0,
+        "pass": 23,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 51854.93375
+      },
+      "findings": [
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs:331:1",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs:331:1\n✖ a real kill between linked receipt and owned journal remains exactly recoverable (7080.857667ms)\n  Error [RuntimeRootError]: Linked recovery owner history contradicts its predecessor\n      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:38:9)\n      at inspectLinkedInitializationRecoveries (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs:290:7)\n      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs:423:9)\n      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-initialize.mjs:576:7\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs:348:3)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    code: 'RUNTIME_CONTROL_INVALID'\n  }\n"
+        }
+      ],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-i1-red.stdout.log",
+        "stdoutSha256": "6d82c06f57749786da037c6511f171d6380e89823728c19bc0630495197d8b5d",
+        "stderr": ".scratch/gh/1861-review-i1-red.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    },
+    {
+      "label": "review-i1-green",
+      "fixtureSyntaxOnly": false,
+      "selectedPaths": [
+        "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs"
+      ],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "sha256": "62b735ffc5487c95cd2e56f096a9e218037ab61613a1c6dd8fc9050ffbfa0d5d"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 0,
+        "signal": null,
+        "stdoutHash": "ee8c5e3dbfe12018a954f5b6245e5ed5bbb3a6365e6802a8aaf572bc764253cb",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 24,
+        "suites": 0,
+        "pass": 24,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 65668.431792
+      },
+      "findings": [],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-i1-green.stdout.log",
+        "stdoutSha256": "ee8c5e3dbfe12018a954f5b6245e5ed5bbb3a6365e6802a8aaf572bc764253cb",
+        "stderr": ".scratch/gh/1861-review-i1-green.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    },
+    {
+      "label": "review-i2-red",
+      "fixtureSyntaxOnly": false,
+      "selectedPaths": ["scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "sha256": "e3d1ed71b675f64a515394dcbb8f6f1792f5fb311444332461939620edb5abb1"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 1,
+        "signal": null,
+        "stdoutHash": "90f7eb09f023a2acae29626b98e25e5c1408f95d820b5f25f1a9c1b13607acea",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 27,
+        "suites": 0,
+        "pass": 26,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 21547.7675
+      },
+      "findings": [
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs:307:1",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs:307:1\n✖ registered recovery completes an exact dead receipt after durable coordinator removal (1768.511375ms)\n  AssertionError [ERR_ASSERTION]: RUNTIME_COORDINATOR_RECOVERY_REQUIRED: Absent or legacy ownerless coordination needs explicit reconciliation; preserve its bytes\n  \n  \n  1 !== 0\n  \n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs:336:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: 1,\n    expected: 0,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+        }
+      ],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-i2-red.stdout.log",
+        "stdoutSha256": "90f7eb09f023a2acae29626b98e25e5c1408f95d820b5f25f1a9c1b13607acea",
+        "stderr": ".scratch/gh/1861-review-i2-red.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    },
+    {
+      "label": "review-i2-green",
+      "fixtureSyntaxOnly": false,
+      "selectedPaths": ["scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "sha256": "e3d1ed71b675f64a515394dcbb8f6f1792f5fb311444332461939620edb5abb1"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 0,
+        "signal": null,
+        "stdoutHash": "847d8fd0a04cb8d262b3c9d0c723bfdc8f18795362fcac9428172a6cbaa5a906",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 27,
+        "suites": 0,
+        "pass": 27,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 21146.381916
+      },
+      "findings": [],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-i2-green.stdout.log",
+        "stdoutSha256": "847d8fd0a04cb8d262b3c9d0c723bfdc8f18795362fcac9428172a6cbaa5a906",
+        "stderr": ".scratch/gh/1861-review-i2-green.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    },
+    {
+      "label": "review-i3-red",
+      "fixtureSyntaxOnly": true,
+      "selectedPaths": [
+        "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+      ],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "sha256": "91bc75ca62073ebe1d6bbd10fe8879c1eacf322dd4898d9f1f8afc74fba60f6c"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 1,
+        "signal": null,
+        "stdoutHash": "bcacfed5f5a4931b0ed130bb2d819dbb09a7f644f8671c43d87706f551fb274a",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 15,
+        "suites": 0,
+        "pass": 11,
+        "fail": 4,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 5724.464958
+      },
+      "findings": [
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3\n✖ nested synchronous Promise raw-discarded retains both protections until exact dead recovery (812.186583ms)\n  AssertionError [ERR_ASSERTION]: child exited before retained protection: file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/[eval1]:13\n  process.stdout.write(JSON.stringify({ failure, coordinator: locks.inspectRuntimeCoordinator(roots), leases: locks.inspectRuntimeWriterLeases(roots) }) + \"\n                                                                                                                                                           ^\n  \n  SyntaxError: Invalid or unexpected token\n      at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n      at ModuleLoader.createModuleWrap (node:internal/modules/esm/loader:212:12)\n      at ModuleLoader.eval (node:internal/modules/esm/loader:250:23)\n      at node:internal/process/execution:81:24\n      at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:11)\n      at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:123:19)\n      at evalModuleEntryPoint (node:internal/process/execution:80:47)\n      at node:internal/main/eval_string:37:3\n  \n  Node.js v26.8.1\n  \n      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:78:34\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:74:24)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: undefined,\n    operator: 'fail',\n    diff: 'simple'\n  }\n"
+        },
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3\n✖ nested synchronous Promise record-discarded retains both protections until exact dead recovery (734.179375ms)\n  AssertionError [ERR_ASSERTION]: child exited before retained protection: file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/[eval1]:13\n  process.stdout.write(JSON.stringify({ failure, coordinator: locks.inspectRuntimeCoordinator(roots), leases: locks.inspectRuntimeWriterLeases(roots) }) + \"\n                                                                                                                                                           ^\n  \n  SyntaxError: Invalid or unexpected token\n      at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n      at ModuleLoader.createModuleWrap (node:internal/modules/esm/loader:212:12)\n      at ModuleLoader.eval (node:internal/modules/esm/loader:250:23)\n      at node:internal/process/execution:81:24\n      at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:11)\n      at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:123:19)\n      at evalModuleEntryPoint (node:internal/process/execution:80:47)\n      at node:internal/main/eval_string:37:3\n  \n  Node.js v26.8.1\n  \n      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:78:34\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:74:24)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: undefined,\n    operator: 'fail',\n    diff: 'simple'\n  }\n"
+        },
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3\n✖ nested synchronous Promise record-propagated retains both protections until exact dead recovery (2149.531584ms)\n  AssertionError [ERR_ASSERTION]: child exited before retained protection: file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/[eval1]:13\n  process.stdout.write(JSON.stringify({ failure, coordinator: locks.inspectRuntimeCoordinator(roots), leases: locks.inspectRuntimeWriterLeases(roots) }) + \"\n                                                                                                                                                           ^\n  \n  SyntaxError: Invalid or unexpected token\n      at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n      at ModuleLoader.createModuleWrap (node:internal/modules/esm/loader:212:12)\n      at ModuleLoader.eval (node:internal/modules/esm/loader:250:23)\n      at node:internal/process/execution:81:24\n      at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:11)\n      at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:123:19)\n      at evalModuleEntryPoint (node:internal/process/execution:80:47)\n      at node:internal/main/eval_string:37:3\n  \n  Node.js v26.8.1\n  \n      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:78:34\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:74:24)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: undefined,\n    operator: 'fail',\n    diff: 'simple'\n  }\n"
+        },
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3\n✖ nested synchronous Promise record-caught retains both protections until exact dead recovery (734.846083ms)\n  AssertionError [ERR_ASSERTION]: child exited before retained protection: file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/[eval1]:13\n  process.stdout.write(JSON.stringify({ failure, coordinator: locks.inspectRuntimeCoordinator(roots), leases: locks.inspectRuntimeWriterLeases(roots) }) + \"\n                                                                                                                                                           ^\n  \n  SyntaxError: Invalid or unexpected token\n      at compileSourceTextModule (node:internal/modules/esm/utils:355:16)\n      at ModuleLoader.createModuleWrap (node:internal/modules/esm/loader:212:12)\n      at ModuleLoader.eval (node:internal/modules/esm/loader:250:23)\n      at node:internal/process/execution:81:24\n      at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:11)\n      at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:123:19)\n      at evalModuleEntryPoint (node:internal/process/execution:80:47)\n      at node:internal/main/eval_string:37:3\n  \n  Node.js v26.8.1\n  \n      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:78:34\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:74:24)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: undefined,\n    operator: 'fail',\n    diff: 'simple'\n  }\n"
+        }
+      ],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-i3-red.stdout.log",
+        "stdoutSha256": "bcacfed5f5a4931b0ed130bb2d819dbb09a7f644f8671c43d87706f551fb274a",
+        "stderr": ".scratch/gh/1861-review-i3-red.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    },
+    {
+      "label": "review-i3-red-corrected",
+      "fixtureSyntaxOnly": false,
+      "selectedPaths": [
+        "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+      ],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "sha256": "caf21e5086cb5a6732cfb69be9743ff091665698b8cd2c67f43eb97ae4e80d72"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 1,
+        "signal": null,
+        "stdoutHash": "7ec947af10db70fc93dabde65689d57e58fc9b48a7305324bd3b9a77e308e5f9",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 15,
+        "suites": 0,
+        "pass": 11,
+        "fail": 4,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 6348.756834
+      },
+      "findings": [
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3\n✖ nested synchronous Promise raw-discarded retains both protections until exact dead recovery (1002.477917ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  + actual - expected\n  \n  + null\n  - 'RUNTIME_SYNC_WRITER_ASYNC'\n  \n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:80:14)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: null,\n    expected: 'RUNTIME_SYNC_WRITER_ASYNC',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+        },
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3\n✖ nested synchronous Promise record-discarded retains both protections until exact dead recovery (1137.852ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  'absent' !== 'owned'\n  \n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:81:14)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'absent',\n    expected: 'owned',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+        },
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3\n✖ nested synchronous Promise record-propagated retains both protections until exact dead recovery (1459.7005ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  'absent' !== 'owned'\n  \n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:81:14)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'absent',\n    expected: 'owned',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+        },
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:43:3\n✖ nested synchronous Promise record-caught retains both protections until exact dead recovery (1481.041334ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  + actual - expected\n  \n  + null\n  - 'RUNTIME_SYNC_WRITER_ASYNC'\n  \n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:80:14)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: null,\n    expected: 'RUNTIME_SYNC_WRITER_ASYNC',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+        }
+      ],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-i3-red-corrected.stdout.log",
+        "stdoutSha256": "7ec947af10db70fc93dabde65689d57e58fc9b48a7305324bd3b9a77e308e5f9",
+        "stderr": ".scratch/gh/1861-review-i3-red-corrected.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    },
+    {
+      "label": "review-i3-green",
+      "fixtureSyntaxOnly": false,
+      "selectedPaths": [
+        "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+      ],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "sha256": "caf21e5086cb5a6732cfb69be9743ff091665698b8cd2c67f43eb97ae4e80d72"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 0,
+        "signal": null,
+        "stdoutHash": "1aa8efcd542172a8ae68bfc488f2932e75ae9f3669f6f58f71fc72e19f8e95ba",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 15,
+        "suites": 0,
+        "pass": 15,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 8888.174792
+      },
+      "findings": [],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-i3-green.stdout.log",
+        "stdoutSha256": "1aa8efcd542172a8ae68bfc488f2932e75ae9f3669f6f58f71fc72e19f8e95ba",
+        "stderr": ".scratch/gh/1861-review-i3-green.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    },
+    {
+      "label": "review-i4-red",
+      "fixtureSyntaxOnly": false,
+      "selectedPaths": [
+        "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+      ],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "sha256": "d18202c76b8d3676980b75cfa3891656c642e9c4376c4e502cee986da589d76c"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 1,
+        "signal": null,
+        "stdoutHash": "944e5498230ce6919b319461fef7346bb05ae7e8766bf765d6cf622a3d7858a9",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 32,
+        "suites": 0,
+        "pass": 31,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 51125.181666
+      },
+      "findings": [
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs:403:1",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs:403:1\n✖ binary capture validates proposed metadata and deletes the complete recorded bundle (3290.538125ms)\n  AssertionError [ERR_ASSERTION]: Missing expected exception.\n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs:462:14)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: { code: 'RUNTIME_STATE_CORRUPT' },\n    operator: 'throws',\n    diff: 'simple'\n  }\n"
+        }
+      ],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-i4-red.stdout.log",
+        "stdoutSha256": "944e5498230ce6919b319461fef7346bb05ae7e8766bf765d6cf622a3d7858a9",
+        "stderr": ".scratch/gh/1861-review-i4-red.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    },
+    {
+      "label": "review-i4-green",
+      "fixtureSyntaxOnly": false,
+      "selectedPaths": [
+        "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+      ],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "sha256": "d18202c76b8d3676980b75cfa3891656c642e9c4376c4e502cee986da589d76c"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 0,
+        "signal": null,
+        "stdoutHash": "01d334fe117414f647e5e56f9ba990e966752821835da6177b3f7f5a95bb4496",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 32,
+        "suites": 0,
+        "pass": 32,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 63391.84475
+      },
+      "findings": [],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-i4-green.stdout.log",
+        "stdoutSha256": "01d334fe117414f647e5e56f9ba990e966752821835da6177b3f7f5a95bb4496",
+        "stderr": ".scratch/gh/1861-review-i4-green.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    },
+    {
+      "label": "review-fix-combined",
+      "fixtureSyntaxOnly": false,
+      "selectedPaths": [
+        "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+        "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "scripts/task-tracker/lib/runtime-batch.mjs",
+        "scripts/tests/fixtures/runtime-empty/linked-publisher.mjs",
+        "scripts/tests/fixtures/runtime-empty/empty-publisher.mjs",
+        "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+        "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+        "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+        "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+      ],
+      "selection": {
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-bootstrap.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs"
+        ],
+        "lanes": [],
+        "reasons": [
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-bootstrap.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-bootstrap.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-bootstrap.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "signal": "import-transitive",
+            "reason": "test transitively imports changed path"
+          },
+          {
+            "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs",
+            "signal": "import-direct",
+            "reason": "test statically imports changed path"
+          },
+          {
+            "changedPath": "scripts/tests/fixtures/runtime-empty/empty-publisher.mjs",
+            "test": null,
+            "signal": "no-verification-impact",
+            "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+          },
+          {
+            "changedPath": "scripts/tests/fixtures/runtime-empty/linked-publisher.mjs",
+            "test": null,
+            "signal": "no-verification-impact",
+            "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+            "signal": "manifest",
+            "reason": "current test tree authority change"
+          },
+          {
+            "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "test": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "signal": "changed-test",
+            "reason": "changed or newly discovered test"
+          }
+        ],
+        "escalated": false
+      },
+      "manifest": {
+        "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+        "sourcePaths": [
+          {
+            "path": "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+            "sha256": "2eea64f156169f5b9e7a2684ea1531607f8bf7cf5ef6d4dd7297661e8bfaee72"
+          },
+          {
+            "path": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+            "sha256": "005ff36f51c6a3e967b30979fad548f215c6d5a70fd4780c1ebc4ca725ad1a2b"
+          },
+          {
+            "path": "scripts/task-tracker/lib/runtime-batch.mjs",
+            "sha256": "a974f74dc0ae886321e4a5d48d72656006e33597050b51a12ee9733fe1a79cd6"
+          },
+          {
+            "path": "scripts/tests/fixtures/runtime-empty/linked-publisher.mjs",
+            "sha256": "5cf85c14e166ff06e7f8040828e1d79490c6ca14aa8f530b7e51beec7cd6ef8e"
+          },
+          {
+            "path": "scripts/tests/fixtures/runtime-empty/empty-publisher.mjs",
+            "sha256": "fe85e2b67bab4769a3f4ee3ae3d5576f2c9f9ff2d277661cb459c3dbc762763d"
+          },
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+            "sha256": "9d932106fd6165ed0e23f458ef3e9300930a67fae1af48dd352614a62ee289ac"
+          },
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+            "sha256": "ab3e4c8784fa8691434701a7a4fb33cc47d31c7323ffdf0f1e6001210640efe5"
+          },
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+            "sha256": "5606c1c9fbb1ebfbc4373fd4e8df5483ff6e3071ed51519cbf2d793934684b06"
+          },
+          {
+            "path": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+            "sha256": "de799916ab12d804cda810c1edaf3df558e015c06def167797dac3bc9d96b9c7"
+          }
+        ],
+        "tests": [
+          "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-bootstrap.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+          "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs"
+        ]
+      },
+      "result": {
+        "status": 1,
+        "signal": null,
+        "stdoutHash": "f4509cdc558d9b18f18671d41572741023f2f1527cdcc5ac0b8ef80d96eefa92",
+        "stderrHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "counters": {
+        "tests": 152,
+        "suites": 0,
+        "pass": 151,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "duration_ms": 77877.679542
+      },
+      "findings": [
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:346:1",
+          "completeText": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:346:1\n✖ live unleased Node process in an empty root blocks production writer census (267.801042ms)\n  AssertionError [ERR_ASSERTION]: [{\"reason\":\"process-observation-incomplete\"},{\"reason\":\"process-census-unavailable\"}]\n  \n  false !== true\n  \n      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:376:12)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1409:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+        }
+      ],
+      "raw": {
+        "stdout": ".scratch/gh/1861-review-fix-combined.stdout.log",
+        "stdoutSha256": "f4509cdc558d9b18f18671d41572741023f2f1527cdcc5ac0b8ef80d96eefa92",
+        "stderr": ".scratch/gh/1861-review-fix-combined.stderr.log",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderrText": ""
+    }
+  ]
+}

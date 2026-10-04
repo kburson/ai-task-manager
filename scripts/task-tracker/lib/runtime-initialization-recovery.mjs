@@ -74,6 +74,28 @@ export async function withRuntimeInitializationRecovery({ layout, journal, adapt
     const owner = previousReceipt
       ? observeMigrationIdentity(adapters)
       : assertRecoveryOwner(journal.owner, { ...adapters, observeOwner });
+    if (linked && previousReceipt && journal.recoveryReceipt !== previousReceipt) {
+      const journalFile = path.join(
+        layout.sharedRuntimeRoot,
+        'initializations',
+        journal.plan.id + '.json'
+      );
+      assertRuntimeStoragePath(journalFile, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
+      if (
+        runtimeInitializationDigest(readMigrationRecord(journalFile)) !==
+        runtimeInitializationDigest(journal)
+      )
+        fail('RUNTIME_MIGRATION_CONFLICT', 'Unclaimed linked predecessor journal changed');
+      // A durable claim may precede its owned journal. Complete that exact dead
+      // predecessor before another receipt records the next journal's bytes.
+      journal = {
+        ...journal,
+        owner: verified.ownerHistory.at(-1),
+        ownerHistory: verified.ownerHistory,
+        recoveryReceipt: previousReceipt,
+      };
+      writeMigrationRecord(journalFile, journal);
+    }
     const evidence = {
       schema: linked
         ? 'aitm.runtime-initialization-recovery/v2'

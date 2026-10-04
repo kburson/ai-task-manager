@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import {
   lstatSync,
   readFileSync,
+  readdirSync,
   mkdirSync,
   openSync,
   writeFileSync,
@@ -120,8 +121,76 @@ function leased(roots, adapters, operation, index = 0) {
     leased(roots, adapters, operation, index + 1)
   );
 }
+function validateCaptureBundles(directories, proposed) {
+  for (const directory of directories) {
+    const roots = runtimeWriterRootsForPath(path.join(directory, 'outcome.json'));
+    const store = path.join(roots.projectRoot, '.ai-task-manager/runtime/store');
+    const effective = (file) => {
+      assertRuntimeStoragePath(file, store);
+      if (proposed.has(file)) {
+        const after = proposed.get(file).after;
+        return after === null ? null : Buffer.from(after.bytes, 'base64');
+      }
+      try {
+        if (!lstatSync(file).isFile())
+          fail('RUNTIME_STATE_CORRUPT', 'Capture member is not a regular file');
+        return readFileSync(file);
+      } catch (error) {
+        if (error.code === 'ENOENT') return null;
+        throw error;
+      }
+    };
+    let names;
+    try {
+      names = new Set(readdirSync(directory));
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      names = new Set();
+    }
+    for (const target of proposed.keys())
+      if (path.dirname(target) === directory) names.add(path.basename(target));
+    for (const mode of ['intent', 'outcome']) {
+      const file = path.join(directory, mode + '.json'),
+        bytes = effective(file);
+      if (bytes === null) continue;
+      const descriptor = runtimeDescriptor(file, roots);
+      if (!descriptor?.validate(bytes))
+        fail('RUNTIME_STATE_CORRUPT', 'Capture metadata is invalid');
+      const metadata = JSON.parse(bytes);
+      const entries =
+        mode === 'outcome'
+          ? [metadata.stdout, metadata.stderr]
+          : [metadata.request.argv, metadata.request.stdin, ...metadata.request.files];
+      for (const entry of entries.filter((entry) => entry.stored)) {
+        names.add(entry.file);
+        if (effective(path.join(directory, entry.file)) === null)
+          fail(
+            'RUNTIME_STATE_CORRUPT',
+            'Stored capture payload is absent from the proposed bundle'
+          );
+      }
+    }
+    for (const name of names) {
+      const file = path.join(directory, name),
+        bytes = effective(file);
+      if (bytes === null) continue;
+      const descriptor = runtimeDescriptor(file, roots, undefined, (sibling) => {
+        const content = effective(sibling);
+        if (content === null)
+          fail('RUNTIME_STATE_CORRUPT', 'Capture payload has no proposed metadata');
+        return content;
+      });
+      if (descriptor?.family !== 'action-capture' || !descriptor.validate(bytes))
+        fail(
+          'RUNTIME_STATE_CORRUPT',
+          'Proposed capture bundle has an orphan or conflicting payload'
+        );
+    }
+  }
+}
 function validateMembers(members) {
   const proposed = new Map(members.map((member) => [member.target, member]));
+  const captureDirectories = new Set();
   for (const member of members) {
     const roots = runtimeWriterRootsForPath(member.target);
     const descriptor = runtimeDescriptor(
@@ -149,7 +218,14 @@ function validateMembers(members) {
         'RUNTIME_STATE_CORRUPT',
         'Refusing malformed, unknown or incorrectly scoped batch member'
       );
+    if (
+      descriptor.family === 'action-capture' &&
+      descriptor.destination.startsWith('action-capture/repositories/') &&
+      path.basename(member.target) !== '.sequence'
+    )
+      captureDirectories.add(path.dirname(member.target));
   }
+  validateCaptureBundles(captureDirectories, proposed);
 }
 export function writeRuntimeRecordBatch(records, options = {}) {
   if (

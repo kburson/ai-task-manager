@@ -1,5 +1,6 @@
 // @story #1861
-import { readFileSync } from 'node:fs';
+import fs, { readFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import * as initialization from '../../../task-tracker/lib/runtime-initialize.mjs';
@@ -9,6 +10,16 @@ import {
 } from '../../../task-tracker/lib/runtime-migration-lock.mjs';
 const [file, boundary, mode = 'apply'] = process.argv.slice(2);
 const plan = JSON.parse(readFileSync(file));
+if (mode === 'resume-before-owned-journal') {
+  const unlink = fs.unlinkSync;
+  fs.unlinkSync = (target) => {
+    const result = unlink(target);
+    if (target.includes('initialization-recoveries') && target.endsWith('.pending'))
+      process.kill(process.pid, 'SIGKILL');
+    return result;
+  };
+  syncBuiltinESMExports();
+}
 const owner = {
   provider: 'fixture',
   sid: randomUUID(),
