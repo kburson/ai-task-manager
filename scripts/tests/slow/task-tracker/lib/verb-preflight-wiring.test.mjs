@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// @story #1872
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #208
 // Wiring: dispatcher runs preflightVerb before invoking close/approve/promote/etc.
 // Verifies bind-mismatch refusal (#208) at the dispatcher chokepoint.
@@ -18,7 +23,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
 function makeSandbox(active) {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-preflight-'));
+  const sandbox = createRuntimeRootFixture('tt-preflight-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -26,7 +31,7 @@ function makeSandbox(active) {
   );
   // #573: the global ledger lives under `.tmp/aitm/state/`.
   mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
-  writeFileSync(
+  writeFixtureTrackerState(
     path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
     JSON.stringify(
       {
@@ -53,7 +58,7 @@ const env = (sandbox) => ({
 
 async function expectExit(args, sandbox, expectedCode) {
   try {
-    await pexec('node', [CLI, ...args], { env: env(sandbox) });
+    await pexec('node', [CLI, ...args], { env: env(sandbox), cwd: sandbox });
     throw new Error(`expected non-zero exit ${expectedCode}, got 0`);
   } catch (err) {
     if (err.code === expectedCode) return err;

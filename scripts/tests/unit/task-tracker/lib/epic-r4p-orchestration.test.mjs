@@ -1,4 +1,5 @@
 // @story #1216 #1339
+import { legacyRankWavePorts } from '../../../fixtures/legacy-rank-wave.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -18,7 +19,7 @@ import { refineExitWipBudgetGuard } from '../../../../task-tracker/lib/refine-ex
 const cfg = { repo: 'o/r', projectId: 'PVT_1' };
 
 function fetchChildren(children) {
-  return { fetchSiblings: async () => children };
+  return { ...legacyRankWavePorts, fetchSiblings: async () => children };
 }
 
 function currentChild(number, state, rank, extra = {}) {
@@ -262,6 +263,8 @@ test('strict local WIP cannot be disabled by project configuration', async () =>
     cfg: { ...cfg, gatePlanRefineWip: false },
     deps: {
       projectDir: process.cwd(),
+      withEpicAdmissionLock: async (_options, fn) => fn({}),
+      observeRankWaveAdmission: async () => ({ legacy: true }),
       withIssueLock: async (_options, fn) => fn(),
       fetchParentIssue: async () => 1209,
       epicChildren: fetchChildren([
@@ -413,6 +416,8 @@ test('pull-next advances one dependency-ready R4P child exactly one edge and the
     cfg,
     deps: {
       projectDir: process.cwd(),
+      withEpicAdmissionLock: async (_options, fn) => fn({}),
+      observeRankWaveAdmission: async () => ({ legacy: true }),
       withIssueLock: async (_options, fn) => fn(),
       audit: async () => ({ ok: true }),
       getLiveState: async () => 'develop',
@@ -448,6 +453,8 @@ test('pull-next refuses to start another local child while a sibling is active',
     cfg,
     deps: {
       projectDir: process.cwd(),
+      withEpicAdmissionLock: async (_options, fn) => fn({}),
+      observeRankWaveAdmission: async () => ({ legacy: true }),
       withIssueLock: async (_options, fn) => fn(),
       audit: async () => ({ ok: true }),
       getLiveState: async () => 'develop',

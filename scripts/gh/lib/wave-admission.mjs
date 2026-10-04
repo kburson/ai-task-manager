@@ -39,6 +39,7 @@ import {
 } from '../../task-tracker/lib/closed-issue-convergence.mjs';
 import { normalizeStateId } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
+import { rankWaveRefinementIdentity } from '../../task-tracker/lib/epic-rank-wave-refinement.mjs';
 import { verifyRefinementSnapshot } from '../../task-tracker/lib/refinement-snapshot.mjs';
 import { observeDependencyReadiness } from '../../task-tracker/lib/dependency-disposition.mjs';
 
@@ -538,6 +539,7 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
     const labels = sub.labels;
     let childEvidenceError = null;
     let hasCurrentRefinement = false;
+    let refinementDigest = null;
     if (recoveryMarkerPresent && !recovery)
       childEvidenceError = 'unauthorized-close recovery marker malformed';
     else if (projectMatches.length > 1)
@@ -554,15 +556,33 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
       // Their authoritative evidence is the recognized GitHub disposition,
       // raw configured-board Status, and durable recovery phase.
       if (!closeReason) childEvidenceError = 'closed child disposition unreadable';
+      const retained = verifyRefinementSnapshot(sub.body, {
+        labels: labels.nodes.map((l) => l?.name).filter(Boolean),
+        allowPlanProjection: true,
+      });
+      if (retained.ok) refinementDigest = retained.snapshot.digest;
     } else {
       const verified = verifyRefinementSnapshot(sub.body, {
         labels: labels.nodes.map((label) => label?.name).filter(Boolean),
+        allowPlanProjection: true,
       });
       const snapshotRank = verified.snapshot?.fields?.rank;
       if (!verified.ok) childEvidenceError = verified.reason;
       else if (!Number.isFinite(rank) || Number(snapshotRank) !== Number(rank)) {
         childEvidenceError = 'live board rank disagrees with refinement snapshot';
-      } else hasCurrentRefinement = true;
+      } else {
+        hasCurrentRefinement = true;
+        refinementDigest = verified.snapshot.digest;
+      }
+    }
+    if (labels && !labels.pageInfo?.hasNextPage && Array.isArray(labels.nodes)) {
+      try {
+        refinementDigest = rankWaveRefinementIdentity(sub.body, {
+          labels: labels.nodes.map((l) => l?.name).filter(Boolean),
+        });
+      } catch {
+        refinementDigest = null;
+      }
     }
     out.push({
       number: sub.number,
@@ -579,6 +599,7 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
       dependencyStates: new Map(),
       dependencyReadiness: 'unknown',
       hasCurrentRefinement,
+      refinementDigest,
       ...(childEvidenceError ? { childEvidenceError } : {}),
     });
   }

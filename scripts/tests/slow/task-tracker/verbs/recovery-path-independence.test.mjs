@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// @story #1872
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #438
 // #438 AC4 — Recovery-path independence.
 //
@@ -288,11 +290,19 @@ test('AC (#574): relocated .ai-task-manager/templates survive a fresh worktree c
   }
 });
 
-test('AC (#572): getProjectDir precedence — AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd', () => {
-  assert.equal(
-    getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: '/a', CLAUDE_PROJECT_DIR: '/b' }, '/c'),
-    '/a'
-  );
-  assert.equal(getProjectDir({ CLAUDE_PROJECT_DIR: '/b' }, '/c'), '/b');
-  assert.equal(getProjectDir({}, '/c'), '/c');
+test('AC (#572): project aliases must agree with physical runtime authority', () => {
+  const a = createRuntimeRootFixture('root-alias-a-'),
+    b = createRuntimeRootFixture('root-alias-b-');
+  try {
+    assert.equal(getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: a, CLAUDE_PROJECT_DIR: a }, a), a);
+    assert.equal(getProjectDir({ CLAUDE_PROJECT_DIR: b }, b), b);
+    assert.equal(getProjectDir({}, a), a);
+    assert.throws(
+      () => getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: a, CLAUDE_PROJECT_DIR: b }, a),
+      /Foreign project root|aliases disagree/
+    );
+  } finally {
+    rmSync(a, { recursive: true, force: true });
+    rmSync(b, { recursive: true, force: true });
+  }
 });

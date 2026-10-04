@@ -1,3 +1,4 @@
+// @story #1872
 // @story #1857
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync } from 'node:fs';
@@ -12,3 +13,6 @@ export function createRuntimeRootFixture(prefix = 'runtime-test-') {
   execFileSync('git', ['init', '-q', root]);
   return root;
 }
+
+// Capture before each test installs any Git shim.
+export const fixtureGitExecutable = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();

@@ -1,3 +1,4 @@
+// @story #1872
 // @story #65
 // Tests for scripts/task-tracker/activity-guard.mjs
 //
@@ -10,6 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -810,12 +812,17 @@ test('native hook session selects its own state instead of an environment sessio
 
 // @story #1848
 test('scratch shell allowance validates physical targets and preserves early code restrictions', () => {
-  const dir = makeRepo({ state: 'backlog' });
+  const dir = createRuntimeRootFixture('scratch-shell-');
+  setActiveTask('scratch-native', { issue: '#65', kanbanState: 'backlog' }, dir);
   try {
     mkdirSync(path.join(dir, '.scratch'));
     mkdirSync(path.join(dir, 'src'));
     symlinkSync(path.join(dir, 'src'), path.join(dir, '.scratch', 'alias'));
-    const payload = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+    const payload = (command) => ({
+      session_id: 'scratch-native',
+      tool_name: 'Bash',
+      tool_input: { command },
+    });
     assert.equal(
       runGuard({ cwd: dir, payload: payload("cat > .scratch/scope.md <<'EOF'\ntext\nEOF") })
         .decision,

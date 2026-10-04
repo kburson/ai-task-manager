@@ -30,6 +30,7 @@ function makeDeps({
   return {
     calls,
     deps: {
+      fetchParentIssue: async () => null,
       pexec: async (bin, args) => {
         if (bin === 'git' && args[0] === 'rev-parse') return { stdout: `${'a'.repeat(40)}\n` };
         if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view') {

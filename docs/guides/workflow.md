@@ -1668,3 +1668,12 @@ offender by making it exercise a `scripts/**` module, converting its assertions 
 a lint, or deleting it — do not append it to the baseline to silence the gate.
 
 `npm run quality` must exit 0 before close. CI runs the same script.
+
+## Authorized epic rank waves
+
+Sequential child execution remains the default. Explicitly adopted rank waves
+permit independent same-rank children while requiring every lower rank to be
+actually Done. Plan, Promote, Explain and pull-next share the admission policy;
+execution revalidates under a physical common-directory parent lock.
+See [Authorized epic rank waves](epic-rank-waves.md) for the registered
+`epic-wave` schemas, human source provenance, recovery, handoff and refresh.

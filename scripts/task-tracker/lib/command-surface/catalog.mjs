@@ -664,6 +664,16 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Persists, clears, resumes, or reads the source-edit gate override.'],
     ['Prints chore-mode state, reason, and suspension status.']
   ),
+  'epic-wave': contract(
+    [
+      'Mutations require genuine parent authority, exact source context and the common physical parent admission lock.',
+    ],
+    [
+      'Prepare/show read authority; record/revoke/refresh append immutable scoped records; resume repairs the same operation without another comment. No lifecycle state is changed.',
+    ],
+    ['Prints typed proposal, publication, refusal or indeterminate results.'],
+    [exit(4, 'wave obligation refused'), exit(6, 'original comment write outcome indeterminate')]
+  ),
   'decompose-check': contract(
     ['The target issue and its board planning fields must be readable.'],
     ['Reads the issue, linked plan, and decomposition policy without mutating any state.'],
@@ -708,6 +718,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   plan: Object.freeze(['plan-estimate', 'plan-approve', 'promote']),
   'plan-approve': Object.freeze(['plan-estimate', 'promote']),
   'plan-estimate': Object.freeze(['plan-approve', 'promote']),
+  'epic-wave': Object.freeze(['pull-next', 'plan', 'promote', 'explain']),
   'decompose-check': Object.freeze(['split-plan', 'plan', 'promote']),
   'split-plan': Object.freeze(['decompose-check', 'create-issue']),
   approve: Object.freeze(['review', 'reject', 'close']),
@@ -881,6 +892,10 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   ]),
   comment: Object.freeze([
     positional('#N', 'Issue number whose marker-owned comment will be upserted.'),
+  ]),
+  'epic-wave': Object.freeze([
+    positional('<prepare|record|resume|refresh|show|revoke>', 'Rank-wave operation.'),
+    positional('<epic>', 'Exact parent issue number.'),
   ]),
   'workflow-exception': Object.freeze([
     positional('<prepare|record|show|revise|revoke>', 'Exception lifecycle operation.'),

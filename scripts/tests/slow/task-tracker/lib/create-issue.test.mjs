@@ -1,3 +1,8 @@
+#!/usr/bin/env node
+// @story #1872
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #29
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -53,7 +58,7 @@ function canonicalBody(scope) {
 }
 
 function setup({ withProjectId = true, tetherExitCode = 0, ghCreateOverride = null } = {}) {
-  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-create-'));
+  const temp = createRuntimeRootFixture('aitm-create-');
   const binDir = join(temp, 'bin');
   mkdirSync(binDir, { recursive: true });
   mkdirSync(join(temp, '.ai-task-manager'), { recursive: true });
@@ -96,8 +101,7 @@ ${ghScript}
   const tetherStub = join(temp, 'project-tether-stub.mjs');
   writeFileSync(
     tetherStub,
-    `#!/usr/bin/env node
-import { appendFileSync } from 'node:fs';
+    `import { appendFileSync } from 'node:fs';
 appendFileSync(${JSON.stringify(tetherLog)}, process.argv.slice(2).join(' ') + '\\n');
 process.exit(${tetherExitCode});
 `

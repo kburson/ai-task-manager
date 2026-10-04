@@ -1,3 +1,5 @@
+import { withEpicAdmissionLock } from '../lib/epic-admission-lock.mjs';
+import { observeRankWaveAdmission } from '../lib/epic-rank-wave-admission.mjs';
 // `pull-next` verb (#135) — JIT child-promotion for an epic in Develop.
 //
 // Usage: `/task pull-next <epic#>`
@@ -146,8 +148,17 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
       issue: epicNumber,
       deps: deps.projectDirDeps ?? deps,
     });
-  return acquireIssueLock({ issue: epicNumber, verb: 'pull-next', projDir: projectDir }, () =>
-    runPullNextLocked({ epicNumber, cfg, deps, projectDir })
+  return (deps.withEpicAdmissionLock ?? withEpicAdmissionLock)(
+    { projectDir, epic: epicNumber },
+    (context) =>
+      acquireIssueLock({ issue: epicNumber, verb: 'pull-next', projDir: projectDir }, () =>
+        runPullNextLocked({
+          epicNumber,
+          cfg,
+          deps: { ...deps, admissionLockContext: context },
+          projectDir,
+        })
+      )
   );
 }
 
@@ -284,8 +295,39 @@ async function runPullNextLocked({ epicNumber, cfg, deps, projectDir }) {
     deps: deps.enrich,
   });
 
+  const staged = enriched
+    .filter((c) => normalizeStateId(c.boardState ?? c.state) === 'ready-for-plan')
+    .sort((a, b) => a.rank - b.rank || a.number - b.number);
+  let next = null,
+    waveMode = false,
+    waveRefusal = null;
+  for (const child of staged) {
+    const observed = await (deps.observeRankWaveAdmission ?? observeRankWaveAdmission)({
+      cfg,
+      parentEpicNumber: Number(epicNumber),
+      issueNumber: child.number,
+      projectDir,
+      readOnly: false,
+      deps: { ...deps.rankWave, rank: child.rank, admissionLockContext: deps.admissionLockContext },
+    });
+    if (observed.legacy) break;
+    waveMode = true;
+    if (observed.decision.ok) {
+      next = child;
+      break;
+    }
+    waveRefusal ??= observed.decision;
+  }
+  if (waveMode && !next)
+    return {
+      status: 'rank-wave-refused',
+      code: waveRefusal.code,
+      decision: waveRefusal,
+      sweep,
+      message: waveRefusal.reason,
+    };
   const active = enriched.filter(isActiveChild);
-  if (active.length) {
+  if (!waveMode && active.length) {
     return {
       status: 'active-child',
       activeChildren: active.map((child) => child.number),
@@ -296,7 +338,7 @@ async function runPullNextLocked({ epicNumber, cfg, deps, projectDir }) {
     };
   }
 
-  const next = findNextEligibleChild(enriched);
+  next ??= findNextEligibleChild(enriched);
   if (!next) {
     const counts = children.reduce((acc, c) => {
       const s = String(c.state || 'unknown').toLowerCase();
@@ -317,7 +359,11 @@ async function runPullNextLocked({ epicNumber, cfg, deps, projectDir }) {
         issueNumber: next.number,
         cfg,
         projectDir,
-        promoteDeps: deps.promoteDeps,
+        promoteDeps: {
+          ...deps.promoteDeps,
+          admissionLockContext: deps.admissionLockContext,
+          epicChildren: { ...deps.promoteDeps?.epicChildren, ...deps.rankWave },
+        },
         promoteRunner: deps.promoteRunner,
         acquireIssueLock: deps.childIssueLock || withIssueLock,
       });
