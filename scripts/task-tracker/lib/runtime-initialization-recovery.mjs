@@ -1,3 +1,4 @@
+import { inspectLinkedInitializationRecoveries } from './runtime-activation-admission.mjs';
 // @story #1857
 // Recovery ownership is independent of cooperative writer admission.
 import { mkdirSync } from 'node:fs';
@@ -27,6 +28,13 @@ export async function withRuntimeInitializationRecovery({ layout, journal, adapt
     journal.plan.id
   );
   assertRuntimeStoragePath(directory, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
+  const linked = journal.schema === 'aitm.runtime-initialization/v2';
+  const verified = linked
+    ? inspectLinkedInitializationRecoveries(layout, journal, {
+        assertPath: assertRuntimeStoragePath,
+        fail,
+      })
+    : null;
   mkdirSync(directory, { recursive: true });
   let previousReceipt = null;
   for (let generation = 0; generation < 10000; generation++) {
@@ -36,7 +44,10 @@ export async function withRuntimeInitializationRecovery({ layout, journal, adapt
     if (earlier !== undefined) {
       if (
         !earlier ||
-        earlier.schema !== 'aitm.runtime-initialization-recovery/v1' ||
+        earlier.schema !==
+          (linked
+            ? 'aitm.runtime-initialization-recovery/v2'
+            : 'aitm.runtime-initialization-recovery/v1') ||
         !['active', 'released', 'complete'].includes(earlier.phase) ||
         earlier.planDigest !== journal.plan.digest ||
         !isRuntimeMigrationOwner(earlier.owner) ||
@@ -64,12 +75,15 @@ export async function withRuntimeInitializationRecovery({ layout, journal, adapt
       ? observeMigrationIdentity(adapters)
       : assertRecoveryOwner(journal.owner, { ...adapters, observeOwner });
     const evidence = {
-      schema: 'aitm.runtime-initialization-recovery/v1',
+      schema: linked
+        ? 'aitm.runtime-initialization-recovery/v2'
+        : 'aitm.runtime-initialization-recovery/v1',
       phase: 'active',
       owner,
       planDigest: journal.plan.digest,
       previousReceipt,
       previousJournalDigest: runtimeInitializationDigest(journal),
+      ...(linked ? { previousJournal: journal } : {}),
     };
     try {
       writeMigrationRecordExclusive(receipt, evidence);
@@ -85,7 +99,8 @@ export async function withRuntimeInitializationRecovery({ layout, journal, adapt
       writeMigrationRecord(receipt, { ...evidence, phase, endedAt: new Date().toISOString() });
     };
     try {
-      await adapters.fault?.('after-initialization-recovery-claim', { receipt });
+      if (journal.schema !== 'aitm.runtime-initialization/v2')
+        await adapters.fault?.('after-initialization-recovery-claim', { receipt });
       const journalFile = path.join(
         layout.sharedRuntimeRoot,
         'initializations',
@@ -100,8 +115,17 @@ export async function withRuntimeInitializationRecovery({ layout, journal, adapt
           'RUNTIME_MIGRATION_CONFLICT',
           'Initialization journal changed before recovery ownership publication'
         );
-      const owned = { ...journal, owner, recoveryReceipt: receipt };
+      const owned = {
+        ...journal,
+        owner,
+        recoveryReceipt: receipt,
+        ...(journal.schema === 'aitm.runtime-initialization/v2'
+          ? { ownerHistory: [...verified.ownerHistory, owner] }
+          : {}),
+      };
       writeMigrationRecord(journalFile, owned);
+      if (journal.schema === 'aitm.runtime-initialization/v2')
+        await adapters.fault?.('after-initialization-recovery-claim', { receipt });
       const result = await operation(owned);
       finish('complete');
       return result;

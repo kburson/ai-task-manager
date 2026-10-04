@@ -144,18 +144,38 @@ export function emptyRuntimeControl(plan, status) {
   };
 }
 export function validEmptyRuntimeControl(control) {
+  if (
+    !control ||
+    control.schema !== 'aitm.runtime-control/v2' ||
+    !['prepared', 'active'].includes(control.status) ||
+    typeof control.projectRoot !== 'string' ||
+    typeof control.mainRoot !== 'string' ||
+    !emptyRuntimeKeys(control.activation, ['kind', 'id', 'digest']) ||
+    control.activation.kind !== 'empty-initialization' ||
+    !validEmptyOperationId(control.activation.id) ||
+    !validEmptyDigest(control.activation.digest)
+  )
+    return false;
+  if (control.projectRoot === control.mainRoot)
+    return emptyRuntimeKeys(control, ['schema', 'status', 'projectRoot', 'mainRoot', 'activation']);
   return (
-    emptyRuntimeKeys(control, ['schema', 'status', 'projectRoot', 'mainRoot', 'activation']) &&
-    control.schema === 'aitm.runtime-control/v2' &&
-    ['prepared', 'active'].includes(control.status) &&
-    typeof control.projectRoot === 'string' &&
-    control.projectRoot === control.mainRoot &&
-    emptyRuntimeKeys(control.activation, ['kind', 'id', 'digest']) &&
-    control.activation.kind === 'empty-initialization' &&
-    validEmptyOperationId(control.activation.id) &&
-    validEmptyDigest(control.activation.digest)
+    emptyRuntimeKeys(control, [
+      'schema',
+      'status',
+      'projectRoot',
+      'mainRoot',
+      'activation',
+      'initialization',
+    ]) &&
+    emptyRuntimeKeys(control.initialization, ['id', 'operationId', 'digest']) &&
+    typeof control.initialization.id === 'string' &&
+    /^[a-f0-9]{64}$/.test(control.initialization.id) &&
+    validEmptyOperationId(control.initialization.operationId) &&
+    validEmptyDigest(control.initialization.digest)
   );
 }
+export { validOwner as validEmptyRuntimeOwner };
+
 export function validEmptyCoordinatorProof(value) {
   if (
     !emptyRuntimeKeys(value, ['status', 'identity', 'record', 'bytes', 'digest']) ||

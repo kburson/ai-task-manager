@@ -1,4 +1,9 @@
-import { assertRuntimeEmptyAdmission } from './runtime-activation-admission.mjs';
+import { validEmptyRuntimeControl, emptyRuntimeDigest } from './runtime-empty-record.mjs';
+import {
+  assertRuntimeEmptyAdmission,
+  readRuntimeMainActivation,
+  inspectLinkedInitializationRecoveries,
+} from './runtime-activation-admission.mjs';
 import { assertRuntimeBatchAdmission } from './runtime-batch-admission.mjs';
 // @story #1857
 // cspell:words commondir backlink
@@ -313,6 +318,27 @@ function readControl(file, root, mainRoot, base) {
   return control;
 }
 
+export function readRuntimeActivationRoot(roots) {
+  const invoking = runtimeStoragePaths(roots);
+  const main = runtimeStoragePaths({ projectRoot: invoking.mainRoot, mainRoot: invoking.mainRoot });
+  return readRuntimeMainActivation(main, {
+    assertPath: assertStoragePath,
+    fail,
+    readV1Control: readControl,
+    physicalIdentity: (root) => {
+      const resolved = resolveRuntimeRoot({ cwd: root, env: {} });
+      return {
+        projectRoot: resolved.projectRoot,
+        gitDir: resolved.worktreeIdentity.gitDir,
+        commonDir: resolved.worktreeIdentity.commonDir,
+      };
+    },
+    assertRecords: assertRuntimeStoreRecords,
+    assertBatch: (layout) =>
+      assertRuntimeBatchAdmission(layout, { assertPath: assertStoragePath, fail }),
+  });
+}
+
 export function assertRuntimeReadable(roots) {
   const layout = runtimeStoragePaths(roots);
   assertRuntimeEmptyAdmission(layout, { assertPath: assertStoragePath, fail });
@@ -320,10 +346,89 @@ export function assertRuntimeReadable(roots) {
   assertStoragePath(layout.controlPath, layout.localRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
   assertStoragePath(layout.sharedControlPath, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
   if (!existsSync(layout.controlPath)) {
+    if (layout.projectRoot !== layout.mainRoot) {
+      const main = readRuntimeActivationRoot(roots);
+      const history = assertStoragePath(
+        path.join(
+          layout.sharedRuntimeRoot,
+          'initializations',
+          runtimeInitializationId(layout.projectRoot) + '.json'
+        ),
+        layout.sharedRuntimeRoot,
+        'RUNTIME_CONTROL_INVALID'
+      );
+      if (
+        main.originalRoots.includes(layout.projectRoot) ||
+        existsSync(history) ||
+        existsSync(layout.localRuntimeRoot)
+      )
+        fail(
+          'RUNTIME_CONTROL_INVALID',
+          'Protected root history or local runtime residue requires exact recovery: ' + history
+        );
+      fail(
+        'RUNTIME_INITIALIZATION_REQUIRED',
+        'Fresh linked root requires explicit registered initialization'
+      );
+    }
     if (existsSync(layout.localRoot) || existsSync(layout.sharedControlPath)) {
       fail('RUNTIME_CONTROL_INVALID', 'Partial runtime loss requires registered recovery');
     }
     fail('RUNTIME_MIGRATION_REQUIRED', 'Explicit runtime migration or initialization required');
+  }
+  const candidateControl = readRequiredJson(
+    layout.controlPath,
+    layout.localRuntimeRoot,
+    'RUNTIME_CONTROL_INVALID'
+  );
+  if (candidateControl.schema === 'aitm.runtime-control/v2') {
+    const main = readRuntimeActivationRoot(roots);
+    if (
+      !validEmptyRuntimeControl(candidateControl) ||
+      candidateControl.projectRoot !== layout.projectRoot ||
+      candidateControl.mainRoot !== layout.mainRoot ||
+      emptyRuntimeDigest(candidateControl.activation) !== emptyRuntimeDigest(main.activation)
+    )
+      fail('RUNTIME_CONTROL_INVALID', 'Empty local activation identity is invalid');
+    if (candidateControl.status !== 'active')
+      fail(
+        'RUNTIME_TRANSACTION_INCOMPLETE',
+        'Local initialization requires registered exact recovery'
+      );
+    if (layout.projectRoot !== layout.mainRoot) {
+      const id = runtimeInitializationId(layout.projectRoot);
+      const file = path.join(layout.sharedRuntimeRoot, 'initializations', id + '.json');
+      const journal = readRequiredJson(file, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
+      const identity = resolveRuntimeRoot({ cwd: layout.projectRoot, env: {} }).worktreeIdentity;
+      if (
+        !validRuntimeInitializationJournal(journal) ||
+        journal.schema !== 'aitm.runtime-initialization/v2' ||
+        journal.plan.id !== id ||
+        journal.plan.projectRoot !== layout.projectRoot ||
+        journal.plan.mainRoot !== layout.mainRoot ||
+        journal.plan.gitDir !== identity.gitDir ||
+        journal.plan.commonDir !== identity.commonDir ||
+        emptyRuntimeDigest(journal.plan.activation) !== emptyRuntimeDigest(main.activation) ||
+        emptyRuntimeDigest(candidateControl.initialization) !==
+          emptyRuntimeDigest({
+            id,
+            operationId: journal.plan.operationId,
+            digest: journal.plan.digest,
+          })
+      )
+        fail('RUNTIME_CONTROL_INVALID', 'Protected linked empty initialization proof is invalid');
+      if (journal.status !== 'complete')
+        fail('RUNTIME_TRANSACTION_INCOMPLETE', 'Linked empty journal is unfinished');
+      if (
+        inspectLinkedInitializationRecoveries(layout, journal, {
+          assertPath: assertStoragePath,
+          fail,
+        }).active
+      )
+        fail('RUNTIME_TRANSACTION_INCOMPLETE', 'Linked recovery claim requires exact resume');
+    }
+    assertRuntimeStoreRecords(layout);
+    return { ...candidateControl, layout };
   }
   const local = readControl(
     layout.controlPath,
