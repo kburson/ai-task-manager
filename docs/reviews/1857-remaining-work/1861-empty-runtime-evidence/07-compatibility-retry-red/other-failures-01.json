@@ -1,0 +1,16 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-findings/v1",
+  "issue": 1861,
+  "runId": "07-compatibility-retry-red",
+  "category": "other-failures",
+  "positions": [0],
+  "findings": [
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:33:1",
+      "finding": "✖ completed empty retry refuses an unfinished ordinary batch without rewriting any member (1379.954833ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: Missing expected rejection."
+    }
+  ]
+}

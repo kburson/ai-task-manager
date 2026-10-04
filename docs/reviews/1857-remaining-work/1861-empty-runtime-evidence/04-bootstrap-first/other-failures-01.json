@@ -1,0 +1,290 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-findings/v1",
+  "issue": 1861,
+  "runId": "04-bootstrap-first",
+  "category": "other-failures",
+  "positions": [
+    0, 1, 2, 3, 35, 36, 37, 38, 39, 40, 41, 42, 43, 46, 47, 56, 57, 94, 101, 102, 103, 107, 108,
+    109, 110, 111, 192, 193, 197, 231, 232, 328, 336, 363, 373, 374, 375, 376, 393, 436, 444, 445,
+    449, 450, 451, 458
+  ],
+  "findings": [
+    {
+      "location": "scripts/tests/integration/package/doctor-cli.test.mjs:1:1",
+      "finding": "✖ scripts/tests/integration/package/doctor-cli.test.mjs (982.046875ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/integration/package/install-manifest.test.mjs:1:1",
+      "finding": "✖ scripts/tests/integration/package/install-manifest.test.mjs (710.902125ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/core/templates.test.mjs:1:1",
+      "finding": "✖ scripts/tests/integration/task-tracker/core/templates.test.mjs (2121.633375ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs:1:1",
+      "finding": "✖ scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs (664.67675ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs:1:1",
+      "finding": "✖ scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs (676.2565ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs:316:1",
+      "finding": "✖ admission inventory accounts for every canonical command, alias, and classified executable (198.883416ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: scripts/task-tracker/verbs/migrate-runtime.mjs"
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:96:1",
+      "finding": "✖ final release requires a complete installed-byte and public-CLI capture (124.503625ms)",
+      "sandboxDenied": false,
+      "detail": "  Error: paired context: final capture identity drift"
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:157:1",
+      "finding": "✖ committed final package and public-CLI archive regenerate byte for byte from its source commit (34.562542ms)",
+      "sandboxDenied": false,
+      "detail": "  Error: captured source archive lacks 171c7d93866f67b58effa635be5ae737f54ef9eb:bin/aitm.mjs"
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:209:3",
+      "finding": "✖ claude aggregate CLI labels fixed release scenarios and exits on any breach (927.220917ms)",
+      "sandboxDenied": false,
+      "detail": "  SyntaxError: Unexpected end of JSON input"
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:209:3",
+      "finding": "✖ codex aggregate CLI labels fixed release scenarios and exits on any breach (528.129542ms)",
+      "sandboxDenied": false,
+      "detail": "  SyntaxError: Unexpected end of JSON input"
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:261:1",
+      "finding": "✖ internally consistent dirty installed guidance cannot inherit a committed source identity (12.780875ms)",
+      "sandboxDenied": false,
+      "detail": "  Error: captured source archive lacks 171c7d93866f67b58effa635be5ae737f54ef9eb:bin/aitm.mjs"
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs:1:1",
+      "finding": "✖ scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs (573.053875ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs:47:1",
+      "finding": "✖ registered runtime planner remains reachable without binding or valid control and publishes no authority (3678.967ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /RUNTIME_INITIALIZATION_REFUSED/. Input:"
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs:1:1",
+      "finding": "✖ scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs (672.458584ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs:1:1",
+      "finding": "✖ scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs (550.943666ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs:1:1",
+      "finding": "✖ scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs (406.029708ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs:1:1",
+      "finding": "✖ scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs (345.917666ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs:1:1",
+      "finding": "✖ scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs (1339.687958ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs (568.592666ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/core/measure-context.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/core/measure-context.test.mjs (697.266042ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs (389.234292ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs (279.442209ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs (395.062292ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs (382.048584ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs (381.098ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs (389.162833ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs (308.161167ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs (427.43675ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs (389.508708ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs (415.686167ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs (417.639916ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs (514.935166ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs (434.0735ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs (145.327958ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-evidence-markers.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/coverage-evidence-markers.test.mjs (272.538542ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-fleet.test.mjs:73:1",
+      "finding": "✖ list: renders entries, covering both age formats and effectiveKind (42.554208ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Fleet: 2 tasks/. Input:"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-fleet.test.mjs:122:1",
+      "finding": "✖ prune: evicts a worktree entry whose directory is gone (35.20925ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Evicted 1:/. Input:"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-fleet.test.mjs:143:1",
+      "finding": "✖ prune --dry-run: reports \"Would evict\" but leaves the registry intact (128.767917ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Would evict 1/. Input:"
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs (501.79375ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/plan-approve-collapse.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/plan-approve-collapse.test.mjs (503.688041ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs (1052.228042ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs (1160.971833ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs (1257.202208ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs (457.476417ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs:1:1",
+      "finding": "✖ scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs (756.177792ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs:408:1",
+      "finding": "✖ default plan reader ignores uncommitted working-tree plan changes (0.257125ms)",
+      "sandboxDenied": false,
+      "detail": "  Error: ENOENT: no such file or directory, mkdtemp '<candidate>/.tmp/split-plan-git-test-XXXXXX'"
+    }
+  ]
+}
