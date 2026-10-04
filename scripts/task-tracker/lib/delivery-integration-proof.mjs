@@ -1,4 +1,4 @@
-// @story #1811
+// @story #1811 #1873
 // Prove the integration that GitHub actually recorded. The requested merge
 // method and message are deliberately absent from this interface.
 
@@ -25,8 +25,9 @@ function validateInventory(sourceCommits, acceptedHeadSha) {
       seen.has(commit.oid) ||
       !sha(commit.tree) ||
       !Array.isArray(commit.parents) ||
-      commit.parents.length !== 1 ||
-      !sha(commit.parents[0]) ||
+      (commit.parents.length !== 1 && commit.parents.length !== 2) ||
+      commit.parents.some((parent) => !sha(parent) || parent === commit.oid) ||
+      new Set(commit.parents).size !== commit.parents.length ||
       typeof commit.message !== 'string' ||
       (index > 0 && commit.parents[0] !== sourceCommits[index - 1].oid)
     ) {
@@ -85,7 +86,27 @@ export async function verifyObservedIntegration({
     fail('trunk-reachability');
   }
   const parents = inspection.parents;
-  const sourceBase = sourceCommits[0].parents[0];
+  let sourceBase = sourceCommits[0].parents[0];
+  // A first-parent source history may incorporate delivered base commits.
+  // Every secondary parent must already belong to the actual integration base;
+  // the complete accepted delta still requires the ordinary content proof.
+  const hasSourceMerges = sourceCommits.some((commit) => commit.parents.length === 2);
+  for (const commit of sourceCommits) {
+    if (
+      commit.parents.length === 2 &&
+      (await isAncestor({ ancestor: commit.parents[1], descendant: parents[0] })) !== true
+    ) {
+      fail('source-inventory');
+    }
+    if (commit.parents.length === 2) {
+      const secondary = commit.parents[1];
+      if ((await isAncestor({ ancestor: sourceBase, descendant: secondary })) === true) {
+        sourceBase = secondary;
+      } else if ((await isAncestor({ ancestor: secondary, descendant: sourceBase })) !== true) {
+        fail('source-inventory');
+      }
+    }
+  }
   let method;
   let sourceMapping;
   let contentProof;
@@ -112,7 +133,7 @@ export async function verifyObservedIntegration({
     let inspected = null;
     let replayBase = null;
     let matchedSteps = 0;
-    if (sourceCommits.length > 1) {
+    if (sourceCommits.length > 1 && !hasSourceMerges) {
       const reverseReplay = [mergedCommitSha];
       const reverseInspect = [inspection];
       let validChain = true;

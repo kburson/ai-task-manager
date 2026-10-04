@@ -1,4 +1,4 @@
-// @story #1811
+// @story #1811 #1873
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
@@ -284,4 +284,88 @@ test('diagnosis pins PR and checks before asynchronous proof callbacks', async (
   const diagnosis = await diagnoseDeliverySnapshot(snapshot);
   assert.equal(diagnosis.ok, true);
   assert.equal(diagnosis.proof.method, 'merge');
+});
+
+function mergedBaseFixture() {
+  const first = sha('1');
+  const sourceMerge = sha('2');
+  const integrationBase = sha('3');
+  const input = fixture({
+    sourceCommits: [
+      { oid: first, parents: [base], tree: sha('4'), message: '[#1873] first' },
+      {
+        oid: sourceMerge,
+        parents: [first, integrationBase],
+        tree: sha('5'),
+        message: '[#1873] integrate trunk',
+      },
+      { oid: accepted, parents: [sourceMerge], tree, message: '[#1873] accepted' },
+    ],
+    inspectCommit: async () => ({
+      parents: [integrationBase],
+      tree,
+      commitTitle: 'Squashed',
+      commitMessage: 'Observed',
+    }),
+    isAncestor: async ({ ancestor, descendant }) =>
+      (ancestor === merged && descendant === sha('e')) ||
+      (ancestor === integrationBase && descendant === integrationBase) ||
+      (ancestor === base && descendant === integrationBase),
+    compareContent: async ({ method }) => method === 'squash',
+  });
+  return { input, first, sourceMerge, integrationBase };
+}
+
+test('a source merge from the integrated base retains complete squash content proof', async () => {
+  const { input, first, sourceMerge, integrationBase } = mergedBaseFixture();
+  const proof = await verifyObservedIntegration(input);
+  assert.equal(proof.method, 'squash');
+  assert.deepEqual(proof.sourceMapping, [
+    { source: first, integrated: merged },
+    { source: sourceMerge, integrated: merged },
+    { source: accepted, integrated: merged },
+  ]);
+  assert.deepEqual(proof.contentProof, {
+    kind: 'equivalent-delta',
+    sourceBase: integrationBase,
+    sourceHead: accepted,
+    integrationBase,
+    integrationHead: merged,
+  });
+});
+
+test('a source merge with an unintegrated secondary parent refuses before content proof', async () => {
+  const { input } = mergedBaseFixture();
+  input.sourceCommits[1].parents[1] = sha('9');
+  input.compareContent = async () => {
+    assert.fail('unverified source history reached content proof');
+  };
+  await assert.rejects(() => verifyObservedIntegration(input), {
+    message: 'delivery-integration:source-inventory',
+  });
+});
+
+test('a source merge does not excuse changed integrated content', async () => {
+  const { input } = mergedBaseFixture();
+  input.compareContent = async () => false;
+  await assert.rejects(() => verifyObservedIntegration(input), {
+    message: 'delivery-integration:content-mismatch',
+  });
+});
+
+test('malformed merge parents and gaps in the first-parent inventory refuse', async () => {
+  for (const parents of [
+    [sha('1'), 'invalid'],
+    [sha('1'), sha('1')],
+    [sha('9'), sha('3')],
+  ]) {
+    const { input } = mergedBaseFixture();
+    input.sourceCommits[1].parents = parents;
+    input.compareContent = async () => {
+      assert.fail('invalid inventory reached content proof');
+    };
+    await assert.rejects(() => verifyObservedIntegration(input), {
+      message: 'delivery-integration:source-inventory',
+    });
+  }
 });
