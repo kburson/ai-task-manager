@@ -59,3 +59,5 @@ The in-file spelling directive applies only to verbatim evidence text. It change
 ## Final code review repair evidence
 
 [Complete focused repair receipts](current-runs/final-review-fix.json) retain the four Important findings' actual RED/GREEN runs, the initial invalid child-code fixture run, final19-file/152-test canonical selection and sole unchanged native process-observation failure. [Full reviewer report and all author dispositions](../1861-final-code-review/README.md) keep code review separate from accepted design review and Test/delivery authority. Original4450 findings remain lossless and unchanged.
+
+[Report-link verification correction](current-runs/review-report-links.json) preserves two failed cloud Markdown diagnostics, actual full833-file Markdown success, the documentation-only zero-test TIA selection and all six intentionally malformed retained-output lint findings. Source behavior and original evidence remain unchanged.

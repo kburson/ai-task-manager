@@ -4,7 +4,7 @@
 
 Reviewed head: ec1298af3571ce98b2d82100d22e20f393b2b2eb
 Base: 171c7d93866f67b58effa635be5ae737f54ef9eb
-PR: https://github.com/kburson/ai-task-manager/pull/1871
+PR: [#1871](https://github.com/kburson/ai-task-manager/pull/1871)
 Reviewer: GPT-6.1 Sol, xhigh, fresh context, collaboration final_code_review.
 
 Assessment: Not ready to merge. Four Important defects remain. Exact-head cloud CI passed, but its tests do not cover the identified boundaries. Genuine-host positive admission and governed Test ingestion remain unproved and unwaived.
@@ -19,7 +19,7 @@ I read the required repository/task/reviewer instructions, both #1861 specificat
 
 I inspected the complete changed runtime implementation modules, relevant routing/admission, validator, packaging/guidance and fixture changes, principal contract/crash suites and compatibility/test diffs. Historical documentary evidence was inspected through the focused index and relevant subsets; I do not claim to have reexecuted the historical transcript corpus.
 
-Executed evidence: retained cloud run https://github.com/kburson/ai-task-manager/actions/runs/37172144479 completed successfully at the exact reviewed head. Format/lint passed; all 941 unit, 253 integration and 55 slow files passed; Node 24/26 package compatibility and guidance cache budget passed; guidance publication gate was skipped, with no publication result inferred.
+Executed evidence: retained [cloud run37172144479](https://github.com/kburson/ai-task-manager/actions/runs/37172144479) completed successfully at the exact reviewed head. Format/lint passed; all 941 unit, 253 integration and 55 slow files passed; Node 24/26 package compatibility and guidance cache budget passed; guidance publication gate was skipped, with no publication result inferred.
 
 I verified retained raw-log sizes and hashes against .scratch/gh/1861-final-cloud-log-proof.json:
 

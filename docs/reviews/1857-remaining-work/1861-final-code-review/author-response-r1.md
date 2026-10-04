@@ -45,3 +45,9 @@ Ruling: preserve all14 dispositions and both deferred minors in this durable rec
 ## Status at this response
 
 I1–I4 have actual focused repair evidence. Fresh exact-head full cloud verification is pending; genuine-host positive proof, governed Test ingestion and explicit legacy-v1 compatibility boundaries are unresolved. #1861 stays Develop, unmerged and unclosed. No CODE_COMPLETE, implementation acceptance, delivery or joint operational admission is claimed. No review relaunch or second review seat is requested; this is the single whole-branch review and one TDD fix pass required by executing-plans.
+
+## Verification correction after first repair push
+
+Cloud37175557126 at7beeb4d3 passed full format and JavaScript lint, then failed Markdown lint on two bare report URLs; unit/integration did not run. The earlier local Markdown module invocation returned0 without executing package.bin, so that receipt does not establish Markdown validation. The actual markdownlint-cli2-bin.mjs now validates all833 Markdown files with0 issues after formatting the two URLs as links. No implementation changed.
+
+The full qualified local lint attempt found six intentionally malformed, untracked shebang-late fixtures retained in candidate/output from earlier tests. Preserve those fixtures and the complete failed output; no full local lint GREEN or configuration/discovery exclusion is claimed. Canonical documentation delta selected0 tests without escalation; no automatic empty Node test invocation was made. [Complete focused correction findings](../1861-empty-runtime-evidence/current-runs/review-report-links.json) retain both cloud errors and all local fixture findings. Fresh clean committed-tree cloud verification remains pending.
