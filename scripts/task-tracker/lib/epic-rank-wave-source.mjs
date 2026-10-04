@@ -344,7 +344,7 @@ function wholeAffirmation(text, purpose) {
 function principalObject(text) {
   return text
     .split(
-      /\b(?:until|while|before|after|because|since|so|as|pending|till|unless|if|once|when)\b|,(?!\s*#?\d+\b)|[—:]|\s+and\s+(?=(?:close|push|merge|review|test|check|build)\b)/i
+      /\b(?:until|while|before|after|because|since|so|as(?!\s+many\b)|pending|till|unless|if|once|when)\b|,(?!\s*#?\d+\b)|—|:(?!\s*[#\[\d])|\s+and\s+(?=(?:close|push|merge|review|test|check|build)\b)/i
     )[0]
     .trim();
 }
@@ -355,7 +355,7 @@ function admissionTarget(text) {
     .replace(/^(?:(?:on|with|for|the|this|these|our|my|any)\s+)+/i, '')
     .replace(/^(?:(?:stories|children|members)['’]s?|['’]s)\s+/i, '')
     .replace(
-      /^(?:(?:unit|integration|slow|local|cloud|automated|remaining|additional|focused|full)\s+)+/i,
+      /^(?:(?:running|all|unit|integration|slow|local|cloud|automated|remaining|additional|focused|full)\s+)+/i,
       ''
     )
     .trim();
@@ -380,20 +380,21 @@ function reversalScope(text, scope) {
     (ranks.length && !ranks.includes(scope.rank)) ||
     (members.length && !members.some((member) => scope.members.includes(member)))
   )
-    return { matches: false, admissionSpecific: false };
+    return { matches: false, admissionSpecific: false, specified: true };
   const scoped = epics.length > 0 || ranks.length > 0 || members.length > 0;
   const wave = /\b(?:parallel|concurrent(?:ly)?|wave|stories|children|members|admissions?)\b/i.test(
     text
   );
   return {
     matches: scoped || wave,
+    specified: scoped || wave,
     admissionSpecific: ranks.length > 0 || members.length > 0 || wave,
   };
 }
 function contradictsWaveClause(text, scope, purpose) {
   const verbs = [
     ...text.matchAll(
-      /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|switch(?: to)?|use|keep|go)\s+/gi
+      /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)\s+/gi
     ),
   ];
   for (const [index, match] of verbs.entries()) {
@@ -403,14 +404,18 @@ function contradictsWaveClause(text, scope, purpose) {
       verbs[index + 1]?.index ?? text.length
     );
     const negated =
-      /(?:do not|don['’]?t|n['’]t|never|no longer)\s+(?:(?:actually|really|ever|please)\s+)*$/i.test(
+      /(?:do not|don['’]?t|n['’]t|never|no longer|not|cannot)\s+(?:(?:actually|really|ever|please)\s+)*$/i.test(
         text.slice(0, match.index)
       );
     const target = principalObject(object);
-    const reference = /\b(?:it|this|them)\b/i.test(target);
-    const relevant =
-      reversalScope(target, scope).matches ||
-      (reference && reversalScope(text.slice(0, match.index) + target, scope).matches);
+    const objectScope = reversalScope(target, scope);
+    const prefix = text
+      .slice(0, match.index)
+      .split(/[,.;!?\n]|\b(?:because|since|so|as|pending|till|unless|if|once|when)\b/i)
+      .at(-1);
+    const relevant = objectScope.specified
+      ? objectScope.matches
+      : reversalScope(prefix + ' ' + target, scope).matches;
     if (!relevant || !admissionTarget(object)) continue;
     if (purpose === 'revoke') {
       if (negated && /^(?:revoke|withdraw)$/.test(verb)) return true;

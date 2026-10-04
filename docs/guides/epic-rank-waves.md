@@ -221,5 +221,6 @@ admission, not parallel tests, and comparative or either-or proposals refuse.
 Permission syntax is bounded to the explicit epic/rank/member scope, parallel
 admission, and optional isolation wording. An unrelated operation cannot gain
 authority merely by ending in `in parallel`. Later reversals are checked per
-clause, so neutral or negated CI discussion cannot conceal a separate withdrawal.
+verb with its principal object, subject context and local negation, so neutral
+CI discussion or reasons cannot conceal a separate withdrawal.
 Close/PR approval, timer pauses, and waiting for CI do not withdraw story admission.

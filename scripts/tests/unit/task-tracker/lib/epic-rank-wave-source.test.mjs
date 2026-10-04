@@ -623,3 +623,56 @@ test('ordinary smart punctuation and negation modifiers cannot conceal a withdra
   ])
     assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
 });
+
+test('scope before a withdrawal verb remains authoritative context', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'The parallel stories should stop for now.',
+    'Rank 2 needs to pause until CI is green.',
+    "I'd like the rank 2 wave to hold off for now.",
+    'Rank 2: hold off on that.',
+    'Because epic #108 is red, the parallel stories should pause for now.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+});
+
+test('spelled-out modal negation withdraws admission as contracted negation does', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'Rank 2 should not run in parallel.',
+    'We must not run rank 2 in parallel.',
+    "Let's not run rank 2 in parallel.",
+    'Rank 2 cannot run in parallel.',
+    "I don't want rank 2 running in parallel anymore.",
+    "Don't let rank 2 run in parallel.",
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+});
+
+test('running and quantified testing instructions are neutral activities', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'Stop running tests for rank 2.',
+    'Pause running CI on rank 2.',
+    'Stop all rank 2 tests.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'verified', text);
+});
+
+test('scope field punctuation stays distinct from a withdrawal reason separator', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  assert.equal(
+    (await verify([original, human('Pause rank: 2.')], { order: [0] })).status,
+    'blocked'
+  );
+  assert.equal(
+    (await verify([original, human('Cancel parallel children: [160,161].')], { order: [0] }))
+      .status,
+    'verified'
+  );
+  assert.equal(
+    (await verify([original, human('Stop as many rank 2 stories as possible.')], { order: [0] }))
+      .status,
+    'blocked'
+  );
+});
