@@ -62,6 +62,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # The capture source can become unreachable after squash delivery. Fetch
+      # its exact manifest identity without rewriting archived bytes or hashes.
+      - name: Prepare immutable guidance capture source (#1876)
+        run: |
+          set -euo pipefail
+          source=$(jq -er '.sourceCommit | select(test("^[0-9a-f]{40}$"))' scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json)
+          if ! git cat-file -e "$source^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$source"
+          fi
+          git cat-file -e "$source^{commit}"
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -115,6 +125,16 @@ jobs:
           # epic-child PRs need ancestry beyond the merge ref's direct parents
           # to discover that merge base, so the Fast checkout is unshallow.
           fetch-depth: 0
+      # The capture source can become unreachable after squash delivery. Fetch
+      # its exact manifest identity without rewriting archived bytes or hashes.
+      - name: Prepare immutable guidance capture source (#1876)
+        run: |
+          set -euo pipefail
+          source=$(jq -er '.sourceCommit | select(test("^[0-9a-f]{40}$"))' scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json)
+          if ! git cat-file -e "$source^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$source"
+          fi
+          git cat-file -e "$source^{commit}"
       # The real-git close-gate tests (#733) resolve trunk via a LOCAL
       # `refs/heads/trunk` branch. On a pull_request the checkout is a detached
       # merge ref with no such branch, so those tests fail spuriously (#745).
