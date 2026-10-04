@@ -87,7 +87,7 @@
           "id": "lifecycle-promote",
           "kind": "query",
           "action": "promote",
-          "currentStatus": "blocked",
+          "currentStatus": "ready",
           "authoritySnapshotSha256": "sha256:c5a000df4962579b7a5131018102a651423f05fbd9a55e8af30cf6d81882965f"
         },
         {
@@ -175,7 +175,7 @@
           "authoritySnapshotSha256": "sha256:b439313ed0b2ef6cd74ebed86d6e1865f28f62554bed806b7cd3ad69d4ba881d"
         }
       ],
-      "scenarioDigest": "sha256:5e5826ed161186fca9e75d04e40d70eb4b2b01245f1e9225f5284a783b397639",
+      "scenarioDigest": "sha256:4048fc80e85fc8e7bb3acb91e324c3960d2eadf8a08c03afa5b27b7fa89effae",
       "authorityFixtureDigest": "sha256:41b337c2931f930b535a8ea8e9a354b160645c218779ab910fe590944befb3b7",
       "entries": [
         {
@@ -236,7 +236,7 @@
         {
           "scenarioId": "lifecycle-promote",
           "action": "promote",
-          "outcome": "blocked"
+          "outcome": "ready"
         },
         {
           "scenarioId": "enter-develop",
@@ -306,9 +306,9 @@
         "frozenTranscriptSha256": "sha256:643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48",
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
-        "currentCaptureSha256": "sha256:0554a27f26dad4561176fc12b85086bc1c618a03244ea122fb9c5bbd1ce970a5",
-        "currentSourceCommit": "eae8bf6b1b0ce90d2f863ffb5d240edfcdb776a5",
-        "currentSourceInputsSha256": "sha256:dffdc9283979e46b1d884fbdfa9f2d529ba6396a056052d3d67733aa12017a2e"
+        "currentCaptureSha256": "sha256:1dc8598745acf6528bfdda5589e57578f9e2be9a96b7044aa6404c5c13e8fa50",
+        "currentSourceCommit": "772d75e8a3de5427caec7e9f6b7444a542268769",
+        "currentSourceInputsSha256": "sha256:b15543344684031d1bf657fd859b21b086a1e5d36167a0856a887ddc53482f2b"
       },
       "streams": {
         "legacy": [
@@ -368,9 +368,9 @@
           },
           {
             "event": "lifecycle-promote",
-            "sha256": "sha256:0c6c7c9f8e6d7e6707de323d0508b2da2339260ae737b23f9907ebf5948e80b0",
-            "characters": 69,
-            "bytes": 69
+            "sha256": "sha256:e360a7a69e8cfe4172871eb34250795834cbdd5a49317d9924029cc8c357d7dc",
+            "characters": 81,
+            "bytes": 81
           },
           {
             "event": "lifecycle-test",
@@ -472,9 +472,9 @@
           },
           {
             "event": "lifecycle-promote",
-            "sha256": "sha256:e93ba195c088dd256f24aec7b411d6a72470da84267a2d98528f880589f5150c",
-            "characters": 895,
-            "bytes": 895
+            "sha256": "sha256:e227e8004eb898284fbcefb6b055bdc66a55f510f7b0c438fbb45bb8f111a9bd",
+            "characters": 550,
+            "bytes": 550
           },
           {
             "event": "lifecycle-test",
@@ -603,12 +603,12 @@
             "bytes": 522
           },
           "operational-stdout": {
-            "characters": 358,
-            "bytes": 358
+            "characters": 417,
+            "bytes": 417
           },
           "operational-stderr": {
-            "characters": 131,
-            "bytes": 131
+            "characters": 84,
+            "bytes": 84
           },
           "repeat-metadata": {
             "characters": 141092,
@@ -620,10 +620,10 @@
           }
         },
         "staticCharacters": 70546,
-        "trafficCharacters": 147569,
-        "characters": 218115,
-        "bytes": 219054,
-        "proxyTokens": 54535,
+        "trafficCharacters": 147581,
+        "characters": 218127,
+        "bytes": 219066,
+        "proxyTokens": 54538,
         "uncountedAgentVisibleBytes": 0,
         "fixedBudgets": {
           "routerPlusPickup": {
@@ -685,8 +685,8 @@
             "bytes": 555
           },
           "operational-stdout": {
-            "characters": 6547,
-            "bytes": 6547
+            "characters": 6202,
+            "bytes": 6202
           },
           "operational-stderr": {
             "characters": 0,
@@ -706,10 +706,10 @@
           }
         },
         "staticCharacters": 11830,
-        "trafficCharacters": 10922,
-        "characters": 22752,
-        "bytes": 22764,
-        "proxyTokens": 5689,
+        "trafficCharacters": 10577,
+        "characters": 22407,
+        "bytes": 22419,
+        "proxyTokens": 5603,
         "uncountedAgentVisibleBytes": 0,
         "fixedBudgets": {
           "routerPlusPickup": {
@@ -757,15 +757,15 @@
           "workingHeadroomPercent": 60.25
         },
         "fullLifecycle": {
-          "proxyTokens": 5689,
+          "proxyTokens": 5603,
           "absolute": 7000,
           "working": 6500,
           "absolutePass": true,
           "workingPass": true,
-          "workingHeadroomPercent": 12.48
+          "workingHeadroomPercent": 13.8
         }
       },
-      "deltaProxyTokens": -48846,
+      "deltaProxyTokens": -48935,
       "guaranteedReductionFromLegacyStaticAlone": true
     },
     "codex": {
@@ -853,7 +853,7 @@
           "id": "lifecycle-promote",
           "kind": "query",
           "action": "promote",
-          "currentStatus": "blocked",
+          "currentStatus": "ready",
           "authoritySnapshotSha256": "sha256:c5a000df4962579b7a5131018102a651423f05fbd9a55e8af30cf6d81882965f"
         },
         {
@@ -941,7 +941,7 @@
           "authoritySnapshotSha256": "sha256:b439313ed0b2ef6cd74ebed86d6e1865f28f62554bed806b7cd3ad69d4ba881d"
         }
       ],
-      "scenarioDigest": "sha256:5e5826ed161186fca9e75d04e40d70eb4b2b01245f1e9225f5284a783b397639",
+      "scenarioDigest": "sha256:4048fc80e85fc8e7bb3acb91e324c3960d2eadf8a08c03afa5b27b7fa89effae",
       "authorityFixtureDigest": "sha256:41b337c2931f930b535a8ea8e9a354b160645c218779ab910fe590944befb3b7",
       "entries": [
         {
@@ -1002,7 +1002,7 @@
         {
           "scenarioId": "lifecycle-promote",
           "action": "promote",
-          "outcome": "blocked"
+          "outcome": "ready"
         },
         {
           "scenarioId": "enter-develop",
@@ -1072,9 +1072,9 @@
         "frozenTranscriptSha256": "sha256:5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec",
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
-        "currentCaptureSha256": "sha256:0554a27f26dad4561176fc12b85086bc1c618a03244ea122fb9c5bbd1ce970a5",
-        "currentSourceCommit": "eae8bf6b1b0ce90d2f863ffb5d240edfcdb776a5",
-        "currentSourceInputsSha256": "sha256:dffdc9283979e46b1d884fbdfa9f2d529ba6396a056052d3d67733aa12017a2e"
+        "currentCaptureSha256": "sha256:1dc8598745acf6528bfdda5589e57578f9e2be9a96b7044aa6404c5c13e8fa50",
+        "currentSourceCommit": "772d75e8a3de5427caec7e9f6b7444a542268769",
+        "currentSourceInputsSha256": "sha256:b15543344684031d1bf657fd859b21b086a1e5d36167a0856a887ddc53482f2b"
       },
       "streams": {
         "legacy": [
@@ -1134,9 +1134,9 @@
           },
           {
             "event": "lifecycle-promote",
-            "sha256": "sha256:0c6c7c9f8e6d7e6707de323d0508b2da2339260ae737b23f9907ebf5948e80b0",
-            "characters": 69,
-            "bytes": 69
+            "sha256": "sha256:e360a7a69e8cfe4172871eb34250795834cbdd5a49317d9924029cc8c357d7dc",
+            "characters": 81,
+            "bytes": 81
           },
           {
             "event": "lifecycle-test",
@@ -1238,9 +1238,9 @@
           },
           {
             "event": "lifecycle-promote",
-            "sha256": "sha256:e93ba195c088dd256f24aec7b411d6a72470da84267a2d98528f880589f5150c",
-            "characters": 895,
-            "bytes": 895
+            "sha256": "sha256:e227e8004eb898284fbcefb6b055bdc66a55f510f7b0c438fbb45bb8f111a9bd",
+            "characters": 550,
+            "bytes": 550
           },
           {
             "event": "lifecycle-test",
@@ -1369,12 +1369,12 @@
             "bytes": 522
           },
           "operational-stdout": {
-            "characters": 358,
-            "bytes": 358
+            "characters": 417,
+            "bytes": 417
           },
           "operational-stderr": {
-            "characters": 131,
-            "bytes": 131
+            "characters": 84,
+            "bytes": 84
           },
           "repeat-metadata": {
             "characters": 140406,
@@ -1386,10 +1386,10 @@
           }
         },
         "staticCharacters": 70203,
-        "trafficCharacters": 146883,
-        "characters": 217086,
-        "bytes": 218025,
-        "proxyTokens": 54277,
+        "trafficCharacters": 146895,
+        "characters": 217098,
+        "bytes": 218037,
+        "proxyTokens": 54280,
         "uncountedAgentVisibleBytes": 0,
         "fixedBudgets": {
           "routerPlusPickup": {
@@ -1451,8 +1451,8 @@
             "bytes": 555
           },
           "operational-stdout": {
-            "characters": 6547,
-            "bytes": 6547
+            "characters": 6202,
+            "bytes": 6202
           },
           "operational-stderr": {
             "characters": 0,
@@ -1472,10 +1472,10 @@
           }
         },
         "staticCharacters": 11779,
-        "trafficCharacters": 10922,
-        "characters": 22701,
-        "bytes": 22713,
-        "proxyTokens": 5676,
+        "trafficCharacters": 10577,
+        "characters": 22356,
+        "bytes": 22368,
+        "proxyTokens": 5590,
         "uncountedAgentVisibleBytes": 0,
         "fixedBudgets": {
           "routerPlusPickup": {
@@ -1523,15 +1523,15 @@
           "workingHeadroomPercent": 60.25
         },
         "fullLifecycle": {
-          "proxyTokens": 5676,
+          "proxyTokens": 5590,
           "absolute": 7000,
           "working": 6500,
           "absolutePass": true,
           "workingPass": true,
-          "workingHeadroomPercent": 12.68
+          "workingHeadroomPercent": 14
         }
       },
-      "deltaProxyTokens": -48601,
+      "deltaProxyTokens": -48690,
       "guaranteedReductionFromLegacyStaticAlone": true
     }
   },
@@ -1539,7 +1539,7 @@
     "schema": "aitm.guidance-tokenizer-calibration/v1",
     "source": {
       "captureKind": "actual-public-cli-and-installed-static-with-deterministic-authority",
-      "sha256": "sha256:0554a27f26dad4561176fc12b85086bc1c618a03244ea122fb9c5bbd1ce970a5",
+      "sha256": "sha256:1dc8598745acf6528bfdda5589e57578f9e2be9a96b7044aa6404c5c13e8fa50",
       "sourceCommit": null,
       "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818"
     },
@@ -1585,11 +1585,11 @@
         },
         {
           "id": "full-lifecycle",
-          "characters": 10922,
-          "bytes": 10922,
-          "actualTokens": 3430,
-          "proxyTokens": 2731,
-          "ratio": 1.2559502013914317
+          "characters": 10577,
+          "bytes": 10577,
+          "actualTokens": 3341,
+          "proxyTokens": 2645,
+          "ratio": 1.2631379962192817
         }
       ]
     }
@@ -1654,7 +1654,7 @@
     "currentV2": {
       "captureKind": "protocol-valid-synthetic-v2-presentation",
       "scope": "Serializer sensitivity; this combination is not asserted as an observed evaluator result.",
-      "seedCaptureSha256": "sha256:0554a27f26dad4561176fc12b85086bc1c618a03244ea122fb9c5bbd1ce970a5",
+      "seedCaptureSha256": "sha256:1dc8598745acf6528bfdda5589e57578f9e2be9a96b7044aa6404c5c13e8fa50",
       "inputs": {
         "action": "close",
         "childCount": 4,

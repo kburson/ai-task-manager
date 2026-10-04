@@ -51,7 +51,7 @@
       },
       {
         "path": "scripts/tests/helpers/capture-guidance-release.mjs",
-        "sha256": "sha256:cb6dc24e9f879c86f8f7cd756137767d8f9962a10f9d6e1ee1e85b36eddcc9da"
+        "sha256": "sha256:6384473ef9f6b4db6d5ee0e654e0da8c298ec5276e176908e56d37f152214b9f"
       },
       {
         "path": "scripts/task-tracker/lib/action-decision/close.mjs",
@@ -70,10 +70,10 @@
     "initialFixtureSha256": "sha256:cb430cb85047a5ca5f0b6e7f5789b4197a58c34740cec7672f3c62e111763551",
     "initialBodySha256": "sha256:125c1146e27996bfbef0bbbdce539579d033fd076941715f0df929bc5705daf2",
     "configSha256": "sha256:bcdfe53b1460cce12f4780b851896ed129ea01b867ef5cbdfcac6754477e4d63",
-    "fakeGhSha256": "sha256:b8c907132aa8fdacc4cb1fcbdfecdb25163aa93254062812b1561b226fbb8b2e",
+    "fakeGhSha256": "sha256:dc6c1059292e10cc4f4bea3d6d50b44c5a0f3b5666202b839f595b57759f0d4f",
     "fixedClockSha256": "sha256:fce21e3d55321b7163b369b88ba40e26c93984bda024d7ff5f84dc6e8a87705a",
-    "transcriptSha256": "sha256:772d0d9091bc6eb2406692f8fe1928306360d2b8956f1213b22ce4d07cdd3308",
-    "sourceInputsSha256": "sha256:dffdc9283979e46b1d884fbdfa9f2d529ba6396a056052d3d67733aa12017a2e"
+    "transcriptSha256": "sha256:fc5a5375535d81fac5cf6fb13b8bcedc3070fb9161cf921fc3f3f8188cc77cb9",
+    "sourceInputsSha256": "sha256:b15543344684031d1bf657fd859b21b086a1e5d36167a0856a887ddc53482f2b"
   },
   "events": [
     {
@@ -809,7 +809,7 @@
         "--json"
       ],
       "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"promote\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"refine-exit-wip-budget\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"refine-exit-wip-budget\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
       "stderr": "",
       "exitCode": 0,
       "remoteAuthorityReads": 11,
@@ -924,7 +924,7 @@
       ],
       "typed": {
         "schema": "aitm.action-explanation/v2",
-        "status": "blocked",
+        "status": "ready",
         "actionId": "promote",
         "guidanceStatuses": [
           "expanded"
@@ -2135,15 +2135,15 @@
   "measurement": {
     "proxyRule": "ceil(concatenated agent-visible UTF-16 characters / 4)",
     "traffic": {
-      "characters": 10922,
-      "bytes": 10922,
-      "proxyUnits": 2730.5,
-      "proxyTokens": 2731,
+      "characters": 10577,
+      "bytes": 10577,
+      "proxyUnits": 2644.25,
+      "proxyTokens": 2645,
       "categories": {
         "query": {
-          "characters": 8181,
-          "bytes": 8181,
-          "proxyUnits": 2045.25
+          "characters": 7836,
+          "bytes": 7836,
+          "proxyUnits": 1959
         },
         "diagnostic": {
           "characters": 2554,
@@ -2247,8 +2247,8 @@
       }
     },
     "modeledProposedTotals": {
-      "claude": 5689,
-      "codex": 5676
+      "claude": 5603,
+      "codex": 5590
     },
     "budgets": {
       "routerPlusPickupWorking": 4000,
