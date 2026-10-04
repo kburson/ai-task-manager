@@ -717,3 +717,25 @@ test('withdrawal pronouns and empty objects retain the nearest scoped subject', 
   ])
     assert.equal((await verify([original, human(text)], { order: [0] })).status, 'verified', text);
 });
+
+test('a verb-shaped noun cannot cut the scope off its preceding withdrawal', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'Withdraw the "go" for rank 2.',
+    'Cancel the `run` for rank 2.',
+    'Pause the run/build for rank 2.',
+    'Cancel the start of rank 2.',
+    'Withdraw the go ahead for rank 2.',
+    'Rank 2 needs the pause.',
+    'The run should be sequential for rank 2.',
+    'Cancel rank 2 and the "run" for epic #108 rank 3.',
+    'Stop rank 2 and the "run" for children [160,161].',
+    'Withdraw my "go" for rank 2.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+  assert.equal(
+    (await verify([original, human('Cancel the start of epic #108 rank 2.')], { order: [0] }))
+      .status,
+    'verified'
+  );
+});

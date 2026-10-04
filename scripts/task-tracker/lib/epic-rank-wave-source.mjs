@@ -409,10 +409,22 @@ function contradictsWaveClause(text, scope, purpose, precedingClauses = '') {
   ];
   for (const [index, match] of verbs.entries()) {
     const verb = match[1].toLowerCase();
-    const object = text.slice(
-      match.index + match[1].length,
-      verbs[index + 1]?.index ?? text.length
-    );
+    // A command-shaped noun belongs to the current object. Keep evaluating
+    // its own occurrence, but do not truncate an earlier withdrawal's scope.
+    const nextCommand = verbs
+      .slice(index + 1)
+      .find(
+        (next) =>
+          /^(?:revoke|withdraw|cancel|stop|hold off|wait on|pause)$/i.test(next[1]) ||
+          reversalScope(
+            principalObject(text.slice(match.index + match[1].length, next.index)),
+            scope
+          ).specified ||
+          !/\b(?:the|a|an|this|that|its|my|our|your|their)\s+["“‘`(]*\s*$/i.test(
+            text.slice(0, next.index)
+          )
+      );
+    const object = text.slice(match.index + match[1].length, nextCommand?.index ?? text.length);
     const negated =
       /(?:do not|don['’]?t|n['’]t|never|no longer|not|cannot)\s+(?:(?:actually|really|ever|please)\s+)*$/i.test(
         text.slice(0, match.index)
