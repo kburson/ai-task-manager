@@ -59,6 +59,7 @@ import {
 } from './run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
+import { planShards } from './ci/test-shards.mjs';
 import { evaluateSections, formatSectionSummary } from './run-tests-ceiling.mjs';
 import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';
 import {
@@ -80,6 +81,7 @@ const repoRoot = path.resolve(__dir, '..');
 // ---- arg parsing ---------------------------------------------------------
 const VALID_LANES = new Set(RUN_LANES);
 let lane = 'fast';
+let shard = null;
 // #861 — opt-in slow-test report. The per-file timing dataset and JSON artifact
 // are ALWAYS produced; this flag (or AITM_TEST_TIMING=1) only controls whether
 // the human-readable top-N/Pareto/slow-bucket report is printed at the end.
@@ -90,6 +92,20 @@ for (let i = 2; i < process.argv.length; i++) {
     lane = process.argv[++i];
   } else if (a.startsWith('--lane=')) {
     lane = a.slice('--lane='.length);
+  } else if (a === '--shard' || a.startsWith('--shard=')) {
+    const value = a === '--shard' ? process.argv[++i] : a.slice('--shard='.length);
+    const match = /^(\d+)\/(\d+)$/.exec(value || '');
+    if (
+      shard ||
+      !match ||
+      Number(match[1]) < 1 ||
+      Number(match[1]) > Number(match[2]) ||
+      Number(match[2]) > 32
+    ) {
+      console.error('run-tests: --shard must be index/count (1 <= index <= count <= 32)');
+      process.exit(2);
+    }
+    shard = { index: Number(match[1]), total: Number(match[2]) };
   } else if (a === '--timing-report') {
     timingReport = true;
   } else {
@@ -116,7 +132,9 @@ if (missing.length || extra.length) {
 }
 
 // Canonical selection: repo-relative paths → { label, full } run entries.
-const files = laneFiles(lane).map((rel) => ({ label: rel, full: path.join(repoRoot, rel) }));
+const inventory = laneFiles(lane);
+const selected = shard ? planShards(inventory, shard.total)[shard.index - 1] : inventory;
+const files = selected.map((rel) => ({ label: rel, full: path.join(repoRoot, rel) }));
 
 console.log(`▶ lane=${lane} (${files.length} files)\n`);
 
@@ -312,6 +330,7 @@ function writeTimingArtifact() {
       slowPoolElapsedMs: slowParallelElapsedMs,
       serialElapsedMs,
     });
+    if (shard) artifact.shard = shard;
     mkdirSync(path.dirname(TIMING_ARTIFACT_PATH), { recursive: true });
     writeFileSync(TIMING_ARTIFACT_PATH, `${JSON.stringify(artifact, null, 2)}\n`);
   } catch (err) {
