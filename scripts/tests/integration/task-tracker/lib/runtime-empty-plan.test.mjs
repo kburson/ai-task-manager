@@ -121,6 +121,7 @@ test('fresh and genuinely activated then totally erased fixture use the same abs
   });
   await activateRuntimeRootFixture(root);
   const old = snapshotTree(path.join(root, '.ai-task-manager/runtime'));
+  mkdirSync(path.join(process.cwd(), 'output'), { recursive: true });
   writeFileSync(
     path.join(process.cwd(), 'output', path.basename(root) + '-prior-proof.json'),
     JSON.stringify(old)
