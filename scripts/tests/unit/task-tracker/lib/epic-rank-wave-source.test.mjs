@@ -585,6 +585,7 @@ test('natural admission articles, isolation order and explicit approval remain u
     'Run the epic #107 rank 2 children [140,144,145] in parallel.',
     'Run epic #107 rank 2 children [140,144,145] in parallel in isolated worktrees.',
     'Approve parallel admission for epic #107 rank 2 children [140,144,145].',
+    'Run all rank 2 children [140,144,145] of epic #107 in parallel.',
   ])
     assert.equal((await verify([human(text)])).status, 'verified', text);
 });
@@ -678,7 +679,7 @@ test('scope field punctuation stays distinct from a withdrawal reason separator'
 });
 
 test('sentence-final withdrawal and negated verbs revoke native permission', async () => {
-  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  const original = human('Run all rank 2 children [140,144,145] of epic #107 in parallel.');
   for (const text of [
     'The parallel stories should stop.',
     'Rank 2 needs to pause.',
@@ -696,7 +697,7 @@ test('sentence-final withdrawal and negated verbs revoke native permission', asy
 });
 
 test('withdrawal pronouns and empty objects retain the nearest scoped subject', async () => {
-  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  const original = human('Run all rank 2 children [140,144,145] of epic #107 in parallel.');
   for (const text of [
     'Epic #107 rank 2 is broken so stop it.',
     'CI on rank 2 keeps failing, so hold off on it.',
@@ -719,7 +720,7 @@ test('withdrawal pronouns and empty objects retain the nearest scoped subject', 
 });
 
 test('a verb-shaped noun cannot cut the scope off its preceding withdrawal', async () => {
-  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  const original = human('Run all rank 2 children [140,144,145] of epic #107 in parallel.');
   for (const text of [
     'Withdraw the "go" for rank 2.',
     'Cancel the `run` for rank 2.',
@@ -734,6 +735,10 @@ test('a verb-shaped noun cannot cut the scope off its preceding withdrawal', asy
     'Withdraw "go" for rank 2.',
     'Cancel `run` for rank 2.',
     'Pause run/build for rank 2.',
+    'Cancel rank 3 and the "run" for rank 2.',
+    'Cancel rank 3 and "run" for rank 2.',
+    'Cancel rank 3 and `run` for rank 2.',
+    'Cancel rank 3 and the run/build for rank 2.',
   ])
     assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
   assert.equal(

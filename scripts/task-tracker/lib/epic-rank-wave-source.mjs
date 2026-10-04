@@ -309,7 +309,7 @@ function withoutScopeTokens(text) {
 function parallelAdmissionObject(text) {
   // Only scope tokens and an explicit admission/isolation phrase are allowed.
   // No wildcard or operation-name denylist can reinterpret CI/tests/merges.
-  return /^(?:the )?(?:(?:parallel|concurrent(?:ly)?|rank[- ]wave)(?: (?:stories|children|members|wave|admissions?|execution))?(?: for)?(?: in parallel)?(?: in isolated worktrees)?|in parallel(?: in isolated worktrees)?)[.!?]?$/i.test(
+  return /^(?:the )?(?:(?:parallel|concurrent(?:ly)?|rank[- ]wave)(?: (?:stories|children|members|wave|admissions?|execution))?(?: for)?(?: in parallel)?(?: in isolated worktrees)?|(?:all(?: of)? )?in parallel(?: in isolated worktrees)?)[.!?]?$/i.test(
     withoutScopeTokens(text)
   );
 }
@@ -419,7 +419,7 @@ function contradictsWaveClause(text, scope, purpose, precedingClauses = '') {
           reversalScope(
             principalObject(text.slice(match.index + match[1].length, next.index)),
             scope
-          ).specified ||
+          ).matches ||
           (!/(?:\b(?:the|a|an|this|that|its|my|our|your|their)\s+["“‘`(]*\s*|["“‘`(]\s*)$/i.test(
             text.slice(0, next.index)
           ) &&
