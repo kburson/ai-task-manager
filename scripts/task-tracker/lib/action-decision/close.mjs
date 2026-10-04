@@ -46,6 +46,61 @@ import {
   partitionChildrenByDeliveryRequirement,
 } from '../epic-derived-commit-trail.mjs';
 
+// #1878: prove exact or disjoint tree deltas without a virtual merge or writes.
+async function compareReadOnlyDeliveryContent(input, output) {
+  const { method, sourceBase, sourceHead, integrationBase, integrationHead } = input;
+  const identities = [sourceBase, sourceHead, integrationBase, integrationHead];
+  if (
+    !identities.every((value) => typeof value === 'string' && /^[0-9a-f]{40}$/.test(value)) ||
+    !['merge', 'squash', 'rebase-step', 'rebase-total'].includes(method)
+  )
+    throw new TypeError('close-readiness:content-proof-input');
+  if (method !== 'rebase-step') {
+    try {
+      await output('git', ['merge-base', '--is-ancestor', sourceBase, integrationBase]);
+    } catch (error) {
+      if (Number(error.code) === 1) return false;
+      throw error;
+    }
+  }
+  const trees = [];
+  for (const commit of identities) {
+    await output('git', ['cat-file', '-e', commit + '^{commit}']);
+    const raw = await output('git', ['ls-tree', '-r', '-z', commit]);
+    if (typeof raw !== 'string' || (raw && !raw.endsWith('\0')))
+      throw new TypeError('close-readiness:content-tree-unavailable');
+    const entries = new Map();
+    for (const record of raw ? raw.slice(0, -1).split('\0') : []) {
+      const match = /^(100644|100755|120000|160000) (blob|commit) ([0-9a-f]{40})\t([\s\S]+)$/.exec(
+        record
+      );
+      if (
+        !match ||
+        match[4].includes('\uFFFD') ||
+        entries.has(match[4]) ||
+        (match[1] === '160000') !== (match[2] === 'commit')
+      )
+        throw new TypeError('close-readiness:content-tree-unavailable');
+      entries.set(match[4], match.slice(1, 4).join(' '));
+    }
+    trees.push(entries);
+  }
+  const [base, source, integratedBase, integratedHead] = trees;
+  const expected = new Map(integratedBase);
+  for (const name of new Set([...base.keys(), ...source.keys()])) {
+    if (base.get(name) === source.get(name)) continue;
+    const current = integratedBase.get(name);
+    if (current !== base.get(name) && current !== source.get(name))
+      throw new TypeError('close-readiness:content-proof-unavailable');
+    if (source.has(name)) expected.set(name, source.get(name));
+    else expected.delete(name);
+  }
+  return (
+    expected.size === integratedHead.size &&
+    [...expected].every(([name, identity]) => integratedHead.get(name) === identity)
+  );
+}
+
 /** Read-only readers share no state across command boundaries. */
 export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) {
   const transport = deps.run ?? pexec;
@@ -58,6 +113,7 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
         'branch',
         'ls-remote',
         'cat-file',
+        'ls-tree',
         'rev-list',
         'log',
         'show',
@@ -351,6 +407,12 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
           context.lifecycleEvidence?.expectedSha,
         acceptedReviewSha: gateInput.acceptedSha,
         deps: {
+          compareDeliveryContent: (input) => compareReadOnlyDeliveryContent(input, output),
+          resolveTrunkHeadSha: async ({ branch }) => {
+            if (branch !== gateInput.lineage.deliveryTarget)
+              throw new TypeError('close-readiness:unobserved-target');
+            return tip;
+          },
           // Completeness was already established against this exact tip. Never fetch.
           fetchOriginTrunk: async ({ remote, branch }) => {
             if (

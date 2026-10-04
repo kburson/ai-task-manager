@@ -38,3 +38,8 @@ scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json
 scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json
 scripts/tests/fixtures/1857/1866-current/lifecycle-transcript-final.json
 .ai-task-manager/runtime/test-fixtures/
+
+# Preserved prior guidance capture retains its original checksummed bytes.
+docs/reviews/1878-close-recovery/previous-guidance-capture/actual-explain-traffic-final.json
+docs/reviews/1878-close-recovery/previous-guidance-capture/final-capture-manifest.json
+docs/reviews/1878-close-recovery/previous-guidance-capture/lifecycle-transcript-final.json

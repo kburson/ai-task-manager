@@ -2407,6 +2407,9 @@ export async function verbClose(ctx) {
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
   let resolvedReviewAuthorization = null;
   let resolvedDeliveryGate = null;
+  // #1878: only the validated convergence decision sets this authority. All
+  // later refreshes, including estimation, must retain that durable provenance.
+  let resumeDeliveredCloseTransaction = null;
   let closeLifecycleEvidenceLoaded = false;
   let cachedCloseLifecycleEvidence = null;
   const loadCloseLifecycleEvidence = async (body) => {
@@ -2437,7 +2440,10 @@ export async function verbClose(ctx) {
 
   // #939 — resolve the receipt gate lazily after non-terminal convergence
   // inspection, but before any path performs a new terminal mutation.
-  const ensureDeliveryAuthorized = async ({ durableTransaction = null, refresh = false } = {}) => {
+  const ensureDeliveryAuthorized = async ({
+    durableTransaction = resumeDeliveredCloseTransaction,
+    refresh = false,
+  } = {}) => {
     if (SKIP_NETWORK || !closeIssueNum) return resolvedDeliveryGate;
     if (resolvedDeliveryGate && !refresh) return resolvedDeliveryGate;
     const previousGate = resolvedDeliveryGate;
@@ -2752,7 +2758,6 @@ export async function verbClose(ctx) {
   // #425 / #925 — converge the independent GitHub issue and project-board
   // signals. The additive close snapshot lets a CLOSED + not-Done issue be
   // classified as delivered, dead, or unauthorized before any mutation.
-  let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
   let resumeClosedIssue = false;
   let reopenedCloseRecoveryRecord = null;
