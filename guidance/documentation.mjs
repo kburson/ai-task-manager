@@ -3,7 +3,12 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-const SHIPPED_ROOT_FILES = new Set(['docs/README.md', 'docs/QUICKSTART.md', 'docs/DESIGN.md']);
+const SHIPPED_ROOT_FILES = new Set([
+  'README.md',
+  'docs/README.md',
+  'docs/QUICKSTART.md',
+  'docs/DESIGN.md',
+]);
 
 function isShippedDocument(relativePath) {
   return (

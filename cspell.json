@@ -1,7 +1,7 @@
 {
   "version": "0.2",
   "language": "en",
-  "ignoreRegExpList": ["01M3SS09DEQCABP49A5D1B7EDV"],
+  "ignoreRegExpList": ["01M3SS09DEQCABP49A5D1B7EDV", "01M3ZCCKBVEY3HYS94J584FKX4"],
   "useGitignore": false,
   "dictionaryDefinitions": [
     {
@@ -43,6 +43,7 @@
     "cspell-dictionary.txt",
     "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/**",
     "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/**",
-    ".ai-task-manager/runtime/test-fixtures/**"
+    ".ai-task-manager/runtime/test-fixtures/**",
+    "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-task2-local-tia-findings.json"
   ]
 }

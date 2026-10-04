@@ -153,6 +153,23 @@ export function resolveArtifactShell(command, invocationDir, projectRoot) {
       resolveMutationTarget(target.replace(/^(?:\.\/)+/, ''), invocationDir, projectRoot)
     );
     const policies = resolved.map((target) => artifactPathPolicy(target.relative));
+    if (
+      targets.some(
+        (target, index) =>
+          artifactPathPolicy(
+            path
+              .relative(projectRoot, path.resolve(invocationDir, target))
+              .split(path.sep)
+              .join('/')
+          ) === 'allow' && policies[index] !== 'allow'
+      )
+    )
+      return {
+        status: 'block',
+        targets,
+        reason: 'Artifact target resolves outside its permitted physical scope.',
+      };
+
     if (policies.includes('block'))
       return {
         status: 'block',

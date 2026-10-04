@@ -4,7 +4,7 @@
 
 AI Task Manager lets Claude Code, Codex, and Grok share the same GitHub issue/project workflow. It binds every AI session to a GitHub issue, tracks time and context automatically, orchestrates full project backlogs from a spec, and generates stakeholder-ready ROI reports.
 
-> **Your AI is drowning in context it never reads.** We cut cold-start skill load by 75% with a just-in-time loader — capability stayed flat, the tax disappeared. → [How we killed context bloat with JIT Skill Loading](docs/jit-loader-results.md)
+> **Your AI is drowning in context it never reads.** We cut cold-start skill load by 75% with a just-in-time loader — capability stayed flat, the tax disappeared. → [How we killed context bloat with JIT Skill Loading](https://github.com/kburson/ai-task-manager/blob/trunk/docs/jit-loader-results.md)
 
 <br>
 
@@ -152,7 +152,7 @@ shelve <reason>`; `/task park` remains a compatibility alias for `shelve`.
 
 **Marker-trail contiguity** means every prior canonical stage must already carry an `aitm-entered-<stage>` HTML-comment marker on the issue body — the guard names the exact missing stage and refuses the move if one is gone (`contiguity-hole`); backward moves skip this check entirely. **Deep-dive placement/completeness** and **dependency map** are body-shape checks: the Deep-Dive Analysis section must sit between the Pickup Directive and the fields-block marker and clear a size-bucketed character floor once marked complete; the Dependency Map section must exist with real content once its checkbox is ticked. Source: [`scripts/task-tracker/lib/contiguity-entry-guard.mjs`](scripts/task-tracker/lib/contiguity-entry-guard.mjs), [`stage-entry-markers.mjs`](scripts/task-tracker/lib/stage-entry-markers.mjs), [`body-gates.mjs`](scripts/task-tracker/lib/body-gates.mjs).
 
-The bold cell is the human gate on by default: **Plan → Develop** (don't let an agent start writing code before a human accepts the plan). Review → Done is likewise a human gate (`approve` + close gates, see below). Everything else is machine-checked. Full guard source: [`scripts/task-tracker/states/`](scripts/task-tracker/states/), architecture writeup at [`docs/architecture/state-machine.md`](docs/architecture/state-machine.md).
+The bold cell is the human gate on by default: **Plan → Develop** (don't let an agent start writing code before a human accepts the plan). Review → Done is likewise a human gate (`approve` + close gates, see below). Everything else is machine-checked. Full guard source: [`scripts/task-tracker/states/`](scripts/task-tracker/states/), architecture writeup at [`docs/architecture/state-machine.md`](https://github.com/kburson/ai-task-manager/blob/trunk/docs/architecture/state-machine.md).
 
 **Every cell in the table above is a real, per-state check, not a generic mover step.** Each guard is declared inside that state's own module (`scripts/task-tracker/states/<state>.mjs` exports its `entryGuards`/`exitGuards` arrays) and registered into a state-keyed registry (`guard-registry.mjs`) at boot. On every transition attempt, `runGuards(fromState, toState, ctx)` runs the _source_ state's exit guards then the _target_ state's entry guards — nothing state-specific is hardcoded into the mover; the mover just asks the registry "what does `develop` require to leave, what does `test` require to enter" and runs exactly those. Every transition path calls this — `move-state.mjs`, `promote.mjs`, `close.mjs`, and `review.mjs` — there is no move that skips it.
 
@@ -195,7 +195,7 @@ The installer writes stable skill stubs by default:
 - Grok hooks: `.grok/hooks/aitm.json`
 - Shared templates and runtime state: `.ai-task-manager/`
 
-Grok projects must be trusted before project hooks run. See the [Grok provider guide](docs/guides/grok-provider.md) for hook trust, session identity, and transcript behavior.
+Grok projects must be trusted before project hooks run. See the [Grok provider guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/grok-provider.md) for hook trust, session identity, and transcript behavior.
 
 ## Uninstall From a Project
 
@@ -393,7 +393,7 @@ Every issue in the spec should include a `**Rank:** N` field. Sub-issues sharing
 
 During epic pickup, the agent validates these values against actual code dependencies and posts a confirmed dependency map before fanning out. Once an epic is in progress, all parallel work happens within that epic's sub-issues — no cross-epic fan-out until the active epic closes.
 
-Full wave-admission mechanics, discovered-sub-issue handling, and same-wave-newcomer semantics: [docs/guides/workflow.md § Rank-as-wave-id](docs/guides/workflow.md#rank-as-wave-id).
+Full wave-admission mechanics, discovered-sub-issue handling, and same-wave-newcomer semantics: [docs/guides/workflow.md § Rank-as-wave-id](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/workflow.md#rank-as-wave-id).
 
 ### Conversational Backlog Management
 
@@ -602,7 +602,7 @@ The report answers: **what did it actually cost to ship this, versus what would 
 
 This makes AI productivity legible to stakeholders. Not "we used AI" — but "we delivered 82 estimated hours in 11 engaged hours at `$800` instead of `$14,000`."
 
-Run `npx github-project-report --help` for the full flag reference (date/issue filters, region and role overrides, output path, report title, and more). Full ROI methodology: [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md).
+Run `npx github-project-report --help` for the full flag reference (date/issue filters, region and role overrides, output path, report title, and more). Full ROI methodology: [docs/guides/ai-value-framework.md](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/ai-value-framework.md).
 
 ---
 
@@ -638,7 +638,7 @@ Or set individual values:
 | `pickupDirective`      | `true`  | Inject Pickup Directive block into new issues               |
 | `hookNetworkTimeoutMs` | `2000`  | GitHub API timeout from hooks                               |
 
-Internal, `init`-managed settings (board/field IDs) are not meant for manual editing — full list in [docs/DESIGN.md](docs/DESIGN.md).
+Internal, `init`-managed settings (board/field IDs) are not meant for manual editing — full list in [docs/DESIGN.md](https://github.com/kburson/ai-task-manager/blob/trunk/docs/DESIGN.md).
 
 ---
 
@@ -735,15 +735,15 @@ All scripts read board/field IDs from `.ai-task-manager/task-tracker.json`. No m
 
 ## Design and References
 
-| Document                                                                                                | Contents                                                                                                                                                   |
-| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [docs/README.md](docs/README.md)                                                                        | Documentation table of contents and archive map                                                                                                            |
-| [Introduction guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/README.md) | Current onboarding guide and quickstart path (hosted on the project, not shipped in the package)                                                           |
-| [docs/DESIGN.md](docs/DESIGN.md)                                                                        | Full design spec — data model, state file format, timing comment structure, hook behavior                                                                  |
-| [docs/architecture/state-machine.md](docs/architecture/state-machine.md)                                | The state-object model behind [How Work Moves Through the Board](#how-work-moves-through-the-board) — guard/action containers, registry, migration roadmap |
-| [docs/guides/workflow.md](docs/guides/workflow.md)                                                      | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules                                                                                        |
-| [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md)                                  | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated                                                                          |
-| [docs/guides/settings-guide.md](docs/guides/settings-guide.md)                                          | Recommended Claude Code settings for this tool                                                                                                             |
+| Document                                                                                                                       | Contents                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [docs/README.md](https://github.com/kburson/ai-task-manager/blob/trunk/docs/README.md)                                         | Documentation table of contents and archive map                                                                                                            |
+| [Introduction guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/README.md)                        | Current onboarding guide and quickstart path (hosted on the project, not shipped in the package)                                                           |
+| [docs/DESIGN.md](https://github.com/kburson/ai-task-manager/blob/trunk/docs/DESIGN.md)                                         | Full design spec — data model, state file format, timing comment structure, hook behavior                                                                  |
+| [docs/architecture/state-machine.md](https://github.com/kburson/ai-task-manager/blob/trunk/docs/architecture/state-machine.md) | The state-object model behind [How Work Moves Through the Board](#how-work-moves-through-the-board) — guard/action containers, registry, migration roadmap |
+| [docs/guides/workflow.md](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/workflow.md)                       | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules                                                                                        |
+| [docs/guides/ai-value-framework.md](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/ai-value-framework.md)   | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated                                                                          |
+| [docs/guides/settings-guide.md](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/settings-guide.md)           | Recommended Claude Code settings for this tool                                                                                                             |
 
 ---
 

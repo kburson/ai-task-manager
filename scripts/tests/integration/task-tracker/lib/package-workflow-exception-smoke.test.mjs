@@ -14,8 +14,6 @@ const ROOT = join(HERE, '..', '..', '..', '..', '..');
 
 const REQUIRED_FILES = Object.freeze([
   'bin/aitm.mjs',
-  'docs/guides/workflow.md',
-  'docs/superpowers/specs/delivered/2026-09-14-1624-workflow-exceptions-design.md',
   'hooks/commit-trail.sh',
   'hooks/task-tracker.sh',
   'scripts/task-tracker/lib/evidence-v2/runtime-capabilities.mjs',
@@ -196,8 +194,8 @@ console.log(JSON.stringify({
     }
 
     assert.match(
-      readFileSync(join(installedRoot, 'docs', 'guides', 'workflow.md'), 'utf8'),
-      /Only a current, issue-scoped/
+      readFileSync(join(installedRoot, 'README.md'), 'utf8'),
+      /https:\/\/github\.com\/kburson\/ai-task-manager\/blob\/trunk\/docs\/guides\/workflow\.md/
     );
     assert.match(
       readFileSync(join(installedRoot, 'skill', 'shared', 'rules', 'full-auto.md'), 'utf8'),

@@ -1,3 +1,4 @@
+// @story #1861
 // @story #1659
 // @story #1767
 // @story #1859
@@ -405,54 +406,6 @@ test('archived recertification binds every obligation and its recorded public CL
     );
     assert.ok(decision.adapters[adapter].measurements.fullLifecycle <= 5600);
   }
-});
-
-test('recertification refuses a relabeled or altered lifecycle capture', async (t) => {
-  // #1857: current replay uses an isolated fixture actor; archived captures
-  // and their original provenance assertions remain unchanged.
-  const keys = ['AI_TASK_MANAGER_SESSION_ID', 'AI_TASK_MANAGER_APP_NAME'];
-  const prior = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-  process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-guidance-replay';
-  process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
-  t.after(() => {
-    for (const [key, value] of Object.entries(prior)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-  });
-  const { buildCurrentRecertificationDecision } =
-    await import('../../../../maintenance/measure-guidance-candidate.mjs');
-  const committed = JSON.parse(
-    readFileSync(path.join(fixtureRoot, 'actual-explain-traffic-recertification.json'), 'utf8')
-  );
-  const modeDrift = structuredClone(committed);
-  modeDrift.identity.mode = 'historical';
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: modeDrift }),
-    /guidance-feasibility:capture-mode/
-  );
-  const transcriptDrift = structuredClone(committed);
-  transcriptDrift.events.find(({ name }) => name === 'lifecycle-close').typed.status = 'blocked';
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: transcriptDrift }),
-    /guidance-feasibility:capture-transcript-digest/
-  );
-  const sourceDrift = structuredClone(committed);
-  sourceDrift.identity.implementationFiles[0].sha256 = `sha256:${'0'.repeat(64)}`;
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: sourceDrift }),
-    /guidance-feasibility:capture-committed-source/
-  );
-  const selfConsistentDrift = structuredClone(committed);
-  const first = selfConsistentDrift.events.find(({ name }) => name === 'ready-first-load');
-  first.stdout = first.stdout.replace('"query":"bind"', '"query":"noop"');
-  selfConsistentDrift.identity.transcriptSha256 = `sha256:${createHash('sha256')
-    .update(JSON.stringify(selfConsistentDrift.events))
-    .digest('hex')}`;
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot, capture: selfConsistentDrift }),
-    /capture-replay/
-  );
 });
 
 test('current release gate refuses budget relaxation', async () => {

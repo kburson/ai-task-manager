@@ -1,0 +1,58 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-findings/v1",
+  "issue": 1861,
+  "runId": "06-compatibility-red",
+  "category": "other-failures",
+  "positions": [0, 1, 2, 3, 4, 5, 6, 7],
+  "findings": [
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:21:1",
+      "finding": "✖ empty main and linked activation support real ordinary batches with exact control identities (2338.069167ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:34:1",
+      "finding": "✖ completed empty retry refuses an unfinished ordinary batch without rewriting any member (1787.216917ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /held batch/. Input:"
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:40:1",
+      "finding": "✖ completed empty retry preserves ordinary writes and separately initialized new linked roots (737.755417ms)",
+      "sandboxDenied": false,
+      "detail": ""
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3",
+      "finding": "✖ empty planning refuses unknown despite complete with typed blockers and no writes (90.380291ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: Missing expected rejection."
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3",
+      "finding": "✖ empty planning refuses missing unknown census with typed blockers and no writes (92.282833ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: Missing expected rejection."
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3",
+      "finding": "✖ empty planning refuses partial self claim with typed blockers and no writes (90.796041ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: Missing expected rejection."
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3",
+      "finding": "✖ empty planning refuses foreign host writer with typed blockers and no writes (111.037833ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: Missing expected rejection."
+    },
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3",
+      "finding": "✖ empty planning refuses unknown writer shape with typed blockers and no writes (95.833459ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false"
+    }
+  ]
+}

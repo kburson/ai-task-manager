@@ -1,3 +1,10 @@
+import { validEmptyRuntimeControl, emptyRuntimeDigest } from './runtime-empty-record.mjs';
+import {
+  assertRuntimeEmptyAdmission,
+  readRuntimeMainActivation,
+  inspectLinkedInitializationRecoveries,
+} from './runtime-activation-admission.mjs';
+import { assertRuntimeBatchAdmission } from './runtime-batch-admission.mjs';
 // @story #1857
 // cspell:words commondir backlink
 // Root discovery deliberately has no dependency on runtime state or bindings.
@@ -5,6 +12,11 @@ import { existsSync, readFileSync, realpathSync, statSync, lstatSync } from 'nod
 import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { execFileSync } from 'node:child_process';
+import { classifyRuntimeRecord } from './runtime-record-catalog.mjs';
+import {
+  runtimeInitializationId,
+  validRuntimeInitializationJournal,
+} from './runtime-initialization-record.mjs';
 
 export const PROJECT_ROOT_ALIASES = Object.freeze([
   'AI_TASK_MANAGER_PROJECT_DIR',
@@ -281,7 +293,7 @@ function readRequiredJson(file, base, code) {
   assertStoragePath(file, base, code);
   try {
     if (!lstatSync(file).isFile()) fail(code, 'Runtime record is not a regular file: ' + file);
-    return JSON.parse(readFileSync(file, 'utf8'));
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file)));
   } catch (error) {
     if (error instanceof RuntimeRootError) throw error;
     fail(code, 'Missing or corrupt runtime record: ' + file);
@@ -306,15 +318,117 @@ function readControl(file, root, mainRoot, base) {
   return control;
 }
 
+export function readRuntimeActivationRoot(roots) {
+  const invoking = runtimeStoragePaths(roots);
+  const main = runtimeStoragePaths({ projectRoot: invoking.mainRoot, mainRoot: invoking.mainRoot });
+  return readRuntimeMainActivation(main, {
+    assertPath: assertStoragePath,
+    fail,
+    readV1Control: readControl,
+    physicalIdentity: (root) => {
+      const resolved = resolveRuntimeRoot({ cwd: root, env: {} });
+      return {
+        projectRoot: resolved.projectRoot,
+        gitDir: resolved.worktreeIdentity.gitDir,
+        commonDir: resolved.worktreeIdentity.commonDir,
+      };
+    },
+    assertRecords: assertRuntimeStoreRecords,
+    assertBatch: (layout) =>
+      assertRuntimeBatchAdmission(layout, { assertPath: assertStoragePath, fail }),
+  });
+}
+
 export function assertRuntimeReadable(roots) {
   const layout = runtimeStoragePaths(roots);
+  assertRuntimeEmptyAdmission(layout, { assertPath: assertStoragePath, fail });
+  assertRuntimeBatchAdmission(layout, { assertPath: assertStoragePath, fail });
   assertStoragePath(layout.controlPath, layout.localRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
   assertStoragePath(layout.sharedControlPath, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
   if (!existsSync(layout.controlPath)) {
+    if (layout.projectRoot !== layout.mainRoot) {
+      const main = readRuntimeActivationRoot(roots);
+      const history = assertStoragePath(
+        path.join(
+          layout.sharedRuntimeRoot,
+          'initializations',
+          runtimeInitializationId(layout.projectRoot) + '.json'
+        ),
+        layout.sharedRuntimeRoot,
+        'RUNTIME_CONTROL_INVALID'
+      );
+      if (
+        main.originalRoots.includes(layout.projectRoot) ||
+        existsSync(history) ||
+        existsSync(layout.localRuntimeRoot)
+      )
+        fail(
+          'RUNTIME_CONTROL_INVALID',
+          'Protected root history or local runtime residue requires exact recovery: ' + history
+        );
+      fail(
+        'RUNTIME_INITIALIZATION_REQUIRED',
+        'Fresh linked root requires explicit registered initialization'
+      );
+    }
     if (existsSync(layout.localRoot) || existsSync(layout.sharedControlPath)) {
       fail('RUNTIME_CONTROL_INVALID', 'Partial runtime loss requires registered recovery');
     }
     fail('RUNTIME_MIGRATION_REQUIRED', 'Explicit runtime migration or initialization required');
+  }
+  const candidateControl = readRequiredJson(
+    layout.controlPath,
+    layout.localRuntimeRoot,
+    'RUNTIME_CONTROL_INVALID'
+  );
+  if (candidateControl?.schema === 'aitm.runtime-control/v2') {
+    const main = readRuntimeActivationRoot(roots);
+    if (
+      !validEmptyRuntimeControl(candidateControl) ||
+      candidateControl.projectRoot !== layout.projectRoot ||
+      candidateControl.mainRoot !== layout.mainRoot ||
+      emptyRuntimeDigest(candidateControl.activation) !== emptyRuntimeDigest(main.activation)
+    )
+      fail('RUNTIME_CONTROL_INVALID', 'Empty local activation identity is invalid');
+    if (candidateControl.status !== 'active')
+      fail(
+        'RUNTIME_TRANSACTION_INCOMPLETE',
+        'Local initialization requires registered exact recovery'
+      );
+    if (layout.projectRoot !== layout.mainRoot) {
+      const id = runtimeInitializationId(layout.projectRoot);
+      const file = path.join(layout.sharedRuntimeRoot, 'initializations', id + '.json');
+      const journal = readRequiredJson(file, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
+      const identity = resolveRuntimeRoot({ cwd: layout.projectRoot, env: {} }).worktreeIdentity;
+      if (
+        !validRuntimeInitializationJournal(journal) ||
+        journal.schema !== 'aitm.runtime-initialization/v2' ||
+        journal.plan.id !== id ||
+        journal.plan.projectRoot !== layout.projectRoot ||
+        journal.plan.mainRoot !== layout.mainRoot ||
+        journal.plan.gitDir !== identity.gitDir ||
+        journal.plan.commonDir !== identity.commonDir ||
+        emptyRuntimeDigest(journal.plan.activation) !== emptyRuntimeDigest(main.activation) ||
+        emptyRuntimeDigest(candidateControl.initialization) !==
+          emptyRuntimeDigest({
+            id,
+            operationId: journal.plan.operationId,
+            digest: journal.plan.digest,
+          })
+      )
+        fail('RUNTIME_CONTROL_INVALID', 'Protected linked empty initialization proof is invalid');
+      if (journal.status !== 'complete')
+        fail('RUNTIME_TRANSACTION_INCOMPLETE', 'Linked empty journal is unfinished');
+      if (
+        inspectLinkedInitializationRecoveries(layout, journal, {
+          assertPath: assertStoragePath,
+          fail,
+        }).active
+      )
+        fail('RUNTIME_TRANSACTION_INCOMPLETE', 'Linked recovery claim requires exact resume');
+    }
+    assertRuntimeStoreRecords(layout);
+    return { ...candidateControl, layout };
   }
   const local = readControl(
     layout.controlPath,
@@ -338,13 +452,33 @@ export function assertRuntimeReadable(roots) {
     manifest.transactionId !== local.transactionId ||
     manifest.planDigest !== local.planDigest ||
     !Array.isArray(manifest.roots) ||
-    !manifest.roots.includes(layout.projectRoot) ||
     !manifest.roots.includes(layout.mainRoot)
   ) {
     fail('RUNTIME_CONTROL_INVALID', 'Runtime activation journal identity is invalid');
   }
   if (manifest.status !== 'complete')
     fail('RUNTIME_TRANSACTION_INCOMPLETE', 'Runtime transaction has not completed');
+  if (!manifest.roots.includes(layout.projectRoot)) {
+    const id = runtimeInitializationId(layout.projectRoot);
+    const file = path.join(layout.sharedRuntimeRoot, 'initializations', id + '.json');
+    const journal = readRequiredJson(file, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
+    const identity = resolveRuntimeRoot({ cwd: layout.projectRoot, env: {} }).worktreeIdentity;
+    if (
+      !validRuntimeInitializationJournal(journal) ||
+      journal.status !== 'complete' ||
+      local.initializationId !== id ||
+      local.initializationDigest !== journal.plan.digest ||
+      journal.plan.projectRoot !== layout.projectRoot ||
+      journal.plan.mainRoot !== layout.mainRoot ||
+      journal.plan.mainTransactionId !== shared.transactionId ||
+      journal.plan.mainPlanDigest !== shared.planDigest ||
+      journal.plan.gitDir !== identity.gitDir ||
+      journal.plan.commonDir !== identity.commonDir
+    )
+      fail('RUNTIME_CONTROL_INVALID', 'New-worktree initialization proof is invalid');
+  } else if (local.initializationId !== undefined || local.initializationDigest !== undefined) {
+    fail('RUNTIME_CONTROL_INVALID', 'Original migrated root cannot claim separate initialization');
+  }
   assertRuntimeStoreRecords(layout);
   return { ...local, layout };
 }
@@ -361,19 +495,23 @@ export const assertRuntimeStoragePath = assertStoragePath;
 
 export function assertRuntimeStoreRecords(layout) {
   const required = [
-    [path.join(layout.localRoot, 'state', 'task-tracker-state.json'), layout.localRoot, 'state'],
-    [path.join(layout.localRoot, 'state', 'task-tracker-queue.json'), layout.localRoot, 'queue'],
-    [path.join(layout.sharedRoot, 'fleet', 'task-fleet.json'), layout.sharedRoot, 'object'],
-    [path.join(layout.sharedRoot, 'fleet', 'occupancy.json'), layout.sharedRoot, 'object'],
+    [layout.localRoot, 'state/task-tracker-state.json'],
+    [layout.localRoot, 'state/task-tracker-queue.json'],
+    [layout.sharedRoot, 'fleet/task-fleet.json'],
+    [layout.sharedRoot, 'fleet/occupancy.json'],
   ];
-  for (const [file, base, kind] of required) {
-    const value = readRequiredJson(file, base, 'RUNTIME_STATE_CORRUPT');
-    const object = value !== null && typeof value === 'object' && !Array.isArray(value);
-    if (
-      (kind === 'queue' ? !Array.isArray(value) : !object) ||
-      (kind === 'state' && value.schema !== undefined && value.schema !== 'aitm.runtime-state/v1')
-    ) {
-      fail('RUNTIME_STATE_CORRUPT', 'Unsupported runtime record schema: ' + file);
+  for (const [base, relative] of required) {
+    const file = path.join(base, relative);
+    assertStoragePath(file, base, 'RUNTIME_STATE_CORRUPT');
+    try {
+      if (
+        !lstatSync(file).isFile() ||
+        !classifyRuntimeRecord({ relative, kind: 'volatile-runtime' }).validate(readFileSync(file))
+      )
+        fail('RUNTIME_STATE_CORRUPT', 'Unsupported runtime record schema: ' + file);
+    } catch (error) {
+      if (error instanceof RuntimeRootError) throw error;
+      fail('RUNTIME_STATE_CORRUPT', 'Missing or corrupt runtime record: ' + file);
     }
   }
 }

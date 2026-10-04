@@ -10,6 +10,9 @@
 //   - TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored (refuses regardless)
 
 import { strict as assert } from 'node:assert';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
@@ -42,8 +45,8 @@ function deepDiveAdequate() {
   return lines.join('\n');
 }
 
-function makeSandbox(body) {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-gate-'));
+async function makeSandbox(body) {
+  const sandbox = await createLegacyRootFixture('move-state-gate-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -165,6 +168,7 @@ async function runMove(sandbox, binDir, args, extraEnv = {}) {
   // can't easily stub here). The script provides --item-id to skip lookup, so
   // the test always passes one.
   return pexec('node', [SCRIPT, ...args, '--item-id', 'PVTI_test'], {
+    cwd: sandbox,
     env: {
       ...process.env,
       AITM_INTERNAL: '1',
@@ -188,7 +192,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 1. test with ticked Deep dive but no section → blocked
 {
   const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = await makeSandbox(body);
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'test']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /BLOCKED: deep-dive-complete/);
@@ -198,7 +202,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 2. test with ticked Deep dive + adequate section → success
 {
   const body = `## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = await makeSandbox(body);
   const r = await runMove(sandbox, binDir, ['100', 'test']);
   assert.match(r.stdout, /moved to: test/);
   rmSync(sandbox, { recursive: true });
@@ -207,7 +211,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 3. review with ticked Deep dive but no section → blocked
 {
   const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = await makeSandbox(body);
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'review']);
   assert.equal(e.code, 4);
   assert.match(e.stderr, /BLOCKED: deep-dive-complete/);
@@ -218,7 +222,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 {
   const body =
     '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n- [ ] something else\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = await makeSandbox(body);
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'done']);
   assert.equal(e.code, 4);
   // Must mention both the structural rule AND the unchecked-checkbox rule
@@ -229,7 +233,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 5. TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored — gate refuses anyway
 {
   const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = await makeSandbox(body);
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'test'], {
     TASK_TRACKER_FORCE_DONE: '1',
   });
@@ -242,7 +246,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 {
   const body =
     '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S","estimate":3}}\n```\n<!-- ai-task-manager:fields:end -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = await makeSandbox(body);
   const r = await runMove(sandbox, binDir, ['100', 'backlog']);
   assert.match(r.stderr, /sized \+ estimated issue to Backlog/);
   assert.match(r.stdout, /moved to: backlog/);
@@ -253,7 +257,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 {
   const body =
     '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":null,"estimate":null}}\n```\n<!-- ai-task-manager:fields:end -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = await makeSandbox(body);
   const r = await runMove(sandbox, binDir, ['100', 'backlog']);
   assert.doesNotMatch(r.stderr, /sized \+ estimated issue to Backlog/);
   assert.match(r.stdout, /moved to: backlog/);

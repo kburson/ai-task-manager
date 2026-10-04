@@ -16,6 +16,7 @@ import {
   runtimeStoragePaths,
   assertRuntimeStoragePath,
   assertRuntimeStoreRecords,
+  assertRuntimeReadable,
   RuntimeRootError,
 } from './runtime-storage.mjs';
 import {
@@ -25,6 +26,7 @@ import {
   readMigrationRecord,
   observeMigrationIdentity,
   recoverRuntimeFence,
+  inspectRuntimeFence,
   assertRecoveryOwner,
   isRuntimeMigrationOwner,
 } from './runtime-migration-lock.mjs';
@@ -172,7 +174,6 @@ function readJournal(paths) {
   verifyApprovedPlan(bootstrap.plan, bootstrap.manifest?.planDigest);
   validateManifest(bootstrap.manifest, bootstrap.plan, path.basename(paths.directory));
   if (
-    bootstrap.plan.projectRoot !== paths.layout.projectRoot ||
     bootstrap.plan.mainRoot !== paths.layout.mainRoot ||
     bootstrap.manifest.transactionId !== path.basename(paths.directory)
   )
@@ -187,11 +188,16 @@ function readJournal(paths) {
     manifest.schema !== 'aitm.runtime-migration/v1' ||
     manifest.transactionId !== path.basename(paths.directory) ||
     manifest.planDigest !== plan.digest ||
+    (manifest.status !== 'complete' && plan.projectRoot !== paths.layout.projectRoot) ||
     JSON.stringify(manifest.roots) !== JSON.stringify(plan.roots)
   ) {
     fail('RUNTIME_CONTROL_INVALID', 'Transaction journal identity is invalid');
   }
   return { plan, manifest };
+}
+
+export function readRuntimeMigrationSnapshot({ projectRoot, mainRoot, transactionId }) {
+  return readJournal(transactionPaths({ projectRoot, mainRoot }, transactionId));
 }
 
 export async function readRuntimeMigrationStatus({ projectRoot, mainRoot, transactionId }) {
@@ -295,16 +301,28 @@ function verifyStore(base, root, plan) {
     fail('RUNTIME_MIGRATION_CONFLICT', 'Incomplete staged/published snapshot');
 }
 
-async function publishTiming(manifest, paths, adapters) {
+async function publishTiming(manifest, plan, paths, adapters) {
   if (manifest.timing.publication.status === 'confirmed') return;
   try {
     const result = await adapters.publishTiming?.({
+      plan,
+      publication: manifest.timing.publication,
       transactionId: manifest.transactionId,
       idempotencyKey: manifest.timing.publication.idempotencyKey,
       intervals: manifest.timing.intervals,
     });
-    if (result?.status === 'confirmed') manifest.timing.publication.status = 'confirmed';
-    else manifest.timing.publication.reason = 'publication-unconfirmed';
+    if (result?.status === 'confirmed' || result?.status === 'pending') {
+      manifest.timing.publication = {
+        idempotencyKey: manifest.timing.publication.idempotencyKey,
+        status: result.status,
+        ...(result.repository ? { repository: result.repository } : {}),
+        ...(result.basis ? { basis: result.basis } : {}),
+        ...(Array.isArray(result.coverage) ? { coverage: result.coverage } : {}),
+        ...(result.status === 'pending'
+          ? { reason: result.reason || 'publication-unconfirmed' }
+          : {}),
+      };
+    } else manifest.timing.publication.reason = 'publication-unconfirmed';
   } catch {
     manifest.timing.publication.reason = 'publication-outcome-unknown';
   }
@@ -315,6 +333,37 @@ async function continuePublication({ plan, approvedPlanDigest, adapters, paths, 
   const transactionId = manifest.transactionId;
   const save = () => writeMigrationRecord(paths.manifest, manifest);
   const stages = new Map();
+  // Validate the whole control set before replay changes any root. Published
+  // stores must retain the original prepared/active ownership evidence.
+  for (const root of plan.roots) {
+    const layout = runtimeStoragePaths({ projectRoot: root, mainRoot: plan.mainRoot });
+    assertRuntimeStoragePath(
+      layout.controlPath,
+      layout.localRuntimeRoot,
+      'RUNTIME_MIGRATION_CONFLICT'
+    );
+    if (!exists(layout.controlPath)) {
+      if (exists(layout.localRoot))
+        fail('RUNTIME_MIGRATION_CONFLICT', 'Published root control is missing');
+      continue;
+    }
+    let control;
+    try {
+      control = readMigrationRecord(layout.controlPath);
+    } catch {
+      fail('RUNTIME_MIGRATION_CONFLICT', 'Root control is malformed');
+    }
+    if (
+      !control ||
+      control.schema !== 'aitm.runtime-control/v1' ||
+      !['prepared', 'active'].includes(control.status) ||
+      control.transactionId !== transactionId ||
+      control.planDigest !== approvedPlanDigest ||
+      control.projectRoot !== root ||
+      control.mainRoot !== plan.mainRoot
+    )
+      fail('RUNTIME_MIGRATION_CONFLICT', 'A different control owns the root');
+  }
   for (const file of plan.files) {
     assertRuntimeStoragePath(file.source, file.root, 'RUNTIME_CONTROL_INVALID');
     if (
@@ -395,6 +444,7 @@ async function continuePublication({ plan, approvedPlanDigest, adapters, paths, 
       transactionId,
       planDigest: approvedPlanDigest,
     });
+    await adapters.fault?.('after-root-activation', { root, transactionId });
   }
   const interval = manifest.timing.intervals.at(-1);
   interval.endedAt = new Date().toISOString();
@@ -404,7 +454,7 @@ async function continuePublication({ plan, approvedPlanDigest, adapters, paths, 
   manifest.status = 'complete';
   save();
   await adapters.fault?.('after-manifest-complete', { transactionId });
-  await publishTiming(manifest, paths, adapters);
+  await publishTiming(manifest, plan, paths, adapters);
   await adapters.fault?.('after-timing-publish', { transactionId });
   await adapters.fault?.('before-fence-release', { transactionId });
   completeRuntimeFence({
@@ -429,12 +479,17 @@ export async function resumeRuntimeMigration({
   const { manifest, plan } = readJournal(paths);
   verifyApprovedPlan(plan, approvedPlanDigest);
   if (manifest.status === 'complete') {
+    const observedFence = inspectRuntimeFence({ projectRoot, mainRoot });
     if (
-      JSON.stringify([...manifest.roots].sort()) !==
-      JSON.stringify([...paths.layout.registeredRoots].sort())
+      observedFence &&
+      (plan.projectRoot !== projectRoot ||
+        JSON.stringify([...manifest.roots].sort()) !==
+          JSON.stringify([...paths.layout.registeredRoots].sort()))
     )
-      fail('RUNTIME_CONTROL_INVALID', 'Completed transaction root census changed');
-    for (const root of manifest.roots) {
+      fail('RUNTIME_CONTROL_INVALID', 'Retained-fence transaction root census changed');
+    // A completed ledger retry has no authority to republish stores or require retired roots.
+    if (!observedFence) assertRuntimeReadable({ projectRoot: mainRoot, mainRoot });
+    for (const root of observedFence ? manifest.roots : []) {
       const layout = runtimeStoragePaths({ projectRoot: root, mainRoot });
       assertRuntimeStoragePath(
         layout.controlPath,
@@ -468,7 +523,7 @@ export async function resumeRuntimeMigration({
       manifest.owner = retainedFence.owner;
       writeMigrationRecord(paths.manifest, manifest);
     }
-    await publishTiming(manifest, paths, adapters);
+    await publishTiming(manifest, plan, paths, adapters);
     await adapters.fault?.('after-timing-publish', { transactionId });
     await adapters.fault?.('before-fence-release', { transactionId });
     if (retainedFence)

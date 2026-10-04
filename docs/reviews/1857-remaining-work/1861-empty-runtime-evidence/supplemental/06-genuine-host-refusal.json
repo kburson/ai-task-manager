@@ -1,0 +1,15 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-supplement/v1",
+  "issue": 1861,
+  "originalPosition": 5,
+  "evidence": {
+    "phase": "Genuine-host admission refused",
+    "raw": [
+      ".scratch/gh/1861-genuine-host-proof.json",
+      ".scratch/gh/1861-genuine-host-census-diagnosis.json",
+      ".scratch/gh/1861-genuine-host-ps-diagnosis.json"
+    ],
+    "reason": "Actual bound Codex identity was observed; unchanged profile denied macOS process snapshot executable (status 71). No production census or identity was substituted."
+  }
+}

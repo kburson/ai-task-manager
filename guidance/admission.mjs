@@ -1,4 +1,5 @@
 // @story #1672
+import { parseRuntimeMigrationInvocation } from '../scripts/task-tracker/lib/runtime-migration-admission.mjs';
 import { loadGuidance } from './cache.mjs';
 import { observeGuidanceSource } from './source.mjs';
 
@@ -12,6 +13,8 @@ export function classifyGuidanceRoute(argv, { surface = 'router' } = {}) {
   }
   const [command, subcommand] = argv;
   if (surface === 'direct-verb') return 'operational';
+  if (['router', 'task-hub'].includes(surface) && parseRuntimeMigrationInvocation(argv))
+    return 'recovery';
   if (surface === 'task-hub') {
     return (argv.length === 1 && HELP.has(command)) ||
       (argv.length === 2 && (command === 'help' || COMMAND_HELP.has(subcommand)))

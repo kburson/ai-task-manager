@@ -24,8 +24,8 @@ entries:
       summary: Bind an issue work session.
       explanation: Inspect live bind readiness and let the sanctioned bind command revalidate before opening a timer.
       documentation:
-        - path: docs/guides/workflow.md
-          anchor: kanban-board-states
+        - path: README.md
+          anchor: design-and-references
       triggered_when:
         - Before opening an issue work session.
       execution:
@@ -63,8 +63,8 @@ entries:
         - command: npx aitm start 1676 --role agent
           purpose: Inspect or execute the action.resume workflow through AITM.
       documentation:
-        - path: docs/guides/ask-the-script.md
-          anchor: shared-decision-boundary
+        - path: README.md
+          anchor: design-and-references
   - id: action.promote
     revision: 1
     binds:
@@ -89,8 +89,8 @@ entries:
         Promotion refreshes the issue, board, and registered exit and entry guards before one contiguous state
         transition.
       documentation:
-        - path: docs/guides/guard-architecture.md
-          anchor: the-exitentry-slot-model
+        - path: README.md
+          anchor: design-and-references
       triggered_when:
         - Before moving an issue forward one state.
       execution:
@@ -130,8 +130,8 @@ entries:
         - command: npx aitm test 1676
           purpose: Inspect or execute the action.test workflow through AITM.
       documentation:
-        - path: docs/guides/guard-architecture.md
-          anchor: the-exitentry-slot-model
+        - path: README.md
+          anchor: design-and-references
   - id: action.review
     revision: 1
     binds:
@@ -164,10 +164,10 @@ entries:
         - command: npx aitm review 1676
           purpose: Inspect or execute the action.review workflow through AITM.
       documentation:
-        - path: docs/guides/workflow.md
-          anchor: kanban-board-states
-        - path: docs/guides/ask-the-script.md
-          anchor: review-and-close-human-boundaries
+        - path: README.md
+          anchor: design-and-references
+        - path: README.md
+          anchor: design-and-references
   - id: action.deliver
     revision: 1
     binds:
@@ -198,8 +198,8 @@ entries:
         - command: npx aitm deliver 1676
           purpose: Inspect or execute the action.deliver workflow through AITM.
       documentation:
-        - path: docs/guides/ask-the-script.md
-          anchor: shared-decision-boundary
+        - path: README.md
+          anchor: design-and-references
   - id: action.close
     revision: 1
     binds:
@@ -231,10 +231,10 @@ entries:
         - command: npx aitm close 1676
           purpose: Inspect or execute the action.close workflow through AITM.
       documentation:
-        - path: docs/guides/guard-architecture.md
-          anchor: the-exitentry-slot-model
-        - path: docs/guides/ask-the-script.md
-          anchor: review-and-close-human-boundaries
+        - path: README.md
+          anchor: design-and-references
+        - path: README.md
+          anchor: design-and-references
   - id: action.refine
     revision: 1
     binds:
@@ -261,8 +261,8 @@ entries:
         - command: npx aitm refine 1676 --size L --estimate 20 --priority p2 --rank 24 --reason "Scope ready"
           purpose: Inspect or execute the action.refine workflow through AITM.
       documentation:
-        - path: docs/guides/workflow.md
-          anchor: kanban-board-states
+        - path: README.md
+          anchor: design-and-references
   - id: action.demote
     revision: 1
     binds:
@@ -286,8 +286,8 @@ entries:
         - command: npx aitm demote 1676 --rework "Verification failed"
           purpose: Inspect or execute the action.demote workflow through AITM.
       documentation:
-        - path: docs/guides/workflow.md
-          anchor: kanban-board-states
+        - path: README.md
+          anchor: design-and-references
   - id: action.shelve
     revision: 1
     binds:
@@ -311,8 +311,8 @@ entries:
         - command: npx aitm shelve 1676 --reason "Dependency pending"
           purpose: Inspect or execute the action.shelve workflow through AITM.
       documentation:
-        - path: docs/guides/workflow.md
-          anchor: kanban-board-states
+        - path: README.md
+          anchor: design-and-references
   - id: action.park
     revision: 1
     binds:
@@ -336,8 +336,8 @@ entries:
         - command: npx aitm park 1676 --reason "Premise changed"
           purpose: Inspect or execute the action.park workflow through AITM.
       documentation:
-        - path: docs/guides/workflow.md
-          anchor: kanban-board-states
+        - path: README.md
+          anchor: design-and-references
   - id: action.cancel-plan
     revision: 1
     binds:
@@ -361,8 +361,8 @@ entries:
         - command: npx aitm cancel-plan 1676 --reason "Plan superseded"
           purpose: Inspect or execute the action.cancel-plan workflow through AITM.
       documentation:
-        - path: docs/guides/workflow.md
-          anchor: kanban-board-states
+        - path: README.md
+          anchor: design-and-references
   - id: transition.plan-to-develop
     revision: 1
     binds:
@@ -395,8 +395,8 @@ entries:
         - command: npx aitm plan-approve 1676
           purpose: Inspect or execute the transition.plan-to-develop workflow through AITM.
       documentation:
-        - path: docs/guides/guard-architecture.md
-          anchor: the-exitentry-slot-model
+        - path: README.md
+          anchor: design-and-references
   - id: transition.review-approval
     revision: 1
     binds:
@@ -429,8 +429,8 @@ entries:
         - command: npx aitm approve 1676
           purpose: Inspect or execute the transition.review-approval workflow through AITM.
       documentation:
-        - path: docs/guides/guard-architecture.md
-          anchor: the-exitentry-slot-model
+        - path: README.md
+          anchor: design-and-references
   - id: navigation.unknown
     revision: 1
     binds:
@@ -455,8 +455,8 @@ entries:
         - command: npx aitm guidance validate --published --refresh --json
           purpose: Inspect or execute the navigation.unknown workflow through AITM.
       documentation:
-        - path: docs/guides/ask-the-script.md
-          anchor: shared-decision-boundary
+        - path: README.md
+          anchor: design-and-references
   - id: navigation.unresolved
     revision: 1
     binds:
@@ -479,8 +479,8 @@ entries:
         - command: npx aitm board
           purpose: Inspect or execute the navigation.unresolved workflow through AITM.
       documentation:
-        - path: docs/guides/ask-the-script.md
-          anchor: shared-decision-boundary
+        - path: README.md
+          anchor: design-and-references
   - id: state.done
     revision: 1
     binds:
@@ -505,8 +505,8 @@ entries:
         - command: npx aitm board
           purpose: Inspect or execute the state.done workflow through AITM.
       documentation:
-        - path: docs/guides/workflow.md
-          anchor: kanban-board-states
+        - path: README.md
+          anchor: design-and-references
   - id: protocol.session
     revision: 1
     binds:
@@ -537,8 +537,8 @@ entries:
         - command: npx aitm start 1676 --role agent
           purpose: Keep issue work bound and timed.
       documentation:
-        - path: docs/guides/ask-the-script.md
-          anchor: session-and-pickup-protocol
+        - path: README.md
+          anchor: design-and-references
   - id: protocol.receipts
     revision: 1
     binds:
@@ -562,8 +562,8 @@ entries:
         - command: npx aitm guidance source
           purpose: Refresh context receipts after a reset.
       documentation:
-        - path: docs/guides/ask-the-script.md
-          anchor: shared-decision-boundary
+        - path: README.md
+          anchor: design-and-references
   - id: protocol.pickup
     revision: 1
     binds:
@@ -590,8 +590,8 @@ entries:
         - command: npx aitm ensureChecked "Deep dive complete"
           purpose: Complete pickup and evidence checkpoints.
       documentation:
-        - path: docs/guides/ask-the-script.md
-          anchor: session-and-pickup-protocol
+        - path: README.md
+          anchor: design-and-references
   - id: protocol.commit-trail
     revision: 1
     binds:
@@ -615,8 +615,8 @@ entries:
         - command: git log --oneline -1
           purpose: Attribute commits to the bound issue.
       documentation:
-        - path: docs/guides/workflow.md
-          anchor: kanban-board-states
+        - path: README.md
+          anchor: design-and-references
 
   - id: protocol.reviewed-scope
     revision: 1
@@ -644,5 +644,5 @@ entries:
         - command: npx aitm ensureChecked "Inspect output" --reviewed-evidence .scratch/evidence/step.json
           purpose: Record one reviewed Scope target after final commit.
       documentation:
-        - path: docs/guides/reviewed-scope-evidence.md
-          anchor: reviewed-scope-evidence
+        - path: README.md
+          anchor: design-and-references

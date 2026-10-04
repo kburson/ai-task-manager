@@ -138,6 +138,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
       'scripts/task-tracker/config-init.mjs',
       'scripts/task-tracker/orchestrator-lock.mjs',
       'scripts/task-tracker/task-tracker.mjs',
+      'scripts/task-tracker/verbs/migrate-runtime.mjs',
       'scripts/task-tracker/tools/coverage-threshold.mjs',
     ],
     'Internal library, dispatcher, configuration helper, or orchestration support.'

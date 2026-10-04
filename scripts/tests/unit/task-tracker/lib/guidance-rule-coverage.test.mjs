@@ -1,4 +1,4 @@
-// @story #1676
+// @story #1861 #1676
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

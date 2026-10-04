@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
+// @story #1861 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -177,42 +177,23 @@ test('package-boundary: excluded directories do not reappear', () => {
   );
 });
 
-// #1296 — consumers need the complete onboarding set locally. Keep this exact
-// so future additions to docs/introduction/ are deliberate package-surface
-// decisions rather than silent directory-level allowlist growth.
-test('package-boundary: ships the exact docs/introduction/ set', () => {
+// #1861 — README is the package documentation entry point. Detailed docs
+// remain in Git and must not add files or images to the installed runtime.
+test('package-boundary: documentation stays in the repository', () => {
   const files = packedFiles();
-  const intro = files.filter((p) => /^docs\/introduction\//.test(p)).sort();
+  assert.ok(files.includes('README.md'));
   assert.deepEqual(
-    intro,
-    [
-      'docs/introduction/README.md',
-      'docs/introduction/adoption-guide.md',
-      'docs/introduction/agentic-development-process.md',
-      'docs/introduction/assets/agentic-workflow.png',
-      'docs/introduction/assets/aitm-system-map.png',
-      'docs/introduction/assets/measurement-loop.png',
-      'docs/introduction/bus-factor-executive-brief.md',
-      'docs/introduction/context-management-skill-architecture.md',
-      'docs/introduction/core-workflow.md',
-      'docs/introduction/install-and-setup.md',
-      'docs/introduction/measurement-and-roi.md',
-    ],
-    'docs/introduction/ must ship its complete reviewed Markdown and diagram set'
+    files.filter((file) => file.startsWith('docs/')),
+    []
   );
 });
 
-// #910 — the shipped README is the package entry point; once docs/introduction/
-// stopped shipping, a relative link into it became a dead link in the tarball.
-// Assert the shipped README carries no relative docs/introduction/ link (an
-// absolute project URL is fine — it does not depend on packed files).
-test('package-boundary: shipped README has no dead docs/introduction link', () => {
+test('package-boundary: README documentation links use hosted URLs', () => {
   const readme = readFileSync(join(repoRoot(), 'README.md'), 'utf8');
-  const deadLinks = readme.match(/\]\(docs\/introduction\//g) || [];
+  const links = [...readme.matchAll(/\]\(([^)]+)\)/g)].map((match) => match[1]);
   assert.deepEqual(
-    deadLinks,
-    [],
-    `README links relatively into unshipped docs/introduction/: ${deadLinks.length} occurrence(s)`
+    links.filter((link) => link.startsWith('docs/') || link.startsWith('./docs/')),
+    []
   );
 });
 
@@ -334,6 +315,25 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const localTrunkReceiptAllowance = 1;
   // #1830 ships one shared mutation-context runtime module.
   const mutationContextAllowance = 1;
+  // #1861 admits exactly these 15 new kernel/runtime prerequisites.
+  const runtimeKernelEntries = [
+    'scripts/task-tracker/lib/pending-ask-record.mjs',
+    'scripts/task-tracker/lib/runtime-batch-admission.mjs',
+    'scripts/task-tracker/lib/runtime-batch.mjs',
+    'scripts/task-tracker/lib/runtime-capture-catalog.mjs',
+    'scripts/task-tracker/lib/runtime-initialization-record.mjs',
+    'scripts/task-tracker/lib/runtime-initialization-recovery.mjs',
+    'scripts/task-tracker/lib/runtime-initialize.mjs',
+    'scripts/task-tracker/lib/runtime-migration-catalog.mjs',
+    'scripts/task-tracker/lib/runtime-migration-input.mjs',
+    'scripts/task-tracker/lib/runtime-migration-timing.mjs',
+    'scripts/task-tracker/lib/runtime-process-census.mjs',
+    'scripts/task-tracker/lib/runtime-record-catalog.mjs',
+    'scripts/task-tracker/lib/runtime-writer-census.mjs',
+    'scripts/task-tracker/lib/runtime-writer.mjs',
+    'scripts/task-tracker/verbs/migrate-runtime.mjs',
+  ];
+  for (const entry of runtimeKernelEntries) assert.ok(files.includes(entry), entry);
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -417,7 +417,6 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'instructions/aitm-guidance.yml',
     'instructions/aitm-guidance.schema.json',
     'instructions/aitm-guidance.release.json',
-    'docs/guides/aitm-guidance-source.md',
     'scripts/gh/move-state.mjs',
     'skill/adapters/claude/SKILL.md',
     'package.json',

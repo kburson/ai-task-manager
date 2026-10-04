@@ -1,4 +1,4 @@
-// @story #1770
+// @story #1861 #1770
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';

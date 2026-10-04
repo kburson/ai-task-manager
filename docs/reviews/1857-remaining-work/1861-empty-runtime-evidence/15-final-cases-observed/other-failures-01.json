@@ -1,0 +1,16 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-findings/v1",
+  "issue": 1861,
+  "runId": "15-final-cases-observed",
+  "category": "other-failures",
+  "positions": [0],
+  "findings": [
+    {
+      "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:345:1",
+      "finding": "✖ live unleased Node process in an empty root blocks production writer census (82.504041ms)",
+      "sandboxDenied": false,
+      "detail": "  AssertionError [ERR_ASSERTION]: [{\"reason\":\"process-observation-incomplete\"},{\"reason\":\"process-census-unavailable\"}]"
+    }
+  ]
+}

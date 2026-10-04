@@ -1,4 +1,6 @@
 // @story #1857
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -258,6 +260,24 @@ function activatedStorageFixture(projectRoot = path.join(root, 'linked')) {
   );
   return { projectRoot, mainRoot: root };
 }
+
+test('durable reads validate real queue generations and individual authority fields', async () => {
+  const storage = await import('../../../../task-tracker/lib/runtime-storage.mjs');
+  const roots = activatedStorageFixture();
+  const layout = storage.runtimeStoragePaths(roots);
+  const queue = path.join(layout.localRoot, 'state', 'task-tracker-queue.json');
+  writeFileSync(queue, JSON.stringify({ schema: 'aitm.timing-queue/v1', items: [] }));
+  assert.equal(storage.assertRuntimeReadable(roots).transactionId, 'fixture-transaction');
+  const state = path.join(layout.localRoot, 'state', 'task-tracker-state.json');
+  writeFileSync(state, JSON.stringify({ active: '#1857', entryStartTs: 'invalid' }));
+  assert.throws(() => storage.assertRuntimeReadable(roots), { code: 'RUNTIME_STATE_CORRUPT' });
+  activatedStorageFixture();
+  writeFileSync(
+    path.join(layout.sharedRoot, 'fleet', 'occupancy.json'),
+    JSON.stringify({ 1857: { issue: 1857 } })
+  );
+  assert.throws(() => storage.assertRuntimeReadable(roots), { code: 'RUNTIME_STATE_CORRUPT' });
+});
 
 test('durable reads refuse corrupt control, unsupported schema and partial publication', async () => {
   const storage = await import('../../../../task-tracker/lib/runtime-storage.mjs');

@@ -1,0 +1,13 @@
+{
+  "$comment": "cspell:disable -- Recorded failure text is preserved verbatim.",
+  "schema": "aitm.manual-evidence-supplement/v1",
+  "issue": 1861,
+  "originalPosition": 3,
+  "evidence": {
+    "raw": ".scratch/gh/1861-admission-table-fixed.stdout.log",
+    "tests": 25,
+    "pass": 24,
+    "fail": 1,
+    "additionalFailure": "unreadable-history fixture restored mode 0600 instead of original 0644; exact original mode restoration repaired"
+  }
+}

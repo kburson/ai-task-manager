@@ -13,7 +13,7 @@ Ordinary open-PR delivery requires canonical `[#N]` source attribution. A
 scoped delivery attribution exception is available only when the live,
 complete open-PR inventory contains otherwise unattributed source commits.
 It is a separate command and authority path; `workflow-preflight` does not
-report it. Follow the [operator guide](../../../docs/guides/workflow.md#scoped-delivery-attribution-exception)
+report it. Follow the [operator guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/workflow.md#scoped-delivery-attribution-exception)
 for its two-pass preparation and exact Codex user statement. Preparation
 grants no authority. `record`, `revise`, and `revoke` require a fresh,
 transcript-verified user message on a supported Codex host; an unsupported
@@ -96,7 +96,7 @@ operation remain unchanged. The final v3 receipt visibly labels attribution
 `waived` and cites the exception; do not describe it as an ordinary pass.
 
 For a named invariant failure on an already merged PR with an existing original
-intent, follow the [generic PR delivery waiver guide](../../../docs/guides/workflow.md#generic-pr-delivery-waiver).
+intent, follow the [generic PR delivery waiver guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/workflow.md#generic-pr-delivery-waiver).
 `workflow-exception prepare` is read-only; the exact fresh Codex user statement
 authorizes `record` after host verification. The request file and `--reason`
 are not authority. Rerun ordinary `deliver` after recording. A valid v3 intent

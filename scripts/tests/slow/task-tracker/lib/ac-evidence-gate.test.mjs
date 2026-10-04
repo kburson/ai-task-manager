@@ -18,7 +18,10 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
+initializeFixtureActor(import.meta.url);
 import { acKeyForLabel } from '../../../../task-tracker/lib/ac-evidence.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -58,16 +61,14 @@ function writeConfig(sandbox) {
 }
 
 function writeState(sandbox, issueNum) {
-  // #573: the global ledger lives under `.tmp/aitm/state/`.
-  mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
-  writeFileSync(
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
-    JSON.stringify({
+  saveState(
+    {
       active: `#${issueNum}`,
       lastActive: `#${issueNum}`,
       entryStartTs: null,
       wordsAtEntryStart: 0,
-    })
+    },
+    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
   );
 }
 
@@ -128,7 +129,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 1: tick AC with no stamp → refusal, EVIDENCE_REQUIRED, names key ───
 {
-  const sandbox = mkdtempProjectIsolated('tt-ac-gate-1-');
+  const sandbox = await createLegacyRootFixture('tt-ac-gate-1-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 345);
@@ -151,7 +152,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 2: with the aitm-ac-evidence stamp present → tick allowed (exit 0) ──
 {
-  const sandbox = mkdtempProjectIsolated('tt-ac-gate-2-');
+  const sandbox = await createLegacyRootFixture('tt-ac-gate-2-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 345);

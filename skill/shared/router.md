@@ -7,7 +7,7 @@ description: Bind GitHub issue work and route governed AITM lifecycle decisions.
 
 # Task router
 
-First read: emit `aitm-skill-loaded:router:1.1.0`. Resolve `rules/` beside this file. Installed package is authoritative; source checkout needs explicit dogfood setup. Design: `node_modules/@kburson/ai-task-manager/docs/DESIGN.md`. Install: `npx ai-task-manager install`; cloud check: `npm ci && npx aitm doctor && npm test` without repair.
+First read: emit `aitm-skill-loaded:router:1.1.0`. Resolve `rules/` beside this file. Installed package is authoritative; source checkout needs explicit dogfood setup. Design: `node_modules/@kburson/ai-task-manager/README.md` and [the hosted design](https://github.com/kburson/ai-task-manager/blob/trunk/docs/DESIGN.md). Install: `npx ai-task-manager install`; cloud check: `npm ci && npx aitm doctor && npm test` without repair.
 
 ## Hard cross-cutting rules
 
