@@ -230,8 +230,8 @@ jobs:
       - uses: actions/download-artifact@v5
         if: needs.fast-tests.outputs.skip_tests != 'true'
         with:
-          pattern: ci-unit-*-${{ github.run_attempt }}
-          path: .tmp/aitm/ci-results/unit
+          name: ci-unit-1-${{ github.run_attempt }}
+          path: .tmp/aitm/ci-results/unit/ci-unit-1-${{ github.run_attempt }}
       - uses: actions/download-artifact@v5
         if: needs.fast-tests.outputs.skip_tests != 'true'
         with:
