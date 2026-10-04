@@ -6,16 +6,8 @@ import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.
 // @story #29
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync,
-  writeFileSync,
-  chmodSync,
-  readFileSync,
-  existsSync,
-  mkdirSync,
-} from 'node:fs';
+import { writeFileSync, chmodSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = new URL('../../../../..', import.meta.url).pathname;

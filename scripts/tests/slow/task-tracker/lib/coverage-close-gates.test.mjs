@@ -4,6 +4,9 @@
 // targets commitsOnTrunkGate plus error branches. No production code touched.
 
 import { strict as assert } from 'node:assert';
+// @story #1873
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';

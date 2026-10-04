@@ -500,3 +500,60 @@ test('an additional interval row cell is conflicting evidence, never an accepted
   const changed = original.replace(' | <!-- aitm-actor:', ' | | new evidence | <!-- aitm-actor:');
   assert.throws(() => appendRow(body, changed), /conflicting-interval/);
 });
+
+// @story #1873
+// Displayed word deltas are derived; Unknown recovery identity stays immutable.
+test('#1873 Unknown recovery publication remains idempotent after derived delta normalization', async () => {
+  const row = buildRow({
+    ts: now,
+    event: 'session-end-recovery',
+    actorKey: key,
+    activeSec: null,
+    idleSec: null,
+    deltaWords: 3,
+    wordMarker: 103,
+    fullWordMarker: 203,
+    description: 'prior session end unavailable',
+  });
+  let body = buildInitialComment();
+  let writes = 0;
+  const args = {
+    issueNumber: 1857,
+    repo: 'owner/repo',
+    row,
+    lock: false,
+    deps: {
+      readCanonicalTimingSource: async () => ({
+        status: 'found',
+        source: {
+          repository: 'owner/repo',
+          issue: 1857,
+          commentNodeId: 'IC_recovery',
+          body,
+        },
+      }),
+      updateTimingComment: async (_id, _repo, updated) => {
+        body = updated;
+        writes++;
+      },
+    },
+  };
+  await postTimingEvent(args);
+  await postTimingEvent(args);
+  assert.equal(writes, 1);
+  const rows = body
+    .split('\n')
+    .map(parseTimingRow)
+    .filter((entry) => entry?.actorKey);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].cells[3], 'Unknown');
+  assert.equal(rows[0].cells[4], 'Unknown');
+  assert.equal(rows[0].engagement, undefined);
+  assert.equal(appendRow(body, row), body);
+  const changed = row.replace('prior session end unavailable', 'distinct recovery observation');
+  assert.notEqual(
+    appendRow(body, changed),
+    body,
+    'distinct immutable content must remain distinct'
+  );
+});

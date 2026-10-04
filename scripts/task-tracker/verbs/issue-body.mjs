@@ -1,4 +1,4 @@
-// @story #1210
+// @story #1210 #1873
 // Governed, declarative issue-body mutations. Operation files describe a
 // transformation; they never contain a complete body snapshot to push.
 
@@ -8,11 +8,13 @@ import { parseBodyVersion } from '../lib/body-version.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { stripBodyVersion } from '../lib/versioned-issue-write.mjs';
 import { loadState } from '../state.mjs';
+import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 
 const SCHEMA = 'aitm.issue-body-operation/v1';
 const COMMON_KEYS = new Set(['schema', 'kind', 'expectedVersion']);
 const KIND_KEYS = Object.freeze({
   'replace-exact': new Set([...COMMON_KEYS, 'expected', 'replacement']),
+  'replace-verifier-declaration': new Set([...COMMON_KEYS, 'expected', 'replacement']),
   'replace-section': new Set([...COMMON_KEYS, 'heading', 'expected', 'replacement']),
 });
 
@@ -88,6 +90,18 @@ export function parseIssueBodyOperation(value) {
       fail('section precondition');
     }
   }
+  if (value.kind === 'replace-verifier-declaration') {
+    for (const marker of [value.expected, value.replacement]) {
+      // This operation accepts declaration-only command markers, never proof,
+      // policy, citations, run properties or a surrounding body fragment.
+      const match = /^<!-- aitm-verified cmd="((?:`[^`"]+` ?)+)" -->$/.exec(marker);
+      if (!match) fail('verifier declaration');
+      for (const [, command] of match[1].matchAll(/`([^`]+)`/g)) {
+        if (!validateVerificationCommand(command, { projectDir: process.cwd() }).ok)
+          fail('verifier command');
+      }
+    }
+  }
   return Object.freeze({ ...value });
 }
 
@@ -149,6 +163,26 @@ export function applyIssueBodyOperation(baseBody, operationInput, { checkVersion
         `expected version ${operation.expectedVersion}, found ${String(actualVersion)}`
       );
     }
+  }
+  if (operation.kind === 'replace-verifier-declaration') {
+    if (countOccurrences(base, operation.expected) !== 1) fail('verifier declaration precondition');
+    const line = base.split('\n').find((item) => item.includes(operation.expected));
+    if (!/^\s*- \[ \]/.test(line) || !/<!--\s*dod:functional:(tests|lint|commits)\s*-->/.test(line))
+      fail('unchecked Functional DoD declaration required');
+    if (
+      /<!--\s*aitm-dod-evidence\b/.test(line) ||
+      /\b(?:exit|sha|ts|worktree|branch|bound-issue)=/.test(line)
+    )
+      fail('proof-bearing verifier declaration');
+    const next = base.replace(operation.expected, () => operation.replacement);
+    // Every other marker must remain exact, including any historical proof.
+    const markerRe = /<!--\s*aitm-[\s\S]*?-->/gi;
+    const before = (base.match(markerRe) || []).map((marker) =>
+      marker === operation.expected ? operation.replacement : marker
+    );
+    const after = next.match(markerRe) || [];
+    if (JSON.stringify(before) !== JSON.stringify(after)) fail('protected AITM markers changed');
+    return next;
   }
   if (operation.kind === 'replace-exact') {
     const matches = countOccurrences(base, operation.expected);
