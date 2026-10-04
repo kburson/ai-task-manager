@@ -1,7 +1,7 @@
 // @story #1873
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildTestChildEnv } from '../../../../run-tests-env.mjs';
+import { buildTestChildEnv } from '../../../../run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from '../../../../gh/lib/with-retry.mjs';
 import { PROJECT_ROOT_ALIASES } from '../../../../task-tracker/lib/runtime-storage.mjs';
 

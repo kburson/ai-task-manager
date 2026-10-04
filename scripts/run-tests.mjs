@@ -51,12 +51,12 @@ import {
   readFleet,
 } from './task-tracker/fleet-registry.mjs';
 import {
+  buildTestChildEnv,
   describeSpawnResult,
   findFleetLeaks,
   formatFleetLeak,
   RUN_TESTS_MAX_BUFFER,
 } from './run-tests-report.mjs';
-import { buildTestChildEnv } from './run-tests-env.mjs';
 import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
 import { evaluateSections, formatSectionSummary } from './run-tests-ceiling.mjs';
 import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';

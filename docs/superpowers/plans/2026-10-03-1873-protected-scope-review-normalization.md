@@ -62,3 +62,5 @@ Ruling: clear inherited project-root aliases only at the test-child boundary, us
 Ruling: replace the legacy create-issue fixture's scratch directory with the existing Git-backed runtime fixture helper. The CLI correctly rejects scratch-root authority; relaxing that production guard would conceal the defect. The cost is one local Git initialization per fixture.
 
 Ruling: relocate the genuine issue binding to a shorter source checkout through stop and resume with confirmed relocation. This avoids exceeding the filesystem component limit for encoded session paths without changing session identity, path encoding, or historical evidence. The old checkout and receipts remain preserved.
+
+Ruling: place the test-child environment helper in the existing test-report module beside the runner's buffer policy. A separate module exceeded the unchanged package-entry ceiling by one file in both Node compatibility jobs. The cost is a small additional policy export in an existing module; the package surface and ceiling remain unchanged. The obsolete canonical visit was interrupted, and its verified evidence was retired through registered rework.
