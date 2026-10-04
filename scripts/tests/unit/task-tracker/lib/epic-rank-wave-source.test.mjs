@@ -676,3 +676,38 @@ test('scope field punctuation stays distinct from a withdrawal reason separator'
     'blocked'
   );
 });
+
+test('sentence-final withdrawal and negated verbs revoke native permission', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'The parallel stories should stop.',
+    'Rank 2 needs to pause.',
+    'Epic #107 rank 2 should hold off.',
+    'Rank 2 should not run.',
+    'Rank 2 cannot proceed.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+});
+
+test('withdrawal pronouns and empty objects retain the nearest scoped subject', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'Epic #107 rank 2 is broken so stop it.',
+    'CI on rank 2 keeps failing, so hold off on it.',
+    'Rank 2, since CI is red, should pause.',
+    'Rank 2, please hold off on it.',
+    'Rank 2, hold off.',
+    'Because epic #108 is red, the parallel stories should pause.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+  for (const text of [
+    'Epic #108 rank 2 is broken so stop it.',
+    'Epic #108 rank 2, hold off.',
+    'Rank 2 is green, epic #108 rank 2 is broken so stop it.',
+    'Rank 2 is green, cancel parallel children [160,161].',
+    'Children [160,161], hold off.',
+    'Rank 2 tests passed. Please hold off on deployment.',
+    'Rank 2 should not pause.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'verified', text);
+});

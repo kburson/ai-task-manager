@@ -391,16 +391,26 @@ function reversalScope(text, scope) {
     admissionSpecific: ranks.length > 0 || members.length > 0 || wave,
   };
 }
-function contradictsWaveClause(text, scope, purpose) {
+function contextualReversalScope(text, scope) {
+  const pieces = text.split(
+    /,(?!\s*#?\d+\b)|[.;!?\n]|\b(?:because|since|so|as|pending|till|unless|if|once|when)\b/i
+  );
+  for (const piece of pieces.reverse()) {
+    const candidate = reversalScope(piece, scope);
+    if (candidate.specified) return candidate;
+  }
+  return reversalScope('', scope);
+}
+function contradictsWaveClause(text, scope, purpose, precedingClauses = '') {
   const verbs = [
     ...text.matchAll(
-      /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)\s+/gi
+      /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)(?=\s|$)/gi
     ),
   ];
   for (const [index, match] of verbs.entries()) {
     const verb = match[1].toLowerCase();
     const object = text.slice(
-      match.index + match[0].length,
+      match.index + match[1].length,
       verbs[index + 1]?.index ?? text.length
     );
     const negated =
@@ -409,13 +419,10 @@ function contradictsWaveClause(text, scope, purpose) {
       );
     const target = principalObject(object);
     const objectScope = reversalScope(target, scope);
-    const prefix = text
-      .slice(0, match.index)
-      .split(/[,.;!?\n]|\b(?:because|since|so|as|pending|till|unless|if|once|when)\b/i)
-      .at(-1);
     const relevant = objectScope.specified
       ? objectScope.matches
-      : reversalScope(prefix + ' ' + target, scope).matches;
+      : contextualReversalScope(precedingClauses + ', ' + text.slice(0, match.index), scope)
+          .matches;
     if (!relevant || !admissionTarget(object)) continue;
     if (purpose === 'revoke') {
       if (negated && /^(?:revoke|withdraw)$/.test(verb)) return true;
@@ -443,13 +450,18 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   const text = humanText(statement);
   // Negation and operational objects belong to their own clause. A neutral
   // clause must never cancel a genuine reversal elsewhere in the message.
-  const clauses = text
-    .split(
-      /[.;!?\n]+|,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)|\s+and\s+(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)/i
-    )
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (clauses.some((clause) => contradictsWaveClause(clause, scope, purpose))) return true;
+  for (const sentence of text.split(/[.;!?\n]+/)) {
+    const clauses = sentence
+      .split(
+        /,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)|\s+and\s+(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)/i
+      )
+      .map((part) => part.trim())
+      .filter(Boolean);
+    for (const [index, clause] of clauses.entries()) {
+      if (contradictsWaveClause(clause, scope, purpose, clauses.slice(0, index).join(', ')))
+        return true;
+    }
+  }
   if (!immediateReply) return false;
   const reply = text.trim();
   if (
