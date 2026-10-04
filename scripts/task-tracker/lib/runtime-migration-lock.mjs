@@ -665,6 +665,18 @@ export function withRuntimeOperationLock(input, operation) {
   );
 }
 
+// Bootstrap shares the store exclusion without manufacturing a writer lease.
+export async function withRuntimeBootstrapCoordinator(input, operation) {
+  const owner = identity(input.adapters || {});
+  const paths = locations(input);
+  return coordinated(
+    paths,
+    owner,
+    () => operation({ owner, coordinator: coordinatorSnapshot(paths) }),
+    { awaitOperation: true }
+  );
+}
+
 export function withRuntimeStoreLockSync(input, operation) {
   const layout = runtimeStoragePaths(input);
   const held = writerScope.getStore()?.get(layout.projectRoot);

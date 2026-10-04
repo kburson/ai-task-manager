@@ -1,3 +1,4 @@
+import { assertRuntimeEmptyAdmission } from './runtime-activation-admission.mjs';
 import { assertRuntimeBatchAdmission } from './runtime-batch-admission.mjs';
 // @story #1857
 // cspell:words commondir backlink
@@ -314,6 +315,7 @@ function readControl(file, root, mainRoot, base) {
 
 export function assertRuntimeReadable(roots) {
   const layout = runtimeStoragePaths(roots);
+  assertRuntimeEmptyAdmission(layout, { assertPath: assertStoragePath, fail });
   assertRuntimeBatchAdmission(layout, { assertPath: assertStoragePath, fail });
   assertStoragePath(layout.controlPath, layout.localRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
   assertStoragePath(layout.sharedControlPath, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
