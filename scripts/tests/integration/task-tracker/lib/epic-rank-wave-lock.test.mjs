@@ -11,16 +11,13 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import {
   admissionLockPath,
   withEpicAdmissionLock,
 } from '../../../../task-tracker/lib/epic-admission-lock.mjs';
 import { discoverRankWavePhysical } from '../../../../task-tracker/lib/epic-rank-wave-bindings.mjs';
-const moduleUrl = pathToFileURL(
-  path.resolve('scripts/task-tracker/lib/epic-admission-lock.mjs')
-).href;
+const workerPath = path.resolve('scripts/tests/fixtures/rank-wave-lock-worker.mjs');
 function repo() {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'rank-wave-lock-'));
   const main = path.join(dir, 'main'),
@@ -48,11 +45,12 @@ function repo() {
   git(['worktree', 'add', '-b', 'child-b', b]);
   return { dir, main, a, b };
 }
-function processRun(code) {
+function processRun(mode, data) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['--input-type=module', '-e', code], {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    const child = spawn(process.execPath, [workerPath, mode], {
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
+    child.stdin.end(JSON.stringify(data));
     let out = '',
       err = '';
     child.stdout.on('data', (d) => (out += d));
@@ -87,16 +85,12 @@ test('competing native processes serialize and re-read revocation at the winning
       events = path.join(r.dir, 'events.log');
     writeFileSync(authority, JSON.stringify({ revoked: false }));
     writeFileSync(events, '');
-    const first = processRun(
-      `import {withEpicAdmissionLock} from ${JSON.stringify(moduleUrl)};import{appendFileSync,writeFileSync}from'node:fs';await withEpicAdmissionLock({projectDir:${JSON.stringify(r.a)},epic:107},async()=>{appendFileSync(${JSON.stringify(events)},'revoke:start\\n');await new Promise(r=>setTimeout(r,150));writeFileSync(${JSON.stringify(authority)},JSON.stringify({revoked:true}));appendFileSync(${JSON.stringify(events)},'revoke:end\\n');});`
-    );
+    const first = processRun('hold-revoke', { projectDir: r.a, authority, events });
     // Wait for the actual holder to enter, not an assumed process-start delay.
     for (let i = 0; i < 100 && !readFileSync(events, 'utf8').includes('revoke:start'); i++)
       await new Promise((r) => setTimeout(r, 10));
     assert.match(readFileSync(events, 'utf8'), /revoke:start/);
-    const second = processRun(
-      `import{withEpicAdmissionLock}from${JSON.stringify(moduleUrl)};import{appendFileSync,readFileSync}from'node:fs';await withEpicAdmissionLock({projectDir:${JSON.stringify(r.b)},epic:107},async()=>{const state=JSON.parse(readFileSync(${JSON.stringify(authority)},'utf8'));appendFileSync(${JSON.stringify(events)},state.revoked?'admission:refused\\n':'admission:allowed\\n');});`
-    );
+    const second = processRun('observe', { projectDir: r.b, authority, events });
     await Promise.all([first, second]);
     assert.equal(readFileSync(events, 'utf8'), 'revoke:start\nrevoke:end\nadmission:refused\n');
   } finally {
@@ -119,8 +113,7 @@ test('bounded contention never evicts live or unknown ownership and nested conte
         ),
         /context/
       );
-      const code = `import{withEpicAdmissionLock}from${JSON.stringify(moduleUrl)};try{await withEpicAdmissionLock({projectDir:${JSON.stringify(r.b)},epic:107,timeoutMs:50},async()=>{});process.exit(3);}catch(e){console.log(e.code);}`;
-      assert.match(await processRun(code), /admission-lock-timeout/);
+      assert.match(await processRun('timeout', { projectDir: r.b }), /admission-lock-timeout/);
     });
     const lock = admissionLockPath({ projectDir: r.a, epic: 107 });
     mkdirSync(lock, { recursive: true });
@@ -202,41 +195,28 @@ test('public Plan-to-Develop admission waits for a linked-worktree revoker and r
       source,
       previousDigest: initial.digest,
     };
-    const runtimeUrl = pathToFileURL(
-      path.resolve('scripts/tests/fixtures/rank-wave-file-runtime.mjs')
-    ).href;
-    const storeUrl = pathToFileURL(
-      path.resolve('scripts/task-tracker/lib/epic-rank-wave-store.mjs')
-    ).href;
     writeFileSync(events, '');
-    const promoteUrl = pathToFileURL(path.resolve('scripts/task-tracker/verbs/promote.mjs')).href;
-    const guardUrl = pathToFileURL(
-      path.resolve('scripts/task-tracker/lib/refine-exit-wip-budget-guard.mjs')
-    ).href;
-    const graphUrl = pathToFileURL(
-      path.resolve('scripts/task-tracker/lib/epic-rank-wave-policy.mjs')
-    ).href;
-    const first = processRun(
-      `import{executeRankWaveWrite}from${JSON.stringify(storeUrl)};import{fileRankWaveRuntime}from${JSON.stringify(runtimeUrl)};const result=await executeRankWaveWrite({action:'revoke',repository:'o/r',epic:107,now:'2026-10-04T01:01:00.000Z',runtime:fileRankWaveRuntime({file:${JSON.stringify(authority)},projectDir:${JSON.stringify(r.a)},events:${JSON.stringify(events)}}),input:${JSON.stringify(input)}});if(result.status!=='recorded')throw new Error(JSON.stringify(result));`
-    );
+    const first = processRun('publish-revoke', { projectDir: r.a, authority, events, input });
     for (let i = 0; i < 100 && !readFileSync(events, 'utf8').includes('revoke:start'); i++)
       await new Promise((resolve) => setTimeout(resolve, 10));
     assert.match(readFileSync(events, 'utf8'), /revoke:start/);
-    const code = `
-      import{runSerializedPromote}from${JSON.stringify(promoteUrl)};
-      import{refineExitWipBudgetGuard}from${JSON.stringify(guardUrl)};
-      import{freezeRankGraph}from${JSON.stringify(graphUrl)};
-      import{readFileSync,appendFileSync}from'node:fs';
-      import{inspectRankWavePublication}from${JSON.stringify(storeUrl)};
-      import{fileRankWaveRuntime}from${JSON.stringify(runtimeUrl)};
-      const runtime=fileRankWaveRuntime({file:${JSON.stringify(authority)},projectDir:${JSON.stringify(r.b)}});
-      const children=[140,144].map(number=>({number,rank:2,state:'plan',boardState:'plan',issueState:'open',closeReason:null,recoveryPhase:null,refinementDigest:'a'.repeat(64),hasCurrentRefinement:true,blockedBy:[],dependencyReadiness:'ready'}));
-      const body='<!-- aitm-last-known-state state="plan" ts="2026-10-04T01:00:00.000Z" -->';
-      const result=await runSerializedPromote({issueNumber:144,cfg:{repo:'o/r'},deps:{projectDir:${JSON.stringify(r.b)},fetchParentIssue:async()=>107,withIssueLock:async(_,fn)=>fn(),assertBound(){},fetchIssueBody:async()=>({body}),getLiveState:async()=> 'plan',resolveProjectDir:()=>${JSON.stringify(r.b)},sessionPolicy:{},epicChildren:{rankWaveRuntime:runtime,inspectRankWavePublication:args=>inspectRankWavePublication({...args,now:'2026-10-04T01:02:00.000Z',runtime})},runGuards:async(_from,_to,ctx)=>{const r=await refineExitWipBudgetGuard.run(ctx);return r.ok?{ok:true,status:'ready',refusals:[],humanDecision:null}:{ok:false,status:'blocked',refusals:[{id:'refine-exit-wip-budget',guardId:'refine-exit-wip-budget',...r}],humanDecision:null};},loadWorkflowBoundary:async()=>({status:'observed'}),runMoveState:async()=>{appendFileSync(${JSON.stringify(events)},'effect:develop\\n');return 0;}}});
-      if(result.decision?.refusals?.[0]?.code!=='rank-wave-admission-refused')throw new Error(JSON.stringify(result));
-      appendFileSync(${JSON.stringify(events)},'admission:refused\\n');`;
-    await Promise.all([first, processRun(code)]);
+    await Promise.all([first, processRun('promote', { projectDir: r.b, authority, events })]);
     assert.equal(readFileSync(events, 'utf8'), 'revoke:start\nrevoke:end\nadmission:refused\n');
+  } finally {
+    rmSync(r.dir, { recursive: true, force: true });
+  }
+});
+
+test('cross-process fixture transports quoted paths as data without constructing executable source', async () => {
+  const r = repo();
+  try {
+    const authority = path.join(r.dir, "authority-'quoted'.json");
+    const events = path.join(r.dir, "events-'quoted'.log");
+    writeFileSync(authority, JSON.stringify({ revoked: true }));
+    writeFileSync(events, '');
+    await processRun('observe', { projectDir: r.a, authority, events });
+    assert.equal(readFileSync(events, 'utf8'), 'admission:refused\n');
+    assert.deepEqual(JSON.parse(readFileSync(authority, 'utf8')), { revoked: true });
   } finally {
     rmSync(r.dir, { recursive: true, force: true });
   }
