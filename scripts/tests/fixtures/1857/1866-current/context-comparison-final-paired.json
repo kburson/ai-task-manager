@@ -9,7 +9,7 @@
   "sources": {
     "lifecycle": {
       "path": "scripts/tests/fixtures/1857/1866-current/lifecycle-transcript-final.json",
-      "sha256": "sha256:2681192ed2cf95b0f7dc7016ae1feca60879fb578b32afefdf22632102f013c7"
+      "sha256": "sha256:1083ca5601a8595284633223c6de7c4b29f774575b869800a1901e1ecb4923dc"
     },
     "authority": {
       "path": "scripts/tests/fixtures/1558/authority-after.json",
