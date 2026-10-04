@@ -259,7 +259,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:ce14af5cf36f12a93cfda423403a3d4c92f4f305c1f733ad385b2382c8980e1d"
+        "sitesSha256": "sha256:7859753ba23c75073fba1cb42fb41a1c44ae5f24b70d105fe50c01205370216e"
       },
       "rationale": "A saturated planning WIP budget is a current scheduling constraint, not an auto-override."
     },

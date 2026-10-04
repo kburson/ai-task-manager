@@ -1,3 +1,4 @@
+// @story #1872
 // @story #1857
 // Artifact authoring is independent of lifecycle; execution and commits are not.
 import path from 'node:path';
@@ -153,6 +154,12 @@ export function resolveArtifactShell(command, invocationDir, projectRoot) {
       resolveMutationTarget(target.replace(/^(?:\.\/)+/, ''), invocationDir, projectRoot)
     );
     const policies = resolved.map((target) => artifactPathPolicy(target.relative));
+    if (policies.includes('other'))
+      return {
+        status: 'block',
+        targets,
+        reason: 'Artifact shell target resolves outside the artifact directory.',
+      };
     if (policies.includes('block'))
       return {
         status: 'block',

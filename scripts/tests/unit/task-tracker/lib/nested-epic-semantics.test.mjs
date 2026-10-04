@@ -22,6 +22,7 @@
 // All deps are injected; no network. If a gate ever silently starts walking
 // to root state, one of these assertions flips.
 
+import { legacyRankWavePorts } from '../../../fixtures/legacy-rank-wave.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
@@ -163,6 +164,7 @@ test('planRefineWipGate: grandchild promotion fetches parent via fetchParentIssu
     cfg,
     issueNumber: 210,
     deps: {
+      ...legacyRankWavePorts,
       fetchParentIssue: async ({ issueNumber }) => {
         parentQueriedFor = Number(issueNumber);
         return 200; // immediate parent is the sub-epic

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1872
 // @story #652
 // Coverage tests for scripts/task-tracker/hook-handler.mjs.
 //
@@ -11,6 +12,8 @@
 // stdout banners and dispatch behaviour. Each spawned child inherits c8's
 // NODE_V8_COVERAGE, so the subprocess executions are captured and merged.
 
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { loadState } from '../../../../task-tracker/state.mjs';
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -21,6 +24,7 @@ import {
   projectScratchDir,
   mkdtempProjectIsolated,
 } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { peek } from '../../../../task-tracker/queue.mjs';
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -54,14 +58,19 @@ function fixture({ state, jsonlLines = [], marker = null, appName = 'claude' } =
   // git-isolated sandbox root so the spawned hook's repo-walk can't escape
   // into the live repo and touch real .ai-task-manager state.
   const proj = mkdtempProjectIsolated('proj-', 'test');
+  mkdirSync(path.join(proj, '.ai-task-manager'), { recursive: true });
+  writeFileSync(
+    path.join(proj, '.ai-task-manager', 'task-tracker.json'),
+    JSON.stringify({ repo: 'test-owner/test-repo' })
+  );
   const transcripts = path.join(proj, 'transcripts');
   mkdirSync(transcripts, { recursive: true });
+  const sid = 'sess-test';
   if (state) {
     const statePath = path.join(proj, STATE_REL);
     mkdirSync(path.dirname(statePath), { recursive: true });
-    writeFileSync(statePath, JSON.stringify(state));
+    writeFixtureTrackerState(statePath, JSON.stringify(state), { provider: appName, sid });
   }
-  const sid = 'sess-test';
   if (jsonlLines.length) {
     writeFileSync(
       path.join(transcripts, `${sid}.jsonl`),
@@ -88,9 +97,25 @@ function fixture({ state, jsonlLines = [], marker = null, appName = 'claude' } =
     AI_TASK_MANAGER_PROJECT_DIR: proj,
     AI_TASK_MANAGER_TRANSCRIPT_DIR: transcripts,
     AI_TASK_MANAGER_APP_NAME: appName,
+    AI_TASK_MANAGER_SESSION_ID: sid,
     TT_SKIP_NETWORK: '1',
   };
   return { proj, sid, env };
+}
+
+function readHookState(fx) {
+  const oldSid = process.env.AI_TASK_MANAGER_SESSION_ID,
+    oldApp = process.env.AI_TASK_MANAGER_APP_NAME;
+  process.env.AI_TASK_MANAGER_SESSION_ID = fx.sid;
+  process.env.AI_TASK_MANAGER_APP_NAME = fx.env.AI_TASK_MANAGER_APP_NAME;
+  try {
+    return loadState(path.join(fx.proj, STATE_REL));
+  } finally {
+    if (oldSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+    else process.env.AI_TASK_MANAGER_SESSION_ID = oldSid;
+    if (oldApp === undefined) delete process.env.AI_TASK_MANAGER_APP_NAME;
+    else process.env.AI_TASK_MANAGER_APP_NAME = oldApp;
+  }
 }
 
 // Spawn the hook with the given event + stdin payload; return stdout (+stderr).
@@ -107,6 +132,7 @@ function spawnHook(fx, event, { sid = 'sess-test', rawStdin } = {}) {
     out = execFileSync('node', [HOOK], {
       input,
       env: fx.env,
+      cwd: fx.proj,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -126,6 +152,7 @@ function spawnHookResult(fx, event, { sid = 'sess-test', timestamp, promptId } =
       prompt_id: promptId,
     }),
     env: fx.env,
+    cwd: fx.proj,
     encoding: 'utf8',
   });
 }
@@ -198,7 +225,7 @@ test('SessionStart: active task with stale entryStartTs → recovery banner', ()
     state: { active: '#7', entryStartTs: pastTs, wordsAtEntryStart: 0, lastWordMarker: 0 },
     jsonlLines: [{ type: 'user', message: { content: 'hello world from the test transcript' } }],
   });
-  assert.match(out, /#7 is active/);
+  assert.match(out, /#7: recovered-unknown\. Prior unobserved session time remains Unknown\./);
 });
 
 test('SessionStart: active task with no entryStartTs → active banner, no recovery time', () => {
@@ -206,10 +233,10 @@ test('SessionStart: active task with no entryStartTs → active banner, no recov
     state: { active: '#7', entryStartTs: null, wordsAtEntryStart: 0, lastWordMarker: 0 },
     jsonlLines: [{ type: 'user', message: { content: 'a few words here' } }],
   });
-  assert.match(out, /#7 is active/);
+  assert.match(out, /#7: paused/);
 });
 
-test('SessionStart banks an existing session cursor tail exactly once', () => {
+test('SessionStart with a paused interval preserves its unconsumed cursor tail', () => {
   const fx = fixture({
     state: {
       active: '#7',
@@ -229,18 +256,18 @@ test('SessionStart banks an existing session cursor tail exactly once', () => {
   });
   spawnHook(fx, 'SessionStart');
   spawnHook(fx, 'SessionStart');
-  const state = JSON.parse(readFileSync(path.join(fx.proj, STATE_REL), 'utf8'));
+  const state = readHookState(fx);
   const marker = JSON.parse(
     readFileSync(path.join(fx.proj, '.tmp/aitm/app/claude/session-tracking/sess-test.json'), 'utf8')
   ).wordCount;
-  assert.equal(state.lastWordMarker, 103);
-  assert.equal(state.lastFullWordMarker, 203);
-  assert.equal(marker.line, 2);
-  assert.equal(marker.words, 103);
-  assert.equal(marker.wordsFull, 203);
+  assert.equal(state.lastWordMarker, 100);
+  assert.equal(state.lastFullWordMarker, 200);
+  assert.equal(marker.line, 1);
+  assert.equal(marker.words, 100);
+  assert.equal(marker.wordsFull, 200);
 });
 
-test('SessionStart orphan recovery rows use the freshly banked marker pair', () => {
+test('SessionStart recovery banks actor markers and does not queue rows when network is explicitly skipped', () => {
   const fx = fixture({
     state: {
       active: '#7',
@@ -256,22 +283,13 @@ test('SessionStart orphan recovery rows use the freshly banked marker pair', () 
     ],
   });
   spawnHook(fx, 'SessionStart');
-  const queued = JSON.parse(
-    readFileSync(path.join(fx.proj, '.tmp/aitm/state/task-tracker-queue.json'), 'utf8')
-  );
+  const queued = peek(path.join(fx.proj, '.tmp/aitm/state/task-tracker-queue.json'));
   const rows = queued.map((item) => parseTimingRow(item.row));
-  assert.deepEqual(
-    rows.map((row) => row.event),
-    ['pause:orphan-recovery', 'resumed', 'session-start']
-  );
-  assert.deepEqual(
-    rows.map((row) => row.wordMarker),
-    ['103', '103', '103']
-  );
-  assert.deepEqual(
-    rows.map((row) => row.fullWordMarker),
-    ['203', '203', '203']
-  );
+  assert.deepEqual(rows, []);
+  const state = readHookState(fx);
+  assert.equal(state.lastWordMarker, 103);
+  assert.equal(state.lastFullWordMarker, 203);
+  assert.equal(typeof state.entryStartTs, 'string');
 });
 
 test('PreCompact: active with entryStartTs → flush path runs (exit 0)', () => {
@@ -301,7 +319,7 @@ test('PostCompact: active → resume row path (exit 0)', () => {
   assert.doesNotMatch(out, /task-tracker-hook/);
 });
 
-test('PreCompact/PostCompact rows advance durable primary and full markers from the prior cursor', () => {
+test('PreCompact/PostCompact advances actor cursors without pretending skipped rows were published', () => {
   const fx = fixture({
     state: {
       active: '#7',
@@ -314,22 +332,12 @@ test('PreCompact/PostCompact rows advance durable primary and full markers from 
   });
   spawnHook(fx, 'PreCompact');
   spawnHook(fx, 'PostCompact');
-  const queued = JSON.parse(
-    readFileSync(path.join(fx.proj, '.tmp/aitm/state/task-tracker-queue.json'), 'utf8')
-  );
+  const queued = peek(path.join(fx.proj, '.tmp/aitm/state/task-tracker-queue.json'));
   const rows = queued.map((item) => parseTimingRow(item.row));
-  assert.deepEqual(
-    rows.map((row) => row.event),
-    ['pre-compact-flush', 'post-compact-resume']
-  );
-  assert.deepEqual(
-    rows.map((row) => row.wordMarker),
-    ['105', '105']
-  );
-  assert.deepEqual(
-    rows.map((row) => row.fullWordMarker),
-    ['205', '205']
-  );
+  assert.deepEqual(rows, []);
+  const state = readHookState(fx);
+  assert.equal(state.lastWordMarker, 105);
+  assert.equal(state.lastFullWordMarker, 205);
 });
 
 test('PostCompact banks a tail preserved by an unavailable PreCompact exactly once', () => {
@@ -375,23 +383,18 @@ test('PostCompact banks a tail preserved by an unavailable PreCompact exactly on
   };
   spawnHookResult(fx, 'PostCompact', postCompactIdentity);
   spawnHookResult(fx, 'PostCompact', postCompactIdentity);
-  const state = JSON.parse(readFileSync(path.join(fx.proj, STATE_REL), 'utf8'));
+  const state = readHookState(fx);
   const marker = JSON.parse(
     readFileSync(path.join(fx.proj, '.tmp/aitm/app/codex/session-tracking/sess-test.json'), 'utf8')
   ).wordCount;
-  const queued = JSON.parse(
-    readFileSync(path.join(fx.proj, '.tmp/aitm/state/task-tracker-queue.json'), 'utf8')
-  );
+  const queued = peek(path.join(fx.proj, '.tmp/aitm/state/task-tracker-queue.json'));
   const rows = queued.map((item) => parseTimingRow(item.row));
   assert.equal(state.lastWordMarker, 103);
   assert.equal(state.lastFullWordMarker, 203);
   assert.equal(marker.line, 2);
   assert.equal(marker.words, 103);
   assert.equal(marker.wordsFull, 203);
-  assert.deepEqual(
-    rows.map((row) => row.fullWordMarker),
-    ['—', '203']
-  );
+  assert.deepEqual(rows, [], 'network skip produces no counterfeit delivery');
 });
 
 test('PostCompact: nothing active → early return', () => {

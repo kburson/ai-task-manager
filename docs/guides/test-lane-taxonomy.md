@@ -61,3 +61,35 @@ CI-only system-touching lane, `slow = slow`, and `all = every lane`.
 The runner (migrated in #874) imports `laneManifest`/`laneOf` rather than
 re-deriving lanes from a directory list, so discovery and lane assignment share
 one source of truth and cannot drift.
+
+## CI collection groups
+
+CI runs integration in three independent GitHub Actions jobs and uses three jobs
+for slow tests when the existing nightly, manual, or `ci-slow` trigger applies.
+Unit remains one complete lane. Each instance owns its checkout and dependency
+setup; the runner retains its existing scheduling, isolation and timing checks.
+
+`node scripts/run-tests.mjs --lane integration --shard 1/3` selects one group.
+Groups are derived from the complete canonical lane inventory. Whole test files
+stay intact. Files in the same directory with the same first hyphen-separated
+suite-name segment stay together, so `delivery.test.mjs` and
+`delivery-waiver.test.mjs` share an instance. Larger collections are assigned
+first to the group with the fewest files; ties use a deterministic order. This
+balances file counts initially; uploaded timing data supports later tuning.
+
+Every group uploads its plan, console log, process exit code and per-file timing
+results, including failed runs. The Fast and Slow aggregate checks validate the
+expected group count, actual checkout SHA, disjoint complete inventory and all
+file statuses before publishing downloadable lane receipts. A runner failure,
+including a timing or isolation refusal after passing assertions, still fails.
+Receipts distinguish the actual tested checkout from the PR source head and
+include the workflow run ID, attempt and actual runner environment. These CI
+result artifacts do not impersonate local AITM Test receipts.
+
+### Rerunning grouped CI
+
+Use **Re-run all jobs** after a failed grouped run. Aggregates require every
+worker receipt from the same run attempt and tested commit. GitHub's **Re-run
+failed jobs** retains successful workers from an earlier attempt, so the
+aggregate will correctly refuse their missing current-attempt receipts. Do not
+mix attempts or copy an old receipt to satisfy the aggregate.

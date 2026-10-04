@@ -824,7 +824,7 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/refine-exit-wip-budget-guard.mjs",
-          "line": 36,
+          "line": 47,
           "fingerprint": "sha256:221e8dd5334b61d596d44f8dceda3d3253539df0df2b3deb8edd37b4f4e4247a",
           "kind": "refusal"
         }

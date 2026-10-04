@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #32
 // Integration tests for the structural body gate in scripts/gh/move-state.mjs.
 // Drives move-state.mjs against a sandboxed config + fake `gh` shim that returns
@@ -43,7 +47,7 @@ function deepDiveAdequate() {
 }
 
 function makeSandbox(body) {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-gate-'));
+  const sandbox = createRuntimeRootFixture('tt-gate-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -165,6 +169,7 @@ async function runMove(sandbox, binDir, args, extraEnv = {}) {
   // can't easily stub here). The script provides --item-id to skip lookup, so
   // the test always passes one.
   return pexec('node', [SCRIPT, ...args, '--item-id', 'PVTI_test'], {
+    cwd: sandbox,
     env: {
       ...process.env,
       AITM_INTERNAL: '1',

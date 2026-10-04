@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { loadState } from '../../../../task-tracker/state.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #309
 import { strict as assert } from 'node:assert';
 import '../../../fixtures/offline-gh-auto.mjs';
@@ -30,9 +34,7 @@ assert.match(r.stdout, /Active: #321/);
 r = await pexec('node', [CLI, 'review', '#321'], { env, cwd: sandbox });
 assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/);
 
-let state = JSON.parse(
-  readFileSync(path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
-);
+let state = loadState(path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
 // A no-network probe has not completed agent Review, so it must not pause for
 // human approval. The issue stays bound and its timing segment remains open.
 assert.equal(state.active, '#321');
@@ -59,9 +61,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   const env2 = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox2, TT_SKIP_NETWORK: '1' };
 
   await pexec('node', [CLI, '#385'], { env: env2, cwd: sandbox2 });
-  let st = JSON.parse(
-    readFileSync(path.join(sandbox2, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
-  );
+  let st = loadState(path.join(sandbox2, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
   assert.equal(st.active, '#385');
 
   let refusalErr = null;
@@ -74,9 +74,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   assert.equal(refusalErr.code, 7, 'cross-close refusal must exit 7');
   assert.match(refusalErr.stdout, /PROMPT_REQUIRED: bind-mismatch #385:#386/);
 
-  st = JSON.parse(
-    readFileSync(path.join(sandbox2, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
-  );
+  st = loadState(path.join(sandbox2, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
   assert.equal(st.active, '#385', 'active session must remain #385 after refusal');
 
   rmSync(sandbox2, { recursive: true });
@@ -98,9 +96,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   });
   assert.match(closeResult.stdout, /Closed #400/);
 
-  const st = JSON.parse(
-    readFileSync(path.join(sandbox3, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
-  );
+  const st = loadState(path.join(sandbox3, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
   assert.equal(st.active, null, 'active should be cleared when closing the only/active issue');
 
   rmSync(sandbox3, { recursive: true });

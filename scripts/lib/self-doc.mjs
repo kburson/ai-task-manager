@@ -838,9 +838,14 @@ const DIRECT_SELF_DOC = Object.freeze({
     path: 'scripts/run-tests.mjs',
     classification: 'package-lifecycle-cli',
     synopsis: 'Run the selected repository test lane with bounded pooling and timing.',
-    usage: 'run-tests [--lane <unit|integration|fast|slow|all>] [--timing-report]',
+    usage:
+      'run-tests [--lane <unit|integration|fast|slow|all>] [--shard <index/count>] [--timing-report]',
     arguments: [
       argument('--lane <name>', 'Test lane; fast is the default.'),
+      argument(
+        '--shard <index/count>',
+        'Run one complete collection group; 1 <= index <= count <= 32.'
+      ),
       argument('--timing-report', 'Print the human-readable timing report.'),
     ],
     preconditions: ['Repository dependencies must be installed.'],

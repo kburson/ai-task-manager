@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #309
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
@@ -20,6 +24,7 @@ async function run(args, env = {}) {
   // to AITM_INTERNAL=1; individual tests can override by passing
   // `AITM_INTERNAL: ''` in the env.
   return pexec('node', [SCRIPT, ...args], {
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR ?? process.cwd(),
     env: { AITM_INTERNAL: '1', ...process.env, ...env },
   });
 }
@@ -68,7 +73,7 @@ for (const state of [
   'review',
   'done',
 ]) {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), `tt-ms-${state}-`));
+  const sandbox = createRuntimeRootFixture(`tt-ms-${state}-`);
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -102,7 +107,7 @@ for (const state of [
 // data is on disk, move-state must not preserve or rewrite it — the issue
 // body `aitm-last-known-state` marker is the single source of truth.
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ms-state-write-'));
+  const sandbox = createRuntimeRootFixture('tt-ms-state-write-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

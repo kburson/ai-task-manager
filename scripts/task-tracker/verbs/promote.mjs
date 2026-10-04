@@ -1,3 +1,5 @@
+import { withEpicAdmissionLock } from '../lib/epic-admission-lock.mjs';
+import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
 // `promote` verb — directional forward state-change (#81 rename of `/task move`).
 //
 // One verb advances the issue by exactly one state along the FORWARD chain:
@@ -729,6 +731,49 @@ function parseArgs(rest) {
   return { issueNumber: null };
 }
 
+export async function runSerializedPromote({ issueNumber, cfg, deps = {} }) {
+  const projectDir = deps.projectDir ?? getProjectDir();
+  const parent = await (deps.fetchParentIssue ?? fetchParentIssueStrict)({
+    issueNumber,
+    repo: cfg.repo,
+  });
+  const childLock = deps.withIssueLock ?? withIssueLock;
+  const runner = deps.promoteRunner ?? runPromote;
+  const admissionState = (state) => ['ready-for-plan', 'plan'].includes(normalizeStateId(state));
+  const readState = async () => {
+    const { body } = await (deps.fetchIssueBody ?? defaultFetchIssueBody)({
+      issueNumber,
+      repo: cfg.repo,
+    });
+    return (
+      readLastKnownState(body).state ??
+      (await (deps.getLiveState ?? defaultGetLiveState)({ issueNumber, cfg }))
+    );
+  };
+  const run = (context) =>
+    childLock({ issue: issueNumber, verb: 'promote', projDir: projectDir }, async () => {
+      // Never acquire a parent lock while holding the child lock. A changed
+      // admission state must be retried through the parent-before-child route.
+      if (parent !== null && !context && admissionState(await readState()))
+        return {
+          status: 'guard-refused',
+          code: 'admission-state-changed',
+          message: 'promote: admission state changed; retry with parent admission serialization',
+        };
+      return runner({
+        issueNumber,
+        cfg,
+        deps: { ...deps, projectDir, admissionLockContext: context },
+      });
+    });
+  if (parent === null) return run(null);
+  if (!admissionState(await readState())) return run(null);
+  return (deps.withEpicAdmissionLock ?? withEpicAdmissionLock)(
+    { projectDir, epic: parent, context: deps.admissionLockContext },
+    run
+  );
+}
+
 export async function verbPromote(rest, cfg, deps = {}) {
   const { issueNumber } = parseArgs(rest);
   if (!issueNumber) {
@@ -738,12 +783,7 @@ export async function verbPromote(rest, cfg, deps = {}) {
 
   let result;
   try {
-    result = await withIssueLock(
-      { issue: issueNumber, verb: 'promote', projDir: getProjectDir() },
-      // `deps` defaults to `{}` on the real CLI path, so live behaviour is
-      // unchanged; verb tests inject the seam to drive every result branch.
-      () => runPromote({ issueNumber, cfg, deps })
-    );
+    result = await runSerializedPromote({ issueNumber, cfg, deps });
   } catch (err) {
     if (err instanceof IssueLockError) {
       process.stderr.write(`⛔ ${err.message}\n`);
@@ -821,6 +861,7 @@ export async function verbPromote(rest, cfg, deps = {}) {
       process.stderr.write('\n');
       process.exit(4);
     }
+    case 'guard-refused':
     case 'drift-refused': {
       process.stderr.write(
         `\n⛔ Refusing to promote #${issueNumber}:\n   BLOCKED: ${result.message}\n\n`
