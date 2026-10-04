@@ -22,6 +22,7 @@
 // is recorded in the Full-Auto audit comment.
 
 import { strict as assert } from 'node:assert';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -288,11 +289,23 @@ test('AC (#574): relocated .ai-task-manager/templates survive a fresh worktree c
   }
 });
 
-test('AC (#572): getProjectDir precedence — AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd', () => {
-  assert.equal(
-    getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: '/a', CLAUDE_PROJECT_DIR: '/b' }, '/c'),
-    '/a'
-  );
-  assert.equal(getProjectDir({ CLAUDE_PROJECT_DIR: '/b' }, '/c'), '/b');
-  assert.equal(getProjectDir({}, '/c'), '/c');
+test('AC (#572): getProjectDir accepts matching real roots and rejects foreign aliases', () => {
+  const root = realpathSync(createRuntimeRootFixture('recovery-root-'));
+  const foreign = realpathSync(createRuntimeRootFixture('recovery-foreign-'));
+  try {
+    assert.equal(
+      getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: root, CLAUDE_PROJECT_DIR: root }, root),
+      root
+    );
+    assert.equal(getProjectDir({ CLAUDE_PROJECT_DIR: root }, root), root);
+    assert.equal(getProjectDir({}, root), root);
+    for (const env of [
+      { AI_TASK_MANAGER_PROJECT_DIR: foreign, CLAUDE_PROJECT_DIR: root },
+      { AI_TASK_MANAGER_PROJECT_DIR: root, CLAUDE_PROJECT_DIR: foreign },
+    ])
+      assert.throws(() => getProjectDir(env, root), { code: 'ROOT_IDENTITY_MISMATCH' });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(foreign, { recursive: true, force: true });
+  }
 });

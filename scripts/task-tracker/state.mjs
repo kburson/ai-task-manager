@@ -206,8 +206,15 @@ export function projectDirForState(statePath) {
   if (tmpIdx !== -1) return abs.slice(0, tmpIdx);
   // `.ai-task-manager/` is always a real state container — anchor on the
   // rightmost one (worktree-local wins over main, per #332).
-  const aimIdx = norm.lastIndexOf(SHARED_DIR_SEGMENT);
-  if (aimIdx !== -1) return abs.slice(0, aimIdx);
+  // #1873 — runtime test hosts are metadata directories, not state containers.
+  for (let from = norm.length; ;) {
+    const idx = norm.lastIndexOf(SHARED_DIR_SEGMENT, from);
+    if (idx === -1) break;
+    const after = norm.slice(idx + SHARED_DIR_SEGMENT.length);
+    if (!after.startsWith('runtime/test-sandboxes/') && !after.startsWith('runtime/test-fixtures/'))
+      return abs.slice(0, idx);
+    from = idx - 1;
+  }
   // `.claude/` is trickier: `<main>/.claude/worktrees/<wt>/…` uses `.claude`
   // as a worktree HOST, not a state container. A state file living deeper
   // under such a worktree (e.g. a test sandbox at `<wt>/.scratch/test/…/state.json`)

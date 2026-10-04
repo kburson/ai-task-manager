@@ -64,3 +64,15 @@ Ruling: replace the legacy create-issue fixture's scratch directory with the exi
 Ruling: relocate the genuine issue binding to a shorter source checkout through stop and resume with confirmed relocation. This avoids exceeding the filesystem component limit for encoded session paths without changing session identity, path encoding, or historical evidence. The old checkout and receipts remain preserved.
 
 Ruling: place the test-child environment helper in the existing test-report module beside the runner's buffer policy. A separate module exceeded the unchanged package-entry ceiling by one file in both Node compatibility jobs. The cost is a small additional policy export in an existing module; the package surface and ceiling remain unchanged. The obsolete canonical visit was interrupted, and its verified evidence was retired through registered rework.
+
+Ruling: retain the runner's existing retry-policy import and assignment to preserve frozen executable topology. The child helper clears root aliases only. The cost is keeping environment isolation and retry policy in their respective existing modules; no frozen inventory is changed.
+
+Ruling: exclude sanctioned runtime test-host directories from legacy state-container derivation, mirroring the existing exclusion for Claude worktree hosts. Two new nested-path assertions failed before the correction; the original state fallback and all 23 targeted state/fixture tests pass afterward. Ordinary container precedence and the runtime root guard are unchanged. The cost is recognizing two existing host-directory families.
+
+Ruling: read fixture state through the canonical provider-neutral API, and replace obsolete fictional-root precedence assertions with real Git roots and explicit foreign/shadowed-alias refusal controls. The cost is local fixture Git initialization; no actual provider or session identity is changed.
+
+Ruling: restore complete genuine Git history for local capture verification. The shallow source lacked immutable historical objects and correctly failed provenance checks. CI already checks out complete history; frozen inputs remain unchanged. The cost is fetching existing history locally.
+
+Ruling: use a flat genuine temporary source checkout through registered stop/resume relocation to reduce nested repository-discovery overhead and encoded path length. The failed integration run measured 756672 ms against the unchanged ten-minute ceiling. The cost is an additional source checkout; prior checkouts, bindings and receipts remain historical evidence, and the genuine session identity stays unchanged.
+
+Ruling: give current recertification replay an explicit fixture actor, matching the unit coverage, and assert the exact initial-fixture identity refusal. In a genuine Codex session, the existing integration test inherited that actor and observed identity drift before its assumed legacy timing-actor error. The cost is deterministic test-process actor setup; immutable archived captures and current refusal enforcement are unchanged. No controller identity is modified.

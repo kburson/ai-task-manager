@@ -20,7 +20,7 @@ test('test children isolate inherited root authority while preserving session an
   assert.equal(child.PATH, parent.PATH);
   assert.equal(child.GH_TOKEN, parent.GH_TOKEN);
   assert.equal(child.CODEX_THREAD_ID, parent.CODEX_THREAD_ID);
-  assert.equal(child[TEST_NO_RETRY_ENV], '1');
+  assert.equal(child[TEST_NO_RETRY_ENV], parent[TEST_NO_RETRY_ENV]);
   const fixtureChild = { ...child, AI_TASK_MANAGER_PROJECT_DIR: '/fixture/root' };
   assert.equal(fixtureChild.AI_TASK_MANAGER_PROJECT_DIR, '/fixture/root');
 });

@@ -1,5 +1,9 @@
 // @story #1767
 // @story #1857
+// @story #1873
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url, 'codex');
+
 // Actual Git/public-CLI replay belongs to integration, not the pure unit lane.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -24,7 +28,7 @@ test('archived recertification binds every obligation and refuses current replay
   assert.equal(decision.capture.transcriptSha256, archived.identity.transcriptSha256);
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot }),
-    /TIMING_ACTOR_INVALID|Invalid timing actor/
+    /guidance-feasibility:capture-replay-identity:initialFixtureSha256/
   );
   assert.equal(decision.schema, 'aitm.guidance-feasibility-recertification/v1');
   assert.equal(decision.owner.issue, 1767);
@@ -86,7 +90,10 @@ test('historical foundation stays immutable while current commands refuse obsole
     await measurementTool();
   assert.throws(() => buildFeasibilityDecision({ projectRoot }), /measurement-artifact-drift/);
   assert.equal(json('feasibility-decision.json').schema, 'aitm.guidance-feasibility-decision/v1');
-  assert.throws(() => buildCurrentRecertificationDecision({ projectRoot }), /Invalid timing actor/);
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot }),
+    /guidance-feasibility:capture-replay-identity:initialFixtureSha256/
+  );
 
   for (const args of [
     ['--all', '--json'],
@@ -101,7 +108,7 @@ test('historical foundation stays immutable while current commands refuse obsole
     });
     assert.notEqual(status, 0);
     assert.equal(stdout, '');
-    assert.match(stderr, /Invalid timing actor/);
+    assert.match(stderr, /guidance-feasibility:capture-replay-identity:initialFixtureSha256/);
   }
 
   let stderr = '';

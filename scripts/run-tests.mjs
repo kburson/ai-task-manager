@@ -57,6 +57,7 @@ import {
   formatFleetLeak,
   RUN_TESTS_MAX_BUFFER,
 } from './run-tests-report.mjs';
+import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
 import { evaluateSections, formatSectionSummary } from './run-tests-ceiling.mjs';
 import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';
@@ -165,7 +166,7 @@ const timingRecords = [];
 // carry forward unchanged into every child, serial or pooled.
 async function runEntry(entry) {
   const t0 = process.hrtime.bigint();
-  const env = buildTestChildEnv(process.env);
+  const env = { ...buildTestChildEnv(process.env), [TEST_NO_RETRY_ENV]: '1' };
   if (process.env.AITM_GH_CENSUS_BIN) env.AITM_GH_CENSUS_CALLER = entry.label;
   const res = await spawnTestChild({
     full: entry.full,

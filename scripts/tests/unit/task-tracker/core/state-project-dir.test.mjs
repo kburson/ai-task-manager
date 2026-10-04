@@ -90,3 +90,17 @@ test('projectDirForState: fallback to dirname when no marker present', () => {
   const sp = '/Users/alice/random/path/state.json';
   assert.equal(projectDirForState(sp), '/Users/alice/random/path');
 });
+
+// #1873 — runtime verification hosts are not legacy state containers.
+test('projectDirForState: nested legacy state retains the test sandbox root', () => {
+  const root = '/repo/.ai-task-manager/runtime/test-sandboxes/verification';
+  assert.equal(projectDirForState(`${root}/.claude/task-tracker-state.json`), root);
+});
+
+test('projectDirForState: nested runtime fixture owns its state rather than the host', () => {
+  const root =
+    '/repo/.ai-task-manager/runtime/test-sandboxes/verification/.ai-task-manager/runtime/test-fixtures/fixture';
+  assert.equal(projectDirForState(`${root}/.claude/task-tracker-state.json`), root);
+  assert.equal(projectDirForState(`${root}/.ai-task-manager/task-tracker-state.json`), root);
+  assert.equal(projectDirForState(`${root}/state.json`), root);
+});

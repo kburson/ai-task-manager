@@ -1,5 +1,4 @@
 // @story #1873
-import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import { PROJECT_ROOT_ALIASES } from './task-tracker/lib/runtime-storage.mjs';
 
 // #531 AC2 — pure helpers for `run-tests.mjs` failure reporting.
@@ -93,7 +92,7 @@ export function describeSpawnResult({ status, signal, error, elapsedMs } = {}) {
 
 // Canonical verification's parent root must not retarget independent fixtures.
 export function buildTestChildEnv(parent) {
-  const env = { ...parent, [TEST_NO_RETRY_ENV]: '1' };
+  const env = { ...parent };
   for (const alias of PROJECT_ROOT_ALIASES) delete env[alias];
   return env;
 }
