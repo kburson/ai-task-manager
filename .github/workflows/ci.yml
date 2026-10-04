@@ -57,6 +57,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # The final guidance capture pins an original pre-squash source object.
+      # Full trunk history does not include that commit; retain real provenance.
+      - name: Fetch immutable guidance-capture source (#1873)
+        run: git fetch --no-tags origin e545522e467e484bd96db3b327fc8ccd0047c086
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -100,6 +104,10 @@ jobs:
       - name: Materialize local trunk ref for real-git tests (#745)
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         run: git fetch --no-tags origin trunk:trunk
+      # The final guidance capture pins an original pre-squash source object.
+      # Full trunk history does not include that commit; retain real provenance.
+      - name: Fetch immutable guidance-capture source (#1873)
+        run: git fetch --no-tags origin e545522e467e484bd96db3b327fc8ccd0047c086
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -213,6 +221,10 @@ jobs:
       - name: Materialize local trunk ref for real-git tests (#745)
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         run: git fetch --no-tags origin trunk:trunk
+      # The final guidance capture pins an original pre-squash source object.
+      # Full trunk history does not include that commit; retain real provenance.
+      - name: Fetch immutable guidance-capture source (#1873)
+        run: git fetch --no-tags origin e545522e467e484bd96db3b327fc8ccd0047c086
       - uses: actions/setup-node@v5
         with:
           node-version: 24

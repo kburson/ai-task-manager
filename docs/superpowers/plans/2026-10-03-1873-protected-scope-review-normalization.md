@@ -54,3 +54,5 @@ This blocking dependency correction is tracked separately to preserve #140's pro
 Ruling: preserve the owning section rather than only the policy line, because extracting a preceding ordinary marker also shifts the protected non-empty position. The cost is that those section-bound markers retain their existing positions.
 
 Ruling: normalize trailing blank lines to a fixed point because the new preservation regression exposed V6 accumulating a final blank line on its second pass. The cost is a canonical trailing-newline representation; protected non-empty positions and raw policy lines remain unchanged.
+
+Ruling: fetch the genuine immutable final-guidance-capture source in CI verification jobs. CI failed three integration files because the original pre-squash commit was absent, and all 21 tests in those files passed after fetching it locally. Frozen captures and their checksum/provenance guards are unchanged. The cost is one explicit historical object fetch per applicable CI job. The first local canonical run was interrupted and is not accepted as green evidence.
