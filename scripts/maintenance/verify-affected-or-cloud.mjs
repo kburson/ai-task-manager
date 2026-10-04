@@ -8,6 +8,9 @@ import {
 import { createTestFileEnvironment } from '../run-tests-pool.mjs';
 import { verifyCurrentCloudReceipts } from './verify-ci-receipts.mjs';
 
+const planOnly = process.argv.length === 3 && process.argv[2] === '--plan';
+if (process.argv.length !== 2 && !planOnly)
+  throw new Error('usage: affected verification [--plan]');
 const projectDir = process.cwd();
 const changedPaths = execFileSync('git', ['diff', '--name-only', 'origin/trunk'], {
   cwd: projectDir,
@@ -27,6 +30,10 @@ const selection = selectAffectedTests({
   projectDir,
   changedPaths: [...new Set([...changedPaths, ...untracked])],
 });
+if (planOnly) {
+  console.log(JSON.stringify(selection, null, 2));
+  process.exit(0);
+}
 console.log(formatTestImpactReport(selection));
 if (selection.escalated) {
   const dirty = execFileSync('git', ['status', '--porcelain'], {
