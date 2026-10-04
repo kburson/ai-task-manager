@@ -410,7 +410,7 @@ export const VERB_REFERENCE = {
     summary:
       'Prepare, publish, inspect, revoke or recover immutable rank-wave admission authority.',
     usage:
-      '/task epic-wave <prepare|record|resume|refresh|show|revoke|lock-show|lock-release> <epic> --input-file <path> [--json]',
+      '/task epic-wave <prepare|record|resume|refresh|show|revoke|lock-show|lock-release> <epic> [--input-file <path>] [--json]',
     flags: [
       {
         flag: '--input-file <path>',

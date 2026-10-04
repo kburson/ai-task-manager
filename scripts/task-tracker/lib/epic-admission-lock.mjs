@@ -15,6 +15,9 @@ import {
   constants,
   unlinkSync,
   rmdirSync,
+  renameSync,
+  linkSync,
+  readSync,
 } from 'node:fs';
 import path from 'node:path';
 import { hostname } from 'node:os';
@@ -116,8 +119,46 @@ export function releaseEpicAdmissionLock({ projectDir, epic, observation }) {
         processStatus(current.holder) !== 'dead'
       )
         return refusal;
-      unlinkSync(file);
-      rmdirSync(current.path);
+      // Claim this file atomically while retaining the directory. A second
+      // release that observed the old inode must not delete a newly published
+      // holder after the first release finishes and the lock is reacquired.
+      const tombstone = path.join(current.path, `.release-${randomUUID()}.json`);
+      renameSync(file, tombstone);
+      const restore = () => {
+        try {
+          // Hard-link creation refuses an existing destination; never replace
+          // a concurrently published holder while restoring captured evidence.
+          linkSync(tombstone, file);
+          unlinkSync(tombstone);
+        } catch {
+          /* Preserve the captured file for investigation. */
+        }
+        return refusal;
+      };
+      try {
+        const captured = lstatSync(tombstone);
+        if (
+          !captured.isFile() ||
+          captured.isSymbolicLink() ||
+          !isDeepStrictEqual(identity(captured), current.identity.file) ||
+          !isDeepStrictEqual(identity(lstatSync(current.path)), current.identity.directory) ||
+          readdirSync(current.path).join() !== path.basename(tombstone) ||
+          fstatSync(fd).size > 65536
+        )
+          return restore();
+        const bytes = Buffer.alloc(fstatSync(fd).size);
+        const read = readSync(fd, bytes, 0, bytes.length, 0);
+        if (
+          read !== bytes.length ||
+          createHash('sha256').update(bytes).digest('hex') !== current.identity.sha256 ||
+          processStatus(current.holder) !== 'dead'
+        )
+          return restore();
+        unlinkSync(tombstone);
+        rmdirSync(current.path);
+      } catch {
+        return restore();
+      }
       return { status: 'released', epic: Number(epic), holder: current.holder };
     } catch {
       return refusal;

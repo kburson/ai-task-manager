@@ -178,3 +178,97 @@ test('real Claude fixture transcript under a dotted worktree verifies exact nati
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('production binding discovery accepts physical worktree aliases and rejects another physical root', async () => {
+  const { symlinkSync } = await import('node:fs');
+  const { serializeIssueWorktreeLocationMarker } =
+    await import('../../../../task-tracker/lib/issue-worktree-location.mjs');
+  const root = createRuntimeRootFixture('rank-wave-alias-');
+  const other = createRuntimeRootFixture('rank-wave-other-');
+  try {
+    const alias = path.join(root, 'alias');
+    symlinkSync(root, alias);
+    const physical = discoverRankWavePhysical(root);
+    const row = {
+      issue: 140,
+      worktreePath: alias,
+      provider: 'codex',
+      sid: 'fixture-child',
+      bindingGenerationId: 'fixture-generation',
+    };
+    const runtime = createRankWaveRuntime(
+      { cfg: { repo: 'o/r' }, projectDir: root },
+      {
+        ports: {
+          run: async () => ({ stdout: '' }),
+          rows: () => ({ 140: row }),
+          children: async () => [
+            {
+              number: 140,
+              rank: 2,
+              boardState: 'plan',
+              body: serializeIssueWorktreeLocationMarker({
+                worktreePath: alias,
+                worktreeBranch: physical.branch,
+                sessionId: row.sid,
+                ts: '2026-10-04T01:00:00.000Z',
+              }),
+            },
+          ],
+          graphql: async () => ({
+            data: {
+              repository: {
+                issue: {
+                  number: 107,
+                  repository: { nameWithOwner: 'o/r' },
+                  comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+                },
+              },
+            },
+          }),
+        },
+      }
+    );
+    assert.equal((await runtime.readSnapshot(107, 2)).bindings[0].worktree, physical.worktree);
+    const { observeRankWaveBinding, verifyRankWaveBindings } =
+      await import('../../../../task-tracker/lib/epic-rank-wave-bindings.mjs');
+    const binding = (await runtime.readSnapshot(107, 2)).bindings[0];
+    const child = { number: 140, boardState: 'plan' };
+    const observed = await observeRankWaveBinding(binding, {
+      child,
+      ports: {
+        rows: () => ({ 140: row }),
+        active: () => ({
+          issue: '#140',
+          worktreePath: alias,
+          worktreeBranch: binding.branch,
+          bindingGenerationId: binding.generation,
+        }),
+        native: async () => ({ verified: true, sessionId: binding.sessionId }),
+      },
+    });
+    assert.equal(
+      (
+        await verifyRankWaveBindings({
+          bindings: [binding],
+          parent: {
+            ...binding,
+            issue: 107,
+            worktree: path.join(root, 'fixture-parent'),
+            branch: 'fixture-parent',
+            sessionId: 'fixture-parent',
+          },
+          children: [child],
+          target: 140,
+          observe: async () => observed,
+        })
+      ).ok,
+      true
+    );
+    row.worktreePath = other;
+    await assert.rejects(runtime.readSnapshot(107, 2), /physical lineage mismatch/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(other, { recursive: true, force: true });
+  }
+});

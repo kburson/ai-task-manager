@@ -243,3 +243,53 @@ test('state drift to admission while holding a child-only lock refuses before th
   assert.equal(result.code, 'admission-state-changed');
   assert.equal(effects, 0);
 });
+
+test('public Promote renders admission state drift as a typed gate refusal with exit 4', async () => {
+  const { verbPromote } = await import('../../../../task-tracker/verbs/promote.mjs');
+  const realWrite = process.stderr.write,
+    realExit = process.exit;
+  let output = '',
+    exitCode = null,
+    reads = 0;
+  const exited = new Error('captured process exit');
+  try {
+    process.stderr.write = function (chunk) {
+      output += String(chunk);
+      return true;
+    };
+    process.exit = function (code) {
+      exitCode = code;
+      throw exited;
+    };
+    await assert.rejects(
+      verbPromote(
+        ['140'],
+        { repo: 'o/r' },
+        {
+          projectDir: process.cwd(),
+          fetchParentIssue: async () => 107,
+          fetchIssueBody: async () => ({
+            body:
+              '<!-- aitm-last-known-state state="' +
+              (++reads === 1 ? 'develop' : 'plan') +
+              '" ts="2026-10-04T01:00:00.000Z" -->',
+          }),
+          withIssueLock: async (args, operation) => operation(),
+          withEpicAdmissionLock: async () => {
+            throw new Error('wrong lock order');
+          },
+          promoteRunner: async () => {
+            throw new Error('runner must not execute');
+          },
+        }
+      ),
+      (error) => error === exited
+    );
+    assert.equal(exitCode, 4);
+    assert.match(output, /admission state changed/);
+    assert.doesNotMatch(output, /unknown result status/);
+  } finally {
+    process.stderr.write = realWrite;
+    process.exit = realExit;
+  }
+});

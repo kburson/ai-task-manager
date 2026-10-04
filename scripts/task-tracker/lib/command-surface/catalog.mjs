@@ -666,7 +666,7 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'epic-wave': contract(
     [
-      'Mutations require genuine parent authority, exact source context and the common physical parent admission lock.',
+      'Authority mutations require genuine parent authority, exact source context and the common physical parent admission lock; lock-release instead requires exact dead-holder evidence.',
     ],
     [
       'Prepare/show read authority; record/revoke/refresh append immutable scoped records; resume repairs the same operation without another comment; lock-show inspects ownership and lock-release requires genuine parent authority and exact dead-holder evidence. No lifecycle state is changed.',

@@ -184,10 +184,12 @@ proposal with fresh human authority. Refresh cannot replace the parent. Edited,
 missing or conflicting comment history remains a refusal.
 
 Authorization references cannot omit a later human reversal. The host examines
-up to 64 subsequent unreferenced human statements for contradictions; exceeding
-that bound requires referencing a current instruction. Referenced statements
-alone can grant authority. Historical verification uses the record's creation
-cutoff; current admission also checks subsequent instructions. Quoted and
+all later unreferenced human statements for wave-specific reversals, retaining at
+most one relevant refusal. Unrelated CI/push requests, another rank's permission,
+and conversation length do not invalidate the grant. Explicit epic/rank/member
+reversals and immediate terse replies withdrawing permission still refuse.
+Historical verification uses the record creation cutoff; current admission also
+checks later wave-specific instructions. Quoted and
 injected material remains untrusted. A labeled selection must be the entire
 reply or a label with a simple affirmative response, never a single-letter word
 at the beginning of ordinary prose.

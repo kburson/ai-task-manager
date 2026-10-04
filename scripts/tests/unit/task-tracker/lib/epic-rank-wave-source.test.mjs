@@ -267,3 +267,86 @@ test('historical verification respects the record cutoff and rejects a source ne
     'blocked'
   );
 });
+
+test('negated, deferring and incidental affirmative words cannot accept a displayed proposal', async () => {
+  const proposal = assistant('Enable parallel epic #107 rank 2 children [140,144,145].');
+  for (const reply of [
+    'Never run this.',
+    'Not yet — proceed with lint first.',
+    "No. I'll run it myself later.",
+    'No.',
+    'I will run unrelated tests.',
+    'Yes, perhaps later.',
+  ]) {
+    assert.equal((await verify([proposal, human(reply)])).status, 'blocked', reply);
+  }
+});
+
+test('current authority survives unrelated later messages and independent rank authorizations', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const later of [
+    'wait, check CI first',
+    "Don't rewrite tests for parallel stories.",
+    "Don't stop testing the wave.",
+    'Please stop reviewing CI output for epic #107 rank 2.',
+    "don't push yet",
+    'Run parallel epic #107 rank 3 children [160,161].',
+    'Compare epic #107 and epic #108 rank 2 and rank 3 timing.',
+  ]) {
+    assert.equal(
+      (await verify([original, human(later)], { order: [0] })).status,
+      'verified',
+      later
+    );
+  }
+  const long = [
+    original,
+    ...Array.from({ length: 65 }, () => human('Please inspect the CI output.')),
+  ];
+  assert.equal((await verify(long, { order: [0] })).status, 'verified');
+  long.push(human('Revoke parallel epic #107 rank 2 children [140,144,145].'));
+  assert.equal((await verify(long, { order: [0] })).status, 'blocked');
+});
+
+test('an omitted explicit wave reversal remains effective after unrelated conversation', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const later of [
+    'Revoke epic #107 rank 2.',
+    'Cancel the rank 2 wave.',
+    'Run these parallel stories sequentially instead.',
+    'Withdraw permission for parallel epic #107.',
+  ]) {
+    assert.equal(
+      (await verify([original, human('Please inspect CI.'), human(later)], { order: [0] })).status,
+      'blocked',
+      later
+    );
+  }
+});
+
+test('scope-complete questions and negated requests do not become direct authorization', async () => {
+  for (const text of [
+    'Can we run parallel epic #107 rank 2 children [140,144,145]?',
+    'Never run parallel epic #107 rank 2 children [140,144,145].',
+    'No. Run parallel epic #107 rank 2 children [140,144,145] later.',
+  ]) {
+    assert.equal((await verify([human(text)])).status, 'blocked', text);
+  }
+});
+
+test('member-scoped reversals apply to the current wave and ignore disjoint children', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  assert.equal(
+    (
+      await verify(
+        [original, human('Please inspect CI.'), human('Do not run children [140,144,145].')],
+        { order: [0] }
+      )
+    ).status,
+    'blocked'
+  );
+  assert.equal(
+    (await verify([original, human('Cancel parallel children [160,161].')], { order: [0] })).status,
+    'verified'
+  );
+});

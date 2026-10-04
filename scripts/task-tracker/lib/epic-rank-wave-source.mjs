@@ -38,7 +38,7 @@ export function validateRankWaveSource(source) {
 }
 
 export function createRankWaveSourceLoader({ resolveTranscriptPath, resolveRepository } = {}) {
-  return async (source, { through = null } = {}) => {
+  return async (source, { through = null, scope = null, purpose = 'authorize' } = {}) => {
     validateRankWaveSource(source);
     const transcriptPath = await resolveTranscriptPath(source.sessionId);
     if (!transcriptPath) throw new Error('rank-wave: source host unavailable');
@@ -134,14 +134,20 @@ export function createRankWaveSourceLoader({ resolveTranscriptPath, resolveRepos
         throw new Error('rank-wave: source chronology unavailable');
       return Date.parse(e.timestamp) <= Date.parse(through);
     });
-    if (observed.length > 64)
-      throw new Error('rank-wave: subsequent human context bound; reference a current instruction');
-    const subsequentStatements = observed.map((e) =>
-      (e.payload.content ?? [])
+    // Later statements can only refuse authority. Scan all observed humans,
+    // but retain at most one relevant reversal; unrelated chat length cannot
+    // expire a grant or conceal a reversal after an arbitrary count cutoff.
+    const subsequentStatements = [];
+    for (const [index, event] of observed.entries()) {
+      const statement = (event.payload.content ?? [])
         .filter((b) => b.type === 'input_text' && !isInjection(b.text))
         .map((b) => b.text.trim())
-        .join('\n\n')
-    );
+        .join('\n\n');
+      if (scope && contradictsWave(statement, scope, purpose, index === 0)) {
+        subsequentStatements.push(statement);
+        break;
+      }
+    }
     return { repository, messages, subsequentStatements };
   };
 }
@@ -236,9 +242,83 @@ function humanText(statement) {
 }
 function contradicts(text, purpose) {
   return (
-    /(?:\bdo not\b|\bdon't\b|\bcancel\b|\bnot approved?\b|\bhold off\b|\bwait\b)/i.test(text) ||
+    /(?:\bdo not\b|\bdon't\b|\bnever\b|\bno\b|\bnot yet\b|\bcancel\b|\bnot approved?\b|\bhold off\b|\bwait\b)/i.test(
+      text
+    ) ||
     (purpose === 'authorize' &&
       /\b(?:sequential(?:ly)?|one at a time|revoke|withdraw)\b/i.test(text))
+  );
+}
+
+function wholeAffirmation(text, purpose) {
+  const verbs =
+    purpose === 'revoke'
+      ? 'revoke|withdraw'
+      : 'enable|authorize|approve[d]?|allow|run|proceed|go ahead';
+  const object = '(?: (?:with )?(?:it|this|them|the (?:parallel )?(?:stories|wave|proposal)))?';
+  return new RegExp(
+    `^(?:yes(?:[, ]+(?:please )?(?:${verbs})${object})?|(?:${verbs})${object})[.!]?$`,
+    'i'
+  ).test(text.trim());
+}
+function contradictsWave(statement, scope, purpose, immediateReply) {
+  const text = humanText(statement);
+  const epics = [...text.matchAll(/\b(?:epic|parent)\s*#?(\d+)\b/gi)].map((m) => Number(m[1]));
+  const ranks = [...text.matchAll(/\brank(?:[-\s]+(?:level|wave))?\s*[:=]?\s*#?(\d+)\b/gi)].map(
+    (m) => Number(m[1])
+  );
+  if (
+    (epics.length && !epics.includes(scope.epic)) ||
+    (ranks.length && !ranks.includes(scope.rank))
+  )
+    return false;
+  const memberGroups = [
+    ...text.matchAll(
+      /\b(?:children|members|stories)\s*[:=]?\s*(\[[\d\s,#/]+\]|#?\d+(?:(?:\s*[,/]\s*|\s+and\s+)#?\d+)*)/gi
+    ),
+  ];
+  const members = memberGroups.flatMap((match) =>
+    [...match[1].matchAll(/\d+/g)].map((m) => Number(m[0]))
+  );
+  if (members.length && !members.some((member) => scope.members.includes(member))) return false;
+  const scoped = epics.length > 0 || ranks.length > 0 || members.length > 0;
+  const wave =
+    /\b(?:parallel|concurrent(?:ly)?|wave|stories|sequential(?:ly)?|one at a time)\b/i.test(text);
+  const negate = "(?:do not|don't|never|no longer)";
+  const negatedRevocation = new RegExp(`\\b${negate}\\s+(?:revoke|withdraw)\\b`, 'i').test(text);
+  const negatedStop = new RegExp(`\\b${negate}\\s+(?:stop|cancel)\\b`, 'i').test(text);
+  const permissionReversal = new RegExp(
+    `\\b${negate}\\s+(?:enable|authorize|allow|approve)\\b`,
+    'i'
+  ).test(text);
+  const executionReversal = new RegExp(
+    `\\b${negate}\\s+(?:run|execute)\\s+(?:(?:the|this|these|our|any)\\s+)?(?:parallel|concurrent|epic|rank|children|members|stories|wave|it|this)\\b`,
+    'i'
+  ).test(text);
+  const reversal =
+    purpose === 'revoke'
+      ? negatedRevocation
+      : (/\b(?:revoke|withdraw)\b/i.test(text) && !negatedRevocation) ||
+        (/\b(?:cancel|stop)\s+(?:(?:the|this|these|our)\s+)?(?:parallel|concurrent|epic|rank|children|members|stories|wave|authorization|permission|grant|admissions?)\b/i.test(
+          text
+        ) &&
+          !negatedStop) ||
+        /\b(?:run|execute|switch|use|keep)\b.*\b(?:sequential(?:ly)?|one at a time)\b/i.test(
+          text
+        ) ||
+        permissionReversal ||
+        executionReversal ||
+        /\b(?:hold off|wait)(?:\s+on)?\s+(?:(?:the|this|these|our)\s+)?(?:parallel|concurrent|wave|stories)\b/i.test(
+          text
+        );
+  if ((scoped || wave) && reversal) return true;
+  // A terse reversal immediately following the referenced authorization is
+  // a contextual reply. Incidental words in later work instructions are not.
+  return (
+    immediateReply &&
+    /^(?:actually[, ]+)?(?:don't|do not (?:enable|run|approve) (?:it|this)|don't (?:enable|run|approve) (?:it|this)|hold off|wait|cancel(?: it)?|no(?:,? not yet)?)[.!]?$/i.test(
+      text.trim()
+    )
   );
 }
 
@@ -256,21 +336,10 @@ export async function verifyRankWaveSource({
     if (!['authorize', 'revoke'].includes(purpose)) return blocked('source-purpose');
     if (!recordingActor || typeof loadContext !== 'function')
       return blocked('source-adapter-unavailable');
-    const context = await loadContext(source, { through });
+    const context = await loadContext(source, { through, scope, purpose });
     if (context.repository !== scope.repository) return blocked('source-repository-mismatch');
     for (const statement of context.subsequentStatements ?? []) {
-      const text = humanText(statement);
-      const partial = partialScope(text);
-      // Explicitly unrelated epic instructions cannot reverse this wave.
-      if (partial.epic !== undefined && partial.epic !== scope.epic) continue;
-      if (contradicts(text, purpose)) return blocked('source-contradiction');
-      if (
-        hasIntent(text, purpose) &&
-        Object.entries(partial).some(
-          ([key, value]) => canonicalRecordJson(value) !== canonicalRecordJson(scope[key])
-        )
-      )
-        return blocked('source-contradiction');
+      if (contradictsWave(statement, scope, purpose, true)) return blocked('source-contradiction');
     }
     const humanScope = {};
     let authorized = false;
@@ -301,7 +370,13 @@ export async function verifyRankWaveSource({
         purpose === 'revoke'
           ? /\b(?:revoke|withdraw)\b/i.test(text)
           : /\b(?:enable|authorize|approve|allow|run|proceed|yes)\b/i.test(text);
-      if (complete(humanScope) && affirmative && humanIntent) {
+      if (text.includes('?') && affirmative) return blocked('source-ambiguous');
+      if (
+        complete(humanScope) &&
+        affirmative &&
+        humanIntent &&
+        (complete(partial) || wholeAffirmation(text, purpose))
+      ) {
         authorized = true;
         authorizedAt = message.submittedAt;
       }
@@ -311,7 +386,7 @@ export async function verifyRankWaveSource({
           /^([A-Z])\s*[).:]?(?:\s*(?:yes|(?:authorize|approve|allow|enable|run|proceed)(?:\s+(?:it|this))?)[.!]?)?$/i
         )?.[1]
         ?.toUpperCase();
-      if (proposal && (affirmative || selection) && !complete(partial)) {
+      if (proposal && (wholeAffirmation(text, purpose) || selection) && !complete(partial)) {
         if (text.includes('?')) return blocked('source-ambiguous');
         const choices = proposal.filter((p) => complete(p.scope) && p.intent);
         if (!selection && (choices.length !== proposal.length || proposal.some((p) => p.ambiguous)))

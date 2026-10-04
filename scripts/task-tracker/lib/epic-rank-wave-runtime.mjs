@@ -3,7 +3,7 @@ import { normalizeStateId } from './lifecycle-policy/index.mjs';
 import { reconcileRankWaveRefinement } from './epic-rank-wave-refinement.mjs';
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { pexec as run } from '../../gh/lib/gh-client.mjs';
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import { getProvider } from '../../providers/index.mjs';
@@ -60,9 +60,9 @@ function bindingFor(issue, location, occupancy) {
     throw new Error(`rank-wave: child #${issue} must have genuine occupancy`);
   const physical = discoverRankWavePhysical(location.worktreePath);
   if (
-    physical.worktree !== location.worktreePath ||
+    physical.worktree !== realpathSync(location.worktreePath) ||
     physical.branch !== location.worktreeBranch ||
-    occupancy.worktreePath !== physical.worktree
+    realpathSync(occupancy.worktreePath) !== physical.worktree
   )
     throw new Error('rank-wave: location or physical lineage mismatch');
   return {

@@ -148,6 +148,14 @@ export async function observeRankWaveDischarge(
   };
 }
 
+function samePhysicalClaimPath(left, right) {
+  if (left === right) return true;
+  try {
+    return realpathSync(left) === realpathSync(right);
+  } catch {
+    return false;
+  }
+}
 function sameClaim(binding, observation) {
   const row = observation?.occupancy,
     active = observation?.active;
@@ -155,10 +163,10 @@ function sameClaim(binding, observation) {
     row?.issue === binding.issue &&
     row.sid === binding.sessionId &&
     row.provider === binding.provider &&
-    row.worktreePath === binding.worktree &&
+    samePhysicalClaimPath(row.worktreePath, binding.worktree) &&
     row.bindingGenerationId === binding.generation &&
     active?.issue === `#${binding.issue}` &&
-    active.worktreePath === binding.worktree &&
+    samePhysicalClaimPath(active.worktreePath, binding.worktree) &&
     active.worktreeBranch === binding.branch &&
     active.bindingGenerationId === binding.generation &&
     !active.closedAt

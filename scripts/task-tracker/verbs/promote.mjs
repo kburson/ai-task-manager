@@ -861,6 +861,7 @@ export async function verbPromote(rest, cfg, deps = {}) {
       process.stderr.write('\n');
       process.exit(4);
     }
+    case 'guard-refused':
     case 'drift-refused': {
       process.stderr.write(
         `\n⛔ Refusing to promote #${issueNumber}:\n   BLOCKED: ${result.message}\n\n`

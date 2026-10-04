@@ -372,3 +372,52 @@ test('a new holder gets its own publication grace after prior known contention',
     rmSync(r.dir, { recursive: true, force: true });
   }
 });
+
+test('a racing manual release preserves a new live holder installed after its final PID check', async () => {
+  const { inspectEpicAdmissionLock, releaseEpicAdmissionLock } =
+    await import('../../../../task-tracker/lib/epic-admission-lock.mjs');
+  const { hostname } = await import('node:os');
+  const r = repo();
+  const realKill = process.kill;
+  try {
+    const lock = admissionLockPath({ projectDir: r.a, epic: 107 });
+    mkdirSync(lock, { recursive: true });
+    const deadPid = Number(
+      execFileSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], {
+        encoding: 'utf8',
+      })
+    );
+    writeFileSync(
+      path.join(lock, 'holder.json'),
+      JSON.stringify({ pid: deadPid, host: hostname(), token: 'old-dead' })
+    );
+    const observation = inspectEpicAdmissionLock({ projectDir: r.a, epic: 107 });
+    let calls = 0;
+    process.kill = function (pid, signal) {
+      if (pid === deadPid && ++calls === 2) {
+        process.kill = realKill;
+        assert.equal(
+          releaseEpicAdmissionLock({ projectDir: r.a, epic: 107, observation }).status,
+          'released'
+        );
+        mkdirSync(lock);
+        writeFileSync(
+          path.join(lock, 'holder.json'),
+          JSON.stringify({ pid: process.pid, host: hostname(), token: 'new-live' })
+        );
+        const absent = new Error('old holder is dead');
+        absent.code = 'ESRCH';
+        throw absent;
+      }
+      return realKill.call(process, pid, signal);
+    };
+    assert.equal(
+      releaseEpicAdmissionLock({ projectDir: r.a, epic: 107, observation }).status,
+      'blocked'
+    );
+    assert.equal(inspectEpicAdmissionLock({ projectDir: r.a, epic: 107 }).holder.token, 'new-live');
+  } finally {
+    process.kill = realKill;
+    rmSync(r.dir, { recursive: true, force: true });
+  }
+});
