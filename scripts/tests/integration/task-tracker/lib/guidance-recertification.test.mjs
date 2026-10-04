@@ -9,6 +9,10 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
+// Ambient actor validation can refuse before replay; a valid actor reaches the
+// archived capture's exact identity guard. Both must refuse obsolete evidence.
+const obsoleteReplayRefusal =
+  /TIMING_ACTOR_INVALID|Invalid timing actor|guidance-feasibility:capture-replay-identity:(?:scenarioManifestSha256|initialFixtureSha256|initialBodySha256|configSha256|fakeGhSha256)/;
 function json(file) {
   return JSON.parse(readFileSync(path.join(fixtureRoot, file), 'utf8'));
 }
@@ -22,10 +26,7 @@ test('archived recertification binds every obligation and refuses current replay
   const decision = json('feasibility-recheck-1767.json');
   const archived = json('actual-explain-traffic-recertification.json');
   assert.equal(decision.capture.transcriptSha256, archived.identity.transcriptSha256);
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot }),
-    /TIMING_ACTOR_INVALID|Invalid timing actor/
-  );
+  assert.throws(() => buildCurrentRecertificationDecision({ projectRoot }), obsoleteReplayRefusal);
   assert.equal(decision.schema, 'aitm.guidance-feasibility-recertification/v1');
   assert.equal(decision.owner.issue, 1767);
   assert.equal(decision.owner.foundationIssue, 1660);
@@ -86,7 +87,7 @@ test('historical foundation stays immutable while current commands refuse obsole
     await measurementTool();
   assert.throws(() => buildFeasibilityDecision({ projectRoot }), /measurement-artifact-drift/);
   assert.equal(json('feasibility-decision.json').schema, 'aitm.guidance-feasibility-decision/v1');
-  assert.throws(() => buildCurrentRecertificationDecision({ projectRoot }), /Invalid timing actor/);
+  assert.throws(() => buildCurrentRecertificationDecision({ projectRoot }), obsoleteReplayRefusal);
 
   for (const args of [
     ['--all', '--json'],
@@ -101,7 +102,7 @@ test('historical foundation stays immutable while current commands refuse obsole
     });
     assert.notEqual(status, 0);
     assert.equal(stdout, '');
-    assert.match(stderr, /Invalid timing actor/);
+    assert.match(stderr, obsoleteReplayRefusal);
   }
 
   let stderr = '';
