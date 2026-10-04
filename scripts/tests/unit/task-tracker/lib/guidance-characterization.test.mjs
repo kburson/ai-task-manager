@@ -1,5 +1,6 @@
 // @story #1660
 // @story #1859
+// @story #1872
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -372,7 +373,7 @@ test('historical foundation stays immutable and obsolete recertification cannot 
   // this older capture or turn a failed replay into a fabricated recertification.
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot }),
-    /guidance-feasibility:capture-replay-identity:initialFixtureSha256/
+    /guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml/
   );
   for (const args of [
     ['--all', '--json'],
@@ -387,7 +388,10 @@ test('historical foundation stays immutable and obsolete recertification cannot 
     });
     assert.equal(status, 1);
     assert.equal(stdout, '');
-    assert.match(stderr, /guidance-feasibility:capture-replay-identity:initialFixtureSha256/);
+    assert.match(
+      stderr,
+      /guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml/
+    );
   }
 
   let stderr = '';
