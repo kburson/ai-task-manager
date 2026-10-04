@@ -307,7 +307,7 @@
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
         "currentCaptureSha256": "sha256:1dc8598745acf6528bfdda5589e57578f9e2be9a96b7044aa6404c5c13e8fa50",
-        "currentSourceCommit": "8b3c184bf457057aa6695ba4726b4d18cc95560b",
+        "currentSourceCommit": "91023f8a9b8b263e32d98c6513d9b89ab52690bf",
         "currentSourceInputsSha256": "sha256:b15543344684031d1bf657fd859b21b086a1e5d36167a0856a887ddc53482f2b"
       },
       "streams": {
@@ -1073,7 +1073,7 @@
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
         "currentCaptureSha256": "sha256:1dc8598745acf6528bfdda5589e57578f9e2be9a96b7044aa6404c5c13e8fa50",
-        "currentSourceCommit": "8b3c184bf457057aa6695ba4726b4d18cc95560b",
+        "currentSourceCommit": "91023f8a9b8b263e32d98c6513d9b89ab52690bf",
         "currentSourceInputsSha256": "sha256:b15543344684031d1bf657fd859b21b086a1e5d36167a0856a887ddc53482f2b"
       },
       "streams": {
