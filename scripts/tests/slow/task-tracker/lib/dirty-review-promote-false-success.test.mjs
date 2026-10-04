@@ -17,6 +17,11 @@
 //      successful close (board → done) still reports `promoted`.
 
 import { strict as assert } from 'node:assert';
+import { saveState } from '../../../../task-tracker/state.mjs';
+// @story #1873
+import { runtimeGitMetadataPrelude } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
@@ -25,7 +30,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:f
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
 
 const pexec = promisify(execFile);
@@ -35,7 +43,7 @@ const TT = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 // ─── Shared sandbox helpers (mirrors dirty-workspace-gate.test.mjs) ──────────
 
 function setupSandbox() {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-710-'));
+  const sandbox = mkdtempProjectIsolated('aitm-710-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -67,7 +75,7 @@ function makeGitShim(sandbox, porcelain) {
   writeFileSync(
     shim,
     `#!/usr/bin/env node
-import fs from 'node:fs';
+${runtimeGitMetadataPrelude()}import fs from 'node:fs';
 const args = process.argv.slice(2);
 const i = args.indexOf('status');
 if (i >= 0 && args.slice(i).some(a => a.startsWith('--porcelain'))) {
@@ -83,14 +91,14 @@ process.exit(0);
 async function setActive(sandbox, issue) {
   const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   mkdirSync(path.dirname(statePath), { recursive: true });
-  writeFileSync(
-    statePath,
-    JSON.stringify({
+  saveState(
+    {
       active: `#${issue}`,
       lastActive: `#${issue}`,
       entryStartTs: new Date().toISOString(),
       wordsAtEntryStart: 0,
-    })
+    },
+    statePath
   );
 }
 

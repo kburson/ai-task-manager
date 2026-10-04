@@ -15,6 +15,10 @@
 // the check verb does not crash on it).
 
 import { strict as assert } from 'node:assert';
+import { saveState } from '../../../../task-tracker/state.mjs';
+// @story #1873
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
@@ -60,14 +64,14 @@ function writeConfig(sandbox) {
 function writeState(sandbox, issueNum) {
   // #573: the global ledger lives under `.tmp/aitm/state/`.
   mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
-  writeFileSync(
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
-    JSON.stringify({
+  saveState(
+    {
       active: `#${issueNum}`,
       lastActive: `#${issueNum}`,
       entryStartTs: null,
       wordsAtEntryStart: 0,
-    })
+    },
+    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
   );
 }
 

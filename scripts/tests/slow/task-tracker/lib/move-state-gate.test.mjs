@@ -10,10 +10,16 @@
 //   - TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored (refuses regardless)
 
 import { strict as assert } from 'node:assert';
+// @story #1873
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -43,7 +49,7 @@ function deepDiveAdequate() {
 }
 
 function makeSandbox(body) {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-gate-'));
+  const sandbox = mkdtempProjectIsolated('tt-gate-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -165,6 +171,7 @@ async function runMove(sandbox, binDir, args, extraEnv = {}) {
   // can't easily stub here). The script provides --item-id to skip lookup, so
   // the test always passes one.
   return pexec('node', [SCRIPT, ...args, '--item-id', 'PVTI_test'], {
+    cwd: sandbox,
     env: {
       ...process.env,
       AITM_INTERNAL: '1',

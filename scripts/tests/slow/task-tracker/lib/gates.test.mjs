@@ -12,6 +12,11 @@
 //   gate toggle.
 
 import { strict as assert } from 'node:assert';
+import { saveState } from '../../../../task-tracker/state.mjs';
+// @story #1873
+import { runtimeGitMetadataPrelude } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
@@ -64,7 +69,7 @@ function makeGhShim(sandbox, { bodyOnView, stateOptionId }) {
   writeFileSync(
     ghShim,
     `#!/usr/bin/env node
-import fs from 'node:fs';
+${runtimeGitMetadataPrelude()}import fs from 'node:fs';
 import { appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 let stdinBody = '';
@@ -113,7 +118,7 @@ process.exit(0);
   writeFileSync(
     gitShim,
     `#!/usr/bin/env node
-import fs from 'node:fs';
+${runtimeGitMetadataPrelude()}import fs from 'node:fs';
 const argv = process.argv.slice(2);
 if (argv[0] === 'branch' && argv[1] === '--show-current') fs.writeSync(1, 'trunk\\n');
 else if (argv[0] === 'rev-parse' && argv[1] === 'HEAD') fs.writeSync(1, ${JSON.stringify(`${HEAD}\n`)});
@@ -167,14 +172,14 @@ const BODY_WITH_FULL_AUTO_MARKER =
   `\n<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" approved-sha="${HEAD}" full-auto="yes" signals="session=1" -->\n`;
 
 function writeState(sandbox, issueNum) {
-  writeFileSync(
-    path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
-    JSON.stringify({
+  saveState(
+    {
       active: `#${issueNum}`,
       lastActive: `#${issueNum}`,
       entryStartTs: null,
       wordsAtEntryStart: 0,
-    })
+    },
+    path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json')
   );
 }
 
@@ -293,8 +298,8 @@ function writeState(sandbox, issueNum) {
       })
     );
 
-    // Run close from the hostile cwd, but with the project dir isolated to the
-    // clean sandbox and the pinned session id in env.
+    // Run close from an unregistered foreign cwd. Physical root admission must
+    // reject it before hostile session data can influence review authorization.
     const env = {
       ...process.env,
       PATH: `${binDir}:${process.env.PATH}`,
@@ -316,7 +321,7 @@ function writeState(sandbox, issueNum) {
     }
 
     assert.equal(r.code, 1, `expected exit 1; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
-    assert.match(r.stderr, /review-authorization-missing/);
+    assert.match(r.stderr, /ROOT_IDENTITY_MISMATCH/);
     assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED/);
     console.log('test 5 passed: hostile cwd session file cannot enable Full-Auto standing');
   } finally {

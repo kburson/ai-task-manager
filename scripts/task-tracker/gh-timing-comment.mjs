@@ -586,7 +586,19 @@ function appendActorRow(body, row) {
     .map(parseTimingRow)
     .filter((entry) => entry && isTableTimingTimestamp(entry.ts));
   const own = records.filter((entry) => entry.actorKey === incoming.actorKey);
-  if (own.some((entry) => entry.raw === incoming.raw)) return body;
+  // #1873 The displayed delta is derived during publication, including Unknown
+  // recovery rows. Read-back must recognize the same immutable actor evidence.
+  if (
+    own.some(
+      (entry) =>
+        entry.raw === incoming.raw ||
+        (entry.marker === incoming.marker &&
+          JSON.stringify(entry.engagement) === JSON.stringify(incoming.engagement) &&
+          entry.cells.length === incoming.cells.length &&
+          entry.cells.every((cell, index) => index === 5 || cell === incoming.cells[index]))
+    )
+  )
+    return body;
   if (
     incoming.engagement &&
     own.some(

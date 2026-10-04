@@ -16,6 +16,10 @@
 //         draft is a no-op.
 
 import { test } from 'node:test';
+// @story #1873
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { saveState, loadState } from '../../../../task-tracker/state.mjs';
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -149,13 +153,13 @@ test('AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears 
   const statePath = path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   try {
     mkdirSync(path.dirname(statePath), { recursive: true });
-    writeFileSync(
-      statePath,
-      JSON.stringify({
+    saveState(
+      {
         active: 'discover',
         lastActive: null,
         discoverBucket: { startedAt: '2026-06-27T19:50:05.626Z', wordsAtStart: 0, entries: [] },
-      }) + '\n'
+      },
+      statePath
     );
 
     const draftSrc = path.join(projectDir, 'brainstorm.md');
@@ -168,7 +172,7 @@ test('AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears 
     assert.ok(existsSync(draftPath), 'save-draft wrote the tracked draft');
 
     // Bucket carries the resolved slug so finalize can find the draft.
-    const afterDraft = JSON.parse(readFileSync(statePath, 'utf8'));
+    const afterDraft = loadState(statePath);
     assert.equal(afterDraft.discoverBucket.draftSlug, 'autosave-story');
 
     const planSrc = path.join(projectDir, 'final-plan.md');

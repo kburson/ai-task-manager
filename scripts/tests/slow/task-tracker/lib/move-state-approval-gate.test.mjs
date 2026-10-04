@@ -14,6 +14,9 @@
 //      without the approval line, so backwards transitions still work.
 
 import { strict as assert } from 'node:assert';
+// @story #1873
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
@@ -279,6 +282,7 @@ process.exit(0);
 
 async function runMove(sandbox, binDir, args, extraEnv = {}) {
   return pexec('node', [SCRIPT, ...args, '--item-id', 'PVTI_test'], {
+    cwd: sandbox,
     env: {
       ...process.env,
       AITM_INTERNAL: '1',

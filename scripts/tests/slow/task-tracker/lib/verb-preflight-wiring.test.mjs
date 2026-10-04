@@ -4,10 +4,17 @@
 // Verifies bind-mismatch refusal (#208) at the dispatcher chokepoint.
 
 import { strict as assert } from 'node:assert';
+import { saveState } from '../../../../task-tracker/state.mjs';
+// @story #1873
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,7 +25,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
 function makeSandbox(active) {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-preflight-'));
+  const sandbox = mkdtempProjectIsolated('tt-preflight-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -26,21 +33,17 @@ function makeSandbox(active) {
   );
   // #573: the global ledger lives under `.tmp/aitm/state/`.
   mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
-  writeFileSync(
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
-    JSON.stringify(
-      {
-        active,
-        lastActive: active,
-        entryStartTs: new Date().toISOString(),
-        wordsAtEntryStart: 0,
-        totalActiveMinutes: 0,
-        discoverBucket: null,
-        state: 'develop',
-      },
-      null,
-      2
-    )
+  saveState(
+    {
+      active,
+      lastActive: active,
+      entryStartTs: new Date().toISOString(),
+      wordsAtEntryStart: 0,
+      totalActiveMinutes: 0,
+      discoverBucket: null,
+      state: 'develop',
+    },
+    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
   );
   return sandbox;
 }
@@ -53,7 +56,7 @@ const env = (sandbox) => ({
 
 async function expectExit(args, sandbox, expectedCode) {
   try {
-    await pexec('node', [CLI, ...args], { env: env(sandbox) });
+    await pexec('node', [CLI, ...args], { env: env(sandbox), cwd: sandbox });
     throw new Error(`expected non-zero exit ${expectedCode}, got 0`);
   } catch (err) {
     if (err.code === expectedCode) return err;
@@ -125,7 +128,7 @@ async function expectExit(args, sandbox, expectedCode) {
 {
   const sb = makeSandbox('#100');
   try {
-    await pexec('node', [CLI, 'pause'], { env: env(sb) });
+    await pexec('node', [CLI, 'pause'], { env: env(sb), cwd: sb });
     // ok — exited 0
   } catch (err) {
     assert.notEqual(err.code, 7, `pause should not refuse with exit 7; got ${err.code}`);
@@ -137,7 +140,7 @@ async function expectExit(args, sandbox, expectedCode) {
 {
   const sb = makeSandbox('#208');
   try {
-    await pexec('node', [CLI, 'close', '#208'], { env: env(sb) });
+    await pexec('node', [CLI, 'close', '#208'], { env: env(sb), cwd: sb });
   } catch (err) {
     assert.notEqual(
       err.code,
