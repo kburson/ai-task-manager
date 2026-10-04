@@ -2015,6 +2015,7 @@
       "staticImports": [
         "./lib/direct-guidance-admission.mjs",
         "./gh-timing-comment.mjs",
+        "./lib/heal-actor-opener-replays.mjs",
         "./locks.mjs",
         "./paths.mjs",
         "./config.mjs",

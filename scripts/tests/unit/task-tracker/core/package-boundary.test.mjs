@@ -226,6 +226,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const draftBranchAllowance = 1;
   // #1857 ships one shared artifact policy; research helpers remain development-only.
   const artifactPolicyAllowance = 1;
+  // #1876 adds exactly one shipped constrained actor-replay recovery module.
+  assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-opener-replays.mjs'));
+  const actorReplayRecoveryAllowance = 1;
   // #1857 adds the independently reviewed shared runtime-root validator.
   assert.ok(files.includes('scripts/task-tracker/lib/runtime-storage.mjs'));
   const runtimeRootAllowance = 1;
@@ -378,6 +381,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     mutationContextAllowance +
     draftBranchAllowance +
     artifactPolicyAllowance +
+    actorReplayRecoveryAllowance +
     runtimeRootAllowance +
     actorRuntimeEntries.length +
     8 + // #1859: six reviewed-scope modules, readiness guard and operator guide.

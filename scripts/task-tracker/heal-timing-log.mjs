@@ -24,9 +24,11 @@ enforceDirectGuidance(import.meta.url, 'heal-timing-log');
 // idempotent and restart-safe. Re-running a healed log is a byte-identical no-op.
 
 import {
+  readCanonicalTimingSource as realReadCanonicalTimingSource,
   findTimingComment as realFindTimingComment,
   updateTimingComment as realUpdateTimingComment,
 } from './gh-timing-comment.mjs';
+import { recoverActorOpenerReplays } from './lib/heal-actor-opener-replays.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { loadConfig } from './config.mjs';
@@ -49,11 +51,32 @@ if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.sl
 
 // Core, testable with injected I/O. `deps.findTimingComment` /
 // `deps.updateTimingComment` default to the real GraphQL-backed helpers.
-export async function runHeal({ issueNumber, repo, apply = false, deps = {} } = {}) {
+export async function runHeal({
+  issueNumber,
+  repo,
+  apply = false,
+  actorOpenerReplays = false,
+  expectedSourceSha,
+  expectedCommentId,
+  deps = {},
+} = {}) {
   if (issueNumber == null) throw new Error('runHeal: issueNumber is required');
   if (!repo) throw new Error('runHeal: repo is required');
   const findTimingComment = deps.findTimingComment || realFindTimingComment;
   const updateTimingComment = deps.updateTimingComment || realUpdateTimingComment;
+
+  if (actorOpenerReplays)
+    return recoverActorOpenerReplays({
+      issueNumber,
+      repo,
+      apply,
+      expectedSourceSha,
+      expectedCommentId,
+      readCanonicalTimingSource: deps.readCanonicalTimingSource || realReadCanonicalTimingSource,
+      updateTimingComment,
+      projectDir: deps.getProjectDir?.() || getProjectDir(),
+      now: deps.now,
+    });
 
   const comment = await findTimingComment(String(issueNumber), repo);
   if (!comment) {
@@ -131,10 +154,20 @@ export function parseArgs(argv) {
     help: false,
     yes: false,
     delayMs: 0,
+    actorOpenerReplays: false,
+    expectedSourceSha: null,
+    expectedCommentId: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--sweep') out.sweep = true;
+    if (a === '--actor-opener-replays') out.actorOpenerReplays = true;
+    else if (a === '--expected-source-sha') out.expectedSourceSha = argv[++i];
+    else if (a.startsWith('--expected-source-sha='))
+      out.expectedSourceSha = a.slice('--expected-source-sha='.length);
+    else if (a === '--expected-comment-id') out.expectedCommentId = argv[++i];
+    else if (a.startsWith('--expected-comment-id='))
+      out.expectedCommentId = a.slice('--expected-comment-id='.length);
+    else if (a === '--sweep') out.sweep = true;
     else if (a === '--apply') out.apply = true;
     else if (a === '--check-only') out.apply = false;
     else if (a === '--yes') out.yes = true;
@@ -155,6 +188,7 @@ export function printUsage(out = process.stdout) {
     'Usage:\n' +
       '  node scripts/task-tracker/heal-timing-log.mjs <issue#> [--apply | --check-only]\n' +
       '  node scripts/task-tracker/heal-timing-log.mjs --sweep [--state open|closed|all] [--apply] [--scope N,N,...] [--delay-ms N] [--yes]\n' +
+      '  Actor replays: <issue#> --actor-opener-replays [--apply --expected-source-sha SHA --expected-comment-id ID]\n' +
       '  Default: dry-run (read-only). --apply writes. Sweep default --state all.\n' +
       '  --delay-ms N  wait N milliseconds between issue reads (0-60000; default 0)\n' +
       '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply sweep\n'
@@ -206,19 +240,44 @@ export async function fetchAllIssueNumbers({ repo, state, projectId, deps = {} }
 }
 
 // Run one issue through the heal under its per-issue timing lock.
-async function healUnderLock({ issueNumber, repo, apply, deps }) {
+async function healUnderLock({
+  issueNumber,
+  repo,
+  apply,
+  actorOpenerReplays,
+  expectedSourceSha,
+  expectedCommentId,
+  deps,
+}) {
   const withLockFn = deps.withLock || withLock;
   const getProjectDirFn = deps.getProjectDir || getProjectDir;
   const runHealFn = deps.runHeal || runHeal;
   const lockPath = timingLockPath(issueNumber, getProjectDirFn());
-  return withLockFn(lockPath, () => runHealFn({ issueNumber, repo, apply, deps }), {
-    timeoutMs: 10_000,
-    retries: 2,
-  });
+  return withLockFn(
+    lockPath,
+    () =>
+      runHealFn({
+        issueNumber,
+        repo,
+        apply,
+        actorOpenerReplays,
+        expectedSourceSha,
+        expectedCommentId,
+        deps,
+      }),
+    {
+      timeoutMs: 10_000,
+      retries: 2,
+    }
+  );
 }
 
 async function runPerIssue(args, { repo, out, deps }) {
-  const res = await healUnderLock({ issueNumber: args.issue, repo, apply: args.apply, deps });
+  const res = await healUnderLock({ ...args, issueNumber: args.issue, repo, deps });
+  if (args.actorOpenerReplays) {
+    out.write(JSON.stringify(res) + '\n');
+    return;
+  }
   const verb = args.apply ? 'apply' : 'check-only';
   out.write(
     `#${args.issue} [${verb}] ${res.status}: ${formatRemovalCounts(res)}` +
@@ -315,8 +374,14 @@ export async function main(argv, deps = {}) {
   // also accepts a bare `<issue#>` positional.
   try {
     assertKnownArgv(argv, {
-      flags: ['--sweep', '--apply', '--check-only', '--yes'],
-      options: ['--state', '--scope', '--delay-ms'],
+      flags: ['--sweep', '--apply', '--check-only', '--yes', '--actor-opener-replays'],
+      options: [
+        '--state',
+        '--scope',
+        '--delay-ms',
+        '--expected-source-sha',
+        '--expected-comment-id',
+      ],
       positionals: { max: 1 },
     });
   } catch (e) {
@@ -329,6 +394,25 @@ export async function main(argv, deps = {}) {
   if (args.help || (!args.sweep && !args.issue)) {
     printUsage(out);
     return exit(args.help ? 0 : 2);
+  }
+  if (
+    (args.actorOpenerReplays && args.sweep) ||
+    (!args.actorOpenerReplays && (args.expectedSourceSha || args.expectedCommentId))
+  ) {
+    err.write(
+      'actor replay recovery is per-issue only; identity flags require --actor-opener-replays\n'
+    );
+    return exit(2);
+  }
+  if (
+    args.actorOpenerReplays &&
+    args.apply &&
+    (!/^[a-f0-9]{64}$/.test(args.expectedSourceSha ?? '') || !args.expectedCommentId?.trim())
+  ) {
+    err.write(
+      'actor replay apply requires --expected-source-sha and --expected-comment-id from dry-run\n'
+    );
+    return exit(2);
   }
   const cfg = await loadConfigFn();
   const repo = cfg.repo;
