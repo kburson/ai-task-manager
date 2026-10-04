@@ -49,3 +49,7 @@ The index records each subset's byte length and SHA-256, the original source com
 To reconstruct: validate every referenced byte length and SHA-256; place each finding at its recorded zero-based position; use the original key order and metadata to rebuild each run; restore the follow-up runs and supplemental records in their recorded order. The reconstructed JSON serialization must match the source canonical JSON SHA-256 recorded in the index.
 
 The in-file spelling directive applies only to verbatim evidence text. It changes no test discovery, test selection, acceptance requirement, runtime authority or global configuration. The original monolith and complete raw outputs are also preserved in private collateral.
+
+## Subsequent focused evidence
+
+[Node 26 census repair](current-runs/node-label-census.json) preserves the later exact-head cloud failure, complete local RED/affected/unit runs, findings and raw-output hashes. It is separate from the original 39-subset reconstruction; the original records and index remain unchanged.

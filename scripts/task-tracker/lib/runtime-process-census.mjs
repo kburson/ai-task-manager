@@ -76,7 +76,9 @@ function readCwd(pid) {
   return names[0].slice(1);
 }
 const nodeProcess = (entry) =>
-  /^(?:node|nodejs|bun|deno)(?:[0-9.]*)?$/.test(path.basename(entry.executable || ''));
+  /^(?:node(?:-MainThread)?|nodejs|bun|deno)(?:[0-9.]*)?$/.test(
+    path.basename(entry.executable || '')
+  );
 const fingerprint = (entries) =>
   JSON.stringify(
     entries

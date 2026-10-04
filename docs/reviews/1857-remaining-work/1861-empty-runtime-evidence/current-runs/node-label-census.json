@@ -1,0 +1,118 @@
+{
+  "$comment": "cspell:disable -- Preserve recorded evidence text.",
+  "schema": "aitm.manual-evidence-run-collection/v1",
+  "issue": 1861,
+  "repair": "Recognize Node 26 node-MainThread in the shared process census; retain unknown-cwd refusal.",
+  "primarySource": {
+    "url": "https://github.com/nodejs/node/blob/v26.8.1/src/node.cc",
+    "line": 1275,
+    "gitBlob": "00282634419de1c70e5e26a24c3da44e26cf899d",
+    "observation": "uv_thread_setname(\"node-MainThread\")"
+  },
+  "cloudRed": {
+    "head": "a471d10ba7c490aceeb6d47af3066779fe6b1259",
+    "url": "https://github.com/kburson/ai-task-manager/actions/runs/37170213623",
+    "conclusion": "failure",
+    "unit": {
+      "files": 941,
+      "failedFiles": 0
+    },
+    "integration": {
+      "files": 253,
+      "failedFiles": 1
+    },
+    "slow": {
+      "files": 55,
+      "failedFiles": 0
+    },
+    "failingFileRunner": {
+      "tests": 13,
+      "pass": 12,
+      "fail": 1,
+      "cancelled": 0,
+      "skipped": 0,
+      "exit": 1
+    },
+    "raw": ".scratch/gh/1861-a471-cloud-fast.log",
+    "rawSha256": "7d5240cdd5a1199d0b1805f5fc7bd27107bf35973e045bb46a9302c1d57d3ba2",
+    "findings": [
+      {
+        "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:346:1",
+        "finding": "✖ live unleased Node process in an empty root blocks production writer census (64.933214ms)",
+        "detail": "AssertionError at :377:12: expected actual child PID, physical root and cooperative false in observed writers; assert.ok evaluated false."
+      }
+    ]
+  },
+  "localRuns": [
+    {
+      "label": "node-label-red",
+      "base": "a471d10ba7c490aceeb6d47af3066779fe6b1259",
+      "selectionFileCount": 2,
+      "runner": {
+        "tests": 15,
+        "pass": 14,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "exit": 1
+      },
+      "raw": ".scratch/gh/1861-node-label-red.stdout.log",
+      "stdoutSha256": "a776f9246735c6cf1d4a826fb4128f2f9d54ce1ea53a9bc59a57dab1439f2148",
+      "privateSelection": ".scratch/gh/1861-node-label-red-selection.json",
+      "privateResult": ".scratch/gh/1861-node-label-red-result.json",
+      "findings": [
+        {
+          "location": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs:116:3",
+          "finding": "✖ process census observes an unleased writer with label node-MainThread (1.121458ms)",
+          "detail": "  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:"
+        }
+      ],
+      "unlocatedAggregateFailureCount": 0
+    },
+    {
+      "label": "node-label-green",
+      "base": "a471d10ba7c490aceeb6d47af3066779fe6b1259",
+      "selectionFileCount": 14,
+      "runner": {
+        "tests": 120,
+        "pass": 119,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "exit": 1
+      },
+      "raw": ".scratch/gh/1861-node-label-green.stdout.log",
+      "stdoutSha256": "5fee532fa9305027fc4064d1e68f3cf65b637754326990e824f9e213ff4eeecd",
+      "privateSelection": ".scratch/gh/1861-node-label-green-selection.json",
+      "privateResult": ".scratch/gh/1861-node-label-green-result.json",
+      "findings": [
+        {
+          "location": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:346:1",
+          "finding": "✖ live unleased Node process in an empty root blocks production writer census (232.713875ms)",
+          "detail": "  AssertionError [ERR_ASSERTION]: [{\"reason\":\"process-observation-incomplete\"},{\"reason\":\"process-census-unavailable\"}]"
+        }
+      ],
+      "unlocatedAggregateFailureCount": 0
+    },
+    {
+      "label": "node-label-unit-final",
+      "base": "a471d10ba7c490aceeb6d47af3066779fe6b1259",
+      "selectionFileCount": 2,
+      "runner": {
+        "tests": 15,
+        "pass": 15,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      "raw": ".scratch/gh/1861-node-label-unit-final.stdout.log",
+      "stdoutSha256": "56d9d79784cf4c0fc0f2ea18b87576c868c9e6de475d721591ab4a3393352855",
+      "privateSelection": ".scratch/gh/1861-node-label-unit-final-selection.json",
+      "privateResult": ".scratch/gh/1861-node-label-unit-final-result.json",
+      "findings": [],
+      "unlocatedAggregateFailureCount": 0
+    }
+  ],
+  "disposition": "Regression unit scope is GREEN; complete affected local scope is failed, with the unchanged macOS process observer/profile refusal retained. No complete local GREEN, genuine-host positive proof, current cloud acceptance, Test receipt or delivery is inferred."
+}

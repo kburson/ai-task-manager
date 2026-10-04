@@ -378,7 +378,15 @@ test('live unleased Node process in an empty root blocks production writer censu
       census.writers.some(
         (writer) =>
           writer.pid === child.pid && writer.projectRoot === root && writer.cooperative === false
-      )
+      ),
+      JSON.stringify({
+        childPid: child.pid,
+        root,
+        census,
+        snapshot: execFileSync('ps', ['-p', String(child.pid), '-o', 'pid=,ppid=,comm=,args='], {
+          encoding: 'utf8',
+        }).trim(),
+      })
     );
     await assert.rejects(
       planEmptyRuntimeInitialization({

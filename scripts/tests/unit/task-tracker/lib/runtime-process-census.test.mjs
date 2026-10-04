@@ -1,4 +1,5 @@
 // @story #1857
+// cspell:words unleased
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 import test from 'node:test';
@@ -110,3 +111,33 @@ test('process census separates actual current/registered router ancestry from un
   });
   assert.equal(changing.complete, false);
 });
+
+// Omitting Node 26's kernel thread label would admit an unleased live writer as quiescent.
+for (const executable of ['node', 'node-MainThread'])
+  test('process census observes an unleased writer with label ' + executable, async () => {
+    const { observeRuntimeProcesses } =
+      await import('../../../../task-tracker/lib/runtime-process-census.mjs');
+    const snapshot = [{ pid: 18610, ppid: 1, executable, args: ['/usr/bin/node', '-e', 'held'] }];
+    const input = {
+      roots: ['/repo'],
+      currentPid: 18611,
+      parentPid: 18612,
+      adapters: { readSnapshot: () => snapshot, readCwd: () => '/repo', physical: (x) => x },
+    };
+    assert.deepEqual(observeRuntimeProcesses(input), {
+      complete: true,
+      processes: [{ pid: 18610, projectRoot: '/repo', observed: 'live' }],
+      unknown: [],
+    });
+    const unknown = observeRuntimeProcesses({
+      ...input,
+      adapters: {
+        ...input.adapters,
+        readCwd: () => {
+          throw Error('unknown cwd');
+        },
+      },
+    });
+    assert.equal(unknown.complete, false);
+    assert.ok(unknown.unknown.some((x) => x.pid === 18610));
+  });
