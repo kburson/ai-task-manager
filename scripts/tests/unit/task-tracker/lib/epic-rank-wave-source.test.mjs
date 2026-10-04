@@ -685,6 +685,12 @@ test('sentence-final withdrawal and negated verbs revoke native permission', asy
     'Epic #107 rank 2 should hold off.',
     'Rank 2 should not run.',
     'Rank 2 cannot proceed.',
+    'Rank 2 should pause, CI is red.',
+    'Rank 2, hold off, CI is red.',
+    'Rank 2 should not run, CI is red.',
+    'Epic #107 rank 2 needs to stop, tests are failing.',
+    'Rank 2 should pause: CI is red.',
+    'Rank 2 should stop—CI is red.',
   ])
     assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
 });

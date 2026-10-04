@@ -404,7 +404,7 @@ function contextualReversalScope(text, scope) {
 function contradictsWaveClause(text, scope, purpose, precedingClauses = '') {
   const verbs = [
     ...text.matchAll(
-      /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)(?=\s|$)/gi
+      /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)(?![\w'’-])/gi
     ),
   ];
   for (const [index, match] of verbs.entries()) {
