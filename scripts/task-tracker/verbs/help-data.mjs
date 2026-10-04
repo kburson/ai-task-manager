@@ -993,9 +993,9 @@ export const VERB_REFERENCE = {
   },
   'migrate-runtime': {
     topic: 'meta',
-    summary: 'Plan, inspect, explicitly apply, or recover durable runtime migration.',
+    summary: 'Plan, inspect, migrate, or explicitly initialize and recover durable runtime.',
     usage:
-      '/task migrate-runtime <plan|status|apply|resume|batch-status|batch-resume> [--operation <UUID>] [--observed <sha256:digest>] [--transaction <id>] [--approved-plan <sha256:digest>] [--plan-file <path>] [--trust-plan <path>]',
+      '/task migrate-runtime <plan|status|apply|resume|initialize-plan|initialize-apply|initialize-resume|batch-status|batch-resume> [--operation <UUID>] [--observed <sha256:digest>] [--transaction <id>] [--approved-plan <sha256:digest>] [--plan-file <path>] [--trust-plan <path>]',
     flags: [
       {
         flag: '--trust-plan <path>',
@@ -1007,6 +1007,9 @@ export const VERB_REFERENCE = {
       },
     ],
     examples: [
+      '/task migrate-runtime initialize-plan',
+      '/task migrate-runtime initialize-apply --plan-file <path> --approved-plan <sha256:digest>',
+      '/task migrate-runtime initialize-resume --operation <UUID> --observed <sha256:digest> --approved-plan <sha256:digest>',
       '/task migrate-runtime batch-status --operation <UUID>',
       '/task migrate-runtime batch-resume --operation <UUID> --observed <sha256:digest>',
       '/task migrate-runtime plan',

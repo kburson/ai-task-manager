@@ -119,7 +119,7 @@ test('registered runtime planner remains reachable without binding or valid cont
       { cwd: root, env, encoding: 'utf8', timeout: 30000 }
     );
     assert.notEqual(initialize.status, 0);
-    assert.match(initialize.stderr, /RUNTIME_INITIALIZATION_REFUSED/);
+    assert.match(initialize.stderr, /RUNTIME_EMPTY_INIT_REFUSED/);
     writeFileSync(path.join(writers, 'unknown.json'), '{}');
     const malformed = spawnSync(process.execPath, [executable, 'migrate-runtime', 'status'], {
       cwd: root,

@@ -39,8 +39,12 @@ import {
   planRuntimeInitialization,
   applyRuntimeInitialization,
   resumeRuntimeInitialization,
+  inspectRuntimeInitialization,
 } from '../lib/runtime-initialize.mjs';
-import { validRuntimeInitializationPlan } from '../lib/runtime-initialization-record.mjs';
+import {
+  runtimeInitializationId,
+  validRuntimeInitializationPlan,
+} from '../lib/runtime-initialization-record.mjs';
 import {
   applyRuntimeMigration,
   resumeRuntimeMigration,
@@ -48,6 +52,13 @@ import {
   readRuntimeMigrationSnapshot,
 } from '../lib/runtime-migration-apply.mjs';
 
+import {
+  planEmptyRuntimeInitialization,
+  applyEmptyRuntimeInitialization,
+  inspectEmptyRuntimeInitialization,
+  resumeEmptyRuntimeInitialization,
+} from '../lib/runtime-empty-initialize.mjs';
+import { validEmptyRuntimePlan, validEmptyOperationId } from '../lib/runtime-empty-record.mjs';
 import { inspectRuntimeBatch, resumeRuntimeBatch } from '../lib/runtime-batch.mjs';
 
 const fail = (code, message) => {
@@ -108,39 +119,8 @@ export async function verbMigrateRuntime(argv) {
     return recoverRuntimeWriterLease({ ...roots, ...request, adapters });
   if (request.mode === 'recover-operation')
     return recoverRuntimeOperationLock({ ...roots, ...request, adapters });
-  if (request.mode === 'initialize-plan') return planRuntimeInitialization(roots);
-  if (request.mode === 'initialize-resume')
-    return resumeRuntimeInitialization({
-      ...roots,
-      approvedPlanDigest: request.approvedPlanDigest,
-      adapters,
-    });
-  if (request.mode === 'initialize-apply') {
-    let plan;
-    try {
-      if (!lstatSync(request.planFile).isFile()) throw new Error('not a regular plan');
-      plan = JSON.parse(
-        new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(request.planFile))
-      );
-    } catch {
-      fail('RUNTIME_MIGRATION_APPROVAL_REQUIRED', 'Unreadable initialization plan artifact');
-    }
-    if (
-      !validRuntimeInitializationPlan(plan) ||
-      plan.digest !== request.approvedPlanDigest ||
-      plan.projectRoot !== roots.projectRoot ||
-      plan.mainRoot !== roots.mainRoot
-    )
-      fail(
-        'RUNTIME_MIGRATION_APPROVAL_REQUIRED',
-        'Exact initialization plan and physical roots must agree'
-      );
-    return applyRuntimeInitialization({
-      plan,
-      approvedPlanDigest: request.approvedPlanDigest,
-      adapters,
-    });
-  }
+  if (['initialize-plan', 'initialize-apply', 'initialize-resume'].includes(request.mode))
+    return executeRuntimeInitializationRequest({ request, roots, adapters });
   if (request.mode === 'plan') {
     if (!request.trustPlanFile) return planRuntimeMigration({ ...roots, adapters });
     const observedPlan = readRuntimePlanInput({
@@ -231,6 +211,7 @@ export async function verbMigrateRuntime(argv) {
       coordinator: inspectRuntimeCoordinator(roots),
       writers: inspectRuntimeWriterLeases(roots),
       recoveryJournals,
+      ...readRuntimeInitializationStatus(roots),
     };
   }
   let plan;
@@ -278,4 +259,131 @@ export async function verbMigrateRuntime(argv) {
         approvedPlanDigest: request.approvedPlanDigest,
         adapters,
       });
+}
+
+// Internal dispatch seam; production supplies only its own physical request/owner/census.
+export async function executeRuntimeInitializationRequest({ request, roots, adapters = {} }) {
+  const layout = runtimeStoragePaths(roots);
+  if (request.projectRoot !== layout.projectRoot || request.mainRoot !== layout.mainRoot)
+    fail(
+      'RUNTIME_MIGRATION_ADMISSION_REFUSED',
+      'Classified request and invoking physical roots disagree'
+    );
+  const main = layout.projectRoot === layout.mainRoot;
+  if (request.mode === 'initialize-plan')
+    return main
+      ? planEmptyRuntimeInitialization({ ...roots, adapters })
+      : planRuntimeInitialization(roots);
+  if (request.mode === 'initialize-resume') {
+    if (main) {
+      if (!request.operationId || !request.expectedDigest)
+        fail(
+          'RUNTIME_MIGRATION_USAGE',
+          'Main empty resume requires operation and exact observation'
+        );
+      return resumeEmptyRuntimeInitialization({
+        ...roots,
+        operationId: request.operationId,
+        observedDigest: request.expectedDigest,
+        approvedPlanDigest: request.approvedPlanDigest,
+        adapters,
+      });
+    }
+    if (request.operationId) {
+      const observed = inspectRuntimeInitialization({ ...roots, operationId: request.operationId });
+      if (observed.journal.schema !== 'aitm.runtime-initialization/v2')
+        fail(
+          'RUNTIME_MIGRATION_USAGE',
+          'Historical linked-v1 recovery retains approval-only grammar'
+        );
+    }
+    return resumeRuntimeInitialization({
+      ...roots,
+      operationId: request.operationId,
+      observedDigest: request.expectedDigest,
+      approvedPlanDigest: request.approvedPlanDigest,
+      adapters,
+    });
+  }
+  if (request.mode !== 'initialize-apply')
+    fail('RUNTIME_MIGRATION_USAGE', 'Unsupported initialization mode');
+  let plan;
+  try {
+    const file = path.resolve(request.planFile);
+    assertRuntimeStoragePath(file, path.dirname(file), 'RUNTIME_MIGRATION_APPROVAL_REQUIRED');
+    if (!lstatSync(file).isFile()) throw new Error('not a regular plan');
+    plan = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file)));
+  } catch {
+    fail(
+      'RUNTIME_MIGRATION_APPROVAL_REQUIRED',
+      'Unreadable or aliased initialization plan artifact'
+    );
+  }
+  if (
+    !(main ? validEmptyRuntimePlan(plan) : validRuntimeInitializationPlan(plan)) ||
+    plan.digest !== request.approvedPlanDigest ||
+    plan.projectRoot !== layout.projectRoot ||
+    plan.mainRoot !== layout.mainRoot
+  )
+    fail(
+      'RUNTIME_MIGRATION_APPROVAL_REQUIRED',
+      'Exact initialization schema, approval and invoking physical root must agree'
+    );
+  return main
+    ? applyEmptyRuntimeInitialization({
+        plan,
+        approvedPlanDigest: request.approvedPlanDigest,
+        adapters,
+      })
+    : applyRuntimeInitialization({
+        plan,
+        approvedPlanDigest: request.approvedPlanDigest,
+        adapters,
+      });
+}
+function readRuntimeInitializationStatus(roots) {
+  const layout = runtimeStoragePaths(roots),
+    emptyRoot = path.join(layout.sharedRuntimeRoot, 'empty-initializations');
+  assertRuntimeStoragePath(emptyRoot, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
+  const emptyInitializations = [];
+  let names;
+  try {
+    if (!lstatSync(emptyRoot).isDirectory())
+      fail('RUNTIME_CONTROL_INVALID', 'Empty history is not a directory');
+    names = readdirSync(emptyRoot).sort();
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    names = null;
+  }
+  if (names && !names.length)
+    fail('RUNTIME_CONTROL_INVALID', 'Unbound empty initialization ancestors');
+  for (const operationId of names || []) {
+    if (!validEmptyOperationId(operationId))
+      fail('RUNTIME_CONTROL_INVALID', 'Unknown empty initialization history');
+    emptyInitializations.push(
+      inspectEmptyRuntimeInitialization({
+        projectRoot: layout.mainRoot,
+        mainRoot: layout.mainRoot,
+        operationId,
+      })
+    );
+  }
+  let initialization = null;
+  if (layout.projectRoot !== layout.mainRoot) {
+    const file = path.join(
+      layout.sharedRuntimeRoot,
+      'initializations',
+      runtimeInitializationId(layout.projectRoot) + '.json'
+    );
+    assertRuntimeStoragePath(file, layout.sharedRuntimeRoot, 'RUNTIME_CONTROL_INVALID');
+    let present = false;
+    try {
+      lstatSync(file);
+      present = true;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    if (present) initialization = inspectRuntimeInitialization(roots);
+  }
+  return { emptyInitializations, initialization };
 }

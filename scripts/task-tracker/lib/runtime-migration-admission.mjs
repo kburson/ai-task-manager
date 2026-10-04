@@ -30,7 +30,10 @@ export function parseRuntimeMigrationInvocation(argv) {
       allowed: ['--approved-plan', '--plan-file'],
       required: ['--approved-plan', '--plan-file'],
     },
-    'initialize-resume': { allowed: ['--approved-plan'], required: ['--approved-plan'] },
+    'initialize-resume': {
+      allowed: ['--approved-plan', '--operation', '--observed'],
+      required: ['--approved-plan'],
+    },
     'recover-coordinator': {
       allowed: ['--observed', '--transaction', '--approved-plan'],
       required: ['--observed'],
@@ -81,6 +84,13 @@ export function parseRuntimeMigrationInvocation(argv) {
   if (recordKey !== undefined && !/^[a-f0-9]{64}$/.test(recordKey)) return null;
   if (expectedDigest !== undefined && !digestPattern.test(expectedDigest)) return null;
   if (leaseId !== undefined && !/^[a-f0-9-]+$/.test(leaseId)) return null;
+  if (mode === 'initialize-resume' && Boolean(operationId) !== Boolean(expectedDigest)) return null;
+  if (
+    mode === 'initialize-resume' &&
+    operationId &&
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(operationId)
+  )
+    return null;
   if (mode === 'plan' && Boolean(trustPlanFile) !== Boolean(approvedPlanDigest)) return null;
   if (mode === 'recover-coordinator' && Boolean(transactionId) !== Boolean(approvedPlanDigest))
     return null;
