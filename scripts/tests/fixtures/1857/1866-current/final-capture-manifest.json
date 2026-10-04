@@ -1,10 +1,10 @@
 {
   "schema": "aitm.guidance-final-capture-manifest/v1",
   "capturePath": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
-  "captureSha256": "sha256:d13f4254a3f069b8ad8b1533e0d766cd320df7fb817d1c4421ba30fc92b0939c",
+  "captureSha256": "sha256:0554a27f26dad4561176fc12b85086bc1c618a03244ea122fb9c5bbd1ce970a5",
   "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818",
   "sourceInputsSha256": "sha256:dffdc9283979e46b1d884fbdfa9f2d529ba6396a056052d3d67733aa12017a2e",
-  "sourceCommit": "e545522e467e484bd96db3b327fc8ccd0047c086",
+  "sourceCommit": "eae8bf6b1b0ce90d2f863ffb5d240edfcdb776a5",
   "productionPackage": {
     "name": "@kburson/ai-task-manager",
     "version": "0.1.0",
@@ -65,9 +65,9 @@
   ],
   "trafficCategories": {
     "query": {
-      "characters": 7836,
-      "bytes": 7836,
-      "proxyUnits": 1959
+      "characters": 8181,
+      "bytes": 8181,
+      "proxyUnits": 2045.25
     },
     "diagnostic": {
       "characters": 2554,

@@ -72,7 +72,7 @@
     "configSha256": "sha256:bcdfe53b1460cce12f4780b851896ed129ea01b867ef5cbdfcac6754477e4d63",
     "fakeGhSha256": "sha256:b8c907132aa8fdacc4cb1fcbdfecdb25163aa93254062812b1561b226fbb8b2e",
     "fixedClockSha256": "sha256:fce21e3d55321b7163b369b88ba40e26c93984bda024d7ff5f84dc6e8a87705a",
-    "transcriptSha256": "sha256:ff0aabfd6dca104869d33e8434b74435148d053b8dab83ce57e81896335a4653",
+    "transcriptSha256": "sha256:772d0d9091bc6eb2406692f8fe1928306360d2b8956f1213b22ce4d07cdd3308",
     "sourceInputsSha256": "sha256:dffdc9283979e46b1d884fbdfa9f2d529ba6396a056052d3d67733aa12017a2e"
   },
   "events": [
@@ -809,12 +809,21 @@
         "--json"
       ],
       "stdin": "",
-      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2100,\"actionId\":\"promote\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"refine-exit-wip-budget\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2100,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"refine-exit-wip-budget\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
       "stderr": "",
       "exitCode": 0,
-      "remoteAuthorityReads": 10,
+      "remoteAuthorityReads": 11,
       "remoteAuthorityCallOrder": "canonical-multiset",
       "remoteAuthorityCalls": [
+        {
+          "args": [
+            "api",
+            "graphql",
+            "--input",
+            "-"
+          ],
+          "revision": 2
+        },
         {
           "args": [
             "api",
@@ -915,7 +924,7 @@
       ],
       "typed": {
         "schema": "aitm.action-explanation/v2",
-        "status": "ready",
+        "status": "blocked",
         "actionId": "promote",
         "guidanceStatuses": [
           "expanded"
@@ -2126,15 +2135,15 @@
   "measurement": {
     "proxyRule": "ceil(concatenated agent-visible UTF-16 characters / 4)",
     "traffic": {
-      "characters": 10577,
-      "bytes": 10577,
-      "proxyUnits": 2644.25,
-      "proxyTokens": 2645,
+      "characters": 10922,
+      "bytes": 10922,
+      "proxyUnits": 2730.5,
+      "proxyTokens": 2731,
       "categories": {
         "query": {
-          "characters": 7836,
-          "bytes": 7836,
-          "proxyUnits": 1959
+          "characters": 8181,
+          "bytes": 8181,
+          "proxyUnits": 2045.25
         },
         "diagnostic": {
           "characters": 2554,
@@ -2238,8 +2247,8 @@
       }
     },
     "modeledProposedTotals": {
-      "claude": 5603,
-      "codex": 5590
+      "claude": 5689,
+      "codex": 5676
     },
     "budgets": {
       "routerPlusPickupWorking": 4000,
