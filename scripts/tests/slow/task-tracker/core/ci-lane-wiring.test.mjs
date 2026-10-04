@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1872
 // @story #438
 // #438 AC6 — CI lane wiring.
 //
@@ -82,11 +83,15 @@ test('#864: --lane all survives ONLY as the internal coverage union', () => {
 test('#1413: fast CI runs the unit and integration lanes explicitly', () => {
   const workflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
   const [fastBlock] = workflow.split(/^ {2}slow:\s*$/m);
-  assert.match(fastBlock, /run:\s*npm run test:unit\b/, 'fast CI must run the unit lane');
+  assert.match(fastBlock, /lane: unit/, 'fast matrix includes the complete unit lane');
   assert.match(
     fastBlock,
-    /run:\s*npm run test:integration\b/,
+    /lane: integration/,
     'fast CI must run the CI-only integration lane before delivery'
+  );
+  assert.ok(
+    fastBlock.includes('npm run \"test:${{ matrix.lane }}\"'),
+    'matrix executes its selected lane'
   );
   assert.doesNotMatch(
     fastBlock,

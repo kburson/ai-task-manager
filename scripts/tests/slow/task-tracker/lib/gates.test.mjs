@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// @story #1872
+import { fixtureGitExecutable } from '../../../helpers/runtime-root-fixture.mjs';
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #58
 // Tests for the human-gate config flags introduced in #58 and the immutable
 // review-authorization ordering introduced in #1381.
@@ -12,11 +17,6 @@
 //   gate toggle.
 
 import { strict as assert } from 'node:assert';
-import { saveState } from '../../../../task-tracker/state.mjs';
-// @story #1873
-import { runtimeGitMetadataPrelude } from '../../../helpers/runtime-root-fixture.mjs';
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
@@ -69,7 +69,7 @@ function makeGhShim(sandbox, { bodyOnView, stateOptionId }) {
   writeFileSync(
     ghShim,
     `#!/usr/bin/env node
-${runtimeGitMetadataPrelude()}import fs from 'node:fs';
+import fs from 'node:fs';
 import { appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 let stdinBody = '';
@@ -118,8 +118,13 @@ process.exit(0);
   writeFileSync(
     gitShim,
     `#!/usr/bin/env node
-${runtimeGitMetadataPrelude()}import fs from 'node:fs';
+import {spawnSync} from 'node:child_process';
 const argv = process.argv.slice(2);
+if (argv.includes('--show-toplevel') || (argv.includes('worktree') && argv.includes('-z'))) {
+  const result = spawnSync(${JSON.stringify(fixtureGitExecutable)}, argv, {stdio:'inherit'});
+  process.exit(result.status ?? 1);
+}
+
 if (argv[0] === 'branch' && argv[1] === '--show-current') fs.writeSync(1, 'trunk\\n');
 else if (argv[0] === 'rev-parse' && argv[1] === 'HEAD') fs.writeSync(1, ${JSON.stringify(`${HEAD}\n`)});
 else if (argv[0] === 'rev-parse' && argv[1] === '--show-toplevel') fs.writeSync(1, ${JSON.stringify(`${sandbox}\n`)});
@@ -172,14 +177,14 @@ const BODY_WITH_FULL_AUTO_MARKER =
   `\n<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" approved-sha="${HEAD}" full-auto="yes" signals="session=1" -->\n`;
 
 function writeState(sandbox, issueNum) {
-  saveState(
-    {
+  writeFixtureTrackerState(
+    path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+    JSON.stringify({
       active: `#${issueNum}`,
       lastActive: `#${issueNum}`,
       entryStartTs: null,
       wordsAtEntryStart: 0,
-    },
-    path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json')
+    })
   );
 }
 
@@ -298,8 +303,8 @@ function writeState(sandbox, issueNum) {
       })
     );
 
-    // Run close from an unregistered foreign cwd. Physical root admission must
-    // reject it before hostile session data can influence review authorization.
+    // Run close from the hostile cwd, but with the project dir isolated to the
+    // clean sandbox and the pinned session id in env.
     const env = {
       ...process.env,
       PATH: `${binDir}:${process.env.PATH}`,
@@ -321,7 +326,7 @@ function writeState(sandbox, issueNum) {
     }
 
     assert.equal(r.code, 1, `expected exit 1; stderr:\n${r.stderr}\nstdout:\n${r.stdout}`);
-    assert.match(r.stderr, /ROOT_IDENTITY_MISMATCH/);
+    assert.match(r.stderr, /Foreign project root requires registered admission/);
     assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED/);
     console.log('test 5 passed: hostile cwd session file cannot enable Full-Auto standing');
   } finally {

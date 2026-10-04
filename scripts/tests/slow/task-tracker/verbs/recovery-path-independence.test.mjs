@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// @story #1872
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #438
 // #438 AC4 — Recovery-path independence.
 //
@@ -22,7 +24,6 @@
 // is recorded in the Full-Auto audit comment.
 
 import { strict as assert } from 'node:assert';
-import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';

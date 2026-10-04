@@ -1,20 +1,18 @@
 #!/usr/bin/env node
+// @story #1872
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #208
 // Wiring: dispatcher runs preflightVerb before invoking close/approve/promote/etc.
 // Verifies bind-mismatch refusal (#208) at the dispatcher chokepoint.
 
 import { strict as assert } from 'node:assert';
-import { saveState } from '../../../../task-tracker/state.mjs';
-// @story #1873
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import {
-  projectScratchDir,
-  mkdtempProjectIsolated,
-} from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,7 +23,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
 function makeSandbox(active) {
-  const sandbox = mkdtempProjectIsolated('tt-preflight-');
+  const sandbox = createRuntimeRootFixture('tt-preflight-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -33,17 +31,21 @@ function makeSandbox(active) {
   );
   // #573: the global ledger lives under `.tmp/aitm/state/`.
   mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
-  saveState(
-    {
-      active,
-      lastActive: active,
-      entryStartTs: new Date().toISOString(),
-      wordsAtEntryStart: 0,
-      totalActiveMinutes: 0,
-      discoverBucket: null,
-      state: 'develop',
-    },
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+  writeFixtureTrackerState(
+    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
+    JSON.stringify(
+      {
+        active,
+        lastActive: active,
+        entryStartTs: new Date().toISOString(),
+        wordsAtEntryStart: 0,
+        totalActiveMinutes: 0,
+        discoverBucket: null,
+        state: 'develop',
+      },
+      null,
+      2
+    )
   );
   return sandbox;
 }
@@ -128,7 +130,7 @@ async function expectExit(args, sandbox, expectedCode) {
 {
   const sb = makeSandbox('#100');
   try {
-    await pexec('node', [CLI, 'pause'], { env: env(sb), cwd: sb });
+    await pexec('node', [CLI, 'pause'], { env: env(sb) });
     // ok — exited 0
   } catch (err) {
     assert.notEqual(err.code, 7, `pause should not refuse with exit 7; got ${err.code}`);
@@ -140,7 +142,7 @@ async function expectExit(args, sandbox, expectedCode) {
 {
   const sb = makeSandbox('#208');
   try {
-    await pexec('node', [CLI, 'close', '#208'], { env: env(sb), cwd: sb });
+    await pexec('node', [CLI, 'close', '#208'], { env: env(sb) });
   } catch (err) {
     assert.notEqual(
       err.code,

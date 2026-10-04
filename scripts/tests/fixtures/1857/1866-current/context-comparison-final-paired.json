@@ -9,7 +9,7 @@
   "sources": {
     "lifecycle": {
       "path": "scripts/tests/fixtures/1857/1866-current/lifecycle-transcript-final.json",
-      "sha256": "sha256:83c5e42b942769d770248b3396741038f889b15212ba81254140a9d0682f6fd8"
+      "sha256": "sha256:be3735e6a28b168c5191b327a773789f3c66cfdbe34416d119a85cdb24b23948"
     },
     "authority": {
       "path": "scripts/tests/fixtures/1558/authority-after.json",
@@ -28,7 +28,7 @@
       "modeledLegacyProxyTokens": 54538,
       "conservativeReductionFromLegacyStaticAlone": true,
       "fullLifecycleWorkingPass": true,
-      "sourceCaptureSha256": "sha256:d13f4254a3f069b8ad8b1533e0d766cd320df7fb817d1c4421ba30fc92b0939c"
+      "sourceCaptureSha256": "sha256:6795a3a7af6822ff63c5faa1f28ef9d27a676dcd2cff2cf5b94a21b94b1a1b0b"
     },
     "codex": {
       "currentCaptureKind": "actual-public-cli-traffic-plus-installed-static",
@@ -37,7 +37,7 @@
       "modeledLegacyProxyTokens": 54280,
       "conservativeReductionFromLegacyStaticAlone": true,
       "fullLifecycleWorkingPass": true,
-      "sourceCaptureSha256": "sha256:d13f4254a3f069b8ad8b1533e0d766cd320df7fb817d1c4421ba30fc92b0939c"
+      "sourceCaptureSha256": "sha256:6795a3a7af6822ff63c5faa1f28ef9d27a676dcd2cff2cf5b94a21b94b1a1b0b"
     }
   },
   "authority": {

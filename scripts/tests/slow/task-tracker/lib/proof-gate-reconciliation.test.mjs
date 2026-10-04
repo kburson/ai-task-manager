@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #383
 // #383 — end-to-end slow-lane test proving the #345 evidence gate and the #362
 // checkbox-proof invariant are reconciled: a verifier-declaring AC carrying a
@@ -22,10 +26,6 @@
 //   - Post-fix: exit 0, and the PERSISTED body shows the AC ticked `- [x]`.
 
 import { strict as assert } from 'node:assert';
-import { saveState } from '../../../../task-tracker/state.mjs';
-// @story #1873
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync } from 'node:fs';
@@ -70,14 +70,14 @@ function writeConfig(sandbox) {
 function writeState(sandbox, issueNum) {
   // #573: the global ledger lives under `.tmp/aitm/state/`.
   mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
-  saveState(
-    {
+  writeFixtureTrackerState(
+    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
+    JSON.stringify({
       active: `#${issueNum}`,
       lastActive: `#${issueNum}`,
       entryStartTs: null,
       wordsAtEntryStart: 0,
-    },
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+    })
   );
 }
 

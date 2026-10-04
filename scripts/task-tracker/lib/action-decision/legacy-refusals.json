@@ -824,7 +824,7 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/refine-exit-wip-budget-guard.mjs",
-          "line": 36,
+          "line": 47,
           "fingerprint": "sha256:221e8dd5334b61d596d44f8dceda3d3253539df0df2b3deb8edd37b4f4e4247a",
           "kind": "refusal"
         }
@@ -835,7 +835,7 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/action-decision/close.mjs",
-          "line": 1015,
+          "line": 1077,
           "fingerprint": "sha256:29ab192a2d91255b4af9c4ce8825c47b08f17e74821df6fcd239015563d88b7a",
           "kind": "refusal"
         },
@@ -956,19 +956,19 @@
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 3426,
+          "line": 3431,
           "fingerprint": "sha256:88a1ee489d6cb2287e4f4b4282081da349cada2938a86e0ae9eb61d189caafb2",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 3707,
+          "line": 3712,
           "fingerprint": "sha256:218076a68383a07b646a0d14222471dce53c0a7f0119802d63c58f378102e0ee",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 4986,
+          "line": 4991,
           "fingerprint": "sha256:1f4f84c9a23cb774cb3a3dfaaee72679c500fda0cfad70ac870ef7feb2c887ee",
           "kind": "refusal"
         }

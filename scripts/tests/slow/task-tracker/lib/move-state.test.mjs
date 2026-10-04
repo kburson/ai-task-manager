@@ -1,17 +1,14 @@
 #!/usr/bin/env node
-// @story #309
-import { strict as assert } from 'node:assert';
-import { saveState, loadState } from '../../../../task-tracker/state.mjs';
-// @story #1873
+// @story #1872
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+// @story #309
+import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import {
-  projectScratchDir,
-  mkdtempProjectIsolated,
-} from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,8 +24,8 @@ async function run(args, env = {}) {
   // to AITM_INTERNAL=1; individual tests can override by passing
   // `AITM_INTERNAL: ''` in the env.
   return pexec('node', [SCRIPT, ...args], {
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR ?? process.cwd(),
     env: { AITM_INTERNAL: '1', ...process.env, ...env },
-    cwd: env.AI_TASK_MANAGER_PROJECT_DIR,
   });
 }
 
@@ -76,7 +73,7 @@ for (const state of [
   'review',
   'done',
 ]) {
-  const sandbox = mkdtempProjectIsolated(`tt-ms-${state}-`);
+  const sandbox = createRuntimeRootFixture(`tt-ms-${state}-`);
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -110,7 +107,7 @@ for (const state of [
 // data is on disk, move-state must not preserve or rewrite it — the issue
 // body `aitm-last-known-state` marker is the single source of truth.
 {
-  const sandbox = mkdtempProjectIsolated('tt-ms-state-write-');
+  const sandbox = createRuntimeRootFixture('tt-ms-state-write-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -131,13 +128,16 @@ for (const state of [
   const sp = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   mkdirSync(path.dirname(sp), { recursive: true });
   // Seed with legacy `state` field to verify it gets stripped on next write.
-  saveState({ active: '#777', lastActive: '#777', state: 'develop' }, sp);
+  writeFileSync(
+    sp,
+    JSON.stringify({ active: '#777', lastActive: '#777', state: 'develop' }, null, 2)
+  );
 
   await run(['777', 'test'], {
     TT_SKIP_NETWORK: '1',
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
-  const after = loadState(sp);
+  const after = JSON.parse(readFileSync(sp, 'utf8'));
   assert.equal(after.state, undefined, '#218: state field must be absent from tracker-state');
   assert.equal(after.active, '#777', 'active should be preserved');
 

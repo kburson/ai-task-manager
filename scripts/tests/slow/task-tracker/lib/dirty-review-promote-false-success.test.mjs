@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+// @story #1872
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import {
+  createRuntimeRootFixture,
+  fixtureGitExecutable,
+} from '../../../helpers/runtime-root-fixture.mjs';
 // @story #710
 // Regression test for the false-success defect on a `review → done` promote when
 // the workspace is dirty.
@@ -17,11 +25,6 @@
 //      successful close (board → done) still reports `promoted`.
 
 import { strict as assert } from 'node:assert';
-import { saveState } from '../../../../task-tracker/state.mjs';
-// @story #1873
-import { runtimeGitMetadataPrelude } from '../../../helpers/runtime-root-fixture.mjs';
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
@@ -30,10 +33,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:f
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  projectScratchDir,
-  mkdtempProjectIsolated,
-} from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
 
 const pexec = promisify(execFile);
@@ -43,7 +43,7 @@ const TT = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 // ─── Shared sandbox helpers (mirrors dirty-workspace-gate.test.mjs) ──────────
 
 function setupSandbox() {
-  const sandbox = mkdtempProjectIsolated('aitm-710-');
+  const sandbox = createRuntimeRootFixture('aitm-710-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -75,8 +75,14 @@ function makeGitShim(sandbox, porcelain) {
   writeFileSync(
     shim,
     `#!/usr/bin/env node
-${runtimeGitMetadataPrelude()}import fs from 'node:fs';
+import fs from 'node:fs';
+import {spawnSync} from 'node:child_process';
 const args = process.argv.slice(2);
+if (args.includes('--show-toplevel') || (args.includes('worktree') && args.includes('-z'))) {
+  const result = spawnSync(${JSON.stringify(fixtureGitExecutable)}, args, {stdio:'inherit'});
+  process.exit(result.status ?? 1);
+}
+
 const i = args.indexOf('status');
 if (i >= 0 && args.slice(i).some(a => a.startsWith('--porcelain'))) {
   fs.writeSync(1, ${JSON.stringify(porcelain)});
@@ -91,14 +97,14 @@ process.exit(0);
 async function setActive(sandbox, issue) {
   const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   mkdirSync(path.dirname(statePath), { recursive: true });
-  saveState(
-    {
+  writeFixtureTrackerState(
+    statePath,
+    JSON.stringify({
       active: `#${issue}`,
       lastActive: `#${issue}`,
       entryStartTs: new Date().toISOString(),
       wordsAtEntryStart: 0,
-    },
-    statePath
+    })
   );
 }
 

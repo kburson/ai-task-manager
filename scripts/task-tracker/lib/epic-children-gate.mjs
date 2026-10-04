@@ -1,5 +1,6 @@
 // Epic R4P admission + sequential JIT child-pull authority (#1216).
 
+import { evaluateRankWaveAdmission, selectRankWaveCandidate } from './epic-rank-wave-policy.mjs';
 import { defaultFetchSiblings } from '../../gh/lib/wave-admission.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { observeDependencyReadiness } from './dependency-disposition.mjs';
@@ -191,7 +192,8 @@ function childBlockers(child) {
  * @param {Array<{number:number, state?:string, rank?:number, blockedBy?:number[]}>} children
  * @returns {object|null} the chosen child, or null when none eligible.
  */
-export function findNextEligibleChild(children = []) {
+export function findNextEligibleChild(children = [], { rankWave } = {}) {
+  if (rankWave) return selectRankWaveCandidate(children, rankWave).child;
   const list = children || [];
 
   if (list.some(isActiveChild)) return null;
@@ -234,7 +236,8 @@ export function findNextEligibleChild(children = []) {
  *   the full sibling set (may include the promoting child).
  * @returns {{ok:boolean, reason:string, advancing:number[]}}
  */
-export function wipAdvanceDecision({ promotingNumber, children = [] } = {}) {
+export function wipAdvanceDecision({ promotingNumber, children = [], rankWave } = {}) {
+  if (rankWave) return evaluateRankWaveAdmission({ promotingNumber, children, rankWave });
   const me = Number(promotingNumber);
   const others = (children || []).filter((c) => Number(c.number) !== me);
 
@@ -258,7 +261,14 @@ export function wipAdvanceDecision({ promotingNumber, children = [] } = {}) {
  *
  * @returns {Promise<{ok:boolean, blockers?:string[]}>}
  */
-export async function planRefineWipGate({ cfg, issueNumber, deps = {} } = {}) {
+export async function planRefineWipGate({
+  cfg,
+  issueNumber,
+  projectDir,
+  readOnly = true,
+  toState,
+  deps = {},
+} = {}) {
   if (!cfg) throw new Error('planRefineWipGate: cfg is required');
   if (!issueNumber) throw new Error('planRefineWipGate: issueNumber is required');
   const me = Number(String(issueNumber).replace(/^#/, ''));
@@ -271,6 +281,22 @@ export async function planRefineWipGate({ cfg, issueNumber, deps = {} } = {}) {
     return { ok: false, blockers: [`wip-parent-fetch-failed: ${error.message}`] };
   }
   if (parentEpicNumber == null) return { ok: true }; // solo issue — bypass
+
+  try {
+    const { observeRankWaveAdmission } = await import('./epic-rank-wave-admission.mjs');
+    const observed = await observeRankWaveAdmission({
+      cfg,
+      parentEpicNumber,
+      issueNumber: me,
+      projectDir,
+      readOnly,
+      deps,
+    });
+    if (!observed.legacy) return observed.decision;
+    if (toState === 'develop') return { ok: true };
+  } catch (error) {
+    return { ok: false, code: 'rank-wave-observation-unavailable', reason: error.message };
+  }
 
   let children;
   try {

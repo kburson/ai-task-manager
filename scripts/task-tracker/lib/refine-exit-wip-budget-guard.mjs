@@ -15,24 +15,35 @@
 // adapters; lets non-promote runGuards callers no-op safely).
 
 import { planRefineWipGate } from './epic-children-gate.mjs';
-import { fetchParentIssue as defaultFetchParentIssue } from './fetch-parent-issue.mjs';
+import { fetchParentIssueStrict as defaultFetchParentIssue } from './fetch-parent-issue.mjs';
 
 export const GUARD_ID = 'refine-exit-wip-budget';
 
 export const refineExitWipBudgetGuard = {
   id: GUARD_ID,
   async run(ctx) {
-    if (ctx?.toState && ctx.toState !== 'plan') return { ok: true };
+    if (ctx?.toState && !['plan', 'develop'].includes(ctx.toState)) return { ok: true };
     if (!ctx || !ctx.cfg || ctx.issueNumber == null) return { ok: true };
     const result = await planRefineWipGate({
       cfg: ctx.cfg,
       issueNumber: ctx.issueNumber,
+      projectDir: ctx.projectDir,
+      readOnly: ctx.readOnly === true,
+      toState: ctx.toState,
       deps: {
         fetchParentIssue: ctx.deps?.fetchParentIssue || defaultFetchParentIssue,
         ...(ctx.deps?.epicChildren || {}),
       },
     });
     if (result.ok) return { ok: true };
+    if (result.code?.startsWith('rank-wave-'))
+      return {
+        ok: false,
+        code: 'rank-wave-admission-refused',
+        args: { reason: result.code },
+        noAutomaticRemediation: { reason: 'operator-action-required' },
+        reason: result.reason ?? result.code,
+      };
     return {
       ok: false,
       reason: (result.blockers || []).join('; ') || 'wip-budget-exceeded',

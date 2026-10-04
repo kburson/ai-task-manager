@@ -38,6 +38,8 @@ function harness({ children, outcomes = {} } = {}) {
   const calls = [];
   const deps = {
     projectDir: process.cwd(),
+    withEpicAdmissionLock: async (_options, fn) => fn({}),
+    observeRankWaveAdmission: async () => ({ legacy: true }),
     withIssueLock: async (_options, fn) => fn(),
     childIssueLock: async (_options, fn) => fn(),
     getLiveState: async () => 'develop',

@@ -405,6 +405,24 @@ export const VERB_REFERENCE = {
       '/task plan-estimate 667 --compatibility-mode --planned-size L --planned-estimate 6 --rationale "legacy issue"',
     ],
   },
+  'epic-wave': {
+    topic: 'board',
+    summary:
+      'Prepare, publish, inspect, revoke or recover immutable rank-wave admission authority.',
+    usage:
+      '/task epic-wave <prepare|record|resume|refresh|show|revoke|lock-show|lock-release> <epic> [--input-file <path>] [--json]',
+    flags: [
+      {
+        flag: '--input-file <path>',
+        desc: 'closed proposal, exact human source, resume identity, read selector or exact dead-lock observation; omitted for lock-show',
+      },
+      { flag: '--json', desc: 'structured output' },
+    ],
+    examples: [
+      '/task epic-wave prepare 107 --input-file .scratch/gh/wave-selector.json --json',
+      '/task epic-wave resume 107 --input-file .scratch/gh/wave-resume.json --json',
+    ],
+  },
   'decompose-check': {
     topic: 'board',
     summary: 'Classify whether a planned issue is atomic or requires decomposition.',

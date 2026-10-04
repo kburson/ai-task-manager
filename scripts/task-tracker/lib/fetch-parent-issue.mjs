@@ -23,7 +23,14 @@ export async function fetchParentIssueStrict({ issueNumber, repo, deps = {} }) {
     }`,
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
-  return data?.repository?.issue?.parent?.number ?? null;
+  const issue = data?.repository?.issue;
+  if (!issue || !Object.hasOwn(issue, 'parent')) throw new Error('parent authority unreadable');
+  if (
+    issue.parent !== null &&
+    (!Number.isSafeInteger(issue.parent?.number) || issue.parent.number <= 0)
+  )
+    throw new Error('parent authority malformed');
+  return issue.parent?.number ?? null;
 }
 
 export async function fetchParentIssue({ issueNumber, repo, deps = {} }) {

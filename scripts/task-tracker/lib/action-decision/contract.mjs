@@ -152,6 +152,11 @@ export const CODE_DEFINITIONS = Object.freeze({
     ['review-exit-close-gates'],
     { argumentSchema: args(['target', 'sha'], { target: stringType, sha: stringType }) }
   ),
+  'rank-wave-admission-refused': decisionBlocked(
+    'rank-wave-admission-refused',
+    ['refine-exit-wip-budget'],
+    { argumentSchema: args(['reason'], { reason: stringType }) }
+  ),
   'unclassified-refusal': decisionBlocked('unclassified-refusal', registeredGuard),
   'code-complete-ac-evidence-incomplete': decisionBlocked(
     'code-complete-ac-evidence-incomplete',

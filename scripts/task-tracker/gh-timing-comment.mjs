@@ -586,16 +586,15 @@ function appendActorRow(body, row) {
     .map(parseTimingRow)
     .filter((entry) => entry && isTableTimingTimestamp(entry.ts));
   const own = records.filter((entry) => entry.actorKey === incoming.actorKey);
-  // #1873 The displayed delta is derived during publication, including Unknown
-  // recovery rows. Read-back must recognize the same immutable actor evidence.
+  // #1876: the publisher derives Delta Words after accepting the immutable row.
+  // Replaying that original must acknowledge the stored payload, without dropping
+  // a changed cell, marker or additional column as though it were the same event.
   if (
     own.some(
       (entry) =>
-        entry.raw === incoming.raw ||
-        (entry.marker === incoming.marker &&
-          JSON.stringify(entry.engagement) === JSON.stringify(incoming.engagement) &&
-          entry.cells.length === incoming.cells.length &&
-          entry.cells.every((cell, index) => index === 5 || cell === incoming.cells[index]))
+        entry.marker === incoming.marker &&
+        entry.cells.length === incoming.cells.length &&
+        entry.cells.every((cell, index) => index === 5 || cell === incoming.cells[index])
     )
   )
     return body;
@@ -617,6 +616,7 @@ function appendActorRow(body, row) {
     if (
       JSON.stringify(same.engagement) === JSON.stringify(incoming.engagement) &&
       same.marker === incoming.marker &&
+      same.cells.length === incoming.cells.length &&
       same.cells.every((cell, index) => index === 5 || cell === incoming.cells[index])
     )
       return body;

@@ -608,3 +608,5 @@ reserialization
 unadopted
 unrun
 unadmittable
+AIPR
+ungranted

@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #32
 // Integration tests for the structural body gate in scripts/gh/move-state.mjs.
 // Drives move-state.mjs against a sandboxed config + fake `gh` shim that returns
@@ -10,16 +14,10 @@
 //   - TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored (refuses regardless)
 
 import { strict as assert } from 'node:assert';
-// @story #1873
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import {
-  projectScratchDir,
-  mkdtempProjectIsolated,
-} from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -49,7 +47,7 @@ function deepDiveAdequate() {
 }
 
 function makeSandbox(body) {
-  const sandbox = mkdtempProjectIsolated('tt-gate-');
+  const sandbox = createRuntimeRootFixture('tt-gate-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

@@ -4,18 +4,23 @@
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url, 'codex');
 
+// @story #1872
 // Actual Git/public-CLI replay belongs to integration, not the pure unit lane.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test, { mock } from 'node:test';
-import childProcess from 'node:child_process';
-import { syncBuiltinESMExports } from 'node:module';
 import { captureGuidanceLifecycle } from '../../../../maintenance/capture-guidance-lifecycle.mjs';
 import { fileURLToPath } from 'node:url';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
+// Ambient actor validation can refuse before replay; a valid actor reaches the
+// archived capture's exact identity guard. Both must refuse obsolete evidence.
+const obsoleteReplayRefusal =
+  /TIMING_ACTOR_INVALID|Invalid timing actor|guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml|guidance-feasibility:capture-replay-identity:(?:scenarioManifestSha256|initialFixtureSha256|initialBodySha256|configSha256|fakeGhSha256)/;
 function json(file) {
   return JSON.parse(readFileSync(path.join(fixtureRoot, file), 'utf8'));
 }
@@ -23,16 +28,79 @@ async function measurementTool() {
   return import('../../../../maintenance/measure-guidance-candidate.mjs');
 }
 
+test('obsolete catalog input refuses before launching public CLI replay', async (t) => {
+  const original = childProcess.spawnSync;
+  let cliCalls = 0;
+  t.mock.method(childProcess, 'spawnSync', function (command, args, ...rest) {
+    if (command === process.execPath && args?.[0] === path.join(projectRoot, 'bin/aitm.mjs'))
+      cliCalls += 1;
+    return original.call(this, command, args, ...rest);
+  });
+  syncBuiltinESMExports();
+  t.after(() => {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+  });
+  const { buildCurrentRecertificationDecision } = await measurementTool();
+  const capture = json('actual-explain-traffic-recertification.json');
+  const catalog = capture.identity.implementationFiles.find(
+    ({ path: sourcePath }) => sourcePath === 'instructions/aitm-guidance.yml'
+  );
+  assert.notEqual(
+    catalog.sha256,
+    `sha256:${createHash('sha256')
+      .update(readFileSync(path.join(projectRoot, catalog.path)))
+      .digest('hex')}`
+  );
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot, capture }),
+    /guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml/
+  );
+  assert.equal(cliCalls, 0);
+});
+
+test('matching catalog inputs refuse initial fixture drift before public CLI replay', async (t) => {
+  const original = childProcess.spawnSync;
+  let cliCalls = 0;
+  t.mock.method(childProcess, 'spawnSync', function (command, args, ...rest) {
+    if (command === process.execPath && args?.[0] === path.join(projectRoot, 'bin/aitm.mjs'))
+      cliCalls += 1;
+    return original.call(this, command, args, ...rest);
+  });
+  syncBuiltinESMExports();
+  t.after(() => {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+  });
+  const { buildCurrentRecertificationDecision } = await measurementTool();
+  const capture = json('actual-explain-traffic-recertification.json');
+  // Matching catalog hashes alone cannot authorize replay of a different initial fixture.
+  capture.identity.sourceCommit = original('git', ['rev-parse', 'HEAD'], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  }).stdout.trim();
+  for (const record of capture.identity.implementationFiles) {
+    const committed = original('git', ['show', `${capture.identity.sourceCommit}:${record.path}`], {
+      cwd: projectRoot,
+      encoding: null,
+    });
+    assert.equal(committed.status, 0);
+    record.sha256 = `sha256:${createHash('sha256').update(committed.stdout).digest('hex')}`;
+  }
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot, capture }),
+    /capture-replay-identity|Invalid timing actor|TIMING_ACTOR_INVALID/
+  );
+  assert.equal(cliCalls, 0, 'initial fixture drift must refuse before real CLI replay');
+});
+
 test('archived recertification binds every obligation and refuses current replay identity drift', async () => {
   const { buildCurrentRecertificationDecision } =
     await import('../../../../maintenance/measure-guidance-candidate.mjs');
   const decision = json('feasibility-recheck-1767.json');
   const archived = json('actual-explain-traffic-recertification.json');
   assert.equal(decision.capture.transcriptSha256, archived.identity.transcriptSha256);
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot }),
-    /guidance-feasibility:capture-replay-identity:initialFixtureSha256/
-  );
+  assert.throws(() => buildCurrentRecertificationDecision({ projectRoot }), obsoleteReplayRefusal);
   assert.equal(decision.schema, 'aitm.guidance-feasibility-recertification/v1');
   assert.equal(decision.owner.issue, 1767);
   assert.equal(decision.owner.foundationIssue, 1660);
@@ -93,10 +161,7 @@ test('historical foundation stays immutable while current commands refuse obsole
     await measurementTool();
   assert.throws(() => buildFeasibilityDecision({ projectRoot }), /measurement-artifact-drift/);
   assert.equal(json('feasibility-decision.json').schema, 'aitm.guidance-feasibility-decision/v1');
-  assert.throws(
-    () => buildCurrentRecertificationDecision({ projectRoot }),
-    /guidance-feasibility:capture-replay-identity:initialFixtureSha256/
-  );
+  assert.throws(() => buildCurrentRecertificationDecision({ projectRoot }), obsoleteReplayRefusal);
 
   for (const args of [
     ['--all', '--json'],
@@ -111,7 +176,7 @@ test('historical foundation stays immutable while current commands refuse obsole
     });
     assert.notEqual(status, 0);
     assert.equal(stdout, '');
-    assert.match(stderr, /guidance-feasibility:capture-replay-identity:initialFixtureSha256/);
+    assert.match(stderr, obsoleteReplayRefusal);
   }
 
   let stderr = '';

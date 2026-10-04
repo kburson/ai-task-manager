@@ -7,6 +7,10 @@
 # push to trunk, and establishes the green baseline the Wave 3 refactors
 # (#559/#560/#561) depend on.
 #
+# Heavy lanes use three independent collection groups (#1872). Each job keeps
+# directory-local suite families together and retains the runner safeguards.
+# Aggregate checks prove complete lane coverage from downloadable result artifacts.
+#
 # Lane split rationale: the fast job (format:check + lint + explicit unit and
 # integration lanes) runs on every event because it catches the common
 # regressions and gates the CI-only system-touching suites. The slow
@@ -43,6 +47,7 @@ permissions:
 # Capture fixtures were originally created with this Git identity. Pin it for
 # isolated commit-tree replay instead of inheriting a runner's global config.
 env:
+  AITM_SOURCE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
   GIT_AUTHOR_NAME: kendrick burson
   GIT_AUTHOR_EMAIL: kpburson@pm.me
   GIT_COMMITTER_NAME: kendrick burson
@@ -57,10 +62,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      # The final guidance capture pins an original pre-squash source object.
-      # Full trunk history does not include that commit; retain real provenance.
-      - name: Fetch immutable guidance-capture source (#1873)
-        run: git fetch --no-tags origin e545522e467e484bd96db3b327fc8ccd0047c086
+      # The capture source can become unreachable after squash delivery. Fetch
+      # its exact manifest identity without rewriting archived bytes or hashes.
+      - name: Prepare immutable guidance capture source (#1876)
+        run: |
+          set -euo pipefail
+          source=$(jq -er '.sourceCommit | select(test("^[0-9a-f]{40}$"))' scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json)
+          if ! git cat-file -e "$source^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$source"
+          fi
+          git cat-file -e "$source^{commit}"
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -85,8 +96,26 @@ jobs:
         if: ${{ hashFiles('scripts/tests/fixtures/1558/cache-budgets.json') != '' }}
         run: node scripts/maintenance/benchmark-guidance-cache.mjs --samples=7 --check-budget
 
-  fast:
-    name: Fast lane (format, lint, unit + integration)
+  fast-tests:
+    name: ${{ matrix.lane }} group ${{ matrix.shard }}/${{ matrix.total }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: unit
+            shard: 1
+            total: 1
+          - lane: integration
+            shard: 1
+            total: 3
+          - lane: integration
+            shard: 2
+            total: 3
+          - lane: integration
+            shard: 3
+            total: 3
+    outputs:
+      skip_tests: ${{ github.event_name == 'pull_request' && (steps.scope.outputs.docs_only == 'true' || contains(github.event.pull_request.labels.*.name, 'docs-only')) }}
     if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     steps:
@@ -96,6 +125,16 @@ jobs:
           # epic-child PRs need ancestry beyond the merge ref's direct parents
           # to discover that merge base, so the Fast checkout is unshallow.
           fetch-depth: 0
+      # The capture source can become unreachable after squash delivery. Fetch
+      # its exact manifest identity without rewriting archived bytes or hashes.
+      - name: Prepare immutable guidance capture source (#1876)
+        run: |
+          set -euo pipefail
+          source=$(jq -er '.sourceCommit | select(test("^[0-9a-f]{40}$"))' scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json)
+          if ! git cat-file -e "$source^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$source"
+          fi
+          git cat-file -e "$source^{commit}"
       # The real-git close-gate tests (#733) resolve trunk via a LOCAL
       # `refs/heads/trunk` branch. On a pull_request the checkout is a detached
       # merge ref with no such branch, so those tests fail spuriously (#745).
@@ -104,10 +143,6 @@ jobs:
       - name: Materialize local trunk ref for real-git tests (#745)
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         run: git fetch --no-tags origin trunk:trunk
-      # The final guidance capture pins an original pre-squash source object.
-      # Full trunk history does not include that commit; retain real provenance.
-      - name: Fetch immutable guidance-capture source (#1873)
-        run: git fetch --no-tags origin e545522e467e484bd96db3b327fc8ccd0047c086
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -155,22 +190,86 @@ jobs:
           else
             echo "docs_only=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Unit tests
+      - name: Prepare complete collection plan
         if: >-
           github.event_name != 'pull_request' ||
-          (
-            steps.scope.outputs.docs_only != 'true' &&
-            !contains(github.event.pull_request.labels.*.name, 'docs-only')
-          )
-        run: npm run test:unit
-      - name: Integration tests
+          (steps.scope.outputs.docs_only != 'true' &&
+           !contains(github.event.pull_request.labels.*.name, 'docs-only'))
+        run: |
+          mkdir -p .tmp/aitm
+          node scripts/maintenance/ci-test-shards.mjs plan "${{ matrix.lane }}" "${{ matrix.total }}" > .tmp/aitm/shard-plan.json
+      - name: Execute collection group
         if: >-
           github.event_name != 'pull_request' ||
-          (
-            steps.scope.outputs.docs_only != 'true' &&
-            !contains(github.event.pull_request.labels.*.name, 'docs-only')
-          )
-        run: npm run test:integration
+          (steps.scope.outputs.docs_only != 'true' &&
+           !contains(github.event.pull_request.labels.*.name, 'docs-only'))
+        run: |
+          set +e
+          npm run "test:${{ matrix.lane }}" -- --shard "${{ matrix.shard }}/${{ matrix.total }}" 2>&1 | tee .tmp/aitm/test-output.log
+          result=${PIPESTATUS[0]}
+          printf '%s\n' "$result" > .tmp/aitm/exit-code.txt
+          exit "$result"
+      - name: Preserve group results, including failures
+        if: >-
+          always() && (github.event_name != 'pull_request' ||
+          (steps.scope.outputs.docs_only != 'true' &&
+           !contains(github.event.pull_request.labels.*.name, 'docs-only')))
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-${{ matrix.lane }}-${{ matrix.shard }}-${{ github.run_attempt }}
+          path: |
+            .tmp/aitm/test-timing.json
+            .tmp/aitm/exit-code.txt
+            .tmp/aitm/shard-plan.json
+            .tmp/aitm/test-output.log
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  fast:
+    # Preserve the existing required-check name; a matrix failure cannot hide
+    # behind an individually successful unit job.
+    name: Fast lane (format, lint, unit + integration)
+    needs: fast-tests
+    if: ${{ always() && !startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every quality and test group to pass
+        env:
+          GROUP_RESULT: ${{ needs.fast-tests.result }}
+        run: test "$GROUP_RESULT" = success
+      - uses: actions/checkout@v5
+        if: needs.fast-tests.outputs.skip_tests != 'true'
+      - uses: actions/setup-node@v5
+        if: needs.fast-tests.outputs.skip_tests != 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        if: needs.fast-tests.outputs.skip_tests != 'true'
+      - uses: actions/download-artifact@v5
+        if: needs.fast-tests.outputs.skip_tests != 'true'
+        with:
+          name: ci-unit-1-${{ github.run_attempt }}
+          path: .tmp/aitm/ci-results/unit/ci-unit-1-${{ github.run_attempt }}
+      - uses: actions/download-artifact@v5
+        if: needs.fast-tests.outputs.skip_tests != 'true'
+        with:
+          pattern: ci-integration-*-${{ github.run_attempt }}
+          path: .tmp/aitm/ci-results/integration
+      - name: Validate complete disjoint lane coverage
+        if: needs.fast-tests.outputs.skip_tests != 'true'
+        run: |
+          node scripts/maintenance/ci-test-shards.mjs verify unit 1 .tmp/aitm/ci-results/unit
+          node scripts/maintenance/ci-test-shards.mjs verify integration 3 .tmp/aitm/ci-results/integration
+      - uses: actions/upload-artifact@v4
+        if: needs.fast-tests.outputs.skip_tests != 'true'
+        with:
+          name: ci-fast-receipts-${{ github.run_attempt }}
+          path: .tmp/aitm/ci-results/*/lane-receipt.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
 
   npm-pack-compatibility:
     name: npm ${{ matrix.npm }} / Node ${{ matrix.node }} pack compatibility
@@ -203,8 +302,12 @@ jobs:
           scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs
           scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs
 
-  slow:
-    name: Slow lane (slow tests only)
+  slow-tests:
+    name: slow group ${{ matrix.shard }}/3
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     # Runs nightly (schedule), on manual dispatch, or when a PR carries the
     # `ci-slow` label — never on an ordinary push, to keep PR latency low.
     if: >-
@@ -221,13 +324,65 @@ jobs:
       - name: Materialize local trunk ref for real-git tests (#745)
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         run: git fetch --no-tags origin trunk:trunk
-      # The final guidance capture pins an original pre-squash source object.
-      # Full trunk history does not include that commit; retain real provenance.
-      - name: Fetch immutable guidance-capture source (#1873)
-        run: git fetch --no-tags origin e545522e467e484bd96db3b327fc8ccd0047c086
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run test:slow
+      - name: Prepare complete collection plan
+        run: |
+          mkdir -p .tmp/aitm
+          node scripts/maintenance/ci-test-shards.mjs plan slow 3 > .tmp/aitm/shard-plan.json
+      - name: Execute slow collection group
+        run: |
+          set +e
+          npm run test:slow -- --shard "${{ matrix.shard }}/3" 2>&1 | tee .tmp/aitm/test-output.log
+          result=${PIPESTATUS[0]}
+          printf '%s\n' "$result" > .tmp/aitm/exit-code.txt
+          exit "$result"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-slow-group-${{ matrix.shard }}-${{ github.run_attempt }}
+          path: |
+            .tmp/aitm/test-timing.json
+            .tmp/aitm/exit-code.txt
+            .tmp/aitm/shard-plan.json
+            .tmp/aitm/test-output.log
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  slow:
+    name: Slow lane (slow tests only)
+    needs: slow-tests
+    if: >-
+      always() && (github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'ci-slow')))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all slow groups to pass
+        env:
+          GROUP_RESULT: ${{ needs.slow-tests.result }}
+        run: test "$GROUP_RESULT" = success
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: ci-slow-group-*-${{ github.run_attempt }}
+          path: .tmp/aitm/ci-results/slow
+      - name: Validate complete disjoint slow coverage
+        run: node scripts/maintenance/ci-test-shards.mjs verify slow 3 .tmp/aitm/ci-results/slow
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-slow-receipt-${{ github.run_attempt }}
+          path: .tmp/aitm/ci-results/slow/lane-receipt.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14

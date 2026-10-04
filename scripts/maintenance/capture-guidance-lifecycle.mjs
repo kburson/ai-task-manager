@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @story #1765
 // @story #1767
+// @story #1872
 // A new actual-CLI fixture; #1675's capture runner and artifact stay historical.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -73,6 +74,10 @@ const fileIdentity = (relativePath) => ({
   path: relativePath,
   sha256: sha256(readFileSync(path.join(root, relativePath))),
 });
+// These raw bytes enter the tracked initial fixture and its Git snapshot.
+export function guidanceLifecycleReplayInputs() {
+  return [fileIdentity('instructions/aitm-guidance.yml')];
+}
 const snapshotIdentity = (snapshot) => ({
   revision: snapshot.revision,
   state: snapshot.state,

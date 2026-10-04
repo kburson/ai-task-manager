@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// @story #1872
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #50
 // Integration tests for the plan -> develop approval gate in
 // scripts/gh/move-state.mjs. Mirrors the harness in move-state-gate.test.mjs.
@@ -15,8 +18,6 @@
 
 import { strict as assert } from 'node:assert';
 // @story #1873
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
@@ -239,6 +240,7 @@ if (args[0] === 'api' && args[1] === 'graphql') {
   // Query payload comes via stdin (--input -). Read it to decide the shape.
   let stdin = '';
   try { stdin = fs.readFileSync(0, 'utf8'); } catch {}
+  if (stdin.includes('parent { number }')) { fs.writeSync(1,JSON.stringify({data:{repository:{issue:{parent:null}}}}));process.exit(0); }
   if (stdin.includes('subIssues')) {
     const payload = {
       data: { repository: { issue: {

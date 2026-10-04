@@ -1,4 +1,4 @@
-// @story #1011 #1023
+// @story #1011 #1023 #1872
 // @slow-parallel-safe (uses independent project-isolated temporary directories)
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -288,6 +288,7 @@ test('routed task wrappers propagate command return codes', () => {
     const result = run(AITM, ['pull-next'], temp, {
       TT_SKIP_FIELD_SELF_CHECK: '1',
       TT_SKIP_NETWORK: '1',
+      AI_TASK_MANAGER_SESSION_ID: 'task-exit-fixture',
     });
     assert.equal(result.status, 2, result.stderr);
     assert.match(result.stderr, /Usage: \/task pull-next/);
@@ -295,6 +296,7 @@ test('routed task wrappers propagate command return codes', () => {
       const missingTarget = run(AITM, [verb], temp, {
         TT_SKIP_FIELD_SELF_CHECK: '1',
         TT_SKIP_NETWORK: '1',
+        AI_TASK_MANAGER_SESSION_ID: 'task-exit-fixture',
       });
       assert.equal(missingTarget.status, 1, `${verb}: ${missingTarget.stderr}`);
       assert.match(missingTarget.stderr, /Usage:/, verb);

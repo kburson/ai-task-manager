@@ -838,9 +838,14 @@ const DIRECT_SELF_DOC = Object.freeze({
     path: 'scripts/run-tests.mjs',
     classification: 'package-lifecycle-cli',
     synopsis: 'Run the selected repository test lane with bounded pooling and timing.',
-    usage: 'run-tests [--lane <unit|integration|fast|slow|all>] [--timing-report]',
+    usage:
+      'run-tests [--lane <unit|integration|fast|slow|all>] [--shard <index/count>] [--timing-report]',
     arguments: [
       argument('--lane <name>', 'Test lane; fast is the default.'),
+      argument(
+        '--shard <index/count>',
+        'Run one complete collection group; 1 <= index <= count <= 32.'
+      ),
       argument('--timing-report', 'Print the human-readable timing report.'),
     ],
     preconditions: ['Repository dependencies must be installed.'],
@@ -1302,18 +1307,30 @@ const DIRECT_SELF_DOC = Object.freeze({
     group: 'Maintenance',
     path: 'scripts/task-tracker/heal-timing-log.mjs',
     classification: 'live-maintenance-or-migration',
-    synopsis: 'Audit or heal retired and malformed Timing Log rows.',
+    synopsis: 'Audit or heal historical Timing Log rows and proven actor opener replays.',
     usage:
-      'heal-timing-log (<issue#> [--apply|--check-only] | --sweep [--state open|closed|all] [--scope N,N] [--apply]) [--yes]',
+      'heal-timing-log (<issue#> [--actor-opener-replays] [--apply|--check-only] [--expected-source-sha SHA --expected-comment-id ID] | --sweep [--state open|closed|all] [--scope N,N] [--apply]) [--yes]',
     arguments: [
       argument('<issue#>|--sweep', 'Single issue or corpus mode.'),
       argument('--state/--scope', 'Sweep filters.'),
       argument('--apply|--check-only', 'Write repairs or fail when needed.'),
       argument('--yes', 'Skip confirmation.'),
+      argument(
+        '--actor-opener-replays',
+        'Per-issue dry-run of proven redundant actor openers; refuses conflicting evidence.'
+      ),
+      argument(
+        '--expected-source-sha SHA/--expected-comment-id ID',
+        'Actor replay apply requires both identities from dry-run.'
+      ),
     ],
     preconditions: ['Configured repository and timing-comment access are required.'],
-    effects: ['Dry-run by default; --apply rewrites Timing Log comments.'],
-    output: ['Reports row transformations and per-issue results.'],
+    effects: [
+      'Dry-run by default; --apply rewrites Timing Log comments. Actor replay apply archives original evidence, checks source drift and validates exact read-back.',
+    ],
+    output: [
+      'Reports row transformations and per-issue results; actor recovery emits JSON with source hashes, removals, accounting and evidence directory.',
+    ],
     relatedCommands: ['backfill-timing-logs', 'log-issue-time'],
   }),
   'heal-timing-departure': directDoc('heal-timing-departure', {

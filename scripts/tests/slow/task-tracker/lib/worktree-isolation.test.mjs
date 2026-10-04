@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { loadState } from '../../../../task-tracker/state.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #130
 // Worktree isolation — issue #130.
 //
@@ -21,8 +25,6 @@ import {
   mkdtempProjectIsolated,
 } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
-import { loadState } from '../../../../task-tracker/state.mjs';
-import { statePath } from '../../../../task-tracker/paths.mjs';
 import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
@@ -40,7 +42,7 @@ function makeSandbox(prefix) {
 }
 
 function readState(dir) {
-  return loadState(statePath(dir));
+  return loadState(path.join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
 }
 
 const parent = makeSandbox('tt-iso-parent-');

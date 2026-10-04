@@ -53,6 +53,8 @@ function makeDeps({
     calls,
     deps: {
       resolveProjectDir: () => '/repo/worktrees/epic-100',
+      withEpicAdmissionLock: async (_options, fn) => fn({}),
+      observeRankWaveAdmission: async () => ({ legacy: true }),
       withIssueLock: async (_options, fn) => fn(),
       childIssueLock: async (_options, fn) => fn(),
       // #758 — inject a hermetic no-op auditor so the unit tests never spawn a
@@ -234,6 +236,8 @@ I want the selected child promoted
 So that JIT planning can continue
 
 <!-- aitm-refine-complete: 2026-08-05T00:00:00Z -->
+<!-- aitm-entered-backlog ts="2026-08-04T00:00:00Z" -->
+<!-- aitm-entered-refine ts="2026-08-04T01:00:00Z" -->
 <!-- aitm-entered-ready-for-plan ts="2026-08-05T00:00:00Z" -->
 <!-- aitm-refinement-rationale: {"size":"S","estimate":"1","priority":"P1","rank":3,"rationale":"current"} -->
 
@@ -254,6 +258,8 @@ Promote the selected refined child into durable planning readiness.
     { labels: ['enhancement'], ts: '2026-08-05T00:00:00Z' }
   );
   deps.promoteDeps = {
+    withEpicAdmissionLock: async (_options, fn) => fn({}),
+    observeRankWaveAdmission: async () => ({ legacy: true }),
     withIssueLock: async (_options, fn) => fn(),
     preflightDeps: {
       fetchSnapshot: async () => ({ state: 'ready-for-plan', assignees: [] }),
@@ -287,6 +293,7 @@ Promote the selected refined child into durable planning readiness.
       return 0;
     },
     spawnVerb: async () => 0,
+    fetchParentIssue: async () => null,
     epicChildren: { fetchSiblings: async () => [] },
     decomposition: {
       projectDir: process.cwd(),
@@ -459,6 +466,8 @@ test('runPullNext requires epicNumber and cfg', async () => {
 test('runPullNext surfaces fetch failures', async () => {
   const deps = {
     projectDir: '/repo/worktrees/epic-100',
+    withEpicAdmissionLock: async (_options, fn) => fn({}),
+    observeRankWaveAdmission: async () => ({ legacy: true }),
     withIssueLock: async (_options, fn) => fn(),
     audit: async () => ({ ok: true, drift: 'none' }),
     getLiveState: async () => 'develop',

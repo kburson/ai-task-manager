@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+// @story #1872
+import { loadState } from '../../../../task-tracker/state.mjs';
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import {
+  createRuntimeRootFixture,
+  fixtureGitExecutable,
+} from '../../../helpers/runtime-root-fixture.mjs';
 // @story #80
 // E2E tests for #80 — review-approval prompt.
 //
@@ -10,15 +19,9 @@
 //   5. /task reject happy path → posts `### ❌ Review rejected` comment.
 
 import { strict as assert } from 'node:assert';
-import { saveState, loadState } from '../../../../task-tracker/state.mjs';
-// @story #1873
-import { runtimeGitMetadataPrelude } from '../../../helpers/runtime-root-fixture.mjs';
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { statePath as trackerStatePath } from '../../../../task-tracker/paths.mjs';
 import {
   withReviewEntryHistory,
@@ -85,8 +88,14 @@ function makeGhShim(
   writeFileSync(
     gitShim,
     `#!/usr/bin/env node
-${runtimeGitMetadataPrelude()}import fs from 'node:fs';
+import fs from 'node:fs';
+import {spawnSync} from 'node:child_process';
 const argv = process.argv.slice(2);
+if (argv.includes('--show-toplevel') || (argv.includes('worktree') && argv.includes('-z'))) {
+  const result = spawnSync(${JSON.stringify(fixtureGitExecutable)}, argv, {stdio:'inherit'});
+  process.exit(result.status ?? 1);
+}
+
 if (argv.join(' ') === 'status --porcelain --untracked-files=no') {
   fs.writeSync(1, ${JSON.stringify(gitStatus)});
   process.exit(0);
@@ -115,7 +124,6 @@ process.exit(0);
   writeFileSync(
     ghShim,
     `#!/usr/bin/env node
-${runtimeGitMetadataPrelude()}import fs from 'node:fs';
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 // Only read stdin for graphql (which uses --input -); otherwise it would hang
@@ -206,16 +214,10 @@ if (argv[0] === 'issue' && argv[1] === 'comment') {
   process.exit(0);
 }
 if (argv[0] === 'api' && argv[1] === 'graphql') {
-  const query = argv.find(value => value.startsWith('query=')) ?? '';
-  if (query.includes('nameWithOwner')) {
-    const field = name => argv.find(value => value.startsWith(name + '='))?.slice(name.length + 1);
-    fs.writeSync(1, JSON.stringify({ data: { repository: {
-      nameWithOwner: field('owner') + '/' + field('name'),
-      issue: { number: Number(field('issue')), comments: { totalCount: 1,
-        nodes: [{ id: 'IC_req_timing', body: '⏱ Timing Log\\n\\n| Timestamp | Event | Detail |\\n| --- | --- | --- |\\n| 2026-05-10 00:00:00 -05:00 | start | bind |' }],
-        pageInfo: { hasNextPage: false } } }
-    } } }));
-    process.exit(0);
+  const censusQuery=argv.find(x=>x.startsWith('query='))||'';
+  if(censusQuery.includes('comments(first:100')) {
+    const field=name=>argv.find(x=>x.startsWith(name+'='))?.slice(name.length+1);
+    fs.writeSync(1,JSON.stringify({data:{repository:{nameWithOwner:field('owner')+'/'+field('name'),issue:{number:Number(field('issue')),comments:{totalCount:0,nodes:[],pageInfo:{hasNextPage:false,endCursor:null}}}}}}));process.exit(0);
   }
   // Branch by query content (read from stdin).
   // fieldOptionMap query → 'node(id:' with fields
@@ -299,17 +301,17 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 1: verbReview success path emits the marker ────────────────────────
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-1-');
+  const sandbox = createRuntimeRootFixture('tt-rap-1-');
   try {
     writeConfig(sandbox);
-    saveState(
-      {
+    writeFixtureTrackerState(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
         active: '#101',
         lastActive: '#101',
         entryStartTs: '2026-05-10T00:00:00.000Z',
         wordsAtEntryStart: 0,
-      },
-      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json')
+      })
     );
     // Well-formed per the V1 agent-review gate (#810): all ten canonical `##`
     // sections in order, each non-empty. The AC/DoD sections carry no evaluable
@@ -375,7 +377,7 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
     humanState.lastActive = '#101';
     humanState.entryStartTs = null;
     humanState.wordsAtEntryStart = 0;
-    saveState(humanState, liveStatePath);
+    writeFixtureTrackerState(liveStatePath, JSON.stringify(humanState));
     const fullAuto = await run(sandbox, binDir, ['review', '#101'], { TT_FULL_AUTO: '1' });
     assert.equal(fullAuto.code, 0, `expected Full-Auto exit 0; stderr:\n${fullAuto.stderr}`);
     assert.doesNotMatch(fullAuto.stdout, /PROMPT_REQUIRED: review-approval/);
@@ -389,17 +391,17 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 1b: verbReview refuses when canonical commit trace is missing ──────
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-1b-');
+  const sandbox = createRuntimeRootFixture('tt-rap-1b-');
   try {
     writeConfig(sandbox);
-    saveState(
-      {
+    writeFixtureTrackerState(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
         active: '#111',
         lastActive: '#111',
         entryStartTs: null,
         wordsAtEntryStart: 0,
-      },
-      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json')
+      })
     );
     const fixtureBody = [
       '## Pickup Directive',
@@ -437,17 +439,17 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 1c: verbReview refuses tracked uncommitted changes ─────────────────
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-1c-');
+  const sandbox = createRuntimeRootFixture('tt-rap-1c-');
   try {
     writeConfig(sandbox);
-    saveState(
-      {
+    writeFixtureTrackerState(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
         active: '#112',
         lastActive: '#112',
         entryStartTs: null,
         wordsAtEntryStart: 0,
-      },
-      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json')
+      })
     );
     const fixtureBody = [
       '## Pickup Directive',
@@ -485,17 +487,17 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 2: verbReview verification-fail path does NOT emit the marker ──────
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-2-');
+  const sandbox = createRuntimeRootFixture('tt-rap-2-');
   try {
     writeConfig(sandbox);
-    saveState(
-      {
+    writeFixtureTrackerState(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
         active: '#102',
         lastActive: '#102',
         entryStartTs: null,
         wordsAtEntryStart: 0,
-      },
-      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json')
+      })
     );
     const fixtureBody = [
       '## Pickup Directive',
@@ -538,17 +540,17 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 3: verbReview refuses to auto-mark AC/DoD without evidence ─────────
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-3-');
+  const sandbox = createRuntimeRootFixture('tt-rap-3-');
   try {
     writeConfig(sandbox);
-    saveState(
-      {
+    writeFixtureTrackerState(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
         active: '#103',
         lastActive: '#103',
         entryStartTs: null,
         wordsAtEntryStart: 0,
-      },
-      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json')
+      })
     );
     const fixtureBody = [
       '## Acceptance Criteria',
@@ -608,17 +610,17 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 4: verbReview marks AC/DoD with passing evidence ───────────────────
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-4-');
+  const sandbox = createRuntimeRootFixture('tt-rap-4-');
   try {
     writeConfig(sandbox);
-    saveState(
-      {
+    writeFixtureTrackerState(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
         active: '#104',
         lastActive: '#104',
         entryStartTs: null,
         wordsAtEntryStart: 0,
-      },
-      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json')
+      })
     );
     writeFileSync(
       path.join(sandbox, 'package.json'),
@@ -718,7 +720,7 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 5: /task reject without --reason → exit non-zero ───────────────────
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-5-');
+  const sandbox = createRuntimeRootFixture('tt-rap-5-');
   try {
     writeConfig(sandbox);
     // No shim needed — verbReject exits on missing reason before any network call
@@ -746,7 +748,7 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 6: /task reject when state != review → exit non-zero, no comment ───
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-6-');
+  const sandbox = createRuntimeRootFixture('tt-rap-6-');
   try {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -788,7 +790,7 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 7: /task reject happy path → posts rejection comment ───────────────
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-7-');
+  const sandbox = createRuntimeRootFixture('tt-rap-7-');
   try {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -839,17 +841,17 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 // gate (uncheckedPreCloseCheckboxes parity with the close gate) must refuse the
 // move into Review and emit NO review-approval prompt.
 {
-  const sandbox = mkdtempProjectIsolated('tt-rap-8-');
+  const sandbox = createRuntimeRootFixture('tt-rap-8-');
   try {
     writeConfig(sandbox);
-    saveState(
-      {
+    writeFixtureTrackerState(
+      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
+      JSON.stringify({
         active: '#108',
         lastActive: '#108',
         entryStartTs: null,
         wordsAtEntryStart: 0,
-      },
-      path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json')
+      })
     );
     const fixtureBody = [
       '## Pickup Directive',

@@ -1,22 +1,22 @@
 #!/usr/bin/env node
+// @story #1872
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import {
+  createRuntimeRootFixture,
+  fixtureGitExecutable,
+} from '../../../helpers/runtime-root-fixture.mjs';
 // @story #46
 // E2E tests for the dirty-workspace gate on /task close and the move-state.mjs review warning.
 // Uses PATH-based git shim to control porcelain output; SKIP_NETWORK skips gh.
 
 import { strict as assert } from 'node:assert';
-import { saveState } from '../../../../task-tracker/state.mjs';
-// @story #1873
-import { runtimeGitMetadataPrelude } from '../../../helpers/runtime-root-fixture.mjs';
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, realpathSync } from 'node:fs';
-import {
-  projectScratchDir,
-  mkdtempProjectIsolated,
-} from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,7 +27,7 @@ const TT = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 const MOVE = path.resolve(__dir, '../../helpers/move-state-cli.mjs');
 
 function setupSandbox() {
-  const sandbox = mkdtempProjectIsolated('aitm-dirty-gate-');
+  const sandbox = createRuntimeRootFixture('aitm-dirty-gate-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -61,8 +61,14 @@ function makeGitShim(sandbox, porcelain) {
   writeFileSync(
     shim,
     `#!/usr/bin/env node
-${runtimeGitMetadataPrelude()}import fs from 'node:fs';
+import fs from 'node:fs';
+import {spawnSync} from 'node:child_process';
 const args = process.argv.slice(2);
+if (args.includes('--show-toplevel') || (args.includes('worktree') && args.includes('-z'))) {
+  const result = spawnSync(${JSON.stringify(fixtureGitExecutable)}, args, {stdio:'inherit'});
+  process.exit(result.status ?? 1);
+}
+
 if (args[0] === 'worktree' && args[1] === 'list') {
   fs.writeSync(1, \`worktree \${process.cwd()}\\n\\n\`);
   process.exit(0);
@@ -104,14 +110,14 @@ async function setActive(sandbox, issue) {
   // #573: the global ledger lives under `.tmp/aitm/state/`.
   const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   mkdirSync(path.dirname(statePath), { recursive: true });
-  saveState(
-    {
+  writeFixtureTrackerState(
+    statePath,
+    JSON.stringify({
       active: `#${issue}`,
       lastActive: `#${issue}`,
       entryStartTs: new Date().toISOString(),
       wordsAtEntryStart: 0,
-    },
-    statePath
+    })
   );
 }
 
@@ -230,7 +236,7 @@ try {
     const sandbox = setupSandbox();
     cleanup(sandbox);
     // alt worktree has dirty git; sandbox cwd has a clean git shim
-    const altWorktree = realpathSync(mkdtempProjectIsolated('aitm-alt-'));
+    const altWorktree = realpathSync(createRuntimeRootFixture('aitm-alt-'));
     cleanup(altWorktree);
     // Sandbox git shim returns clean
     const binDir = makeGitShim(sandbox, '');
@@ -241,8 +247,8 @@ try {
     writeFileSync(
       shim,
       `#!/usr/bin/env node
-${runtimeGitMetadataPrelude()}import fs from 'node:fs';
 const args = process.argv.slice(2);
+if(args.includes('--show-toplevel')||(args.includes('worktree')&&args.includes('-z'))) {const result=spawnSync(${JSON.stringify(fixtureGitExecutable)},args,{stdio:'inherit'});process.exit(result.status??1);}
 const i = args.indexOf('status');
 if (i >= 0 && args.slice(i).some(a => a.startsWith('--porcelain'))) {
   if (process.cwd() === ${JSON.stringify(altWorktree)}) {

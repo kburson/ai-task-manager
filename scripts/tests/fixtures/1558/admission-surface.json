@@ -314,6 +314,14 @@
       "fixtureId": "invalid-tracked-override"
     },
     {
+      "token": "epic-wave",
+      "canonical": "epic-wave",
+      "route": "verbs/epic-wave.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
       "token": "evidence",
       "canonical": "evidence",
       "route": "verbs/evidence.mjs",
@@ -1474,6 +1482,7 @@
         "./run-tests-report.mjs",
         "./gh/lib/with-retry.mjs",
         "./run-tests-lanes.mjs",
+        "./run-tests-shards.mjs",
         "./run-tests-ceiling.mjs",
         "./lib/self-doc.mjs",
         "./run-tests-timing.mjs"
@@ -2006,6 +2015,7 @@
       "staticImports": [
         "./lib/direct-guidance-admission.mjs",
         "./gh-timing-comment.mjs",
+        "./lib/heal-actor-opener-replays.mjs",
         "./locks.mjs",
         "./paths.mjs",
         "./config.mjs",
@@ -2583,6 +2593,8 @@
       "classification": "agent-callable-verb",
       "command": "promote",
       "staticImports": [
+        "../lib/epic-admission-lock.mjs",
+        "../lib/fetch-parent-issue.mjs",
         "../lib/direct-guidance-admission.mjs",
         "node:child_process",
         "node:path",

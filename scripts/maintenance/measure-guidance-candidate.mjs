@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #1767
+// @story #1872
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -11,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { validateCandidateMeasurementArtifacts } from '../tests/helpers/guidance-characterization.mjs';
 import {
   captureGuidanceLifecycle,
+  guidanceLifecycleReplayInputs,
   measureLifecycleTraffic,
   validateLifecycleTranscript,
 } from './capture-guidance-lifecycle.mjs';
@@ -575,6 +577,14 @@ function replayComparableEvent(event) {
 }
 
 function verifyCaptureReplay(capture) {
+  // Changed tracked fixture inputs cannot reproduce the archived initial Git
+  // snapshot. Refuse before launching CLI replay; matching inputs still replay.
+  for (const input of guidanceLifecycleReplayInputs()) {
+    const recorded = capture.identity.implementationFiles.find(
+      ({ path: sourcePath }) => sourcePath === input.path
+    );
+    if (recorded?.sha256 !== input.sha256) fail(`capture-replay-input:${input.path}`);
+  }
   let replay;
   try {
     replay = captureGuidanceLifecycle({

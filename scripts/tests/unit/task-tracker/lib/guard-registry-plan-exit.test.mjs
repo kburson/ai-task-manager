@@ -98,6 +98,7 @@ const BARE_BODY = '## Scope\n\nno marker here\n';
 // STATES.plan.exitGuards). Returns a refine-estimate comment whose
 // `### Planned Estimate` appendix satisfies the gate.
 const PLANNED_ESTIMATE_OK_DEPS = {
+  fetchParentIssue: async () => null,
   resolveStoryIntent: (args) => resolveStoryIntentSource({ ...args, projectDir: process.cwd() }),
   observeDependencyReadiness: async () => ({
     blockedBy: [],
