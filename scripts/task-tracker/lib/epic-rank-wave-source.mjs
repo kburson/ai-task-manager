@@ -294,21 +294,28 @@ function unqualifiedPermission(text) {
     text
   );
 }
+function withoutScopeTokens(text) {
+  return text
+    .replace(/\b(?:epic|parent)\s*#?\d+\b/gi, ' ')
+    .replace(/\brank(?:[-\s]+(?:level|wave))?\s*[:=]?\s*#?\d+\b/gi, ' ')
+    .replace(
+      /\b(?:children|members|stories)\s*[:=]?\s*(\[[\d\s,#/]+\]|#?\d+(?:(?:\s*[,/]\s*|\s+and\s+)#?\d+)*)/gi,
+      ' '
+    )
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([.!?])/g, '$1')
+    .trim();
+}
 function parallelAdmissionObject(text) {
-  // Parallelism must describe admitting stories, not running their tests or
-  // another operation that merely mentions the same epic/rank/member scope.
-  if (/\b(?:tests?|lint|checks?|builds?|reviews?|scans?)\b/i.test(text)) return false;
-  const object = '(?:epic|parent|rank|children|members|stories|wave|admissions?|execution)';
-  return (
-    new RegExp(
-      `^(?:the\\s+)?(?:parallel|concurrent(?:ly)?|rank[- ]wave)\\b(?:\\s+${object}\\b|[.!?]?$)`,
-      'i'
-    ).test(text.trim()) ||
-    new RegExp(`^(?:the\\s+)?${object}\\b.+\\bin\\s+parallel[.!?]?$`, 'i').test(text.trim())
+  // Only scope tokens and an explicit admission/isolation phrase are allowed.
+  // No wildcard or operation-name denylist can reinterpret CI/tests/merges.
+  return /^(?:the )?(?:parallel|concurrent(?:ly)?|rank[- ]wave)(?: (?:stories|children|members|wave|admissions?|execution))?(?: in isolated worktrees)?(?: in parallel)?[.!?]?$|^in parallel[.!?]?$/i.test(
+    withoutScopeTokens(text)
   );
 }
 function directPermission(text, purpose) {
-  if (!unqualifiedPermission(text)) return false;
+  text = text.trim().replace(/[.]?\s*\nUse isolated worktrees[.]?$/i, ' in isolated worktrees.');
+  if (purpose === 'authorize' && !unqualifiedPermission(text)) return false;
   const verbs =
     purpose === 'revoke'
       ? 'revoke|withdraw'
@@ -334,77 +341,89 @@ function wholeAffirmation(text, purpose) {
     'i'
   ).test(text.trim());
 }
-function contradictsWave(statement, scope, purpose, immediateReply) {
-  const text = humanText(statement);
+function admissionTarget(text) {
+  const remaining = withoutScopeTokens(text)
+    .replace(/^(?:(?:on|with|for|the|this|these|our|any)\s+)+/i, '')
+    .replace(/\s+(?:until|while|before|after)\b.*$/i, '')
+    .trim();
+  return /^(?:(?:parallel|concurrent(?:ly)?|wave|stories|children|members|epic|rank|authorization|permission|grant|admissions?|it|this|for|in|the)\s*)*$/i.test(
+    remaining
+  );
+}
+function contradictsWaveClause(text, scope, purpose) {
   const epics = [...text.matchAll(/\b(?:epic|parent)\s*#?(\d+)\b/gi)].map((m) => Number(m[1]));
   const ranks = [...text.matchAll(/\brank(?:[-\s]+(?:level|wave))?\s*[:=]?\s*#?(\d+)\b/gi)].map(
     (m) => Number(m[1])
   );
-  if (
-    (epics.length && !epics.includes(scope.epic)) ||
-    (ranks.length && !ranks.includes(scope.rank))
-  )
-    return false;
-  const memberGroups = [
+  const members = [
     ...text.matchAll(
       /\b(?:children|members|stories)\s*[:=]?\s*(\[[\d\s,#/]+\]|#?\d+(?:(?:\s*[,/]\s*|\s+and\s+)#?\d+)*)/gi
     ),
-  ];
-  const members = memberGroups.flatMap((match) =>
-    [...match[1].matchAll(/\d+/g)].map((m) => Number(m[0]))
-  );
-  if (members.length && !members.some((member) => scope.members.includes(member))) return false;
+  ].flatMap((match) => [...match[1].matchAll(/\d+/g)].map((m) => Number(m[0])));
+  if (
+    (epics.length && !epics.includes(scope.epic)) ||
+    (ranks.length && !ranks.includes(scope.rank)) ||
+    (members.length && !members.some((member) => scope.members.includes(member)))
+  )
+    return false;
   const scoped = epics.length > 0 || ranks.length > 0 || members.length > 0;
-  const wave = /\b(?:parallel|concurrent(?:ly)?|wave|stories|children|members)\b/i.test(text);
-  const negate = "(?:do not|don't|never|no longer)";
-  const negatedRevocation = new RegExp(`\\b${negate}\\s+(?:revoke|withdraw)\\b`, 'i').test(text);
-  const negatedStop = new RegExp(
-    `\\b${negate}\\s+(?:stop|cancel|pause|hold off|wait)\\b`,
-    'i'
-  ).test(text);
-  const permissionReversal = new RegExp(
-    `\\b${negate}\\s+(?:enable|authorize|allow|approve)\\b`,
-    'i'
-  ).test(text);
-  const executionReversal = new RegExp(
-    `\\b${negate}\\s+(?:run|execute|proceed|start)\\s+(?:with\\s+)?(?:(?:the|this|these|our|any)\\s+)?(?:parallel|concurrent|epic|rank|children|members|stories|wave|it|this)\\b`,
-    'i'
-  ).test(text);
-  const reversal =
-    purpose === 'revoke'
-      ? negatedRevocation
-      : (/\b(?:revoke|withdraw)\b/i.test(text) && !negatedRevocation) ||
-        (/\b(?:cancel|stop)\s+(?:(?:the|this|these|our)\s+)?(?:parallel|concurrent|epic|rank|children|members|stories|wave|authorization|permission|grant|admissions?)\b/i.test(
-          text
-        ) &&
-          !negatedStop) ||
-        (/\b(?:run|execute|switch|use|keep|go)\b.*\b(?:sequential(?:ly)?|one at a time)\b/i.test(
-          text
-        ) &&
-          !/\b(?:tests?|lint|checks?|builds?|reviews?|scans?)\b.*\b(?:sequential(?:ly)?|one at a time)\b/i.test(
-            text
-          )) ||
-        permissionReversal ||
-        executionReversal ||
-        (/\b(?:hold off|wait)(?:\s+(?:on|for))?\s+(?:(?:the|this|these|our)\s+)?(?:parallel|concurrent|epic|rank|children|members|wave|stories)\b/i.test(
-          text
-        ) &&
-          !negatedStop) ||
-        (/\bpause\s+(?:(?:the|this|these|our)\s+)?(?:parallel|concurrent|epic|rank|children|members|wave|stories)\b/i.test(
-          text
-        ) &&
-          !negatedStop) ||
-        (/\b(?:is|are)\s+not approved?\b/i.test(text) &&
-          !/\b(?:tests?|lint|checks?|builds?|reviews?|scans?)\b/i.test(
-            text.split(/\b(?:is|are)\s+not approved?\b/i)[0]
-          ));
-  if ((scoped || wave) && reversal) return true;
-  // A terse reversal immediately following the referenced authorization is
-  // a contextual reply. Incidental words in later work instructions are not.
+  const wave = /\b(?:parallel|concurrent(?:ly)?|wave|stories|children|members|admissions?)\b/i.test(
+    text
+  );
+  if (!scoped && !wave) return false;
+  const prefix = "^(?:actually[, ]+)?(?:please\\s+)?(?:let['’]s\\s+)?";
+  const negative = text.match(
+    new RegExp(
+      `${prefix}(?:do not|don't|never|no longer)\\s+(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start)\\s+(.+)$`,
+      'i'
+    )
+  );
+  if (negative && admissionTarget(negative[2])) {
+    return purpose === 'revoke'
+      ? /^(?:revoke|withdraw)$/i.test(negative[1])
+      : !/^(?:revoke|withdraw)$/i.test(negative[1]);
+  }
+  if (purpose === 'revoke') return false;
+  const positive = text.match(
+    new RegExp(
+      `${prefix}(?:revoke|withdraw|cancel|stop|hold off(?: on)?|wait on|pause)\\s+(.+)$`,
+      'i'
+    )
+  );
+  if (positive && admissionTarget(positive[1])) return true;
+  const sequential = text.match(
+    new RegExp(
+      `${prefix}(?:run|execute|switch(?: to)?|use|keep|go)\\s+(.*?)\\b(?:sequential(?:ly)?|serial(?:ly)?|one at a time|one by one)\\b(?:\\s+instead)?(?:\\s+for)?(.*)$`,
+      'i'
+    )
+  );
+  if (sequential && admissionTarget(`${sequential[1]} ${sequential[2]}`)) return true;
+  const unapproved = text.match(/^(.*?)\s+(?:is|are)\s+not approved?(?: yet)?$/i);
   return (
-    immediateReply &&
-    /^(?:actually[, ]+)?(?:don't|do not (?:enable|run|approve) (?:it|this)|don't (?:enable|run|approve) (?:it|this)|hold off|wait|cancel(?: it)?|no(?:,? not yet)?|(?:run|go|switch to|use|keep it) (?:sequential(?:ly)?|one at a time)(?: instead)?)[.!]?$/i.test(
-      text.trim()
+    !!unapproved &&
+    (ranks.length > 0 || members.length > 0 || wave) &&
+    admissionTarget(unapproved[1])
+  );
+}
+function contradictsWave(statement, scope, purpose, immediateReply) {
+  const text = humanText(statement);
+  // Negation and operational objects belong to their own clause. A neutral
+  // clause must never cancel a genuine reversal elsewhere in the message.
+  const clauses = text
+    .split(/[.;!?\n]+|,?\s+but\s+/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (clauses.some((clause) => contradictsWaveClause(clause, scope, purpose))) return true;
+  if (!immediateReply) return false;
+  const reply = text.trim();
+  if (
+    /^(?:actually[, ]+)?(?:don't|hold off|wait|cancel(?: it)?|no(?:,? not yet)?)[.!]?$/i.test(reply)
+  )
+    return true;
+  return (
+    purpose === 'authorize' &&
+    /^(?:actually[, ]+)?(?:do not (?:enable|run|approve) (?:it|this)|don't (?:enable|run|approve) (?:it|this)|(?:run|go|switch to|use|keep it) (?:sequential(?:ly)?|one at a time)(?: instead)?)[.!]?$/i.test(
+      reply
     )
   );
 }

@@ -486,3 +486,74 @@ test('negated pause and approval of tests remain distinct from withdrawal of adm
   ])
     assert.equal((await verify([original, human(text)], { order: [0] })).status, 'verified', text);
 });
+
+test('a neutral or negated clause cannot hide a genuine reversal in another clause', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    "Don't stop CI, but hold off on epic #107 rank 2.",
+    "Don't wait for CI. Pause epic #107 rank 2.",
+    'Tests pass. Run epic #107 rank 2 children one at a time.',
+    'Rank 2 tests are green, but epic #107 rank 2 is not approved.',
+    "Don't revoke rank 3; withdraw epic #107 rank 2.",
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'blocked', text);
+});
+
+test('scope tokens cannot turn unrelated parallel operations into story admission', async () => {
+  for (const text of [
+    'Run epic #107 rank 2 children [140,144,145] CI in parallel.',
+    'Run parallel epic #107 rank 2 children [140,144,145] verification.',
+    'Run epic #107 rank 2 children [140,144,145] merges in parallel.',
+    'Run parallel epic #107 rank 2 children [140,144,145] serially.',
+  ])
+    assert.equal((await verify([human(text)])).status, 'blocked', text);
+  assert.equal(
+    (
+      await verify([
+        assistant(
+          'Should I run epic #107 rank 2 children [140,144,145] verify-develop in parallel?'
+        ),
+        human('Yes.'),
+      ])
+    ).status,
+    'blocked'
+  );
+});
+
+test('CI, completion, close approval, PR approval and timer chatter keep admission permission', async () => {
+  const original = human('Run parallel epic #107 rank 2 children [140,144,145].');
+  for (const text of [
+    'Wait for epic #107 rank 2 CI.',
+    'Wait for rank 2 to finish before starting rank 3.',
+    'Epic #107 is not approved yet.',
+    'Epic #107 rank 2 PR is not approved.',
+    'Pause the epic #107 timer.',
+  ])
+    assert.equal((await verify([original, human(text)], { order: [0] })).status, 'verified', text);
+});
+
+test('explicit isolation on a second line does not obscure direct admission permission', async () => {
+  assert.equal(
+    (
+      await verify([
+        human('Run parallel epic #107 rank 2 children [140,144,145].\nUse isolated worktrees.'),
+      ])
+    ).status,
+    'verified'
+  );
+});
+
+test('sequential agreement does not reverse an authentic revocation', async () => {
+  assert.equal(
+    (
+      await verify(
+        [
+          human('Revoke epic #107 rank 2 children [140,144,145].'),
+          human('Run sequentially instead.'),
+        ],
+        { order: [0], purpose: 'revoke' }
+      )
+    ).status,
+    'verified'
+  );
+});
