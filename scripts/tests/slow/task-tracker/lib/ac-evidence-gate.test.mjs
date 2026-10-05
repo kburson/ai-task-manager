@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #345
 // #345 — end-to-end slow-lane test for the Acceptance Criteria evidence gate.
 //
@@ -60,7 +64,7 @@ function writeConfig(sandbox) {
 function writeState(sandbox, issueNum) {
   // #573: the global ledger lives under `.tmp/aitm/state/`.
   mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
-  writeFileSync(
+  writeFixtureTrackerState(
     path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
     JSON.stringify({
       active: `#${issueNum}`,

@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
+// @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -168,7 +168,7 @@ test('package-boundary: no test files are packed', () => {
 test('package-boundary: excluded directories do not reappear', () => {
   const files = packedFiles();
   const forbidden = files.filter(
-    (p) => /^docs\/archive\//.test(p) || /^scripts\/maintenance\//.test(p)
+    (p) => /^docs\/archive\//.test(p) || /^scripts\/(?:maintenance|research)\//.test(p)
   );
   assert.deepEqual(
     forbidden,
@@ -222,8 +222,50 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // separate so the preserved #1624 branch can apply its exact ceiling change
   // without both histories editing the same base hunk.
   const recoveryEntryAllowance = 1;
+  // #1839: one offline CLI and two pure qualification helpers. Live tests and evidence remain excluded.
+  const baselineEntries = [
+    'scripts/task-tracker/graphql-usage-baseline.mjs',
+    'scripts/task-tracker/lib/graphql-usage/baseline.mjs',
+    'scripts/task-tracker/lib/graphql-usage/evidence.mjs',
+  ];
+  for (const entry of baselineEntries) assert.ok(files.includes(entry));
+  // #1882 ships exactly the provider runner and registered CLI routing helper.
+  const childIntegrationEntries = [
+    'scripts/task-tracker/lib/merge-back-verification.mjs',
+    'scripts/task-tracker/lib/merge-back-cli.mjs',
+  ];
+  for (const entry of childIntegrationEntries) assert.ok(files.includes(entry));
   // #1848 ships the bounded draft-branch bootstrap entry point.
   const draftBranchAllowance = 1;
+  // #1857 ships one shared artifact policy; research helpers remain development-only.
+  const artifactPolicyAllowance = 1;
+  // #1876 adds exactly one shipped constrained actor-replay recovery module.
+  assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-opener-replays.mjs'));
+  const actorReplayRecoveryAllowance = 1;
+  // #1857 adds the independently reviewed shared runtime-root validator.
+  assert.ok(files.includes('scripts/task-tracker/lib/runtime-storage.mjs'));
+  const runtimeRootAllowance = 1;
+  // #1857: seven committed migration/actor primitives plus six actor/outcome
+  // runtime modules. Enumerate required additions; tests, research and review
+  // collateral remain excluded. The admitted tarball has 866 entries and this
+  // outcome adds six, yielding 872 without general-purpose growth headroom.
+  const actorRuntimeEntries = [
+    'runtime-migration-admission.mjs',
+    'runtime-migration-apply.mjs',
+    'runtime-migration-lock.mjs',
+    'runtime-migration-plan.mjs',
+    'runtime-migration.mjs',
+    'timing-actor.mjs',
+    'timing-engagement.mjs',
+    'actor-flush-journal.mjs',
+    'actor-hook-timing.mjs',
+    'actor-timing-state.mjs',
+    'estimation/cascade-outcome-authority.mjs',
+    'estimation/outcome-delivery-proof.mjs',
+    'timing-field-result.mjs',
+  ];
+  for (const entry of actorRuntimeEntries)
+    assert.ok(files.includes('scripts/task-tracker/lib/' + entry), entry);
   // #1693 adds the standalone doctor entry point and its read-only observer.
   const doctorRuntimeAllowance = 2;
   // #1709 ships the pure story contract and shared Markdown views.
@@ -308,9 +350,20 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const localTrunkReceiptAllowance = 1;
   // #1830 ships one shared mutation-context runtime module.
   const mutationContextAllowance = 1;
+  // #1835 intentionally ships four usage contract modules, inventory expectations,
+  // and the operator inventory guide; tests remain excluded from the package.
+  const graphqlUsageContractAllowance = 6;
+  // #1836 ships the single Git-common usage storage/enrollment runtime module.
+  const graphqlUsageStorageAllowance = 1;
+  // #1837 ships collection runtime, launcher, and operator guide.
+  const graphqlUsageCollectionAllowance = 3;
+  // #1838 ships four offline report modules, the companion CLI and operator guide.
+  const graphqlUsageReportAllowance = 6;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
+    childIntegrationEntries.length +
+    baselineEntries.length +
     doctorRuntimeAllowance +
     storyContractAllowance +
     storyBindingAllowance +
@@ -350,7 +403,19 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     localTrunkProofAllowance +
     localTrunkReceiptAllowance +
     mutationContextAllowance +
-    draftBranchAllowance;
+    graphqlUsageContractAllowance +
+    graphqlUsageStorageAllowance +
+    graphqlUsageCollectionAllowance +
+    graphqlUsageReportAllowance +
+    draftBranchAllowance +
+    artifactPolicyAllowance +
+    actorReplayRecoveryAllowance +
+    runtimeRootAllowance +
+    actorRuntimeEntries.length +
+    8 + // #1859: six reviewed-scope modules, readiness guard and operator guide.
+    12; // #1872: ten admission modules, the collection grouping module and operator guide.
+  assert.ok(files.includes('scripts/run-tests-shards.mjs'));
+  assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(
     files.length <= effectiveCeiling,
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
@@ -369,6 +434,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
   for (const required of [
     'bin/cli.mjs',
     'bin/aitm.mjs',
+    'scripts/task-tracker/lib/artifact-write-policy.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/task-tracker/lib/verification-receipt-retirement.mjs',

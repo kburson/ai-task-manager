@@ -1,4 +1,4 @@
-// @story #1675 #1787 #1795
+// @story #1675 #1787 #1795 #1859
 // Per-verb reference data for `/task help` (#667).
 //
 // This module is the single data source behind the reworked help surface. It is
@@ -405,6 +405,24 @@ export const VERB_REFERENCE = {
       '/task plan-estimate 667 --compatibility-mode --planned-size L --planned-estimate 6 --rationale "legacy issue"',
     ],
   },
+  'epic-wave': {
+    topic: 'board',
+    summary:
+      'Prepare, publish, inspect, revoke or recover immutable rank-wave admission authority.',
+    usage:
+      '/task epic-wave <prepare|record|resume|refresh|show|revoke|lock-show|lock-release> <epic> [--input-file <path>] [--json]',
+    flags: [
+      {
+        flag: '--input-file <path>',
+        desc: 'closed proposal, exact human source, resume identity, read selector or exact dead-lock observation; omitted for lock-show',
+      },
+      { flag: '--json', desc: 'structured output' },
+    ],
+    examples: [
+      '/task epic-wave prepare 107 --input-file .scratch/gh/wave-selector.json --json',
+      '/task epic-wave resume 107 --input-file .scratch/gh/wave-resume.json --json',
+    ],
+  },
   'decompose-check': {
     topic: 'board',
     summary: 'Classify whether a planned issue is atomic or requires decomposition.',
@@ -793,6 +811,10 @@ export const VERB_REFERENCE = {
     aliases: ['ensureChecked'],
     flags: [
       {
+        flag: '--reviewed-evidence <manifest>',
+        desc: 'one narrative Scope label; canonical manifest and retained local artifacts in the bound Develop/Test checkout; no batch or override flags',
+      },
+      {
         flag: '--allow-unverified-ticks',
         desc: 'honest override when an item genuinely cannot be stamped',
       },
@@ -810,17 +832,25 @@ export const VERB_REFERENCE = {
     aliases: ['check'],
     flags: [
       {
+        flag: '--reviewed-evidence <manifest>',
+        desc: 'one narrative Scope label; canonical manifest and retained local artifacts in the bound Develop/Test checkout; no batch or override flags',
+      },
+      {
         flag: '--allow-unverified-ticks',
         desc: 'honest override for a genuinely unstampable item',
       },
       { flag: '--label "<label>"', desc: 'checkbox label for repeatable batch mode' },
       { flag: '--labels-file <path>', desc: 'newline-delimited checkbox labels for batch mode' },
     ],
-    examples: ['/task ensureChecked "Deep dive complete"'],
+    examples: [
+      '/task ensureChecked "Deep dive complete"',
+      '/task ensureChecked "Inspect output" --reviewed-evidence .scratch/evidence/step.json',
+    ],
   },
   ensureUnchecked: {
     topic: 'evidence',
-    summary: 'Ensure a checkbox is unticked (idempotent; never ticks).',
+    summary:
+      'Ensure a checkbox is unticked; retain its reviewed pointer. Does not accept --reviewed-evidence.',
     usage: '/task ensureUnchecked ["<label>" | --label "<label>" ... | --labels-file <path>]',
     flags: [
       { flag: '--label "<label>"', desc: 'checkbox label for repeatable batch mode' },

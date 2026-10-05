@@ -1,0 +1,112 @@
+// @story #1857
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { buildContext } from '../../../../task-tracker/runtime.mjs';
+import { saveState, loadState, pauseTimingKeepBinding } from '../../../../task-tracker/state.mjs';
+import { saveMarker, markerPathFor, loadMarker } from '../../../../task-tracker/word-counter.mjs';
+import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
+import { verbPause } from '../../../../task-tracker/verbs/pause.mjs';
+import { pauseReviewTiming } from '../../../../task-tracker/verbs/review.mjs';
+import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
+import { deriveActorEngagement } from '../../../../task-tracker/lib/timing-engagement.mjs';
+import { sandboxWorktreePath } from '../../../../task-tracker/verbs/test.mjs';
+import { getProjectDir } from '../../../../task-tracker/paths.mjs';
+async function fixture(operation) {
+  const root = createRuntimeRootFixture('actor-flush-');
+  const keys = [
+    'AI_TASK_MANAGER_PROJECT_DIR',
+    'CLAUDE_PROJECT_DIR',
+    'AI_TASK_MANAGER_SESSION_ID',
+    'AI_TASK_MANAGER_APP_NAME',
+    'AI_TASK_MANAGER_TRANSCRIPT_DIR',
+    'TT_SKIP_NETWORK',
+    'TT_SKIP_FIELD_SELF_CHECK',
+  ];
+  const prior = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  const cwd = process.cwd();
+  try {
+    process.chdir(root);
+    delete process.env.CLAUDE_PROJECT_DIR;
+    process.env.AI_TASK_MANAGER_PROJECT_DIR = root;
+    process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-flush-a';
+    process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+    process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(root, 'transcripts');
+    process.env.TT_SKIP_NETWORK = '1';
+    process.env.TT_SKIP_FIELD_SELF_CHECK = '1';
+    mkdirSync(path.join(root, '.ai-task-manager'), { recursive: true });
+    mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR);
+    writeFileSync(
+      path.join(root, '.ai-task-manager', 'task-tracker.json'),
+      JSON.stringify({ repo: 'fixture/repository' })
+    );
+    const ctx = buildContext(['status']);
+    const rows = [];
+    ctx.safePostTiming = async (issue, row) => {
+      rows.push(row);
+      return { ok: true };
+    };
+    ctx.safeRecordSessionRef = async () => {
+      ctx.privateReferenceWrites = (ctx.privateReferenceWrites ?? 0) + 1;
+    };
+    await operation({ ctx, rows, root });
+  } finally {
+    process.chdir(cwd);
+    for (const [key, value] of Object.entries(prior)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+test('review reproduction: legacy session cursor survives first actor flush', async () =>
+  fixture(async ({ctx,root,rows})=> {
+    const sid=process.env.AI_TASK_MANAGER_SESSION_ID;
+    const start=new Date(Date.now()-1000).toISOString();
+    mkdirSync(path.dirname(ctx.statePath),{recursive:true});
+    writeFileSync(ctx.statePath,JSON.stringify({active:'#1857',entryStartTs:start,lastWordMarker:100,lastFullWordMarker:100}));
+    setActiveTask(sid,{issue:'#1857',entryStartTs:start,wordsAtStart:100},root);
+    saveMarker(markerPathFor(sid),1,100,'#1857',100);
+    writeFileSync(path.join(root,'transcripts',sid+'.jsonl'),JSON.stringify({type:'assistant',message:{content:'old words'}})+'\n'+JSON.stringify({type:'assistant',message:{content:'one two three'}})+'\n');
+    ctx.safeReadLastRow=async()=>null;
+    assert.equal(loadState(ctx.statePath).lastWordMarker, 100);
+    await ctx.flushActiveToGH(loadState(ctx.statePath),'update','review upgrade reproduction');
+    assert.equal(loadMarker(markerPathFor(sid)).words, 103);
+  }));
+
+
+for (const handoff of ['Test', 'Review']) {
+  test(`explicit pause after ${handoff} handoff is idempotent`, async () =>
+    fixture(async ({ctx, rows}) => {
+      saveState({active:'#1857',entryStartTs:new Date(Date.now()-1000).toISOString()},ctx.statePath);
+      if (handoff === 'Review') await pauseReviewTiming(ctx, '#1857');
+      else {
+        await ctx.flushActiveToGH(loadState(ctx.statePath),'update','verification complete');
+        saveState(pauseTimingKeepBinding(loadState(ctx.statePath),'#1857'),ctx.statePath);
+      }
+      const published = rows.length;
+      ctx.drainQueueIfAny=async()=>{};
+      ctx.rest=['done'];
+      await verbPause(ctx);
+      await verbPause(ctx);
+      assert.equal(rows.length, published);
+      assert.equal(loadState(ctx.statePath).active, null);
+      const aggregate=deriveActorEngagement(rows.map(parseTimingRow),parseTimingRow(rows.at(-1)).ts);
+      assert.deepEqual(aggregate.failures,[]);
+    }));
+}
+
+test('production Test sandbox admits real Git identity outside artifact roots', () => {
+  const root = createRuntimeRootFixture('sandbox-admission-');
+  try {
+    execFileSync('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture']);
+    const sandbox = sandboxWorktreePath({projectDir:root,issueNum:1857,sha:'deadbeef',token:'1234-deadbeef'});
+    execFileSync('git', ['-C', root, 'worktree', 'add', '--detach', sandbox, 'HEAD'], {stdio:'pipe'});
+    assert.equal(getProjectDir({AI_TASK_MANAGER_PROJECT_DIR:sandbox},sandbox), sandbox);
+  } finally {
+    rmSync(root, {recursive:true,force:true});
+  }
+});

@@ -1,0 +1,136 @@
+✔ migration planning hashes exact sources and census without creating runtime records (257.29675ms)
+✔ planning retains unknown, unsupported, aliased and untrusted input as explicit blockers (794.794958ms)
+✔ planning refuses aliases above the legacy directory and records active writer blockers (268.054041ms)
+✔ duplicate source destinations and existing stores are never silently overwritten (345.506833ms)
+✔ classifier scope/family is closed and old shared or Claude state cannot disappear from inventory (357.463792ms)
+✔ apply requires the exact approved plan and unchanged source bytes before publication (327.971333ms)
+✔ complete publication preserves original bytes and reconciles timing once (867.469667ms)
+✔ interrupted multi-root publication resumes from durable plan after confirmed owner death (3027.042708ms)
+✔ a crash before ordinary manifest creation retains an exact durable bootstrap plan (1009.746042ms)
+✔ post-fence failure retains a journal and pending timing retries ignore later mutable store changes (1139.028375ms)
+✔ completed transaction crash boundaries retain a recoverable exact-owner fence (4947.18725ms)
+✔ recovery refuses malformed protected journals and controls without changing evidence (1945.553042ms)
+✔ a corrupt retained fence cannot masquerade as an already released fence (1247.13075ms)
+✔ source issue with children retains its own frozen forecast and exact Test lane (22.567917ms)
+✔ fresh delivery kind must match the body used to select forecast and accounting (1.637584ms)
+✔ parent-approved cascade reaches lawful child Close through fresh authority and immutable telemetry (12.360208ms)
+✔ docs-only telemetry preserves genuine lint/format and recorded test lane skips (2.739542ms)
+✔ explicit predecessor correction preserves old bytes and refuses changed original timing evidence (9.292833ms)
+✔ immutable predecessor v2 retries its original contract without fabricating v3 proof (6.412917ms)
+✔ root epic local-trunk timing uses its actual completed burn receipt and empty parent Test commands (4.587417ms)
+✔ outcome publication revalidates actual delivery authority after immutable write (1.950208ms)
+✔ child resident runtime preserves existing no-provider delivery with exact Test and posted deliverable (3.380208ms)
+✔ child runtime couples actual lineage evidence with exact source Test proof and fresh retry (178.454292ms)
+✔ skipped child wrapper without fresh lineage cannot become delivered timing authority (0.802875ms)
+✔ root epic runtime consumes freshly verified merged receipt with empty parent Test commands (6.606541ms)
+✔ no-commit proof rejects another checkout head and any issue-attributed commits (102.455041ms)
+✖ #1857 no-command child Close uses posted deliverable and exact accepted Test Review heads (62.997875ms)
+✖ #1857 child outcome callback obtains the existing lineage gate exact census (55.800584ms)
+✖ #1857 skipped child lineage cannot become canonical outcome authority (61.216709ms)
+✔ loads validated preloaded issue comments without additional GitHub calls (5.046417ms)
+✔ malformed record evidence is reported as a gap, never converted to zero (0.214458ms)
+✔ a truncated cached comment connection is an evidence gap, not a partial corpus (0.112334ms)
+✔ report discovery pages a truncated issue through the canonical record store (0.281125ms)
+✔ story metrics expose human Plan, AI P50/P80, actual, accuracy, variance, and waste (0.616792ms)
+✔ below-one acceleration is labelled plainly and preserves the #1068 0.86x case (0.131417ms)
+✔ missing forecast or outcome stays an evidence gap rather than becoming zero (0.100875ms)
+✔ story outcome must bind to the unique active forecast generation (0.112959ms)
+✔ epic rollup uses child Plan and engaged plus classified parent orchestration only (0.309333ms)
+✔ mixed epic rollup combines adaptive children with legacy board children only (0.231666ms)
+✔ fully legacy epic rollup sums children and ignores parent board values (0.1305ms)
+✔ malformed child corpus cannot masquerade as legacy board evidence in an epic (0.137208ms)
+✔ duplicate epic outcomes are ambiguous evidence rather than latest-wins (0.173834ms)
+✔ epic rollup is unavailable rather than numeric when child evidence or references are partial (0.106875ms)
+✔ methodology publishes rubric version, cohort, confidence, and P80 coverage (0.102542ms)
+✔ incomplete story report retains known subtotal and never substitutes board values (0.151208ms)
+✔ epic report preserves known parent and child engagement without a complete total (0.116ms)
+✔ superseded incomplete report is not mistaken for conflicting current evidence (0.079333ms)
+✔ timing singleton renders Unknown totals and the known lower bound (0.969459ms)
+✔ operator timing summary never renders unavailable values as null or zero (0.294625ms)
+✔ board projection keeps null authoritative totals and explicit Unknown display (0.513792ms)
+✔ complete actor engagement does not make unavailable review or idle estimates zero (0.160125ms)
+✔ board publication resolves fallback field IDs and writes Unknown once without clearing (0.343166ms)
+✔ board publication preserves transport failures instead of claiming telemetry success (0.303708ms)
+✔ canonical singleton visible projection preserves Unknown and lower-bound provenance (2.887167ms)
+✔ cascade captures fresh parent-approved authority and child Test/Review without inventing child approval (25.732666ms)
+✔ cascade refuses stale parent relation, census, missing authorization and mismatched child proof (1.754834ms)
+✔ cascade proof retains closed parent approval scope without replacing child work proof (4.067042ms)
+✔ child resident proof binds real Test identity, parent and posted deliverable without a receipt ID (0.92725ms)
+✔ closed proof matrix preserves exact Test requirements and genuine no-command lanes (0.266208ms)
+✔ child proof binds source census, parent, repository, issue and head without synthetic acceptance identity (0.595916ms)
+✔ sub-epic proof keeps explicit child disposition and complete attributed census (0.282125ms)
+✔ caller flags and mismatched lane modes do not authorize incomplete telemetry (0.106125ms)
+✔ child outcome carries the real Test identity plus parent lineage, never a skipped receipt (4.304ms)
+✔ root epic incomplete telemetry uses actual merged delivery identity without invented parent commands (4.646459ms)
+✔ incomplete outcome derives known subtotal from immutable timing source without numeric fabrication (1.216083ms)
+✔ incomplete record refuses forged subtotal, changed source, wrong linkage and missing actual receipt (1.405417ms)
+✔ incomplete rendering names unknown remainder and calibration excludes incomplete evidence (0.953833ms)
+✔ incomplete outcomes never enter quantitative calibration (3.168208ms)
+✔ incomplete writer rejects changed write payload and missing or conflicting fresh readback (1.62975ms)
+✔ incomplete writer returns full unique canonical evidence only after fresh readback (0.796834ms)
+✔ immutable outcome timing source permits append-only close tail and refuses mutation or linkage drift (1.880292ms)
+✔ source successor verifies complete appended actor evidence and preserved footer (38.11025ms)
+✔ original timing snapshot cannot silently discard malformed work rows (0.41325ms)
+✔ supported ISO fractional historical timing rows remain represented (0.247167ms)
+✔ incomplete source proof carries closed exact Test provenance and refuses omitted or forged modes (2.010041ms)
+✔ calendar-normalized impossible original timing dates are refused (0.151333ms)
+✔ persisted predecessor v2 remains readable without invented proof fields (0.677084ms)
+✔ new provenance uses an explicit schema generation (0.416333ms)
+ℹ tests 78
+ℹ suites 0
+ℹ pass 75
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16940.9695
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/verbs/child-close-telemetry.integration.test.mjs:10:1
+✖ #1857 no-command child Close uses posted deliverable and exact accepted Test Review heads (62.997875ms)
+  TypeError: Invalid timing actor identity or marker
+      at invalid (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/timing-actor.mjs:8:17)
+      at timingActorKey (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/timing-actor.mjs:22:5)
+      at actorTimingStatePath (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-timing-state.mjs:34:15)
+      at readActorTimingState (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-timing-state.mjs:80:16)
+      at loadState (file:///private/tmp/1866-astra-head/scripts/task-tracker/state.mjs:256:21)
+      at verbClose (file:///private/tmp/1866-astra-head/scripts/task-tracker/verbs/close.mjs:2262:24)
+      at withUnitRuntimeRoot.projectRoot (file:///private/tmp/1866-astra-head/scripts/tests/helpers/close-convergence-wiring-helpers.mjs:264:9)
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeRootAdapters (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/runtime-storage.mjs:153:30)
+      at withUnitRuntimeRoot (file:///private/tmp/1866-astra-head/scripts/tests/helpers/unit-runtime-root.mjs:19:10) {
+    code: 'TIMING_ACTOR_INVALID'
+  }
+
+test at scripts/tests/integration/task-tracker/verbs/child-close-telemetry.integration.test.mjs:68:1
+✖ #1857 child outcome callback obtains the existing lineage gate exact census (55.800584ms)
+  TypeError: Invalid timing actor identity or marker
+      at invalid (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/timing-actor.mjs:8:17)
+      at timingActorKey (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/timing-actor.mjs:22:5)
+      at actorTimingStatePath (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-timing-state.mjs:34:15)
+      at readActorTimingState (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-timing-state.mjs:80:16)
+      at loadState (file:///private/tmp/1866-astra-head/scripts/task-tracker/state.mjs:256:21)
+      at verbClose (file:///private/tmp/1866-astra-head/scripts/task-tracker/verbs/close.mjs:2262:24)
+      at withUnitRuntimeRoot.projectRoot (file:///private/tmp/1866-astra-head/scripts/tests/helpers/close-convergence-wiring-helpers.mjs:264:9)
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeRootAdapters (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/runtime-storage.mjs:153:30)
+      at withUnitRuntimeRoot (file:///private/tmp/1866-astra-head/scripts/tests/helpers/unit-runtime-root.mjs:19:10) {
+    code: 'TIMING_ACTOR_INVALID'
+  }
+
+test at scripts/tests/integration/task-tracker/verbs/child-close-telemetry.integration.test.mjs:120:1
+✖ #1857 skipped child lineage cannot become canonical outcome authority (61.216709ms)
+  TypeError: Invalid timing actor identity or marker
+      at invalid (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/timing-actor.mjs:8:17)
+      at timingActorKey (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/timing-actor.mjs:22:5)
+      at actorTimingStatePath (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-timing-state.mjs:34:15)
+      at readActorTimingState (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/actor-timing-state.mjs:80:16)
+      at loadState (file:///private/tmp/1866-astra-head/scripts/task-tracker/state.mjs:256:21)
+      at verbClose (file:///private/tmp/1866-astra-head/scripts/task-tracker/verbs/close.mjs:2262:24)
+      at withUnitRuntimeRoot.projectRoot (file:///private/tmp/1866-astra-head/scripts/tests/helpers/close-convergence-wiring-helpers.mjs:264:9)
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeRootAdapters (file:///private/tmp/1866-astra-head/scripts/task-tracker/lib/runtime-storage.mjs:153:30)
+      at withUnitRuntimeRoot (file:///private/tmp/1866-astra-head/scripts/tests/helpers/unit-runtime-root.mjs:19:10) {
+    code: 'TIMING_ACTOR_INVALID'
+  }

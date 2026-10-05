@@ -1,3 +1,4 @@
+import { normalizeTranscriptRecord } from '../providers/transcript-normalizer.mjs';
 // Active-time computation: derive engaged-minutes from JSONL event timestamps.
 //
 // Wall-clock elapsed (end - start) overstates effort when the operator walks
@@ -23,22 +24,117 @@ export { computeActiveByPhaseSpans } from './lib/timing-rows.mjs';
 
 const ACTIVITY_TYPES = new Set(['user', 'assistant']);
 
-export function collectEventTimestamps(filePath, startMs, endMs) {
-  if (!existsSync(filePath)) return [];
-  const out = [];
-  scanJsonlRecords(filePath, {
-    onRecord(o) {
-      if (!ACTIVITY_TYPES.has(o.type)) return;
-      if (o.isMeta || o.isSidechain) return;
-      if (!o.timestamp) return;
-      const t = Date.parse(o.timestamp);
-      if (Number.isNaN(t)) return;
-      if (t < startMs || t > endMs) return;
-      out.push(t);
-    },
+export function readActivityEvidence(
+  filePath,
+  startMs,
+  endMs,
+  { provider, sid, idleThresholdMs = 300000 } = {}
+) {
+  const result = {
+    status: 'unavailable',
+    reason: 'window-unconfirmed',
+    events: [],
+    activeEstimateSec: null,
+    idleEstimateSec: null,
+    knownEngagementMs: null,
+  };
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs)
+    return { ...result, reason: 'invalid-window' };
+  if (!existsSync(filePath)) return { ...result, reason: 'transcript-missing' };
+  const starts = new Map();
+  const coverage = [];
+  let sessionId = null;
+  let invalid = false;
+  let supported = false;
+  try {
+    scanJsonlRecords(filePath, {
+      onMalformed() {
+        invalid = true;
+      },
+      onRecord(record) {
+        if (!record || typeof record !== 'object') {
+          invalid = true;
+          return;
+        }
+        const normalized = normalizeTranscriptRecord(record);
+        const legacyActivity =
+          ACTIVITY_TYPES.has(record.type) && !record.isMeta && !record.isSidechain;
+        const active = legacyActivity || normalized.events.length > 0;
+        supported ||= normalized.recognized || legacyActivity;
+        const timestamp = Date.parse(record.timestamp);
+        if (active && Number.isFinite(timestamp) && timestamp >= startMs && timestamp <= endMs)
+          result.events.push(timestamp);
+        if (record.type === 'session_meta') {
+          if (sessionId !== null || typeof record.payload?.id !== 'string') invalid = true;
+          sessionId = record.payload?.id;
+        }
+        if (record.type !== 'event_msg') return;
+        const payload = record.payload;
+        if (payload?.type === 'task_started') {
+          if (
+            typeof payload.turn_id !== 'string' ||
+            !Number.isSafeInteger(payload.started_at) ||
+            starts.has(payload.turn_id)
+          ) {
+            invalid = true;
+            return;
+          }
+          starts.set(payload.turn_id, payload.started_at);
+        } else if (payload?.type === 'task_complete') {
+          if (
+            typeof payload.turn_id !== 'string' ||
+            starts.get(payload.turn_id) !== payload.started_at ||
+            !Number.isSafeInteger(payload.completed_at) ||
+            payload.completed_at < payload.started_at ||
+            !Number.isFinite(payload.duration_ms) ||
+            payload.duration_ms < 0 ||
+            Math.abs(payload.duration_ms - (payload.completed_at - payload.started_at) * 1000) >
+              1000
+          ) {
+            invalid = true;
+            return;
+          }
+          // Native second-resolution boundaries do not establish their unknown subsecond edges.
+          coverage.push([(payload.started_at + 1) * 1000, payload.completed_at * 1000]);
+          starts.delete(payload.turn_id);
+          supported = true;
+        }
+      },
+    });
+  } catch {
+    return { ...result, reason: 'transcript-unreadable' };
+  }
+  result.events = [...new Set(result.events)].sort((a, b) => a - b);
+  if (invalid) return { ...result, reason: 'transcript-malformed' };
+  if (!supported) return { ...result, reason: 'transcript-unsupported' };
+  if (provider !== 'codex' || typeof sid !== 'string' || sessionId !== sid)
+    return { ...result, reason: 'window-identity-unconfirmed' };
+  coverage.sort((a, b) => a[0] - b[0]);
+  let cursor = startMs;
+  for (const [start, end] of coverage) {
+    if (start > cursor) break;
+    if (end >= cursor) cursor = end;
+  }
+  if (cursor < endMs || !coverage.some(([start, end]) => start <= startMs && end >= startMs))
+    return result;
+  const estimate = computeActiveAndIdleSeconds({
+    startMs,
+    endMs,
+    events: result.events,
+    idleThresholdMs,
   });
-  out.sort((a, b) => a - b);
-  return out;
+  return {
+    ...result,
+    status: 'observed',
+    reason: null,
+    activeEstimateSec: estimate.activeSec,
+    idleEstimateSec: estimate.idleSec,
+    knownEngagementMs: endMs - startMs,
+  };
+}
+
+export function collectEventTimestamps(filePath, startMs, endMs) {
+  return readActivityEvidence(filePath, startMs, endMs).events;
 }
 
 // Excess-only idle subtraction, at second precision.

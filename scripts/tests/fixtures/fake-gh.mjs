@@ -55,6 +55,31 @@ if (args[0] === 'issue' && args[1] === 'comment') {
 
 // `gh api graphql -f query=... -f id=<id> -f body=<body>`
 if (args[0] === 'api' && args[1] === 'graphql') {
+  const query = args.find((value) => value.startsWith('query=')) ?? '';
+  if (query.includes('nameWithOwner') && query.includes('comments(first:100')) {
+    const field = (name) =>
+      args.find((value) => value.startsWith(name + '='))?.slice(name.length + 1);
+    const issue = Number(field('issue'));
+    const comments = load().comments.filter((comment) => Number(comment.issue) === issue);
+    process.stdout.write(
+      JSON.stringify({
+        data: {
+          repository: {
+            nameWithOwner: field('owner') + '/' + field('name'),
+            issue: {
+              number: issue,
+              comments: {
+                totalCount: comments.length,
+                nodes: comments,
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            },
+          },
+        },
+      })
+    );
+    process.exit(0);
+  }
   let id, body;
   for (const a of args) {
     if (a.startsWith('id=')) id = a.slice(3);

@@ -1,3 +1,8 @@
+import {
+  INCOMPLETE_OUTCOME_SCHEMA,
+  isIncompleteOutcome,
+  validateEstimationOutcome,
+} from './outcome-record.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { runLogicalRecordClaim } from './record-claim.mjs';
 import { activeEstimationOutcomes } from './outcome-chain.mjs';
@@ -13,7 +18,11 @@ async function ensureEstimationOutcomeUnlocked({
   supersedeExisting,
   deps,
 }) {
-  if (!forecast && outcomePayload?.kind !== 'epic-orchestration')
+  if (
+    !forecast &&
+    outcomePayload?.kind !== 'epic-orchestration' &&
+    outcomePayload?.schema !== INCOMPLETE_OUTCOME_SCHEMA
+  )
     return { status: 'legacy-no-forecast' };
   if (
     !Number.isInteger(issue) ||
@@ -23,7 +32,12 @@ async function ensureEstimationOutcomeUnlocked({
   )
     fail('input');
   const forecastRecordId = forecast?.recordId ?? null;
-  const kind = forecast ? 'story' : 'epic-orchestration';
+  const kind =
+    outcomePayload?.schema === INCOMPLETE_OUTCOME_SCHEMA
+      ? outcomePayload.kind
+      : forecast
+        ? 'story'
+        : 'epic-orchestration';
   if (typeof deps.listOutcomeRecords !== 'function') fail('dependencies');
   const records = await deps.listOutcomeRecords({ issue, forecastRecordId });
   if (!Array.isArray(records)) fail('records');
@@ -155,21 +169,57 @@ export async function ensureEstimationOutcome({
   supersedeExisting = false,
   deps = {},
 } = {}) {
-  if (!forecast && outcomePayload?.kind !== 'epic-orchestration') {
+  if (
+    !forecast &&
+    outcomePayload?.kind !== 'epic-orchestration' &&
+    outcomePayload?.schema !== INCOMPLETE_OUTCOME_SCHEMA
+  ) {
     return { status: 'legacy-no-forecast' };
   }
   const forecastRecordId = forecast?.recordId ?? null;
-  const kind = forecast ? 'story' : 'epic-orchestration';
+  const kind =
+    outcomePayload?.schema === INCOMPLETE_OUTCOME_SCHEMA
+      ? outcomePayload.kind
+      : forecast
+        ? 'story'
+        : 'epic-orchestration';
   return runLogicalRecordClaim(
     deps,
     { key: `outcome:${issue}:${kind}:${forecastRecordId ?? 'none'}`, issue },
-    () =>
-      ensureEstimationOutcomeUnlocked({
+    async () => {
+      const incomplete = isIncompleteOutcome(outcomePayload);
+      if (incomplete) {
+        validateEstimationOutcome(outcomePayload, { expectedIssue: issue });
+        if (outcomePayload.forecastRecordId !== forecastRecordId) fail('forecast-correlation');
+      }
+      const result = await ensureEstimationOutcomeUnlocked({
         issue,
         forecast,
         outcomePayload,
         supersedeExisting,
         deps,
-      })
+      });
+      if (!incomplete) return result;
+      const refreshed = await deps.listOutcomeRecords({ issue, forecastRecordId });
+      if (!Array.isArray(refreshed)) fail('write-readback');
+      let active;
+      try {
+        active = activeEstimationOutcomes(refreshed);
+      } catch {
+        fail('write-readback');
+      }
+      const record = active[0];
+      if (
+        active.length !== 1 ||
+        record?.envelope?.recordId !== result.recordId ||
+        record.envelope.repository !== outcomePayload.telemetry.source.repository ||
+        record.envelope.issue !== issue ||
+        typeof record.commentNodeId !== 'string' ||
+        canonicalRecordJson(record.envelope.payload) !== canonicalRecordJson(outcomePayload)
+      )
+        fail('write-readback');
+      validateEstimationOutcome(record.envelope.payload, { expectedIssue: issue });
+      return { ...result, record: structuredClone(record) };
+    }
   );
 }

@@ -1,0 +1,70 @@
+# PR1866 guidance CI investigation
+
+Only modified scripts/tests/helpers/capture-guidance-release.mjs. Current child commands now use explicit claude / fixture-guidance-capture identity; enter-develop injects canonical setActiveTask per-session fixture binding instead of retired global state binding. Neither injects a live action.
+
+Red evidence: /private/tmp/1866-guidance-red.log, original final-package replay exits TIMING_ACTOR_INVALID. First current fixture capture after identity fix validates 24-event transcript, but deliver reported authority-read-failed/incomplete. Source investigation showed per-session loadState discards global binding. Second current capture verification log: /private/tmp/1866-guidance-current-capture.log. Full actual current capture: /private/tmp/1866-guidance-current-capture.json.
+
+Remaining independent integrity contracts:
+- accepted final artifact identity pins executable source hashes predating PR1866, so paired context correctly reports final capture identity drift.
+- final replay compares current actual capture against that accepted artifact byte-for-byte; cannot legitimately pass after source changes.
+- historical recertification calls maintenance/capture-guidance-lifecycle.mjs against current source, fails actor identity, then requires exact historical replay. Historical maintenance file and archives must remain unchanged.
+- admission inventory staticImports for hook-handler still lists active-time.mjs, while actual hook-handler imports actor-hook-timing.mjs. Inventory is current operational surface and requires deliberate source-reviewed refresh.
+- frozen candidate projection also drifts when present authority/current source differ; do not relabel old decision GO.
+
+Canonical existing tools:
+- scripts/tests/helpers/capture-guidance-release.mjs --final executes npm pack, production-only install and actual public CLI under deterministic fake GitHub authority. This is valid source for new current evidence.
+- generate-guidance-release.mjs --write derives only catalog/parser release manifest, not final capture evidence.
+- generate-guidance-context-evidence.mjs --write only generates pre-slim derived artifacts from frozen recertification input; it is not final evidence publisher.
+- No existing versioned current final-capture publication path found. guidance-paired-context hardcodes final-capture-manifest.json and capturePath actual-explain-traffic-final.json, checks source bytes against current checkout. measure-guidance-context CLI defaults same capture.
+
+Proposed honest current path, requiring root review of production measurement sources:
+1. Add versioned current evidence directory (e.g. fixtures/1558/current/1866/) containing capture from final fixture CLI and manifest derived from that exact capture. Preserve all accepted old artifacts unchanged.
+2. Add explicit current capture/manifest input routing to buildPairedContext, buildGuidanceContextReport and measurement CLI; require matching exact capture path, hash, source inputs, installed package files, events, categories, heavy case and current implementation file hashes. Keep freshness refusal strict.
+3. Add publisher deriving manifest from capture, no manual digest edits; repeat actual fixture capture to prove deterministic identity before publishing.
+4. Route current consumer check to new pair; keep historical archive validation against captured-commit source provenance. Historical CLI replay must use frozen source runtime or stop being called a current recertification.
+5. Refresh operational admission inventory from source-reviewed current imports, retain complete canonical routes and effect boundary assertions.
+
+## Approved implementation
+
+Root approved minimal explicit current routing and canonical authoring helpers. New current manifest requires sourceCommit; buildPairedContext checks exact source bytes both in current checkout and through capturedCommitBytes at that committed source. No permissive fallback was added. Legacy final archive remains at its accepted path and its tests now validate recorded hash/event/category integrity plus strict refusal for changed current sources.
+
+New helpers: generate-current-guidance-evidence.mjs derives capture, manifest, lifecycle, budgets and paired comparison from actual installed final fixture capture; refresh-guidance-admission-inventory.mjs updates only staticImports for existing entries. Inventory changed hook-handler active-time import to actor-hook-timing and stop imports to word-counter/timing-actor/timing-row-reader; all classifications/routes/gates/exceptions retained.
+
+Draft verification: 11/11 capture-lifecycle/recertification-capture/recertification tests passed, 17/17 admission tests passed; targeted ESLint, node syntax, and git diff --check passed. Logs: /private/tmp/1866-guidance-draft-tests.log and /private/tmp/1866-guidance-admission.log. Current evidence generation awaits root source freeze commit.
+
+## Final actual evidence and verification
+
+Source checkpoint: 5de3d7536b6cc27f1b379258f59130869f372d6f. Actual capture SHA256: a247c30470d2794acc7b310648221728cc76d0e16802052ccec6fb40261a1bdd. Canonical generator executed after root committed source; committed-source provenance checks passed.
+
+New files under scripts/tests/fixtures/1857/1866-current/:
+- actual-explain-traffic-final.json
+- final-capture-manifest.json
+- lifecycle-transcript-final.json
+- context-budgets-final.json
+- context-comparison-final-paired.json
+
+Final assigned integration run: all seven guidance files, 48 tests passed, zero failures/skips, exit 0. Includes actual final package capture byte-for-byte regeneration, exact current budget meter, npm consumer publication gate and historical integrity/refusal. Log: /private/tmp/1866-guidance-all.log. Generation log: /private/tmp/1866-guidance-generation.log.
+
+Archive preservation check: git diff 45f3a6bfec811b8e71ae66ae46c435e6e3aca300 --name-only -- scripts/tests/fixtures/1558 reports only admission-surface.json. No accepted raw archives/manifests changed. Exact raw new capture/manifest/lifecycle JSON stringify bytes require explicit Prettier ignore paths matching the existing1558 raw evidence convention; communicated to root.
+
+## Installed-guidance committed provenance correction
+
+Astra found that initial current generator checked six implementation records against sourceCommit but checked installed guidance only against current bytes. Reproduced an internally consistent dirty router accepted under unchanged claimed commit; original repro /private/tmp/1866-astra-provenance-repro.log.
+
+New shared guidance-capture-provenance validator checks every implementation file, every installedStatic actual sourcePath, and every productionPackage file path against both live source and capturedCommitBytes. Both template paths are tracked independently and validated: .ai-task-manager/templates/pickup-directive.md and packaged templates/pickup-directive.md. Paired identities.currentSourceCommit now reports verified manifest.sourceCommit.
+
+Negative test imports the real recorded commit into an isolated Git fixture and modifies actual router/template bytes without changing commit. It updates all static/package/capture/manifest hashes consistently; both router and template scenarios refuse uncommitted captured source. Targeted2/2 tests passed; Astra independently reran original dirty-router reproduction against fix and observed final capture identity drift, with3 selected tests passing.
+
+Fix source checkpoint: 7b5fa0faaaf975875b5405f520abce3a3f5f0189. Actual final capture regenerated from this committed checkpoint; transcript bytes remained deterministic with SHA a247c30470d2794acc7b310648221728cc76d0e16802052ccec6fb40261a1bdd. Manifest now SHA f73a4c4a3bf1d7873e9051fa5fe3e83f6fc4f1edb13cdbfcb9e234436b89d136. Both adapter lifecycle reports expose exact verified7b5fa0fa commit. Generation log /private/tmp/1866-guidance-provenance-generation.log; final seven-suite test log /private/tmp/1866-guidance-provenance-all.log.
+
+Final provenance-adjusted guidance verification: seven assigned suites, 49 tests passed, zero failures/skips, exit0,75.2s. Exact final log /private/tmp/1866-guidance-provenance-all.log. Includes actual installed capture byte-for-byte regeneration, consumer publication gate, dirty unchanged-commit guidance negative cases and verified commit reporting. No source edits after7b5fa0fa checkpoint.
+
+## Merged PR1868 / #1867 close change
+
+Root merged trunk5b06fe9590d29e186d1b505dd0b2186f6ad8d236 at source checkpoint e545522e467e484bd96db3b327fc8ccd0047c086. Close collector imports resolveDoneTargetBranch and uses surviving local parent branch authority. Trunk also changed its own accepted1558 final raw/manifest/derived artifacts; these accepted trunk bytes were retained exactly, not rewritten by this agent.
+
+Canonical current capture regenerated successfully at e545522e467e484bd96db3b327fc8ccd0047c086 with no helper or implementation adaptations. New actual capture SHA d13f4254a3f069b8ad8b1533e0d766cd320df7fb817d1c4421ba30fc92b0939c; manifestSHA6b52179b8f05cb60e793832e3d44aa658cae7d129755493ace52a2e8d1251211. All five current files refreshed; budgets bytes unchanged.
+
+Operational admission source import generator --check passed: new close collector import does not change a canonical executable inventory entry. New action-close/action-close-default/action-close-local-parent integration suites passed37/37, exit0, /private/tmp/1866-close-merged.log. Source merged generation log /private/tmp/1866-guidance-merged-generation.log; all7guidance verification log /private/tmp/1866-guidance-merged-all.log. git diff HEAD --name-only -- scripts/tests/fixtures/1558 empty, proving accepted trunk raw artifacts untouched.
+
+Merged-source final verification completed: all7guidance suites49/49 passed,0failures/0skips,exit0,102.4s, /private/tmp/1866-guidance-merged-all.log. Actual installed byte replay and consumer publication gate passed. Combined owned merged close+guidance checks86/86passed. No source/helper/inventory adaptations were needed after merged checkpoint; current evidence stable for independent final review.

@@ -12,10 +12,14 @@ import { createEvidenceRuntime } from './lib/evidence-v2/runtime-adapter.mjs';
 import { execFileSync } from 'node:child_process';
 import { pexec } from '../gh/lib/gh-client.mjs';
 import { loadConfig } from './config.mjs';
+import { runTimingFieldUpdate } from './lib/timing-field-result.mjs';
 import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
 import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-timing-comment.mjs';
 import { lastRowTsFromBody, lastRowFromBody } from './lib/timing-rows.mjs';
 import { parseTimingRow } from './lib/timing-row-reader.mjs';
+import { timingActorKey } from './lib/timing-actor.mjs';
+import { actorTimingStatePath } from './lib/actor-timing-state.mjs';
+import { readActorFlushJournal, runActorFlushJournal } from './lib/actor-flush-journal.mjs';
 import { isDepartureEvent, isReengagementEvent } from './lib/timing-events/index.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
 
@@ -33,14 +37,10 @@ import {
   countWords,
   aiAppName,
 } from './word-counter.mjs';
-import {
-  collectEventTimestamps,
-  computeActiveAndIdleSeconds,
-  resolveFlushStartMs,
-} from './active-time.mjs';
+import { readActivityEvidence } from './active-time.mjs';
 import { recordSessionRefOnChange } from './lib/session-ref.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
-import { advanceWordMarker, stateFullWordMarker } from './state.mjs';
+import { advanceWordMarker, stateFullWordMarker, loadState, saveState } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { runMoveStateHost } from '../gh/move-state.mjs';
@@ -132,6 +132,8 @@ export async function runMoveStateInProcess(
     reviewAuthority = null,
     lifecycleEvidence = null,
     cursorCommand = null,
+    projectDir,
+    invokingDir,
   } = {},
   {
     host = runMoveStateHost,
@@ -157,7 +159,7 @@ export async function runMoveStateInProcess(
     const cursorRequest = buildCommandCursorRequest({
       command: cursorCommand,
       issue: Number(issueNum),
-      cwd: getProjectDir(),
+      cwd: projectDir ?? getProjectDir(),
       requestedTarget: state,
     });
     mergedEnv.AITM_CURSOR_TRIGGER = cursorRequest.trigger;
@@ -181,7 +183,15 @@ export async function runMoveStateInProcess(
   stderr.write = capture(errParts);
   let code;
   try {
-    code = await host({ argv, env: mergedEnv, tailProfile, reviewAuthority, lifecycleEvidence });
+    code = await host({
+      argv,
+      env: mergedEnv,
+      tailProfile,
+      reviewAuthority,
+      lifecycleEvidence,
+      projectDir,
+      invokingDir,
+    });
   } finally {
     stdout.write = realOut;
     stderr.write = realErr;
@@ -238,6 +248,32 @@ const LEGACY_DESCRIPTION_FALLBACKS = {
   end: 'task closed',
   'switch-end': 'switched to next task',
 };
+
+export async function flushBoundActorInterval(
+  ctx,
+  { issue, event = 'update', description = 'lifecycle boundary' } = {}
+) {
+  const state = loadState(ctx.statePath);
+  if (
+    !state.entryStartTs ||
+    !state.active ||
+    state.active === 'discover' ||
+    String(state.active).replace('#', '') !== String(issue).replace('#', '')
+  ) {
+    return { status: 'not-active' };
+  }
+  const result = await ctx.flushActiveToGH(state, event, description);
+  saveState(
+    {
+      ...state,
+      entryStartTs: result.ts,
+      wordsAtEntryStart: result.wordMarker,
+      fullWordsAtEntryStart: result.lastFullWordMarker,
+    },
+    ctx.statePath
+  );
+  return { status: 'flushed', ...result };
+}
 
 export function buildContext(rawArgv = process.argv.slice(2), { executionContext = null } = {}) {
   const recordedContext =
@@ -363,7 +399,7 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
   // Same swallow-on-failure contract as `safeReadLastRowTs`: SKIP_NETWORK and any
   // read/parse failure return null. Used by `flushActiveToGH` to detect an
   // unclosed finalize/orphan `idle` tail before appending a departure row.
-  ctx.safeReadLastRow = async (issue) => {
+  ctx.safeReadLastRow = async (issue, actorKey = null) => {
     if (SKIP_NETWORK) return null;
     try {
       const result = await readTimingCommentBody({
@@ -371,7 +407,14 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
         repo: cfg.repo,
         timeoutMs: cfg.hookNetworkTimeoutMs,
       });
-      return lastRowFromBody(bodyOf(result));
+      if (!actorKey) return lastRowFromBody(bodyOf(result));
+      return (
+        bodyOf(result)
+          .split(String.fromCharCode(10))
+          .map(parseTimingRow)
+          .filter((row) => row?.actorKey === actorKey)
+          .at(-1) ?? null
+      );
     } catch {
       return null;
     }
@@ -450,6 +493,98 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
       effectiveEvent;
     const ts = nowIso();
     const sid = currentSessionId();
+    const actorKey = timingActorKey({ provider: aiAppName(), sid });
+    const identity = { provider: aiAppName(), sid };
+    const journalFile = actorTimingStatePath(identity, projectDir) + '.flush.json';
+    const commitFlush = async (payload) => {
+      const current = loadState(statePath);
+      if (current.active !== payload.issue) throw new Error('ACTOR_FLUSH_BINDING_CHANGED');
+      const stateMatches = (expected) =>
+        Object.keys(payload.previous).every(
+          (key) => (current[key] ?? (key === 'entryStartTs' ? null : 0)) === expected[key]
+        );
+      if (!stateMatches(payload.previous) && !stateMatches(payload.checkpoint))
+        throw new Error('ACTOR_FLUSH_STATE_CONFLICT');
+      if (payload.cursor) {
+        const marker = loadMarker(markerPathFor(sid));
+        const observed = { line: marker.line, words: marker.words, wordsFull: marker.wordsFull };
+        const matches = (expected) =>
+          Object.keys(observed).every((key) => observed[key] === expected[key]);
+        if (!matches(payload.cursor.before) && !matches(payload.cursor.after))
+          throw new Error('ACTOR_FLUSH_CURSOR_CONFLICT');
+        const after = payload.cursor.after;
+        saveMarker(markerPathFor(sid), after.line, after.words, payload.issue, after.wordsFull);
+      }
+      saveState({ ...current, ...payload.checkpoint }, statePath);
+      Object.assign(state, payload.checkpoint);
+    };
+    const journal = (candidate = null) =>
+      runActorFlushJournal({
+        file: journalFile,
+        identity,
+        candidate,
+        publish: (payload) => ctx.safePostTiming(payload.issue, payload.row),
+        commit: commitFlush,
+      });
+    if (!opts.computeOnly) {
+      if (loadState(statePath).active !== state.active)
+        throw new Error('ACTOR_FLUSH_BINDING_CHANGED');
+      const pending = readActorFlushJournal(journalFile, identity);
+      if (pending) {
+        if (pending.payload.issue !== state.active) throw new Error('ACTOR_FLUSH_BINDING_CHANGED');
+        await journal();
+      }
+    }
+    if (opts.recoverOnly) return { status: 'reconciled' };
+    let cursorBefore = null;
+    const durableBefore = opts.computeOnly ? state : loadState(statePath);
+    // #1857 — Test/Review may retain a binding after closing its interval.
+    // Repeated departure (pause, stop, switch) must not publish an unmatched
+    // actor end. Reconcile pending publication above before treating it as idle.
+    if (!state.entryStartTs && isDepartureEvent(effectiveEvent)) {
+      return {
+        row: null,
+        post: { ok: true, skipped: true },
+        ts,
+        deltaMin: 0,
+        idleMin: 0,
+        deltaWallMin: 0,
+        deltaWords: 0,
+        wordMarker: state.lastWordMarker ?? 0,
+        lastWordMarker: state.lastWordMarker ?? 0,
+        lastFullWordMarker: state.lastFullWordMarker ?? 0,
+      };
+    }
+    const previous = {
+      entryStartTs: durableBefore.entryStartTs ?? null,
+      lastWordMarker: durableBefore.lastWordMarker ?? 0,
+      lastFullWordMarker: durableBefore.lastFullWordMarker ?? 0,
+    };
+    const publishFlush = async (row, wordMarker, wordMarkerFull) => {
+      if (opts.computeOnly) return { ok: true, skipped: true, computeOnly: true };
+      const result = await journal({
+        issue: state.active,
+        row,
+        previous,
+        cursor:
+          markerLineToPersist === null
+            ? null
+            : {
+                before: cursorBefore,
+                after: { line: markerLineToPersist, words: wordMarker, wordsFull: wordMarkerFull },
+              },
+        checkpoint: {
+          active: state.active,
+          entryStartTs: state.entryStartTs ? ts : null,
+          wordsAtEntryStart: wordMarker,
+          fullWordsAtEntryStart: wordMarkerFull,
+          lastWordMarker: wordMarker,
+          lastFullWordMarker: wordMarkerFull,
+        },
+      });
+      return result.post;
+    };
+    const priorWords = state.lastWordMarker ?? 0;
     let deltaWords = 0;
     // #795 — full-expansion per-row delta (stay-abreast + full tool inputs +
     // full tool outputs) and the prior cumulative full snapshot, used to render
@@ -465,6 +600,7 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     let markerLineToPersist = null;
     if (sid) {
       const marker = loadMarker(markerPathFor(sid));
+      cursorBefore = { line: marker.line, words: marker.words, wordsFull: marker.wordsFull };
       const transcriptPath = jsonlPath(sid);
       const counted = countWords(transcriptPath, marker.line, { provider: aiAppName(), sid });
       deltaWords = counted.count;
@@ -482,9 +618,7 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     // change. `mutateIssueBody` returns `no-op` and skips the wire write when the
     // body is unchanged, so the steady-state event is a cheap fetch-and-compare.
     // Read-only (`computeOnly`) and no-sid (remote/iOS) paths skip cleanly.
-    if (!opts.computeOnly && sid) {
-      await ctx.safeRecordSessionRef(state.active, { sid, jsonlPath: jsonlPath(sid), ts });
-    }
+    // Public timing uses an opaque actor key; native paths and IDs stay local.
     // #407 — bound-but-paused state (no open timing session): a non-terminal
     // verb (test/review) now leaves `active` set while nulling `entryStartTs`.
     // Without an open session there is no wall-time to flush, so emit a
@@ -506,15 +640,6 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
       state.lastFullWordMarker = wordMarkerFull;
       // #483 — advance and persist the per-sid cursor so the next flush counts
       // only words added after this row's segment (no re-count, no frozen cursor).
-      if (!opts.computeOnly && sid && markerLineToPersist != null) {
-        saveMarker(
-          markerPathFor(sid),
-          markerLineToPersist,
-          wordMarker,
-          state.active,
-          wordMarkerFull
-        );
-      }
       const { buildFlushRow } = await import('./gh-timing-comment.mjs');
       // #832 (D4) — an interruption flush (`pause` / `switch-out` / `review`)
       // banks its words onto the durable marker + cursor above but renders the
@@ -525,23 +650,22 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
       const rowDeltaWords = opts.suppressRowWords ? 0 : deltaWords;
       const row = buildFlushRow({
         ts,
+        actorKey,
         event: effectiveEvent,
-        activeMin: 0,
-        idleMin: 0,
+        activeMin: null,
+        idleMin: null,
         deltaWords: rowDeltaWords,
         wordMarker,
         fullWordMarker: transcriptWordsAvailable ? wordMarkerFull : null,
         description: effectiveDescription,
       });
-      const post = opts.computeOnly
-        ? { ok: true, skipped: true, computeOnly: true }
-        : await ctx.safePostTiming(state.active, row);
+      const post = await publishFlush(row, wordMarker, wordMarkerFull);
       return {
         row,
         post,
         ts,
-        deltaMin: 0,
-        idleMin: 0,
+        deltaMin: null,
+        idleMin: null,
         deltaWallMin: 0,
         deltaWords,
         wordMarker,
@@ -560,29 +684,28 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     // #822 — read the whole tail row (ts + Event slug) in one fetch. The ts
     // still anchors the Active-duration window (#720); the Event slug lets the
     // Fault Z guard below detect an unclosed finalize/orphan `idle` tail.
-    const lastRow = opts.computeOnly ? null : await ctx.safeReadLastRow(state.active);
-    const lastRowMs =
-      lastRow?.ts && Number.isFinite(Date.parse(lastRow.ts)) ? Date.parse(lastRow.ts) : null;
-    const startMs = resolveFlushStartMs(entryStartMs, lastRowMs);
+    const lastRow = opts.computeOnly ? null : await ctx.safeReadLastRow(state.active, actorKey);
+    const priorEnd = lastRow?.actorKey === actorKey ? lastRow.engagement?.endMs : null;
+    const startMs = Number.isSafeInteger(priorEnd)
+      ? Math.max(entryStartMs, priorEnd)
+      : entryStartMs;
     const endMs = new Date(ts).getTime();
+    if (!Number.isSafeInteger(startMs) || startMs > endMs)
+      throw new Error('timing-flush:invalid-own-interval');
     const wallMs = Math.max(0, endMs - startMs);
     const deltaWallMin = Math.round(wallMs / 60000);
-    // Default (no session id): the whole resolved window counts as active. The
-    // row now renders at second precision so sub-minute flushes are no longer
-    // quantized to a whole minute (the #720 widen-to-second-precision decision).
-    let activeSec = Math.max(0, Math.round(wallMs / 1000));
-    let idleSec = 0;
-    if (sid) {
-      const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
-      ({ activeSec, idleSec } = computeActiveAndIdleSeconds({
-        startMs,
-        endMs,
-        events,
-        idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
-      }));
-    }
-    const activeMin = Math.max(0, Math.round(activeSec / 60));
-    const idleMin = Math.max(0, Math.round(idleSec / 60));
+    const evidence = readActivityEvidence(jsonlPath(sid), startMs, endMs, {
+      provider: aiAppName(),
+      sid,
+      idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
+    });
+    const activeSec =
+      evidence.status === 'observed'
+        ? Math.min(Math.floor(wallMs / 1000), evidence.activeEstimateSec)
+        : null;
+    const idleSec = evidence.status === 'observed' ? evidence.idleEstimateSec : null;
+    const activeMin = activeSec === null ? null : Math.round(activeSec / 60);
+    const idleMin = idleSec === null ? null : Math.round(idleSec / 60);
     // #475 AC1 — advance the durable monotonic marker and stamp it (not the
     // raw per-session sum) so the cumulative total never regresses.
     // #483 — candidate base is the durable cumulative (`lastWordMarker`) plus
@@ -595,9 +718,6 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     state.lastFullWordMarker = wordMarkerFull;
     // #483 — advance and persist the per-sid cursor so the next flush counts
     // only words added after this row's segment (no re-count, no frozen cursor).
-    if (!opts.computeOnly && sid && markerLineToPersist != null) {
-      saveMarker(markerPathFor(sid), markerLineToPersist, wordMarker, state.active, wordMarkerFull);
-    }
     // #822 (Fault Z) — a live departure must not stack on an unclosed
     // finalize/orphan `idle` tail. The orphan/pause-finalize path (#802) ends its
     // window with a trailing `idle` departure that opens an idle span it cannot
@@ -618,26 +738,6 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     // rows, and every row is timestamped when written, carrying elapsed work in
     // its duration cells, not in timestamp deltas. The reengagement thus sits
     // immediately before the departure at the same instant, closing the idle.
-    let postReengage;
-    if (
-      !opts.computeOnly &&
-      activeSec > 0 &&
-      isDepartureEvent(effectiveEvent) &&
-      lastRow &&
-      isDepartureEvent(lastRow.event)
-    ) {
-      const reengageRow = buildRow({
-        ts,
-        event: 'resumed',
-        activeSec: 0,
-        idleSec: 0,
-        deltaWords: 0,
-        wordMarker,
-        fullWordMarker: transcriptWordsAvailable ? wordMarkerFull : null,
-        description: 'resumed',
-      });
-      postReengage = await ctx.safePostTiming(state.active, reengageRow);
-    }
     // #720 — build through `buildRow` with second precision (not `buildFlushRow`,
     // which minute-quantizes via `toSec = round(min)*60`). Pause/flush rows now
     // render `Xh Ym Zs` + the canonical `row-sec` marker, matching System A rows.
@@ -647,6 +747,16 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     const rowDeltaWords = opts.suppressRowWords ? 0 : deltaWords;
     const row = buildRow({
       ts,
+      actorKey,
+      engagement: {
+        startMs,
+        endMs,
+        activeEstimateSec: activeSec,
+        wordStart: transcriptWordsAvailable ? priorWords : null,
+        wordEnd: transcriptWordsAvailable ? wordMarker : null,
+        fullWordStart: transcriptWordsAvailable ? priorWordsFull : null,
+        fullWordEnd: transcriptWordsAvailable ? wordMarkerFull : null,
+      },
       event: effectiveEvent,
       activeSec,
       idleSec,
@@ -655,13 +765,11 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
       fullWordMarker: transcriptWordsAvailable ? wordMarkerFull : null,
       description: effectiveDescription,
     });
-    const post = opts.computeOnly
-      ? { ok: true, skipped: true, computeOnly: true }
-      : await ctx.safePostTiming(state.active, row);
+    const post = await publishFlush(row, wordMarker, wordMarkerFull);
     return {
       row,
       post,
-      postReengage,
+      activityEvidenceStatus: evidence.status,
       ts,
       deltaMin: activeMin,
       idleMin,
@@ -675,20 +783,16 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
 
   ctx.runLogIssueTime = async (issue) => {
     if (SKIP_NETWORK) return;
-    const scriptPath = new URL('../gh/log-issue-time.mjs', import.meta.url).pathname;
     try {
-      const { stdout } = await pexec(process.execPath, [scriptPath, issue], {
-        timeout: GH_API_TIMEOUT_MS,
-      });
-      if (stdout.trim()) console.log(stdout.trim());
+      return await runTimingFieldUpdate({ issue, repository: cfg.repo });
     } catch (err) {
       // Fail-loud: silent swallow here is the root cause of #180 (board fields
       // never written, body cache stays null, close completes anyway). No env
       // override exists. For a genuine GitHub outage, re-run when service is
       // restored.
       throw new Error(
-        `runLogIssueTime: failed to update board fields for ${issue}: ${err.message}. ` +
-          `Retry when GitHub is reachable.`
+        `runLogIssueTime: failed to update board fields for ${issue}: ${err.message}`,
+        { cause: err }
       );
     }
   };
@@ -731,7 +835,12 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
   // flag forwarding) lives in the exported `runMoveStateInProcess`; here we only
   // bind the SKIP_NETWORK short-circuit for offline/test runs.
   ctx.runMoveState = (issue, state, opts = {}) =>
-    runMoveStateInProcess(issue, state, { ...opts, skipNetwork: SKIP_NETWORK });
+    runMoveStateInProcess(issue, state, {
+      projectDir: ctx.projectDir,
+      invokingDir: ctx.invokingDir ?? process.cwd(),
+      ...opts,
+      skipNetwork: SKIP_NETWORK,
+    });
 
   ctx.runMoveStateDone = (issue, opts = {}) =>
     ctx.runMoveState(issue, 'done', {

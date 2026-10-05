@@ -13,6 +13,7 @@
 //     half stays inline at move-state.mjs:434+ until a dedicated child story).
 //   - #279 parent-admission gate (review → done).
 
+import { refineExitWipBudgetGuard } from '../lib/refine-exit-wip-budget-guard.mjs';
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { planApprovedGuard } from '../lib/plan-approved-guard.mjs';
 import { storyApprovalBindingGuard } from '../lib/story-approval-binding-guard.mjs';
@@ -32,6 +33,7 @@ export default Object.freeze({
   residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     blockedByGuard,
+    refineExitWipBudgetGuard,
     planApprovedGuard,
     storyApprovalBindingGuard,
     planExitPlannedEstimateGuard,

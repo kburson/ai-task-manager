@@ -1,4 +1,4 @@
-// @story #1666
+// @story #1666 #1887
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -599,4 +599,101 @@ test('locked Test execution refuses a freshly blocked entry before any sandbox e
   });
   assert.equal(result.status, 'entry-preflight-refused');
   assert.deepEqual(events, ['lock']);
+});
+
+// Receipt parsing and the provenance guard stay real; Git ancestry is an external port.
+async function provenanceFixture(commitSha) {
+  const { createVerificationReceipt, upsertVerificationReceipt } =
+    await import('../../../../task-tracker/lib/verification-receipt.mjs');
+  const { developExitCodeCompleteGuard } =
+    await import('../../../../task-tracker/lib/develop-exit-code-complete-guard.mjs');
+  const { auditEvidenceBranchReachability } =
+    await import('../../../../task-tracker/lib/evidence-branch-reachability.mjs');
+  const receipt = createVerificationReceipt({
+    issueNumber: ISSUE,
+    stage: 'test',
+    fingerprint: {
+      commitSha,
+      verificationCommands: [
+        ['node', '--test', 'scripts/tests/integration/task-tracker/lib/action-test.test.mjs'],
+      ],
+      environment: {
+        node: process.version,
+        platform: `${process.platform}-${process.arch}`,
+        lockfileHash: `sha256:${'c'.repeat(64)}`,
+        configHashes: {},
+        sandbox: { kind: 'worktree', identity: process.cwd(), clean: true },
+      },
+    },
+    commands: [
+      {
+        classification: 'test-integration',
+        command: 'npm',
+        args: ['run', 'test:integration'],
+        exitCode: 0,
+        durationMs: 1,
+      },
+    ],
+    executionContext: { branch: 'HEAD', worktreePath: process.cwd(), boundIssue: ISSUE },
+    now,
+  });
+  const body = upsertVerificationReceipt(readyBody, receipt);
+  const inspected = [];
+  const fixture = testFixture({
+    body,
+    runGuards: async (_from, _to, context) => {
+      inspected.push(context.body);
+      const result = await developExitCodeCompleteGuard.run({
+        ...context,
+        deps: {
+          codeCompleteGate: async () => ({ ok: true }),
+          evidenceBranchReachability: (input) =>
+            auditEvidenceBranchReachability({
+              ...input,
+              deps: {
+                readWorktreeIdentity: () => ({ worktreeBranch: 'codex/rebased' }),
+                isAncestor: async () => false,
+              },
+            }),
+        },
+      });
+      return {
+        ok: result.ok,
+        status: result.ok ? 'ready' : 'blocked',
+        refusals: result.ok
+          ? []
+          : [
+              {
+                id: 'develop-exit-code-complete',
+                code: 'unclassified-refusal',
+                args: {},
+                reason: result.reason,
+              },
+            ],
+        humanDecision: null,
+      };
+    },
+  });
+  return { ...fixture, body, inspected };
+}
+
+test('rebased Test readiness audits the projected body without changing observed authority', async () => {
+  const fixture = await provenanceFixture('b'.repeat(40));
+  const decision = await fixture.evaluate('test');
+  assert.equal(decision.status, 'ready', JSON.stringify(decision));
+  assert.ok(fixture.body.includes('aitm-verification-receipt'));
+  assert.ok(fixture.inspected.every((body) => !body.includes('aitm-verification-receipt')));
+  assert.deepEqual(fixture.calls, {
+    createWorktree: 0,
+    execVerification: 0,
+    provider: 0,
+    write: 0,
+  });
+});
+
+test('current wrong-tree Test provenance remains a readiness refusal', async () => {
+  const fixture = await provenanceFixture(HEAD);
+  const decision = await fixture.evaluate('test');
+  assert.equal(decision.status, 'blocked');
+  assert.ok(fixture.inspected.every((body) => body.includes('aitm-verification-receipt')));
 });

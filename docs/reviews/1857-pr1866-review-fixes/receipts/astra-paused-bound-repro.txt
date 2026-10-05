@@ -1,0 +1,40 @@
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+pause after handoff rows [
+  '| 2026-10-02 06:41:42 -05:00 | update | Unknown | Unknown |  | 0 | verification complete | 0 | <!-- aitm-actor:v1 key=286f94946b30611e0cc782f474bc60ef6eb51e5e98fe54c1046012ea75eb56c2 --> <!-- aitm-engagement:v1 start=1790941301850 end=1790941302853 active=unknown wstart=0 wend=0 fstart=0 fend=0 -->',
+  '| 2026-10-02 06:41:42 -05:00 | pause:other | Unknown | Unknown |  | 0 | done | 0 | <!-- aitm-actor:v1 key=286f94946b30611e0cc782f474bc60ef6eb51e5e98fe54c1046012ea75eb56c2 -->'
+] failures [
+  'actor-end-without-start:v1:286f94946b30611e0cc782f474bc60ef6eb51e5e98fe54c1046012ea75eb56c2'
+]
+✖ review reproduction: explicit pause after Test handoff preserves valid timing (362.0055ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 655.956083
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/astra-review-repro.test.mjs:723:1
+✖ review reproduction: explicit pause after Test handoff preserves valid timing (362.0055ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'actor-end-without-start:v1:286f94946b30611e0cc782f474bc60ef6eb51e5e98fe54c1046012ea75eb56c2'
+  + ]
+  - []
+  
+      at file:///private/tmp/1866-astra-head/scripts/tests/integration/task-tracker/lib/astra-review-repro.test.mjs:733:12
+      at async fixture (file:///private/tmp/1866-astra-head/scripts/tests/integration/task-tracker/lib/astra-review-repro.test.mjs:176:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'actor-end-without-start:v1:286f94946b30611e0cc782f474bc60ef6eb51e5e98fe54c1046012ea75eb56c2' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

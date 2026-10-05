@@ -51,6 +51,7 @@ import {
   bindingMatches,
 } from './lib/mutation-context.mjs';
 import { readWorktreeIdentity } from './lib/worktree-binding-guard.mjs';
+import { artifactPathPolicy } from './lib/artifact-write-policy.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
@@ -131,6 +132,19 @@ export function decideSourceEdit({
       reason: `[task-tracker] Refusing installed guard target: ${filePath}`,
     };
   }
+
+  const artifact = artifactPathPolicy(relPath);
+  if (artifact === 'block')
+    return {
+      decision: 'block',
+      code: 'source-edit-docs-script',
+      reason: 'Script formats are not permitted under docs/; use .scratch/ or .tmp/.',
+    };
+  if (artifact === 'allow')
+    return {
+      decision: 'allow',
+      reason: isAllowlistedPath(relPath) ? 'allowlisted-path' : 'artifact-path',
+    };
 
   // Chore-mode bypass: any path allowed.
   if (choreModeActive) {
@@ -497,6 +511,22 @@ export async function runHook(payload, deps = {}) {
       };
     }
   }
+  // Resolve artifact-only mutations before consulting session or remote authority.
+  const artifactDecisions = targets.map((filePath, index) =>
+    decideSourceEdit({
+      toolName: toolName === 'apply_patch' ? 'Edit' : toolName,
+      filePath,
+      projectDir,
+      validatedTarget: validatedTargets[index],
+    })
+  );
+  const forbiddenArtifact = artifactDecisions.find(
+    (result) => result.code === 'source-edit-docs-script'
+  );
+  if (forbiddenArtifact) return forbiddenArtifact;
+  if (artifactDecisions.length && artifactDecisions.every((result) => result.decision === 'allow'))
+    return artifactDecisions[0];
+
   const choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);
   const exactBinding = (deps.readExactSessionBinding || readExactSessionBinding)(projectDir, {
     sessionId: payload?.session_id,

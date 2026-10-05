@@ -1,3 +1,8 @@
+#!/usr/bin/env node
+// @story #1872
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #123
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, chmodSync, mkdirSync, readFileSync } from 'node:fs';
@@ -41,7 +46,7 @@ const FIELDS_NO_ENGAGED = [
 // `gh issue edit --body-file -` to a state file and serves it back, so the
 // write path now exercises mutateIssueBody's fetch → push → verify loop.
 function makeEnv({ initialBody, fieldNodes }) {
-  const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-log-time-test-'));
+  const temp = createRuntimeRootFixture('aitm-log-time-test-');
   const binDir = join(temp, 'bin');
   const callLog = join(temp, 'gh-calls.log');
   const stateBody = join(temp, 'body-state.txt');
@@ -78,6 +83,8 @@ function makeEnv({ initialBody, fieldNodes }) {
     `}\n` +
     `if (args[0] === 'issue' && args[1] === 'edit') { process.exit(0); }\n` +
     `if (args[0] === 'api' && args[1] === 'graphql') {\n` +
+    `  const queryArg=args.find(x=>x.startsWith('query='))||'';\n` +
+    `  if(queryArg.includes('comments(first:100')) {process.stdout.write(JSON.stringify({data:{repository:{nameWithOwner:'owner/repo',issue:{number:999,comments:{totalCount:1,nodes:[{id:'TIMING_FIXTURE',body:COMMENTS}],pageInfo:{hasNextPage:false,endCursor:null}}}}}}));process.exit(0); }\n` +
     `  const input = fs.readFileSync(0, 'utf8');\n` +
     `  if (input.includes('projectItems')) {\n` +
     `    process.stdout.write(JSON.stringify({ data: { repository: { issue: { projectItems: { nodes: [{ id: 'PVTI_FAKE', project: { id: PROJECT_ID } }] } } }, node: { fields: { nodes: FIELD_NODES } } } }));\n` +
@@ -107,6 +114,7 @@ function makeEnv({ initialBody, fieldNodes }) {
   const env = {
     ...process.env,
     PATH: `${binDir}:${process.env.PATH}`,
+    AI_TASK_MANAGER_PROJECT_DIR: temp,
     AITM_GH_TEST_DOUBLE_BIN: binDir,
   };
   return { temp, callLog, stateBody, env };
@@ -121,7 +129,7 @@ function makeEnv({ initialBody, fieldNodes }) {
   const result = spawnSync(process.execPath, [script, '999', '--dry-run'], {
     encoding: 'utf8',
     env,
-    cwd: repoRoot,
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR,
   });
 
   assert.equal(result.status, 0, `dry-run failed\n${result.stderr}`);
@@ -140,7 +148,7 @@ function makeEnv({ initialBody, fieldNodes }) {
   const result = spawnSync(process.execPath, [script, '999'], {
     encoding: 'utf8',
     env,
-    cwd: repoRoot,
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR,
   });
 
   assert.equal(result.status, 0, `live run failed\n${result.stderr}\n${result.stdout}`);
@@ -172,7 +180,7 @@ function makeEnv({ initialBody, fieldNodes }) {
   const result = spawnSync(process.execPath, [script, '999'], {
     encoding: 'utf8',
     env,
-    cwd: repoRoot,
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR,
   });
 
   assert.equal(result.status, 0, `noop run failed\n${result.stderr}\n${result.stdout}`);

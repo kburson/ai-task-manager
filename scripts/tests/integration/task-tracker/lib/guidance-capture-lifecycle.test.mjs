@@ -10,7 +10,7 @@ import {
   captureGuidanceLifecycle,
   measureLifecycleTraffic,
   validateLifecycleTranscript,
-} from '../../../../maintenance/capture-guidance-lifecycle.mjs';
+} from '../../../helpers/capture-guidance-release.mjs';
 import { capturedCommitBytes } from '../../../helpers/captured-commit-bytes.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');

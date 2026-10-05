@@ -1,4 +1,4 @@
-// @story #863 #1307
+// @story #863 #1307 #1872
 /**
  * Bounded async worker pool for the runner (#863).
  *
@@ -27,6 +27,16 @@
 
 import { spawn } from 'node:child_process';
 import os from 'node:os';
+import { PROJECT_ROOT_ALIASES } from './task-tracker/lib/runtime-storage.mjs';
+
+/** Build the runner's environment for one independently rooted test file. */
+export function createTestFileEnvironment(parentEnv) {
+  const env = { ...parentEnv };
+  // The canonical runner is bound to its sandbox, but individual tests own
+  // their controlled fixture roots. Preserve native identity and other context.
+  for (const alias of PROJECT_ROOT_ALIASES) delete env[alias];
+  return env;
+}
 
 /**
  * The bounded concurrency for the unit lane: one worker per core, minus one core

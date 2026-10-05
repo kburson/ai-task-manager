@@ -29,6 +29,7 @@ import { parseTimingRow } from '../../../../../task-tracker/lib/timing-row-reade
 // A fake timing-helper surface. `postTimingEvent` records into `posted`.
 function makeTimingDeps({ posted, readBody = { status: 'found', body: 'LOG' }, buildThrows } = {}) {
   return {
+    flushBoundActorInterval: async () => ({ status: 'not-active' }),
     ghTimingComment: {
       buildRow: (o) => {
         if (buildThrows) throw new Error('buildRow boom');
@@ -116,7 +117,7 @@ test('emitPhasePairRows: forward move emits <prev>:complete then <next>:enter', 
   assert.deepEqual(posted[1].row.__row.phase, { state: 'test', phase: 'enter' });
 });
 
-test('emitPhasePairRows stamps the newly banked primary and full markers on both rows', async () => {
+test('emitPhasePairRows leaves shared lifecycle words neutral instead of borrowing actor cursors', async () => {
   const posted = [];
   await emitPhasePairRows({
     issueArg: '10',
@@ -128,14 +129,16 @@ test('emitPhasePairRows stamps the newly banked primary and full markers on both
     deps: {
       ...makeTimingDeps({ posted }),
       ...phaseEvents({ develop: { complete: true }, test: { enter: true } }),
-      bankTail: () => ({ marker: 123, fullMarker: 234 }),
+      bankTail: () => {
+        throw new Error('legacy bankTail must not own actor words');
+      },
     },
   });
   assert.equal(posted.length, 2);
-  assert.equal(posted[0].row.__row.wordMarker, 123);
-  assert.equal(posted[0].row.__row.fullWordMarker, 234);
-  assert.equal(posted[1].row.__row.wordMarker, 123);
-  assert.equal(posted[1].row.__row.fullWordMarker, 234);
+  assert.equal(posted[0].row.__row.wordMarker, 0);
+  assert.equal(posted[0].row.__row.fullWordMarker, 0);
+  assert.equal(posted[1].row.__row.wordMarker, 0);
+  assert.equal(posted[1].row.__row.fullWordMarker, 0);
 });
 
 test('emitPhasePairRows keeps row-sec trailing when it adds transition identity', async () => {
@@ -164,7 +167,7 @@ test('emitPhasePairRows keeps row-sec trailing when it adds transition identity'
   }
 });
 
-test('emitPhasePairRows renders unavailable full observations without resetting its cursor', async () => {
+test('shared phase facts do not project unavailable actor observations as their own work', async () => {
   const posted = [];
   await emitPhasePairRows({
     issueArg: '10',
@@ -185,10 +188,10 @@ test('emitPhasePairRows renders unavailable full observations without resetting 
     },
   });
   assert.equal(posted.length, 2);
-  assert.equal(posted[0].row.__row.wordMarker, 123);
-  assert.equal(posted[0].row.__row.fullWordMarker, null);
-  assert.equal(posted[1].row.__row.wordMarker, 123);
-  assert.equal(posted[1].row.__row.fullWordMarker, null);
+  assert.equal(posted[0].row.__row.wordMarker, 0);
+  assert.equal(posted[0].row.__row.fullWordMarker, 0);
+  assert.equal(posted[1].row.__row.wordMarker, 0);
+  assert.equal(posted[1].row.__row.fullWordMarker, 0);
 });
 
 test('emitPhasePairRows: move to done emits a single done.complete row', async () => {
@@ -338,6 +341,27 @@ test('emitOutOfBandAudit: no reason short-circuits', async () => {
     },
   });
   assert.equal(ghCalls, 0);
+});
+
+test('out-of-band lifecycle audit never converts another actor gap or cursor into engagement', async () => {
+  const posted = [];
+  const deps = makeTimingDeps({ posted });
+  deps.timingRows.deriveStateMoveDelta = () => ({ activeSec: 900, idleSec: 400 });
+  await emitOutOfBandAudit({
+    issueArg: '10',
+    stateArg: 'review',
+    resolvedFromState: 'develop',
+    outOfBandReason: 'recorded correction',
+    SKIP_NETWORK: false,
+    cfg: { repo: 'o/r' },
+    gh: async () => {},
+    deps,
+  });
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].row.__row.activeSec, 0);
+  assert.equal(posted[0].row.__row.idleSec, 0);
+  assert.equal(posted[0].row.__row.wordMarker, 0);
+  assert.equal(posted[0].row.__row.fullWordMarker, 0);
 });
 
 test('emitOutOfBandAudit: full path posts the audit comment and a timing row', async () => {

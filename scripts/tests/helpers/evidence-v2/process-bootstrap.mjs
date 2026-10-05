@@ -27,6 +27,11 @@ if (process.execArgv.includes(BOOTSTRAP_FILE)) {
   if (!context) throw rehearsalRefusal('context-required');
   const provider = openProvider(context);
   const native = { ...childProcess };
+  // Node propagates this launch permission set into NODE_OPTIONS during imports.
+  // Accept only these immutable original flags, never a caller-selected preload/override.
+  const inheritedPermissionOptions = process.execArgv
+    .slice(0, process.execArgv.indexOf('--import'))
+    .join(' ');
   const deny = () => {
     throw rehearsalRefusal('network-denied');
   };
@@ -56,10 +61,12 @@ if (process.execArgv.includes(BOOTSTRAP_FILE)) {
     if (options.shell || file !== 'git') throw rehearsalRefusal('unsupported-process');
     if (
       options.env &&
-      Object.keys(options.env).some((key) =>
-        /^(?:GH_TOKEN|GITHUB_TOKEN|GIT_DIR|GIT_WORK_TREE|GIT_ALTERNATE_OBJECT_DIRECTORIES|GIT_CONFIG_COUNT|NODE_OPTIONS)$/.test(
-          key
-        )
+      Object.entries(options.env).some(([key, value]) =>
+        key === 'NODE_OPTIONS'
+          ? value !== inheritedPermissionOptions
+          : /^(?:GH_TOKEN|GITHUB_TOKEN|GIT_DIR|GIT_WORK_TREE|GIT_ALTERNATE_OBJECT_DIRECTORIES|GIT_CONFIG_COUNT)$/.test(
+              key
+            )
       )
     )
       throw rehearsalRefusal('process-environment');

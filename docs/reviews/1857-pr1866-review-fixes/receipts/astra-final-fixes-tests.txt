@@ -1,0 +1,70 @@
+Started #1857.
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+Resumed #1857.
+✔ question hooks close only their own actor interval and resume without charging the wait (443.177917ms)
+✔ question reply ambiguity retains the original row and replays before resuming (352.9005ms)
+✔ question marker cannot substitute another event for the frozen resume (456.782375ms)
+✔ question hook respects its own manual pause without creating a resume marker (226.522208ms)
+✔ flush preserves genuine own wall interval and unknown estimate despite another actor tail (601.148917ms)
+✔ first attributed interruption retains observed cursor delta without a fabricated opener (343.551708ms)
+✔ update preserves cumulative actor cursor and unknown total after an unavailable estimate (379.714625ms)
+✔ real start pause and resume retain one actor identity and explicit current boundaries (593.729917ms)
+✔ phase boundary flushes own actor interval and shared lifecycle rows do not duplicate actor work (413.765625ms)
+✔ Test interlock records actual verification engagement from a paused own binding (241.706166ms)
+✔ status distinguishes missing activity observation from zero work (147.162583ms)
+✔ failed Test execution retains both its failure and actual actor work (299.012167ms)
+✔ session tracking initializes a versioned own cursor and refuses corrupt existing authority (228.244625ms)
+✔ failed publication retains original row and cursor, then exact replay precedes new work (558.966583ms)
+✔ publication cannot overwrite a concurrently changed own timing boundary (262.532833ms)
+✔ Review human handoff flushes actual actor work before pausing its own binding (205.05925ms)
+✔ compaction hooks use the same actor journal and never resume a paused binding (693.171541ms)
+✔ session restart records unknown prior work without synthesizing historical active or idle time (405.346458ms)
+✔ actual hook entrypoint refuses a foreign payload actor before mutating timing state (439.912792ms)
+✔ actual idle SessionStart preserves cumulative actor word evidence (528.987417ms)
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+✔ review reproduction: legacy session cursor survives first actor flush (346.422667ms)
+✔ explicit pause after Test handoff is idempotent (336.738333ms)
+✔ explicit pause after Review handoff is idempotent (308.530583ms)
+✔ production Test sandbox admits real Git identity outside artifact roots (158.094125ms)
+✔ upgrade cursor is scoped to the state-owning project, not ambient root (209.170417ms)
+✔ upgrade refuses invalid own cursor and never imports global timing history (204.744875ms)
+Stopped #1857: +0 active min, +0 words. Use "/task resume <N>" to return to it later.
+✔ paused binding does not publish unmatched stop (628.957042ms)
+✔ paused binding does not publish unmatched switch-out:#1861 (296.842917ms)
+✔ paused binding does not publish unmatched switch-out (368.166292ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/private/tmp/1866-astra-final-fixes-head/.scratch/test/aitm-1857-close-wiring-rfFlk7 for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/private/tmp/1866-astra-final-fixes-head/.scratch/test/aitm-1857-close-wiring-dqQTo3 for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/private/tmp/1866-astra-final-fixes-head/.scratch/test/aitm-1857-close-wiring-4rgEp9 for #1857
+[task-tracker] ⛔ Refusing to finalize #1857: close-estimation-delivery-authority:lineage-unavailable. Completion outcome evidence did not converge; local state remains active for retry.
+#1857 closed-issue finalize failed at ensureOutcome: completion outcome evidence did not converge. Local task state was retained for retry.
+✔ #1857 no-command child Close uses posted deliverable and exact accepted Test Review heads (116.076708ms)
+✔ #1857 child outcome callback obtains the existing lineage gate exact census (90.485833ms)
+✔ #1857 skipped child lineage cannot become canonical outcome authority (59.331375ms)
+✔ one actor pause cannot replace another actor start or word cursors (12.746542ms)
+✔ legacy own binding establishes its current interval without inheriting unattributed global history (5.344584ms)
+✔ invalid actor write refuses before mutating binding or prior evidence (5.0495ms)
+✔ corrupt, unsupported and mismatched actor state refuse without global fallback (6.797708ms)
+✔ a genuine new binding supersedes only its own stale paused interval (5.166292ms)
+✔ timing updates preserve genuine same-issue binding generation and original bound time (13.082167ms)
+✔ parses only worktree records from NUL-delimited porcelain (1.0515ms)
+✔ selects exact project-local tokenized sandboxes only when their PID is dead (0.354041ms)
+✔ retains a candidate when the liveness probe cannot prove death (0.10775ms)
+✔ attempts every proven stale registration even when one removal fails (0.217459ms)
+✔ inventory failure is non-fatal and performs no removal (0.135125ms)
+✔ new sandbox namespace selects only registered exact-parent dead owners (0.123ms)
+✔ AC1: two auto-token calls with identical inputs yield different paths (0.743792ms)
+✔ AC2: explicit token is deterministic; distinct tokens never alias (0.121417ms)
+✔ AC3 regression: run B reclaim target never names run A live worktree (0.123875ms)
+ℹ tests 47
+ℹ suites 0
+ℹ pass 47
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8062.073667

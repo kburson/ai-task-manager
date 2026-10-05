@@ -33,21 +33,31 @@ test('explicit dependency projectDir remains the highest-priority test seam', ()
   assert.equal(result, '/fixtures/injected');
 });
 
-test('both environment overrides work and emit durable override diagnostics', () => {
-  for (const variable of ['TASK_TRACKER_PROJECT_DIR', 'AI_TASK_MANAGER_PROJECT_DIR']) {
+test('all environment aliases use validated identity and emit diagnostics', () => {
+  for (const variable of [
+    'TASK_TRACKER_PROJECT_DIR',
+    'AI_TASK_MANAGER_PROJECT_DIR',
+    'CLAUDE_PROJECT_DIR',
+  ]) {
     const logs = [];
+    const override = path.join(ROOT, 'injected-unit-root');
     const result = resolveProjectDir({
       issue: '#1164',
       deps: {
-        env: { [variable]: `/overrides/${variable.toLowerCase()}` },
+        env: { [variable]: override },
+        invokingDir: override,
+        runtimeRootAdapters: {
+          realpath: (value) => value,
+          assertOutsideArtifacts: () => {},
+          readIdentity: (projectRoot) => ({ projectRoot, mainRoot: projectRoot }),
+        },
         logOverride: (message) => logs.push(message),
       },
     });
-    assert.equal(result, `/overrides/${variable.toLowerCase()}`);
+    assert.equal(result, override);
     assert.equal(logs.length, 1);
-    assert.match(logs[0], new RegExp(variable));
-    assert.match(logs[0], /#1164/);
-    assert.match(logs[0], /override/i);
+    assert.ok(logs[0].includes(variable));
+    assert.ok(logs[0].includes('#1164'));
   }
 });
 

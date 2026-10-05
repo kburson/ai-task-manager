@@ -66,19 +66,21 @@ test('the predicate is pure — verdict cannot be re-enabled by any external sta
   assert.equal(isInstalledGuardPath.length, 1);
 });
 
-test('interlock fires ahead of the .tmp carve-out, chore-mode bypass, and state checks', () => {
-  // Source-order contract: in activity-guard.mjs the isInstalledGuardPath()
-  // call must precede the `.tmp` carve-out, the isChoreModeActive bypass, and
-  // the isAllowed state check. If a refactor reorders these, this test fails.
+test('physical artifact resolution and installed interlocks precede allowances', () => {
   const src = readFileSync(GUARD_SRC, 'utf8');
   const idxInterlock = src.indexOf('isInstalledGuardPath(candidate)');
-  const idxTmp = src.indexOf("candidate.startsWith('.tmp/')");
+  const idxPhysical = src.indexOf('artifactPathPolicy(resolveMutationTarget(');
+  const idxArtifactAllow = src.indexOf("if (policies.every((policy) => policy === 'allow'))");
   const idxChore = src.indexOf('isChoreModeActive(projectRoot)');
   const idxAllowed = src.indexOf('isAllowed(state, value)');
-
-  assert.ok(idxInterlock > 0, 'interlock call present');
-  assert.ok(idxTmp > 0 && idxChore > 0 && idxAllowed > 0, 'downstream gates present');
-  assert.ok(idxInterlock < idxTmp, 'interlock precedes .tmp carve-out');
-  assert.ok(idxInterlock < idxChore, 'interlock precedes chore-mode bypass');
-  assert.ok(idxInterlock < idxAllowed, 'interlock precedes state allow-check');
+  assert.ok(
+    idxPhysical > 0 && idxPhysical < idxArtifactAllow,
+    'physical installed-target resolver precedes artifact allowance'
+  );
+  assert.ok(
+    idxInterlock > 0 && idxChore > 0 && idxAllowed > 0,
+    'installed and downstream gates present'
+  );
+  assert.ok(idxInterlock < idxChore, 'installed interlock precedes chore mode');
+  assert.ok(idxInterlock < idxAllowed, 'installed interlock precedes lifecycle allowance');
 });

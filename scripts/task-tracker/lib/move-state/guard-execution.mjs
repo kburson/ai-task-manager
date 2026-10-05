@@ -111,7 +111,7 @@ export async function runGuardExecution(ctx) {
   // Gate 1: dirty-workspace warning on move to review. Non-blocking — move still proceeds.
   if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
     try {
-      const projectDir = getProjectDir();
+      const projectDir = ctx.projectDir ?? getProjectDir();
       const cwd = resolveWorkspaceForIssue({ issueRef: `#${issueArg}`, projectDir });
       const result = await checkDirty({ cwd });
       if (result.dirty) {
@@ -192,7 +192,7 @@ export async function runGuardExecution(ctx) {
     // side-channels its resolved `refinementPlan` onto ctx; that field is
     // consumed today only by promote.mjs's inline pre-flight (which still runs
     // ahead of move-state spawn), so the in-registry assignment is harmless.
-    const projectDir = getProjectDir();
+    const projectDir = ctx.projectDir ?? getProjectDir();
     const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir });
 
     let guardCtx = {
@@ -205,6 +205,7 @@ export async function runGuardExecution(ctx) {
       cfg,
       deps: { ...deps, resolveStoryIntent: deps?.resolveStoryIntent ?? resolveStoryIntentSource },
       projectDir,
+      invokingDir: ctx.invokingDir,
       lifecycleEvidence,
       sessionPolicy:
         ctx.sessionPolicy ||

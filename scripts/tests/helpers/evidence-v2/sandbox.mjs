@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   writeFileSync,
   rmSync,
@@ -14,7 +13,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdtempOutsideRepo } from '../../../task-tracker/lib/scratch-dir.mjs';
 import {
   resolveExecutionContext,
   rehearsalRefusal,
@@ -35,7 +34,9 @@ export function createSandbox({
   const protectedBefore = captureProtectedState({
     paths: sourceSnapshots.map((s) => s.sourceRoot),
   });
-  const root = realpathSync(mkdtempSync(path.join(projectScratchDir('test'), 'evidence-v2-')));
+  // Permission rehearsals must inspect enclosing Git markers without granting
+  // access to production .git. This isolated authority needs no production ancestor.
+  const root = realpathSync(mkdtempOutsideRepo('evidence-v2-'));
   try {
     const manifest = JSON.stringify({ schema: 'aitm.rehearsal-sandbox/v1', runId, root });
     writeFileSync(path.join(root, 'manifest.json'), manifest);
@@ -56,6 +57,8 @@ export function createSandbox({
       GIT_TERMINAL_PROMPT: '0',
       GIT_ALLOW_PROTOCOL: 'file',
       AI_TASK_MANAGER_PROJECT_DIR: sourceRoot,
+      AI_TASK_MANAGER_APP_NAME: 'claude',
+      AI_TASK_MANAGER_SESSION_ID: runId,
     };
     const git = (args) =>
       execFileSync('git', args, {
@@ -129,9 +132,18 @@ export function createSandbox({
         'package.json',
         ...dependencies,
       ].map((name) => `--allow-fs-read=${path.join(toolRoot, name)}`);
+      const ancestorMarkerReads = [];
+      for (let ancestor = path.dirname(root); ; ancestor = path.dirname(ancestor)) {
+        const marker = path.join(ancestor, '.git');
+        if (existsSync(marker)) throw rehearsalRefusal('sandbox-ancestor-repository');
+        // Only absent exact marker paths: never grant an existing Git directory.
+        ancestorMarkerReads.push(`--allow-fs-read=${marker}`);
+        if (path.dirname(ancestor) === ancestor) break;
+      }
       const args = [
         '--permission',
         ...readPaths,
+        ...ancestorMarkerReads,
         `--allow-fs-read=${root}`,
         '--allow-fs-read=/dev/null',
         `--allow-fs-write=${root}`,

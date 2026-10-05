@@ -12,8 +12,14 @@
 // once it's `test` or later. `ac-stamp` gets the mirrored case since it
 // shares the same `assertVerifierStateAllowed` gate.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { after, afterEach, before, test } from 'node:test';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
 import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
@@ -92,7 +98,7 @@ afterEach(() => {
 
 function stateFile(active) {
   const p = path.join(tmpRoot, `state-${Math.abs(hashish(active))}.json`);
-  writeFileSync(p, JSON.stringify({ active, lastActive: active }));
+  saveState({ active, lastActive: active }, p);
   return p;
 }
 function hashish(s) {

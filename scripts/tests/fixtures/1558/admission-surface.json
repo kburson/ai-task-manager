@@ -314,6 +314,14 @@
       "fixtureId": "invalid-tracked-override"
     },
     {
+      "token": "epic-wave",
+      "canonical": "epic-wave",
+      "route": "verbs/epic-wave.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
       "token": "evidence",
       "canonical": "evidence",
       "route": "verbs/evidence.mjs",
@@ -916,6 +924,8 @@
         "node:url",
         "./aitm-registry.mjs",
         "../scripts/task-tracker/lib/action-capture.mjs",
+        "../scripts/task-tracker/lib/runtime-storage.mjs",
+        "../scripts/task-tracker/lib/worktree-binding-guard.mjs",
         "../scripts/lib/self-doc.mjs",
         "../guidance/admission.mjs"
       ],
@@ -1409,8 +1419,10 @@
       "classification": "agent-callable-standalone",
       "command": "value-report",
       "staticImports": [
+        "../task-tracker/lib/graphql-usage/collection.mjs",
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "node:child_process",
+        "node:crypto",
         "node:fs",
         "node:path",
         "node:url",
@@ -1423,7 +1435,8 @@
         "../lib/self-doc.mjs",
         "./lib/attribution-resolver.mjs",
         "./lib/trunk-signals.mjs",
-        "./lib/daily-activity.mjs"
+        "./lib/daily-activity.mjs",
+        "../task-tracker/lib/runtime-storage.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",
@@ -1471,6 +1484,7 @@
         "./run-tests-report.mjs",
         "./gh/lib/with-retry.mjs",
         "./run-tests-lanes.mjs",
+        "./run-tests-shards.mjs",
         "./run-tests-ceiling.mjs",
         "./lib/self-doc.mjs",
         "./run-tests-timing.mjs"
@@ -1511,6 +1525,7 @@
         "./lib/activity-block-reason.mjs",
         "./lib/bound-state.mjs",
         "./lib/chore-mode.mjs",
+        "./lib/artifact-write-policy.mjs",
         "./lib/installed-guard-path.mjs",
         "./lib/apply-patch-targets.mjs"
       ],
@@ -1661,6 +1676,7 @@
         "node:child_process",
         "node:util",
         "node:path",
+        "./lib/runtime-storage.mjs",
         "./lib/commit-trail.mjs",
         "./lib/process-timeouts.mjs",
         "./lib/chore-mode.mjs",
@@ -1793,6 +1809,7 @@
         "node:fs",
         "node:child_process",
         "node:path",
+        "./lib/runtime-storage.mjs",
         "./paths.mjs",
         "./fleet-registry.mjs",
         "./lib/branch-name.mjs",
@@ -1804,6 +1821,41 @@
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/graphql-usage-baseline.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:fs/promises", "node:util", "./lib/graphql-usage/baseline.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Offline read-only baseline qualification companion. No lifecycle authority, enrollment or transport; explicit supplied files only.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/graphql-usage-launch.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:child_process", "./lib/graphql-usage/collection.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/graphql-usage-report.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": [
+        "node:fs/promises",
+        "node:util",
+        "./lib/graphql-usage/report.mjs",
+        "./lib/graphql-usage/report-render.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Offline read-only usage-store companion. No lifecycle authority, enrollment or transport; explicit supplied root only.",
       "fixtureId": null
     },
     {
@@ -2000,6 +2052,7 @@
       "staticImports": [
         "./lib/direct-guidance-admission.mjs",
         "./gh-timing-comment.mjs",
+        "./lib/heal-actor-opener-replays.mjs",
         "./locks.mjs",
         "./paths.mjs",
         "./config.mjs",
@@ -2092,7 +2145,7 @@
         "./gh-timing-comment.mjs",
         "./lib/bind-event.mjs",
         "./word-counter.mjs",
-        "./active-time.mjs",
+        "./lib/actor-hook-timing.mjs",
         "./queue.mjs",
         "./fleet-registry.mjs",
         "./paths.mjs",
@@ -2144,9 +2197,10 @@
         "../paths.mjs",
         "../session-state.mjs",
         "../state.mjs",
-        "../config.mjs",
         "../gh-timing-comment.mjs",
-        "../queue.mjs"
+        "../word-counter.mjs",
+        "../lib/timing-actor.mjs",
+        "../lib/timing-row-reader.mjs"
       ],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
@@ -2233,11 +2287,12 @@
       "command": "merge-back",
       "staticImports": [
         "./lib/direct-guidance-admission.mjs",
-        "node:child_process",
         "node:path",
         "./lib/graph-node-authority.mjs",
         "./lib/resolve-epic-lineage.mjs",
-        "../lib/self-doc.mjs"
+        "../lib/self-doc.mjs",
+        "./lib/merge-back-verification.mjs",
+        "./lib/merge-back-cli.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",
@@ -2350,6 +2405,7 @@
         "./lib/apply-patch-targets.mjs",
         "./lib/mutation-context.mjs",
         "./lib/worktree-binding-guard.mjs",
+        "./lib/artifact-write-policy.mjs",
         "./lib/installed-guard-path.mjs",
         "./lib/workflow-policy/enforcement.mjs"
       ],
@@ -2397,6 +2453,7 @@
       "classification": "internal-library-or-orchestration",
       "command": null,
       "staticImports": [
+        "./lib/runtime-storage.mjs",
         "node:path",
         "node:url",
         "node:child_process",
@@ -2574,6 +2631,8 @@
       "classification": "agent-callable-verb",
       "command": "promote",
       "staticImports": [
+        "../lib/epic-admission-lock.mjs",
+        "../lib/fetch-parent-issue.mjs",
         "../lib/direct-guidance-admission.mjs",
         "node:child_process",
         "node:path",

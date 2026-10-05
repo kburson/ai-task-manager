@@ -1,0 +1,63 @@
+# PR 1866 — independent Astra follow-up after merging PR 1868
+
+## Assessment
+
+No actionable merge-integration findings. The reviewed local-parent Close authority changes and typed refusal contract compose with the preserved PR 1866 actor/runtime fixes. This is bounded acceptance of the merge delta and affected interactions, pending the controller's final aggregate and remote gates. It does not complete or authorize delivery of #1857 C1–C5.
+
+This is a new review turn. `/private/tmp/1866-astra-integration-review.md` and `/private/tmp/1866-astra-integration-source-hashes.json` remain unchanged and describe their earlier candidate only.
+
+## Exact reviewed boundary
+
+- Worktree: `/Users/kpburson/.codex/worktrees/1857-pr1866-review-fixes/ai-task-manager`.
+- Reviewed merge HEAD: `e545522e467e484bd96db3b327fc8ccd0047c086`.
+- PR 1866 pre-merge parent: `01e06747af25895998401698eb06b849028880e1`.
+- Incoming PR 1868/trunk parent: `5b06fe9590d29e186d1b505dd0b2186f6ad8d236`.
+- Merge delta: 12 tracked paths; SHA256 of the full binary Git diff from the pre-merge parent: `d1d076277f1847b7a6af23182e6f5e289b0f6a08cf6ccba575e5abfeba1ee97b`.
+- New hash inventory: `/private/tmp/1866-astra-merge1868-source-hashes.json`.
+- Inventory SHA256: `fee9b7c0584fef0f198909763b99d963a0b2d970227842f1e42d06605764dedb`.
+
+The inventory records 26 merge source/test/incoming-archive paths, one bounded post-merge fixture correction, and five regenerated current-evidence files. Each source/test/incoming-archive file was compared with its exact merge-HEAD Git object. The current evidence was hashed after the guidance agent finished recapture and all seven guidance suites. Current manifest `sourceCommit` is the merge HEAD above; capture SHA256 is `d13f4254a3f069b8ad8b1533e0d766cd320df7fb817d1c4421ba30fc92b0939c`.
+
+## Review turn notes
+
+1. **Authority selection:** Reviewed `action-decision/close.mjs` from graph collection through exact attribution and read-only Close guards. A surviving authoritative parent branch is probed as `refs/heads/<branch>` and propagated as a local-ref authority. A missing ref permits ancestor traversal only for Git's absence exit code; transport/other failures do not authorize fallback. The graph's numeric `parentIssue` now drives traversal for opaque parent branch names, matching `resolveDoneTargetBranch`.
+2. **Exact attribution:** The selected local or remote tip remains the attribution subject. A divergent or absent remote parent does not replace a surviving local parent. Missing objects/shallow or unavailable authority continue to fail closed. A child lacking attribution on the selected target receives `close-delivery-not-attributed` with that target and SHA; it does not become ready or fall through as an unclassified refusal.
+3. **Typed contract:** The new code is registered as blocked for the correct guard and requires the emitted target/SHA arguments. Existing status, authority-unavailable and no-automatic-remediation handling remains intact. The contract and default Close suites exercise the new envelope, including numeric-prefix non-attribution.
+4. **Runtime interaction:** Merge source changes do not alter the actor flush, cursor or timing-state implementations. The actor runtime, PR 1866 regression and adaptive Close/outcome suites were nevertheless rerun against an exact merged snapshot. They still verify own actor attribution, no fabricated missing telemetry, binding/cursor behavior, and lawful forecast-free Close behavior.
+5. **Evidence provenance:** Incoming trunk legitimately changes five paths under `scripts/tests/fixtures/1558`. Each was compared byte-for-byte against `5b06fe9590d29e186d1b505dd0b2186f6ad8d236`; all match. This review did not mistake the earlier pre-merge archive hashes for immutable authority over newer accepted trunk evidence. The versioned current #1857 evidence was recaptured separately against `e545522e...`; it retains the corrected live-and-committed source checks and verified source identity. The dirty-guidance refusal test still passes.
+6. **Read-only behavior:** New local-parent tests verify unchanged refs/status/source bytes and absence of fetch/push/update-ref/checkout mutation during evaluation. Review execution used a separate temporary Git snapshot and synthetic repositories only. No live AITM operation, source edit, real index/ref mutation, lifecycle action or GitHub write was performed by this reviewer.
+
+## Fresh verification
+
+Snapshot: `/private/tmp/1866-astra-merge-head`, created from the exact merge commit. Each reviewer command ran through `/private/tmp/1866-run-clean.py`, stripping inherited actor/runtime identities. Final current evidence was copied into this snapshot for the selected provenance checks.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Local-parent/default/general/local-trunk Close, lineage gate and typed action contract; 6 files | 101/101 tests passed; 0 failed/skipped | `/private/tmp/1866-astra-merge-close.log` |
+| Actor runtime, PR 1866 regressions and adaptive estimation Close; 3 files | 32/32 tests passed; 0 failed/skipped | `/private/tmp/1866-astra-merge-actor-close.log` |
+| Recaptured current evidence, accepted archive rejection for current sources, internally consistent dirty-guidance rejection | 3/3 tests passed; 0 failed/skipped | `/private/tmp/1866-astra-merge-guidance.log` |
+| Guidance agent's seven suites, completed log independently read | 49/49 tests passed; 0 failed/skipped | `/private/tmp/1866-guidance-merged-all.log` |
+
+The first independent batch ran:
+
+```sh
+python3 /private/tmp/1866-run-clean.py node --test \
+  scripts/tests/integration/task-tracker/lib/action-close-local-parent.test.mjs \
+  scripts/tests/integration/task-tracker/lib/action-close-default.test.mjs \
+  scripts/tests/integration/task-tracker/lib/action-close.test.mjs \
+  scripts/tests/integration/task-tracker/lib/action-close-local-trunk.test.mjs \
+  scripts/tests/unit/task-tracker/lib/close-gates-lineage.test.mjs \
+  scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs
+```
+
+The actor batch selected `timing-actor-runtime.test.mjs`, `pr1866-review-regressions.test.mjs`, and `estimation/adaptive-estimation-close.integration.test.mjs`. The guidance batch used `--test-name-pattern='complete installed-byte|accepted final archive|internally consistent dirty'` on `guidance-release.test.mjs`.
+
+## Additional bounded correction
+
+After the merge review, `discover-promote-aged-bucket.test.mjs:25` gained the `s` regex flag so its fixture-only trailing HTML-comment removal handles multiline comments. This does not change production parsing or weaken the test assertions. Read the exact one-character diff and independently reran the corrected fixture: 1/1 passed, 0 skipped, log `/private/tmp/1866-astra-merge-codeql-fixture.log`. Its final working bytes are recorded separately from exact merge-HEAD files in the inventory. No new finding.
+
+## Remaining gates and limits
+
+No whole-suite result is inferred from the focused counts above. Earlier green aggregates and earlier review acceptance remain tied to their recorded pre-merge sources. The controller must retain the fresh merged-candidate unit/integration, lint/format and remote CI receipts before claiming merge readiness. Current evidence publication may produce a later artifact-only commit; verify its exact content against the inventory and retain the merge source identity instead of silently relabeling earlier tests.
+
+No new unresolved finding remains from this merge-focused review. C1–C5 implementation, operational admission/activation and whole-epic delivery remain separate work.

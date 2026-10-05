@@ -72,3 +72,66 @@ test('switch and resume invoke projection after writing active binding state', (
     );
   }
 });
+
+// #1859 workflow admission: outgoing dependents do not govern this issue's readiness.
+for (const incoming of [[], [{ number: 4, repository: { nameWithOwner: 'o/r' } }]]) {
+  test(`readiness reads only incoming blockers with ${incoming.length} incoming relation`, async () => {
+    const commands = [];
+    const connection = (nodes) => ({
+      nodes,
+      totalCount: nodes.length,
+      pageInfo: { hasNextPage: false },
+    });
+    const result = await observeDependencyReadiness({
+      issueNumber: 1859,
+      cfg,
+      deps: {
+        nativeDependencies: {
+          pexec: async (_command, args) => {
+            commands.push(args);
+            return {
+              stdout: JSON.stringify({
+                blockedBy: connection(incoming),
+                blocking: connection([
+                  { number: 132, repository: { nameWithOwner: 'o/peer-review' } },
+                ]),
+              }),
+            };
+          },
+        },
+        fetchAssignmentSnapshot: async () => ({ state: 'develop' }),
+      },
+    });
+    assert.equal(result.status, incoming.length ? 'blocked' : 'ready');
+    assert.deepEqual(
+      result.blockedBy,
+      incoming.map(({ number }) => number)
+    );
+    assert.equal(commands[0].at(-1), 'blockedBy');
+  });
+}
+
+test('incoming cross-repository blockers still refuse rather than lose identity', async () => {
+  await assert.rejects(
+    () =>
+      observeDependencyReadiness({
+        issueNumber: 1859,
+        cfg,
+        deps: {
+          nativeDependencies: {
+            pexec: async () => ({
+              stdout: JSON.stringify({
+                blockedBy: {
+                  nodes: [{ number: 132, repository: { nameWithOwner: 'o/peer-review' } }],
+                  totalCount: 1,
+                  pageInfo: { hasNextPage: false },
+                },
+                blocking: { nodes: [], totalCount: 0, pageInfo: { hasNextPage: false } },
+              }),
+            }),
+          },
+        },
+      }),
+    /native-dependencies:blockedBy-repository/
+  );
+});

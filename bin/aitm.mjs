@@ -36,6 +36,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO_ROOT, TASK_TRACKER_PATH, SCRIPTS, kind, groupedListing } from './aitm-registry.mjs';
 import { prepareActionCaptureEnv } from '../scripts/task-tracker/lib/action-capture.mjs';
+import { withRegisteredForeignWorktreeAdmission } from '../scripts/task-tracker/lib/runtime-storage.mjs';
+import { parseForeignWorktreeOverride } from '../scripts/task-tracker/lib/worktree-binding-guard.mjs';
 import { emitSelfDoc } from '../scripts/lib/self-doc.mjs';
 import { admitGuidance, classifyGuidanceRoute } from '../guidance/admission.mjs';
 
@@ -122,6 +124,11 @@ export function delegate(targetPath, args, options = {}) {
 }
 
 export function run(argv = process.argv.slice(2)) {
+  const admission = kind(argv[0]) === 'verb' ? parseForeignWorktreeOverride(argv) : {};
+  return withRegisteredForeignWorktreeAdmission(admission, () => runInvocation(argv));
+}
+
+function runInvocation(argv) {
   const [name, ...rest] = argv;
   const recovery = classifyGuidanceRoute(argv) === 'recovery';
   if (kind(name)) {
@@ -200,5 +207,8 @@ export function resolvesAsMain(moduleUrl, argvPath, { realpath = realpathSync } 
 const isMain = resolvesAsMain(import.meta.url, process.argv[1]);
 
 if (isMain) {
+  const { prepareUsageEnv } =
+    await import('../scripts/task-tracker/lib/graphql-usage/collection.mjs');
+  Object.assign(process.env, await prepareUsageEnv({ launchRoute: 'aitm-cli' }));
   process.exit(run());
 }

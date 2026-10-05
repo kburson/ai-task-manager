@@ -1,0 +1,15 @@
+✔ recorded runtime context refuses production source before context construction (829.31025ms)
+✔ recorded context rejects storage links, alternates, executable config and remote escape (1137.26075ms)
+✔ cold process denies network, arbitrary subprocesses and production filesystem access (1468.669542ms)
+✔ Git executable options and remote hooks refuse before native execution (1878.476583ms)
+✔ real dispatcher runs in a fresh recorded context and refuses production issue preflight (13181.844ms)
+✔ capture, run, inspect and dispose preserve a retained ineligible report (1747.743916ms)
+✔ recorded-only execution and exact run confirmation fail closed (778.0025ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18682.254041

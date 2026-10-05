@@ -12,9 +12,16 @@
 // end-to-end via a child process. The source-level invariants moved to the
 // preflight helper / dispatcher wiring.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { readFileSync, mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
@@ -145,6 +152,10 @@ function withRealStateFile({ active }) {
       wordsAtEntryStart: 0,
     })
   );
+  saveState(
+    { active, lastActive: active, entryStartTs: '2026-05-17T12:00:00Z', wordsAtEntryStart: 0 },
+    statePath
+  );
   return { dir, statePath };
 }
 
@@ -170,6 +181,10 @@ function makeDispatcherSandbox({ active }) {
       state: 'develop',
     })
   );
+  saveState(
+    { active, lastActive: active, entryStartTs: '2026-05-17T12:00:00Z', wordsAtEntryStart: 0 },
+    path.join(stateDir, 'task-tracker-state.json')
+  );
   return dir;
 }
 
@@ -178,7 +193,7 @@ test('refuses cross-close: exit 7, PROMPT_REQUIRED on stdout (via dispatcher pre
   const env = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox, TT_SKIP_NETWORK: '1' };
   let err;
   try {
-    await pexec('node', [CLI, 'close', '#102'], { env });
+    await pexec('node', unitRuntimeEntrypointArgs(CLI, ['close', '#102']), { env });
     throw new Error('expected non-zero exit');
   } catch (e) {
     err = e;

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #613
+// @story #613 #1872
 // Coverage for verbs/close.mjs. Drives the real `verbClose` against a FLAT ctx
 // of injected fakes + a real temp state file, trapping process.exit so guard
 // exits are observable. `tickLifecycleOnClose` is hit directly via its
@@ -9,15 +9,24 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  loadState,
+  saveState,
+  clearActive,
+  projectDirForState,
+} from '../../../../task-tracker/state.mjs';
+import { currentSessionId } from '../../../../task-tracker/word-counter.mjs';
 import { execFileSync } from 'node:child_process';
 import {
   assertFieldsPersisted,
   verbClose,
   tickLifecycleOnClose,
 } from '../../../../task-tracker/verbs/close.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
 
 // Review-approval marker + populated aitm-fields (engagedTime non-null) so
 // assertFieldsPersisted passes and shouldEmitReviewApprovedRow is true.
@@ -39,15 +48,15 @@ const baseState = (active = '#5') => ({
   lastWordMarker: 0,
 });
 
-function tmpState(state) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-613-'));
-  const statePath = join(dir, 'state.json');
+function tmpState(state, dir = createRuntimeRootFixture('aitm-613-')) {
+  const statePath = join(dir, '.tmp', 'aitm', 'state', 'state.json');
+  mkdirSync(dirname(statePath), { recursive: true });
   writeFileSync(statePath, JSON.stringify(state));
   return { statePath, dir };
 }
 
 function makeDirtyRepo() {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-613-dirty-'));
+  const dir = createRuntimeRootFixture('aitm-613-dirty-');
   execFileSync('git', ['init', '-q'], { cwd: dir });
   execFileSync('git', ['config', 'user.email', 't@t.t'], { cwd: dir });
   execFileSync('git', ['config', 'user.name', 't'], { cwd: dir });
@@ -122,53 +131,58 @@ function makeCtx(statePath, dir, over = {}) {
 // Drive verbClose with managed state/env/cleanup; trap process.exit + capture
 // console. Dirty tests need the check ON (env unset); others skip it so the
 // real (possibly dirty) worktree never trips the guard.
+const setEnv = (key, value) =>
+  value === undefined ? delete process.env[key] : (process.env[key] = value);
 async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
-  const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
-  const prevCI = process.env.CI;
-  const prevProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
-  const setEnv = (k, v) => (v === undefined ? delete process.env[k] : (process.env[k] = v));
-  setEnv('TT_SKIP_DIRTY_CHECK', dirty ? undefined : '1');
-  setEnv('CI', ci);
-  const { statePath, dir } = tmpState(state);
-  setEnv('AI_TASK_MANAGER_PROJECT_DIR', dir);
-  const ctx = makeCtx(statePath, dir, over);
-  let repo;
-  if (dirty) ctx.projectDir = repo = makeDirtyRepo();
+  const previousCwd = process.cwd();
+  const savedEnv = Object.fromEntries(
+    ['TT_SKIP_DIRTY_CHECK', 'CI', 'AI_TASK_MANAGER_PROJECT_DIR', 'AI_TASK_MANAGER_SESSION_ID'].map(
+      (key) => [key, process.env[key]]
+    )
+  );
   const real = { exit: process.exit, log: console.log, err: console.error, warn: console.warn };
-  let exitCode = null;
-  const stdout = [];
-  const stderr = [];
-  process.exit = (code) => {
-    exitCode = code ?? 0;
-    throw new Error(`__exit_${exitCode}__`);
-  };
-  console.log = (...a) => stdout.push(a.join(' '));
-  console.error = console.warn = (...a) => stderr.push(a.join(' '));
-  let thrown = null;
-  let finalState = null;
+  let dir,
+    statePath,
+    exitCode = null,
+    thrown = null,
+    finalState = null;
+  const stdout = [],
+    stderr = [];
   try {
+    dir = dirty ? makeDirtyRepo() : createRuntimeRootFixture('aitm-613-');
+    ({ statePath } = tmpState(state, dir));
+    assert.equal(projectDirForState(statePath), dir);
+    process.chdir(dir);
+    setEnv('TT_SKIP_DIRTY_CHECK', dirty ? undefined : '1');
+    setEnv('CI', ci);
+    setEnv('AI_TASK_MANAGER_PROJECT_DIR', dir);
+    // This isolated fixture supplies its actor instead of borrowing a host session.
+    setEnv('AI_TASK_MANAGER_SESSION_ID', 'coverage-close-fixture');
+    saveState(state, statePath);
+    const ctx = makeCtx(statePath, dir, over);
+    process.exit = (code) => {
+      exitCode = code ?? 0;
+      throw new Error('__exit_' + exitCode + '__');
+    };
+    console.log = (...args) => stdout.push(args.join(' '));
+    console.error = console.warn = (...args) => stderr.push(args.join(' '));
     await verbClose(ctx);
   } catch (err) {
-    if (!/__exit_\d+__/.test(err.message)) thrown = err;
+    if (!new RegExp('__exit_[0-9]+__').test(err.message)) thrown = err;
   } finally {
-    finalState = JSON.parse(readFileSync(statePath, 'utf8'));
-    process.exit = real.exit;
-    console.log = real.log;
-    console.error = real.err;
-    console.warn = real.warn;
-    rmSync(dir, { recursive: true, force: true });
-    if (repo) rmSync(repo, { recursive: true, force: true });
-    setEnv('TT_SKIP_DIRTY_CHECK', prevSkip);
-    setEnv('CI', prevCI);
-    setEnv('AI_TASK_MANAGER_PROJECT_DIR', prevProjectDir);
+    try {
+      if (statePath) finalState = JSON.parse(readFileSync(statePath, 'utf8'));
+    } finally {
+      process.exit = real.exit;
+      console.log = real.log;
+      console.error = real.err;
+      console.warn = real.warn;
+      process.chdir(previousCwd);
+      for (const [key, value] of Object.entries(savedEnv)) setEnv(key, value);
+      if (dir) rmSync(dir, { recursive: true, force: true });
+    }
   }
-  return {
-    exitCode,
-    stdout: stdout.join('\n'),
-    stderr: stderr.join('\n'),
-    thrown,
-    finalState,
-  };
+  return { exitCode, stdout: stdout.join('\n'), stderr: stderr.join('\n'), thrown, finalState };
 }
 
 const exitOf = (r) => r.exitCode ?? process.exitCode;
@@ -682,6 +696,7 @@ test('cascade: queued terminal timing leaves child in Review and retains evidenc
 test('cascade: each child outcome uses its own resolved worktree', async () => {
   const calls = [];
   const r = await run({
+    state: { ...baseState(), lastWordMarker: 98765, lastFullWordMarker: 123456 },
     over: {
       SKIP_NETWORK: false,
       rest: ['#5', '--force'],
@@ -689,8 +704,24 @@ test('cascade: each child outcome uses its own resolved worktree', async () => {
       getIssueBoardState: async () => 'review',
       fetchSubIssues: async () => ['101'],
       resolveIssueWorkspace: ({ issueRef }) => `/dedicated/${issueRef.replace('#', '')}`,
-      createEstimationOutcomeWriter: ({ projectDir }) => ({
+      safePostTiming: async (target, row) => {
+        if (target === '#101') {
+          const parsed = parseTimingRow(row);
+          assert.equal(parsed.wordMarker, '0');
+          assert.equal(parsed.fullWordMarker, '0');
+        }
+        return { ok: true };
+      },
+      createEstimationOutcomeWriter: ({
+        projectDir,
+        resolveVerificationSha,
+        resolveDeliveryAuthority,
+      }) => ({
         ensure: async ({ issueNumber }) => {
+          if (Number(issueNumber) === 101) {
+            assert.equal(typeof resolveVerificationSha, 'function');
+            assert.equal(typeof resolveDeliveryAuthority, 'function');
+          }
           calls.push(`outcome ${issueNumber} ${projectDir}`);
           return { status: 'written' };
         },
@@ -771,3 +802,48 @@ test('tickLifecycleOnClose: mutate throws → best-effort swallow', async () => 
 });
 
 console.log('coverage-close.test.mjs: defined');
+
+test('nested fixture state never reads or clears its isolated parent session', () => {
+  const outer = mkdtempOutsideRepo('aitm-1857-parent-');
+  const child = join(outer, '.ai-task-manager', 'runtime', 'test-fixtures', 'child');
+  const priorCwd = process.cwd(),
+    priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR,
+    priorSession = process.env.AI_TASK_MANAGER_SESSION_ID;
+  try {
+    process.env.AI_TASK_MANAGER_SESSION_ID = 'coverage-close-parent-fixture';
+    mkdirSync(child, { recursive: true });
+    execFileSync('git', ['init', '-q', outer]);
+    execFileSync('git', ['init', '-q', child]);
+    const sentinel = join(
+      outer,
+      '.tmp',
+      'aitm',
+      'sessions',
+      currentSessionId(),
+      'active-task.json'
+    );
+    mkdirSync(dirname(sentinel), { recursive: true });
+    const bytes = JSON.stringify({
+      issue: '#9001',
+      entryStartTs: '2026-01-01T00:00:00.000Z',
+      wordsAtStart: 17,
+    });
+    writeFileSync(sentinel, bytes);
+    const { statePath } = tmpState({ active: null }, child);
+    assert.equal(
+      projectDirForState(statePath),
+      child,
+      'fixture state must select its own exact root before any state read/write'
+    );
+    process.chdir(child);
+    process.env.AI_TASK_MANAGER_PROJECT_DIR = child;
+    assert.equal(loadState(statePath).active, null);
+    clearActive(statePath);
+    assert.equal(readFileSync(sentinel, 'utf8'), bytes);
+  } finally {
+    process.chdir(priorCwd);
+    setEnv('AI_TASK_MANAGER_PROJECT_DIR', priorRoot);
+    setEnv('AI_TASK_MANAGER_SESSION_ID', priorSession);
+    rmSync(outer, { recursive: true, force: true });
+  }
+});

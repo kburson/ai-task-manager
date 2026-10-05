@@ -181,6 +181,14 @@ function makeShim(sandbox, { gitOutputs = {}, ghBehavior = 'success' } = {}) {
     gitShim,
     `#!/usr/bin/env node
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
+// Root identity must observe this real fixture; only commit/trail calls are mocked.
+if (process.argv[2] === '-C' && ['rev-parse', 'worktree'].includes(process.argv[4])) {
+  const result = spawnSync('git', process.argv.slice(2), {
+    env: { ...process.env, PATH: ${JSON.stringify(process.env.PATH)} }, stdio: 'inherit',
+  });
+  process.exit(result.status ?? 1);
+}
 const args = process.argv.slice(2).join(' ');
 fs.appendFileSync(${JSON.stringify(logPath)}, 'git ' + args + '\\n');
 const outputs = ${JSON.stringify(gitOutputs)};

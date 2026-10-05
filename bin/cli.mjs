@@ -1788,6 +1788,7 @@ function cmdRepair(args) {
   banner('Repairing task-tracker config', `target: ${targetDir}`);
   try {
     execFileSync('node', [repairScript], {
+      cwd: targetDir,
       stdio: 'inherit',
       env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: targetDir },
     });
@@ -2014,6 +2015,12 @@ export const PACKAGE_COMMANDS = new Set([
 const packageSubcommandHelp =
   wantsHelp(rest) ||
   (command === 'configure' && rest[0] === 'preferences' && wantsHelp(rest.slice(1)));
+
+if (invokedDirectly) {
+  const { prepareUsageEnv } =
+    await import('../scripts/task-tracker/lib/graphql-usage/collection.mjs');
+  Object.assign(process.env, await prepareUsageEnv({ launchRoute: 'legacy-cli-shell' }));
+}
 
 const guidanceAdmission = invokedDirectly ? admitGuidance({ argv: [command, ...rest] }) : null;
 if (invokedDirectly && !guidanceAdmission.admitted) {

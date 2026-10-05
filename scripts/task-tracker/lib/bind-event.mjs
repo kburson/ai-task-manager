@@ -10,6 +10,15 @@
 
 import { describeTimingEvent } from './timing-events/index.mjs';
 import { isTimingRowTimestamp, parseTimingRow, timingTimestampToMs } from './timing-row-reader.mjs';
+import { assertTimingActorKey } from './timing-actor.mjs';
+
+export function timingBodyForActor(body, actorKey) {
+  assertTimingActorKey(actorKey);
+  return String(body ?? '')
+    .split(String.fromCharCode(10))
+    .filter((line) => parseTimingRow(line)?.actorKey === actorKey)
+    .join(String.fromCharCode(10));
+}
 //
 // The canonical first-row slug is `start` — the same slug `verbSwitch` emits
 // for a newcomer and the only slug `firstStartTimestamp` recognizes. A genuine
@@ -77,11 +86,12 @@ export function classifyEvent(slug) {
 //   { kind: 'stop' }
 //   { kind: 'idle' }
 // or null when no interruption is currently open.
-export function lastOpenInterruption(body) {
+export function lastOpenInterruption(body, { actorKey } = {}) {
   if (!body) return null;
   let open = null;
   for (const line of String(body).split('\n')) {
     const slug = rowEventSlug(line);
+    if (actorKey !== undefined && parseTimingRow(line)?.actorKey !== actorKey) continue;
     if (slug == null) continue;
     const c = classifyEvent(slug);
     if (!c) continue;
@@ -160,6 +170,14 @@ export function detectUnmarkedDepartureGap(
   { activityTimestamps = [] } = {}
 ) {
   if (!body) return null;
+  // A missing actor boundary is unknown history, never permission to invent
+  // a departure timestamp from an inactivity heuristic.
+  if (
+    String(body)
+      .split(String.fromCharCode(10))
+      .some((line) => parseTimingRow(line)?.actorKey)
+  )
+    return null;
   if (lastOpenInterruption(body)) return null;
   const last = lastDataRow(body);
   if (!last) return null;
@@ -205,7 +223,9 @@ export function shouldSuppressActiveBindEvent({
   paused = false,
   nowTs = null,
   proposedEvent = null,
+  actorKey,
 } = {}) {
+  if (actorKey !== undefined) timingBody = timingBodyForActor(timingBody, actorKey);
   if (readStatus === 'error') return false;
   if (!timingCommentHasRows(timingBody)) return false;
   if (lastOpenInterruption(timingBody)) return false;
@@ -228,7 +248,8 @@ export function shouldSuppressActiveBindEvent({
 // is a violation only when the body carries NO open interruption to pair
 // against AND no prior `start` row (the benign root opener). Returns
 // `{ ok: true }` or `{ ok: false, reason }`. Non-re-engagement events always ok.
-export function assertPairedReengagement(body, proposedEvent) {
+export function assertPairedReengagement(body, proposedEvent, { actorKey } = {}) {
+  if (actorKey !== undefined) body = timingBodyForActor(body, actorKey);
   const slug = String(proposedEvent ?? '').toLowerCase();
   const isReengage =
     slug === 'resume' ||
@@ -268,7 +289,12 @@ export function resolveBindEvent({
   paused = false,
   timingBody = null,
   readStatus = null,
+  actorKey,
 } = {}) {
+  if (actorKey !== undefined) {
+    timingBody = timingBodyForActor(timingBody, actorKey);
+    hasTimingHistory = timingCommentHasRows(timingBody);
+  }
   // Unreadable comment → fail closed to the paired closer; never a 2nd `start`.
   if (readStatus === 'error') return 'resumed';
 

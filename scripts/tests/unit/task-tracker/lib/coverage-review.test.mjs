@@ -9,6 +9,11 @@
 // exception (validateBody-refusal branch's un-injected postTimingEvent) is
 // neutralized with an empty PATH so it ENOENTs into review's best-effort catch.
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
@@ -16,6 +21,10 @@ import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { buildPlanApprovalAuditComment } from '../../../../task-tracker/lib/plan-approval-audit.mjs';
+import '../../../../task-tracker/lib/guard-bootstrap.mjs';
+import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
+import { formatIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
+import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { verbReview, buildDeferredReviewRow } from '../../../../task-tracker/verbs/review.mjs';
 
 function tmpState(state) {
@@ -372,25 +381,53 @@ test('epic child not in review → exit 3', async () => {
 test('completeness guard refusal → exit 4', async () => {
   const { statePath, dir } = tmpState(baseState());
   try {
-    const { ctx } = makeCtx({
-      statePath,
-      rawBody: CLEAN_BODY,
-      scanBody: CLEAN_BODY,
-      guardSeq: [
-        { refusals: [] },
-        {
-          refusals: [
-            {
-              id: 'test-exit-pre-close-completeness',
-              blockers: [
-                'test-to-review-incomplete: - [ ] Foo (the close gate enforces the same set)',
-              ],
-            },
-          ],
+    let body = CLEAN_BODY.replaceAll('- [ ]', '- [x]').replace(
+      'Exercise the review success path.',
+      '- [ ] Foo'
+    );
+    body += `\n${formatIssueFieldDb({ size: 'S' })}\n`;
+    for (const stage of ['backlog', 'refine', 'plan', 'develop', 'test']) {
+      body = stampEntryMarker(body, stage, '2026-06-19T00:00:00.000Z');
+    }
+    const { ctx, calls } = makeCtx({ statePath, rawBody: body, scanBody: body });
+    let decision;
+    let mutationsBeforeDecision;
+    // The consumer now uses the normalization decision directly. Obtain that
+    // decision from the full real registry rather than an obsolete second-call
+    // sequence or a partial handwritten refusal envelope.
+    ctx.normalizationEvaluate = async ({ projection }) => {
+      mutationsBeforeDecision = calls.mutate;
+      decision = await runGuards('test', 'review', {
+        issueNumber: 777,
+        cfg: ctx.cfg,
+        repo: ctx.cfg.repo,
+        body: projection.body,
+        fromState: 'test',
+        toState: 'review',
+        projectDir: dir,
+        invokingDir: dir,
+        deps: {
+          observeDependencyReadiness: async () => ({ status: 'ready', unfinished: [] }),
+          reconcileDependencyDisposition: async () => {},
+          fetchParentIssue: async () => null,
+          resolveDocsOnlyLaneSkipProof: async () => false,
         },
-      ],
-    });
-    assert.equal(await runExit(ctx), 4);
+      });
+      return decision;
+    };
+    const result = await runExit(ctx, { captureStderr: true });
+    assert.equal(result.code, 4);
+    assert.equal(decision.status, 'blocked');
+    assert.deepEqual(
+      decision.refusals.map(({ code, args }) => ({ code, label: args.label })),
+      [{ code: 'test-scope-incomplete', label: '- [ ] Foo' }],
+      JSON.stringify(decision)
+    );
+    assert.match(result.stderr, /- \[ \] Foo/);
+    // The pre-existing command evidence audit runs before normalization. No
+    // further body mutation or transition may follow the blocked decision.
+    assert.equal(calls.mutate, mutationsBeforeDecision);
+    assert.deepEqual(calls.move, []);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -1,0 +1,238 @@
+diff --git a/.gitignore b/.gitignore
+index 60120fda1..917a0a734 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -56,3 +56,6 @@ tmp/
+ 
+ # #1857 genuine Git test fixtures must be outside volatile artifact roots.
+ /.ai-task-manager/runtime/test-fixtures/
++
++# #1857 registered verification worktrees own runtime authority, not artifacts.
++/.ai-task-manager/runtime/test-sandboxes/
+diff --git a/scripts/task-tracker/lib/test-sandbox-reaper.mjs b/scripts/task-tracker/lib/test-sandbox-reaper.mjs
+index dd0472616..001991337 100644
+--- a/scripts/task-tracker/lib/test-sandbox-reaper.mjs
++++ b/scripts/task-tracker/lib/test-sandbox-reaper.mjs
+@@ -10,6 +10,13 @@ import { isProcessAlive } from '../issue-mutator-lock.mjs';
+ const pexec = promisify(execFile);
+ const TOKENIZED_SANDBOX_RE = /^\.task-test-([1-9]\d*)-([0-9a-f]{8})-([1-9]\d*)-([0-9a-f]{8})$/;
+ 
++// #1857 — verification worktrees need Git authority, so they cannot live in
++// artifact scratch. Keep this path shared by creation and registered cleanup.
++export function testSandboxDirectory(projectDir) {
++  if (!projectDir) throw new TypeError('test-sandbox: projectDir is required');
++  return path.join(path.resolve(projectDir), '.ai-task-manager', 'runtime', 'test-sandboxes');
++}
++
+ export function parseRegisteredWorktreePaths(porcelain) {
+   return String(porcelain || '')
+     .split('\0')
+@@ -23,12 +30,15 @@ export function selectStaleTestSandboxPaths({
+   isPidAlive = isProcessAlive,
+ } = {}) {
+   if (!projectDir) throw new TypeError('test-sandbox-reaper: projectDir is required');
+-  const expectedParent = path.join(path.resolve(projectDir), '.tmp');
++  const expectedParents = new Set([
++    testSandboxDirectory(projectDir),
++    path.join(path.resolve(projectDir), '.tmp'),
++  ]);
+   const selected = [];
+ 
+   for (const candidate of worktreePaths) {
+     const resolved = path.resolve(String(candidate || ''));
+-    if (path.dirname(resolved) !== expectedParent) continue;
++    if (!expectedParents.has(path.dirname(resolved))) continue;
+     const match = path.basename(resolved).match(TOKENIZED_SANDBOX_RE);
+     if (!match) continue;
+     const pid = Number(match[3]);
+diff --git a/scripts/task-tracker/runtime.mjs b/scripts/task-tracker/runtime.mjs
+index 3258c663e..54bb1e397 100644
+--- a/scripts/task-tracker/runtime.mjs
++++ b/scripts/task-tracker/runtime.mjs
+@@ -528,6 +528,23 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
+     if (opts.recoverOnly) return { status: 'reconciled' };
+     let cursorBefore = null;
+     const durableBefore = opts.computeOnly ? state : loadState(statePath);
++    // #1857 — Test/Review may retain a binding after closing its interval.
++    // Repeated departure (pause, stop, switch) must not publish an unmatched
++    // actor end. Reconcile pending publication above before treating it as idle.
++    if (!state.entryStartTs && isDepartureEvent(effectiveEvent)) {
++      return {
++        row: null,
++        post: { ok: true, skipped: true },
++        ts,
++        deltaMin: 0,
++        idleMin: 0,
++        deltaWallMin: 0,
++        deltaWords: 0,
++        wordMarker: state.lastWordMarker ?? 0,
++        lastWordMarker: state.lastWordMarker ?? 0,
++        lastFullWordMarker: state.lastFullWordMarker ?? 0,
++      };
++    }
+     const previous = {
+       entryStartTs: durableBefore.entryStartTs ?? null,
+       lastWordMarker: durableBefore.lastWordMarker ?? 0,
+diff --git a/scripts/task-tracker/state.mjs b/scripts/task-tracker/state.mjs
+index 2f9595443..dcba00532 100644
+--- a/scripts/task-tracker/state.mjs
++++ b/scripts/task-tracker/state.mjs
+@@ -255,6 +255,15 @@ export function loadState(statePath) {
+   const projDir = projectDirForState(statePath);
+   const ownTiming = readActorTimingState({ provider: aiAppName(), sid }, projDir);
+   if (ownTiming) Object.assign(base, migrateLegacyFields(ownTiming));
++  else {
++    // Upgrade only this actor's validated cumulative cursor. The shared legacy
++    // ledger cannot attribute another session's history to this actor.
++    const cursor = loadMarker(markerPathFor(sid, projDir), {
++      identity: { provider: aiAppName(), sid },
++    });
++    base.lastWordMarker = cursor.words;
++    base.lastFullWordMarker = cursor.wordsFull;
++  }
+   const active = getActiveTask(sid, projDir);
+   if (active && typeof active === 'object') {
+     if (active.issue != null) {
+diff --git a/scripts/task-tracker/verbs/test.mjs b/scripts/task-tracker/verbs/test.mjs
+index 013ae2efe..abe744d53 100644
+--- a/scripts/task-tracker/verbs/test.mjs
++++ b/scripts/task-tracker/verbs/test.mjs
+@@ -4,7 +4,7 @@
+ // On invocation:
+ //   1. Resolves the target issue (from rest args or active binding).
+ //   2. Parses `## Verification Commands` from the issue body.
+-//   3. Stages a fresh git worktree at `tmp/.task-test-<N>-<sha8>-<token>/` from
++//   3. Stages a fresh git worktree at `.ai-task-manager/runtime/test-sandboxes/.task-test-<N>-<sha8>-<token>/` from
+ //      HEAD (the per-run `<token>` keeps concurrent runs from colliding — #563).
+ //   4. Runs `npm ci --no-audit --no-fund` inside the worktree.
+ //   5. Executes each VC via execFile (allowlist-validated), capturing exit
+@@ -23,7 +23,7 @@ import path from 'node:path';
+ import { randomBytes } from 'node:crypto';
+ 
+ import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
+-import { projectTmpDir } from '../paths.mjs';
++import { testSandboxDirectory } from '../lib/test-sandbox-reaper.mjs';
+ import {
+   isPolicyShapeVerificationRejection as isPolicyShapeRejection,
+   validateVerificationCommand,
+@@ -142,7 +142,10 @@ function shortSha(sha) {
+ // stays easy to grep. Pass an explicit `token` for deterministic cleanup/test paths.
+ export function sandboxWorktreePath({ projectDir, issueNum, sha, token } = {}) {
+   const tok = token || `${process.pid}-${randomBytes(4).toString('hex')}`;
+-  return path.join(projectTmpDir(projectDir), `.task-test-${issueNum}-${shortSha(sha)}-${tok}`);
++  return path.join(
++    testSandboxDirectory(projectDir),
++    `.task-test-${issueNum}-${shortSha(sha)}-${tok}`
++  );
+ }
+ 
+ export function buildPassedMessage(issueNumber, target) {
+diff --git a/scripts/task-tracker/word-counter.mjs b/scripts/task-tracker/word-counter.mjs
+index 0813caeb2..9fd2cf2a7 100644
+--- a/scripts/task-tracker/word-counter.mjs
++++ b/scripts/task-tracker/word-counter.mjs
+@@ -85,8 +85,13 @@ export function jsonlPath(sid) {
+   return flat;
+ }
+ 
+-export function markerPathFor(sid) {
+-  return path.join(markerDir(), `${sid}.json`);
++export function markerPathFor(sid, owningRoot = projectDir()) {
++  return path.join(
++    owningRoot,
++    getProvider(aiAppName()).stateDir,
++    'session-tracking',
++    `${sid}.json`
++  );
+ }
+ 
+ export function ensureSessionTracking(sid) {
+diff --git a/scripts/tests/helpers/close-convergence-wiring-helpers.mjs b/scripts/tests/helpers/close-convergence-wiring-helpers.mjs
+index 81f307b52..6270105c2 100644
+--- a/scripts/tests/helpers/close-convergence-wiring-helpers.mjs
++++ b/scripts/tests/helpers/close-convergence-wiring-helpers.mjs
+@@ -4,6 +4,7 @@
+ // audits, which only scan `*.test.mjs`; see lib/discover-test-files.mjs).
+ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+ import { join } from 'node:path';
++import { saveState } from '../../task-tracker/state.mjs';
+ import { withUnitRuntimeRoot } from './unit-runtime-root.mjs';
+ 
+ import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
+@@ -249,9 +250,17 @@ export async function runClose({
+   const previousDirty = process.env.TT_SKIP_DIRTY_CHECK;
+   const previousProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+   const previousExitCode = process.exitCode;
++  const actorKeys = ['AI_TASK_MANAGER_SESSION_ID', 'AI_TASK_MANAGER_APP_NAME'];
++  const previousActor = Object.fromEntries(actorKeys.map((key) => [key, process.env[key]]));
+   let result;
+   try {
+     process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
++    process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-close-wiring';
++    process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
++    await withUnitRuntimeRoot(() => saveState(initialState, statePath), { projectRoot: dir });
++    // Seed own actor authority without changing the compatibility fixture bytes:
++    // refusal tests compare this exact initial snapshot for absence of writes.
++    writeFileSync(statePath, JSON.stringify(initialState));
+     if (gateReviewToDone !== undefined) {
+       const configDir = join(dir, '.ai-task-manager');
+       mkdirSync(configDir, { recursive: true });
+@@ -447,6 +456,10 @@ export async function runClose({
+     else process.env.TT_SKIP_DIRTY_CHECK = previousDirty;
+     if (previousProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+     else process.env.AI_TASK_MANAGER_PROJECT_DIR = previousProjectDir;
++    for (const [key, value] of Object.entries(previousActor)) {
++      if (value === undefined) delete process.env[key];
++      else process.env[key] = value;
++    }
+     process.exitCode = previousExitCode;
+     captureFinalState?.(readFileSync(statePath, 'utf8'));
+     rmSync(dir, { recursive: true, force: true });
+diff --git a/scripts/tests/unit/task-tracker/lib/test-sandbox-reaper.test.mjs b/scripts/tests/unit/task-tracker/lib/test-sandbox-reaper.test.mjs
+index cd6d08b92..e03d6cdbe 100644
+--- a/scripts/tests/unit/task-tracker/lib/test-sandbox-reaper.test.mjs
++++ b/scripts/tests/unit/task-tracker/lib/test-sandbox-reaper.test.mjs
+@@ -9,6 +9,7 @@ import {
+   parseRegisteredWorktreePaths,
+   reapStaleTestSandboxes,
+   selectStaleTestSandboxPaths,
++  testSandboxDirectory,
+ } from '../../../../task-tracker/lib/test-sandbox-reaper.mjs';
+ 
+ const projectDir = path.resolve('/repo');
+@@ -93,3 +94,19 @@ test('inventory failure is non-fatal and performs no removal', async () => {
+   assert.deepEqual(result, { candidates: [], attempted: [] });
+   assert.equal(removals, 0);
+ });
++
++test('new sandbox namespace selects only registered exact-parent dead owners', () => {
++  const parent = testSandboxDirectory(projectDir);
++  const dead = path.join(parent, '.task-test-1857-deadbeef-41001-a1b2c3d4');
++  const liveNew = path.join(parent, '.task-test-1857-deadbeef-41003-a1b2c3d4');
++  const foreign = path.join(testSandboxDirectory('/other'), path.basename(dead));
++  const nested = path.join(parent, 'nested', path.basename(dead));
++  assert.deepEqual(
++    selectStaleTestSandboxPaths({
++      projectDir,
++      worktreePaths: [dead, liveNew, foreign, nested],
++      isPidAlive: (pid) => pid === 41003,
++    }),
++    [dead]
++  );
++});
+diff --git a/scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs b/scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs
+index aa8691998..3fa8157dd 100644
+--- a/scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs
++++ b/scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs
+@@ -34,7 +34,10 @@ test('AC1: two auto-token calls with identical inputs yield different paths', ()
+   const b = sandboxWorktreePath({ projectDir, issueNum, sha });
+   assert.notEqual(a, b, 'concurrent runs must not alias the same worktree path');
+   assert.equal(path.dirname(a), path.dirname(b), 'both live under the same tmp dir');
+-  assert.equal(path.dirname(a), path.join(projectDir, '.scratch'));
++  assert.equal(
++    path.dirname(a),
++    path.join(projectDir, '.ai-task-manager', 'runtime', 'test-sandboxes')
++  );
+   assert.ok(path.basename(a).startsWith(prefix), `a keeps the deterministic prefix: ${a}`);
+   assert.ok(path.basename(b).startsWith(prefix), `b keeps the deterministic prefix: ${b}`);
+ });

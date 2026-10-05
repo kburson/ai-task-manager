@@ -4,12 +4,13 @@
 // the CLI `verbPromote` via a process.exit/stdout trap (one prod change:
 // `verbPromote(rest, cfg, deps = {})` forwards `deps` so every arm runs offline).
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
 import '../../../fixtures/offline-gh-auto.mjs';
 import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { runPromote, verbPromote } from '../../../../task-tracker/verbs/promote.mjs';
+import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 // Isolate the verb's withIssueLock dir from the live project tree.
 process.env.AI_TASK_MANAGER_PROJECT_DIR = mkdtempSync(join(projectScratchDir('test'), 'promote-'));
@@ -29,6 +30,7 @@ function makeDeps({
   return {
     calls,
     deps: {
+      fetchParentIssue: async () => null,
       pexec: async (bin, args) => {
         if (bin === 'git' && args[0] === 'rev-parse') return { stdout: `${'a'.repeat(40)}\n` };
         if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view') {
@@ -267,10 +269,15 @@ test('runPromote: develop→test refused when CODE_COMPLETE gate blocks', async 
 // state's action) and the human was then asked to approve an agent-unreviewed
 // story. Delegating to `review` runs the action on arrival.
 test('runPromote: test→review delegates to /task review', async () => {
-  const body = bodyWithState('test') + DOD_MARKER + '\n## Acceptance Criteria\n- [x] First AC\n';
+  let body = bodyWithState('test') + DOD_MARKER + '\n## Acceptance Criteria\n- [x] First AC\n';
+  // Full normalization decisions preserve the real contiguity refusal; a
+  // successful Test fixture must actually carry its prior entry history.
+  for (const stage of ['backlog', 'refine', 'plan', 'develop', 'test']) {
+    body = stampEntryMarker(body, stage, '2026-05-10T00:00:00.000Z');
+  }
   const { deps, calls } = makeDeps({ body, live: 'test', liveAfter: 'review' });
   const r = await runPromote({ issueNumber: 2572, cfg, deps });
-  assert.equal(r.status, 'promoted');
+  assert.equal(r.status, 'promoted', JSON.stringify(r));
   assert.equal(r.to, 'review');
   assert.equal(r.via, 'alias:review');
   assert.deepEqual(calls.spawns, [{ verb: 'review', issueNumber: 2572 }]);

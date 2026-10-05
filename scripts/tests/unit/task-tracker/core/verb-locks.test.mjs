@@ -32,7 +32,11 @@ for (const file of ['promote.mjs', 'approve.mjs', 'reconcile.mjs']) {
     /from '\.\.\/issue-mutator-lock\.mjs'/,
     `${file} should import from ../issue-mutator-lock.mjs`
   );
-  assert.match(src, /withIssueLock\s*\(/, `${file} should call withIssueLock(...)`);
+  assert.match(
+    src,
+    file === 'promote.mjs' ? /childLock\s*\(/ : /withIssueLock\s*\(/,
+    `${file} should call its issue-lock seam`
+  );
   assert.match(src, /IssueLockError/, `${file} should handle IssueLockError`);
 }
 

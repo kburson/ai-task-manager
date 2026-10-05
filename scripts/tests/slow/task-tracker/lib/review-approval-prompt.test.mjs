@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+// @story #1872
+import { loadState } from '../../../../task-tracker/state.mjs';
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import {
+  createRuntimeRootFixture,
+  fixtureGitExecutable,
+} from '../../../helpers/runtime-root-fixture.mjs';
 // @story #80
 // E2E tests for #80 — review-approval prompt.
 //
@@ -12,17 +21,12 @@
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  chmodSync,
-  rmSync,
-  existsSync,
-} from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
 import { statePath as trackerStatePath } from '../../../../task-tracker/paths.mjs';
+import {
+  withReviewEntryHistory,
+  writeReviewConfig,
+} from '../../../fixtures/review-entry-history.mjs';
 import { buildPlanApprovalAuditComment } from '../../../../task-tracker/lib/plan-approval-audit.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,31 +54,8 @@ const TRACE_COMMENT = [
   `| [\`${HEAD_SHA.slice(0, 7)}\`](https://github.com/test-owner/test-repo/commit/${HEAD_SHA}) | s | a | t |`,
 ].join('\n');
 
-function writeConfig(sandbox) {
-  mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
-  writeFileSync(
-    path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify(
-      {
-        repo: 'test-owner/test-repo',
-        projectId: 'PVT_test',
-        kanbanFieldId: 'PVTF_x',
-        kanbanOptionBacklog: 'OPT_backlog',
-        kanbanOptionRefine: 'OPT_groom',
-        kanbanOptionPlan: 'OPT_analyze',
-        kanbanOptionDevelop: OPT_DEV,
-        kanbanOptionTest: 'OPT_validate',
-        kanbanOptionReview: OPT_REVIEW,
-        kanbanOptionDone: 'OPT_done',
-        gateReviewToDone: true,
-        preferences: { gateAssigneeMatch: false },
-      },
-      null,
-      2
-    )
-  );
-  mkdirSync(path.join(sandbox, 'scripts'), { recursive: true });
-}
+const writeConfig = (sandbox) =>
+  writeReviewConfig(sandbox, { developOption: OPT_DEV, reviewOption: OPT_REVIEW });
 
 // Build a gh shim that:
 //   - returns `bodyOnView` for `issue view ... --json body`
@@ -95,6 +76,9 @@ function makeGhShim(
   // wrote, not a frozen fixture. Without this, move-state.mjs's post-success
   // entry-marker stamp re-fetches the fixture and overwrites verb writes.
   const bodyStatePath = path.join(sandbox, 'gh-shim-body.txt');
+  // The real complete registry preserves contiguity refusals. Review-ready
+  // fixtures carry genuine prior entry history, independently of DoD evidence.
+  bodyOnView = withReviewEntryHistory(bodyOnView, DOD_VERIFIED_MARKER);
   writeFileSync(bodyStatePath, bodyOnView);
   const planAuditTemplate = buildPlanApprovalAuditComment({
     issueNumber: 999999,
@@ -105,7 +89,13 @@ function makeGhShim(
     gitShim,
     `#!/usr/bin/env node
 import fs from 'node:fs';
+import {spawnSync} from 'node:child_process';
 const argv = process.argv.slice(2);
+if (argv.includes('--show-toplevel') || (argv.includes('worktree') && argv.includes('-z'))) {
+  const result = spawnSync(${JSON.stringify(fixtureGitExecutable)}, argv, {stdio:'inherit'});
+  process.exit(result.status ?? 1);
+}
+
 if (argv.join(' ') === 'status --porcelain --untracked-files=no') {
   fs.writeSync(1, ${JSON.stringify(gitStatus)});
   process.exit(0);
@@ -153,6 +143,12 @@ if (argv[0] === 'issue' && argv[1] === 'view' && argv.includes('--json')) {
   // missed it and fell through to the body-only reply, leaving the Agent Review
   // Gate with zero comments and six spurious required-comments objections.
   const jsonFields = String(argv[argv.indexOf('--json') + 1] || '').split(',');
+  if (jsonFields.includes('blockedBy') || jsonFields.includes('blocking')) {
+    // Explicit complete native connections keep dependency readiness factual.
+    const connection = { nodes: [], totalCount: 0, pageInfo: { hasNextPage: false } };
+    fs.writeSync(1, JSON.stringify({ blockedBy: connection, blocking: connection }));
+    process.exit(0);
+  }
   if (jsonFields.includes('comments')) {
     const traceComment = ${JSON.stringify(traceComment)};
     // V2 required-comments (#811): the inline Agent Review Gate now demotes
@@ -219,6 +215,11 @@ if (argv[0] === 'issue' && argv[1] === 'comment') {
   process.exit(0);
 }
 if (argv[0] === 'api' && argv[1] === 'graphql') {
+  const censusQuery=argv.find(x=>x.startsWith('query='))||'';
+  if(censusQuery.includes('comments(first:100')) {
+    const field=name=>argv.find(x=>x.startsWith(name+'='))?.slice(name.length+1);
+    fs.writeSync(1,JSON.stringify({data:{repository:{nameWithOwner:field('owner')+'/'+field('name'),issue:{number:Number(field('issue')),comments:{totalCount:0,nodes:[],pageInfo:{hasNextPage:false,endCursor:null}}}}}}));process.exit(0);
+  }
   // Branch by query content (read from stdin).
   // fieldOptionMap query → 'node(id:' with fields
   if (stdinBody.includes('ProjectV2SingleSelectField')) {
@@ -246,7 +247,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
           id: 'ISS_test',
           subIssues: { nodes: [] },
           parent: null,
-          projectItems: { nodes: [{ id: 'PVTI_test', project: { id: 'PVT_test' }, fieldValueByName: { optionId: ${JSON.stringify(stateOptionId)} } }] },
+          projectItems: { nodes: [{ id: 'PVTI_test', project: { id: 'PVT_test' }, fieldValueByName: { optionId: ${JSON.stringify(stateOptionId)} }, fieldValues: { nodes: [] } }] },
           comments: { nodes: [] }
         }
       },
@@ -288,7 +289,11 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
   delete env.TT_FULL_AUTO;
   Object.assign(env, envOverrides);
   try {
-    const r = await pexec('node', [CLI, ...args], { env, timeout: REVIEW_CLI_TIMEOUT_MS });
+    const r = await pexec('node', [CLI, ...args], {
+      env,
+      cwd: sandbox,
+      timeout: REVIEW_CLI_TIMEOUT_MS,
+    });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout || '', stderr: err.stderr || '' };
@@ -297,10 +302,10 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 1: verbReview success path emits the marker ────────────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-1-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-1-');
   try {
     writeConfig(sandbox);
-    writeFileSync(
+    writeFixtureTrackerState(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
       JSON.stringify({
         active: '#101',
@@ -366,18 +371,18 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
       `expected marker in stdout; stdout:\n${r.stdout}\nstderr:\n${r.stderr}`
     );
     const liveStatePath = trackerStatePath(sandbox);
-    const humanState = JSON.parse(readFileSync(liveStatePath, 'utf8'));
+    const humanState = loadState(liveStatePath);
     assert.equal(humanState.entryStartTs, null, 'human approval wait pauses the timer');
 
     humanState.active = '#101';
     humanState.lastActive = '#101';
     humanState.entryStartTs = null;
     humanState.wordsAtEntryStart = 0;
-    writeFileSync(liveStatePath, JSON.stringify(humanState));
+    writeFixtureTrackerState(liveStatePath, JSON.stringify(humanState));
     const fullAuto = await run(sandbox, binDir, ['review', '#101'], { TT_FULL_AUTO: '1' });
     assert.equal(fullAuto.code, 0, `expected Full-Auto exit 0; stderr:\n${fullAuto.stderr}`);
     assert.doesNotMatch(fullAuto.stdout, /PROMPT_REQUIRED: review-approval/);
-    const fullAutoState = JSON.parse(readFileSync(liveStatePath, 'utf8'));
+    const fullAutoState = loadState(liveStatePath);
     assert.equal(typeof fullAutoState.entryStartTs, 'string');
     console.log('test 1 passed: verbReview emits marker on success');
   } finally {
@@ -387,10 +392,10 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 1b: verbReview refuses when canonical commit trace is missing ──────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-1b-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-1b-');
   try {
     writeConfig(sandbox);
-    writeFileSync(
+    writeFixtureTrackerState(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
       JSON.stringify({
         active: '#111',
@@ -435,10 +440,10 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 1c: verbReview refuses tracked uncommitted changes ─────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-1c-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-1c-');
   try {
     writeConfig(sandbox);
-    writeFileSync(
+    writeFixtureTrackerState(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
       JSON.stringify({
         active: '#112',
@@ -483,10 +488,10 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 2: verbReview verification-fail path does NOT emit the marker ──────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-2-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-2-');
   try {
     writeConfig(sandbox);
-    writeFileSync(
+    writeFixtureTrackerState(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
       JSON.stringify({
         active: '#102',
@@ -536,10 +541,10 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 3: verbReview refuses to auto-mark AC/DoD without evidence ─────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-3-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-3-');
   try {
     writeConfig(sandbox);
-    writeFileSync(
+    writeFixtureTrackerState(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
       JSON.stringify({
         active: '#103',
@@ -606,10 +611,10 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 4: verbReview marks AC/DoD with passing evidence ───────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-4-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-4-');
   try {
     writeConfig(sandbox);
-    writeFileSync(
+    writeFixtureTrackerState(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
       JSON.stringify({
         active: '#104',
@@ -716,7 +721,7 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 5: /task reject without --reason → exit non-zero ───────────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-5-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-5-');
   try {
     writeConfig(sandbox);
     // No shim needed — verbReject exits on missing reason before any network call
@@ -725,7 +730,7 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
     let code = 0,
       stderr = '';
     try {
-      await pexec('node', [CLI, 'reject', '#105'], { env, timeout: 10000 });
+      await pexec('node', [CLI, 'reject', '#105'], { env, cwd: sandbox, timeout: 10000 });
     } catch (err) {
       code = err.code ?? 1;
       stderr = err.stderr || '';
@@ -744,7 +749,7 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 6: /task reject when state != review → exit non-zero, no comment ───
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-6-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-6-');
   try {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -786,7 +791,7 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 
 // ─── Test 7: /task reject happy path → posts rejection comment ───────────────
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-7-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-7-');
   try {
     writeConfig(sandbox);
     const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -837,10 +842,10 @@ async function run(sandbox, binDir, args, envOverrides = {}) {
 // gate (uncheckedPreCloseCheckboxes parity with the close gate) must refuse the
 // move into Review and emit NO review-approval prompt.
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-rap-8-'));
+  const sandbox = createRuntimeRootFixture('tt-rap-8-');
   try {
     writeConfig(sandbox);
-    writeFileSync(
+    writeFixtureTrackerState(
       path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
       JSON.stringify({
         active: '#108',

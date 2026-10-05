@@ -1,4 +1,56 @@
 // @story #1091
+import { createAdaptivePlanRuntime } from '../../../../../task-tracker/lib/estimation/runtime-adapter.mjs';
+test('#1857 comparable ingress excludes all incomplete generations without inventing forecasts', async () => {
+  const records = ['v2', 'v3'].flatMap((version, index) =>
+    ['code', 'docs-only', 'audit', 'research', 'spike'].map((issueKind, offset) => ({
+      envelope: {
+        recordType: 'estimation-outcome',
+        recordId: 'incomplete-' + version + '-' + issueKind,
+        issue: 1857 + index * 10 + offset,
+        supersedes: null,
+        payload: {
+          schema: 'aitm.estimation-outcome/' + version,
+          kind: 'story',
+          forecastRecordId: null,
+          telemetry: { status: 'incomplete', verification: { issueKind } },
+          actual: { engagedHours: null },
+        },
+      },
+    }))
+  );
+  const complete = {
+    envelope: {
+      recordType: 'estimation-outcome',
+      recordId: 'complete',
+      issue: 1900,
+      supersedes: null,
+      payload: {
+        schema: 'aitm.estimation-outcome/v1',
+        kind: 'story',
+        forecastRecordId: 'forecast',
+        actual: { engagedHours: 2 },
+      },
+    },
+  };
+  records.push(complete);
+  const runtime = createAdaptivePlanRuntime({
+    cfg: { repo: repository, projectId: 'PROJECT', estimationRubricIssue: 100 },
+    deps: {
+      recordIo: {},
+      loadProjectFieldDefs: () => [],
+      loadProjectEstimationCorpus: async () => records,
+    },
+  });
+  assert.deepEqual(await runtime.listComparableOutcomes({ planInput: {} }), [
+    { recordId: 'complete', payload: complete.envelope.payload },
+  ]);
+  assert.deepEqual(
+    await runtime.listComparableOutcomes({ planInput: { comparableIssueIds: [1857] } }),
+    []
+  );
+  assert.deepEqual(estimationOutcomeSamples(records.slice(0, -1)), []);
+  assert.throws(() => estimationOutcomeSamples(records), /rubric-outcome-forecast/);
+});
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -278,4 +330,31 @@ test('project corpus fails closed when nested field-value pagination metadata is
     }),
     /estimation-runtime:corpus-pagination/
   );
+});
+
+// @story #1857
+test('incomplete legacy-none outcomes never demand a missing forecast for calibration', () => {
+  for (const issueKind of ['code', 'research', 'audit', 'spike']) {
+    const records = [
+      {
+        envelope: {
+          recordType: 'estimation-outcome',
+          recordId: '01J00000000000000000000602',
+          issue: 1857,
+          payload: {
+            schema: 'aitm.estimation-outcome/v3',
+            kind: 'story',
+            forecastRecordId: null,
+            telemetry: {
+              status: 'incomplete',
+              forecastStatus: 'legacy-none',
+              verification: { issueKind },
+            },
+            actual: { engagedHours: null },
+          },
+        },
+      },
+    ];
+    assert.deepEqual(estimationOutcomeSamples(records), []);
+  }
 });

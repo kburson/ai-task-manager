@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+// @story #1872
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { loadState } from '../../../../task-tracker/state.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #576 — Discover-autosave brainstorm to a tracked draft.
 //
 // Forward contract bound to all four #576 ACs:
@@ -149,7 +154,7 @@ test('AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears 
   const statePath = path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   try {
     mkdirSync(path.dirname(statePath), { recursive: true });
-    writeFileSync(
+    writeFixtureTrackerState(
       statePath,
       JSON.stringify({
         active: 'discover',
@@ -168,7 +173,7 @@ test('AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears 
     assert.ok(existsSync(draftPath), 'save-draft wrote the tracked draft');
 
     // Bucket carries the resolved slug so finalize can find the draft.
-    const afterDraft = JSON.parse(readFileSync(statePath, 'utf8'));
+    const afterDraft = loadState(statePath);
     assert.equal(afterDraft.discoverBucket.draftSlug, 'autosave-story');
 
     const planSrc = path.join(projectDir, 'final-plan.md');

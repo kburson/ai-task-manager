@@ -357,3 +357,50 @@ test('methodology publishes rubric version, cohort, confidence, and P80 coverage
     p80Coverage: 0.83,
   });
 });
+
+// @story #1857
+function incompleteOutcome(issue, { legacy = false, epic = false, children = [], known = 60000 } = {}) {
+  const record = outcome(issue, { children });
+  const value = record.envelope.payload;
+  value.schema = 'aitm.estimation-outcome/v3';
+  value.kind = epic ? 'epic-orchestration' : 'story';
+  value.forecastRecordId = legacy || epic ? null : RID.forecast;
+  value.actual.engagedHours = null;
+  value.variance = null;
+  value.costClassification = { necessaryHours: null, avoidableProcessWasteHours: null, unclassifiedHours: null, drivers: [] };
+  value.telemetry = { status: 'incomplete', forecastStatus: epic ? 'epic-not-applicable' : legacy ? 'legacy-none' : 'frozen', knownEngagedMs: known, reasons: ['legacy-attribution-unknown'] };
+  return record;
+}
+test('incomplete story report retains known subtotal and never substitutes board values', () => {
+  for (const legacy of [false, true]) {
+    const record = incompleteOutcome(1857, { legacy });
+    const { rowsByIssue } = buildEstimationReportModel({ items: [{ number: 1857, estimate: 99, engagedMin: 99 }], recordsByIssue: new Map([[1857, legacy ? [record] : [forecast(1857), record]]]) });
+    const row = rowsByIssue.get(1857);
+    assert.equal(row.outcomeRecordId, RID.outcome);
+    assert.equal(row.actualEngagedHours, null);
+    assert.equal(row.varianceVsAiP50Hours, null);
+    assert.equal(row.knownEngagedMs, 60000);
+    assert.equal(row.telemetryStatus, 'incomplete');
+    assert.ok(row.evidenceGaps.includes('legacy-attribution-unknown'));
+    assert.ok(!row.evidenceGaps.includes('outcome-forecast-mismatch'));
+  }
+});
+test('epic report preserves known parent and child engagement without a complete total', () => {
+  const parent = incompleteOutcome(1857, { epic: true, children: [RID.childA], known: 60000 });
+  const child = incompleteOutcome(1858, { legacy: true, known: 120000 });
+  child.envelope.recordId = RID.childA;
+  const { rowsByIssue } = buildEstimationReportModel({ items: [{ number: 1857 }, { number: 1858, parentNumber: 1857 }], recordsByIssue: new Map([[1857, [parent]], [1858, [child]]]) });
+  const row = rowsByIssue.get(1857);
+  assert.equal(row.actualEngagedHours, null);
+  assert.equal(row.knownEngagedMs, 180000);
+  assert.equal(row.telemetryStatus, 'incomplete');
+});
+test('superseded incomplete report is not mistaken for conflicting current evidence', () => {
+  const previous = incompleteOutcome(1857, { legacy: true, known: 1000 });
+  previous.envelope.recordId = RID.childA;
+  const current = incompleteOutcome(1857, { legacy: true });
+  current.envelope.supersedes = RID.childA;
+  const { rowsByIssue } = buildEstimationReportModel({ items: [{ number: 1857 }], recordsByIssue: new Map([[1857, [previous, current]]]) });
+  assert.equal(rowsByIssue.get(1857).outcomeRecordId, RID.outcome);
+  assert.equal(rowsByIssue.get(1857).knownEngagedMs, 60000);
+});

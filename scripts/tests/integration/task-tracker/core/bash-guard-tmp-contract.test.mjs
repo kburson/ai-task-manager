@@ -12,6 +12,8 @@
 import { strict as assert } from 'node:assert';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+// @story #1873
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -68,7 +70,16 @@ function check(label, ok, detail) {
   const cwd = process.cwd();
   const r = await runGuard(`touch ${cwd}/.scratch/gh/scratch.txt`);
   const d = parseDecision(r.stdout);
-  check('allows write to <projectRoot>/.scratch/gh/scratch.txt', !d.block, d.reason);
+  const protectedRoot = cwd.startsWith(path.join(homedir(), '.claude') + path.sep);
+  check(
+    protectedRoot
+      ? 'refuses absolute protected Claude-root scratch writes'
+      : 'allows absolute project-root scratch writes',
+    protectedRoot
+      ? d.block && new RegExp('Write operation to ~/.claude/ is not permitted').test(d.reason ?? '')
+      : !d.block,
+    d.reason
+  );
 }
 
 {

@@ -1,4 +1,4 @@
-// @story #728
+// @story #728 #1872
 // AC6 (folds #744) — the CI Fast lane must run the repo-only memory-seed index
 // parity check so any MEMORY.md-index ⇄ docs/ai-memory/ durable-set drift fails
 // the build. Asserts the step is present in the Fast lane, uses `--mode index`
@@ -15,9 +15,12 @@ const CI = readFileSync(join(REPO_ROOT, '.github', 'workflows', 'ci.yml'), 'utf8
 
 // Isolate the Fast lane block: from `fast:` up to the next top-level job (`slow:`).
 function fastLane(yml) {
-  const start = yml.indexOf('\n  fast:');
-  const end = yml.indexOf('\n  slow:');
-  assert.ok(start !== -1 && end !== -1 && end > start, 'fast + slow jobs both present');
+  const start = yml.indexOf('\n  fast-tests:');
+  const end = yml.indexOf('\n  fast:');
+  assert.ok(
+    start !== -1 && end !== -1 && end > start,
+    'Fast collection workers and aggregate both present'
+  );
   return yml.slice(start, end);
 }
 
@@ -42,9 +45,9 @@ test('the CI step uses --mode index (CI-safe), never the maintainer --mode diff'
 test('the parity check runs before the unit and integration lanes', () => {
   const lane = fastLane(CI);
   const parityAt = lane.indexOf('--mode index');
-  const unitAt = lane.indexOf('npm run test:unit');
-  const integrationAt = lane.indexOf('npm run test:integration');
-  assert.ok(parityAt !== -1 && unitAt !== -1 && integrationAt !== -1, 'all steps present');
-  assert.ok(parityAt < unitAt, 'the cheap parity gate runs before the unit lane');
-  assert.ok(parityAt < integrationAt, 'the cheap parity gate runs before the integration lane');
+  const executionAt = lane.indexOf('npm run \"test:${{ matrix.lane }}\"');
+  assert.ok(parityAt !== -1 && executionAt !== -1, 'parity and matrix execution present');
+  assert.ok(parityAt < executionAt, 'parity precedes every unit and integration group');
+  assert.match(lane, /lane: unit/);
+  assert.match(lane, /lane: integration/);
 });

@@ -12,6 +12,11 @@
 // The invariant (matching the real `verbClose` seam, not the plan's
 // illustrative `runClose`): whenever close resolves as an idempotent converge/
 // no-op, it invokes the lifecycle-box reconcile (`tickLifecycleOnClose`).
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';

@@ -6,11 +6,19 @@
 //   1. gateAssigneeMatch=true + issue assigned to someone else → exit 10
 //   2. gateAssigneeMatch=false + same fixture → guard skipped, no exit 10
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -106,7 +114,7 @@ async function runCli(sandbox, binDir, args) {
     TT_SKIP_NETWORK: '',
   };
   try {
-    const r = await pexec('node', [CLI, ...args], { env, timeout: 30000 });
+    const r = await pexec('node', [CLI, ...args], { env, cwd: sandbox, timeout: 30000 });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout || '', stderr: err.stderr || '' };
@@ -115,7 +123,7 @@ async function runCli(sandbox, binDir, args) {
 
 // Test 1: guard ON + issue assigned to another user → exit 10.
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-assignee-1-'));
+  const sandbox = mkdtempProjectIsolated('tt-assignee-1-');
   try {
     writeConfig(sandbox, { gateAssigneeMatch: true });
     writeState(sandbox, 219);
@@ -133,7 +141,7 @@ async function runCli(sandbox, binDir, args) {
 
 // Test 2: guard OFF → bypassed; no assignee refusal.
 {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-assignee-2-'));
+  const sandbox = mkdtempProjectIsolated('tt-assignee-2-');
   try {
     writeConfig(sandbox, { gateAssigneeMatch: false });
     writeState(sandbox, 219);

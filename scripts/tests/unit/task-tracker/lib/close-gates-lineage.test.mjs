@@ -31,6 +31,112 @@ const TRAIL_COMMENT = {
 };
 const listWithTrail = async () => [TRAIL_COMMENT];
 const listNoTrail = async () => [];
+test('nested epic evidence retains every required child and explicit nondelivery disposition at exact target', async () => {
+  const target = 'b'.repeat(40),
+    commit = 'c'.repeat(40);
+  const graphWithDisposition = (issue) =>
+    issue === 860
+      ? { parent: 859, children: [{ number: 872 }, { number: 873, closeReason: 'NOT_PLANNED' }] }
+      : graph(issue);
+  const result = await lineageDoneGate({
+    cfg: { repo: 'owner/repo' },
+    issueNumber: 860,
+    body: ['## AITM Progress Markers', '', '<!-- aitm-issue-kind kind="epic" -->'].join(
+      String.fromCharCode(10)
+    ),
+    projectDir: '/fixture',
+    includeEvidence: true,
+    acceptedSha: 'a'.repeat(40),
+    deps: {
+      graph: graphWithDisposition,
+      trunk: 'trunk',
+      branchExists: () => true,
+      listComments: listNoTrail,
+      resolveHead: async (ref) => {
+        assert.equal(ref, 'feature/epic/859');
+        return target;
+      },
+      epicTrailLog: async ({ epicHead }) => {
+        assert.equal(epicHead, target);
+        return [commit, '[#872] delivered', 'fixture', '2026-10-01'].join(String.fromCharCode(31));
+      },
+    },
+  });
+  assert.equal(result.ok, true, result.blocker);
+  assert.equal(result.evidence.parentIssue, 859);
+  assert.equal(result.evidence.targetHead, target);
+  assert.deepEqual(result.evidence.commits, [commit]);
+  assert.deepEqual(result.evidence.children, [
+    { issue: 872, disposition: 'delivered', commits: [commit] },
+    { issue: 873, disposition: 'not-planned', commits: [] },
+  ]);
+});
+test('timing proof captures exact child lineage census at an immutable target without a fabricated record ID', async () => {
+  const head = 'a'.repeat(40),
+    target = 'b'.repeat(40),
+    commit = 'c'.repeat(40);
+  const result = await lineageDoneGate({
+    cfg: { repo: 'owner/repo' },
+    issueNumber: 913,
+    projectDir: '/fixture',
+    includeEvidence: true,
+    acceptedSha: head,
+    deps: {
+      graph,
+      trunk: 'trunk',
+      branchExists: () => true,
+      listComments: listWithTrail,
+      resolveHead: async (ref) => {
+        assert.equal(ref, 'feature/epic/912');
+        return target;
+      },
+      attributingCommits: async (issue, options) => {
+        assert.equal(issue, 913);
+        assert.deepEqual(options.refs, [target]);
+        return [{ sha: commit, subject: '[#913] delivered', ts: '2026-10-01T00:00:00Z' }];
+      },
+    },
+  });
+  assert.deepEqual(result.evidence, {
+    schema: 'aitm.lineage-delivery-evidence/v1',
+    repository: 'owner/repo',
+    issue: 913,
+    parentIssue: 912,
+    acceptedSha: head,
+    targetBranch: 'feature/epic/912',
+    targetHead: target,
+    commits: [commit],
+    children: [],
+  });
+  assert.equal(Object.hasOwn(result.evidence, 'recordId'), false);
+});
+test('skipped or ambiguous lineage never creates accepted timing delivery evidence', async () => {
+  const common = {
+    cfg: { repo: 'owner/repo' },
+    issueNumber: 913,
+    projectDir: '/fixture',
+    includeEvidence: true,
+    acceptedSha: 'a'.repeat(40),
+  };
+  const skipped = await lineageDoneGate({ ...common, deps: { listComments: listNoTrail } });
+  assert.equal(skipped.skipped, 'no-commits-marker');
+  assert.equal(skipped.evidence, undefined);
+  const failed = await lineageDoneGate({
+    ...common,
+    deps: {
+      listComments: listWithTrail,
+      trunk: 'trunk',
+      graph: () => {
+        throw new Error('graph unavailable');
+      },
+      branchExists: () => true,
+      attributingCommits: async () => [{ sha: 'c'.repeat(40) }],
+      resolveHead: async () => 'b'.repeat(40),
+    },
+  });
+  assert.equal(failed.ok, false);
+  assert.equal(failed.evidence, undefined);
+});
 
 // ── AC-1 / AC-4: leaf greps the parent branch, and trunk-only degenerates ──────
 

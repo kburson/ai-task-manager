@@ -1,0 +1,21 @@
+✔ module-relative package source ignores project node_modules and ignored root catalog (91.200333ms)
+✔ human explanation exposes closed guidance fields and fingerprints (107.840625ms)
+✔ tracked project catalog wholly shadows package, including modified and invalid content (317.421917ms)
+✔ untracked project source and tampered package fail without fallback (153.50875ms)
+✔ recovery classification is closed and admission does not call effects (86.949833ms)
+✔ missing package identity is a named indeterminate failure (13.174042ms)
+✔ offline recovery source and validate inspect selected, candidate, and published profiles (603.986583ms)
+✔ missing release manifest and non-regular override are named failures (11.838958ms)
+✔ symlinked package and unsupported virtual or missing source resolve by name (12.589625ms)
+✔ a project file outside the asserted Git root is indeterminate, never published (20.824542ms)
+✔ actual recovery CLI finds a tracked override from a nested Git directory (158.793833ms)
+✔ failed Git-root discovery from a nested directory is indeterminate, not package fallback (124.070667ms)
+✔ candidate validation reports untracked activation without rejecting valid content (148.880583ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2013.718625

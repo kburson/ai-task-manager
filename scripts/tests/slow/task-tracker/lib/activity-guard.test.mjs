@@ -1,3 +1,4 @@
+// @story #1872
 // @story #65
 // Tests for scripts/task-tracker/activity-guard.mjs
 //
@@ -10,8 +11,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
+// @story #1873
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import url from 'node:url';
@@ -32,7 +35,7 @@ const BASH_GUARD = path.join(path.dirname(GUARD), 'bash-guard.mjs');
 // ---------------------------------------------------------------------------
 
 function makeRepo({ state } = {}) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
+  const dir = createRuntimeRootFixture('aitm-activity-guard-');
   // Init bare git repo so `git rev-parse --show-toplevel` works.
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
@@ -48,7 +51,7 @@ function makeRepo({ state } = {}) {
 }
 
 function makeRepoNoState() {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
+  const dir = createRuntimeRootFixture('aitm-activity-guard-');
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   // No state file at all.
   return dir;
@@ -104,10 +107,7 @@ test('Edit src/foo.ts in develop → pass', () => {
   }
 });
 
-test('Edit docs/notes.md in plan without current-session binding → block', () => {
-  // STATE_MATRIX: analyze allows WRITE_DOCS; groom does NOT (matrix shipped in W1.2).
-  // The "Groom + docs" AC item in the issue body was aspirational; the matrix
-  // ultimately frozen at #63 only admits WRITE_ISSUE + READ_* in refine.
+test('Edit docs/notes.md in plan without current-session binding → allow', () => {
   const dir = makeRepo({ state: 'plan' });
   try {
     const r = runGuard({
@@ -115,14 +115,13 @@ test('Edit docs/notes.md in plan without current-session binding → block', () 
       payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.decision?.decision, 'block');
-    assert.match(r.decision.reason, /session binding/);
+    assert.equal(r.stdout, '', r.stderr);
   } finally {
     cleanup(dir);
   }
 });
 
-test('Edit docs/notes.md in refine without an exact binding → block', () => {
+test('Edit docs/notes.md in refine without an exact binding → allow', () => {
   const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
@@ -130,9 +129,7 @@ test('Edit docs/notes.md in refine without an exact binding → block', () => {
       payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.decision?.decision, 'block');
-    assert.match(r.decision.reason, /binding/);
-    assert.match(r.decision.reason, /worktree mismatch/);
+    assert.equal(r.stdout, '', r.stderr);
   } finally {
     cleanup(dir);
   }
@@ -364,7 +361,7 @@ test('Edit src/foo.ts with no state file at all → block (no-active-task)', () 
   }
 });
 
-test('Edit docs/notes.md with active issue but no state → block; suggest reconcile', () => {
+test('Edit docs/notes.md with active issue but no state → allow', () => {
   const dir = makeRepo({/* no state */});
   try {
     const r = runGuard({
@@ -372,9 +369,7 @@ test('Edit docs/notes.md with active issue but no state → block; suggest recon
       payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.decision?.decision, 'block');
-    assert.match(r.decision.reason, /no recorded kanban state/);
-    assert.match(r.decision.reason, /\/task reconcile accept-live 65/);
+    assert.equal(r.stdout, '', r.stderr);
   } finally {
     cleanup(dir);
   }
@@ -697,9 +692,19 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
             payload: { ...editPayload, session_id: 'missing-session' },
             env,
             guardPath,
-          }).decision?.decision,
-          'block'
+          }).stdout,
+          ''
         );
+      }
+      // #1857: invoking-root artifact writes do not borrow the child's binding.
+      for (const command of ['mkdir -p .scratch/local', "printf '%s' draft > docs/local.md"]) {
+        const artifact = runGuard({
+          cwd: root,
+          payload: { ...payload, cwd: root, tool_input: { command } },
+          env,
+          guardPath: BASH_GUARD,
+        });
+        assert.equal(artifact.stdout, '', artifact.stderr);
       }
       const redirect = { ...payload, tool_input: { command: 'echo draft > docs/plan.md' } };
       assert.equal(runGuard({ cwd: root, payload: redirect, env }).stdout, '');
@@ -808,12 +813,17 @@ test('native hook session selects its own state instead of an environment sessio
 
 // @story #1848
 test('scratch shell allowance validates physical targets and preserves early code restrictions', () => {
-  const dir = makeRepo({ state: 'backlog' });
+  const dir = createRuntimeRootFixture('scratch-shell-');
+  setActiveTask('scratch-native', { issue: '#65', kanbanState: 'backlog' }, dir);
   try {
     mkdirSync(path.join(dir, '.scratch'));
     mkdirSync(path.join(dir, 'src'));
     symlinkSync(path.join(dir, 'src'), path.join(dir, '.scratch', 'alias'));
-    const payload = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+    const payload = (command) => ({
+      session_id: 'scratch-native',
+      tool_name: 'Bash',
+      tool_input: { command },
+    });
     assert.equal(
       runGuard({ cwd: dir, payload: payload("cat > .scratch/scope.md <<'EOF'\ntext\nEOF") })
         .decision,

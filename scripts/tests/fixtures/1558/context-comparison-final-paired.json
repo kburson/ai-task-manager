@@ -9,7 +9,7 @@
   "sources": {
     "lifecycle": {
       "path": "scripts/tests/fixtures/1558/lifecycle-transcript-final.json",
-      "sha256": "sha256:0daa3d832cf9c7e0459b5ccd72049d39ff4cf85a7483796d788bf23729161810"
+      "sha256": "sha256:258e074f38f950f7fe2db5deabaab7d73ad2ae2d97311372890e0a4a731ba7b3"
     },
     "authority": {
       "path": "scripts/tests/fixtures/1558/authority-after.json",
@@ -24,20 +24,20 @@
     "claude": {
       "currentCaptureKind": "actual-public-cli-traffic-plus-installed-static",
       "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
-      "currentProxyTokens": 5407,
+      "currentProxyTokens": 5603,
       "modeledLegacyProxyTokens": 54538,
       "conservativeReductionFromLegacyStaticAlone": true,
       "fullLifecycleWorkingPass": true,
-      "sourceCaptureSha256": "sha256:b3562f42de2ab225bd86a1ace90bd1d8d5430f5a4b309fd100d6a7bab5a0d5e7"
+      "sourceCaptureSha256": "sha256:719642b0bafc783942ce6b8de965caceebad728436f4b5158de5e9829761db23"
     },
     "codex": {
       "currentCaptureKind": "actual-public-cli-traffic-plus-installed-static",
       "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
-      "currentProxyTokens": 5394,
+      "currentProxyTokens": 5590,
       "modeledLegacyProxyTokens": 54280,
       "conservativeReductionFromLegacyStaticAlone": true,
       "fullLifecycleWorkingPass": true,
-      "sourceCaptureSha256": "sha256:b3562f42de2ab225bd86a1ace90bd1d8d5430f5a4b309fd100d6a7bab5a0d5e7"
+      "sourceCaptureSha256": "sha256:719642b0bafc783942ce6b8de965caceebad728436f4b5158de5e9829761db23"
     }
   },
   "authority": {

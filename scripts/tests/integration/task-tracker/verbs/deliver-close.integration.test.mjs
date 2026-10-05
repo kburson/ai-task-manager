@@ -1,8 +1,7 @@
-// @story #1381 #939
+// @story #1381 #939 #1857
 // cspell:ignore NDEKTSV RRFFQ
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-
 import { blockedByGuard } from '../../../../task-tracker/lib/blocked-by-guard.mjs';
 import {
   INCORPORATED_CLOSE_STEPS,
@@ -34,6 +33,7 @@ import {
   createApprovedIncidentFixture,
   createIncorporatedMutationHarness,
 } from '../../../helpers/incident-convergence-harness.mjs';
+
 const INTENT_IDS = [
   '01ARZ3NDEKTSV4RRFFQ69G5FAV',
   '01ARZ3NDEKTSV4RRFFQ69G5FAW',
@@ -210,6 +210,10 @@ test('A to B reused-branch delivery closes historical A through production seams
             }),
             SHA_A
           );
+          const authority = await options.resolveDeliveryAuthority({ issueNumber, refresh: true });
+          assert.equal(authority.gateInput.acceptedSha, SHA_A);
+          assert.equal(authority.receipt.skipped, false);
+          assert.ok(authority.receipt.verification);
           return { status: 'existing' };
         },
       };
@@ -226,7 +230,7 @@ test('A to B reused-branch delivery closes historical A through production seams
     closeConfig.events.indexOf('verify-receipt') >
       closeConfig.events.indexOf('load-delivery-records')
   );
-  assert.equal(harness.effects.originFetches, verificationCountBeforeClose + 1);
+  assert.equal(harness.effects.originFetches, verificationCountBeforeClose + 2);
   const [transaction] = readDeliveredCloseTransactions(firstClose.body);
   assert.deepEqual(transaction, {
     schema: 'aitm.delivered-close/v1',

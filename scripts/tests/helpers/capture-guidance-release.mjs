@@ -27,6 +27,7 @@ import {
   renderDeliveryReceiptComment,
 } from '../../task-tracker/lib/delivery-records.mjs';
 import { configPath, SHARED_DIR, statePath } from '../../task-tracker/paths.mjs';
+import { setActiveTask } from '../../task-tracker/session-state.mjs';
 import { mkdtempProjectIsolated } from '../../task-tracker/lib/scratch-dir.mjs';
 import {
   FINAL_GUIDANCE_CONTEXT_BUDGETS,
@@ -431,7 +432,7 @@ if (args[0] === 'issue' && args[1] === 'view') {
     process.stdout.write(JSON.stringify({ state: snapshot.state === 'done' ? 'CLOSED' : 'OPEN' }) + '\\n');
     process.exit(0);
   }
-  if (recertification && args.includes('blockedBy,blocking')) {
+  if (recertification && (args.includes('blockedBy,blocking') || args.includes('blockedBy'))) {
     const refs = snapshot.heavy && args[2] === '${issue}' ? [3100, 3101, 3102] : [];
     const nodes = refs.map((number) => ({ number, repository: { nameWithOwner: 'example/project' } }));
     process.stdout.write(JSON.stringify({ blockedBy: { nodes, totalCount: nodes.length }, blocking: { nodes: [], totalCount: 0 } }) + '\\n');
@@ -534,6 +535,8 @@ if (args[0] === 'api' && args[1] === 'graphql') {
     const query = JSON.parse(input).query;
     if (recertification && query.includes('subIssues(')) {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: { subIssues: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } } }));
+    } else if (recertification && query.includes('parent { number }')) {
+      process.stdout.write(JSON.stringify({ data: { repository: { issue: { number: ${issue}, body, parent: null } } } }));
     } else if (query.includes('projectItems')) {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: {
         assignees: { nodes: [] },
@@ -624,6 +627,8 @@ export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
     const baseEnv = {
       ...process.env,
       AI_TASK_MANAGER_PROJECT_DIR: fixtureDir,
+      AI_TASK_MANAGER_APP_NAME: 'claude',
+      AI_TASK_MANAGER_SESSION_ID: 'fixture-guidance-capture',
       PATH: `${path.join(fixtureDir, 'fake-bin')}${path.delimiter}${process.env.PATH}`,
       TT_FULL_AUTO: '1',
       CAPTURE_AUTHORITY_LOG: authorityLog,
@@ -705,9 +710,10 @@ export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
       if (nextHead) snapshot.head = nextHead;
       writeSnapshot();
       if (mode !== 'historical' && state === 'develop') {
-        writeFileSync(
-          statePath(fixtureDir),
-          `${JSON.stringify({ active: `#${issue}`, entryStartTs: '2026-09-22T00:00:00Z' })}\n`
+        setActiveTask(
+          baseEnv.AI_TASK_MANAGER_SESSION_ID,
+          { issue, entryStartTs: '2026-09-22T00:00:00Z' },
+          fixtureDir
         );
       }
       events.push({

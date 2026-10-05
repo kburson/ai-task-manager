@@ -1,4 +1,5 @@
 // @story #1802
+// @story #1867
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -67,8 +68,8 @@ test('production delivery reader follows the shared local and configured-remote 
       cfg,
       projectDir: process.cwd(),
       deps: {
-        readGraph: async () => ({
-          parent: 1558,
+        readGraph: async (number) => ({
+          parent: number === ISSUE ? 1558 : null,
           children: [],
           parentAuthoritativeBranch: 'feature/epic/1558',
         }),
@@ -82,29 +83,42 @@ test('production delivery reader follows the shared local and configured-remote 
             return { stdout: HEAD };
           if (command === 'git' && args[0] === 'rev-parse' && args.includes('refs/heads/trunk'))
             return { stdout: HEAD };
+          if (
+            command === 'git' &&
+            args[0] === 'rev-parse' &&
+            args.includes('refs/heads/feature/epic/1558') &&
+            local
+          )
+            return { stdout: HEAD };
           if (command === 'git' && args[0] === 'rev-parse' && args.includes('--verify'))
-            throw new Error('ref absent');
+            throw Object.assign(new Error('ref absent'), { code: 1 });
           if (command === 'git' && args[0] === 'rev-parse') return { stdout: HEAD };
           if (command === 'git' && args[0] === 'branch') return { stdout: 'feature/child/1669' };
           if (command === 'git' && args[0] === 'ls-remote')
-            return { stdout: `${HEAD}\trefs/heads/feature/epic/1558\n` };
+            return { stdout: `${HEAD}\trefs/heads/trunk\n` };
           if (command === 'gh' && args[0] === 'pr') return { stdout: '[]' };
           throw new Error(`unexpected ${command} ${args.join(' ')}`);
         },
       },
     });
     const delivery = await ports.readDelivery({ body });
-    assert.deepEqual(delivery.authority, local ? { localRef: 'feature/epic/1558' } : { remote });
-    assert.equal(delivery.gateInput.lineage.deliveryTarget, 'feature/epic/1558');
+    assert.deepEqual(
+      delivery.authority,
+      local ? { localRef: 'refs/heads/feature/epic/1558' } : { remote }
+    );
+    assert.equal(delivery.gateInput.lineage.deliveryTarget, local ? 'feature/epic/1558' : 'trunk');
     assert.equal(delivery.gateInput.acceptedSha, HEAD);
     assert.equal(
       calls.filter(([command, args]) => command === 'git' && args[0] === 'ls-remote').length,
-      local ? 0 : 1
+      0
     );
     if (remote)
       assert.ok(
         calls.some(
-          ([command, args]) => command === 'git' && args[0] === 'ls-remote' && args[1] === remote
+          ([command, args]) =>
+            command === 'git' &&
+            args[0] === 'rev-parse' &&
+            args.includes(`refs/remotes/${remote}/trunk`)
         )
       );
   }
@@ -169,24 +183,29 @@ async function productionCloseFixture({
       fetchBoard: async () => ({ state: 'review' }),
       run: async (command, args) => {
         commands.push([command, args]);
-        if (command === 'gh' && args[0] === 'issue' && !args.includes('blockedBy,blocking'))
+        if (
+          command === 'gh' &&
+          args[0] === 'issue' &&
+          !(args.includes('blockedBy,blocking') || args.includes('blockedBy'))
+        )
           issueReads += 1;
         if (command === 'gh' && args[0] === 'issue')
           return {
-            stdout: args.includes('blockedBy,blocking')
-              ? JSON.stringify({
-                  blockedBy: { nodes: [], totalCount: 0 },
-                  blocking: { nodes: [], totalCount: 0 },
-                })
-              : args.includes('body')
-                ? body
-                : JSON.stringify({
-                    number: ISSUE,
-                    body: bodyOnRead?.(issueReads, body) ?? body,
-                    state: issueState,
-                    stateReason: issueState === 'CLOSED' ? 'COMPLETED' : null,
-                    updatedAt: revisionOnRead?.(issueReads) ?? now(),
-                  }),
+            stdout:
+              args.includes('blockedBy,blocking') || args.includes('blockedBy')
+                ? JSON.stringify({
+                    blockedBy: { nodes: [], totalCount: 0 },
+                    blocking: { nodes: [], totalCount: 0 },
+                  })
+                : args.includes('body')
+                  ? body
+                  : JSON.stringify({
+                      number: ISSUE,
+                      body: bodyOnRead?.(issueReads, body) ?? body,
+                      state: issueState,
+                      stateReason: issueState === 'CLOSED' ? 'COMPLETED' : null,
+                      updatedAt: revisionOnRead?.(issueReads) ?? now(),
+                    }),
           };
         if (command === 'gh' && args[0] === 'pr') return { stdout: '[]' };
         if (command === 'gh' && args.includes('graphql'))
@@ -200,8 +219,11 @@ async function productionCloseFixture({
             }),
           };
         if (command === 'gh' && args[0] === 'api') return { stdout: '[[]]' };
-        if (command === 'git' && args[0] === 'rev-parse')
+        if (command === 'git' && args[0] === 'rev-parse') {
+          if (args.includes('refs/heads/feature/epic/1558') && !parentAvailable)
+            throw Object.assign(new Error('ref absent'), { code: 1 });
           return { stdout: args.includes('--is-shallow-repository') ? 'false' : HEAD };
+        }
         if (command === 'git' && args[0] === 'branch') return { stdout: 'trunk' };
         if (command === 'git' && args[0] === 'status') return { stdout: '' };
         if (command === 'git' && args[0] === 'cat-file') return { stdout: '' };
@@ -238,7 +260,7 @@ test('production child close resolves an omitted trunkRef and keeps parent attri
       parentAvailable: true,
       attributed: false,
       status: 'blocked',
-      blocker: { guardId: 'review-exit-close-gates', code: 'unclassified-refusal' },
+      blocker: { guardId: 'review-exit-close-gates', code: 'close-delivery-not-attributed' },
     },
   ]) {
     const { result } = await productionCloseFixture({

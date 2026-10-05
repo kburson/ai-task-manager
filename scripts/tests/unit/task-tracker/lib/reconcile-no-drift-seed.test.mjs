@@ -4,7 +4,7 @@
 // of refusing with `no-drift-refused`. Refusing forces users to fabricate
 // drift to recover, which was the exact wedge #273 reports.
 
-import { test } from 'node:test';
+import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';

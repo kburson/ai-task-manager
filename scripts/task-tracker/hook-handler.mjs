@@ -6,41 +6,33 @@
 // Invoked by .claude/hooks/task-tracker.sh with hook JSON on stdin.
 // Routes PreCompact / PostCompact / SessionStart to appropriate handlers.
 
-import { readFileSync, mkdirSync, openSync, closeSync } from 'node:fs';
+import { readFileSync, openSync, closeSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.mjs';
-import {
-  loadState,
-  saveState,
-  advanceWordMarker,
-  stateFullWordMarker,
-  computeTranscriptTailBank,
-  clearActive,
-} from './state.mjs';
-import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
+import { loadState, clearActive } from './state.mjs';
+import { postTimingEvent } from './gh-timing-comment.mjs';
 import { SUSPICIOUS_GAP_SEC } from './lib/bind-event.mjs';
 import {
   jsonlPath,
   markerPathFor,
-  loadMarker,
-  saveMarker,
+  advanceMarkerCursor,
+  aiAppName,
   countWords,
   currentSessionId,
   ensureSessionTracking,
-  aiAppName,
 } from './word-counter.mjs';
-import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
-import { enqueue, drain } from './queue.mjs';
+import { runActorHookTiming } from './lib/actor-hook-timing.mjs';
+import { drain } from './queue.mjs';
 import {
   findMainWorktreePath,
   currentBranch,
   fleetRegistryPath,
   readFleet,
 } from './fleet-registry.mjs';
-import { getProjectDir, sessionDir } from './paths.mjs';
+import { getProjectDir } from './paths.mjs';
 import { claimHookStamp } from './lib/hook-idempotency.mjs';
 import { touchBindingOccupancy } from './lib/occupancy-lifecycle.mjs';
 
@@ -79,9 +71,10 @@ export function isTerminalIssueState(state) {
 // network blip. `run` is injectable so unit tests avoid shelling out. Exported
 // for testing.
 export async function fetchIssueState(active, { repo, timeoutMs, run = pexec } = {}) {
-  if (!/^\d+$/.test(String(active ?? ''))) return null;
+  const issue = String(active ?? '').replace(/^#/, '');
+  if (!/^[1-9][0-9]*$/.test(issue)) return null;
   try {
-    const args = ['issue', 'view', String(active), '--json', 'state', '--jq', '.state'];
+    const args = ['issue', 'view', issue, '--json', 'state', '--jq', '.state'];
     if (repo) args.push('--repo', repo);
     const { stdout } = await run('gh', args, { timeout: timeoutMs });
     const s = String(stdout ?? '').trim();
@@ -114,111 +107,14 @@ function readStdin() {
   }
 }
 
-async function safePost(issue, row) {
-  try {
-    await postTimingEvent({
-      issueNumber: issue,
-      repo: cfg.repo,
-      row,
-      timeoutMs: cfg.hookNetworkTimeoutMs,
-    });
-  } catch {
-    enqueue({ kind: 'timing', issue, row }, queuePath);
-  }
-}
-
 async function onPreCompact(sid) {
-  const s = loadState(statePath);
-  if (!s.active || s.active === 'discover') return;
-  // #407 — bound-but-paused state: a non-terminal verb (test/review) leaves
-  // `active` set with no open timing session (`entryStartTs` null). There is
-  // no wall-time window to flush on pre-compact, so skip rather than
-  // dereference a null timestamp.
-  if (!s.entryStartTs) return;
-  const marker = loadMarker(markerPathFor(sid));
-  const {
-    count: newWords,
-    totalLines,
-    fullExpansion: newWordsFull,
-    status: transcriptStatus,
-  } = countWords(jsonlPath(sid), marker.line, { provider: aiAppName(), sid });
-  const transcriptWordsAvailable = transcriptStatus === 'ok';
-  const bank = computeTranscriptTailBank(s, marker, {
-    count: newWords,
-    totalLines,
-    fullExpansion: newWordsFull,
-    status: transcriptStatus,
-  });
-  const ts = new Date().toISOString();
-  const wordMarker = bank.marker;
-  const fullWordMarker = bank.fullMarker;
-  const startMs = new Date(s.entryStartTs).getTime();
-  const endMs = Date.now();
-  const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
-  const { activeMin, idleMin } = computeActiveAndIdleMinutes({
-    startMs,
-    endMs,
-    events,
-    idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
-  });
-  const row = buildRow({
-    ts,
-    event: 'pre-compact-flush',
-    activeMin,
-    idleMin,
-    deltaWords: newWords,
-    wordMarker,
-    fullWordMarker: transcriptWordsAvailable ? fullWordMarker : null,
-    description: 'context compacted',
-  });
-  await safePost(s.active, row);
-  if (transcriptWordsAvailable) {
-    saveMarker(markerPathFor(sid), bank.line, wordMarker, s.active, fullWordMarker);
-  }
-  saveState(
-    {
-      ...s,
-      entryStartTs: ts,
-      wordsAtEntryStart: wordMarker,
-      lastWordMarker: wordMarker,
-      lastFullWordMarker: fullWordMarker,
-    },
-    statePath
-  );
+  const { buildContext } = await import('./runtime.mjs');
+  return runActorHookTiming(buildContext(['status']), { event: 'PreCompact', sid });
 }
 
 async function onPostCompact(sid) {
-  const s = loadState(statePath);
-  if (!s.active || s.active === 'discover') return;
-  const markerPath = markerPathFor(sid);
-  const marker = loadMarker(markerPath);
-  const counted = countWords(jsonlPath(sid), marker.line, { provider: aiAppName(), sid });
-  const transcriptWordsAvailable = counted.status === 'ok';
-  const bank = computeTranscriptTailBank(s, marker, counted);
-  if (transcriptWordsAvailable) {
-    saveMarker(markerPath, bank.line, bank.marker, s.active, bank.fullMarker);
-    saveState(
-      {
-        ...s,
-        wordsAtEntryStart: bank.marker,
-        lastWordMarker: bank.marker,
-        lastFullWordMarker: bank.fullMarker,
-      },
-      statePath
-    );
-  }
-  const row = buildRow({
-    ts: new Date().toISOString(),
-    event: 'post-compact-resume',
-    activeMin: 0,
-    idleMin: 0,
-    deltaWords: 0,
-    // #475 AC1 — carry the durable marker forward across compact
-    wordMarker: bank.marker,
-    fullWordMarker: transcriptWordsAvailable ? bank.fullMarker : null,
-    description: 'resumed after compact',
-  });
-  await safePost(s.active, row);
+  const { buildContext } = await import('./runtime.mjs');
+  return runActorHookTiming(buildContext(['status']), { event: 'PostCompact', sid });
 }
 
 function emitWorktreeBanner() {
@@ -304,6 +200,12 @@ export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker, fullWordMarke
   ];
 }
 
+function advanceIdleCursor(sid, task = null) {
+  if (!sid) return;
+  const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
+  if (counted.status === 'ok') advanceMarkerCursor(markerPathFor(sid), counted.totalLines, task);
+}
+
 async function onSessionStart(sid) {
   emitWorktreeBanner();
   // #575 — no template self-heal: `.ai-task-manager/templates/` is git-tracked
@@ -336,10 +238,7 @@ async function onSessionStart(sid) {
   // Nothing active and nothing paused
   if (!s.active && !s.lastActive) {
     console.log('[task-tracker] No active task.');
-    if (sid) {
-      const { totalLines } = countWords(jsonlPath(sid), 0);
-      saveMarker(markerPathFor(sid), totalLines, 0, null);
-    }
+    advanceIdleCursor(sid);
     return;
   }
 
@@ -371,20 +270,14 @@ async function onSessionStart(sid) {
     } else {
       console.log('[task-tracker] No active task.');
     }
-    if (sid) {
-      const { totalLines } = countWords(jsonlPath(sid), 0);
-      saveMarker(markerPathFor(sid), totalLines, 0, null);
-    }
+    advanceIdleCursor(sid);
     return;
   }
 
   // Discovery bucket active
   if (s.active === 'discover') {
     console.log('[task-tracker] Discovery bucket active. Use /task new to promote to an issue.');
-    if (sid) {
-      const { totalLines } = countWords(jsonlPath(sid), 0);
-      saveMarker(markerPathFor(sid), totalLines, 0, 'discover');
-    }
+    advanceIdleCursor(sid, 'discover');
     return;
   }
 
@@ -402,10 +295,7 @@ async function onSessionStart(sid) {
   });
   if (isTerminalIssueState(activeState)) {
     clearActive(statePath);
-    if (sid) {
-      const { totalLines } = countWords(jsonlPath(sid), 0);
-      saveMarker(markerPathFor(sid), totalLines, 0, null);
-    }
+    advanceIdleCursor(sid);
     console.log(
       `[task-tracker] ${s.active} reached Done out-of-band — timer unbound, no recovery logged.`
     );
@@ -419,91 +309,14 @@ async function onSessionStart(sid) {
     issue: s.active,
     now: () => nowTs,
   });
-  const wallMin = s.entryStartTs
-    ? Math.round((Date.now() - new Date(s.entryStartTs).getTime()) / 60000)
-    : 0;
-
-  let newWordBaseline = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart);
-  let newFullWordBaseline = stateFullWordMarker(s);
-  let transcriptWordsAvailable = false;
-  if (sid) {
-    const markerPath = markerPathFor(sid);
-    const existingMarker = loadMarker(markerPath);
-    const counted = countWords(jsonlPath(sid), existingMarker.line, {
-      provider: aiAppName(),
-      sid,
-    });
-    const bank = computeTranscriptTailBank(s, existingMarker, counted);
-    transcriptWordsAvailable = bank.transcriptStatus === 'ok';
-    newWordBaseline = bank.marker;
-    newFullWordBaseline = bank.fullMarker;
-    // Bank before authoring recovery boundaries so every row observes the same
-    // durable pair. Unavailable reads preserve the old cursor and render `—`.
-    if (transcriptWordsAvailable) {
-      saveMarker(markerPath, bank.line, bank.marker, s.active, bank.fullMarker);
-    }
-  }
-
-  if (wallMin > 0) {
-    // #709 — idempotent per session id. Two racing SessionStart invocations both
-    // read the same pre-write `entryStartTs` and compute the same `wallMin`;
-    // without a claim they double-stamp the recovery row ~1s apart. Claim an
-    // atomic O_EXCL lock under the session dir — only the winner posts. No sid
-    // (no session context) retains today's behavior. Claim-machinery failure
-    // fails open to posting rather than dropping real recovered time.
-    let mayPostRecovery = true;
-    if (sid) {
-      try {
-        const dir = sessionDir(sid);
-        mkdirSync(dir, { recursive: true });
-        mayPostRecovery = claimRecoveryOnce(path.join(dir, 'recovery.lock'));
-      } catch {
-        mayPostRecovery = true;
-      }
-    }
-    if (mayPostRecovery) {
-      const recoveryRows = buildOrphanRecoveryRowSpecs({
-        wallMin,
-        wordMarker: newWordBaseline,
-        fullWordMarker: transcriptWordsAvailable ? newFullWordBaseline : null,
-      }).map((spec) => buildRow({ ts: nowTs, ...spec }));
-      for (const recoveryRow of recoveryRows) {
-        await safePost(s.active, recoveryRow);
-      }
-    }
-  }
-
-  if (sid) {
-    const startRow = buildRow({
-      ts: nowTs,
-      event: 'session-start',
-      activeMin: 0,
-      idleMin: 0,
-      deltaWords: 0,
-      fullWordMarker: transcriptWordsAvailable ? newFullWordBaseline : null,
-      // #475 AC1 — monotonic carry-forward of the durable marker
-      wordMarker: newWordBaseline,
-      description: 'session resumed',
-    });
-    await safePost(s.active, startRow);
-  }
-
-  saveState(
-    {
-      ...s,
-      entryStartTs: nowTs,
-      wordsAtEntryStart: newWordBaseline,
-      // #475 AC1 — persist the durable monotonic marker across the recovery.
-      lastWordMarker: newWordBaseline,
-      lastFullWordMarker: newFullWordBaseline,
-    },
-    statePath
-  );
-
-  const recoveryNote =
-    wallMin > 0 ? ` — logged ~${wallMin} min from prior session (wall time only)` : '';
+  const { buildContext } = await import('./runtime.mjs');
+  const result = await runActorHookTiming(buildContext(['status']), { event: 'SessionStart', sid });
   console.log(
-    `[task-tracker] ${s.active} is active${recoveryNote}. Use /task pause or /task end before closing Claude, running /clear, or switching sessions.`
+    '[task-tracker] ' +
+      s.active +
+      ': ' +
+      result.status +
+      '. Prior unobserved session time remains Unknown.'
   );
 }
 
@@ -518,6 +331,10 @@ if (isMain)
       /* best-effort: optional read; fall back to default on parse/IO error */
     }
     const sid = payload.session_id || currentSessionId();
+    if (sid !== currentSessionId()) {
+      console.error('[task-tracker-hook] HOOK_ACTOR_MISMATCH');
+      process.exit(1);
+    }
     const event = payload.hook_event_name || process.argv[2];
     const eventTimestamp = payload.event_timestamp ?? payload.eventTimestamp ?? payload.timestamp;
     if (
@@ -545,6 +362,7 @@ if (isMain)
       else if (event === 'SessionStart') await onSessionStart(sid);
     } catch (err) {
       console.error(`[task-tracker-hook] ${event}: ${err.message}`);
+      process.exit(1);
     }
     process.exit(0);
   })();

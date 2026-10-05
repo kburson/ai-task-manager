@@ -3,8 +3,14 @@
 // Regression: `/task cancel` is the escape hatch for a stuck discovery
 // bucket. It clears the bucket and active binding WITHOUT emitting any timing
 // rows, and is a clean no-op when no bucket is active. See issue #234.
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
+import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { verbCancel } from '../../../../task-tracker/verbs/cancel.mjs';
@@ -30,9 +36,8 @@ function makeCtx(statePath, dir, rows) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-cancel-active-'));
   const statePath = path.join(dir, 'state.json');
   const startedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  writeFileSync(
-    statePath,
-    JSON.stringify({
+  saveState(
+    {
       active: 'discover',
       lastActive: null,
       discoverBucket: {
@@ -40,14 +45,14 @@ function makeCtx(statePath, dir, rows) {
         wordsAtStart: 10,
         entries: [{ ts: startedAt, event: 'discover-start', deltaMin: null, deltaWords: null }],
       },
-    }),
-    'utf8'
+    },
+    statePath
   );
 
   const rows = [];
   await verbCancel(makeCtx(statePath, dir, rows));
 
-  const after = JSON.parse(readFileSync(statePath, 'utf8'));
+  const after = loadState(statePath);
   assert.equal(after.active, null, 'active should be cleared');
   assert.equal(after.discoverBucket, null, 'discoverBucket should be cleared');
   assert.equal(rows.length, 0, 'cancel must emit zero timing rows');
@@ -57,11 +62,7 @@ function makeCtx(statePath, dir, rows) {
 {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-cancel-noop-'));
   const statePath = path.join(dir, 'state.json');
-  writeFileSync(
-    statePath,
-    JSON.stringify({ active: null, lastActive: null, discoverBucket: null }),
-    'utf8'
-  );
+  saveState({ active: null, lastActive: null, discoverBucket: null }, statePath);
 
   const rows = [];
   // Must not throw.

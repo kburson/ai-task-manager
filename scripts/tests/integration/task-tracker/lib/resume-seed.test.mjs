@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 // @story #251
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import { strict as assert } from 'node:assert';
 import '../../../fixtures/offline-gh-auto.mjs';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -10,7 +16,7 @@ import {
   setActiveTask,
   setSessionKanbanState,
 } from '../../../../task-tracker/session-state.mjs';
-import { loadState } from '../../../../task-tracker/state.mjs';
+import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 
 // #251 — verbResume's fresh-bind path must seed the per-session `kanbanState`
 // derived cache (mirroring verbStart) so the activity-guard hook can read state
@@ -26,6 +32,7 @@ const tmp = mkdtempProjectIsolated('tt-resume-seed-');
 // Isolate every AITM path writer (markerDir, transcriptDir, fleet registry,
 // session records) under the tmp project so the test never touches real state.
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+process.chdir(tmp);
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
@@ -35,8 +42,8 @@ const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs')
 let stateSeq = 0;
 function writeState(obj) {
   // Distinct file per test so global-ledger fields don't leak across cases.
-  const p = path.join(tmp, `state-${stateSeq++}.json`);
-  writeFileSync(p, JSON.stringify(obj), 'utf8');
+  const p = path.join(tmp, '.tmp', 'aitm', 'state', `state-${stateSeq++}.json`);
+  saveState(obj, p);
   return p;
 }
 
@@ -231,6 +238,8 @@ function makeCtx({
   assert.equal(seedCalls.length, 0, 'already-active branch does not seed');
   assert.equal(loadState(statePath).active, '#999', 'active issue unchanged');
 }
+
+process.chdir(fixtureOriginalCwd);
 
 rmSync(tmp, { recursive: true });
 console.log('resume-seed.test.mjs: all passed');

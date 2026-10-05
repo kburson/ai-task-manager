@@ -1,0 +1,45 @@
+✔ production delivery reader resolves empty or omitted trunkRef for an attributed epic child (18.886667ms)
+✔ production delivery reader follows the shared local and configured-remote fallback authority (1.978083ms)
+✔ production child close resolves an omitted trunkRef and keeps parent attribution blockers (26.831791ms)
+✔ production child close projects the same gate outcome with explicit and default trunk refs (8.971667ms)
+✔ local parent closes ready with absent remote parent (993.117333ms)
+✔ local parent closes ready with divergent remote parent (563.06525ms)
+✔ missing opaque parent walks to the surviving registered ancestor (430.976167ms)
+✔ absent parents fall back to trunk and cannot attribute an undelivered child (441.132542ms)
+✔ local delivery rejects false numeric-prefix attribution (490.337542ms)
+✔ missing local commit objects fail closed without remote substitution (560.696125ms)
+✔ production child reader retains complete paginated child identity and refuses malformed pages (4.432916ms)
+✔ production worktree reader compares binding identity and observes dirty paths without writing (0.253ms)
+✔ production delivery reader uses canonical parent lineage and current receipt evidence (3.822542ms)
+✔ production delivery rejects evidence-v2 without invoking its mutating close runner (0.1915ms)
+✔ production guard adapter reads dependencies and refuses missing local commit objects (1.252625ms)
+✔ production close reaches ready with fresh authority and only read transports (14.811916ms)
+✔ production close collector and terminal authority guard refuse changed delivery after ready (6.0395ms)
+✔ production close observes workflow policy when a guard requires enrichment (4.185875ms)
+✔ production close cannot select ordinary completion for a CLOSED GitHub issue in Review (2.45875ms)
+✔ production close refuses issue-body changes even when semantic scope is unchanged (8.145458ms)
+✔ production close refuses a changed issue revision with byte-identical body (2.046125ms)
+✔ production close cannot bypass pending recovery on an OPEN issue in Review (3.513791ms)
+✔ production close retains immutable initial and current issue revisions (1.419958ms)
+✔ ordinary close collects current authority without effects (2.599833ms)
+✔ close fails closed on missing objects and retains independent guard blockers (1.896542ms)
+✔ close cannot convert a missing receipt or child read into readiness (1.957459ms)
+✔ production close adapter fails closed without read-only delivery and guard seams (1.201625ms)
+✔ production guards pin both child and epic delivery proofs to the verified immutable tip (1.434084ms)
+✔ collector preserves all seven fields on read failure and does not execute effects (0.461291ms)
+✔ epic child refusals and independent child approval requests survive close collection (0.469083ms)
+✔ close preserves approval requests alongside attribution investigation (1.30475ms)
+✔ incorporated and malformed evidence-v2 authority cannot select a special close lane (0.788583ms)
+✔ a current Review state selects sanctioned close navigation (0.057334ms)
+✔ Done remains terminal and cannot select another close (0.072291ms)
+✔ Review promotion delegates to the close collector (0.787583ms)
+✔ close retains approval and investigation requests simultaneously (0.768709ms)
+✔ missing workflow-policy reader is a typed indeterminate result (0.353042ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 37
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3642.398584

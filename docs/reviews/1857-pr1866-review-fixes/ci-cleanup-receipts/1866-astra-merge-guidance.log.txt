@@ -1,0 +1,13 @@
+From /private/tmp/1866-astra-merge-head
+ * branch              e545522e467e484bd96db3b327fc8ccd0047c086 -> FETCH_HEAD
+✔ final release requires a complete installed-byte and public-CLI capture (1393.156958ms)
+✔ accepted final archive stays intact and cannot certify changed current sources (2.717792ms)
+✔ internally consistent dirty installed guidance cannot inherit a committed source identity (5863.784792ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7560.458959

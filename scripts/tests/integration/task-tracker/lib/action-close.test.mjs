@@ -1,7 +1,13 @@
 // @story #1669
 // @story #1802
+// @story #1867
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { writeFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
+import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { uncheckedPreCloseCheckboxes } from '../../../../task-tracker/close-gate.mjs';
+import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
 
 import { resolveActionNavigation } from '../../../../task-tracker/lib/action-decision/navigation.mjs';
 import { evaluateAction } from '../../../../task-tracker/lib/action-decision/evaluate.mjs';
@@ -114,7 +120,13 @@ test('production delivery reader uses canonical parent lineage and current recei
   assert.ok(calls.every(([command, args]) => !(command === 'git' && args[0] === 'fetch')));
   assert.ok(
     calls.every(
-      ([command, args]) => !(command === 'git' && args[0] === 'rev-parse' && args[1] === '--verify')
+      ([command, args]) =>
+        !(
+          command === 'git' &&
+          args[0] === 'rev-parse' &&
+          args[1] === '--verify' &&
+          /^(?:refs\/remotes\/)?origin\/trunk$/.test(args.at(-1))
+        )
     ),
     'an explicit trunkRef must win without a default probe'
   );
@@ -233,24 +245,29 @@ async function productionCloseFixture({
       fetchBoard: async () => ({ state: 'review' }),
       run: async (command, args) => {
         commands.push([command, args]);
-        if (command === 'gh' && args[0] === 'issue' && !args.includes('blockedBy,blocking'))
+        if (
+          command === 'gh' &&
+          args[0] === 'issue' &&
+          !(args.includes('blockedBy,blocking') || args.includes('blockedBy'))
+        )
           issueReads += 1;
         if (command === 'gh' && args[0] === 'issue')
           return {
-            stdout: args.includes('blockedBy,blocking')
-              ? JSON.stringify({
-                  blockedBy: { nodes: [], totalCount: 0 },
-                  blocking: { nodes: [], totalCount: 0 },
-                })
-              : args.includes('body')
-                ? body
-                : JSON.stringify({
-                    number: ISSUE,
-                    body: bodyOnRead?.(issueReads, body) ?? body,
-                    state: issueState,
-                    stateReason: issueState === 'CLOSED' ? 'COMPLETED' : null,
-                    updatedAt: revisionOnRead?.(issueReads) ?? now(),
-                  }),
+            stdout:
+              args.includes('blockedBy,blocking') || args.includes('blockedBy')
+                ? JSON.stringify({
+                    blockedBy: { nodes: [], totalCount: 0 },
+                    blocking: { nodes: [], totalCount: 0 },
+                  })
+                : args.includes('body')
+                  ? body
+                  : JSON.stringify({
+                      number: ISSUE,
+                      body: bodyOnRead?.(issueReads, body) ?? body,
+                      state: issueState,
+                      stateReason: issueState === 'CLOSED' ? 'COMPLETED' : null,
+                      updatedAt: revisionOnRead?.(issueReads) ?? now(),
+                    }),
           };
         if (command === 'gh' && args[0] === 'pr') return { stdout: '[]' };
         if (command === 'gh' && args.includes('graphql'))

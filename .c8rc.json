@@ -6,6 +6,7 @@
     "**/tests/**",
     "scripts/maintenance/**",
     "scripts/migrate/**",
+    "scripts/research/**",
     "scripts/run-tests.mjs",
     "scripts/run-tests-report.mjs",
     "scripts/sync-templates.mjs",

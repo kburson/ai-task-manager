@@ -1,0 +1,11 @@
+PR1866 estimation cleanup
+
+Owned files only:
+- scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs
+- scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs
+
+Root cause: createEstimationOutcomeRuntime.ensure derives isEpic solely from parseIssueKind(body) (runtime-adapter.mjs 1143-1144); parseIssueKind reads the AITM Progress Markers section and defaults to code without explicit authority. Epic fixtures had empty bodies / prose 'epic body', relying on discovered child cardinality, which is now landscape evidence only. This produced legacy-no-forecast and outcome-verification-sha for the code path. Supplied explicit epic kind markers in the required section for intended epic fixture calls, including retries and rejection scenarios. No assertion changes, synthetic SHA/source identity, production changes, or live lifecycle calls.
+
+Before fix: clean runner node --test the two owned files: 16 tests, 11 pass, 5 fail.
+After fix: python3 /private/tmp/1866-run-clean.py node --test scripts/tests/integration/task-tracker/lib/estimation/*.integration.test.mjs: 28 tests, 28 pass, 0 fail, exit 0.
+Formatting: python3 /private/tmp/1866-run-clean.py node node_modules/prettier/bin/prettier.cjs --check [both owned files]: exit 0, all matched files use Prettier style.

@@ -1,0 +1,8 @@
+{
+  "reviewed_base": "d4c42d7809c22acc9576d51da8938952588c207e",
+  "fix_commit": "bc977b61e32ec5f00c0449110e32e977650f27af",
+  "tracked_patch_sha256": "bb70fce2b7032b6c10d636dbb4060439e83fd5dbaa7c474ac7c69a45bcd44c54",
+  "regression_test_sha256": "7d9bebe6a6e7a53245e384aa35108d725d8c15a35e395312306969c6f0c937d8",
+  "tracked_patch_equals_review_input": true,
+  "git_diff_abbrev": 9
+}

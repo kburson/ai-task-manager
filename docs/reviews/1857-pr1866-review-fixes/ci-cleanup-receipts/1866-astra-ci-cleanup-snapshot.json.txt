@@ -1,0 +1,6 @@
+{
+  "head": "0cf1905c95772ea85370d560095903daf371761d",
+  "diff_sha256": "6104b15de67376f94293028c24cc8f60de9a799c0c994899a1e49747f72ea9be",
+  "helper_sha256": "637cf6c6b1f12eed204696724c47c26262ac8e393c9943352b3b6c30d518d273",
+  "snapshot": "/private/tmp/1866-astra-ci-cleanup-head"
+}

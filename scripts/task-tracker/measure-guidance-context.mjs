@@ -300,7 +300,11 @@ export function measureAgentVisible({ staticFiles = [], events = [] } = {}) {
   };
 }
 
-export async function buildGuidanceContextReport({ captureBytes } = {}) {
+export async function buildGuidanceContextReport({
+  captureBytes,
+  capturePath,
+  manifestBytes,
+} = {}) {
   if (!Buffer.isBuffer(captureBytes)) throw new TypeError('context: capture bytes are required');
   const capture = JSON.parse(captureBytes);
   const final = capture.identity?.mode === 'final';
@@ -346,7 +350,10 @@ export async function buildGuidanceContextReport({ captureBytes } = {}) {
   }
   const { buildPairedContext } = await import('../tests/helpers/guidance-paired-context.mjs');
   const adapters = Object.fromEntries(
-    ['claude', 'codex'].map((adapter) => [adapter, buildPairedContext({ captureBytes, adapter })])
+    ['claude', 'codex'].map((adapter) => [
+      adapter,
+      buildPairedContext({ captureBytes, adapter, capturePath, manifestBytes }),
+    ])
   );
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const fixturePath = (name) => path.join(root, `scripts/tests/fixtures/1558/${name}`);
@@ -436,8 +443,11 @@ export function buildCurrentPairedComparison({ lifecycle, authority, budgets } =
   if (sha256(historicalBytes) !== historicalSha256) {
     throw new Error('context: historical comparison bytes changed');
   }
-  const artifactSha256 = (value, filename) => {
-    const bytes = readFileSync(new URL(`../tests/fixtures/1558/${filename}`, import.meta.url));
+  const finalRoot = final
+    ? 'scripts/tests/fixtures/1857/1866-current'
+    : 'scripts/tests/fixtures/1558';
+  const artifactSha256 = (value, filename, sourceRoot = 'scripts/tests/fixtures/1558') => {
+    const bytes = readFileSync(new URL(`../../${sourceRoot}/${filename}`, import.meta.url));
     if (JSON.stringify(JSON.parse(bytes)) !== JSON.stringify(value)) {
       throw new Error(`context: stale paired input ${filename}`);
     }
@@ -455,10 +465,11 @@ export function buildCurrentPairedComparison({ lifecycle, authority, budgets } =
     },
     sources: {
       lifecycle: {
-        path: `scripts/tests/fixtures/1558/${final ? 'lifecycle-transcript-final' : 'lifecycle-transcript'}.json`,
+        path: `${finalRoot}/${final ? 'lifecycle-transcript-final' : 'lifecycle-transcript'}.json`,
         sha256: artifactSha256(
           lifecycle,
-          final ? 'lifecycle-transcript-final.json' : 'lifecycle-transcript.json'
+          final ? 'lifecycle-transcript-final.json' : 'lifecycle-transcript.json',
+          finalRoot
         ),
       },
       authority: {
@@ -466,8 +477,8 @@ export function buildCurrentPairedComparison({ lifecycle, authority, budgets } =
         sha256: artifactSha256(authority, 'authority-after.json'),
       },
       budgets: {
-        path: `scripts/tests/fixtures/1558/context-budgets${final ? '-final' : ''}.json`,
-        sha256: artifactSha256(budgets, `context-budgets${final ? '-final' : ''}.json`),
+        path: `${finalRoot}/context-budgets${final ? '-final' : ''}.json`,
+        sha256: artifactSha256(budgets, `context-budgets${final ? '-final' : ''}.json`, finalRoot),
       },
     },
     adapters: Object.fromEntries(
@@ -517,7 +528,7 @@ async function main() {
   }
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const captureBytes = readFileSync(
-    path.join(root, 'scripts/tests/fixtures/1558/actual-explain-traffic-final.json')
+    path.join(root, 'scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json')
   );
   const report = await buildGuidanceContextReport({ captureBytes });
   if (report.classification === 'final-installed-consumer-release') {

@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 // @story #1092
 import { strict as assert } from 'node:assert';
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 
 const THREAD_ID = '019fbe04-test-codex-lifecycle';
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'codex-word-lifecycle-'));
-const projectDir = path.join(tmp, 'project');
+const tmp = createRuntimeRootFixture('codex-word-lifecycle-');
+const projectDir = tmp;
+const previousCwd = process.cwd();
 const homeDir = path.join(tmp, 'home');
 const rolloutDir = path.join(homeDir, '.codex', 'sessions', '2026', '08', '01');
 const rolloutPath = path.join(rolloutDir, `rollout-2026-08-01T12-00-00-${THREAD_ID}.jsonl`);
@@ -16,6 +17,8 @@ const rolloutPath = path.join(rolloutDir, `rollout-2026-08-01T12-00-00-${THREAD_
 const savedEnv = Object.fromEntries(
   [
     'AI_TASK_MANAGER_PROJECT_DIR',
+    'AI_TASK_MANAGER_SESSION_ID',
+    'CLAUDE_PROJECT_DIR',
     'AI_TASK_MANAGER_APP_NAME',
     'CODEX_THREAD_ID',
     'CODEX_SESSION_ID',
@@ -38,6 +41,9 @@ function message(role, text) {
 }
 
 try {
+  process.chdir(projectDir);
+  delete process.env.CLAUDE_PROJECT_DIR;
+  process.env.AI_TASK_MANAGER_SESSION_ID = THREAD_ID;
   mkdirSync(projectDir, { recursive: true });
   mkdirSync(rolloutDir, { recursive: true });
   writeFileSync(rolloutPath, `${message('user', 'first visible lifecycle segment')}\n`);
@@ -73,6 +79,8 @@ try {
     lastWordMarker: 0,
   };
 
+  const { saveState } = await import('../../../../task-tracker/state.mjs');
+  saveState(state, ctx.statePath);
   const first = await ctx.flushActiveToGH(state, 'pause:test', 'first lifecycle flush');
   appendFileSync(rolloutPath, `${message('assistant', 'second visible lifecycle segment')}\n`);
   const second = await ctx.flushActiveToGH(state, 'pause:test', 'second lifecycle flush');
@@ -81,10 +89,18 @@ try {
   assert.ok(second.deltaWords > 0, 'new Codex records produce a positive next-segment delta');
   assert.ok(second.wordMarker > first.wordMarker, 'the durable Word Marker grows monotonically');
   assert.equal(rows.length, 2, 'the real lifecycle flush emits both timing rows');
-  assert.equal(refs.length, 2, 'each live flush checks the append-only session reference');
-  assert.equal(refs[0].sid, THREAD_ID, 'session reference uses Codex Desktop thread identity');
-  assert.equal(refs[0].jsonlPath, rolloutPath, 'session reference uses the native rollout path');
+  assert.equal(
+    refs.length,
+    0,
+    'public timing does not publish native session identifiers or paths'
+  );
+  assert.ok(
+    rows.every((row) => row.includes('aitm-actor:v1')),
+    'each row carries opaque actor correlation'
+  );
+  assert.ok(rows.every((row) => !row.includes(THREAD_ID) && !row.includes(rolloutPath)));
 } finally {
+  process.chdir(previousCwd);
   for (const [key, value] of Object.entries(savedEnv)) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;

@@ -27,6 +27,15 @@ export function renderEstimationForecast(record) {
 
 export function renderEstimationOutcome(record) {
   validateEstimationOutcome(record);
+  if (record.telemetry?.status === 'incomplete') {
+    return (
+      '## Estimation Outcome\n\nActual engaged: Unknown. Known actor subtotal: ' +
+      record.telemetry.knownEngagedMs / 1000 +
+      ' seconds; unknown remainder.\n\nReasons: ' +
+      record.telemetry.reasons.join(', ') +
+      '. Excluded from quantitative calibration.\n'
+    );
+  }
   if (record.kind === 'epic-orchestration')
     return `## Epic Orchestration Outcome\n\nActual orchestration engaged: ${hours(record.actual.engagedHours)}. Child outcomes: ${record.landscape.childOutcomeRecordIds.join(', ')}.\n\nNecessary: ${hours(record.costClassification.necessaryHours)}; avoidable process waste: ${hours(record.costClassification.avoidableProcessWasteHours)}; unclassified: ${hours(record.costClassification.unclassifiedHours)}.\n`;
   return `## Estimation Outcome\n\nActual engaged: ${hours(record.actual.engagedHours)}. AI P50 variance: ${hours(record.variance.vsAiP50Hours)}; AI P80 variance: ${hours(record.variance.vsAiP80Hours)}.\n\nNecessary: ${hours(record.costClassification.necessaryHours)}; avoidable process waste: ${hours(record.costClassification.avoidableProcessWasteHours)}; unclassified: ${hours(record.costClassification.unclassifiedHours)}.\n`;

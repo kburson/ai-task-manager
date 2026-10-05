@@ -1,12 +1,45 @@
 // @story #1660
+// @story #1859
+// @story #1872
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
+
+// Historical reports certify the exact shim bytes they measured. Later product
+// guidance must not silently replace their inputs or change their recorded GO.
+function historicalCandidateRoot() {
+  const record = json('pre-slim-static/manifest.json').files.find(
+    ({ sourcePath }) => sourcePath === 'skill/SKILL.md'
+  );
+  const bytes = Buffer.from(
+    readFileSync(path.join(projectRoot, record.snapshotPath), 'utf8').trim(),
+    'base64'
+  );
+  assert.equal(`sha256:${createHash('sha256').update(bytes).digest('hex')}`, record.sha256);
+  assert.equal(
+    record.sha256,
+    json('context-comparison.json').adapters.codex.candidate.static.files.find(
+      ({ id }) => id === 'shim'
+    ).sha256
+  );
+  const historicalRoot = mkdtempSync(
+    path.join(projectScratchDir('test', projectRoot), 'guidance-historical-')
+  );
+  after(() => rmSync(historicalRoot, { recursive: true, force: true }));
+  for (const directory of ['scripts', 'docs']) {
+    symlinkSync(path.join(projectRoot, directory), path.join(historicalRoot, directory), 'dir');
+  }
+  mkdirSync(path.join(historicalRoot, 'skill'));
+  writeFileSync(path.join(historicalRoot, 'skill/SKILL.md'), bytes);
+  return historicalRoot;
+}
 
 function json(relativePath) {
   return JSON.parse(readFileSync(path.join(fixtureRoot, relativePath), 'utf8'));
@@ -22,9 +55,10 @@ async function measurementTool() {
 
 test('accepted WBS 5-7 generation produces the sole pinned GO decision', async () => {
   const { buildFeasibilityDecision, validateFeasibilityDecision } = await measurementTool();
-  const decision = buildFeasibilityDecision({ projectRoot });
+  const historicalRoot = historicalCandidateRoot();
+  const decision = buildFeasibilityDecision({ projectRoot: historicalRoot });
 
-  assert.equal(validateFeasibilityDecision(decision, { projectRoot }), decision);
+  assert.equal(validateFeasibilityDecision(decision, { projectRoot: historicalRoot }), decision);
   assert.equal(decision.schema, 'aitm.guidance-feasibility-decision/v1');
   assert.deepEqual(decision.owner, {
     issue: 1660,
@@ -164,7 +198,8 @@ test('accepted WBS 5-7 generation produces the sole pinned GO decision', async (
 
 test('decision pins complete source, runner, oracle, serializer, fixture and proposed-text identities', async () => {
   const { buildFeasibilityDecision } = await measurementTool();
-  const decision = buildFeasibilityDecision({ projectRoot });
+  const historicalRoot = historicalCandidateRoot();
+  const decision = buildFeasibilityDecision({ projectRoot: historicalRoot });
   const roles = new Set(decision.inputs.records.map(({ role }) => role));
 
   assert.deepEqual(
@@ -277,10 +312,18 @@ test('honest NO-GO remains reportable while the foundation assertion exits nonze
 });
 
 test('missing, stale, shortened or relabeled inputs cannot become a decision', async () => {
-  const { buildFeasibilityDecision, validateFeasibilityDecision } = await measurementTool();
+  const { buildFeasibilityDecision, validateFeasibilityDecision, withFrozenCandidateRuntime } =
+    await measurementTool();
   const { buildCandidateMeasurementArtifacts } =
     await import('../../../helpers/guidance-characterization.mjs');
-  const artifacts = buildCandidateMeasurementArtifacts({ projectRoot });
+  const historicalRoot = historicalCandidateRoot();
+  const artifacts = withFrozenCandidateRuntime(() =>
+    buildCandidateMeasurementArtifacts({ projectRoot: historicalRoot })
+  );
+  assert.deepEqual(
+    buildFeasibilityDecision({ projectRoot: historicalRoot, measurementArtifacts: artifacts }),
+    json('feasibility-decision.json')
+  );
 
   for (const mutate of [
     (value) => value.transcripts.codex.entries.pop(),
@@ -290,26 +333,48 @@ test('missing, stale, shortened or relabeled inputs cannot become a decision', a
     const candidate = clone(artifacts);
     mutate(candidate);
     assert.throws(
-      () => buildFeasibilityDecision({ projectRoot, measurementArtifacts: candidate }),
+      () =>
+        buildFeasibilityDecision({ projectRoot: historicalRoot, measurementArtifacts: candidate }),
       /guidance-candidate:measurement-artifact-drift/
     );
   }
 
-  const decision = buildFeasibilityDecision({ projectRoot });
+  const decision = buildFeasibilityDecision({ projectRoot: historicalRoot });
   decision.inputs.records.pop();
   assert.throws(
-    () => validateFeasibilityDecision(decision, { projectRoot }),
+    () => validateFeasibilityDecision(decision, { projectRoot: historicalRoot }),
     /guidance-feasibility:decision-drift/
   );
 });
 
-test('historical foundation stays immutable while command modes report the current recertification', async () => {
+test('historical foundation stays immutable and obsolete recertification cannot assert current GO', async (t) => {
+  // #1857: current replay uses an isolated fixture actor; archived captures
+  // and their original provenance assertions remain unchanged.
+  const keys = ['AI_TASK_MANAGER_SESSION_ID', 'AI_TASK_MANAGER_APP_NAME'];
+  const prior = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-guidance-replay';
+  process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
+  t.after(() => {
+    for (const [key, value] of Object.entries(prior)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
   const { buildFeasibilityDecision, buildCurrentRecertificationDecision, runMeasurementCommand } =
     await measurementTool();
-  assert.deepEqual(json('feasibility-decision.json'), buildFeasibilityDecision({ projectRoot }));
-  const expected = buildCurrentRecertificationDecision({ projectRoot });
-  assert.deepEqual(json('feasibility-recheck-1767.json'), expected);
+  const historicalRoot = historicalCandidateRoot();
+  assert.deepEqual(
+    json('feasibility-decision.json'),
+    buildFeasibilityDecision({ projectRoot: historicalRoot })
+  );
 
+  // The #1767 capture predates this catalog and is historical evidence. The
+  // final release capture has its own current acceptance gate; do not relabel
+  // this older capture or turn a failed replay into a fabricated recertification.
+  assert.throws(
+    () => buildCurrentRecertificationDecision({ projectRoot }),
+    /guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml/
+  );
   for (const args of [
     ['--all', '--json'],
     ['--all', '--assert-feasible', '--json'],
@@ -321,8 +386,12 @@ test('historical foundation stays immutable while command modes report the curre
       writeStdout: (value) => (stdout += value),
       writeStderr: (value) => (stderr += value),
     });
-    assert.equal(status, 0, stderr);
-    assert.deepEqual(JSON.parse(stdout), expected);
+    assert.equal(status, 1);
+    assert.equal(stdout, '');
+    assert.match(
+      stderr,
+      /guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml/
+    );
   }
 
   let stderr = '';

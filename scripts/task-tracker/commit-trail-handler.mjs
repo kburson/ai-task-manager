@@ -15,6 +15,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
+import { resolveRuntimeRoot } from './lib/runtime-storage.mjs';
 import {
   detectGitCommit,
   parseMarker,
@@ -72,15 +73,7 @@ function parsePayload(raw) {
 }
 
 function findProjectDir(startDir) {
-  if (process.env.AI_TASK_MANAGER_PROJECT_DIR) return process.env.AI_TASK_MANAGER_PROJECT_DIR;
-  let dir = path.resolve(startDir || process.cwd());
-  for (let i = 0; i < 8; i++) {
-    if (existsSync(path.join(dir, '.ai-task-manager'))) return dir;
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return null;
+  return resolveRuntimeRoot({ cwd: startDir || process.cwd() }).projectRoot;
 }
 
 function loadActiveIssue(projectDir) {

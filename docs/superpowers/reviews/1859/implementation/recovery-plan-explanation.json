@@ -1,0 +1,41 @@
+{
+  "schema": "aitm.action-explanation/v2",
+  "result": {
+    "issue": 1859,
+    "actionId": "promote",
+    "status": "ready",
+    "blockers": [],
+    "normalizations": [],
+    "warnings": [],
+    "humanDecision": null
+  },
+  "guidance": [
+    {
+      "id": "action.promote",
+      "digest": "sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc",
+      "status": "expanded",
+      "agent": {
+        "instruction": [
+          {
+            "query": "promote"
+          },
+          {
+            "require_status": "ready"
+          },
+          {
+            "if_blocked": "use_returned_remediation_ids"
+          },
+          {
+            "execute": "promote"
+          },
+          {
+            "never": "bypass_guard"
+          },
+          {
+            "execution_revalidates": true
+          }
+        ]
+      }
+    }
+  ]
+}

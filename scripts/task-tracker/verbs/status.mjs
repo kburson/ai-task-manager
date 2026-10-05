@@ -5,8 +5,9 @@ import {
   markerPathFor,
   loadMarker,
   countWords,
+  aiAppName,
 } from '../word-counter.mjs';
-import { collectEventTimestamps, computeActiveAndIdleMinutes } from '../active-time.mjs';
+import { readActivityEvidence } from '../active-time.mjs';
 
 export async function verbStatus(ctx) {
   const { cfg, statePath, worktreeLabel } = ctx;
@@ -44,16 +45,13 @@ export async function verbStatus(ctx) {
   const startMs = new Date(s.entryStartTs).getTime();
   const endMs = Date.now();
   const wallMin = Math.round((endMs - startMs) / 60000);
-  let activeMin = wallMin;
-  if (sid) {
-    const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
-    ({ activeMin } = computeActiveAndIdleMinutes({
-      startMs,
-      endMs,
-      events,
-      idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
-    }));
-  }
+  const evidence = readActivityEvidence(jsonlPath(sid), startMs, endMs, {
+    provider: aiAppName(),
+    sid,
+    idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
+  });
+  const activeMin =
+    evidence.status === 'observed' ? Math.round(evidence.activeEstimateSec / 60) : 'Unknown';
   const wallNote = wallMin !== activeMin ? ` (wall ${wallMin})` : '';
   console.log(
     `Active: ${s.active} [${cfg.repo || 'repo not set'}]. Elapsed: ${activeMin} active min${wallNote}, ${wordsNow - s.wordsAtEntryStart} words since last marker.`

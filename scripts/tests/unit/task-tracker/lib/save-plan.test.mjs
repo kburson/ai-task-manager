@@ -11,10 +11,16 @@
 //   - --title override changes saved filename slug
 //   - collision avoids overwrite by appending -2 suffix
 
+// @story #1857
+// Fixture: this fixture owns its actor instead of using ambient session state.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
+import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 
 const VALID_PLAN = '# My Plan\n\n## Scope\nsome scope\n';
 
@@ -40,7 +46,7 @@ function makeCtx(dir, statePath, rest = []) {
 
 async function runVerb(dir, stateData, rest) {
   const statePath = path.join(dir, 'state.json');
-  writeFileSync(statePath, JSON.stringify(stateData), 'utf8');
+  saveState(stateData, statePath);
   const ctx = makeCtx(dir, statePath, rest);
 
   let exitCode = null;
@@ -75,7 +81,7 @@ async function runVerb(dir, stateData, rest) {
     console.log = origLog;
   }
 
-  const state = existsSync(statePath) ? JSON.parse(readFileSync(statePath, 'utf8')) : null;
+  const state = existsSync(statePath) ? loadState(statePath) : null;
   return { exitCode, stderr: stderrOut, stdout: stdoutOut, state, threw };
 }
 

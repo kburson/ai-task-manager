@@ -47,5 +47,39 @@
   "fullAutoMerge": {
     "mechanism": "provider-action",
     "mergeMethod": "squash"
+  },
+  "verificationProvider": {
+    "id": "project",
+    "develop": {
+      "iterationSteps": [
+        {
+          "classification": "test-affected",
+          "kind": "test",
+          "command": "node scripts/maintenance/verify-affected-or-cloud.mjs"
+        }
+      ],
+      "finalSteps": [
+        {
+          "classification": "lint-full",
+          "kind": "lint",
+          "command": "npm run lint"
+        },
+        {
+          "classification": "format-full",
+          "kind": "format",
+          "command": "npm run format:check"
+        }
+      ]
+    },
+    "test": {
+      "setup": "npm-ci",
+      "steps": [
+        {
+          "classification": "test-cloud-complete",
+          "kind": "test",
+          "command": "node scripts/maintenance/verify-ci-receipts.mjs"
+        }
+      ]
+    }
   }
 }

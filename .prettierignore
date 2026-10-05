@@ -18,3 +18,28 @@ docs/superpowers/specs/2026-09-14-1624-workflow-exceptions-design.md
 scripts/tests/fixtures/1558/actual-explain-traffic-final.json
 scripts/tests/fixtures/1558/final-capture-manifest.json
 scripts/tests/fixtures/1558/lifecycle-transcript-final.json
+
+# APR sealed responses retain exact protected metadata.
+docs/reviews/1857-expanded/**/review-*-author-response-*.md
+docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md
+docs/reviews/1857-expanded/**/review-*-review-manifest.md
+docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md
+docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md
+docs/reviews/1857-revised-plan-xpr/**/review-*-review-manifest.md
+
+# Admitted APR evidence and its accepted artifact retain their reviewed bytes.
+docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-author-response-*.md
+docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-reviewer-response-*.md
+docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-review-manifest.md
+docs/superpowers/plans/2026-10-01-1857-remaining-work-decomposition.md
+
+# Exact byte replay for the current committed guidance capture.
+scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json
+scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json
+scripts/tests/fixtures/1857/1866-current/lifecycle-transcript-final.json
+.ai-task-manager/runtime/test-fixtures/
+
+# Preserved prior guidance capture retains its original checksummed bytes.
+docs/reviews/1878-close-recovery/previous-guidance-capture/actual-explain-traffic-final.json
+docs/reviews/1878-close-recovery/previous-guidance-capture/final-capture-manifest.json
+docs/reviews/1878-close-recovery/previous-guidance-capture/lifecycle-transcript-final.json

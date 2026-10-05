@@ -18,6 +18,12 @@
 //      && not paused) with an early `return` before any timing emission.
 //   4. switch.mjs no longer conditions emission on `isSelfBind` — the dead
 //      self-bind branch was removed once the guard made it unreachable.
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -107,23 +113,22 @@ test('same-issue resume restores fleet evidence without timing writes', async ()
   const oldTranscriptDir = process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
   const oldSessionId = process.env.AI_TASK_MANAGER_SESSION_ID;
   process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+  process.chdir(tmp);
   process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
   process.env.AI_TASK_MANAGER_SESSION_ID = 'self-bind-fleet-repair-1140';
   mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
   try {
     const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
-    const { setActiveTask } = await import('../../../../task-tracker/session-state.mjs');
-    setActiveTask(process.env.AI_TASK_MANAGER_SESSION_ID, { issue: '#1140' }, tmp);
-    const statePath = path.join(tmp, 'state.json');
-    writeFileSync(
-      statePath,
-      JSON.stringify({
+    const { saveState } = await import('../../../../task-tracker/state.mjs');
+    const statePath = path.join(tmp, '.tmp', 'aitm', 'state', 'state.json');
+    saveState(
+      {
         active: '#1140',
         lastActive: '#1140',
         entryStartTs: '2026-08-07T06:59:00Z',
-      }),
-      'utf8'
+      },
+      statePath
     );
 
     const registrations = [];
@@ -150,6 +155,7 @@ test('same-issue resume restores fleet evidence without timing writes', async ()
     assert.equal(drained, 0, 'same-issue repair must return before queue/timing work');
     assert.equal(timingPosts, 0, 'same-issue repair must not post a re-engagement row');
   } finally {
+    process.chdir(fixtureOriginalCwd);
     rmSync(tmp, { recursive: true, force: true });
     if (oldProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
     else process.env.AI_TASK_MANAGER_PROJECT_DIR = oldProjectDir;

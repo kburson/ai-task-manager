@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 // @story #309
 import { strict as assert } from 'node:assert';
 import '../../../fixtures/offline-gh-auto.mjs';
@@ -180,7 +184,7 @@ rmSync(sandbox, { recursive: true });
 // ---- Uninitialized guard tests ----
 // Dir has .ai-task-manager/ but no task-tracker.json — fail-closed `config-not-found`.
 // fleet-sandbox-ok: deliberately uninitialized (no task-tracker.json) — every verb fails config-not-found before reaching registerTask, so no leak is possible.
-const noRepoDirBase = mkdtempSync(path.join(projectScratchDir('test'), 'tt-norepo-'));
+const noRepoDirBase = createRuntimeRootFixture('tt-norepo-');
 mkdirSync(path.join(noRepoDirBase, '.ai-task-manager'), { recursive: true });
 const noRepoEnv = {
   ...process.env,
@@ -226,7 +230,7 @@ rmSync(noRepoDirBase, { recursive: true });
 // Worktree pipeline regression guard. Must exit non-zero with "config-not-found at <path>"
 // when an agent boots into a worktree that wasn't seeded with .ai-task-manager/.
 // fleet-sandbox-ok: deliberately unseeded worktree — --role agent must fail config-not-found before reaching registerTask, so no leak is possible.
-const bareWorktree = mkdtempSync(path.join(projectScratchDir('test'), 'tt-bare-wt-'));
+const bareWorktree = createRuntimeRootFixture('tt-bare-wt-');
 const bareEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: bareWorktree, TT_SKIP_NETWORK: '1' };
 try {
   await pexec('node', [CLI, '#42', '--role', 'agent'], { env: bareEnv, cwd: bareWorktree });

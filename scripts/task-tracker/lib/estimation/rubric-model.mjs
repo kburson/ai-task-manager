@@ -121,12 +121,10 @@ export function updateEstimationRubric({
 } = {}) {
   validateEstimationRubric(previous);
   if (!Array.isArray(outcomes)) throw new TypeError('estimation-rubric:outcomes');
-  const ordered = [...outcomes]
-    .sort(
-      (left, right) =>
-        left.createdAt.localeCompare(right.createdAt) || left.recordId.localeCompare(right.recordId)
-    )
-    .slice(-maxOutcomes);
+  let ordered = [...outcomes].sort(
+    (left, right) =>
+      left.createdAt.localeCompare(right.createdAt) || left.recordId.localeCompare(right.recordId)
+  );
   const ids = new Set();
   for (const outcome of ordered) {
     if (typeof outcome?.recordId !== 'string' || ids.has(outcome.recordId))
@@ -134,6 +132,9 @@ export function updateEstimationRubric({
     ids.add(outcome.recordId);
     validateEstimationOutcome(outcome.payload);
   }
+  ordered = ordered
+    .filter(({ payload }) => payload.telemetry?.status !== 'incomplete')
+    .slice(-maxOutcomes);
   if (ordered.length === 0) return previous;
 
   const stageRatios = (stage, adjust = (value) => value) =>

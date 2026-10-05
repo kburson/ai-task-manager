@@ -1,4 +1,9 @@
 // @story #1667
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { rmSync, writeFileSync } from 'node:fs';
@@ -84,6 +89,7 @@ function fixture({
         reviewPorts: {
           scope,
           projectDir: process.cwd(),
+          invokingDir: process.cwd(),
           verifyResident: async () => resident,
           runGuards:
             runGuards ??

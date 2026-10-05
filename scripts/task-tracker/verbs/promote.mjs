@@ -1,3 +1,5 @@
+import { withEpicAdmissionLock } from '../lib/epic-admission-lock.mjs';
+import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
 // `promote` verb — directional forward state-change (#81 rename of `/task move`).
 //
 // One verb advances the issue by exactly one state along the FORWARD chain:
@@ -97,6 +99,7 @@ const REFUSAL_ID_TO_STATUS = {
   // (the duplicate copies). Both now live in `STATES.test.exitGuards`.
   'test-exit-dod-verified': 'dod-verified-missing',
   'test-exit-pre-close-completeness': 'completeness-refused',
+  'test-exit-reviewed-scope': 'reviewed-scope-refused',
   'blocked-by-not-done': 'blocked-refused',
   // #356 — child-cannot-lead-epic migrated into the exitGuards registry.
   // Preserves the legacy verb-level `parent-admission-refused` status.
@@ -248,7 +251,7 @@ export const MOVE_STATE_DELEGATE_TIMEOUT_MS = GH_API_TIMEOUT_MS * 2;
 // the promote-held advisory lock via env[AITM_ISSUE_LOCK_HELD] so it skips
 // re-acquisition rather than deadlocking. `host` is injectable for tests.
 export function defaultRunMoveState(
-  { issueNumber, target, command = 'promote' },
+  { issueNumber, target, command = 'promote', projectDir, invokingDir },
   { host = runMoveStateHost } = {}
 ) {
   const cursorRequest = buildCommandCursorRequest({
@@ -259,6 +262,8 @@ export function defaultRunMoveState(
   });
   return host({
     argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
+    projectDir,
+    invokingDir,
     env: {
       ...process.env,
       AITM_INTERNAL: '1',
@@ -404,6 +409,7 @@ export async function runPromote({
     toState: target,
     cfg,
     deps: { ...deps, resolveStoryIntent: deps?.resolveStoryIntent ?? resolveStoryIntentSource },
+    invokingDir: deps.invokingDir ?? process.cwd(),
     projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({ issue: issueNumber, deps }),
     sessionPolicy:
       deps.sessionPolicy ||
@@ -437,11 +443,13 @@ export async function runPromote({
       },
     });
   let normalizationPersisted = false;
+  let normalizedDecision;
   if (recorded === 'test' && target === 'review') {
     const normalized = await deriveAndRescan({
       issueNumber,
       repo: cfg.repo,
       scanBody: body,
+      projectDir: guardContextBase.projectDir,
       deps: {
         pexec: deps.pexec || pexec,
         nowIso,
@@ -452,17 +460,18 @@ export async function runPromote({
     });
     body = normalized.scanBody;
     normalizationPersisted = normalized.persisted;
+    normalizedDecision = normalized.decision;
   }
-  const { guardResult } = await evaluateForBody(body);
+  const guardResult = normalizedDecision ?? (await evaluateForBody(body)).guardResult;
   // An indeterminate shared result is an authority failure, never a reason to
   // delegate to the lower mutator. Block it even when its producer has no
   // historical verb-specific status mapping.
   const mappedRefusals =
-    guardResult.status === 'indeterminate'
+    guardResult.status === 'indeterminate' || (normalizedDecision && guardResult.status !== 'ready')
       ? guardResult.refusals
       : (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
   const verbRefusal = refusalsToVerbResult(mappedRefusals, { issueNumber, target });
-  if (verbRefusal) return verbRefusal;
+  if (verbRefusal) return { ...verbRefusal, decision: guardResult, normalizationPersisted };
   const refinementPlan = guardResult.derived?.refinementPlan ?? null;
 
   // #267 — Test → Review pre-flight gates (dod-verified marker + #257
@@ -486,7 +495,16 @@ export async function runPromote({
         verb: aliasVerb,
         exitCode: await spawnVerb({ verb: aliasVerb, issueNumber, cfg }),
       }
-    : { kind: 'direct', exitCode: await runMoveState({ issueNumber, target, cfg }) };
+    : {
+        kind: 'direct',
+        exitCode: await runMoveState({
+          issueNumber,
+          target,
+          cfg,
+          projectDir: guardContextBase.projectDir,
+          invokingDir: guardContextBase.invokingDir,
+        }),
+      };
 
   if (transitionResult.exitCode !== 0) {
     // Re-read live board to classify the failure.
@@ -713,6 +731,49 @@ function parseArgs(rest) {
   return { issueNumber: null };
 }
 
+export async function runSerializedPromote({ issueNumber, cfg, deps = {} }) {
+  const projectDir = deps.projectDir ?? getProjectDir();
+  const parent = await (deps.fetchParentIssue ?? fetchParentIssueStrict)({
+    issueNumber,
+    repo: cfg.repo,
+  });
+  const childLock = deps.withIssueLock ?? withIssueLock;
+  const runner = deps.promoteRunner ?? runPromote;
+  const admissionState = (state) => ['ready-for-plan', 'plan'].includes(normalizeStateId(state));
+  const readState = async () => {
+    const { body } = await (deps.fetchIssueBody ?? defaultFetchIssueBody)({
+      issueNumber,
+      repo: cfg.repo,
+    });
+    return (
+      readLastKnownState(body).state ??
+      (await (deps.getLiveState ?? defaultGetLiveState)({ issueNumber, cfg }))
+    );
+  };
+  const run = (context) =>
+    childLock({ issue: issueNumber, verb: 'promote', projDir: projectDir }, async () => {
+      // Never acquire a parent lock while holding the child lock. A changed
+      // admission state must be retried through the parent-before-child route.
+      if (parent !== null && !context && admissionState(await readState()))
+        return {
+          status: 'guard-refused',
+          code: 'admission-state-changed',
+          message: 'promote: admission state changed; retry with parent admission serialization',
+        };
+      return runner({
+        issueNumber,
+        cfg,
+        deps: { ...deps, projectDir, admissionLockContext: context },
+      });
+    });
+  if (parent === null) return run(null);
+  if (!admissionState(await readState())) return run(null);
+  return (deps.withEpicAdmissionLock ?? withEpicAdmissionLock)(
+    { projectDir, epic: parent, context: deps.admissionLockContext },
+    run
+  );
+}
+
 export async function verbPromote(rest, cfg, deps = {}) {
   const { issueNumber } = parseArgs(rest);
   if (!issueNumber) {
@@ -722,12 +783,7 @@ export async function verbPromote(rest, cfg, deps = {}) {
 
   let result;
   try {
-    result = await withIssueLock(
-      { issue: issueNumber, verb: 'promote', projDir: getProjectDir() },
-      // `deps` defaults to `{}` on the real CLI path, so live behaviour is
-      // unchanged; verb tests inject the seam to drive every result branch.
-      () => runPromote({ issueNumber, cfg, deps })
-    );
+    result = await runSerializedPromote({ issueNumber, cfg, deps });
   } catch (err) {
     if (err instanceof IssueLockError) {
       process.stderr.write(`⛔ ${err.message}\n`);
@@ -805,6 +861,7 @@ export async function verbPromote(rest, cfg, deps = {}) {
       process.stderr.write('\n');
       process.exit(4);
     }
+    case 'guard-refused':
     case 'drift-refused': {
       process.stderr.write(
         `\n⛔ Refusing to promote #${issueNumber}:\n   BLOCKED: ${result.message}\n\n`

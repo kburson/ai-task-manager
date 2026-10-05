@@ -1,4 +1,10 @@
 // @story #1097 #1629
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import { strict as assert } from 'node:assert';
 import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -12,9 +18,12 @@ const transcriptDir = path.join(sandbox, 'transcripts');
 mkdirSync(transcriptDir, { recursive: true });
 
 process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
+
+process.chdir(sandbox);
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
 process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
 process.env.CODEX_THREAD_ID = 'terminal-review-handoff-test';
+process.env.AI_TASK_MANAGER_SESSION_ID = 'terminal-review-handoff-test';
 
 const { loadState, saveState, EMPTY_STATE } = await import('../../../../task-tracker/state.mjs');
 const { verbStart } = await import('../../../../task-tracker/verbs/start.mjs');
@@ -597,5 +606,6 @@ test('Stop hook remains a non-writer', () => {
 });
 
 after(() => {
+  process.chdir(fixtureOriginalCwd);
   rmSync(sandbox, { recursive: true, force: true });
 });

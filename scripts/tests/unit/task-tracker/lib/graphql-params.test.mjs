@@ -11,6 +11,7 @@
 //   2. imports task-tracker.mjs (which exports the three functions) and calls each
 // Then this parent process inspects the captured calls.
 
+import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -68,7 +69,7 @@ await tt.getIssueBoardState(42);
     TT_SKIP_NETWORK: '',
   };
 
-  await pexec('node', [driver], { env, timeout: 15000 });
+  await pexec('node', unitRuntimeEntrypointArgs(driver), { env, timeout: 15000 });
 
   const lines = readFileSync(callsLog, 'utf8').trim().split('\n').filter(Boolean);
   assert.equal(lines.length, 3, `expected 3 gh invocations, got ${lines.length}`);

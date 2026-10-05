@@ -1,6 +1,46 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { legacyPathFor } from './paths.mjs';
+import { randomUUID } from 'node:crypto';
+import { withLock } from './fleet-registry.mjs';
+import { parseTimingRow } from './lib/timing-row-reader.mjs';
+
+const SCHEMA = 'aitm.timing-queue/v1';
+function invalid() {
+  const error = new Error('Timing queue is malformed, unsupported, or changed during delivery');
+  error.code = 'TIMING_QUEUE_INVALID';
+  throw error;
+}
+function eventValid(event) {
+  if (!event || typeof event !== 'object' || Array.isArray(event)) invalid();
+  if (typeof event.row === 'string' && event.row.includes('aitm-actor:')) parseTimingRow(event.row);
+  return event;
+}
+export function validateTimingQueue(record) {
+  if (Array.isArray(record))
+    return record.map((event) => ({ id: randomUUID(), event: eventValid(event) }));
+  if (
+    !record ||
+    record.schema !== SCHEMA ||
+    !Array.isArray(record.items) ||
+    Object.keys(record).some((key) => !['schema', 'items'].includes(key))
+  )
+    invalid();
+  const ids = new Set();
+  for (const item of record.items) {
+    if (
+      !item ||
+      typeof item.id !== 'string' ||
+      !item.id ||
+      ids.has(item.id) ||
+      Object.keys(item).sort().join(',') !== 'event,id'
+    )
+      invalid();
+    ids.add(item.id);
+    eventValid(item.event);
+  }
+  return record.items;
+}
 
 function read(queuePath) {
   let readPath = queuePath;
@@ -11,65 +51,91 @@ function read(queuePath) {
   if (!existsSync(readPath)) return [];
   try {
     const parsed = JSON.parse(readFileSync(readPath, 'utf8'));
-    return Array.isArray(parsed) ? parsed : [];
+    return validateTimingQueue(parsed);
   } catch {
-    return [];
+    invalid();
   }
 }
 
 function write(items, queuePath) {
   mkdirSync(path.dirname(queuePath), { recursive: true });
   const tmp = queuePath + '.tmp';
-  writeFileSync(tmp, JSON.stringify(items, null, 2) + '\n', 'utf8');
+  writeFileSync(tmp, JSON.stringify({ schema: SCHEMA, items }, null, 2) + '\n', 'utf8');
   renameSync(tmp, queuePath);
 }
 
 export function peek(queuePath) {
-  return read(queuePath);
+  return read(queuePath).map((item) => item.event);
 }
 
 export function enqueue(event, queuePath) {
-  const items = read(queuePath);
-  items.push({ ...event, queuedAt: new Date().toISOString() });
-  write(items, queuePath);
+  return withLock(queuePath, () => {
+    const items = read(queuePath);
+    items.push({
+      id: randomUUID(),
+      event: eventValid({ ...event, queuedAt: new Date().toISOString() }),
+    });
+    write(items, queuePath);
+  });
+}
+function snapshot(queuePath) {
+  return withLock(queuePath, () => {
+    const items = read(queuePath);
+    write(items, queuePath);
+    return items;
+  });
+}
+function consume(queuePath, completed) {
+  return withLock(queuePath, () => {
+    const current = read(queuePath);
+    for (const item of current) {
+      if (completed.has(item.id) && JSON.stringify(item.event) !== completed.get(item.id))
+        invalid();
+    }
+    write(
+      current.filter((item) => !completed.has(item.id)),
+      queuePath
+    );
+  });
 }
 
 export async function drain(handler, queuePath) {
-  const items = read(queuePath);
-  const failed = [];
+  const items = snapshot(queuePath);
+  const completed = new Map();
+  let failed = 0;
   for (const item of items) {
     try {
-      await handler(item);
+      await handler(structuredClone(item.event));
+      completed.set(item.id, JSON.stringify(item.event));
     } catch {
-      failed.push(item);
+      failed++;
     }
   }
-  write(failed, queuePath);
-  return failed.length === 0;
+  consume(queuePath, completed);
+  return failed === 0;
 }
 
 // Drain only matching items while retaining failed deliveries for a later
 // retry. Terminal evidence uses this stricter variant: an issue must not freeze
 // an immutable outcome while one of its timing rows is still only local.
 export async function drainMatching(handler, queuePath, predicate) {
-  const items = read(queuePath);
-  const kept = [];
+  const items = snapshot(queuePath);
+  const completed = new Map();
   let delivered = 0;
   let pending = 0;
   for (const item of items) {
-    if (!predicate(item)) {
-      kept.push(item);
+    if (!predicate(structuredClone(item.event))) {
       continue;
     }
     try {
-      await handler(item);
+      await handler(structuredClone(item.event));
+      completed.set(item.id, JSON.stringify(item.event));
       delivered++;
     } catch {
-      kept.push(item);
       pending++;
     }
   }
-  write(kept, queuePath);
+  consume(queuePath, completed);
   return { delivered, pending };
 }
 
@@ -84,29 +150,29 @@ export async function drainAndDiscard(
   predicate,
   shouldRetainOnFailure = () => false
 ) {
-  const items = read(queuePath);
-  const kept = [];
+  const items = snapshot(queuePath);
+  const completed = new Map();
   const targeted = [];
   for (const item of items) {
-    if (predicate(item)) targeted.push(item);
-    else kept.push(item);
+    if (predicate(structuredClone(item.event))) targeted.push(item);
   }
   let delivered = 0;
   let discarded = 0;
   let retained = 0;
   for (const item of targeted) {
     try {
-      await handler(item);
+      await handler(structuredClone(item.event));
+      completed.set(item.id, JSON.stringify(item.event));
       delivered++;
     } catch {
-      if (shouldRetainOnFailure(item)) {
-        kept.push(item);
+      if (shouldRetainOnFailure(structuredClone(item.event))) {
         retained++;
       } else {
+        completed.set(item.id, JSON.stringify(item.event));
         discarded++;
       }
     }
   }
-  write(kept, queuePath);
+  consume(queuePath, completed);
   return { delivered, discarded, retained };
 }

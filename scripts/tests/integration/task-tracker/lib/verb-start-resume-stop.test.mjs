@@ -1,4 +1,10 @@
 // @story #472
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureOriginalCwd = process.cwd();
+
 import { strict as assert } from 'node:assert';
 import '../../../fixtures/offline-gh-auto.mjs';
 import { rmSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -9,6 +15,7 @@ import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.m
 
 const tmp = mkdtempProjectIsolated('tt-verb-start-resume-stop-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+process.chdir(tmp);
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
@@ -20,8 +27,8 @@ const { loadState, saveState, EMPTY_STATE } = await import('../../../../task-tra
 
 let stateSeq = 0;
 function writeState(obj) {
-  const p = path.join(tmp, `state-${stateSeq++}.json`);
-  writeFileSync(p, JSON.stringify(obj), 'utf8');
+  const p = path.join(tmp, '.tmp', 'aitm', 'state', `state-${stateSeq++}.json`);
+  saveState(obj, p);
   return p;
 }
 
@@ -309,6 +316,8 @@ function captureLog(fn) {
   assert.equal(loadState(statePath).active, '#453', 'resume #N after stop succeeds');
   assert.equal(posts.length, 1, 'resumed row posted after stop');
 }
+
+process.chdir(fixtureOriginalCwd);
 
 rmSync(tmp, { recursive: true });
 console.log('verb-start-resume-stop.test.mjs: all passed');

@@ -21,6 +21,12 @@ const MARKDOWNLINT = path.join(
 const CSPELL = path.join(REPO_ROOT, 'node_modules/cspell/bin.mjs');
 const REVIEWER_IGNORE_GLOB = 'docs/superpowers/reviews/**/*-reviewer-*-review.md';
 const PEER_REVIEW_RESPONSE_IGNORE_GLOBS = [
+  'docs/reviews/1857-expanded/**/review-*-author-response-*.md',
+  'docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md',
+  'docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md',
+  'docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md',
+  'docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-author-response-*.md',
+  'docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-reviewer-response-*.md',
   'docs/superpowers/reviews/**/*-review-*-author-response-*.md',
   'docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md',
   'docs/superpowers/reviews/**/review-*-author-response-*.md',
@@ -74,8 +80,13 @@ test('Markdownlint replaces every exact reviewer exception with one role-based p
   assert.deepEqual(
     config.ignores.filter((entry) => entry.includes('/reviews/') && entry.includes('-reviewer-')),
     [
+      ...PEER_REVIEW_RESPONSE_IGNORE_GLOBS.filter(
+        (glob) => glob.startsWith('docs/reviews/') && glob.includes('-reviewer-')
+      ),
       REVIEWER_IGNORE_GLOB,
-      ...PEER_REVIEW_RESPONSE_IGNORE_GLOBS.filter((glob) => glob.includes('-reviewer-')),
+      ...PEER_REVIEW_RESPONSE_IGNORE_GLOBS.filter(
+        (glob) => glob.startsWith('docs/superpowers/') && glob.includes('-reviewer-')
+      ),
     ]
   );
   assert.deepEqual(

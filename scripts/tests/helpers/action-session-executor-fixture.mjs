@@ -6,6 +6,7 @@ import path from 'node:path';
 const [projectDir, mode] = process.argv.slice(2);
 if (!projectDir || !['offline', 'freeze'].includes(mode)) throw new Error('fixture args');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+process.chdir(projectDir);
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(projectDir, 'transcripts');
 process.env.AI_TASK_MANAGER_SESSION_ID = 'session-parity-1750';
 process.env.TT_SKIP_NETWORK = '1';
@@ -15,7 +16,8 @@ const { runPreflight } = await import('../../task-tracker/lib/verb-preflight.mjs
 const { verbResume } = await import('../../task-tracker/verbs/resume.mjs');
 const { loadState } = await import('../../task-tracker/state.mjs');
 
-const statePath = path.join(projectDir, 'state.json');
+const statePath = path.join(projectDir, '.tmp', 'aitm', 'state', 'state.json');
+mkdirSync(path.dirname(statePath), { recursive: true });
 writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }), 'utf8');
 const effects = [];
 const verdict = await runPreflight({

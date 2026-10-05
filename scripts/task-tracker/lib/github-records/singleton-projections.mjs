@@ -214,6 +214,26 @@ function evidenceMarkdown(projection) {
 }
 
 function timingMarkdown(projection) {
+  if (
+    ['totalActiveSec', 'totalIdleSec', 'engagedSec'].some((key) => projection.totals[key] === null)
+  ) {
+    const totals = projection.totals;
+    return [
+      '## Timing Projection',
+      '',
+      'Rows: ' + totals.rowCount,
+      'Active seconds: ' + (totals.totalActiveSec ?? 'Unknown'),
+      'Idle seconds: ' + (totals.totalIdleSec ?? 'Unknown'),
+      'Engaged seconds: ' + (totals.engagedSec ?? 'Unknown'),
+      ...(Number.isFinite(totals.knownEngagedSec)
+        ? ['Known engagement lower bound: ' + totals.knownEngagedSec + ' seconds']
+        : []),
+      ...(totals.telemetry?.reasons?.length
+        ? ['Unavailable: ' + totals.telemetry.reasons.join(', ')]
+        : []),
+      '',
+    ].join(String.fromCharCode(10));
+  }
   return [
     '## Timing Projection',
     '',

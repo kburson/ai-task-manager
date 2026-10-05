@@ -1,0 +1,35 @@
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+✔ review reproduction: legacy session cursor survives first actor flush (631.976208ms)
+✔ explicit pause after Test handoff is idempotent (283.425541ms)
+✔ explicit pause after Review handoff is idempotent (530.900708ms)
+✔ production Test sandbox admits real Git identity outside artifact roots (336.377958ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/private/tmp/1866-astra-fixes-head/.scratch/test/aitm-1857-close-wiring-LyIxDf for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/private/tmp/1866-astra-fixes-head/.scratch/test/aitm-1857-close-wiring-5WFDFQ for #1857
+#1857 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/private/tmp/1866-astra-fixes-head/.scratch/test/aitm-1857-close-wiring-SXrTOc for #1857
+[task-tracker] ⛔ Refusing to finalize #1857: close-estimation-delivery-authority:lineage-unavailable. Completion outcome evidence did not converge; local state remains active for retry.
+#1857 closed-issue finalize failed at ensureOutcome: completion outcome evidence did not converge. Local task state was retained for retry.
+✔ #1857 no-command child Close uses posted deliverable and exact accepted Test Review heads (83.569292ms)
+✔ #1857 child outcome callback obtains the existing lineage gate exact census (104.491916ms)
+✔ #1857 skipped child lineage cannot become canonical outcome authority (90.843125ms)
+✔ one actor pause cannot replace another actor start or word cursors (33.073042ms)
+✔ legacy own binding establishes its current interval without inheriting unattributed global history (11.470667ms)
+✔ invalid actor write refuses before mutating binding or prior evidence (4.122166ms)
+✔ corrupt, unsupported and mismatched actor state refuse without global fallback (7.8995ms)
+✔ a genuine new binding supersedes only its own stale paused interval (5.916792ms)
+✔ timing updates preserve genuine same-issue binding generation and original bound time (12.569666ms)
+✔ AC1: two auto-token calls with identical inputs yield different paths (0.65125ms)
+✔ AC2: explicit token is deterministic; distinct tokens never alias (0.146708ms)
+✔ AC3 regression: run B reclaim target never names run A live worktree (0.120917ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2114.474958

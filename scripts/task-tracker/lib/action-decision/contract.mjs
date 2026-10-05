@@ -1,3 +1,4 @@
+// @story #1867
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
@@ -146,6 +147,16 @@ export const CODE_DEFINITIONS = Object.freeze({
   'attribution-authority-unavailable': decisionIndeterminate('attribution-authority-unavailable', [
     'authority-collection',
   ]),
+  'close-delivery-not-attributed': decisionBlocked(
+    'close-delivery-not-attributed',
+    ['review-exit-close-gates'],
+    { argumentSchema: args(['target', 'sha'], { target: stringType, sha: stringType }) }
+  ),
+  'rank-wave-admission-refused': decisionBlocked(
+    'rank-wave-admission-refused',
+    ['refine-exit-wip-budget'],
+    { argumentSchema: args(['reason'], { reason: stringType }) }
+  ),
   'unclassified-refusal': decisionBlocked('unclassified-refusal', registeredGuard),
   'code-complete-ac-evidence-incomplete': decisionBlocked(
     'code-complete-ac-evidence-incomplete',
@@ -308,6 +319,46 @@ export const CODE_DEFINITIONS = Object.freeze({
     argumentSchema: args(['head'], { head: headType }),
     disposition: 'registered-remediation',
   }),
+  'reviewed-scope-current-missing': decisionBlocked(
+    'reviewed-scope-current-missing',
+    ['test-exit-reviewed-scope'],
+    { argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }) }
+  ),
+  'reviewed-scope-stale': decisionBlocked('reviewed-scope-stale', ['test-exit-reviewed-scope'], {
+    argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }),
+  }),
+  'reviewed-scope-comment-invalid': decisionBlocked(
+    'reviewed-scope-comment-invalid',
+    ['test-exit-reviewed-scope'],
+    { argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }) }
+  ),
+  'reviewed-scope-wrong-checkout': decisionBlocked(
+    'reviewed-scope-wrong-checkout',
+    ['test-exit-reviewed-scope'],
+    { argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }) }
+  ),
+  'reviewed-scope-read-unavailable': definition({
+    code: 'reviewed-scope-read-unavailable',
+    domain: 'decision-blocker',
+    producers: ['test-exit-reviewed-scope'],
+    severity: 'error',
+    statuses: ['indeterminate'],
+    phases: ['evaluation'],
+    argumentSchema: args(['label', 'reason'], { label: stringType, reason: stringType }),
+  }),
+  'test-scope-incomplete': decisionBlocked(
+    'test-scope-incomplete',
+    ['test-exit-pre-close-completeness'],
+    { argumentSchema: args(['label'], { label: stringType }) }
+  ),
+  'normalization-decision-invalid': definition({
+    code: 'normalization-decision-invalid',
+    domain: 'execution-normalization',
+    producers: ['action-result-validation'],
+    severity: 'error',
+    statuses: ['indeterminate'],
+    phases: ['execution'],
+  }),
   'normalization-authority-drift': definition({
     code: 'normalization-authority-drift',
     domain: 'execution-normalization',
@@ -412,6 +463,8 @@ export const CODE_DEFINITIONS = Object.freeze({
 });
 
 const NO_AUTOMATIC_REASONS = Object.freeze([
+  'operator-reviewed-evidence-required',
+  'complete-required-checkbox',
   'legacy-guard-requires-human-investigation',
   'operator-action-required',
   'authority-investigation-required',

@@ -37,7 +37,12 @@ test('AC3 — test:coverage:fast wraps the fast lane through c8', () => {
 test('AC4 — .c8rc.json has all:true, src scoped to scripts, and the exclude globs', () => {
   assert.equal(c8rc.all, true, 'all must be true so untested files count as 0%');
   assert.deepEqual(c8rc.src, ['scripts']);
-  for (const glob of ['**/*.test.mjs', '**/tests/**', 'scripts/maintenance/**']) {
+  for (const glob of [
+    '**/*.test.mjs',
+    '**/tests/**',
+    'scripts/maintenance/**',
+    'scripts/research/**',
+  ]) {
     assert.ok(c8rc.exclude.includes(glob), `exclude must cover ${glob}`);
   }
 });

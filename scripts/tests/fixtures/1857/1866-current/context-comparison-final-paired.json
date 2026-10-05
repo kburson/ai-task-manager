@@ -1,0 +1,53 @@
+{
+  "schema": "aitm.guidance-current-paired-comparison/v1",
+  "classification": "final-installed-public-cli-paired-comparison",
+  "historicalComparison": {
+    "path": "scripts/tests/fixtures/1558/context-comparison.json",
+    "sha256": "sha256:09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894",
+    "disposition": "immutable-early-candidate-characterization"
+  },
+  "sources": {
+    "lifecycle": {
+      "path": "scripts/tests/fixtures/1857/1866-current/lifecycle-transcript-final.json",
+      "sha256": "sha256:068ef6231ac6c1200dfb2207ec253065f9377300eabdb3bcc5b8a40a7d2ece69"
+    },
+    "authority": {
+      "path": "scripts/tests/fixtures/1558/authority-after.json",
+      "sha256": "sha256:1023eedc15f9b8a249ae0e883911cb8f36fc78a8454bdf4430c5d10971e596d1"
+    },
+    "budgets": {
+      "path": "scripts/tests/fixtures/1857/1866-current/context-budgets-final.json",
+      "sha256": "sha256:91690c18812a3a2c5b0f35c314d67a63969838297e4cf5d47dd6d95c7e4209ba"
+    }
+  },
+  "adapters": {
+    "claude": {
+      "currentCaptureKind": "actual-public-cli-traffic-plus-installed-static",
+      "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+      "currentProxyTokens": 5603,
+      "modeledLegacyProxyTokens": 54538,
+      "conservativeReductionFromLegacyStaticAlone": true,
+      "fullLifecycleWorkingPass": true,
+      "sourceCaptureSha256": "sha256:7886944a8689eb8b9a15c85f16e4d2a9693aeaf3ef9499959a26079416aef1ee"
+    },
+    "codex": {
+      "currentCaptureKind": "actual-public-cli-traffic-plus-installed-static",
+      "legacyCaptureKind": "modeled-24-event-projection-from-frozen-14-case-cli-samples",
+      "currentProxyTokens": 5590,
+      "modeledLegacyProxyTokens": 54280,
+      "conservativeReductionFromLegacyStaticAlone": true,
+      "fullLifecycleWorkingPass": true,
+      "sourceCaptureSha256": "sha256:7886944a8689eb8b9a15c85f16e4d2a9693aeaf3ef9499959a26079416aef1ee"
+    }
+  },
+  "authority": {
+    "method": "separate-explanation-evaluator-and-direct-executor-collector-attempts",
+    "explainPhysicalReads": 34,
+    "executorPhysicalReads": 34,
+    "timingClassifications": ["local-cache", "local-stub", "controlled-read-only"]
+  },
+  "finalInstalledAdapterGate": {
+    "status": "passed",
+    "reason": "Measured actual installed adapter bytes and complete public CLI traffic against fixed working limits."
+  }
+}

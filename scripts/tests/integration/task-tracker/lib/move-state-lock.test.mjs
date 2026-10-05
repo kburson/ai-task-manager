@@ -11,10 +11,18 @@
 //   4. AITM_ISSUE_LOCK_HELD=1 short-circuits acquisition (no contention error
 //      even when the dir already exists — caller already holds it).
 
+// @story #1857
+// This integration fixture supplies its own actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+
 import { strict as assert } from 'node:assert';
 import '../../../fixtures/offline-gh-auto.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  projectScratchDir,
+  mkdtempProjectIsolated,
+} from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,7 +55,7 @@ function runMoveState(args, envOverrides = {}) {
   return spawnSync(process.execPath, [MOVE_STATE, ...args], {
     env,
     encoding: 'utf8',
-    cwd: REPO_ROOT,
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR,
   });
 }
 
@@ -55,7 +63,7 @@ function runMoveState(args, envOverrides = {}) {
 // Always isolate the project dir so the local state-file write inside
 // move-state.mjs cannot clobber the repo's tracker state cache.
 {
-  const projDir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-isolated-'));
+  const projDir = mkdtempProjectIsolated('tt-isolated-');
   mkdirSync(path.join(projDir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(projDir, '.ai-task-manager/task-tracker.json'),
@@ -71,7 +79,7 @@ function runMoveState(args, envOverrides = {}) {
 
 // Test 2: holder payload is written inside the lock dir during critical section
 {
-  const projDir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-issue-lock-'));
+  const projDir = mkdtempProjectIsolated('tt-issue-lock-');
   const issue = 4242;
   let holderSeen = null;
   await withIssueLock({ issue, verb: 'unit-test', projDir, sessionId: 'sess-xyz' }, async () => {
@@ -91,7 +99,7 @@ function runMoveState(args, envOverrides = {}) {
 // Test 3: contention — hold the production lock while move-state runs in a
 // child process, then expect a non-zero exit and locked-by stderr.
 {
-  const projDir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-issue-lock-'));
+  const projDir = mkdtempProjectIsolated('tt-issue-lock-');
   const issue = 7777;
   // Build a minimal config so loadConfig doesn't barf — copy the real one.
   const cfgDir = path.join(projDir, '.ai-task-manager');
