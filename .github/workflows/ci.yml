@@ -161,6 +161,14 @@ jobs:
             const name = pkg.name ?? location.split('node_modules/').at(-1);
             execFileSync('npm', ['cache', 'add', `${name}@${pkg.version}`], { stdio: 'inherit' });
           }
+          // #1892: offline consumers resolve runtime ranges without this repo's lock.
+          // Warm the complete currently resolved graph as well as locked tarballs.
+          const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
+          execFileSync('npm', [
+            'install', '--ignore-scripts', '--no-audit', '--no-fund',
+            '--package-lock=false', '--prefix', '.tmp/aitm/offline-runtime-cache',
+            ...Object.entries(manifest.dependencies).map(([name, range]) => `${name}@${range}`),
+          ], { stdio: 'inherit' });
           NODE
       - run: npm run format:check
       # `npm run lint` includes the fail-closed canonical-layout, package-wide
