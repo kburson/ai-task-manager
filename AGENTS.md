@@ -28,3 +28,15 @@ States: `Backlog → Refine → Ready for Planning → Plan → Develop → Test
 
 Test → Review: agent self-report REVIEW_COMPLETE (no CLI verb).
 <!-- ai-task-manager:codex-superpowers:end -->
+
+## Project branch naming
+
+The user's branch naming configuration for this project is:
+
+- `task/<solo-task-id>`
+- `defect/<defect-id>`
+- `feature/epic/<epic-id>/parent`
+- `feature/epic/<epic-id>/child/<child-id>`
+- `feature/epic/<epic-id>/defect/<defect-id>`
+
+Use the issue's native epic lineage to choose the pattern. This project instruction takes precedence over the generic `codex/` default and the old flat script fallback. Treat these patterns as end-user project configuration. Do not add or change script-based branch configuration merely to enforce this instruction. The user selected this existing `feature/epic/` convention on 2026-10-05.
