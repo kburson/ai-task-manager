@@ -1,8 +1,9 @@
-// @story #1626
+// @story #1626 #1851
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-import { isInjection } from '../../word-counter.mjs';
+import { isInjection, aiAppName, jsonlPath } from '../../word-counter.mjs';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 
 const SOURCE_KEYS = ['adapter', 'messageId', 'schema', 'sessionId', 'statementHash'];
 const HASH_RE = /^sha256:[0-9a-f]{64}$/;
@@ -125,5 +126,55 @@ export function createCodexSessionSourceLoader({ transcriptPath, expectedSession
     if (matches.length !== 1) throw new TypeError('workflow-exception-authority:message-ambiguity');
     const observed = matches[0];
     return { ...observed, statementHash: hashAuthorizationStatement(observed.statement) };
+  };
+}
+
+// Runtime-selected ports are internal injection seams, never mutation-request fields.
+// Existing normalized loader behavior above intentionally stays unchanged.
+export async function loadRawCodexUserMessage(input, ports = {}) {
+  canonicalRecordJson(input);
+  if (!exact(input, ['sessionId', 'messageId'])) throw new TypeError('codex-raw-message:keys');
+  for (const id of [input.sessionId, input.messageId]) {
+    if (
+      typeof id !== 'string' ||
+      !/^[-_a-zA-Z0-9]+$/.test(id) ||
+      Buffer.byteLength(id, 'ascii') > 256
+    ) {
+      throw new TypeError('codex-raw-message:identifier');
+    }
+  }
+  if ((ports.getHost ?? aiAppName)() !== 'codex') throw new TypeError('codex-raw-message:host');
+  const transcript = await (ports.resolveTranscript ?? jsonlPath)(input.sessionId);
+  if (typeof transcript !== 'string' || !transcript)
+    throw new TypeError('codex-raw-message:unavailable');
+  const source = await (ports.readTranscript ?? ((file) => readFile(file, 'utf8')))(transcript);
+  const events = source
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+  const metadata = events.filter((event) => event?.type === 'session_meta');
+  if (metadata.length !== 1 || metadata[0].payload?.id !== input.sessionId) {
+    throw new TypeError('codex-raw-message:session-mismatch');
+  }
+  const matches = events.filter(
+    (event) =>
+      event?.type === 'response_item' &&
+      event.payload?.type === 'message' &&
+      event.payload?.id === input.messageId
+  );
+  if (matches.length !== 1) throw new TypeError('codex-raw-message:message-ambiguity');
+  const message = matches[0].payload;
+  if (!Array.isArray(message.content)) throw new TypeError('codex-raw-message:content');
+  return {
+    id: message.id,
+    sessionId: input.sessionId,
+    role: message.role,
+    content: structuredClone(message.content),
+    principal: null,
+    injection: message.content.map(
+      (block) =>
+        block?.type !== 'input_text' || typeof block.text !== 'string' || isInjection(block.text)
+    ),
+    origin: 'codex-session-transcript',
   };
 }
