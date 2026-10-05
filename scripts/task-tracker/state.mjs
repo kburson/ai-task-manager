@@ -1,3 +1,4 @@
+// @story #1889
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -162,7 +163,13 @@ export function bankTranscriptTail(projDir) {
 // now the single source of truth. Stale `state` fields on disk are silently
 // dropped on read.
 const PER_SESSION_FIELDS = ['active', 'entryStartTs', 'wordsAtEntryStart'];
-const WORKTREE_SESSION_FIELDS = ['worktreePath', 'worktreeBranch', 'worktreeResolvedAt'];
+// #1889 The occupancy generation is binding authority, never shared timing state.
+const WORKTREE_SESSION_FIELDS = [
+  'worktreePath',
+  'worktreeBranch',
+  'worktreeResolvedAt',
+  'bindingGenerationId',
+];
 
 function currentSid() {
   // #273 — delegate to the lone resolver so this writer agrees with the
@@ -314,11 +321,19 @@ export function saveState(state, statePath) {
     (state.wordsAtEntryStart != null && state.wordsAtEntryStart !== 0);
   if (hasActiveBinding) {
     const worktreeFields = Object.fromEntries(
-      WORKTREE_SESSION_FIELDS.filter((field) => state[field] != null).map((field) => [
-        field,
-        state[field],
-      ])
+      WORKTREE_SESSION_FIELDS.filter(
+        (field) =>
+          state[field] != null || (field === 'bindingGenerationId' && Object.hasOwn(state, field))
+      ).map((field) => [field, state[field]])
     );
+    // A timing-state spread may change issue without replacing its old generation.
+    // Never carry that prior issue authority into a different binding.
+    if (
+      priorBinding?.issue !== state.active &&
+      worktreeFields.bindingGenerationId != null &&
+      worktreeFields.bindingGenerationId === priorBinding?.bindingGenerationId
+    )
+      delete worktreeFields.bindingGenerationId;
     setActiveTask(
       sid,
       {
