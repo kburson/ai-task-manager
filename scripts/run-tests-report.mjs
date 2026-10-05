@@ -1,3 +1,6 @@
+// @story #1873
+import { PROJECT_ROOT_ALIASES } from './task-tracker/lib/runtime-storage.mjs';
+
 // #531 AC2 — pure helpers for `run-tests.mjs` failure reporting.
 //
 // Extracted so the kill-cause formatting and the per-file buffer ceiling are
@@ -85,4 +88,11 @@ export function describeSpawnResult({ status, signal, error, elapsedMs } = {}) {
   if (parts.length === 0) parts.push('killed, cause unknown');
   if (Number.isFinite(elapsedMs)) parts.push(`${elapsedMs}ms`);
   return `FAIL (${parts.join(', ')})`;
+}
+
+// Canonical verification's parent root must not retarget independent fixtures.
+export function buildTestChildEnv(parent) {
+  const env = { ...parent };
+  for (const alias of PROJECT_ROOT_ALIASES) delete env[alias];
+  return env;
 }

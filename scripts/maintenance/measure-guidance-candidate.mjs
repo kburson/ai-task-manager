@@ -585,7 +585,17 @@ function verifyCaptureReplay(capture) {
     );
     if (recorded?.sha256 !== input.sha256) fail(`capture-replay-input:${input.path}`);
   }
-  const replay = captureGuidanceLifecycle({ mode: 'recertification' });
+  let replay;
+  try {
+    replay = captureGuidanceLifecycle({
+      mode: 'recertification',
+      expectedInitialFixtureSha256: capture.identity.initialFixtureSha256,
+    });
+  } catch (error) {
+    if (error instanceof TypeError && error.message === 'capture:initial-fixture-mismatch')
+      fail('capture-replay-identity:initialFixtureSha256');
+    throw error;
+  }
   for (const key of [
     'scenarioManifestSha256',
     'initialFixtureSha256',

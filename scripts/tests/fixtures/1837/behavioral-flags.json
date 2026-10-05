@@ -1,0 +1,165 @@
+{
+  "schema": "aitm.guidance-legacy-behavioral-flags/v1",
+  "flags": [
+    {
+      "flag": "AITM_GRAPHQL_USAGE",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/graphql-usage/collection.mjs",
+          "symbol": "usage collection boundary",
+          "excerpt": "return env.AITM_GRAPHQL_USAGE === '1';",
+          "fingerprint": "sha256:8cfa32c363c18c4027c609d6b0d28ac01af2eac217091fe656a4b23cc872de73"
+        },
+        {
+          "path": "scripts/task-tracker/graphql-usage-launch.mjs",
+          "symbol": "usage collection boundary",
+          "excerpt": "AITM_GRAPHQL_USAGE: process.env.AITM_GRAPHQL_USAGE || '1'",
+          "fingerprint": "sha256:15609b5e4564f8d6ac62980ab5dc59102841592a42c57ab03d24ab73328a334d"
+        }
+      ],
+      "defaultBehavior": "Usage is disabled or attribution remains explicitly unknown",
+      "nondefaultBehavior": "Enable metadata collection or propagate its private non-secret observation context independently of payload capture",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "operator-control",
+      "disposition": "retain",
+      "rationale": "Metadata collection does not authorize lifecycle effects",
+      "ownerTask": "#1837",
+      "verifier": "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs"
+    },
+    {
+      "flag": "AITM_GRAPHQL_USAGE_CONTEXT",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/graphql-usage/collection.mjs",
+          "symbol": "usage collection boundary",
+          "excerpt": "!env.AITM_GRAPHQL_USAGE_CONTEXT &&",
+          "fingerprint": "sha256:ee7d6b0c0075aaeb661ae4b749d4496a9b06d9139b72a8ea6aac5b86a9bdbdd1"
+        }
+      ],
+      "defaultBehavior": "Usage is disabled or attribution remains explicitly unknown",
+      "nondefaultBehavior": "Enable metadata collection or propagate its private non-secret observation context independently of payload capture",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "Metadata collection does not authorize lifecycle effects",
+      "ownerTask": "#1837",
+      "verifier": "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs"
+    },
+    {
+      "flag": "AITM_GRAPHQL_USAGE_PERMISSION_CONTEXT",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/graphql-usage/collection.mjs",
+          "symbol": "usage collection boundary",
+          "excerpt": "permissionContext: env.AITM_GRAPHQL_USAGE_PERMISSION_CONTEXT,",
+          "fingerprint": "sha256:d36e1df8837c37b41c0e2c1a7fd89f41f358df4b42138b73373f98e01849da8b"
+        }
+      ],
+      "defaultBehavior": "Usage is disabled or attribution remains explicitly unknown",
+      "nondefaultBehavior": "Enable metadata collection or propagate its private non-secret observation context independently of payload capture",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "Metadata collection does not authorize lifecycle effects",
+      "ownerTask": "#1837",
+      "verifier": "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs"
+    },
+    {
+      "flag": "AITM_GRAPHQL_USAGE_PROJECT_DIR",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/graphql-usage/collection.mjs",
+          "symbol": "usage collection boundary",
+          "excerpt": "cwd = env.AITM_GRAPHQL_USAGE_PROJECT_DIR || process.cwd(),",
+          "fingerprint": "sha256:288db9f3db647529584f9846107c0ebb1493e2c583234a04ef81191bd9c872c2"
+        }
+      ],
+      "defaultBehavior": "Usage is disabled or attribution remains explicitly unknown",
+      "nondefaultBehavior": "Enable metadata collection or propagate its private non-secret observation context independently of payload capture",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "Metadata collection does not authorize lifecycle effects",
+      "ownerTask": "#1837",
+      "verifier": "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs"
+    },
+    {
+      "flag": "AITM_GRAPHQL_USAGE_PRIVATE",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/action-capture-bin/gh",
+          "symbol": "usage collection boundary",
+          "excerpt": "privateContext = JSON.parse(process.env.AITM_GRAPHQL_USAGE_PRIVATE || '{}');",
+          "fingerprint": "sha256:1147cc5847487c80dfe369b0f9d3a1a587782d8114dbd71a173cfe1e9402dfae"
+        }
+      ],
+      "defaultBehavior": "Usage is disabled or attribution remains explicitly unknown",
+      "nondefaultBehavior": "Enable metadata collection or propagate its private non-secret observation context independently of payload capture",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "Metadata collection does not authorize lifecycle effects",
+      "ownerTask": "#1837",
+      "verifier": "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs"
+    },
+    {
+      "flag": "AITM_CAPTURE_REAL_GH",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/graphql-usage/collection.mjs",
+          "symbol": "usage collection boundary",
+          "excerpt": "env.AITM_CAPTURE_REAL_GH ||",
+          "fingerprint": "sha256:0428e4158d4e4a8a3da7d961fe385da9504fae59fac573cd2b4451ae80206ee2"
+        }
+      ],
+      "defaultBehavior": "Usage is disabled or attribution remains explicitly unknown",
+      "nondefaultBehavior": "Enable metadata collection or propagate its private non-secret observation context independently of payload capture",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "Metadata collection does not authorize lifecycle effects",
+      "ownerTask": "#1837",
+      "verifier": "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs"
+    },
+    {
+      "flag": "AITM_CAPTURE_ISSUE",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/action-capture-bin/gh",
+          "symbol": "usage collection boundary",
+          "excerpt": "const handle = process.env.AITM_CAPTURE_ISSUE ? startCapture(args, stdin) : null;",
+          "fingerprint": "sha256:9bb995f1ef12c1cf842a592d85236ad6478a0c2e1eb6923fbf3c16c110f9244a"
+        }
+      ],
+      "defaultBehavior": "Usage is disabled or attribution remains explicitly unknown",
+      "nondefaultBehavior": "Enable metadata collection or propagate its private non-secret observation context independently of payload capture",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "Metadata collection does not authorize lifecycle effects",
+      "ownerTask": "#1837",
+      "verifier": "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs"
+    }
+  ]
+}

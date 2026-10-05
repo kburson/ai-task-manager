@@ -1419,8 +1419,10 @@
       "classification": "agent-callable-standalone",
       "command": "value-report",
       "staticImports": [
+        "../task-tracker/lib/graphql-usage/collection.mjs",
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "node:child_process",
+        "node:crypto",
         "node:fs",
         "node:path",
         "node:url",
@@ -1819,6 +1821,41 @@
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/graphql-usage-baseline.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:fs/promises", "node:util", "./lib/graphql-usage/baseline.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Offline read-only baseline qualification companion. No lifecycle authority, enrollment or transport; explicit supplied files only.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/graphql-usage-launch.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:child_process", "./lib/graphql-usage/collection.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/graphql-usage-report.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": [
+        "node:fs/promises",
+        "node:util",
+        "./lib/graphql-usage/report.mjs",
+        "./lib/graphql-usage/report-render.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Offline read-only usage-store companion. No lifecycle authority, enrollment or transport; explicit supplied root only.",
       "fixtureId": null
     },
     {
@@ -2250,11 +2287,12 @@
       "command": "merge-back",
       "staticImports": [
         "./lib/direct-guidance-admission.mjs",
-        "node:child_process",
         "node:path",
         "./lib/graph-node-authority.mjs",
         "./lib/resolve-epic-lineage.mjs",
-        "../lib/self-doc.mjs"
+        "../lib/self-doc.mjs",
+        "./lib/merge-back-verification.mjs",
+        "./lib/merge-back-cli.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",

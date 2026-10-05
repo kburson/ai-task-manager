@@ -864,3 +864,39 @@ test('attributed inactive actors may remain paused while genuine issue stages ad
   ]);
   assert.equal(validate(incomplete).pass, false);
 });
+
+// @story #1873
+test('lifecycle gaps account for genuine actor departure and return rows', async () => {
+  const { timingActorKey, timingActorMarker } =
+    await import('../../../../../../task-tracker/lib/timing-actor.mjs');
+  const a = timingActorMarker(timingActorKey({ provider: 'codex', sid: 'departed' }));
+  const b = timingActorMarker(timingActorKey({ provider: 'codex', sid: 'continuation' }));
+  const later = '2026-07-14 15:02:00 -05:00';
+  const rows = [
+    [T(0), 'develop:started'],
+    [T(0), 'start', 'a', a],
+    [T(1), 'pause:blocked', 'a departed', a],
+    [later, 'start', 'b', b],
+    ['2026-07-14 15:03:00 -05:00', 'pause:blocked', 'b departed', b],
+    ['2026-07-14 15:03:00 -05:00', 'develop:completed'],
+  ];
+  assert.deepEqual(validate(logCtx(rows, entered('develop'))), { pass: true, failures: [] });
+  const unexplained = validate(
+    logCtx(
+      [
+        [T(0), 'develop:started'],
+        [later, 'develop:completed'],
+      ],
+      entered('develop')
+    )
+  );
+  assert.equal(unexplained.pass, false);
+  assert.ok(unexplained.failures.some((failure) => failure.includes('suspicious wall-clock gap')));
+  const stillActive = validate(
+    logCtx(
+      rows.filter(([, event, , marker]) => !(event === 'pause:blocked' && marker === a)),
+      entered('develop')
+    )
+  );
+  assert.equal(stillActive.pass, false);
+});

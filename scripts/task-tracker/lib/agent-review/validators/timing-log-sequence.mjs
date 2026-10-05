@@ -190,6 +190,7 @@ export function validate(context = {}) {
   }
 
   const previousByActor = new Map();
+  let previousGapRow = null;
   let prevMs = null;
   let prevRow = null;
   // State-machine slot: 'idle' (nothing active) or 'active'. Starts 'idle' — the
@@ -238,22 +239,27 @@ export function validate(context = {}) {
         `${loc(row)}: out-of-order — timestamp precedes row ${prevRow.index} (${prevRow.ts})`
       );
     }
+    // Untagged lifecycle rows share the issue timeline; actor rows retain their
+    // own continuity. A genuine actor pause must remain visible to a lifecycle gap.
+    const gapRow = row.actorKey ? prior : previousGapRow;
+    const gapMs = gapRow ? _tsToMs(gapRow.ts) : null;
     if (
-      prevMs != null &&
-      ms - prevMs > SUSPICIOUS_GAP_SEC * 1000 &&
-      prevRow &&
+      gapMs != null &&
+      ms - gapMs > SUSPICIOUS_GAP_SEC * 1000 &&
+      gapRow &&
       !isUnknownActorRecovery(row) &&
-      !isDepartureEvent(prevRow.event)
+      !isDepartureEvent(gapRow.event)
     ) {
       failures.push(
-        `row ${prevRow.index}→${row.index}: suspicious wall-clock gap (${formatShortDuration(
-          (ms - prevMs) / 1000
+        `row ${gapRow.index}→${row.index}: suspicious wall-clock gap (${formatShortDuration(
+          (ms - gapMs) / 1000
         )}) without a departure boundary — ${forensicRemediation()}`
       );
     }
     prevMs = ms;
     prevRow = row;
     previousByActor.set(row.actorKey || 'legacy', row);
+    previousGapRow = row;
 
     // --- Reconciliation vs aitm-entered markers ------------------------------
     const lifecycleStage = stageOf(row.event);

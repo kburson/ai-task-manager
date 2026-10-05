@@ -2016,6 +2016,12 @@ const packageSubcommandHelp =
   wantsHelp(rest) ||
   (command === 'configure' && rest[0] === 'preferences' && wantsHelp(rest.slice(1)));
 
+if (invokedDirectly) {
+  const { prepareUsageEnv } =
+    await import('../scripts/task-tracker/lib/graphql-usage/collection.mjs');
+  Object.assign(process.env, await prepareUsageEnv({ launchRoute: 'legacy-cli-shell' }));
+}
+
 const guidanceAdmission = invokedDirectly ? admitGuidance({ argv: [command, ...rest] }) : null;
 if (invokedDirectly && !guidanceAdmission.admitted) {
   process.stderr.write(guidanceAdmission.diagnostic);

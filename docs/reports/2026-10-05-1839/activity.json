@@ -1,0 +1,203 @@
+{
+  "schema": "aitm.graphql-usage.activity/v1",
+  "collectorWindowSeconds": 3605,
+  "commandDurationSeconds": 605.3359999999998,
+  "summedObservationDurationSeconds": 425.1099999999999,
+  "firstObservation": "2026-10-05T04:29:35.966Z",
+  "lastObservation": "2026-10-05T05:02:03.782Z",
+  "interpretation": "Command durations are summed across concurrent worktrees; observation durations are invocation latency, not exclusive CPU time or point usage.",
+  "commands": [
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "create",
+      "startedAt": "2026-10-05T04:29:35.300Z",
+      "endedAt": "2026-10-05T04:29:45.037Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "bind",
+      "startedAt": "2026-10-05T04:29:45.038Z",
+      "endedAt": "2026-10-05T04:29:56.157Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "refine",
+      "startedAt": "2026-10-05T04:29:56.164Z",
+      "endedAt": "2026-10-05T04:30:32.184Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "ready-for-plan",
+      "startedAt": "2026-10-05T04:30:32.186Z",
+      "endedAt": "2026-10-05T04:31:14.506Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "plan",
+      "startedAt": "2026-10-05T04:31:14.508Z",
+      "endedAt": "2026-10-05T04:31:47.095Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "stop",
+      "startedAt": "2026-10-05T04:31:47.097Z",
+      "endedAt": "2026-10-05T04:31:53.160Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "create",
+      "startedAt": "2026-10-05T04:59:35.301Z",
+      "endedAt": "2026-10-05T04:59:45.306Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "bind",
+      "startedAt": "2026-10-05T04:59:45.308Z",
+      "endedAt": "2026-10-05T04:59:55.466Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "refine",
+      "startedAt": "2026-10-05T04:59:55.467Z",
+      "endedAt": "2026-10-05T05:00:36.031Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "ready-for-plan",
+      "startedAt": "2026-10-05T05:00:36.035Z",
+      "endedAt": "2026-10-05T05:01:22.103Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "plan",
+      "startedAt": "2026-10-05T05:01:22.106Z",
+      "endedAt": "2026-10-05T05:01:55.782Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "label": "stop",
+      "startedAt": "2026-10-05T05:01:55.789Z",
+      "endedAt": "2026-10-05T05:02:02.148Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "create",
+      "startedAt": "2026-10-05T04:29:35.300Z",
+      "endedAt": "2026-10-05T04:29:44.719Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "bind",
+      "startedAt": "2026-10-05T04:29:44.721Z",
+      "endedAt": "2026-10-05T04:30:28.004Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "refine",
+      "startedAt": "2026-10-05T04:30:28.006Z",
+      "endedAt": "2026-10-05T04:31:02.886Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "ready-for-plan",
+      "startedAt": "2026-10-05T04:31:02.892Z",
+      "endedAt": "2026-10-05T04:31:46.820Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "plan",
+      "startedAt": "2026-10-05T04:31:46.821Z",
+      "endedAt": "2026-10-05T04:32:21.583Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "stop",
+      "startedAt": "2026-10-05T04:32:21.585Z",
+      "endedAt": "2026-10-05T04:32:27.437Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "create",
+      "startedAt": "2026-10-05T04:59:35.301Z",
+      "endedAt": "2026-10-05T04:59:45.706Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "bind",
+      "startedAt": "2026-10-05T04:59:45.708Z",
+      "endedAt": "2026-10-05T04:59:56.455Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "refine",
+      "startedAt": "2026-10-05T04:59:56.457Z",
+      "endedAt": "2026-10-05T05:00:35.787Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "ready-for-plan",
+      "startedAt": "2026-10-05T05:00:35.789Z",
+      "endedAt": "2026-10-05T05:01:22.983Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "plan",
+      "startedAt": "2026-10-05T05:01:22.985Z",
+      "endedAt": "2026-10-05T05:01:58.093Z",
+      "exitCode": 0
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "label": "stop",
+      "startedAt": "2026-10-05T05:01:58.094Z",
+      "endedAt": "2026-10-05T05:02:03.846Z",
+      "exitCode": 0
+    }
+  ]
+}

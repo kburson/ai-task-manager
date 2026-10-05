@@ -94,6 +94,8 @@ try {
 }
 const policy = loadPolicy(projectRoot);
 
+// #1873 — denied artifact allowances still enforce the physical source class.
+let physicalShellWriteClass = null;
 let applyPatchTargets = [];
 if (toolName === 'apply_patch') {
   try {
@@ -125,6 +127,21 @@ if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
   if (artifact.status === 'block')
     block('[task-tracker] artifact target refused: ' + artifact.reason);
   if (artifact.status === 'allow') process.exit(0);
+  try {
+    if (
+      artifact.status === 'other' &&
+      artifact.targets.some(
+        (target) =>
+          classifyEdit(
+            resolveMutationTarget(target, invocationDir, projectRoot).relative,
+            policy
+          ) === 'WRITE_CODE'
+      )
+    )
+      physicalShellWriteClass = 'WRITE_CODE';
+  } catch (error) {
+    block('[task-tracker] mutation target refused: ' + error.message);
+  }
 }
 if (
   Object.hasOwn(input, 'session_id') &&
@@ -198,7 +215,7 @@ if (
   const command = toolInput?.command ?? '';
   if (typeof command !== 'string' || !command) process.exit(0);
   target = command;
-  activityClass = classifyBash(command, policy);
+  activityClass = physicalShellWriteClass ?? classifyBash(command, policy);
   if (gitContext?.kind === 'commit') {
     try {
       const staged = readStagedRecords(gitContext.cwd);

@@ -1,5 +1,9 @@
 // @story #1767
 // @story #1857
+// @story #1873
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url, 'codex');
+
 // @story #1872
 // Actual Git/public-CLI replay belongs to integration, not the pure unit lane.
 import assert from 'node:assert/strict';
@@ -8,7 +12,8 @@ import childProcess from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import test from 'node:test';
+import test, { mock } from 'node:test';
+import { captureGuidanceLifecycle } from '../../../../maintenance/capture-guidance-lifecycle.mjs';
 import { fileURLToPath } from 'node:url';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
@@ -54,7 +59,7 @@ test('obsolete catalog input refuses before launching public CLI replay', async 
   assert.equal(cliCalls, 0);
 });
 
-test('matching catalog inputs still launch actual replay and refuse fabricated current provenance', async (t) => {
+test('matching catalog inputs refuse initial fixture drift before public CLI replay', async (t) => {
   const original = childProcess.spawnSync;
   let cliCalls = 0;
   t.mock.method(childProcess, 'spawnSync', function (command, args, ...rest) {
@@ -69,8 +74,7 @@ test('matching catalog inputs still launch actual replay and refuse fabricated c
   });
   const { buildCurrentRecertificationDecision } = await measurementTool();
   const capture = json('actual-explain-traffic-recertification.json');
-  // A self-consistent source relabel is insufficient: actual CLI events and
-  // initial fixture identity must still be replayed before any current GO.
+  // Matching catalog hashes alone cannot authorize replay of a different initial fixture.
   capture.identity.sourceCommit = original('git', ['rev-parse', 'HEAD'], {
     cwd: projectRoot,
     encoding: 'utf8',
@@ -87,7 +91,7 @@ test('matching catalog inputs still launch actual replay and refuse fabricated c
     () => buildCurrentRecertificationDecision({ projectRoot, capture }),
     /capture-replay-identity|Invalid timing actor|TIMING_ACTOR_INVALID/
   );
-  assert.ok(cliCalls > 0, 'matching inputs must not bypass real CLI replay');
+  assert.equal(cliCalls, 0, 'initial fixture drift must refuse before real CLI replay');
 });
 
 test('archived recertification binds every obligation and refuses current replay identity drift', async () => {
@@ -183,4 +187,28 @@ test('historical foundation stays immutable while current commands refuse obsole
   });
   assert.notEqual(invalid, 0);
   assert.match(stderr, /usage: measure-guidance-candidate/);
+});
+
+// #1873 Known initial-fixture drift must refuse before any public CLI event.
+test('#1873 initial fixture mismatch refuses before public CLI replay', () => {
+  const actualSpawn = childProcess.spawnSync;
+  const probe = mock.method(childProcess, 'spawnSync', (command, args, options) => {
+    if (args?.[0] === path.join(projectRoot, 'bin/aitm.mjs'))
+      throw new Error('unexpected public CLI replay before initial fixture refusal');
+    return actualSpawn(command, args, options);
+  });
+  syncBuiltinESMExports();
+  try {
+    assert.throws(
+      () =>
+        captureGuidanceLifecycle({
+          mode: 'recertification',
+          expectedInitialFixtureSha256: 'sha256:' + '0'.repeat(64),
+        }),
+      new RegExp('capture:initial-fixture-mismatch')
+    );
+  } finally {
+    probe.mock.restore();
+    syncBuiltinESMExports();
+  }
 });

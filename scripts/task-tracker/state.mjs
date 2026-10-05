@@ -1,3 +1,4 @@
+// @story #1889
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -162,7 +163,13 @@ export function bankTranscriptTail(projDir) {
 // now the single source of truth. Stale `state` fields on disk are silently
 // dropped on read.
 const PER_SESSION_FIELDS = ['active', 'entryStartTs', 'wordsAtEntryStart'];
-const WORKTREE_SESSION_FIELDS = ['worktreePath', 'worktreeBranch', 'worktreeResolvedAt'];
+// #1889 The occupancy generation is binding authority, never shared timing state.
+const WORKTREE_SESSION_FIELDS = [
+  'worktreePath',
+  'worktreeBranch',
+  'worktreeResolvedAt',
+  'bindingGenerationId',
+];
 
 function currentSid() {
   // #273 — delegate to the lone resolver so this writer agrees with the
@@ -198,16 +205,28 @@ function migrateLegacyFields(parsed) {
 export function projectDirForState(statePath) {
   const abs = path.isAbsolute(statePath) ? statePath : path.resolve(statePath);
   const norm = abs.split(path.sep).join('/');
+  // #1873 A sanctioned isolated test host bounds all ancestor state lookup.
+  const runtimeHostIdx = Math.max(
+    norm.lastIndexOf(SHARED_DIR_SEGMENT + 'runtime/test-sandboxes/'),
+    norm.lastIndexOf(SHARED_DIR_SEGMENT + 'runtime/test-fixtures/')
+  );
   // #573: the state file now lives under `<projDir>/.tmp/aitm/state/`. Anchor on
   // the rightmost `/.tmp/aitm/` segment first (worktree-local wins over main, per
   // #332). Checked before the legacy `.ai-task-manager/`/`.claude/` containers so
   // a relocated state path resolves to its true project root.
   const tmpIdx = norm.lastIndexOf(TMP_AITM_SEGMENT);
-  if (tmpIdx !== -1) return abs.slice(0, tmpIdx);
+  if (tmpIdx > runtimeHostIdx) return abs.slice(0, tmpIdx);
   // `.ai-task-manager/` is always a real state container — anchor on the
   // rightmost one (worktree-local wins over main, per #332).
-  const aimIdx = norm.lastIndexOf(SHARED_DIR_SEGMENT);
-  if (aimIdx !== -1) return abs.slice(0, aimIdx);
+  // #1873 — runtime test hosts are metadata directories, not state containers.
+  for (let from = norm.length; ;) {
+    const idx = norm.lastIndexOf(SHARED_DIR_SEGMENT, from);
+    if (idx <= runtimeHostIdx) break;
+    const after = norm.slice(idx + SHARED_DIR_SEGMENT.length);
+    if (!after.startsWith('runtime/test-sandboxes/') && !after.startsWith('runtime/test-fixtures/'))
+      return abs.slice(0, idx);
+    from = idx - 1;
+  }
   // `.claude/` is trickier: `<main>/.claude/worktrees/<wt>/…` uses `.claude`
   // as a worktree HOST, not a state container. A state file living deeper
   // under such a worktree (e.g. a test sandbox at `<wt>/.scratch/test/…/state.json`)
@@ -217,7 +236,7 @@ export function projectDirForState(statePath) {
   // followed by the state file, so it still anchors correctly. (#486 follow-up)
   for (let from = norm.length; ;) {
     const idx = norm.lastIndexOf('/.claude/', from);
-    if (idx === -1) break;
+    if (idx <= runtimeHostIdx) break;
     const after = norm.slice(idx + '/.claude/'.length);
     if (!after.startsWith('worktrees/')) return abs.slice(0, idx);
     from = idx - 1;
@@ -302,11 +321,19 @@ export function saveState(state, statePath) {
     (state.wordsAtEntryStart != null && state.wordsAtEntryStart !== 0);
   if (hasActiveBinding) {
     const worktreeFields = Object.fromEntries(
-      WORKTREE_SESSION_FIELDS.filter((field) => state[field] != null).map((field) => [
-        field,
-        state[field],
-      ])
+      WORKTREE_SESSION_FIELDS.filter(
+        (field) =>
+          state[field] != null || (field === 'bindingGenerationId' && Object.hasOwn(state, field))
+      ).map((field) => [field, state[field]])
     );
+    // A timing-state spread may change issue without replacing its old generation.
+    // Never carry that prior issue authority into a different binding.
+    if (
+      priorBinding?.issue !== state.active &&
+      worktreeFields.bindingGenerationId != null &&
+      worktreeFields.bindingGenerationId === priorBinding?.bindingGenerationId
+    )
+      delete worktreeFields.bindingGenerationId;
     setActiveTask(
       sid,
       {

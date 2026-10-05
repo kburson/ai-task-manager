@@ -1,4 +1,4 @@
-// @story #1811 #1813
+// @story #1811 #1813 #1892
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -256,4 +256,60 @@ test('manual merge, squash, and rebase record observed method for either propose
       assert.equal(receipt.intentId, intent.intentId);
     }
   }
+});
+
+test('complete child-merge graph proves real Git squash and rejects changed content', async (t) => {
+  const f = repo(t);
+  f.git('switch', '-qc', 'child', f.base);
+  writeFileSync(path.join(f.cwd, 'child.txt'), 'child contribution\n');
+  f.git('add', '.');
+  f.git('commit', '-qm', '[#1892] child contribution');
+  const child = f.git('rev-parse', 'HEAD');
+  f.git('switch', '-qc', 'epic', f.sourceHead);
+  f.git('merge', '-q', '--no-ff', 'child', '-m', '[#1892] merge child');
+  const acceptedHeadSha = f.git('rev-parse', 'HEAD');
+  f.git('switch', '-qc', 'integrated-child', f.integrationBase);
+  f.git('merge', '-q', '--squash', 'epic');
+  f.git('commit', '-qm', '[#1892] integrated child graph');
+  const integrated = f.git('rev-parse', 'HEAD');
+  const sourceCommits = [f.sourceFirst, f.sourceHead, child, acceptedHeadSha].map((oid) => ({
+    oid,
+    parents: f.git('show', '-s', '--format=%P', oid).split(' '),
+    tree: f.git('rev-parse', oid + '^{tree}'),
+    message: f.git('show', '-s', '--format=%B', oid),
+  }));
+  const deps = createDefaultDeliverDeps({ projectDir: f.cwd, cfg: { repo: 'owner/repo' } });
+  const { verifyObservedIntegration } =
+    await import('../../../task-tracker/lib/delivery-integration-proof.mjs');
+  const input = (mergeCommitSha) => ({
+    repository: 'owner/repo',
+    pullRequest: {
+      headRefOid: acceptedHeadSha,
+      mergeCommitSha,
+      sourceCommitsComplete: true,
+      sourceCommitsHeadSha: acceptedHeadSha,
+    },
+    acceptedHeadSha,
+    mergedCommitSha: mergeCommitSha,
+    sourceCommits,
+    inspectCommit: ({ commitSha }) => deps.inspectMergeCommit({ mergeCommitSha: commitSha }),
+    isAncestor: deps.isAncestor,
+    compareContent: deps.compareDeliveryContent,
+    trunkRef: mergeCommitSha,
+  });
+  const proof = await verifyObservedIntegration(input(integrated));
+  assert.equal(proof.method, 'squash');
+  assert.equal(proof.contentProof.sourceBase, f.base);
+  assert.deepEqual(proof.sourceMapping, [
+    { source: f.sourceFirst, integrated },
+    { source: f.sourceHead, integrated },
+    { source: child, integrated },
+    { source: acceptedHeadSha, integrated },
+  ]);
+  // Keep single-parent squash topology but corrupt its content.
+  writeFileSync(path.join(f.cwd, 'child.txt'), 'changed contribution\n');
+  f.git('commit', '-qam', '[#1892] changed content', '--amend');
+  await assert.rejects(() => verifyObservedIntegration(input(f.git('rev-parse', 'HEAD'))), {
+    message: 'delivery-integration:content-mismatch',
+  });
 });

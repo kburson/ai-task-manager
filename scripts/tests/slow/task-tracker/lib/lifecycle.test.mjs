@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // @story #1872
-import { loadState } from '../../../../task-tracker/state.mjs';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 // @story #309
+import { saveState, loadState } from '../../../../task-tracker/state.mjs';
 import { strict as assert } from 'node:assert';
+// @story #1873
 import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

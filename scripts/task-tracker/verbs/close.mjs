@@ -4904,14 +4904,19 @@ export async function assertFieldsPersisted({
       });
       const record = result.record;
       const payload = record?.envelope?.payload;
+      // #1894 — epic orchestration aggregates children without an implementation forecast.
+      const isEpic = parseIssueKind(body) === 'epic';
+      const expectedKind = isEpic ? 'epic-orchestration' : 'story';
+      const expectedForecastRecordId = isEpic ? null : readPlanApprovedForecastRecordId(body);
       if (
         !isIncompleteOutcome(payload) ||
+        payload.kind !== expectedKind ||
         record.envelope.repository !== cfg.repo ||
         record.envelope.issue !== Number(issueNum) ||
         typeof record.commentNodeId !== 'string' ||
         record.envelope.recordId !== result.recordId ||
         payload.telemetry.verificationSha !== acceptedSha ||
-        payload.forecastRecordId !== readPlanApprovedForecastRecordId(body)
+        payload.forecastRecordId !== expectedForecastRecordId
       ) {
         throw new Error(
           'assertFieldsPersisted: canonical incomplete outcome linkage missing or inconsistent'

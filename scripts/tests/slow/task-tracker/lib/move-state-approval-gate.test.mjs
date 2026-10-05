@@ -17,6 +17,7 @@ initializeFixtureActor(import.meta.url);
 //      without the approval line, so backwards transitions still work.
 
 import { strict as assert } from 'node:assert';
+// @story #1873
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';

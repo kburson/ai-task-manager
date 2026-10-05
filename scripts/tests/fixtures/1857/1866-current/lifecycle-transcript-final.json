@@ -306,9 +306,9 @@
         "frozenTranscriptSha256": "sha256:643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48",
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
-        "currentCaptureSha256": "sha256:6795a3a7af6822ff63c5faa1f28ef9d27a676dcd2cff2cf5b94a21b94b1a1b0b",
-        "currentSourceCommit": "e6b3fc3693df16a8baf3b1d9d469159234320a0d",
-        "currentSourceInputsSha256": "sha256:a53647a7dcb3829972915d3cb8391ffe46eb69ca905768de7905eee1668c34d5"
+        "currentCaptureSha256": "sha256:7886944a8689eb8b9a15c85f16e4d2a9693aeaf3ef9499959a26079416aef1ee",
+        "currentSourceCommit": "7af9dc2b60c0e70e7479b4061af320c68a171d4a",
+        "currentSourceInputsSha256": "sha256:b472361751f0fdd89639008124cc4fb4abdf7b69a7bb65324cb345ad372f85b3"
       },
       "streams": {
         "legacy": [
@@ -1072,9 +1072,9 @@
         "frozenTranscriptSha256": "sha256:5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec",
         "historicalSourceCommit": "47867b40c5dcda4dc424f117369a466a903b1b71",
         "currentCapturePath": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
-        "currentCaptureSha256": "sha256:6795a3a7af6822ff63c5faa1f28ef9d27a676dcd2cff2cf5b94a21b94b1a1b0b",
-        "currentSourceCommit": "e6b3fc3693df16a8baf3b1d9d469159234320a0d",
-        "currentSourceInputsSha256": "sha256:a53647a7dcb3829972915d3cb8391ffe46eb69ca905768de7905eee1668c34d5"
+        "currentCaptureSha256": "sha256:7886944a8689eb8b9a15c85f16e4d2a9693aeaf3ef9499959a26079416aef1ee",
+        "currentSourceCommit": "7af9dc2b60c0e70e7479b4061af320c68a171d4a",
+        "currentSourceInputsSha256": "sha256:b472361751f0fdd89639008124cc4fb4abdf7b69a7bb65324cb345ad372f85b3"
       },
       "streams": {
         "legacy": [
@@ -1539,7 +1539,7 @@
     "schema": "aitm.guidance-tokenizer-calibration/v1",
     "source": {
       "captureKind": "actual-public-cli-and-installed-static-with-deterministic-authority",
-      "sha256": "sha256:6795a3a7af6822ff63c5faa1f28ef9d27a676dcd2cff2cf5b94a21b94b1a1b0b",
+      "sha256": "sha256:7886944a8689eb8b9a15c85f16e4d2a9693aeaf3ef9499959a26079416aef1ee",
       "sourceCommit": null,
       "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818"
     },
@@ -1654,7 +1654,7 @@
     "currentV2": {
       "captureKind": "protocol-valid-synthetic-v2-presentation",
       "scope": "Serializer sensitivity; this combination is not asserted as an observed evaluator result.",
-      "seedCaptureSha256": "sha256:6795a3a7af6822ff63c5faa1f28ef9d27a676dcd2cff2cf5b94a21b94b1a1b0b",
+      "seedCaptureSha256": "sha256:7886944a8689eb8b9a15c85f16e4d2a9693aeaf3ef9499959a26079416aef1ee",
       "inputs": {
         "action": "close",
         "childCount": 4,

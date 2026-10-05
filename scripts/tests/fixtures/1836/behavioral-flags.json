@@ -1,0 +1,28 @@
+{
+  "schema": "aitm.guidance-legacy-behavioral-flags/v1",
+  "flags": [
+    {
+      "flag": "AITM_GRAPHQL_USAGE_CONTEXT",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/graphql-usage/storage.mjs",
+          "symbol": "inheritedContext",
+          "excerpt": "const text = env?.[ENV];",
+          "fingerprint": "sha256:d4c05b51b18d771680c425d2f6dc9c69bb83a555594bce1665655a2e3c3d94d3"
+        }
+      ],
+      "defaultBehavior": "Usage enrollment allocates launcher identity or diagnoses unknown descendant attribution and probes storage",
+      "nondefaultBehavior": "A valid inherited process-tree context preserves session identity and reuses a probe for at most sixty minutes in the same permission context",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "internal-protocol",
+      "baselinePolicy": "allow-only-when-explicitly-declared-by-the-scenario",
+      "disposition": "retain",
+      "rationale": "Metadata-only measurement enrollment context; does not authorize GitHub lifecycle operations",
+      "ownerTask": "#1836",
+      "verifier": "scripts/tests/unit/task-tracker/lib/graphql-usage-storage.test.mjs"
+    }
+  ]
+}

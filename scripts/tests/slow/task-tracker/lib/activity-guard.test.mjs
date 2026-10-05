@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
+// @story #1873
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import url from 'node:url';
@@ -34,7 +35,7 @@ const BASH_GUARD = path.join(path.dirname(GUARD), 'bash-guard.mjs');
 // ---------------------------------------------------------------------------
 
 function makeRepo({ state } = {}) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
+  const dir = createRuntimeRootFixture('aitm-activity-guard-');
   // Init bare git repo so `git rev-parse --show-toplevel` works.
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
@@ -50,7 +51,7 @@ function makeRepo({ state } = {}) {
 }
 
 function makeRepoNoState() {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
+  const dir = createRuntimeRootFixture('aitm-activity-guard-');
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   // No state file at all.
   return dir;

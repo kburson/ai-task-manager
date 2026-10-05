@@ -1,0 +1,176 @@
+{
+  "schema": "aitm.graphql-usage.baseline-run/v1",
+  "workloadKind": "controlled",
+  "declaredAt": "2026-10-05T04:26:36.858Z",
+  "startedAt": "2026-10-05T04:29:35.298Z",
+  "endedAt": "2026-10-05T05:29:40.298Z",
+  "commonRootId": "sha256:382ab54c044e6cdce14ad2a15c2f662a79b7e90ad6a556272de78fef3042aba2",
+  "declarationSha256": "sha256:a544fd9a6cbe18f128423cc85d6da29bc457a52291e4d7294c9f05436be66910",
+  "collectorVersion": "v1",
+  "sourceCommit": "6bfdeecf687d754becb0c0afffae08e3cd63f106",
+  "recipeId": "sha256:1409a062bd8af13b896fbd6601c9ebe984776adcf4a66cd82139577a1d5b8e67",
+  "configurationId": "sha256:fd80c1132d92f4fda22650b4a3df6ac284da5049305246032b26ae6b181d13a3",
+  "participants": [
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "enrollmentId": "b906f78e-5e0e-44b4-a142-9676bda99baa",
+      "commonRootId": "sha256:382ab54c044e6cdce14ad2a15c2f662a79b7e90ad6a556272de78fef3042aba2",
+      "outcome": "enrolled",
+      "enrolledAt": "2026-10-05T04:27:11.817Z",
+      "collectorStartedAt": "2026-10-05T04:27:11.894Z",
+      "collectorEndedAt": "2026-10-05T05:29:40.300Z",
+      "permitted": true
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "enrollmentId": "e6ef32d4-2519-428c-8872-50bc4945157a",
+      "commonRootId": "sha256:382ab54c044e6cdce14ad2a15c2f662a79b7e90ad6a556272de78fef3042aba2",
+      "outcome": "enrolled",
+      "enrolledAt": "2026-10-05T04:27:07.104Z",
+      "collectorStartedAt": "2026-10-05T04:27:07.194Z",
+      "collectorEndedAt": "2026-10-05T05:29:40.300Z",
+      "permitted": true
+    }
+  ],
+  "workflows": [
+    {
+      "id": "baseline-a-1",
+      "issueNumber": 8,
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "steps": [
+        {
+          "action": "create",
+          "startedAt": "2026-10-05T04:29:35.300Z",
+          "endedAt": "2026-10-05T04:29:45.037Z",
+          "exitCode": 0
+        },
+        {
+          "action": "refine",
+          "startedAt": "2026-10-05T04:29:56.164Z",
+          "endedAt": "2026-10-05T04:30:32.184Z",
+          "exitCode": 0
+        },
+        {
+          "action": "ready-for-plan",
+          "startedAt": "2026-10-05T04:30:32.186Z",
+          "endedAt": "2026-10-05T04:31:14.506Z",
+          "exitCode": 0
+        },
+        {
+          "action": "plan",
+          "startedAt": "2026-10-05T04:31:14.508Z",
+          "endedAt": "2026-10-05T04:31:47.095Z",
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-10-05T04:29:35.300Z",
+      "endedAt": "2026-10-05T04:31:47.095Z"
+    },
+    {
+      "id": "baseline-a-2",
+      "issueNumber": 9,
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b",
+      "steps": [
+        {
+          "action": "create",
+          "startedAt": "2026-10-05T04:59:35.301Z",
+          "endedAt": "2026-10-05T04:59:45.306Z",
+          "exitCode": 0
+        },
+        {
+          "action": "refine",
+          "startedAt": "2026-10-05T04:59:55.467Z",
+          "endedAt": "2026-10-05T05:00:36.031Z",
+          "exitCode": 0
+        },
+        {
+          "action": "ready-for-plan",
+          "startedAt": "2026-10-05T05:00:36.035Z",
+          "endedAt": "2026-10-05T05:01:22.103Z",
+          "exitCode": 0
+        },
+        {
+          "action": "plan",
+          "startedAt": "2026-10-05T05:01:22.106Z",
+          "endedAt": "2026-10-05T05:01:55.782Z",
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-10-05T04:59:35.301Z",
+      "endedAt": "2026-10-05T05:01:55.782Z"
+    },
+    {
+      "id": "baseline-b-1",
+      "issueNumber": 7,
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "steps": [
+        {
+          "action": "create",
+          "startedAt": "2026-10-05T04:29:35.300Z",
+          "endedAt": "2026-10-05T04:29:44.719Z",
+          "exitCode": 0
+        },
+        {
+          "action": "refine",
+          "startedAt": "2026-10-05T04:30:28.006Z",
+          "endedAt": "2026-10-05T04:31:02.886Z",
+          "exitCode": 0
+        },
+        {
+          "action": "ready-for-plan",
+          "startedAt": "2026-10-05T04:31:02.892Z",
+          "endedAt": "2026-10-05T04:31:46.820Z",
+          "exitCode": 0
+        },
+        {
+          "action": "plan",
+          "startedAt": "2026-10-05T04:31:46.821Z",
+          "endedAt": "2026-10-05T04:32:21.583Z",
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-10-05T04:29:35.300Z",
+      "endedAt": "2026-10-05T04:32:21.583Z"
+    },
+    {
+      "id": "baseline-b-2",
+      "issueNumber": 10,
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799",
+      "steps": [
+        {
+          "action": "create",
+          "startedAt": "2026-10-05T04:59:35.301Z",
+          "endedAt": "2026-10-05T04:59:45.706Z",
+          "exitCode": 0
+        },
+        {
+          "action": "refine",
+          "startedAt": "2026-10-05T04:59:56.457Z",
+          "endedAt": "2026-10-05T05:00:35.787Z",
+          "exitCode": 0
+        },
+        {
+          "action": "ready-for-plan",
+          "startedAt": "2026-10-05T05:00:35.789Z",
+          "endedAt": "2026-10-05T05:01:22.983Z",
+          "exitCode": 0
+        },
+        {
+          "action": "plan",
+          "startedAt": "2026-10-05T05:01:22.985Z",
+          "endedAt": "2026-10-05T05:01:58.093Z",
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-10-05T04:59:35.301Z",
+      "endedAt": "2026-10-05T05:01:58.093Z"
+    }
+  ],
+  "collectorPinsVerified": true
+}

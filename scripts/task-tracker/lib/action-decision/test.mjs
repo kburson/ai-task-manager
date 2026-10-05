@@ -1,4 +1,4 @@
-// @story #1666
+// @story #1666 #1887
 // Read-only Test-entry observations. An explanation is never an execution grant.
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
 import { pexec } from '../../../gh/lib/gh-client.mjs';
@@ -16,6 +16,7 @@ import {
   isPolicyShapeVerificationRejection,
   validateVerificationCommand,
 } from '../verification-allowlist.mjs';
+import { planStaleTestReceiptRetirement } from '../verification-receipt-retirement.mjs';
 import { hasMalformedVerificationReceiptClaim } from '../verification-receipt.mjs';
 import { resolveVerificationProvider } from '../verification-provider-registry.mjs';
 import { sessionNetworkSkipped } from '../verb-preflight.mjs';
@@ -333,6 +334,14 @@ export async function collectTestReadiness({
       blockers.push(blocked('test-provider-invalid', { reason: String(error?.message || error) }));
     }
   }
+  let guardBody = body;
+  try {
+    guardBody = planStaleTestReceiptRetirement(body, { expectedIssue: issue, head }).body;
+  } catch {
+    if (!blockers.some(({ code }) => code === 'test-receipt-malformed')) {
+      blockers.push(blocked('test-receipt-malformed'));
+    }
+  }
   if (fromState !== 'develop' || blockers.some(({ code }) => code === 'authority-read-failed'))
     return {
       status: blockers.some(({ code }) => code === 'authority-read-failed')
@@ -353,7 +362,7 @@ export async function collectTestReadiness({
       fromState,
       toState: 'test',
       cfg: ports.cfg,
-      body,
+      body: guardBody,
       projectDir,
       headSha: head,
       readOnly: true,
