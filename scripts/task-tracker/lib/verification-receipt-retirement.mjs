@@ -6,6 +6,8 @@ import { promisify } from 'node:util';
 
 import { mutateIssueBody as defaultMutateIssueBody } from './issue-body-mutate.mjs';
 import {
+  hasClaimedVerificationReceiptMarker,
+  hasMalformedVerificationReceiptClaim,
   parseValidatedVerificationReceiptClaims,
   parseValidatedVerificationReceipts,
   parseVerificationReceipts,
@@ -57,6 +59,11 @@ export function planStaleTestReceiptRetirement(body, { expectedIssue, head } = {
     );
   }
   const source = String(body || '');
+  if (hasMalformedVerificationReceiptClaim(source)) {
+    throw new TypeError('verification-receipt-retirement: malformed claimed marker');
+  }
+  // No Test claim: leave Develop-final validation and audited repair to its owner.
+  if (!hasClaimedVerificationReceiptMarker(source, 'test')) return { body: source, receipt: null };
   const claims = parseValidatedVerificationReceiptClaims(source, { expectedIssue }).filter(
     ({ receipt }) => receipt.stage === 'test'
   );
