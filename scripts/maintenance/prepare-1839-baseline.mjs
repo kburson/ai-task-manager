@@ -2,6 +2,7 @@
 // Repository-only preparation: explicit operator inputs, no remote mutations.
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { configPath } from '../task-tracker/paths.mjs';
 import { readUsage, resolveUsageRoot } from '../task-tracker/lib/graphql-usage/storage.mjs';
 import { scanGraphqlSurfaces } from '../task-tracker/lib/graphql-usage/inventory.mjs';
 const [configFile, pilotSession, outputDir] = process.argv.slice(2);
@@ -74,7 +75,7 @@ const recipeFiles = Object.fromEntries(
   )
 );
 const configurationHashes = await Promise.all(
-  cfg.workers.map((w) => fs.readFile(w.worktree + '/.ai-task-manager/task-tracker.json').then(hash))
+  cfg.workers.map((w) => fs.readFile(configPath(w.worktree)).then(hash))
 );
 const preflight = {
   schema: 'aitm.graphql-usage.preflight/v1',

@@ -222,6 +222,13 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // separate so the preserved #1624 branch can apply its exact ceiling change
   // without both histories editing the same base hunk.
   const recoveryEntryAllowance = 1;
+  // #1839: one offline CLI and two pure qualification helpers. Live tests and evidence remain excluded.
+  const baselineEntries = [
+    'scripts/task-tracker/graphql-usage-baseline.mjs',
+    'scripts/task-tracker/lib/graphql-usage/baseline.mjs',
+    'scripts/task-tracker/lib/graphql-usage/evidence.mjs',
+  ];
+  for (const entry of baselineEntries) assert.ok(files.includes(entry));
   // #1882 ships exactly the provider runner and registered CLI routing helper.
   const childIntegrationEntries = [
     'scripts/task-tracker/lib/merge-back-verification.mjs',
@@ -356,6 +363,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     ENTRY_CEILING +
     recoveryEntryAllowance +
     childIntegrationEntries.length +
+    baselineEntries.length +
     doctorRuntimeAllowance +
     storyContractAllowance +
     storyBindingAllowance +
