@@ -5,6 +5,7 @@ import * as fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { authorityResult } from '../../../fixtures/criteria-revision-runtime.mjs';
 import { withIssueLock, issueLockPath } from '../../../../task-tracker/issue-mutator-lock.mjs';
@@ -258,7 +259,7 @@ test('delegated capability is revoked when the parent invocation ends', async (t
     finish = path.join(r.root, 'finish');
   fs.writeFileSync(
     childFile,
-    `import fs from 'node:fs';import assert from 'node:assert/strict';import {withRevisionDelegation,assertRevisionCapability} from ${JSON.stringify(moduleURL)};const c=JSON.parse(process.argv[2]),p=JSON.parse(process.argv[3]);await withRevisionDelegation(c,async cap=>{fs.writeFileSync(process.argv[4],'ready');while(!fs.existsSync(process.argv[5]))await new Promise(r=>setTimeout(r,10));assert.throws(()=>assertRevisionCapability(cap,c,p),/revision-capability/);},p);`
+    `import fs from 'node:fs';import assert from 'node:assert/strict';import {withRevisionDelegation,assertRevisionCapability} from ${JSON.stringify(moduleURL)};const c=JSON.parse(process.argv[2]),p=JSON.parse(process.argv[3]);await withRevisionDelegation(c,async cap=>{fs.writeFileSync(process.argv[4],'ready');while(!fs.existsSync(process.argv[5])&&process.connected)await new Promise(r=>setTimeout(r,10));assert.throws(()=>assertRevisionCapability(cap,c,p),/revision-capability/);},p);`
   );
   let child;
   await lock.withRevisionInterlock(
@@ -353,4 +354,208 @@ test('captured delegation from a previous child cannot be replayed on another ch
     },
     r.ports
   );
+});
+
+async function waitForFixtureSignal(file) {
+  const deadline = Date.now() + 5000;
+  while (!fs.existsSync(file)) {
+    if (Date.now() > deadline) throw new Error(`fixture signal timeout: ${file}`);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+function admissionDelegate(r) {
+  const childFile = path.join(r.root, 'admission-delegate.mjs');
+  const url = (p) => pathToFileURL(path.resolve(p)).href;
+  fs.writeFileSync(
+    childFile,
+    `import * as fs from 'node:fs';import {withRevisionDelegation} from ${JSON.stringify(url('scripts/task-tracker/lib/criteria-revision/interlock.mjs'))};import {observeAdmission,publishAdmission} from ${JSON.stringify(url('scripts/task-tracker/lib/criteria-revision/admission.mjs'))};import {authorityResult} from ${JSON.stringify(url('scripts/tests/fixtures/criteria-revision-runtime.mjs'))};const context=JSON.parse(process.argv[2]),ports=JSON.parse(process.argv[3]),mode=process.argv[4];await withRevisionDelegation(context,async capability=>{if(mode==='deny'){await publishAdmission({capability,observation:{issue:1852},state:'deny'},ports);return;}const observation=await observeAdmission({capability,context,observe:()=>authorityResult(context,context.domain)},ports);const writer={...ports,fs:{...fs,renameSync(from,to){if(to.endsWith('/admission/1852.json')){fs.writeFileSync(process.argv[5],'paused');const deadline=Date.now()+5000;while(!fs.existsSync(process.argv[6])){if(Date.now()>deadline)throw new Error('paused writer timeout');Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10);}}fs.renameSync(from,to);}}};await publishAdmission({capability,observation,state:'allow'},writer);},ports);`
+  );
+  return childFile;
+}
+
+test('exclusive delegation prevents a paused older allow from overwriting a newer deny', async (t) => {
+  const r = fixture(t);
+  register(r);
+  const childFile = admissionDelegate(r),
+    paused = path.join(r.root, 'paused'),
+    resume = path.join(r.root, 'resume');
+  await lock.withRevisionInterlock(
+    r.context,
+    async (capability) => {
+      const older = lock.spawnRevisionDelegate(capability, childFile, [
+        JSON.stringify(r.context),
+        JSON.stringify(r.ports),
+        'allow',
+        paused,
+        resume,
+      ]);
+      let parentRefused = false,
+        siblingRefused = false;
+      try {
+        await waitForFixtureSignal(paused);
+        try {
+          await admission.publishAdmission(
+            { capability, observation: { issue: 1852 }, state: 'deny' },
+            r.ports
+          );
+        } catch (e) {
+          assert.match(e.message, /revision-delegation-held/);
+          parentRefused = true;
+        }
+        try {
+          await lock.spawnRevisionDelegate(capability, childFile, [
+            JSON.stringify(r.context),
+            JSON.stringify(r.ports),
+            'deny',
+          ]);
+        } catch (e) {
+          assert.match(e.message, /revision-delegation-held/);
+          siblingRefused = true;
+        }
+      } finally {
+        fs.writeFileSync(resume, 'resume');
+        await older;
+      }
+      if (parentRefused && siblingRefused)
+        await admission.publishAdmission(
+          { capability, observation: { issue: 1852 }, state: 'deny' },
+          r.ports
+        );
+      assert.equal(
+        admission.readAdmission(r.context, r.ports).state,
+        'deny',
+        'paused older allow overwrote a newer deny'
+      );
+      assert.equal(parentRefused, true);
+      assert.equal(siblingRefused, true);
+    },
+    r.ports
+  );
+});
+
+test('parent cleanup retains strict ownership until the delegated process has exited', async (t) => {
+  const r = fixture(t);
+  register(r);
+  const childFile = admissionDelegate(r),
+    paused = path.join(r.root, 'paused'),
+    resume = path.join(r.root, 'resume');
+  let child, returned;
+  const callbackReturned = new Promise((resolve) => {
+    returned = resolve;
+  });
+  const holding = lock.withRevisionInterlock(
+    r.context,
+    async (capability) => {
+      child = lock.spawnRevisionDelegate(capability, childFile, [
+        JSON.stringify(r.context),
+        JSON.stringify(r.ports),
+        'allow',
+        paused,
+        resume,
+      ]);
+      await waitForFixtureSignal(paused);
+      returned();
+    },
+    r.ports
+  );
+  try {
+    await callbackReturned;
+    await new Promise((resolve) => setImmediate(resolve));
+    await assert.rejects(
+      lock.withRevisionInterlock(r.context, () => {}, r.ports),
+      /revision-lock-held/
+    );
+  } finally {
+    fs.writeFileSync(resume, 'resume');
+    await child;
+    await holding;
+  }
+  await lock.withRevisionInterlock(
+    r.context,
+    (capability) =>
+      admission.publishAdmission(
+        { capability, observation: { issue: 1852 }, state: 'deny' },
+        r.ports
+      ),
+    r.ports
+  );
+  assert.equal(admission.readAdmission(r.context, r.ports).state, 'deny');
+});
+
+test('authenticated inherited issue locks participate in numeric ordering and genuine reuse', async (t) => {
+  const r = fixture(t);
+  register(r);
+  r.context.issues = [2, 1852];
+  const moduleURL = pathToFileURL(
+      path.resolve('scripts/task-tracker/lib/criteria-revision/interlock.mjs')
+    ).href,
+    issueURL = pathToFileURL(path.resolve('scripts/task-tracker/issue-mutator-lock.mjs')).href,
+    childFile = path.join(r.root, 'ordered-child.mjs');
+  fs.writeFileSync(
+    childFile,
+    `import assert from 'node:assert/strict';import {withRevisionDelegation} from ${JSON.stringify(moduleURL)};import {withIssueLock} from ${JSON.stringify(issueURL)};const c=JSON.parse(process.argv[2]),p=JSON.parse(process.argv[3]);await withRevisionDelegation(c,async capability=>{const options={projDir:c.executor.worktree,revisionContext:c,revisionCapability:capability,revisionPorts:p};await withIssueLock({...options,issue:1852},()=>{});if(process.argv[4]==='both')await withIssueLock({...options,issue:2},()=>{});else await assert.rejects(withIssueLock({...options,issue:2},()=>{}),/revision-lock-order/);},p);`
+  );
+  await lock.withRevisionInterlock(
+    r.context,
+    async (capability) => {
+      await withIssueLock(
+        {
+          issue: 1852,
+          projDir: r.first,
+          revisionContext: r.context,
+          revisionCapability: capability,
+          revisionPorts: r.ports,
+        },
+        () =>
+          lock.spawnRevisionDelegate(capability, childFile, [
+            JSON.stringify(r.context),
+            JSON.stringify(r.ports),
+          ])
+      );
+    },
+    r.ports
+  );
+  await lock.withRevisionInterlock(
+    r.context,
+    async (capability) => {
+      const options = {
+        projDir: r.first,
+        revisionContext: r.context,
+        revisionCapability: capability,
+        revisionPorts: r.ports,
+      };
+      await withIssueLock({ ...options, issue: 2 }, () =>
+        withIssueLock({ ...options, issue: 1852 }, () =>
+          lock.spawnRevisionDelegate(capability, childFile, [
+            JSON.stringify(r.context),
+            JSON.stringify(r.ports),
+            'both',
+          ])
+        )
+      );
+    },
+    r.ports
+  );
+});
+
+test('package resolution exposes internal deep imports without a root API facade', async (t) => {
+  const consumer = mkdtempProjectIsolated('revision-consumer-');
+  t.after(() => fs.rmSync(consumer, { recursive: true, force: true }));
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')),
+    installed = path.join(consumer, 'node_modules', pkg.name);
+  fs.mkdirSync(path.dirname(installed), { recursive: true });
+  fs.symlinkSync(process.cwd(), installed, 'dir');
+  const require = createRequire(path.join(consumer, 'consumer.cjs'));
+  assert.throws(() => require.resolve(pkg.name), { code: 'MODULE_NOT_FOUND' });
+  for (const name of ['domain', 'interlock', 'admission']) {
+    const resolved = require.resolve(
+      `${pkg.name}/scripts/task-tracker/lib/criteria-revision/${name}.mjs`
+    );
+    assert.equal(
+      fs.realpathSync(resolved),
+      fs.realpathSync(`scripts/task-tracker/lib/criteria-revision/${name}.mjs`)
+    );
+    const runtime = await import(pathToFileURL(resolved));
+    assert.ok(Object.keys(runtime).length > 0);
+  }
 });

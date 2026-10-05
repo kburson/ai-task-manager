@@ -109,6 +109,7 @@ function release(p, record) {
 function metadata(capability) {
   const m = capabilities.get(capability);
   if (!m || !m.live || active.getStore() !== capability) revisionFailure('revision-capability');
+  if (m.delegation) revisionFailure('revision-delegation-held');
   return m;
 }
 export function assertRevisionCapability(capability, context, ports) {
@@ -142,10 +143,8 @@ export function revisionCapabilityContext(capability) {
 }
 export function assertRevisionIssueLockOrder(capability, issue) {
   const m = metadata(capability);
-  if (
-    !isIssueLockHeldLocally(issue) &&
-    m.issues.some((i) => i > Number(issue) && isIssueLockHeldLocally(i))
-  )
+  const held = (i) => isIssueLockHeldLocally(i) || m.delegatedIssueLocks?.includes(Number(i));
+  if (!held(issue) && m.issues.some((i) => i > Number(issue) && held(i)))
     revisionFailure('revision-lock-order');
 }
 export function revisionDelegatesIssueLock(capability, issue) {
@@ -172,7 +171,7 @@ export async function withRevisionInterlock(context, fn, ports = {}) {
       executor: structuredClone(context.executor),
       ports: p,
       records,
-      children: new Set(),
+      delegation: null,
     };
   try {
     for (const issue of scope) records.push(acquire(p, domain, issue, p.nonce()));
@@ -180,13 +179,29 @@ export async function withRevisionInterlock(context, fn, ports = {}) {
     return await active.run(capability, () => fn(capability));
   } finally {
     m.live = false;
-    for (const child of m.children) {
-      if (child.connected) child.disconnect();
+    const lease = m.delegation;
+    if (lease) {
+      disconnectDelegate(lease);
+      // Disconnect revokes future capability use, but a child may already be
+      // inside a synchronous filesystem effect. Only actual process exit proves
+      // it cannot finish that effect after a newer owner acquires these locks.
+      await lease.exited;
     }
     for (const record of [...records].reverse()) release(p, record);
   }
 }
-// A trusted parent launches the module and owns its inherited IPC channel.
+function disconnectDelegate(lease) {
+  if (!lease.child.connected) return;
+  try {
+    lease.child.disconnect();
+  } catch (error) {
+    // A channel error is not evidence of process death. Retain the lease until
+    // its actual child exit; a child with unknown status continues to fence.
+    lease.error ??= error;
+  }
+}
+// A trusted parent launches exactly one child and lends its execution authority
+// exclusively until that actual child exits. Parent use and siblings refuse.
 // No address, bearer token or environment variable can request delegation.
 export async function spawnRevisionDelegate(capability, modulePath, args = []) {
   const m = metadata(capability);
@@ -196,7 +211,17 @@ export async function spawnRevisionDelegate(capability, modulePath, args = []) {
     cwd: m.executor.worktree,
     stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
   });
-  m.children.add(child);
+  const lease = { child, error: null, exited: null };
+  m.delegation = lease;
+  lease.exited = new Promise((resolve) => {
+    child.once('exit', (code, signal) => resolve({ code, signal }));
+    child.on('error', (error) => {
+      lease.error ??= error;
+      // A failed spawn with no PID never launched a process. IPC/send errors
+      // after launch cannot release ownership while that process remains live.
+      if (!child.pid) resolve({ code: null, signal: null });
+    });
+  });
   let stderr = '';
   child.stderr.on('data', (chunk) => {
     stderr += chunk;
@@ -206,32 +231,36 @@ export async function spawnRevisionDelegate(capability, modulePath, args = []) {
   child.on('message', (message) => {
     if (message?.type !== 'aitm-revision-ready' || sent) return;
     sent = true;
-    if (!m.live) {
-      child.disconnect();
+    if (!m.live || m.delegation !== lease) {
+      disconnectDelegate(lease);
       return;
     }
-    child.send({
-      type: 'aitm-revision-delegation/v1',
-      pid: child.pid,
-      parentPid: process.pid,
-      token,
-      domain: m.domain,
-      issues: m.issues,
-      executor: m.executor,
-      records: m.records,
-      issueLocks: m.issues.filter(isIssueLockHeldLocally),
-    });
+    child.send(
+      {
+        type: 'aitm-revision-delegation/v1',
+        pid: child.pid,
+        parentPid: process.pid,
+        token,
+        domain: m.domain,
+        issues: m.issues,
+        executor: m.executor,
+        records: m.records,
+        issueLocks: m.issues.filter(isIssueLockHeldLocally),
+      },
+      (error) => {
+        if (error) lease.error ??= error;
+      }
+    );
   });
   try {
-    await new Promise((resolve, reject) => {
-      child.once('error', reject);
-      child.once('exit', (code) =>
-        code === 0 ? resolve() : reject(new Error(`revision-delegate-exit:${code}:${stderr}`))
-      );
-    });
+    const outcome = await lease.exited;
+    if (lease.error) throw lease.error;
+    if (outcome.code !== 0) throw new Error(`revision-delegate-exit:${outcome.code}:${stderr}`);
   } finally {
-    m.children.delete(child);
-    if (child.connected) child.disconnect();
+    // This path runs only after exit (or a proven failed spawn), never merely
+    // after disconnect or an IPC error. The parent can then use its scope again.
+    if (m.delegation === lease) m.delegation = null;
+    disconnectDelegate(lease);
   }
 }
 export async function withRevisionDelegation(context, fn, ports = {}) {

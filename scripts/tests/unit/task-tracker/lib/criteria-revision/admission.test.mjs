@@ -2,7 +2,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { memoryRuntime, authorityResult } from '../../../../fixtures/criteria-revision-runtime.mjs';
-import { COMMAND_CATALOG } from '../../../../../task-tracker/lib/command-surface/catalog.mjs';
+import {
+  COMMAND_CATALOG,
+  routeIdentityForCommand,
+} from '../../../../../task-tracker/lib/command-surface/catalog.mjs';
 import { listLifecycleActions } from '../../../../../task-tracker/lib/lifecycle-policy/actions.mjs';
 import { readFileSync } from 'node:fs';
 const domain = await import('../../../../../task-tracker/lib/criteria-revision/domain.mjs').catch(
@@ -138,7 +141,7 @@ test('raw observations cannot publish allow and a prior receipt cannot overwrite
     r.ports
   );
 });
-test('internal primitives expose no production mutation command, action or public package export', () => {
+test('registered command, action and executable catalogs have no revision transaction route', () => {
   assert.equal(
     COMMAND_CATALOG.some((x) => x.name.startsWith('criteria-revise')),
     false
@@ -147,11 +150,12 @@ test('internal primitives expose no production mutation command, action or publi
     listLifecycleActions().some((x) => x.id.startsWith('criteria-revise')),
     false
   );
+  assert.equal(routeIdentityForCommand('criteria-revise'), null);
   const pkg = JSON.parse(
     readFileSync(new URL('../../../../../../package.json', import.meta.url), 'utf8')
   );
   assert.equal(
-    Object.keys(pkg.exports ?? {}).some((x) => x.includes('criteria-revision')),
+    Object.values(pkg.bin).some((entry) => /criteria-revision|criteria-revise/.test(entry)),
     false
   );
 });
