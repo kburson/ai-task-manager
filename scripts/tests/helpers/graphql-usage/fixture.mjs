@@ -2,9 +2,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 export async function repository(t) {
-  await fs.mkdir('.tmp', { recursive: true });
-  const base = await fs.mkdtemp(path.resolve('.tmp/graphql-storage-test-'));
+  const base = mkdtempProjectIsolated('graphql-storage-');
+  await fs.rm(path.join(base, '.git'), { recursive: true, force: true });
   t.after(() => fs.rm(base, { recursive: true, force: true }));
   const cwd = path.join(base, 'main');
   await fs.mkdir(cwd);
