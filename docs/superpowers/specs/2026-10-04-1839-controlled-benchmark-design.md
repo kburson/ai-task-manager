@@ -27,3 +27,7 @@ The handoff includes raw totals, sample sizes, per-completed-workflow normalizat
 ## Verification
 
 Meaningful completion-gate tests cover short intervals/overlap, absent workflow, single worktree, no traffic, root/session mismatch, late/failed enrollment, inadequate denials, scoped excluded denials, sufficient volume with insufficient points, and accepted controlled evidence. Run focused collection, storage, report, baseline and both action-capture suites. Full unit/integration/slow verification uses exact-commit GitHub CI receipts; do not run full suites locally.
+
+## Live preflight correction
+
+The live preflight found that the inherited shim did not receive repository or stage context, and that anonymous GraphQL documents and high-level CLI commands lacked usable operation names. Before the timed interval, add optional `AITM_GRAPHQL_USAGE_DISPATCH_CONTEXT` containing only repository, exactly one issueNumber or safe draftId, lifecycleState and argument provenance. The runner supplies it separately for each command and its descendants. This is declared operator context, never inferred from the active issue; conflicting explicit targets remain unknown. Malformed or extra-key metadata is discarded. Known CLI commands receive `gh.<family>.<verb>` invocation identities and remain opaque; anonymous parsed documents receive an identity derived from their existing normalized fingerprint. These corrections add no requests, expose no payload values and do not weaken coverage gates. Pin the source commit as well as schema/collector version in the run evidence.

@@ -11,7 +11,11 @@ import {
   completeCapturedAction,
 } from '../lib/action-capture.mjs';
 
-import { beginObservation, parseGhArguments } from '../lib/graphql-usage/collection.mjs';
+import {
+  beginObservation,
+  parseGhArguments,
+  readDispatchContext,
+} from '../lib/graphql-usage/collection.mjs';
 
 function warning(message) {
   process.stderr.write(
@@ -104,7 +108,11 @@ async function run() {
     ? await beginObservation({
         ...usage,
         alias: privateContext?.alias,
-        context: { args, variables: usage.variables },
+        context: {
+          ...readDispatchContext(process.env.AITM_GRAPHQL_USAGE_DISPATCH_CONTEXT),
+          args,
+          variables: usage.variables,
+        },
         endpointHost: endpointHost(args, process.env),
       })
     : null;

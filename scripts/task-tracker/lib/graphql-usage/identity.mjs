@@ -294,3 +294,25 @@ export function prepareGraphqlQuery(query, { selectedOperation = null } = {}) {
     return unchanged;
   }
 }
+
+// @story #1839
+// These are CLI invocation identities; hidden GraphQL requests stay opaque.
+export function identifyGhInvocation(args = []) {
+  const reads = {
+    issue: ['view', 'list', 'status'],
+    repo: ['view', 'list'],
+    pr: ['view', 'list', 'status', 'checks'],
+  };
+  const writes = { issue: ['create', 'edit', 'comment', 'close', 'reopen'] };
+  const kind = reads[args[0]]?.includes(args[1])
+    ? 'query'
+    : writes[args[0]]?.includes(args[1])
+      ? 'mutation'
+      : 'unknown';
+  return {
+    kind,
+    operation: kind === 'unknown' ? null : `gh.${args[0]}.${args[1]}`,
+    queryFingerprint: null,
+    fingerprintVersion: 'v1',
+  };
+}

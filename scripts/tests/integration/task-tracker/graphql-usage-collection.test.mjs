@@ -706,3 +706,87 @@ test('body URL cannot override GH CLI endpoint host', async (t) => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0].endpointHost, 'api.github.com');
 });
+
+// @story #1839
+test('command-scoped draft metadata reaches the live shim without active-task inference', async (t) => {
+  const { prepareUsageEnv } = await import(collectionUrl);
+  const { cwd, env } = await setup(t);
+  const prepared = await prepareUsageEnv({ cwd, env });
+  const run = spawnSync(
+    'gh',
+    ['issue', 'create', '--repo', 'owner/scratch', '--title', 'private-title'],
+    {
+      cwd,
+      env: {
+        ...prepared,
+        AITM_GRAPHQL_USAGE_DISPATCH_CONTEXT: JSON.stringify({
+          repository: 'owner/scratch',
+          draftId: 'workload-a-1',
+          lifecycleState: 'backlog',
+          stateSource: 'argument',
+        }),
+      },
+      encoding: 'utf8',
+    }
+  );
+  assert.equal(run.status, 0, run.stderr);
+  const rows = (await readUsage((await resolveUsageRoot(cwd)).root)).observations;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].repository, 'owner/scratch');
+  assert.equal(rows[0].draftId, 'workload-a-1');
+  assert.equal(rows[0].issueNumber, null);
+  assert.equal(rows[0].lifecycleState, 'backlog');
+  assert.equal(rows[0].stateSource, 'argument');
+  assert.equal(rows[0].operation, 'gh.issue.create');
+  assert.equal(rows[0].kind, 'mutation');
+  assert.equal(rows[0].pointCost, null);
+  assert.equal(rows[0].observationKind, 'opaque-cli-invocation');
+  assert.ok(!JSON.stringify(rows).includes('private-title'));
+});
+
+test('scoped dispatch context refuses conflicting targets and malformed metadata', async () => {
+  const { dispatchContext, readDispatchContext } = await import(collectionUrl);
+  const scope = {
+    repository: 'owner/scratch',
+    issueNumber: 42,
+    lifecycleState: 'plan',
+    stateSource: 'argument',
+  };
+  assert.deepEqual(readDispatchContext('{broken'), {});
+  assert.deepEqual(readDispatchContext(JSON.stringify({ ...scope, body: 'secret' })), {});
+  assert.deepEqual(
+    readDispatchContext(JSON.stringify({ ...scope, lifecycleState: 'made-up' })),
+    {}
+  );
+  assert.equal(
+    dispatchContext({ ...scope, args: ['issue', 'view', '43'] }).lifecycleState,
+    'unknown'
+  );
+  assert.equal(
+    dispatchContext({ ...scope, args: ['issue', 'view', '42', '--repo', 'other/repo'] })
+      .lifecycleState,
+    'unknown'
+  );
+  assert.equal(
+    dispatchContext({ ...scope, draftId: 'draft', variables: { issues: [42, 43] } }).draftId,
+    null
+  );
+  assert.equal(
+    dispatchContext({ draftId: 'secret with spaces', lifecycleState: 'backlog' }).draftId,
+    null
+  );
+});
+
+test('unnamed query observations use their normalized fingerprint as candidate identity', async (t) => {
+  const { prepareUsageEnv } = await import(collectionUrl);
+  const { cwd, env } = await setup(t);
+  const prepared = await prepareUsageEnv({ cwd, env });
+  const run = spawnSync('gh', ['api', 'graphql', '-f', 'query={ viewer { id } }'], {
+    cwd,
+    env: prepared,
+    encoding: 'utf8',
+  });
+  assert.equal(run.status, 0, run.stderr);
+  const [row] = (await readUsage((await resolveUsageRoot(cwd)).root)).observations;
+  assert.equal(row.operation, 'anonymous.' + row.queryFingerprint.slice(7));
+});

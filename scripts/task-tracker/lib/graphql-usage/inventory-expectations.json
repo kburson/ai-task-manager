@@ -567,7 +567,7 @@
     "scripts/reports/generate-value-report.mjs|156|gh-api-graphql|planned",
     "scripts/reports/generate-value-report.mjs|157|direct-http|covered",
     "scripts/reports/heal-backlog-attribution.mjs|160|opaque-gh-cli|opaque",
-    "scripts/task-tracker/action-capture-bin/gh|112|opaque-gh-cli|opaque",
+    "scripts/task-tracker/action-capture-bin/gh|120|opaque-gh-cli|opaque",
     "scripts/task-tracker/backfill-plan-metadata.mjs|219|uncovered|uncovered",
     "scripts/task-tracker/backfill-timing-logs.mjs|183|uncovered|uncovered",
     "scripts/task-tracker/backfill-vc-sections.mjs|101|uncovered|uncovered",

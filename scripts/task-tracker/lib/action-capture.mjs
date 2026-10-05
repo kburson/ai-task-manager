@@ -1,4 +1,4 @@
-import { identifyGraphqlOperation } from './graphql-usage/identity.mjs';
+import { identifyGraphqlOperation, identifyGhInvocation } from './graphql-usage/identity.mjs';
 // @story #1295
 
 import { createHash } from 'node:crypto';
@@ -539,6 +539,7 @@ export function classifyGhUsage(args, stdin) {
   } catch {
     /* argv form */
   }
+  if (args[0] !== 'api') return { query: '', variables: {}, ...identifyGhInvocation(args) };
   const query = args[0] === 'api' ? graphqlDocument(args, stdin) : '';
   const selectedOperation =
     payload?.operationName || args.find((arg) => arg.startsWith('operationName='))?.slice(14);

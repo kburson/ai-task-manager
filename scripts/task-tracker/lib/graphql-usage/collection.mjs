@@ -5,7 +5,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { enrollUsage, createUsageWriter } from './storage.mjs';
 import { sessionIdEnvKeys } from '../session-id.mjs';
-import { prepareGraphqlQuery, identifyGraphqlOperation } from './identity.mjs';
+import {
+  prepareGraphqlQuery,
+  identifyGraphqlOperation,
+  identifyGhInvocation,
+} from './identity.mjs';
 
 export function usageEnabled(env = process.env) {
   return env.AITM_GRAPHQL_USAGE === '1';
@@ -97,6 +101,8 @@ const ghValueFlags = new Set([
   '--json',
   '--jq',
   '--limit',
+  '--label',
+  '--project',
   '--milestone',
   '--parent',
   '--remove-assignee',
@@ -168,6 +174,42 @@ function issueOperandNumber(value) {
     return null;
   }
 }
+// @story #1839
+// Explicit metadata belongs to one command and its descendants. Never consult an
+// active task or recover payload values to guess attribution.
+export function readDispatchContext(raw) {
+  try {
+    if (typeof raw !== 'string' || raw.length > 2048) return {};
+    const value = JSON.parse(raw);
+    const allowed = ['repository', 'issueNumber', 'draftId', 'lifecycleState', 'stateSource'];
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value) ||
+      Object.keys(value).some((key) => !allowed.includes(key)) ||
+      !/^[\w.-]+\/[\w.-]+$/.test(value.repository || '') ||
+      ![
+        'backlog',
+        'refine',
+        'ready-for-plan',
+        'plan',
+        'develop',
+        'test',
+        'review',
+        'done',
+      ].includes(value.lifecycleState) ||
+      value.stateSource !== 'argument' ||
+      (value.issueNumber !== undefined &&
+        (!Number.isSafeInteger(value.issueNumber) || value.issueNumber < 1)) ||
+      (value.draftId !== undefined && !/^[A-Za-z0-9_.:-]{1,128}$/.test(value.draftId)) ||
+      (value.issueNumber === undefined) === (value.draftId === undefined)
+    )
+      return {};
+    return value;
+  } catch {
+    return {};
+  }
+}
 export function dispatchContext({
   args = [],
   variables = {},
@@ -175,6 +217,7 @@ export function dispatchContext({
   lifecycleState = null,
   stateSource = 'argument',
   issueNumber = null,
+  draftId = null,
 } = {}) {
   const parsed = parseGhArguments(args);
   const targetArgs = args[0] === 'issue' ? parsed.operands : [];
@@ -192,20 +235,25 @@ export function dispatchContext({
     .filter((value) => Number.isSafeInteger(Number(value)) && Number(value) > 0)
     .map(Number);
   const issues = ambiguousTargets ? [] : [...new Set(values)];
+  const explicitRepo = parsed.repository;
+  const repoConflict = explicitRepo && repository && explicitRepo !== repository;
+  const safeDraft =
+    !ambiguousTargets &&
+    !repoConflict &&
+    issues.length === 0 &&
+    /^[A-Za-z0-9_.:-]{1,128}$/.test(draftId || '')
+      ? draftId
+      : null;
+  const scoped = !repoConflict && !ambiguousTargets && (issues.length === 1 || safeDraft !== null);
+  const stateKnown = scoped && /^[a-z][a-z-]*$/.test(lifecycleState || '');
+  const repo = explicitRepo || repository;
   return {
-    repository: /^[\w.-]+\/[\w.-]+$/.test(repository || '') ? repository : null,
+    repository: /^[\w.-]+\/[\w.-]+$/.test(repo || '') ? repo : null,
     issueNumber: issues.length === 1 ? issues[0] : null,
-    draftId: null,
-    lifecycleState:
-      issues.length === 1 && /^[a-z][a-z-]*$/.test(lifecycleState || '')
-        ? lifecycleState
-        : 'unknown',
+    draftId: safeDraft,
+    lifecycleState: stateKnown ? lifecycleState : 'unknown',
     stateSource:
-      issues.length === 1 &&
-      /^[a-z][a-z-]*$/.test(lifecycleState || '') &&
-      ['local', 'argument'].includes(stateSource)
-        ? stateSource
-        : 'unknown',
+      stateKnown && ['local', 'argument'].includes(stateSource) ? stateSource : 'unknown',
     contextScope:
       issues.length > 1 ? 'multiple-issues' : issues.length === 1 ? 'single-issue' : 'unknown',
   };
@@ -263,7 +311,9 @@ export async function beginObservation({
       observationKind,
       dispatchStatus: 'unknown',
       pageIndex,
-      ...identifyGraphqlOperation(query, { selectedOperation }),
+      ...(observationKind === 'opaque-cli-invocation' && context.args?.[0] !== 'api' && !query
+        ? identifyGhInvocation(context.args)
+        : identifyGraphqlOperation(query, { selectedOperation })),
       outcome: 'unknown',
       httpStatus: null,
       processExitCode: null,
@@ -282,6 +332,12 @@ export async function beginObservation({
       rateLimitUnavailableReason:
         observationKind === 'http-attempt' ? 'not-returned' : 'transport-unavailable',
     };
+    if (
+      row.operation === null &&
+      row.queryFingerprint !== null &&
+      ['query', 'mutation'].includes(row.kind)
+    )
+      row.operation = 'anonymous.' + row.queryFingerprint.slice(7);
     let completed = false;
     return async ({
       response = null,
