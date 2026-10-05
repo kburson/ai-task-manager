@@ -1,3 +1,4 @@
+// @story #1889
 import { isDeepStrictEqual } from 'node:util';
 import { timingActorKey } from '../lib/timing-actor.mjs';
 
@@ -177,7 +178,10 @@ export async function verbResume(ctx) {
     let savedState = null;
     try {
       const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
-      const binding = resolveBinding({ projectDir, now: nowIso });
+      const binding = {
+        ...resolveBinding({ projectDir, now: nowIso }),
+        bindingGenerationId: occupancyClaim?.row?.bindingGenerationId ?? null,
+      };
       await drainQueueIfAny();
       // Inline the lastActive-bind logic (previously in verbStart)
       try {
@@ -299,7 +303,10 @@ export async function verbResume(ctx) {
     const occupancyClaim = claimForBind(ctx, normalizedTarget);
     try {
       const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
-      const binding = resolveBinding({ projectDir, now: nowIso });
+      const binding = {
+        ...resolveBinding({ projectDir, now: nowIso }),
+        bindingGenerationId: occupancyClaim?.row?.bindingGenerationId ?? null,
+      };
       saveState({ ...s, ...binding }, statePath);
     } catch (error) {
       rollbackClaim(ctx, occupancyClaim);
@@ -331,7 +338,10 @@ export async function verbResume(ctx) {
   let savedState = null;
   try {
     const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
-    const binding = resolveBinding({ projectDir, now: nowIso });
+    const binding = {
+      ...resolveBinding({ projectDir, now: nowIso }),
+      bindingGenerationId: occupancyClaim?.row?.bindingGenerationId ?? null,
+    };
     await drainQueueIfAny();
     try {
       const sidPre = currentSessionId();
