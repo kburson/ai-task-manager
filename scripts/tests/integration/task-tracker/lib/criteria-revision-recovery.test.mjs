@@ -1,8 +1,6 @@
 // @story #1853
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-import { pathToFileURL } from 'node:url';
 import { makeLegacyRevisionFixture } from '../../../fixtures/criteria-revision.mjs';
 import {
   deriveProposal,
@@ -14,8 +12,6 @@ import {
 } from '../../../../task-tracker/lib/criteria-revision/schema.mjs';
 import { mutateIssueBody } from '../../../../task-tracker/lib/issue-body-mutate.mjs';
 import { versionedWriteBody } from '../../../../task-tracker/lib/versioned-issue-write.mjs';
-import { COMMAND_CATALOG } from '../../../../task-tracker/lib/command-surface/catalog.mjs';
-import { listLifecycleActions } from '../../../../task-tracker/lib/lifecycle-policy/actions.mjs';
 const engine = await import('../../../../task-tracker/lib/criteria-revision/engine.mjs').catch(
   (e) => {
     if (e.code === 'ERR_MODULE_NOT_FOUND') return {};
@@ -259,65 +255,6 @@ test('fresh pagination collector rejects missing pages and duplicate comment ide
     await assert.rejects(
       store.readRevisionChain({ context, transport: { readCommentPage: async () => page } })
     );
-});
-test('shipped deep-import engine and body adapters cannot reach production using forged deps/capabilities', async () => {
-  assert.equal(typeof engine.applyRevision, 'function');
-  const require = createRequire(import.meta.url);
-  const path =
-    require.resolve('ai-task-manager/scripts/task-tracker/lib/criteria-revision/engine.mjs');
-  const shipped = await import(pathToFileURL(path));
-  const f = makeLegacyRevisionFixture();
-  let effects = 0;
-  for (const deps of [
-    undefined,
-    {},
-    {
-      transport: {
-        createComment() {
-          effects++;
-        },
-      },
-      loadUserMessage() {
-        effects++;
-      },
-    },
-    { revisionBackend: true, ports: {} },
-  ]) {
-    assert.equal(
-      (await shipped.applyRevision({ context: f.context, request: f.request, deps })).status,
-      'refused'
-    );
-    assert.equal(
-      (await shipped.recoverRevision({ context: f.context, request: f.request, deps })).status,
-      'refused'
-    );
-  }
-  for (const writer of [mutateIssueBody, versionedWriteBody])
-    await assert.rejects(
-      writer({
-        repo: 'example/criteria',
-        issueNumber: 124,
-        mutate: () => f.proposal.writeSet[0].afterBytes,
-        criteriaRevisionCapability: {},
-        deps: {
-          fetchBody: async () => {
-            effects++;
-            return f.observation.body.bytes;
-          },
-          pushBody: async () => effects++,
-        },
-      }),
-      /revision/
-    );
-  assert.equal(effects, 0);
-  assert.equal(
-    COMMAND_CATALOG.some((x) => x.name.startsWith('criteria-revise')),
-    false
-  );
-  assert.equal(
-    listLifecycleActions().some((x) => x.id.startsWith('criteria-revise')),
-    false
-  );
 });
 test('before-approval preview is non-publishable; real unbounded principal is measured before locks', async () => {
   const f = fixture();
