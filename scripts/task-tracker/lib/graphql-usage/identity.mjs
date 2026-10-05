@@ -303,7 +303,10 @@ export function identifyGhInvocation(args = []) {
     repo: ['view', 'list'],
     pr: ['view', 'list', 'status', 'checks'],
   };
-  const writes = { issue: ['create', 'edit', 'comment', 'close', 'reopen'] };
+  const writes = {
+    issue: ['create', 'edit', 'comment', 'close', 'reopen'],
+    project: ['item-edit'],
+  };
   const kind = reads[args[0]]?.includes(args[1])
     ? 'query'
     : writes[args[0]]?.includes(args[1])

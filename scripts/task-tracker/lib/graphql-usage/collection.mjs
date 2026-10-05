@@ -121,6 +121,7 @@ const ghValueFlags = new Set([
   '-F',
   '-b',
   '-m',
+  '-q',
   '-t',
 ]);
 const ghSwitchFlags = new Set([
@@ -235,8 +236,19 @@ export function dispatchContext({
     .filter((value) => Number.isSafeInteger(Number(value)) && Number(value) > 0)
     .map(Number);
   const issues = ambiguousTargets ? [] : [...new Set(values)];
-  const explicitRepo = parsed.repository;
-  const repoConflict = explicitRepo && repository && explicitRepo !== repository;
+  const operandRepos = targetArgs.flatMap((value) => {
+    try {
+      const url = new URL(value);
+      const match = url.pathname.match(/^\/([^/]+)\/([^/]+)\/issues\/[1-9]\d*\/?$/);
+      return match ? [match[1] + '/' + match[2]] : [];
+    } catch {
+      return [];
+    }
+  });
+  const explicitRepos = [...new Set([parsed.repository, ...operandRepos].filter(Boolean))];
+  const explicitRepo = explicitRepos.length === 1 ? explicitRepos[0] : null;
+  const repoConflict =
+    explicitRepos.length > 1 || (explicitRepo && repository && explicitRepo !== repository);
   const safeDraft =
     !ambiguousTargets &&
     !repoConflict &&
