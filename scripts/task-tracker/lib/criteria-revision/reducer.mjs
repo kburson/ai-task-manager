@@ -1,9 +1,17 @@
 // @story #1853
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { revisionError, hashRevisionValue } from './schema.mjs';
-import { validateRevisionEvent, createTerminalEvent, parseRevisionEvent } from './records.mjs';
+import {
+  validateRevisionEvent,
+  createTerminalEvent,
+  parseRevisionEvent,
+  withRevisionValidation,
+} from './records.mjs';
 const equal = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
 export function reduceRevisionEvents(events) {
+  return withRevisionValidation(() => reduceEvents(events));
+}
+function reduceEvents(events) {
   if (!Array.isArray(events)) revisionError('event-chain');
   const ids = new Set(),
     operations = new Set(),
@@ -65,14 +73,6 @@ export function reduceRevisionEvents(events) {
           event.proposal.observedResourceVector !== hashRevisionValue(event.observedResourceVector)
         )
           revisionError('recovery-transition');
-        const archived = event.proposal.archive.observation.revisionRecords.records;
-        if (
-          archived.length !== state.events.length ||
-          archived.some(
-            (r, i) => !equal(parseRevisionEvent(r.bytes, { records: archived }), state.events[i])
-          )
-        )
-          revisionError('recovery-chain-archive');
         if (event.proposal.mode === 'resume') {
           for (const key of ['writeSet', 'identityMap', 'after', 'invalidation'])
             if (!equal(event.proposal[key], state.effective.proposal[key]))

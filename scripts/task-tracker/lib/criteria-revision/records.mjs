@@ -15,6 +15,28 @@ export const EVENT_SCHEMA = 'aitm.criteria-revision-event/v1';
 const prefix = `<!-- ${EVENT_SCHEMA} -->\n\`\`\`json\n`;
 const suffix = '\n```\n';
 const equal = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
+// Pure synchronous entrypoints share only this call's verified exact-byte graph.
+// Never retain a scope across an await, remote observation, error or return.
+let validationScope = null;
+export function withRevisionValidation(work) {
+  if (validationScope) return work();
+  validationScope = { parsed: new Map(), events: new Set() };
+  try {
+    const result = work();
+    if (result && typeof result.then === 'function') revisionError('async-validation-scope');
+    return result;
+  } finally {
+    validationScope = null;
+  }
+}
+function immutable(value) {
+  if (value && typeof value === 'object') {
+    Object.values(value).forEach(immutable);
+    Object.freeze(value);
+  }
+  return value;
+}
+
 export function revisionEventId(transactionId, operationId, type) {
   return `event-${hashRevisionValue([transactionId, operationId, type]).slice(7)}`;
 }
@@ -90,6 +112,16 @@ export function createTerminalEvent({ events, type = 'applied' }) {
   };
 }
 export function validateRevisionEvent(e) {
+  return withRevisionValidation(() => {
+    const bytes = canonicalRecordJson(e);
+    if (!validationScope.events.has(bytes)) {
+      validateEvent(e);
+      validationScope.events.add(bytes);
+    }
+    return e;
+  });
+}
+function validateEvent(e) {
   exactKeys(
     e,
     [
@@ -202,6 +234,9 @@ function wireEvent(event) {
   return wire;
 }
 export function renderRevisionEvent(event) {
+  return withRevisionValidation(() => renderEvent(event));
+}
+function renderEvent(event) {
   validateRevisionEvent(event);
   assertNoSecretRecordData(event, {
     safeKeyNames: [
@@ -235,9 +270,9 @@ export function readRevisionEnvelope(bytes) {
 function referenceRecords(event) {
   return event.proposal?.archive?.observation?.revisionRecords?.records ?? [];
 }
-function resolveReferences(event, available, visiting = new Set(), verified = new Set()) {
+function dependencyOrder(event, available, visiting = new Set(), ordered = new Map()) {
   if (visiting.has(event.eventId)) revisionError('event-reference-cycle');
-  if (verified.has(event.eventId)) return;
+  if (ordered.has(event.eventId)) return ordered;
   visiting.add(event.eventId);
   for (const record of referenceRecords(event)) {
     exactKeys(
@@ -261,27 +296,41 @@ function resolveReferences(event, available, visiting = new Set(), verified = ne
       )
     )
       revisionError('event-reference-binding');
-    resolveReferences(prior, available, visiting, verified);
+    dependencyOrder(prior, available, visiting, ordered);
   }
   visiting.delete(event.eventId);
-  verified.add(event.eventId);
+  ordered.set(event.eventId, event);
+  return ordered;
 }
 export function parseRevisionEvent(bytes, { records = [] } = {}) {
-  const wire = readRevisionEnvelope(bytes);
-  if (wire === null) return null;
-  const available = new Map();
-  for (const record of records) {
-    if (available.has(record.eventId)) revisionError('duplicate-event-reference');
-    available.set(record.eventId, record.bytes);
-  }
-  resolveReferences(wire, available);
-  const event = structuredClone(wire);
-  if (event.proposal)
-    event.proposal.archive.observation.revisionRecords.records = referenceRecords(wire).map(
-      ({ reference, ...record }) => ({ ...record, bytes: available.get(reference.eventId) })
-    );
-  if (renderRevisionEvent(event) !== bytes) revisionError('event-noncanonical');
-  return event;
+  return withRevisionValidation(() => {
+    const wire = readRevisionEnvelope(bytes);
+    if (wire === null) return null;
+    const available = new Map();
+    for (const record of records) {
+      if (available.has(record.eventId)) revisionError('duplicate-event-reference');
+      available.set(record.eventId, record.bytes);
+    }
+    if (available.has(wire.eventId) && available.get(wire.eventId) !== bytes)
+      revisionError('event-reference-binding');
+    // Validate supplied graph availability/bindings on every call, including memo
+    // hits. Semantic proof is reused only after all predecessors are verified.
+    for (const [id, predecessor] of dependencyOrder(wire, available)) {
+      const raw = id === wire.eventId ? bytes : available.get(id);
+      if (validationScope.parsed.has(raw)) continue;
+      const event = structuredClone(predecessor);
+      if (event.proposal)
+        event.proposal.archive.observation.revisionRecords.records = referenceRecords(
+          predecessor
+        ).map(({ reference, ...record }) => ({
+          ...record,
+          bytes: available.get(reference.eventId),
+        }));
+      if (renderRevisionEvent(event) !== raw) revisionError('event-noncanonical');
+      validationScope.parsed.set(raw, immutable(event));
+    }
+    return structuredClone(validationScope.parsed.get(bytes));
+  });
 }
 export function revisionRecord(event) {
   return {
