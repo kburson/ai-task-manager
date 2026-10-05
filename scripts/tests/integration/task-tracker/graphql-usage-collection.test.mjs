@@ -28,6 +28,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { repository } from '../../helpers/graphql-usage/fixture.mjs';
+import { PROJECT_ROOT_ALIASES } from '../../../task-tracker/lib/runtime-storage.mjs';
 import { readUsage, resolveUsageRoot } from '../../../task-tracker/lib/graphql-usage/storage.mjs';
 const collectionUrl = new URL(
   '../../../task-tracker/lib/graphql-usage/collection.mjs',
@@ -49,10 +50,14 @@ process.stderr.write('business stderr');
 `,
     { mode: 0o755 }
   );
-  return {
-    ...fixture,
-    env: { ...process.env, PATH: bin + path.delimiter + process.env.PATH, AITM_GRAPHQL_USAGE: '1' },
+  const env = {
+    ...process.env,
+    PATH: bin + path.delimiter + process.env.PATH,
+    AITM_GRAPHQL_USAGE: '1',
   };
+  // Fixture subprocesses own a separate repository, including inside native Test sandboxes.
+  for (const key of PROJECT_ROOT_ALIASES) delete env[key];
+  return { ...fixture, env };
 }
 
 test('usage-only shell and synchronous invocations flush before normal return without payload capture', async (t) => {
