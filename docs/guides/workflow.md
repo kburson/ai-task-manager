@@ -654,8 +654,16 @@ thing:
 **Delivery split by parent.** How a done child reaches trunk forks on its parent:
 
 - A **non-trunk parent** takes the local merge-back path: rebase the child onto the
-  parent, run the close/done gates, fast-forward the parent, and delete the child
-  branch (verify-not-perform under the epic-branch guardrail).
+  parent, verify through the child project configuration, and fast-forward the
+  parent to the exact verified commit. Use `aitm merge-back <child#> <worktree-path> --preserve-worktree` to retain the checkout, branch and upstream while finishing
+  exact-head approval and close. Without this flag, successful integration removes
+  the child checkout and branch. A configured project provider runs its validated
+  Test plan and issue-declared commands; projects without one retain the Node
+  suite sections. Stale or missing CI evidence refuses integration after rebase:
+  push the rebased child, wait for green CI, then retry with fresh receipts. Failed
+  verification never falls back to host suites or cleans up the child. Recorded
+  parent checkout authority and source cleanliness are checked again before
+  integration (verify-not-perform under the epic-branch guardrail).
 
   > **Ratified-but-pending (#871 → [#1257](https://github.com/kburson/ai-task-manager/issues/1257)):**
   > the fast-forward step becomes a **squash**, so each child lands on its epic as
