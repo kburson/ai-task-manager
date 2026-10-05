@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
+import { parseAcceptanceCriteria } from '../../../../../task-tracker/lib/acceptance-criteria.mjs';
+import { parseVerificationCommands } from '../../../../../task-tracker/lib/verification-commands.mjs';
 import {
   makeLegacyRevisionFixture,
   makeCanonicalRevisionFixture,
@@ -265,4 +267,90 @@ test('duplicate surviving identities and retired replacement identities refuse',
     f.proposal.after.definitions.find((x) => x.text === 'Supported model hooks').identity,
   ];
   assert.throws(() => deriveProposal(retired), /retired-identity/);
+});
+
+test('legacy AC projection preserves identical separately governed Scope bytes', () => {
+  const c = structuredClone(makeLegacyRevisionFixture().context),
+    old = c.edits.acceptanceCriteria[0].oldBytes;
+  c.observation.body.bytes = c.observation.body.bytes.replace(
+    'Synthetic scope',
+    'Synthetic scope\n' + old
+  );
+  const beforeScope = c.observation.body.bytes.split('## Acceptance Criteria')[0],
+    p = deriveProposal(c),
+    body = p.writeSet.find((x) => x.resource === 'issue-body').afterBytes;
+  assert.equal(body.split('## Acceptance Criteria')[0], beforeScope);
+  assert.ok(parseAcceptanceCriteria(body).some((x) => x.label.includes('Supported model hooks')));
+});
+test('legacy AC projection selects the declared occurrence among identical criterion lines', () => {
+  const c = structuredClone(makeLegacyRevisionFixture().context),
+    old = c.edits.acceptanceCriteria[0].oldBytes;
+  c.observation.body.bytes = c.observation.body.bytes.replace(/^.*Shared model guard.*$/m, old);
+  c.edits.acceptanceCriteria[0].occurrence = 2;
+  c.edits.verificationCommands = [];
+  const body = deriveProposal(c).writeSet.find((x) => x.resource === 'issue-body').afterBytes;
+  const acSection = body.split('## Acceptance Criteria\n')[1].split('## Verification Commands')[0];
+  assert.equal(acSection.split('\n')[0], old);
+  assert.match(acSection.split('\n')[1], /Supported model hooks/);
+});
+test('legacy VC insertion preserves a matching root line quoted in Scope', () => {
+  const c = structuredClone(makeLegacyRevisionFixture().context),
+    last = c.observation.body.bytes.split('\n').find((x) => x.includes('<!-- id=2 -->'));
+  c.observation.body.bytes = c.observation.body.bytes.replace(
+    'Synthetic scope',
+    'Synthetic scope\n' + last
+  );
+  c.edits.acceptanceCriteria[0].replacements[0].declaration.vcIds = ['3'];
+  c.edits.verificationCommands = [
+    { operation: 'add', id: '3', command: 'node --test new-root.test.mjs' },
+  ];
+  const beforeScope = c.observation.body.bytes.split('## Acceptance Criteria')[0],
+    body = deriveProposal(c).writeSet.find((x) => x.resource === 'issue-body').afterBytes;
+  assert.equal(body.split('## Acceptance Criteria')[0], beforeScope);
+  assert.ok(
+    parseVerificationCommands(body).some(
+      (x) => x.id === 3 && x.command === 'node --test new-root.test.mjs'
+    )
+  );
+});
+function addingRootContext(make, id) {
+  const c = structuredClone(make().context);
+  c.edits.acceptanceCriteria[0].replacements[0].declaration.vcIds = [id];
+  c.edits.verificationCommands = [
+    { operation: 'add', id, command: 'node --test new-root.test.mjs' },
+  ];
+  return c;
+}
+test('new canonical VC identity resolves every approved declaration in the planned contract', () => {
+  const p = deriveProposal(addingRootContext(makeCanonicalRevisionFixture, 'vc-new')),
+    contract = JSON.parse(p.writeSet.find((x) => x.resource === 'delivery-contract').afterBytes),
+    root = p.after.definitions.find(
+      (x) => x.section === 'vc' && x.text === 'node --test new-root.test.mjs'
+    );
+  assert.equal(root.rootId, root.identity);
+  assert.match(root.identity, /^cr-/);
+  for (const d of p.after.definitions.filter((x) => x.declaration.kind === 'vc-list')) {
+    for (const id of d.declaration.vcIds)
+      assert.ok(contract.verificationCommands.some((x) => x.logicalId === id));
+  }
+});
+for (const [name, make, id] of [
+  ['legacy add', makeLegacyRevisionFixture, '3'],
+  ['canonical add', makeCanonicalRevisionFixture, 'vc-new'],
+])
+  test(`retired generated root refuses ${name}`, () => {
+    const c = addingRootContext(make, id),
+      p = deriveProposal(c),
+      root = p.after.definitions.find(
+        (x) => x.section === 'vc' && x.text === 'node --test new-root.test.mjs'
+      );
+    c.observation.retiredIdentities = [root.identity];
+    assert.throws(() => deriveProposal(c), /retired-identity/);
+  });
+test('retired generated identity refuses legacy VC replacement', () => {
+  const c = structuredClone(makeLegacyRevisionFixture().context),
+    p = deriveProposal(c),
+    root = p.after.definitions.find((x) => x.section === 'vc' && x.rootId === '1');
+  c.observation.retiredIdentities = [root.identity];
+  assert.throws(() => deriveProposal(c), /retired-identity/);
 });

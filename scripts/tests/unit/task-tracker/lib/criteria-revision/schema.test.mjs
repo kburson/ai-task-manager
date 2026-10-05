@@ -7,6 +7,7 @@ import {
   makeLegacyRevisionFixture,
   makeCanonicalRevisionFixture,
 } from '../../../../fixtures/criteria-revision.mjs';
+import { deriveProposal } from '../../../../../task-tracker/lib/criteria-revision/proposal.mjs';
 import { validateRevisionRequest } from '../../../../../task-tracker/lib/criteria-revision/schema.mjs';
 import { canonicalRecordJson } from '../../../../../task-tracker/lib/github-records/canonical-json.mjs';
 import { resolveCoordinatorAuthority } from '../../../../../task-tracker/lib/github-records/coordination-authority.mjs';
@@ -155,4 +156,24 @@ test('current and old approval fixtures bind all Plan sources and target contrac
   assert.equal(f.currentApproval.provenance.mode, 'full-auto');
   assert.equal(f.oldApproval.contractEpoch, f.contract.contractEpoch);
   assert.notEqual(f.oldApproval.revisionId, f.currentApproval.revisionId);
+});
+
+test('closed canonical added-root request reproduces contract-resolvable declaration identities', () => {
+  const f = makeCanonicalRevisionFixture(),
+    c = structuredClone(f.context);
+  c.edits.acceptanceCriteria[0].replacements[0].declaration.vcIds = ['vc-new'];
+  c.edits.verificationCommands = [
+    { operation: 'add', id: 'vc-new', command: 'node --test new-root.test.mjs' },
+  ];
+  const p = deriveProposal(c);
+  validateRevisionRequest({ ...f.request, proposal: p });
+  const contract = JSON.parse(
+      p.writeSet.find((x) => x.resource === 'delivery-contract').afterBytes
+    ),
+    ids = new Set(contract.verificationCommands.map((x) => x.logicalId));
+  assert.ok(
+    p.after.definitions
+      .filter((x) => x.declaration.kind === 'vc-list')
+      .every((x) => x.declaration.vcIds.every((id) => ids.has(id)))
+  );
 });
