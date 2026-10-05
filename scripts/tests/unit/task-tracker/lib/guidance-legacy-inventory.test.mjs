@@ -1,4 +1,4 @@
-// @story #1653
+// @story #1653 #1836 #1837
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -13,6 +13,20 @@ const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
 const actionPath = path.join(fixtureRoot, 'action-observation-inventory.json');
 const flagPath = path.join(fixtureRoot, 'behavioral-flags.json');
 const authorityPath = path.join(fixtureRoot, 'authority-baseline.json');
+// Keep the frozen #1558 evidence byte-identical; later runtime controls extend its live audit.
+const extensionPath = path.join(projectRoot, 'scripts/tests/fixtures/1836/behavioral-flags.json');
+function liveFlags() {
+  const baseline = loadJson(flagPath);
+  const flags = new Map(baseline.flags.map((row) => [row.flag, row]));
+  for (const row of [
+    ...loadJson(extensionPath).flags,
+    ...loadJson(path.join(projectRoot, 'scripts/tests/fixtures/1837/behavioral-flags.json')).flags,
+  ]) {
+    const previous = flags.get(row.flag);
+    flags.set(row.flag, previous ? { ...previous, reads: [...previous.reads, ...row.reads] } : row);
+  }
+  return { ...baseline, flags: [...flags.values()] };
+}
 const ACTION_IDS = Object.freeze([
   'bind',
   'resume',
@@ -232,7 +246,7 @@ function validateFlags(inventory) {
 
 test('legacy guidance inventory freezes all seven actions, authority resources, and behavioral reads', () => {
   const actions = loadJson(actionPath);
-  const flags = loadJson(flagPath);
+  const flags = liveFlags();
   const authorities = loadJson(authorityPath);
   assert.equal(authorities.schema, 'aitm.guidance-legacy-authority-baseline/v1');
   assert.ok(authorities.resources.length > 0);
@@ -242,10 +256,16 @@ test('legacy guidance inventory freezes all seven actions, authority resources, 
 
 test('inventory completeness rejects a removed action observation or behavioral flag row', () => {
   const actions = structuredClone(loadJson(actionPath));
-  const flags = structuredClone(loadJson(flagPath));
+  const flags = structuredClone(liveFlags());
   const authorities = loadJson(authorityPath);
   actions.actions.find(({ id }) => id === 'promote').observations.length = 0;
   assert.throws(() => validateActions(actions, authorities), /promote has no observations/);
   flags.flags.splice(0, 1);
   assert.throws(() => validateFlags(flags));
+});
+
+test('live inventory refuses removal of the post-baseline usage context', () => {
+  const flags = liveFlags();
+  flags.flags = flags.flags.filter((row) => row.flag !== 'AITM_GRAPHQL_USAGE_CONTEXT');
+  assert.throws(() => validateFlags(flags), new RegExp('AITM_GRAPHQL_USAGE_CONTEXT'));
 });

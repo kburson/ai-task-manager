@@ -1,3 +1,4 @@
+import { identifyGraphqlOperation } from './graphql-usage/identity.mjs';
 // @story #1295
 
 import { createHash } from 'node:crypto';
@@ -460,4 +461,91 @@ export function summarizeActionCorpus(context, deps = {}) {
     Object.entries(summary.byKind).sort(([a], [b]) => a.localeCompare(b))
   );
   return summary;
+}
+
+// @story #1837
+function graphqlFieldVariables(args) {
+  const values = {};
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = String(args[index]);
+    let field = null;
+    if (['-f', '-F', '--field', '--raw-field'].includes(arg)) field = args[++index];
+    else if (arg.startsWith('--field=')) field = arg.slice('--field='.length);
+    else if (arg.startsWith('--raw-field=')) field = arg.slice('--raw-field='.length);
+    else if (arg.startsWith('-F') || arg.startsWith('-f')) field = arg.slice(2);
+    if (typeof field !== 'string') continue;
+    const match = /^(issue|issueNumber)=(\d+)$/.exec(field);
+    if (match && Number.isSafeInteger(Number(match[2])) && Number(match[2]) > 0)
+      values[match[1]] = Number(match[2]);
+  }
+  return values;
+}
+
+function apiEndpoint(args) {
+  const valued = new Set([
+    '--cache',
+    '--field',
+    '--header',
+    '--hostname',
+    '--input',
+    '--jq',
+    '--method',
+    '--preview',
+    '--raw-field',
+    '--template',
+    '-F',
+    '-H',
+    '-X',
+    '-p',
+    '-f',
+    '-q',
+    '-t',
+  ]);
+  const switches = new Set([
+    '--allow-escape-sequences',
+    '--include',
+    '--paginate',
+    '--silent',
+    '--slurp',
+    '--verbose',
+    '-i',
+  ]);
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = String(args[index]);
+    if (arg === '--') return args[index + 1] || null;
+    if (valued.has(arg)) {
+      index += 1;
+      continue;
+    }
+    if (
+      switches.has(arg) ||
+      /^--[\w-]+=/.test(arg) ||
+      (arg.length > 2 && valued.has(arg.slice(0, 2)))
+    )
+      continue;
+    if (arg.startsWith('-')) return null;
+    return arg;
+  }
+  return null;
+}
+
+export function classifyGhUsage(args, stdin) {
+  if (args[0] === 'api' && apiEndpoint(args) !== 'graphql') return null;
+  if (['auth', 'version', 'help', '--version', '--help', 'completion', 'config'].includes(args[0]))
+    return null;
+  let payload = {};
+  try {
+    payload = JSON.parse(Buffer.from(stdin || []).toString('utf8'));
+  } catch {
+    /* argv form */
+  }
+  const query = args[0] === 'api' ? graphqlDocument(args, stdin) : '';
+  const selectedOperation =
+    payload?.operationName || args.find((arg) => arg.startsWith('operationName='))?.slice(14);
+  return {
+    query,
+    selectedOperation,
+    variables: { ...graphqlFieldVariables(args), ...(payload?.variables || {}) },
+    ...identifyGraphqlOperation(query, { selectedOperation }),
+  };
 }

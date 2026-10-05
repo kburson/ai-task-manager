@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { observeGraphqlHttp } from '../task-tracker/lib/graphql-usage/collection.mjs';
 import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'value-report');
 /**
@@ -52,6 +53,7 @@ enforceDirectGuidance(import.meta.url, 'value-report');
 //
 
 import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -151,25 +153,25 @@ function ghToken() {
   return _ghToken;
 }
 
-async function gql(query, variables = {}) {
-  const r = await fetch('https://api.github.com/graphql', {
+async function gql(query, variables = {}, observation = {}) {
+  const j = await observeGraphqlHttp('https://api.github.com/graphql', {
     method: 'POST',
     headers: { Authorization: `Bearer ${ghToken()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
-  });
-  const j = await r.json();
+  }, observation);
   if (j.errors) throw new Error(j.errors.map(e => e.message).join('; '));
   return j.data;
 }
 
-async function fetchProject() {
+export async function fetchProject({ request = gql } = {}) {
+  const logicalOperationId = randomUUID();
   let allItems = [];
   let cursor = null;
   let projectTitle = '';
 
   for (let page = 0; page < 10; page++) {
     const after = cursor ? `, after: "${cursor}"` : '';
-    const data = await gql(`{
+    const data = await request(`{
       node(id: "${cfg.projectId}") {
         ... on ProjectV2 {
           title
@@ -215,7 +217,7 @@ async function fetchProject() {
           }
         }
       }
-    }`);
+    }`, {}, { logicalOperationId, pageIndex: page });
     const pv2 = data.node;
     if (!pv2) throw new Error(`Project not found: ${cfg.projectId}`);
     projectTitle = pv2.title;

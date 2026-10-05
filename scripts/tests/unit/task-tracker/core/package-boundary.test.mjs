@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
+// @story #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -337,6 +337,13 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const localTrunkReceiptAllowance = 1;
   // #1830 ships one shared mutation-context runtime module.
   const mutationContextAllowance = 1;
+  // #1835 intentionally ships four usage contract modules, inventory expectations,
+  // and the operator inventory guide; tests remain excluded from the package.
+  const graphqlUsageContractAllowance = 6;
+  // #1836 ships the single Git-common usage storage/enrollment runtime module.
+  const graphqlUsageStorageAllowance = 1;
+  // #1837 ships collection runtime, launcher, and operator guide.
+  const graphqlUsageCollectionAllowance = 3;
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -379,6 +386,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     localTrunkProofAllowance +
     localTrunkReceiptAllowance +
     mutationContextAllowance +
+    graphqlUsageContractAllowance +
+    graphqlUsageStorageAllowance +
+    graphqlUsageCollectionAllowance +
     draftBranchAllowance +
     artifactPolicyAllowance +
     actorReplayRecoveryAllowance +

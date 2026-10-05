@@ -1,0 +1,707 @@
+{
+  "schemaVersion": "aitm.graphql-usage.inventory-expectations/v1",
+  "surfaces": [
+    {
+      "key": "bin/lib/claude-bash-allowlist.mjs|out-of-scope|out-of-scope",
+      "count": 9
+    },
+    {
+      "key": "scripts/dev-env/setup-cloud.sh|opaque-gh-cli|opaque",
+      "count": 2
+    },
+    {
+      "key": "scripts/dev-env/setup-local-worktree.sh|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/create-issue.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/create-issue.mjs|out-of-scope|out-of-scope",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/create-issue.mjs|uncovered|uncovered",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/ensure-wave-parent.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/ensure-wave-parent.mjs|opaque-gh-cli|opaque",
+      "count": 3
+    },
+    {
+      "key": "scripts/gh/init-project-config.sh|gh-api-graphql|planned",
+      "count": 25
+    },
+    {
+      "key": "scripts/gh/init-project-config.sh|opaque-gh-cli|opaque",
+      "count": 9
+    },
+    {
+      "key": "scripts/gh/init-project-config.sh|rest-or-non-graphql|out-of-scope",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/lib/duplicate-child-guard.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/lib/epic-metadata.mjs|uncovered|uncovered",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/lib/github-projects.mjs|gh-api-graphql|planned",
+      "count": 12
+    },
+    {
+      "key": "scripts/gh/lib/github-projects.mjs|opaque-gh-cli|opaque",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/lib/live-state.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/lib/parent-status.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/lib/project-tether.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/lib/wave-detect.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/log-issue-time.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/log-issue-time.mjs|opaque-gh-cli|opaque",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/migrate-project.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/migrate-project.mjs|opaque-gh-cli|opaque",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/move-state.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/set-priority.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/set-priority.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/gh/update-event-fields.mjs|opaque-gh-cli|opaque",
+      "count": 2
+    },
+    {
+      "key": "scripts/gh/verify-priority-p3.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/migrate/heal-options-co-pilot-bodies.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/migrate/heal-options-co-pilot-bodies.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/migrate/options-co-pilot-status-swap.mjs|gh-api-graphql|planned",
+      "count": 7
+    },
+    {
+      "key": "scripts/migrate/start-time-field.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/reports/generate-value-report.mjs|direct-http|covered",
+      "count": 1
+    },
+    {
+      "key": "scripts/reports/generate-value-report.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/reports/generate-value-report.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/reports/heal-backlog-attribution.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/action-capture-bin/gh|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/backfill-plan-metadata.mjs|uncovered|uncovered",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/backfill-timing-logs.mjs|uncovered|uncovered",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/backfill-vc-sections.mjs|uncovered|uncovered",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/bash-guard.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/bash-guard.mjs|out-of-scope|out-of-scope",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/codex-superpowers.mjs|out-of-scope|out-of-scope",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/commit-trail-handler.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/epic-base-edit-guard.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/gh-timing-comment.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/heal-entry-markers.mjs|uncovered|uncovered",
+      "count": 4
+    },
+    {
+      "key": "scripts/task-tracker/heal-refine-entry-marker.mjs|uncovered|uncovered",
+      "count": 4
+    },
+    {
+      "key": "scripts/task-tracker/heal-timing-starts-sweep.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/hook-handler.mjs|uncovered|uncovered",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/action-decision/close.mjs|uncovered|uncovered",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/action-decision/review.mjs|uncovered|uncovered",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/action-decision/test.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/assigned-status-migration.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/lib/assignee-guard.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/assignee-guard.mjs|out-of-scope|out-of-scope",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/close-gates-lineage.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/deep-dive.mjs|out-of-scope|out-of-scope",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/epic-children-gate.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/estimation/runtime-adapter.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/gh-edit-guard.mjs|out-of-scope|out-of-scope",
+      "count": 14
+    },
+    {
+      "key": "scripts/task-tracker/lib/gh-project-guard.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/gh-project-guard.mjs|out-of-scope|out-of-scope",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/lib/github-records/contract-write.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/graph-node-authority.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/move-state/audit-timing.mjs|opaque-gh-cli|opaque",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/lib/move-state/github-mutation.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/move-state/github-mutation.mjs|opaque-gh-cli|opaque",
+      "count": 3
+    },
+    {
+      "key": "scripts/task-tracker/lib/move-state/guard-execution.mjs|opaque-gh-cli|opaque",
+      "count": 3
+    },
+    {
+      "key": "scripts/task-tracker/lib/native-dependencies.mjs|uncovered|uncovered",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/lib/owned-comment.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/plan-approval-evidence-repair.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/lib/ready-for-plan-migration.mjs|gh-api-graphql|planned",
+      "count": 6
+    },
+    {
+      "key": "scripts/task-tracker/lib/refine-estimate-comment.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/refinement-snapshot-guard.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/lib/review-preflight.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/seed-kanban-cache.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/lib/shelve-transaction.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/verifier-state-gate.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/versioned-issue-write.mjs|opaque-gh-cli|opaque",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/lib/workflow-policy/enforcement.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/migrate-fields-encoding.mjs|uncovered|uncovered",
+      "count": 3
+    },
+    {
+      "key": "scripts/task-tracker/migrate-plan-approved.mjs|uncovered|uncovered",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/preflight-issue.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/preflight-issue.mjs|out-of-scope|out-of-scope",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/runtime.mjs|gh-api-graphql|planned",
+      "count": 3
+    },
+    {
+      "key": "scripts/task-tracker/verbs/action-ledger.mjs|uncovered|uncovered",
+      "count": 7
+    },
+    {
+      "key": "scripts/task-tracker/verbs/adopt-github-records.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/verbs/approve.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/verbs/cancel-plan.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/verbs/close.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/deliver.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/verbs/deliver.mjs|uncovered|uncovered",
+      "count": 4
+    },
+    {
+      "key": "scripts/task-tracker/verbs/delivery-attribution-exception.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/demote.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/verbs/epic-reconcile.mjs|uncovered|uncovered",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/incident-ledger.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/incident-ledger.mjs|uncovered|uncovered",
+      "count": 5
+    },
+    {
+      "key": "scripts/task-tracker/verbs/plan-approve.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/plan.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/promote.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/verbs/reconcile.mjs|gh-api-graphql|planned",
+      "count": 2
+    },
+    {
+      "key": "scripts/task-tracker/verbs/report.mjs|out-of-scope|out-of-scope",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/review.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/split-plan.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/test.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/user-story.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/workflow-exception.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verbs/workflow-exception.mjs|uncovered|uncovered",
+      "count": 4
+    },
+    {
+      "key": "scripts/task-tracker/verbs/workflow-preflight.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/verify-delivery-incident-reconciliation.mjs|gh-api-graphql|planned",
+      "count": 3
+    },
+    {
+      "key": "scripts/task-tracker/verify-sweep-comment.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    }
+  ],
+  "sites": [
+    "bin/lib/claude-bash-allowlist.mjs|55|out-of-scope|out-of-scope",
+    "bin/lib/claude-bash-allowlist.mjs|56|out-of-scope|out-of-scope",
+    "bin/lib/claude-bash-allowlist.mjs|57|out-of-scope|out-of-scope",
+    "bin/lib/claude-bash-allowlist.mjs|58|out-of-scope|out-of-scope",
+    "bin/lib/claude-bash-allowlist.mjs|59|out-of-scope|out-of-scope",
+    "bin/lib/claude-bash-allowlist.mjs|60|out-of-scope|out-of-scope",
+    "bin/lib/claude-bash-allowlist.mjs|61|out-of-scope|out-of-scope",
+    "bin/lib/claude-bash-allowlist.mjs|62|out-of-scope|out-of-scope",
+    "bin/lib/claude-bash-allowlist.mjs|63|out-of-scope|out-of-scope",
+    "scripts/dev-env/setup-cloud.sh|47|opaque-gh-cli|opaque",
+    "scripts/dev-env/setup-cloud.sh|50|opaque-gh-cli|opaque",
+    "scripts/dev-env/setup-local-worktree.sh|48|opaque-gh-cli|opaque",
+    "scripts/gh/create-issue.mjs|252|uncovered|uncovered",
+    "scripts/gh/create-issue.mjs|265|out-of-scope|out-of-scope",
+    "scripts/gh/create-issue.mjs|307|opaque-gh-cli|opaque",
+    "scripts/gh/ensure-wave-parent.mjs|106|opaque-gh-cli|opaque",
+    "scripts/gh/ensure-wave-parent.mjs|124|gh-api-graphql|planned",
+    "scripts/gh/ensure-wave-parent.mjs|132|gh-api-graphql|planned",
+    "scripts/gh/ensure-wave-parent.mjs|211|opaque-gh-cli|opaque",
+    "scripts/gh/ensure-wave-parent.mjs|231|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|1005|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|1109|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|1206|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|1298|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|1360|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|1449|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|1458|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|145|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|146|rest-or-non-graphql|out-of-scope",
+    "scripts/gh/init-project-config.sh|153|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|154|rest-or-non-graphql|out-of-scope",
+    "scripts/gh/init-project-config.sh|158|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|162|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|174|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|199|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|200|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|201|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|209|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|218|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|245|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|247|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|271|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|317|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|339|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|346|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|403|opaque-gh-cli|opaque",
+    "scripts/gh/init-project-config.sh|411|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|412|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|553|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|567|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|654|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|856|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|870|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|942|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|960|gh-api-graphql|planned",
+    "scripts/gh/init-project-config.sh|989|gh-api-graphql|planned",
+    "scripts/gh/lib/duplicate-child-guard.mjs|125|gh-api-graphql|planned",
+    "scripts/gh/lib/epic-metadata.mjs|72|uncovered|uncovered",
+    "scripts/gh/lib/epic-metadata.mjs|86|uncovered|uncovered",
+    "scripts/gh/lib/github-projects.mjs|104|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|121|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|134|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|15|opaque-gh-cli|opaque",
+    "scripts/gh/lib/github-projects.mjs|163|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|224|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|232|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|240|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|250|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|25|opaque-gh-cli|opaque",
+    "scripts/gh/lib/github-projects.mjs|262|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|55|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|71|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|86|gh-api-graphql|planned",
+    "scripts/gh/lib/live-state.mjs|8|gh-api-graphql|planned",
+    "scripts/gh/lib/parent-status.mjs|20|gh-api-graphql|planned",
+    "scripts/gh/lib/project-tether.mjs|24|gh-api-graphql|planned",
+    "scripts/gh/lib/wave-detect.mjs|76|gh-api-graphql|planned",
+    "scripts/gh/log-issue-time.mjs|75|opaque-gh-cli|opaque",
+    "scripts/gh/log-issue-time.mjs|82|opaque-gh-cli|opaque",
+    "scripts/gh/log-issue-time.mjs|88|gh-api-graphql|planned",
+    "scripts/gh/migrate-project.mjs|110|opaque-gh-cli|opaque",
+    "scripts/gh/migrate-project.mjs|36|gh-api-graphql|planned",
+    "scripts/gh/migrate-project.mjs|57|gh-api-graphql|planned",
+    "scripts/gh/migrate-project.mjs|74|opaque-gh-cli|opaque",
+    "scripts/gh/move-state.mjs|215|gh-api-graphql|planned",
+    "scripts/gh/move-state.mjs|251|gh-api-graphql|planned",
+    "scripts/gh/set-priority.mjs|131|gh-api-graphql|planned",
+    "scripts/gh/set-priority.mjs|21|gh-api-graphql|planned",
+    "scripts/gh/set-priority.mjs|54|opaque-gh-cli|opaque",
+    "scripts/gh/update-event-fields.mjs|113|opaque-gh-cli|opaque",
+    "scripts/gh/update-event-fields.mjs|121|opaque-gh-cli|opaque",
+    "scripts/gh/verify-priority-p3.mjs|43|gh-api-graphql|planned",
+    "scripts/migrate/heal-options-co-pilot-bodies.mjs|142|opaque-gh-cli|opaque",
+    "scripts/migrate/heal-options-co-pilot-bodies.mjs|59|gh-api-graphql|planned",
+    "scripts/migrate/heal-options-co-pilot-bodies.mjs|84|gh-api-graphql|planned",
+    "scripts/migrate/options-co-pilot-status-swap.mjs|123|gh-api-graphql|planned",
+    "scripts/migrate/options-co-pilot-status-swap.mjs|202|gh-api-graphql|planned",
+    "scripts/migrate/options-co-pilot-status-swap.mjs|291|gh-api-graphql|planned",
+    "scripts/migrate/options-co-pilot-status-swap.mjs|324|gh-api-graphql|planned",
+    "scripts/migrate/options-co-pilot-status-swap.mjs|335|gh-api-graphql|planned",
+    "scripts/migrate/options-co-pilot-status-swap.mjs|64|gh-api-graphql|planned",
+    "scripts/migrate/options-co-pilot-status-swap.mjs|98|gh-api-graphql|planned",
+    "scripts/migrate/start-time-field.mjs|50|gh-api-graphql|planned",
+    "scripts/migrate/start-time-field.mjs|98|gh-api-graphql|planned",
+    "scripts/reports/generate-value-report.mjs|1230|gh-api-graphql|planned",
+    "scripts/reports/generate-value-report.mjs|152|opaque-gh-cli|opaque",
+    "scripts/reports/generate-value-report.mjs|157|gh-api-graphql|planned",
+    "scripts/reports/generate-value-report.mjs|158|direct-http|covered",
+    "scripts/reports/heal-backlog-attribution.mjs|160|opaque-gh-cli|opaque",
+    "scripts/task-tracker/action-capture-bin/gh|111|opaque-gh-cli|opaque",
+    "scripts/task-tracker/backfill-plan-metadata.mjs|219|uncovered|uncovered",
+    "scripts/task-tracker/backfill-timing-logs.mjs|183|uncovered|uncovered",
+    "scripts/task-tracker/backfill-vc-sections.mjs|101|uncovered|uncovered",
+    "scripts/task-tracker/bash-guard.mjs|247|out-of-scope|out-of-scope",
+    "scripts/task-tracker/bash-guard.mjs|282|out-of-scope|out-of-scope",
+    "scripts/task-tracker/bash-guard.mjs|358|opaque-gh-cli|opaque",
+    "scripts/task-tracker/codex-superpowers.mjs|136|out-of-scope|out-of-scope",
+    "scripts/task-tracker/commit-trail-handler.mjs|157|gh-api-graphql|planned",
+    "scripts/task-tracker/epic-base-edit-guard.mjs|179|gh-api-graphql|planned",
+    "scripts/task-tracker/gh-timing-comment.mjs|715|gh-api-graphql|planned",
+    "scripts/task-tracker/heal-entry-markers.mjs|120|uncovered|uncovered",
+    "scripts/task-tracker/heal-entry-markers.mjs|130|uncovered|uncovered",
+    "scripts/task-tracker/heal-entry-markers.mjs|146|uncovered|uncovered",
+    "scripts/task-tracker/heal-entry-markers.mjs|160|uncovered|uncovered",
+    "scripts/task-tracker/heal-refine-entry-marker.mjs|109|uncovered|uncovered",
+    "scripts/task-tracker/heal-refine-entry-marker.mjs|69|uncovered|uncovered",
+    "scripts/task-tracker/heal-refine-entry-marker.mjs|79|uncovered|uncovered",
+    "scripts/task-tracker/heal-refine-entry-marker.mjs|95|uncovered|uncovered",
+    "scripts/task-tracker/heal-timing-starts-sweep.mjs|77|gh-api-graphql|planned",
+    "scripts/task-tracker/hook-handler.mjs|86|uncovered|uncovered",
+    "scripts/task-tracker/lib/action-decision/close.mjs|852|uncovered|uncovered",
+    "scripts/task-tracker/lib/action-decision/review.mjs|87|uncovered|uncovered",
+    "scripts/task-tracker/lib/action-decision/test.mjs|160|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/assigned-status-migration.mjs|127|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/assigned-status-migration.mjs|15|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/assignee-guard.mjs|165|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/assignee-guard.mjs|31|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/close-gates-lineage.mjs|331|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/deep-dive.mjs|572|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/epic-children-gate.mjs|319|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/estimation/runtime-adapter.mjs|211|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|417|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|423|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|424|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|436|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|446|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|454|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|492|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|504|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|521|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|543|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|568|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|586|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|746|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-edit-guard.mjs|756|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-project-guard.mjs|64|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/gh-project-guard.mjs|78|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/gh-project-guard.mjs|92|out-of-scope|out-of-scope",
+    "scripts/task-tracker/lib/github-records/contract-write.mjs|236|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/graph-node-authority.mjs|75|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/move-state/audit-timing.mjs|257|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/move-state/audit-timing.mjs|300|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/move-state/github-mutation.mjs|134|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/move-state/github-mutation.mjs|276|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/move-state/github-mutation.mjs|358|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/move-state/github-mutation.mjs|55|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/move-state/guard-execution.mjs|153|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/move-state/guard-execution.mjs|251|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/move-state/guard-execution.mjs|420|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/native-dependencies.mjs|69|uncovered|uncovered",
+    "scripts/task-tracker/lib/native-dependencies.mjs|98|uncovered|uncovered",
+    "scripts/task-tracker/lib/owned-comment.mjs|59|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/plan-approval-evidence-repair.mjs|37|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/plan-approval-evidence-repair.mjs|52|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/ready-for-plan-migration.mjs|212|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/ready-for-plan-migration.mjs|220|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/ready-for-plan-migration.mjs|324|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/ready-for-plan-migration.mjs|336|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/ready-for-plan-migration.mjs|351|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/ready-for-plan-migration.mjs|363|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/refine-estimate-comment.mjs|103|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/refinement-snapshot-guard.mjs|11|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/refinement-snapshot-guard.mjs|34|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/review-preflight.mjs|30|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/seed-kanban-cache.mjs|59|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/seed-kanban-cache.mjs|63|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/shelve-transaction.mjs|96|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/verifier-state-gate.mjs|29|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/versioned-issue-write.mjs|244|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/versioned-issue-write.mjs|264|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/workflow-policy/enforcement.mjs|158|gh-api-graphql|planned",
+    "scripts/task-tracker/migrate-fields-encoding.mjs|58|uncovered|uncovered",
+    "scripts/task-tracker/migrate-fields-encoding.mjs|76|uncovered|uncovered",
+    "scripts/task-tracker/migrate-fields-encoding.mjs|89|uncovered|uncovered",
+    "scripts/task-tracker/migrate-plan-approved.mjs|73|uncovered|uncovered",
+    "scripts/task-tracker/migrate-plan-approved.mjs|89|uncovered|uncovered",
+    "scripts/task-tracker/preflight-issue.mjs|622|opaque-gh-cli|opaque",
+    "scripts/task-tracker/preflight-issue.mjs|627|out-of-scope|out-of-scope",
+    "scripts/task-tracker/runtime.mjs|771|gh-api-graphql|planned",
+    "scripts/task-tracker/runtime.mjs|809|gh-api-graphql|planned",
+    "scripts/task-tracker/runtime.mjs|828|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/action-ledger.mjs|132|uncovered|uncovered",
+    "scripts/task-tracker/verbs/action-ledger.mjs|142|uncovered|uncovered",
+    "scripts/task-tracker/verbs/action-ledger.mjs|54|uncovered|uncovered",
+    "scripts/task-tracker/verbs/action-ledger.mjs|68|uncovered|uncovered",
+    "scripts/task-tracker/verbs/action-ledger.mjs|73|uncovered|uncovered",
+    "scripts/task-tracker/verbs/action-ledger.mjs|86|uncovered|uncovered",
+    "scripts/task-tracker/verbs/action-ledger.mjs|95|uncovered|uncovered",
+    "scripts/task-tracker/verbs/adopt-github-records.mjs|424|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/adopt-github-records.mjs|429|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/approve.mjs|165|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/approve.mjs|65|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/cancel-plan.mjs|100|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/cancel-plan.mjs|117|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/close.mjs|871|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/deliver.mjs|2203|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/deliver.mjs|2270|uncovered|uncovered",
+    "scripts/task-tracker/verbs/deliver.mjs|2330|uncovered|uncovered",
+    "scripts/task-tracker/verbs/deliver.mjs|2391|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/deliver.mjs|2494|uncovered|uncovered",
+    "scripts/task-tracker/verbs/deliver.mjs|2679|uncovered|uncovered",
+    "scripts/task-tracker/verbs/delivery-attribution-exception.mjs|506|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/demote.mjs|57|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/demote.mjs|80|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/epic-reconcile.mjs|111|uncovered|uncovered",
+    "scripts/task-tracker/verbs/incident-ledger.mjs|100|uncovered|uncovered",
+    "scripts/task-tracker/verbs/incident-ledger.mjs|135|uncovered|uncovered",
+    "scripts/task-tracker/verbs/incident-ledger.mjs|148|uncovered|uncovered",
+    "scripts/task-tracker/verbs/incident-ledger.mjs|165|uncovered|uncovered",
+    "scripts/task-tracker/verbs/incident-ledger.mjs|202|uncovered|uncovered",
+    "scripts/task-tracker/verbs/incident-ledger.mjs|82|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/plan-approve.mjs|91|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/plan.mjs|36|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/promote.mjs|167|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/promote.mjs|189|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/reconcile.mjs|71|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/reconcile.mjs|99|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/report.mjs|124|out-of-scope|out-of-scope",
+    "scripts/task-tracker/verbs/review.mjs|85|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/split-plan.mjs|80|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/test.mjs|90|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/user-story.mjs|28|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/workflow-exception.mjs|184|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/workflow-exception.mjs|194|uncovered|uncovered",
+    "scripts/task-tracker/verbs/workflow-exception.mjs|274|uncovered|uncovered",
+    "scripts/task-tracker/verbs/workflow-exception.mjs|321|uncovered|uncovered",
+    "scripts/task-tracker/verbs/workflow-exception.mjs|393|uncovered|uncovered",
+    "scripts/task-tracker/verbs/workflow-preflight.mjs|78|gh-api-graphql|planned",
+    "scripts/task-tracker/verify-delivery-incident-reconciliation.mjs|119|gh-api-graphql|planned",
+    "scripts/task-tracker/verify-delivery-incident-reconciliation.mjs|269|gh-api-graphql|planned",
+    "scripts/task-tracker/verify-delivery-incident-reconciliation.mjs|286|gh-api-graphql|planned",
+    "scripts/task-tracker/verify-sweep-comment.mjs|37|opaque-gh-cli|opaque"
+  ]
+}

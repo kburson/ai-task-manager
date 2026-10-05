@@ -132,6 +132,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
   ...internalRows(
     'internal-library-or-orchestration',
     [
+      'scripts/task-tracker/graphql-usage-launch.mjs',
       'scripts/gh/lib/field-defs-drift.mjs',
       'scripts/task-tracker/assert-file-excludes.mjs',
       'scripts/task-tracker/config-get.mjs',
