@@ -97,7 +97,8 @@ test('only a proved-dead unchanged local holder is reclaimed; unknown, live and 
     const p = lock + '/1852.lock';
     r.ports.fs.mkdirSync(p);
     const holder = {
-      schema: 'aitm.revision-lock-holder/v1',
+      schema: 'aitm.revision-lock-holder/v2',
+      delegation: null,
       repository: 'owner/repo',
       issue: 1852,
       hostId: 'host-one',
@@ -121,7 +122,8 @@ test('foreign, corrupt and replaced holders remain owned; partial multi-issue ac
   const root = [...r.dirs].find((p) => p.endsWith('/locks')),
     p = root + '/1852.lock';
   const holder = {
-    schema: 'aitm.revision-lock-holder/v1',
+    schema: 'aitm.revision-lock-holder/v2',
+    delegation: null,
     repository: 'owner/repo',
     issue: 1852,
     hostId: 'foreign',
@@ -163,4 +165,44 @@ test('executor identity must satisfy the closed Task 1 host contract', async () 
     ),
     /criteria-revision:identifier/
   );
+});
+
+test('recovery proves all v2 executors dead and refuses old or uncertain delegation records', async () => {
+  for (const [schema, delegation, childLife, allowed] of [
+    ['v1', undefined, 'dead', false],
+    ['v2', undefined, 'dead', false],
+    ['v2', { state: 'preparing', token: 'lease' }, 'dead', false],
+    ['v2', { state: 'active', token: 'lease' }, 'dead', false],
+    ['v2', { state: 'active', token: 'lease', pid: 501 }, 'alive', false],
+    ['v2', { state: 'active', token: 'lease', pid: 501 }, 'unknown', false],
+    ['v2', { state: 'active', token: 'lease', pid: 501 }, 'dead', true],
+    ['v2', null, 'dead', true],
+  ]) {
+    const r = setup();
+    await api.withRevisionInterlock(r.context, () => {}, r.ports);
+    const root = [...r.dirs].find((p) => p.endsWith('/locks'));
+    const dir = root + '/1852.lock',
+      file = dir + '/holder.json';
+    r.ports.fs.mkdirSync(dir);
+    const bytes = JSON.stringify({
+      schema: 'aitm.revision-lock-holder/' + schema,
+      repository: 'owner/repo',
+      issue: 1852,
+      hostId: 'host-one',
+      pid: 500,
+      invocation: 'orphan',
+      epoch: r.context.domain.epoch,
+      delegation,
+    });
+    r.ports.fs.writeFileSync(file, bytes);
+    r.ports.liveness = (pid) => (pid === 501 ? childLife : 'dead');
+    if (allowed) await api.withRevisionInterlock(r.context, () => {}, r.ports);
+    else {
+      await assert.rejects(
+        api.withRevisionInterlock(r.context, () => {}, r.ports),
+        /revision-lock-held/
+      );
+      assert.equal(r.files.get(file), bytes);
+    }
+  }
 });
