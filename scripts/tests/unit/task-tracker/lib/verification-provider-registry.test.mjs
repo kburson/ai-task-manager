@@ -432,3 +432,28 @@ test('coverage requires all configured Test classifications and preserves declar
   );
   assert.deepEqual(plan.derivedSteps[0].requires, ['test-cloud-complete', 'test-extra']);
 });
+
+test('targeted coverage checks cannot reuse configured classification identities', () => {
+  const config = cloudCoverageConfig([
+    { command: 'npm test', requires: ['test-targeted-1', 'test-targeted-2'] },
+  ]);
+  config.test.steps[0].classification = 'test-targeted-1';
+  config.test.steps.push({
+    classification: 'test-targeted-2',
+    kind: 'test',
+    command: 'node scripts/maintenance/verify-affected-or-cloud.mjs',
+  });
+  const plan = resolveVerificationProvider({ projectDir, config }).planTest({
+    declaredCommands: [
+      'npm test',
+      'node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs',
+      'npm test; git push',
+    ],
+  });
+  assert.deepEqual(
+    plan.steps.map(({ classification }) => classification),
+    ['test-targeted-1', 'test-targeted-2', 'test-targeted-3', 'test-targeted-4']
+  );
+  assert.ok(plan.steps[3].rejected);
+  assert.deepEqual(plan.derivedSteps[0].requires, ['test-targeted-1', 'test-targeted-2']);
+});

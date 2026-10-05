@@ -166,16 +166,21 @@ function normalizeDeclaredCommandCoverage(value, { testSteps, projectDir, valida
 
 function targetedSteps({ declaredCommands = [], existingSteps = [], projectDir, validateCommand }) {
   const existing = new Set(existingSteps.map(({ command, args }) => [command, ...args].join(' ')));
+  const classifications = new Set(existingSteps.map(({ classification }) => classification));
   let ordinal = 0;
   return declaredCommands.flatMap((item) => {
     const command = String(typeof item === 'string' ? item : item?.command || '').trim();
     if (!command || existing.has(command)) return [];
+    let classification;
+    do {
+      classification = `test-targeted-${++ordinal}`;
+    } while (classifications.has(classification));
+    classifications.add(classification);
     const validation = validateCommand(command, { projectDir });
     if (!validation?.ok || !Array.isArray(validation.argv) || validation.argv.length === 0) {
-      ordinal += 1;
       return [
         freezeStep({
-          classification: `test-targeted-${ordinal}`,
+          classification,
           kind: 'test',
           command,
           args: [],
@@ -185,10 +190,9 @@ function targetedSteps({ declaredCommands = [], existingSteps = [], projectDir, 
         }),
       ];
     }
-    ordinal += 1;
     return [
       freezeStep({
-        classification: `test-targeted-${ordinal}`,
+        classification,
         kind: 'test',
         command: validation.argv[0],
         args: validation.argv.slice(1),

@@ -519,7 +519,12 @@ test('/task test refuses when the completed sandbox fingerprint is dirty', async
 });
 
 // @story #1899
-async function runCloudCoverageFixture({ cloudExit = 0, extraExit = 0, multiple = false } = {}) {
+async function runCloudCoverageFixture({
+  cloudExit = 0,
+  extraExit = 0,
+  multiple = false,
+  prerequisite = 'test-cloud-complete',
+} = {}) {
   const commands = [
     { command: 'npm test' },
     { command: 'npm run test:slow' },
@@ -543,7 +548,7 @@ async function runCloudCoverageFixture({ cloudExit = 0, extraExit = 0, multiple 
       setup: 'npm-ci',
       steps: [
         {
-          classification: 'test-cloud-complete',
+          classification: prerequisite,
           kind: 'test',
           command: 'node scripts/maintenance/verify-ci-receipts.mjs',
         },
@@ -560,9 +565,9 @@ async function runCloudCoverageFixture({ cloudExit = 0, extraExit = 0, multiple 
       declaredCommandCoverage: [
         {
           command: 'npm test',
-          requires: multiple ? ['test-cloud-complete', 'test-extra'] : ['test-cloud-complete'],
+          requires: multiple ? [prerequisite, 'test-extra'] : [prerequisite],
         },
-        { command: 'npm run test:slow', requires: ['test-cloud-complete'] },
+        { command: 'npm run test:slow', requires: [prerequisite] },
       ],
     },
   };
@@ -680,4 +685,37 @@ test('all explicit prerequisites must pass; an unrelated suite may still pass', 
   assert.equal(result.results.find(({ command }) => command === 'npm run test:slow').passed, true);
   assert.ok(executed.includes('node scripts/maintenance/verify-affected-or-cloud.mjs'));
   assert.ok(!executed.includes('npm test') && !executed.includes('npm run test:slow'));
+});
+
+test('a successful uncovered check cannot shadow a failed configured coverage prerequisite', async () => {
+  const { result, body } = await runCloudCoverageFixture({
+    cloudExit: 1,
+    prerequisite: 'test-targeted-1',
+  });
+  assert.equal(result.status, 'failed');
+  assert.deepEqual(
+    result.results
+      .filter(({ command }) => ['npm test', 'npm run test:slow'].includes(command))
+      .map(({ passed }) => passed),
+    [false, false]
+  );
+  assert.equal(parseVerificationReceipt(body, 'test'), null);
+});
+
+test('successful coverage retains distinct configured and uncovered execution identities', async () => {
+  const { result, body } = await runCloudCoverageFixture({ prerequisite: 'test-targeted-1' });
+  assert.equal(result.status, 'passed');
+  const receipt = parseVerificationReceipt(body, 'test');
+  assert.deepEqual(
+    receipt.commands
+      .filter(({ command }) => command === 'node')
+      .map(({ classification, args }) => ({ classification, args })),
+    [
+      { classification: 'test-targeted-1', args: ['scripts/maintenance/verify-ci-receipts.mjs'] },
+      {
+        classification: 'test-targeted-2',
+        args: ['--test', 'scripts/tests/unit/task-tracker/lib/markers.test.mjs'],
+      },
+    ]
+  );
 });
