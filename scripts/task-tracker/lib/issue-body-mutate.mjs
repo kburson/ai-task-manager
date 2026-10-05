@@ -1,3 +1,4 @@
+import { validateLegacyCapability } from './criteria-revision/legacy.mjs';
 import { validateReviewedDelta } from './reviewed-scope/record.mjs';
 // @story #1859
 // Canonical high-level helper for issue-body writes (#293).
@@ -98,6 +99,7 @@ export async function mutateIssueBody({
   allowUnverifiedTicks = false,
   evidenceStamp = false,
   reviewedEvidenceCapability,
+  criteriaRevisionCapability,
   expectedRemovedHeadings = [],
   allowLargeShrink = false,
   allowMarkerAdvance = [],
@@ -105,6 +107,15 @@ export async function mutateIssueBody({
   validateFreshBaseAsync,
   expectedVersion,
 } = {}) {
+  if (criteriaRevisionCapability !== undefined) {
+    if (Object.keys(deps).join(',') !== 'revisionBackend')
+      throw new Error('criteria-revision:legacy-backend');
+    validateLegacyCapability(criteriaRevisionCapability, {
+      repo,
+      issueNumber,
+      backend: deps.revisionBackend,
+    });
+  }
   const warn = deps.warn || ((msg) => console.error(msg));
   if (issueNumber == null) throw new Error('mutateIssueBody: issueNumber is required');
   if (!repo) throw new Error('mutateIssueBody: repo is required');
@@ -120,9 +131,21 @@ export async function mutateIssueBody({
   const validateMutation = (baseBody, next) => {
     if (typeof validateFreshBase === 'function') validateFreshBase(baseBody, next);
     if (typeof next === 'string') {
+      const revision =
+        criteriaRevisionCapability === undefined
+          ? null
+          : validateLegacyCapability(criteriaRevisionCapability, {
+              repo,
+              issueNumber,
+              backend: deps.revisionBackend,
+              base: baseBody,
+              next,
+            });
       const reviewedLine = validateReviewedDelta(baseBody, next, reviewedEvidenceCapability);
       if (!allowMarkerLoss) {
-        const lost = findLostMarkers(baseBody, next);
+        const lost = findLostMarkers(baseBody, next).filter(
+          (name) => !revision?.allowedMarkerLoss.includes(name)
+        );
         if (lost.length > 0) throw new MarkerLossError(issueNumber, lost);
       }
       validateMarkerAdvances(baseBody, next, { allowMarkerAdvance });
@@ -140,7 +163,7 @@ export async function mutateIssueBody({
       if (!allowMarkerLoss) {
         const sectionLoss = findUnexpectedSectionLoss(baseBody, next, {
           expectedRemovedHeadings,
-          allowLargeShrink,
+          allowLargeShrink: allowLargeShrink || revision !== null,
         });
         if (sectionLoss) throw new UnexpectedSectionLossError(issueNumber, sectionLoss);
       }
@@ -213,6 +236,7 @@ export async function mutateIssueBody({
     deps,
     maxRetries,
     expectedVersion,
+    criteriaRevisionCapability,
     validateMutation,
     validateFreshBaseAsync,
   });

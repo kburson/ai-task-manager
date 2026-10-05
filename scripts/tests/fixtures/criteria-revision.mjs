@@ -1,4 +1,8 @@
 // @story #1851
+import {
+  createRevisionEvent,
+  revisionRecord,
+} from '../../task-tracker/lib/criteria-revision/records.mjs';
 import { createHash } from 'node:crypto';
 import {
   deriveProposal,
@@ -83,18 +87,14 @@ function finish(observed, edits) {
     authorizationSource,
   };
   const resumeObservation = structuredClone(observed);
-  resumeObservation.revisionRecords.records.push({
-    eventId: 'event-1',
-    transactionId: 'tx-1',
-    operationId: 'op-1',
-    proposalDigest: proposal.proposalDigest,
-    bytes: canonicalRecordJson({ kind: 'prepared', proposalDigest: proposal.proposalDigest }),
-  });
+  const prepared = createRevisionEvent({ request, predecessorEventId: null });
+  resumeObservation.revisionRecords.records.push(revisionRecord(prepared));
   const resumeContext = {
     ...context,
     observation: resumeObservation,
     mode: 'resume',
-    priorTransaction: { transactionId: 'tx-1', eventId: 'event-1' },
+    priorTransaction: { transactionId: 'tx-1', eventId: prepared.eventId },
+    edits: { acceptanceCriteria: [], verificationCommands: [] },
     operationId: 'op-2',
   };
   const resumeProposal = deriveProposal(resumeContext),

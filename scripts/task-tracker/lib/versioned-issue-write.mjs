@@ -1,3 +1,4 @@
+import { writeLegacyBody } from './criteria-revision/legacy.mjs';
 // Optimistic-concurrency write helper for GitHub issue bodies (epic #288).
 //
 // Every aitm-authored body carries an `<!-- aitm-body-version: N -->` marker
@@ -305,8 +306,20 @@ export async function versionedWriteBody({
   maxRetries = DEFAULT_MAX_RETRIES,
   expectedVersion,
   validateMutation,
+  criteriaRevisionCapability,
   validateFreshBaseAsync,
 } = {}) {
+  if (criteriaRevisionCapability !== undefined) {
+    return writeLegacyBody({
+      token: criteriaRevisionCapability,
+      repo,
+      issueNumber,
+      deps,
+      mutate,
+      validateMutation,
+      expectedVersion,
+    });
+  }
   if (issueNumber == null) throw new Error('versionedWriteBody: issueNumber is required');
   if (typeof mutate !== 'function') {
     throw new TypeError('versionedWriteBody: mutate must be a function (baseBody) => newBody');

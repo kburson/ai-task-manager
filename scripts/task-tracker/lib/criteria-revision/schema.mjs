@@ -297,10 +297,13 @@ export function validateRevisionObservation(value) {
     value.revisionRecords.records.map((x) => x.eventId),
     'duplicate-event'
   );
-  unique(
-    value.revisionRecords.records.map((x) => x.operationId),
-    'duplicate-operation'
-  );
+  const operations = new Map();
+  for (const record of value.revisionRecords.records) {
+    const binding = `${record.transactionId}:${record.proposalDigest}`;
+    if (operations.has(record.operationId) && operations.get(record.operationId) !== binding)
+      revisionError('duplicate-operation');
+    operations.set(record.operationId, binding);
+  }
   strings(value.retiredIdentities, 'retired-identities');
   if (value.identities !== null) {
     for (const item of array(value.identities, 'identities')) {
