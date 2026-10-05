@@ -236,3 +236,224 @@ describe('verification provider registry', () => {
     assert.equal(validations, 4);
   });
 });
+
+// @story #1899
+function cloudCoverageConfig(
+  coverage = [
+    { command: 'npm test', requires: ['test-cloud-complete'] },
+    { command: 'npm run test:slow', requires: ['test-cloud-complete'] },
+  ]
+) {
+  return projectConfig({
+    test: {
+      setup: 'npm-ci',
+      steps: [
+        {
+          classification: 'test-cloud-complete',
+          kind: 'test',
+          command: 'node scripts/maintenance/verify-ci-receipts.mjs',
+        },
+      ],
+      declaredCommandCoverage: coverage,
+    },
+  });
+}
+
+test('explicit cloud coverage derives suites and retains uncovered affected checks', () => {
+  const provider = resolveVerificationProvider({ projectDir, config: cloudCoverageConfig() });
+  const plan = provider.planTest({
+    declaredCommands: [
+      { command: 'npm test' },
+      { command: 'npm run test:slow' },
+      { command: 'node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs' },
+    ],
+  });
+  assert.deepEqual(
+    plan.steps.map(({ command, args }) => [command, ...args].join(' ')),
+    [
+      'node scripts/maintenance/verify-ci-receipts.mjs',
+      'node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs',
+    ]
+  );
+  assert.deepEqual(
+    plan.derivedSteps.map(({ command, requires }) => ({ command, requires })),
+    [
+      { command: 'npm test', requires: ['test-cloud-complete'] },
+      { command: 'npm run test:slow', requires: ['test-cloud-complete'] },
+    ]
+  );
+  assert.deepEqual(plan.requiredClassifications, ['test-cloud-complete']);
+  assert.ok(Object.isFrozen(plan.derivedSteps));
+  assert.ok(
+    plan.derivedSteps.every((step) => Object.isFrozen(step) && Object.isFrozen(step.requires))
+  );
+  assert.throws(() => plan.derivedSteps[0].requires.push('invented'));
+});
+
+test('coverage uses allowlisted argv identity while preserving declared spelling', () => {
+  const provider = resolveVerificationProvider({ projectDir, config: cloudCoverageConfig() });
+  const plan = provider.planTest({
+    declaredCommands: [
+      { command: 'npm   test' },
+      { command: 'npm run "test:slow"' },
+      { command: 'npm   test' },
+    ],
+  });
+  assert.equal(plan.steps.length, 1);
+  assert.deepEqual(
+    plan.derivedSteps.map(({ command }) => command),
+    ['npm   test', 'npm run "test:slow"']
+  );
+  assert.equal(provider.planTest({ declaredCommands: [] }).derivedSteps.length, 0);
+});
+
+test('an explicit empty coverage array retains executable declarations', () => {
+  const plan = resolveVerificationProvider({
+    projectDir,
+    config: cloudCoverageConfig([]),
+  }).planTest({ declaredCommands: ['npm test'] });
+  assert.deepEqual(
+    plan.steps.map(({ command, args }) => [command, ...args].join(' ')),
+    ['node scripts/maintenance/verify-ci-receipts.mjs', 'npm test']
+  );
+  assert.deepEqual(plan.derivedSteps, []);
+});
+
+test('project provider without coverage still executes declared suites', () => {
+  const config = cloudCoverageConfig();
+  delete config.test.declaredCommandCoverage;
+  const plan = resolveVerificationProvider({ projectDir, config }).planTest({
+    declaredCommands: ['npm test', 'npm run test:slow'],
+  });
+  assert.deepEqual(
+    plan.steps.map(({ command, args }) => [command, ...args].join(' ')),
+    ['node scripts/maintenance/verify-ci-receipts.mjs', 'npm test', 'npm run test:slow']
+  );
+  assert.deepEqual(plan.derivedSteps, []);
+});
+
+for (const [name, coverage, expected] of [
+  ['non-array coverage', {}, /declaredCommandCoverage must be an array/],
+  ['null entry', [null], /coverage entry.*must be an object/],
+  [
+    'unknown coverage key',
+    [{ command: 'npm test', requires: ['test-cloud-complete'], skip: true }],
+    /unknown coverage key: skip/,
+  ],
+  [
+    'empty command',
+    [{ command: ' ', requires: ['test-cloud-complete'] }],
+    /coverage.*command must be non-empty/,
+  ],
+  [
+    'rejected command',
+    [{ command: 'npm test; git push', requires: ['test-cloud-complete'] }],
+    /coverage.*command rejected/,
+  ],
+  ['missing requirements', [{ command: 'npm test' }], /requires must be a non-empty array/],
+  [
+    'empty requirements',
+    [{ command: 'npm test', requires: [] }],
+    /requires must be a non-empty array/,
+  ],
+  [
+    'non-array requirements',
+    [{ command: 'npm test', requires: 'test-cloud-complete' }],
+    /requires must be a non-empty array/,
+  ],
+  [
+    'duplicate requirement',
+    [{ command: 'npm test', requires: ['test-cloud-complete', 'test-cloud-complete'] }],
+    /duplicate coverage requirement/,
+  ],
+  [
+    'unknown requirement',
+    [{ command: 'npm test', requires: ['missing'] }],
+    /unknown coverage requirement/,
+  ],
+  [
+    'invalid requirement',
+    [{ command: 'npm test', requires: [null] }],
+    /coverage requirement must be a lowercase slug/,
+  ],
+  [
+    'normalized duplicate command',
+    [
+      { command: 'npm test', requires: ['test-cloud-complete'] },
+      { command: 'npm   "test"', requires: ['test-cloud-complete'] },
+    ],
+    /duplicate coverage command/,
+  ],
+  [
+    'executed-command overlap',
+    [
+      {
+        command: 'node scripts/maintenance/verify-ci-receipts.mjs',
+        requires: ['test-cloud-complete'],
+      },
+    ],
+    /coverage command already executes/,
+  ],
+]) {
+  test('coverage refuses ' + name + ' before returning an executable provider', () => {
+    assert.throws(
+      () => resolveVerificationProvider({ projectDir, config: cloudCoverageConfig(coverage) }),
+      expected
+    );
+  });
+}
+
+test('coverage cannot derive from lint, build or environment steps', () => {
+  for (const kind of ['lint', 'format', 'build', 'environment']) {
+    const config = cloudCoverageConfig();
+    config.test.steps[0].kind = kind;
+    assert.throws(
+      () => resolveVerificationProvider({ projectDir, config }),
+      /coverage requirement must reference a test step/
+    );
+  }
+});
+
+test('coverage requires all configured Test classifications and preserves declaration order', () => {
+  const config = cloudCoverageConfig([
+    { command: 'npm test', requires: ['test-cloud-complete', 'test-extra'] },
+  ]);
+  config.test.steps.push({
+    classification: 'test-extra',
+    kind: 'test',
+    command: 'node scripts/maintenance/verify-affected-or-cloud.mjs',
+  });
+  const plan = resolveVerificationProvider({ projectDir, config }).planTest({
+    declaredCommands: ['npm test'],
+  });
+  assert.deepEqual(
+    plan.steps.map(({ classification }) => classification),
+    ['test-cloud-complete', 'test-extra']
+  );
+  assert.deepEqual(plan.derivedSteps[0].requires, ['test-cloud-complete', 'test-extra']);
+});
+
+test('targeted coverage checks cannot reuse configured classification identities', () => {
+  const config = cloudCoverageConfig([
+    { command: 'npm test', requires: ['test-targeted-1', 'test-targeted-2'] },
+  ]);
+  config.test.steps[0].classification = 'test-targeted-1';
+  config.test.steps.push({
+    classification: 'test-targeted-2',
+    kind: 'test',
+    command: 'node scripts/maintenance/verify-affected-or-cloud.mjs',
+  });
+  const plan = resolveVerificationProvider({ projectDir, config }).planTest({
+    declaredCommands: [
+      'npm test',
+      'node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs',
+      'npm test; git push',
+    ],
+  });
+  assert.deepEqual(
+    plan.steps.map(({ classification }) => classification),
+    ['test-targeted-1', 'test-targeted-2', 'test-targeted-3', 'test-targeted-4']
+  );
+  assert.ok(plan.steps[3].rejected);
+  assert.deepEqual(plan.derivedSteps[0].requires, ['test-targeted-1', 'test-targeted-2']);
+});
