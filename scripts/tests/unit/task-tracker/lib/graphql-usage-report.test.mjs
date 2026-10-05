@@ -401,3 +401,11 @@ test('unreadable source files invalidate a historical comparison even when the r
   assert.equal(r.coverage.unreadableFiles, 1);
   assert.equal(r.comparisons[0].status, 'preliminary');
 });
+
+test('a new enrollment missing its manifest cannot inherit an earlier successful session enrollment', () => {
+  const r = report(input([row('a', undefined, { enrollmentId: 'missing-manifest' })]), {
+    declaration: declaration(),
+  });
+  assert.equal(r.comparisons[0].status, 'preliminary');
+  assert.equal(r.comparisons[0].pointSufficient, false);
+});

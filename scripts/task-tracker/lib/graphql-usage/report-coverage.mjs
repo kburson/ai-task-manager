@@ -181,6 +181,16 @@ export function comparisons(d, data, rows, coverage) {
     const missingOperations = g.operations.filter(
       (op) => !candidates.some((r) => r.operation === op)
     );
+    const enrollmentBad = candidates.some(
+      (row) =>
+        !participants.some(
+          (manifest) =>
+            key(manifest) === key(row) &&
+            manifest.enrollmentId === row.enrollmentId &&
+            manifest.outcome === 'enrolled' &&
+            manifest.recordedAt <= row.startedAt
+        )
+    );
     const kindBad = candidates.some(
       (r) =>
         r.observationKind !== g.observationKind ||
@@ -190,6 +200,7 @@ export function comparisons(d, data, rows, coverage) {
       !globalBad &&
       !unknownCandidates &&
       !inventoryBad &&
+      !enrollmentBad &&
       !kindBad &&
       missingOperations.length === 0 &&
       candidates.length > 0;
@@ -215,6 +226,7 @@ export function comparisons(d, data, rows, coverage) {
         : []),
       ...(unknownCandidates ? ['candidate attribution is unknown'] : []),
       ...(inventoryBad ? ['relevant inventory coverage is absent or inadequate'] : []),
+      ...(enrollmentBad ? ['candidate enrollment is missing or late'] : []),
       ...(kindBad ? ['observation kinds or dispatch outcomes are not comparable'] : []),
       ...missingOperations.map((op) => `no observations for ${op}`),
       ...(candidates.length === 0 ? ['empty candidate sample'] : []),
