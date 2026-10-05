@@ -4,7 +4,12 @@
 import path from 'node:path';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { validateRevisionObservation, exactKeys, revisionError } from './schema.mjs';
-import { parseRevisionEvent, renderRevisionEvent, readRevisionEnvelope } from './records.mjs';
+import {
+  parseRevisionEvent,
+  renderRevisionEvent,
+  readRevisionEnvelope,
+  withRevisionValidation,
+} from './records.mjs';
 import { reduceRevisionEvents } from './reducer.mjs';
 import { registerRevisionDomain } from './domain.mjs';
 import { withRevisionInterlock, assertRevisionCapability } from './interlock.mjs';
@@ -257,28 +262,30 @@ export async function readRevisionChain({ context, transport }) {
       revisionError('pagination-incomplete');
     page = result.nextPage;
   }
-  // Enumeration order is not an authority. Reconstruct the unique chain from
-  // predecessor identities, detecting disconnected components and forks.
-  const byId = new Map(),
-    successors = new Map();
-  const records = events.map(({ event, bytes }) => ({ eventId: event.eventId, bytes }));
-  for (const stored of events) {
-    const event = parseRevisionEvent(stored.bytes, { records });
-    if (event.authorizer === null) revisionError('non-publishable-event');
-    if (byId.has(event.eventId)) revisionError('duplicate-event');
-    if (successors.has(event.predecessorEventId)) revisionError('event-fork');
-    byId.set(event.eventId, event);
-    successors.set(event.predecessorEventId, event);
-  }
-  const ordered = [];
-  let next = successors.get(null);
-  while (next) {
-    if (ordered.length >= events.length) revisionError('event-cycle');
-    ordered.push(next);
-    next = successors.get(next.eventId);
-  }
-  if (ordered.length !== events.length) revisionError('event-chain-incomplete');
-  return reduceRevisionEvents(ordered);
+  return withRevisionValidation(() => {
+    // Enumeration order is not an authority. Reconstruct the unique chain from
+    // predecessor identities, detecting disconnected components and forks.
+    const byId = new Map(),
+      successors = new Map();
+    const records = events.map(({ event, bytes }) => ({ eventId: event.eventId, bytes }));
+    for (const stored of events) {
+      const event = parseRevisionEvent(stored.bytes, { records });
+      if (event.authorizer === null) revisionError('non-publishable-event');
+      if (byId.has(event.eventId)) revisionError('duplicate-event');
+      if (successors.has(event.predecessorEventId)) revisionError('event-fork');
+      byId.set(event.eventId, event);
+      successors.set(event.predecessorEventId, event);
+    }
+    const ordered = [];
+    let next = successors.get(null);
+    while (next) {
+      if (ordered.length >= events.length) revisionError('event-cycle');
+      ordered.push(next);
+      next = successors.get(next.eventId);
+    }
+    if (ordered.length !== events.length) revisionError('event-chain-incomplete');
+    return reduceRevisionEvents(ordered);
+  });
 }
 export function readMemoryAuthority(backend, context) {
   const m = memory(backend);

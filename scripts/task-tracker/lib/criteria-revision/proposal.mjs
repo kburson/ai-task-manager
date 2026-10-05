@@ -1,6 +1,6 @@
 // @story #1851
 import { reduceRevisionEvents } from './reducer.mjs';
-import { parseRevisionEvent } from './records.mjs';
+import { parseRevisionEvent, withRevisionValidation } from './records.mjs';
 import { parseAcceptanceCriteria } from '../acceptance-criteria.mjs';
 import { parseAcEvidence } from '../ac-evidence.mjs';
 import { parseVerificationCommands } from '../verification-commands.mjs';
@@ -703,6 +703,9 @@ export function deriveResourceVector(observation) {
   };
 }
 export function deriveProposal(input) {
+  return withRevisionValidation(() => deriveScopedProposal(input));
+}
+function deriveScopedProposal(input) {
   canonicalRecordJson(input);
   exactKeys(input, [
     'observation',

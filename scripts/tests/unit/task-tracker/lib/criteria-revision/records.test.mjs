@@ -169,3 +169,46 @@ test('a durable self-reference refuses as a cycle before hydration', () => {
     /reference-cycle/
   );
 });
+test('verified graph scope cannot hide unavailable, duplicate, tampered or mutated predecessor authority', () => {
+  const f = makeLegacyRevisionFixture(),
+    root = event(),
+    rootBytes = api.renderRevisionEvent(root);
+  const recovery = api.createRevisionEvent({
+    request: f.resumeRequest,
+    predecessorEventId: root.eventId,
+    rootEventId: root.eventId,
+    rootProposalDigest: root.proposalDigest,
+  });
+  const bytes = api.renderRevisionEvent(recovery),
+    records = [{ eventId: root.eventId, bytes: rootBytes }];
+  api.withRevisionValidation(() => {
+    const read = api.parseRevisionEvent(bytes, { records });
+    read.proposal.archive.observation.body.bytes += 'caller mutation';
+    assert.deepEqual(api.parseRevisionEvent(bytes, { records }), recovery);
+    assert.throws(() => api.parseRevisionEvent(bytes), /reference-unavailable/);
+    assert.throws(
+      () => api.parseRevisionEvent(bytes, { records: [...records, ...records] }),
+      /duplicate/
+    );
+    assert.throws(
+      () => api.parseRevisionEvent(bytes, { records: [{ ...records[0], bytes: rootBytes + ' ' }] }),
+      /reference/
+    );
+    const forged = structuredClone(recovery);
+    forged.proposal.writeSet[0].afterBytes += ' forged';
+    assert.throws(() => api.renderRevisionEvent(forged), /revision/);
+  });
+  assert.throws(
+    () =>
+      api.withRevisionValidation(() => {
+        api.parseRevisionEvent(rootBytes);
+        throw new Error('scope interruption');
+      }),
+    /scope interruption/
+  );
+  assert.throws(
+    () => api.withRevisionValidation(() => Promise.resolve()),
+    /async-validation-scope/
+  );
+  assert.deepEqual(api.parseRevisionEvent(bytes, { records }), recovery);
+});
