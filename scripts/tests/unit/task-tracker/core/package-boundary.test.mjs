@@ -1,4 +1,4 @@
-// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
+// @story #1882 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -222,6 +222,12 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // separate so the preserved #1624 branch can apply its exact ceiling change
   // without both histories editing the same base hunk.
   const recoveryEntryAllowance = 1;
+  // #1882 ships exactly the provider runner and registered CLI routing helper.
+  const childIntegrationEntries = [
+    'scripts/task-tracker/lib/merge-back-verification.mjs',
+    'scripts/task-tracker/lib/merge-back-cli.mjs',
+  ];
+  for (const entry of childIntegrationEntries) assert.ok(files.includes(entry));
   // #1848 ships the bounded draft-branch bootstrap entry point.
   const draftBranchAllowance = 1;
   // #1857 ships one shared artifact policy; research helpers remain development-only.
@@ -340,6 +346,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
+    childIntegrationEntries.length +
     doctorRuntimeAllowance +
     storyContractAllowance +
     storyBindingAllowance +
