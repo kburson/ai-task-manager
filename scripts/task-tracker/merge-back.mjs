@@ -3,7 +3,7 @@ import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'merge-back');
 // #905 — merge a child branch back into its epic (design: "Merge-back protocol").
 //
-//   node scripts/task-tracker/merge-back.mjs <child#> <worktree-path>
+//   node scripts/task-tracker/merge-back.mjs <child#> <worktree-path> [--preserve-worktree]
 //
 // The protocol keeps the epic a clean linear integration branch:
 //   1. Opportunistic epic sync — if the epic's parent (grandparent of the child;
@@ -12,18 +12,20 @@ enforceDirectGuidance(import.meta.url, 'merge-back');
 //   2. Rebase the child onto the epic head. A conflict here refuses the merge.
 //   3. Run the child's tests in its worktree. A failure refuses the merge.
 //   4. `git merge --ff-only` the child into the epic — guaranteed linear.
-//   5. On success, delete the child worktree and branch.
+//   5. On success, clean up unless --preserve-worktree retains completion context.
 //
 // Because every child rebases onto the epic before it lands, the epic stays a
 // clean fast-forward target and children never cross-contaminate. Core is injectable
 // (git + graph + test-runner); the CLI wires the real ones.
 
-import { execFileSync } from 'node:child_process';
 import { resolve as resolvePath } from 'node:path';
 
 import { buildGraphNodeAuthority, fetchParentIssueBody } from './lib/graph-node-authority.mjs';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { createMergeBackTestRunner } from './lib/merge-back-verification.mjs';
+import { runMergeBackCli } from './lib/merge-back-cli.mjs';
+export { createMergeBackTestRunner };
 
 // Is `ancestorRef` an ancestor of `descendantRef`? merge-base --is-ancestor
 // signals via exit code; deps.git throws on non-zero.
@@ -41,7 +43,10 @@ function hasConfiguredUpstream(git, branch) {
   return Boolean(String(upstream || '').trim());
 }
 
-export function mergeBack({ child, path, deps } = {}) {
+export function mergeBack({ child, path, preserveWorktree = false, deps } = {}) {
+  if (typeof preserveWorktree !== 'boolean') {
+    throw new TypeError('merge-back: preserveWorktree must be boolean');
+  }
   if (child == null) throw new Error('merge-back: child issue is required');
   if (!deps || typeof deps.git !== 'function') {
     throw new Error('merge-back: deps.git(args) is required');
@@ -104,6 +109,8 @@ export function mergeBack({ child, path, deps } = {}) {
   }
   const grandparent = resolveEpicLineage(epicIssue, { deps }).parentBranch;
 
+  deps.assertIntegrationCheckout?.();
+
   // 1. Opportunistic epic sync (skip when already current).
   if (grandparent && !isAncestor(git, grandparent, epicBranch)) {
     git(['rebase', grandparent, epicBranch]);
@@ -119,21 +126,31 @@ export function mergeBack({ child, path, deps } = {}) {
     );
   }
 
+  // Pin the rebased commit so branch movement cannot integrate unverified code.
+  const verifiedHead = deps.currentWorktreeHead?.();
+
   // 3. Run the child's tests. Failure → refuse (no merge, no cleanup).
-  if (!deps.runTests({ path, branch: childBranch })) {
+  if (deps.runTests({ path, branch: childBranch }) !== true) {
     throw new Error(`merge-back: child ${childBranch} tests failed; refusing to merge`);
   }
 
-  // 4. Fast-forward-only merge into the epic.
+  if (verifiedHead && deps.currentWorktreeHead() !== verifiedHead) {
+    throw new Error('merge-back: verified HEAD changed; refusing parent integration');
+  }
+  deps.assertIntegrationCheckout?.();
+
+  // 4. Fast-forward-only merge into the epic at the exact verified commit.
   git(['checkout', epicBranch]);
-  git(['merge', '--ff-only', childBranch]);
+  git(['merge', '--ff-only', verifiedHead || childBranch]);
 
   // 5. Cleanup on success.
-  if (path) git(['worktree', 'remove', path]);
-  if (hasConfiguredUpstream(git, childBranch)) {
-    git(['branch', '--unset-upstream', childBranch]);
+  if (!preserveWorktree) {
+    if (path) git(['worktree', 'remove', path]);
+    if (hasConfiguredUpstream(git, childBranch)) {
+      git(['branch', '--unset-upstream', childBranch]);
+    }
+    git(['branch', '-d', childBranch]);
   }
-  git(['branch', '-d', childBranch]);
 
   return { merged: true, epic: epicBranch, child: childBranch };
 }
@@ -207,8 +224,12 @@ export async function realGraphNode(issue, cfg, deps = {}) {
   return buildMergeBackGraphNode({ parent, children, ownBody, parentBody });
 }
 
-function realGit(projectDir) {
-  return (args) => execFileSync('git', args, { cwd: projectDir, encoding: 'utf8' }).trim();
+export async function runMergeBackCommand(argv, deps = {}) {
+  return runMergeBackCli(argv, {
+    ...deps,
+    mergeBack,
+    loadGraph: deps.loadGraph || (({ child, cfg }) => loadMergeBackGraph({ child, cfg })),
+  });
 }
 
 async function main(argv) {
@@ -216,58 +237,8 @@ async function main(argv) {
     emitSelfDoc('merge-back');
     return;
   }
-  const child = Number(String(argv[0] || '').replace(/^#/, ''));
-  const wtPath = argv[1];
-  if (!Number.isInteger(child) || child <= 0) {
-    process.stderr.write('usage: merge-back.mjs <child#> <worktree-path>\n');
-    process.exit(2);
-  }
-  const { loadConfig } = await import('./config.mjs');
-  const cfg = loadConfig();
-  // #1485 — prefetch the child AND its immediate epic, keyed by issue number.
-  // The retired constant single-node adapter returned the child's node for every
-  // lookup, so the epic's own grandparent resolution silently read the child.
-  // Built before any git or test-runner call, so an authority failure or a
-  // missing node refuses with zero mutation.
-  const graph = await loadMergeBackGraph({ child, cfg });
-  const projectDir = cfg.projectDir || process.cwd();
-  // #927 — the epic's grandparent, for a root epic, is trunk; the opportunistic
-  // epic sync (step 1) rebases the epic onto it. Resolve+fetch the trunk ref so
-  // that sync targets origin/trunk, not a stale local `trunk`.
-  const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
-  await fetchTrunk({ cfg, projectDir });
-  const trunk = await resolveTrunkRef({ cfg, projectDir });
-  // #864 — `test:all` is retired; the suite runs only in bounded sections. Run
-  // each section sequentially, each under its own 10-minute ceiling. Any section
-  // failing (including a ceiling breach) fails the merge-back gate.
-  const TEST_SECTIONS = ['test:unit', 'test:integration', 'test:slow'];
-  const runTests = ({ path }) => {
-    for (const section of TEST_SECTIONS) {
-      try {
-        execFileSync('npm', ['run', section], {
-          cwd: path || projectDir,
-          stdio: 'inherit',
-        });
-      } catch {
-        return false;
-      }
-    }
-    return true;
-  };
-  const childGit = wtPath ? realGit(wtPath) : realGit(projectDir);
-  const { epic, child: childBranch } = mergeBack({
-    child,
-    path: wtPath,
-    deps: {
-      graph,
-      git: realGit(projectDir),
-      worktreeGit: childGit,
-      currentWorktreeBranch: wtPath ? () => childGit(['branch', '--show-current']) : undefined,
-      trunk,
-      runTests,
-    },
-  });
-  process.stdout.write(`merged ${childBranch} into ${epic}\n`);
+  const { epic, child } = await runMergeBackCommand(argv);
+  process.stdout.write(`merged ${child} into ${epic}\n`);
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;

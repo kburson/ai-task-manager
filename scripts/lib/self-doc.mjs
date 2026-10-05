@@ -199,9 +199,9 @@ const ROUTABLE_SELF_DOC = {
     group: 'Epic Branching',
     path: 'scripts/task-tracker/merge-back.mjs',
     synopsis:
-      'Merge a child back into its epic: opportunistic epic sync, rebase child onto epic head, run child tests, `--ff-only`, then clean up. Refuses on conflict or test failure.',
+      'Merge a child back into its epic: opportunistic epic sync, rebase child onto epic head, verify through the configured project provider or Node defaults, then `--ff-only` the verified commit. Refuses conflicts, failed verification, or checkout drift.',
     audience: 'Orchestrator landing a finished child. Keeps the epic a clean linear branch.',
-    usage: 'aitm merge-back <child#> <worktree-path>',
+    usage: 'aitm merge-back <child#> <worktree-path> [--preserve-worktree]',
   },
   'sync-epic': {
     group: 'Epic Branching',
@@ -397,6 +397,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
   'merge-back': [
     argument('<child#>', 'Epic child issue.'),
     argument('<worktree-path>', 'Child worktree to verify and merge.'),
+    argument(
+      '--preserve-worktree',
+      'Retain the child checkout, branch and upstream for exact-head completion; otherwise clean up after integration.'
+    ),
   ],
   'sync-epic': [argument('<epic#>', 'Epic branch to rebase onto trunk.')],
 });
@@ -674,7 +678,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
       exitCode(1, 'lineage, sync, rebase, tests, or fast-forward merge failed'),
       exitCode(2, 'child issue or worktree path is invalid'),
     ],
-    examples: ['npx aitm merge-back 1023 .worktrees/1023-cli-help-defect'],
+    examples: ['npx aitm merge-back 1023 .worktrees/1023-cli-help-defect --preserve-worktree'],
     relatedCommands: ['cut-child-worktree', 'sync-epic'],
   }),
   'sync-epic': routableContract({
