@@ -1,0 +1,20 @@
+{
+  "schema": "aitm.graphql-usage.baseline/v1",
+  "status": "decision-grade-controlled",
+  "workloadKind": "controlled",
+  "organicUsageSupported": false,
+  "pointSavingsSupported": false,
+  "pointRankingSupported": false,
+  "overlapSeconds": 3605,
+  "completedWorkflows": 4,
+  "excludedParticipants": 0,
+  "findings": [],
+  "normalized": {
+    "httpAttemptsPerWorkflow": 0,
+    "opaqueInvocationsPerWorkflow": 175.75,
+    "knownPointsPerWorkflow": 110.25,
+    "unknownCostObservationsPerWorkflow": 107.5,
+    "interpretation": "Raw report totals divided by completed declared workflows; known points remain lower bounds. This is not a matched before/after savings comparison."
+  },
+  "authority": "Offline assessment of operator-supplied evidence; timestamps and workflow outcomes are not independently authenticated."
+}

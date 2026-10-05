@@ -1824,6 +1824,16 @@
       "fixtureId": null
     },
     {
+      "path": "scripts/task-tracker/graphql-usage-baseline.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:fs/promises", "node:util", "./lib/graphql-usage/baseline.mjs"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Offline read-only baseline qualification companion. No lifecycle authority, enrollment or transport; explicit supplied files only.",
+      "fixtureId": null
+    },
+    {
       "path": "scripts/task-tracker/graphql-usage-launch.mjs",
       "classification": "internal-library-or-orchestration",
       "command": null,
