@@ -1,4 +1,6 @@
 // @story #1851
+import { reduceRevisionEvents } from './reducer.mjs';
+import { parseRevisionEvent } from './records.mjs';
 import { parseAcceptanceCriteria } from '../acceptance-criteria.mjs';
 import { parseAcEvidence } from '../ac-evidence.mjs';
 import { parseVerificationCommands } from '../verification-commands.mjs';
@@ -426,6 +428,26 @@ function eligibleLegacyProof(definition) {
   );
 }
 function manifest({ definitions, after, changed, observation, transactionId }) {
+  const records = observation.revisionRecords.records;
+  const previous = records.length
+    ? reduceRevisionEvents(records.map((r) => parseRevisionEvent(r.bytes, { records }))).effective
+        ?.proposal
+    : null;
+  function preservedDependency(definition) {
+    if (!previous) return observation.revision === 0;
+    const prior = previous.after.definitions.find((d) => d.identity === definition.identity);
+    return (
+      prior &&
+      prior.proof?.bytes === definition.proof?.bytes &&
+      hashSemanticContract([prior]) === hashSemanticContract([definition]) &&
+      previous.invalidation.some(
+        (item) =>
+          item.criterionIdentity === definition.identity &&
+          item.disposition === 'preserved-individual' &&
+          item.bytesHash === hashBytes(definition.proof.bytes)
+      )
+    );
+  }
   const entries = [],
     changedCommands = new Set(
       definitions.filter((d) => d.section === 'vc' && changed.has(d.identity)).map((d) => d.text)
@@ -447,6 +469,7 @@ function manifest({ definitions, after, changed, observation, transactionId }) {
       observation.sourceKind === 'legacy-body' &&
       d.proof &&
       eligibleLegacyProof(d) &&
+      preservedDependency(d) &&
       next &&
       d.declaration.kind !== 'none' &&
       hashSemanticContract([d]) === hashSemanticContract([next]) &&
@@ -637,6 +660,35 @@ export function deriveResourceVector(observation) {
       identity: observation.grant.identity,
       hash: hashBytes(observation.grant.bytes),
     });
+  for (const record of observation.proofRecords)
+    hashes.push({
+      kind: 'proof-record',
+      identity: record.identity,
+      hash: hashRevisionValue(record),
+    });
+  for (const record of observation.delivery.records)
+    hashes.push({
+      kind: 'delivery-record',
+      identity: record.identity,
+      hash: hashBytes(record.bytes),
+    });
+  if (observation.capsule)
+    hashes.push({
+      kind: 'capsule',
+      identity: observation.capsule.head,
+      hash: hashBytes(observation.capsule.bytes),
+    });
+  const seen = new Set();
+  for (const entry of hashes) {
+    const key = canonicalRecordJson([entry.kind, entry.identity]);
+    if (seen.has(key)) revisionError('duplicate-resource-authority');
+    seen.add(key);
+  }
+  hashes.sort((a, b) => {
+    const left = canonicalRecordJson([a.kind, a.identity]),
+      right = canonicalRecordJson([b.kind, b.identity]);
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
   return {
     revisionEventHead: observation.revisionRecords.records.at(-1)?.eventId ?? null,
     capsuleHead: observation.capsule?.head ?? null,
@@ -698,6 +750,71 @@ export function deriveProposal(input) {
     )
       revisionError('prior-reference');
   }
+  // Recovery target authority comes only from the complete validated archived
+  // chain. The engine must independently match this chain to fresh remote reads.
+  if (mode === 'resume') {
+    const chain = reduceRevisionEvents(
+      records.map((r) => {
+        const event = parseRevisionEvent(r.bytes, { records });
+        if (
+          !event ||
+          event.eventId !== r.eventId ||
+          event.transactionId !== r.transactionId ||
+          event.operationId !== r.operationId ||
+          event.proposalDigest !== r.proposalDigest
+        )
+          revisionError('recovery-record-binding');
+        return event;
+      })
+    );
+    if (
+      chain.status !== 'pending' ||
+      chain.head !== priorTransaction.eventId ||
+      chain.root.transactionId !== transactionId ||
+      chain.effective.proposal.mode === 'abort'
+    )
+      revisionError('resume-chain');
+    if (edits.acceptanceCriteria.length || edits.verificationCommands.length)
+      revisionError('resume-edits');
+    const effective = chain.effective.proposal;
+    const vector = deriveResourceVector(observation);
+    const proposal = {
+      ...clone(effective),
+      operationId,
+      reason,
+      mode,
+      priorTransaction: clone(priorTransaction),
+      observedResourceVector: hashRevisionValue(vector),
+      executor: clone(executor),
+      writerDomain: clone(observation.writerDomain),
+      edits: clone(edits),
+      before: {
+        ...clone(effective.before),
+        stage: observation.stage,
+        issueState: observation.issueState,
+        bodyVersion: observation.body.version,
+        bodyHash: hashBytes(observation.body.bytes),
+        protectedSourceBindings: clone(observation.protectedSourceBindings),
+      },
+      authority: {
+        ...clone(effective.authority),
+        hashes: vector.authorityIdentities.map((x) => ({
+          identity: `${x.kind}:${x.identity}`,
+          hash: x.hash,
+        })),
+      },
+      archive: {
+        observation: clone(observation),
+        definitions: clone(effective.archive.definitions),
+        resourceVector: vector,
+      },
+    };
+    delete proposal.proposalDigest;
+    proposal.proposalDigest = hashRevisionValue(proposal);
+    validateRevisionProposal(proposal);
+    if (records.some((r) => r.operationId === operationId)) revisionError('operation-conflict');
+    return freeze(proposal);
+  }
   const definitions =
     observation.sourceKind === 'legacy-body'
       ? parseLegacy(observation)
@@ -708,7 +825,13 @@ export function deriveProposal(input) {
   const { after, changed } =
     mode === 'abort'
       ? { after: clone(definitions), changed: new Set() }
-      : buildAfter({ definitions, edits, observation, transactionId });
+      : buildAfter({
+          definitions,
+          edits,
+          observation,
+          transactionId:
+            mode === 'forward-repair' ? `${transactionId}-${operationId}` : transactionId,
+        });
   if (!edits.acceptanceCriteria.length && !edits.verificationCommands.length && mode !== 'abort')
     revisionError('empty-edits');
   const invalidation =
