@@ -51,7 +51,10 @@ import {
   validateVerificationReceipt,
   validateVerificationReceiptCommandAuthority,
 } from '../lib/verification-receipt.mjs';
-import { retireVerificationReceipt as defaultRetireVerificationReceipt } from '../lib/verification-receipt-retirement.mjs';
+import {
+  retireVerificationReceipt as defaultRetireVerificationReceipt,
+  planStaleTestReceiptRetirement,
+} from '../lib/verification-receipt-retirement.mjs';
 import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import { repairInvalidatedEvidenceProvenance } from '../lib/evidence-invalidation.mjs';
 import { runDevelopVerification } from '../verify-develop.mjs';
@@ -481,7 +484,8 @@ export async function runVerbTest({
     issueNumber: issueNum,
   });
   const sha = await getHeadSha({ projectDir });
-  if (typeof deps.entryPreflight === 'function') {
+  const checkEntry = async () => {
+    if (typeof deps.entryPreflight !== 'function') return null;
     let readiness;
     try {
       readiness = await deps.entryPreflight({
@@ -504,7 +508,10 @@ export async function runVerbTest({
     if (readiness?.status !== 'ready') {
       return { status: 'entry-preflight-refused', sha, readiness };
     }
-  }
+    return null;
+  };
+  const entryRefusal = await checkEntry();
+  if (entryRefusal) return entryRefusal;
   let verificationProvider;
   let developPlan;
   let setupArgs = [];
@@ -723,6 +730,39 @@ export async function runVerbTest({
       body: '⛔ Test receipt retirement refused: a claimed verification receipt is malformed, so its exact identity is unavailable. No replacement verification was executed.',
     });
     return { status: 'receipt-retirement-failed', sha, reasons };
+  }
+
+  if (runDevelopFinalization) {
+    try {
+      const stale = planStaleTestReceiptRetirement(body, {
+        expectedIssue: Number(issueNum),
+        head: sha,
+      });
+      if (stale.receipt) {
+        const retired = await retireVerificationReceipt({
+          cfg,
+          issueNumber: Number(issueNum),
+          stage: 'test',
+          receiptId: stale.receipt.receiptId,
+          staleHead: sha,
+        });
+        body = retired.body;
+        const refusal = await checkEntry();
+        if (refusal) return refusal;
+      }
+    } catch (error) {
+      const message = String(error?.message || error);
+      await postComment({
+        cfg,
+        issueNum,
+        body: `Test receipt retirement refused: ${message}. No replacement verification was executed.`,
+      });
+      return {
+        status: 'receipt-retirement-failed',
+        sha,
+        reasons: [{ code: 'receipt-retirement-refused', message }],
+      };
+    }
   }
 
   if (runDevelopFinalization) {
