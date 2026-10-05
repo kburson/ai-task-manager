@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { writeFileSync } from 'node:fs';
-import { createBindingFixture } from '../../helpers/binding-generation-fixture.mjs';
-import { saveState, loadState, EMPTY_STATE } from '../../../task-tracker/state.mjs';
+import { createBindingFixture } from '../../../helpers/binding-generation-fixture.mjs';
+import { saveState, loadState, EMPTY_STATE } from '../../../../task-tracker/state.mjs';
 
 const generation = '12345678-1234-4234-8234-123456789abc';
 test('own generation survives state round trip and never enters shared state', () => {

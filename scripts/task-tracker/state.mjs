@@ -326,6 +326,14 @@ export function saveState(state, statePath) {
           state[field] != null || (field === 'bindingGenerationId' && Object.hasOwn(state, field))
       ).map((field) => [field, state[field]])
     );
+    // A timing-state spread may change issue without replacing its old generation.
+    // Never carry that prior issue authority into a different binding.
+    if (
+      priorBinding?.issue !== state.active &&
+      worktreeFields.bindingGenerationId != null &&
+      worktreeFields.bindingGenerationId === priorBinding?.bindingGenerationId
+    )
+      delete worktreeFields.bindingGenerationId;
     setActiveTask(
       sid,
       {
