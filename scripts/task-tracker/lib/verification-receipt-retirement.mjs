@@ -1,4 +1,4 @@
-// @story #1481
+// @story #1481 #1887
 // Exact-identity retirement for invalid verification receipts.
 
 import { execFile } from 'node:child_process';
@@ -45,6 +45,32 @@ export function retireVerificationReceiptMarker(body, { expectedIssue, stage, re
   };
 }
 
+// Read-only eligibility for re-entry after rebase. A projection is never passing proof.
+export function planStaleTestReceiptRetirement(body, { expectedIssue, head } = {}) {
+  if (
+    !Number.isInteger(expectedIssue) ||
+    expectedIssue <= 0 ||
+    !/^[a-f0-9]{40,64}$/.test(head ?? '')
+  ) {
+    throw new TypeError(
+      'verification-receipt-retirement: current issue and full HEAD are required'
+    );
+  }
+  const source = String(body || '');
+  const claims = parseValidatedVerificationReceiptClaims(source, { expectedIssue }).filter(
+    ({ receipt }) => receipt.stage === 'test'
+  );
+  if (claims.length > 1) throw new Error('verification-receipt-retirement: ambiguous Test claims');
+  const receipt = claims[0]?.receipt;
+  if (!receipt || receipt.commitSha === head) return { body: source, receipt: null };
+  const projected = retireVerificationReceiptMarker(source, {
+    expectedIssue,
+    stage: 'test',
+    receiptId: receipt.receiptId,
+  });
+  return { body: projected.body, receipt };
+}
+
 function targetPresent(body, { expectedIssue, stage, receiptId }) {
   const permissive = parseVerificationReceipts(body).some(
     (receipt) => receipt.stage === stage && receipt.receiptId === receiptId
@@ -69,6 +95,7 @@ export async function retireVerificationReceipt({
   issueNumber,
   stage,
   receiptId,
+  staleHead,
   deps = {},
 } = {}) {
   if (!cfg?.repo) throw new Error('verification-receipt-retirement: cfg.repo is required');
@@ -85,6 +112,19 @@ export async function retireVerificationReceipt({
     repo: cfg.repo,
     allowMarkerLoss: true,
     mutate: (freshBody) => {
+      if (staleHead !== undefined) {
+        if (stage !== 'test') throw new Error('stale retirement requires Test stage');
+        const eligible = planStaleTestReceiptRetirement(freshBody, {
+          expectedIssue: Number(issueNumber),
+          head: staleHead,
+        });
+        if (
+          (eligible.receipt && eligible.receipt.receiptId !== receiptId) ||
+          (!eligible.receipt &&
+            targetPresent(freshBody, { expectedIssue: Number(issueNumber), stage, receiptId }))
+        )
+          throw new Error('verification-receipt-retirement: stale eligibility changed');
+      }
       const result = retireVerificationReceiptMarker(freshBody, {
         expectedIssue: Number(issueNumber),
         stage,
@@ -104,6 +144,17 @@ export async function retireVerificationReceipt({
   const liveBody = await fetchBody({ cfg, issueNumber: Number(issueNumber) });
   if (targetPresent(liveBody, { expectedIssue: Number(issueNumber), stage, receiptId })) {
     throw new Error('verification-receipt-retirement: fresh read-back still contains target');
+  }
+  if (
+    staleHead !== undefined &&
+    planStaleTestReceiptRetirement(liveBody, {
+      expectedIssue: Number(issueNumber),
+      head: staleHead,
+    }).receipt
+  ) {
+    throw new Error(
+      'verification-receipt-retirement: fresh read-back contains a new stale Test claim'
+    );
   }
   return { status: mutationStatus, body: liveBody };
 }
