@@ -10,10 +10,11 @@ import {
   domainStorage,
   normalizeRepository,
   revisionFailure,
+  atomicRevisionJson,
 } from './domain.mjs';
 const active = new AsyncLocalStorage(),
   capabilities = new WeakMap();
-const holderSchema = 'aitm.revision-lock-holder/v1';
+const holderSchema = 'aitm.revision-lock-holder/v2';
 function issues(context) {
   const list = context.issues ?? [context.issue];
   if (!Array.isArray(list) || !list.length || list.some((x) => !Number.isSafeInteger(x) || x < 1))
@@ -30,6 +31,23 @@ function read(p, file) {
     return null;
   }
 }
+function validDelegation(d) {
+  return (
+    d === null ||
+    (d &&
+      typeof d.token === 'string' &&
+      d.token.length > 0 &&
+      (d.state === 'preparing' ||
+        (d.state === 'active' && Number.isSafeInteger(d.pid) && d.pid > 0)))
+  );
+}
+function executorsDead(p, h) {
+  return (
+    p.liveness(h.pid) === 'dead' &&
+    (h.delegation === null ||
+      (h.delegation.state === 'active' && p.liveness(h.delegation.pid) === 'dead'))
+  );
+}
 function validHolder(h, domain, issue) {
   return (
     h?.schema === holderSchema &&
@@ -39,7 +57,8 @@ function validHolder(h, domain, issue) {
     Number.isSafeInteger(h.pid) &&
     h.pid > 0 &&
     typeof h.invocation === 'string' &&
-    h.invocation.length > 0
+    h.invocation.length > 0 &&
+    validDelegation(h.delegation)
   );
 }
 function acquire(p, domain, issue, invocation) {
@@ -69,7 +88,7 @@ function acquire(p, domain, issue, invocation) {
       }
       if (
         !validHolder(h, domain, issue) ||
-        p.liveness(h.pid) !== 'dead' ||
+        !executorsDead(p, h) ||
         read(p, holderFile(root, issue)) !== before
       )
         revisionFailure('revision-lock-held');
@@ -85,6 +104,7 @@ function acquire(p, domain, issue, invocation) {
       pid: p.pid,
       invocation,
       epoch: domain.epoch,
+      delegation: null,
     });
     try {
       p.fs.writeFileSync(holderFile(root, issue), bytes, { flag: 'wx', mode: 0o600 });
@@ -109,6 +129,7 @@ function release(p, record) {
 function metadata(capability) {
   const m = capabilities.get(capability);
   if (!m || !m.live || active.getStore() !== capability) revisionFailure('revision-capability');
+  if (m.poisoned) revisionFailure('revision-delegation-uncertain');
   if (m.delegation) revisionFailure('revision-delegation-held');
   return m;
 }
@@ -187,7 +208,24 @@ export async function withRevisionInterlock(context, fn, ports = {}) {
       // it cannot finish that effect after a newer owner acquires these locks.
       await lease.exited;
     }
-    for (const record of [...records].reverse()) release(p, record);
+    if (!m.poisoned) for (const record of [...records].reverse()) release(p, record);
+  }
+}
+// Publish every issue before granting the child authority. A failed or partial
+// publication poisons this frame; neither normal cleanup nor recovery may infer
+// the absence of a delegate from an incomplete ownership transition.
+function persistDelegation(m, delegation) {
+  try {
+    for (const record of m.records) {
+      if (read(m.ports, record.file) !== record.bytes)
+        revisionFailure('revision-capability-holder');
+      const holder = { ...JSON.parse(record.bytes), delegation };
+      atomicRevisionJson(record.file, holder, m.ports);
+      record.bytes = JSON.stringify(holder) + '\n';
+    }
+  } catch (error) {
+    m.poisoned = true;
+    throw error;
   }
 }
 function disconnectDelegate(lease) {
@@ -207,10 +245,18 @@ export async function spawnRevisionDelegate(capability, modulePath, args = []) {
   const m = metadata(capability);
   assertRevisionCapability(capability, { repository: m.domain.repository, issues: m.issues });
   if (m.delegated) revisionFailure('revision-delegation-depth');
-  const child = fork(modulePath, args, {
-    cwd: m.executor.worktree,
-    stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
-  });
+  const token = m.ports.nonce();
+  persistDelegation(m, { state: 'preparing', token });
+  let child;
+  try {
+    child = fork(modulePath, args, {
+      cwd: m.executor.worktree,
+      stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
+    });
+  } catch (error) {
+    m.poisoned = true;
+    throw error;
+  }
   const lease = { child, error: null, exited: null };
   m.delegation = lease;
   lease.exited = new Promise((resolve) => {
@@ -226,12 +272,18 @@ export async function spawnRevisionDelegate(capability, modulePath, args = []) {
   child.stderr.on('data', (chunk) => {
     stderr += chunk;
   });
-  const token = m.ports.nonce();
   let sent = false;
   child.on('message', (message) => {
     if (message?.type !== 'aitm-revision-ready' || sent) return;
     sent = true;
     if (!m.live || m.delegation !== lease) {
+      disconnectDelegate(lease);
+      return;
+    }
+    try {
+      persistDelegation(m, { state: 'active', pid: child.pid, token });
+    } catch (error) {
+      lease.error ??= error;
       disconnectDelegate(lease);
       return;
     }
@@ -259,6 +311,7 @@ export async function spawnRevisionDelegate(capability, modulePath, args = []) {
   } finally {
     // This path runs only after exit (or a proven failed spawn), never merely
     // after disconnect or an IPC error. The parent can then use its scope again.
+    if (!m.poisoned) persistDelegation(m, null);
     if (m.delegation === lease) m.delegation = null;
     disconnectDelegate(lease);
   }
@@ -320,6 +373,9 @@ export async function withRevisionDelegation(context, fn, ports = {}) {
       read(p, file) !== record.bytes ||
       !validHolder(h, domain, issue) ||
       h.pid !== process.ppid ||
+      h.delegation?.state !== 'active' ||
+      h.delegation.pid !== process.pid ||
+      h.delegation.token !== message.token ||
       p.liveness(h.pid) !== 'alive'
     )
       revisionFailure('revision-delegation-holder');

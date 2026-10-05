@@ -368,7 +368,7 @@ function admissionDelegate(r) {
   const url = (p) => pathToFileURL(path.resolve(p)).href;
   fs.writeFileSync(
     childFile,
-    `import * as fs from 'node:fs';import {withRevisionDelegation} from ${JSON.stringify(url('scripts/task-tracker/lib/criteria-revision/interlock.mjs'))};import {observeAdmission,publishAdmission} from ${JSON.stringify(url('scripts/task-tracker/lib/criteria-revision/admission.mjs'))};import {authorityResult} from ${JSON.stringify(url('scripts/tests/fixtures/criteria-revision-runtime.mjs'))};const context=JSON.parse(process.argv[2]),ports=JSON.parse(process.argv[3]),mode=process.argv[4];await withRevisionDelegation(context,async capability=>{if(mode==='deny'){await publishAdmission({capability,observation:{issue:1852},state:'deny'},ports);return;}const observation=await observeAdmission({capability,context,observe:()=>authorityResult(context,context.domain)},ports);const writer={...ports,fs:{...fs,renameSync(from,to){if(to.endsWith('/admission/1852.json')){fs.writeFileSync(process.argv[5],'paused');const deadline=Date.now()+5000;while(!fs.existsSync(process.argv[6])){if(Date.now()>deadline)throw new Error('paused writer timeout');Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10);}}fs.renameSync(from,to);}}};await publishAdmission({capability,observation,state:'allow'},writer);},ports);`
+    `import * as fs from 'node:fs';import {withRevisionDelegation} from ${JSON.stringify(url('scripts/task-tracker/lib/criteria-revision/interlock.mjs'))};import {observeAdmission,publishAdmission} from ${JSON.stringify(url('scripts/task-tracker/lib/criteria-revision/admission.mjs'))};import {authorityResult} from ${JSON.stringify(url('scripts/tests/fixtures/criteria-revision-runtime.mjs'))};const context=JSON.parse(process.argv[2]),ports=JSON.parse(process.argv[3]),mode=process.argv[4];await withRevisionDelegation(context,async capability=>{if(mode==='deny'){await publishAdmission({capability,observation:{issue:1852},state:'deny'},ports);return;}const observation=await observeAdmission({capability,context,observe:()=>authorityResult(context,context.domain)},ports);const writer={...ports,fs:{...fs,renameSync(from,to){if(to.endsWith('/admission/1852.json')){fs.writeFileSync(process.argv[5],String(process.pid));const deadline=Date.now()+5000;while(!fs.existsSync(process.argv[6])){if(Date.now()>deadline)throw new Error('paused writer timeout');Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10);}}fs.renameSync(from,to);}}};await publishAdmission({capability,observation,state:'allow'},writer);},ports);`
   );
   return childFile;
 }
@@ -558,4 +558,140 @@ test('package resolution exposes internal deep imports without a root API facade
     const runtime = await import(pathToFileURL(resolved));
     assert.ok(Object.keys(runtime).length > 0);
   }
+});
+
+test('parent SIGKILL cannot reclaim a live delegate paused inside admission publication', async (t) => {
+  const r = fixture(t);
+  register(r);
+  const childFile = admissionDelegate(r),
+    paused = path.join(r.root, 'crash-paused'),
+    resume = path.join(r.root, 'crash-resume'),
+    parentFile = path.join(r.root, 'crash-parent.mjs'),
+    moduleURL = pathToFileURL(
+      path.resolve('scripts/task-tracker/lib/criteria-revision/interlock.mjs')
+    ).href;
+  fs.writeFileSync(
+    parentFile,
+    `import {withRevisionInterlock,spawnRevisionDelegate} from ${JSON.stringify(moduleURL)};const c=JSON.parse(process.argv[2]),p=JSON.parse(process.argv[3]);await withRevisionInterlock(c,cap=>spawnRevisionDelegate(cap,process.argv[4],process.argv.slice(2,4).concat(['allow',...process.argv.slice(5)])),p);`
+  );
+  const parent = spawn(
+    process.execPath,
+    [parentFile, JSON.stringify(r.context), JSON.stringify(r.ports), childFile, paused, resume],
+    { stdio: 'ignore' }
+  );
+  const exited = new Promise((resolve) =>
+    parent.once('exit', (code, signal) => resolve({ code, signal }))
+  );
+  let childPid,
+    refused = false;
+  const publishDeny = (ports) =>
+    lock.withRevisionInterlock(
+      r.context,
+      (capability) =>
+        admission.publishAdmission(
+          { capability, observation: { issue: 1852 }, state: 'deny' },
+          ports
+        ),
+      ports
+    );
+  try {
+    await waitForFixtureSignal(paused);
+    childPid = Number(fs.readFileSync(paused, 'utf8'));
+    parent.kill('SIGKILL');
+    assert.equal((await exited).signal, 'SIGKILL');
+    const runtime = domain.revisionRuntime(r.ports);
+    assert.equal(runtime.liveness(parent.pid), 'dead');
+    assert.equal(runtime.liveness(childPid), 'alive');
+    try {
+      await publishDeny(r.ports);
+    } catch (error) {
+      assert.match(error.message, /revision-lock-held/);
+      refused = true;
+    }
+    if (refused)
+      await assert.rejects(
+        publishDeny({
+          ...r.ports,
+          liveness: (pid) => (pid === childPid ? 'unknown' : runtime.liveness(pid)),
+        }),
+        /revision-lock-held/
+      );
+    fs.writeFileSync(resume, 'resume');
+    const deadline = Date.now() + 5000;
+    while (runtime.liveness(childPid) !== 'dead' && Date.now() < deadline)
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    if (refused && runtime.liveness(childPid) === 'dead') await publishDeny(r.ports);
+    else if (refused) await assert.rejects(publishDeny(r.ports), /revision-lock-held/);
+    assert.equal(
+      refused,
+      true,
+      'dead parent allowed a newer deny while its live delegate could overwrite it'
+    );
+    if (runtime.liveness(childPid) === 'dead')
+      assert.equal(admission.readAdmission(r.context, r.ports).state, 'deny');
+  } finally {
+    if (parent.exitCode === null && parent.signalCode === null) parent.kill('SIGKILL');
+    fs.writeFileSync(resume, 'resume');
+    if (childPid && domain.revisionRuntime(r.ports).liveness(childPid) !== 'dead')
+      process.kill(childPid, 'SIGKILL');
+    await exited;
+  }
+});
+
+test('partial durable delegation publication cannot grant effects or erase uncertain holders', async (t) => {
+  const r = fixture(t);
+  register(r);
+  r.context.issues = [2, 1852];
+  const childFile = path.join(r.root, 'partial-child.mjs'),
+    entered = path.join(r.root, 'entered'),
+    moduleURL = pathToFileURL(
+      path.resolve('scripts/task-tracker/lib/criteria-revision/interlock.mjs')
+    ).href;
+  fs.writeFileSync(
+    childFile,
+    `import * as fs from 'node:fs';import {withRevisionDelegation} from ${JSON.stringify(moduleURL)};await withRevisionDelegation(JSON.parse(process.argv[2]),()=>fs.writeFileSync(process.argv[4],'effect'),JSON.parse(process.argv[3]));`
+  );
+  const ports = {
+    ...r.ports,
+    fs: {
+      ...fs,
+      renameSync(from, to) {
+        if (
+          to.endsWith('/1852.lock/holder.json') &&
+          JSON.parse(fs.readFileSync(from, 'utf8')).delegation?.state === 'active'
+        )
+          throw new Error('injected partial lease publication');
+        fs.renameSync(from, to);
+      },
+    },
+  };
+  await assert.rejects(
+    lock.withRevisionInterlock(
+      r.context,
+      (capability) =>
+        lock.spawnRevisionDelegate(capability, childFile, [
+          JSON.stringify(r.context),
+          JSON.stringify(r.ports),
+          entered,
+        ]),
+      ports
+    ),
+    /injected partial lease publication/
+  );
+  assert.equal(fs.existsSync(entered), false);
+  const holder = path.join(
+    domain.domainStorage(r.context.domain),
+    'locks',
+    '1852.lock',
+    'holder.json'
+  );
+  assert.equal(JSON.parse(fs.readFileSync(holder, 'utf8')).delegation.state, 'preparing');
+  await assert.rejects(
+    lock.withRevisionInterlock({ ...r.context, issues: [1852] }, () => {}, {
+      ...r.ports,
+      liveness: () => 'dead',
+    }),
+    /revision-lock-held/
+  );
+  assert.equal(fs.existsSync(holder), true);
 });
