@@ -173,3 +173,57 @@ test('missing AC heading keeps empty lookup and stamping refusal', () => {
     /no evidence-bearing AC line/
   );
 });
+
+const literalExamples = [
+  ['backtick fence', ['```markdown', '## Acceptance Criteria', '- [ ] Literal example AC', '```']],
+  ['tilde fence', ['~~~markdown', '## Acceptance Criteria', '- [ ] Literal example AC', '~~~']],
+  ['multiline comment', ['<!--', '## Acceptance Criteria', 'Literal example content', '-->']],
+];
+
+for (const [name, example] of literalExamples) {
+  test('literal H2 in ' + name + ' cannot override a supported legacy AC', () => {
+    const realLabel = 'Actual legacy AC';
+    const body = [
+      '# Acceptance Criteria',
+      '- [ ] ' + realLabel + ' <!-- aitm-verified cmd="`node real.mjs`" -->',
+      '## Scope',
+      ...example,
+      '## Verification Commands',
+      '- [ ] `node real.mjs` <!-- id=1 -->',
+    ].join('\n');
+    assert.deepEqual(
+      parseEvidenceAcs(body).map((ac) => ac.label),
+      [realLabel]
+    );
+    assert.equal(findAcSectionCheckbox(body, realLabel)?.lineIndex, 1);
+    assert.equal(gateEvidenceTick(body, realLabel).kind, 'refuse-ac-evidence');
+    const stamped = stampAcEvidenceMarker(body, realLabel, {
+      ...fixtureEvidence,
+      cmd: 'node real.mjs',
+    });
+    assert.equal(gateEvidenceTick(stamped, realLabel).kind, 'pass');
+    assert.deepEqual(stamped.split('\n').slice(2), body.split('\n').slice(2));
+  });
+
+  test('literal H2 in ' + name + ' cannot hide a later live canonical AC', () => {
+    const body = [
+      '## Scope',
+      ...example,
+      '## Acceptance Criteria',
+      '- [ ] ' + label + ' <!-- aitm-verified vc-list="vc:1" -->',
+      verification,
+    ].join('\n');
+    assert.deepEqual(
+      parseEvidenceAcs(body).map((ac) => ac.label),
+      [label]
+    );
+    assert.deepEqual(findEvidenceAc(body, label)?.evidenceCommands, [commands[0]]);
+    assert.equal(gateEvidenceTick(body, label).kind, 'refuse-ac-evidence');
+    const stamped = stampAcEvidenceMarker(body, label, fixtureEvidence);
+    assert.equal(gateEvidenceTick(stamped, label).kind, 'pass');
+    assert.deepEqual(
+      stamped.split('\n').slice(0, example.length + 2),
+      body.split('\n').slice(0, example.length + 2)
+    );
+  });
+}
