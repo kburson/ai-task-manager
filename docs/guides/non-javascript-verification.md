@@ -141,3 +141,51 @@ Keep wrappers small and reviewable, commit them with the project, and have CI
 invoke the same native commands independently. The provider boundary improves
 classification and auditability; it cannot remove the need to trust the
 governed project's own verification definitions.
+
+## Declared-command coverage through CI
+
+A project that verifies its full suites in CI can explicitly map issue-declared
+commands to its configured Test verifier. Add `declaredCommandCoverage` beside
+`test.steps`; this example assumes the existing Test step named
+`test-cloud-complete` runs a project-owned CI receipt verifier:
+
+```json
+{
+  "setup": "npm-ci",
+  "steps": [
+    {
+      "classification": "test-cloud-complete",
+      "kind": "test",
+      "command": "node scripts/verify/ci-receipts.mjs"
+    }
+  ],
+  "declaredCommandCoverage": [
+    { "command": "npm test", "requires": ["test-cloud-complete"] },
+    { "command": "npm run test:slow", "requires": ["test-cloud-complete"] }
+  ]
+}
+```
+
+Each coverage entry has exactly `command` and `requires`. Commands use the
+existing verification allowlist and tokenization. Requirements must be a
+nonempty list of unique configured Test classifications, each with kind
+`test`. Unknown keys, unknown or non-test requirements, duplicate normalized
+commands, and mappings overlapping a configured executable Test command are
+refused before execution.
+
+Only explicitly mapped issue declarations become derived results. Every
+required step must pass; a failed or missing prerequisite fails the derived
+result. The configured verifier still executes, and uncovered issue-specific
+commands still execute as targeted checks. AITM preserves the declared command
+in the result table while execution receipts contain only actual executions
+or validated reused records. It does not pretend that a covered npm suite ran
+on the host. Omitting the optional array preserves existing provider behavior;
+an empty array covers nothing.
+
+The CI verifier must actually validate complete successful suites, the exact
+source head, one workflow attempt, artifact provenance and integrity, and the
+tested merge identity where applicable. This declaration is a reviewed
+assertion about that wrapper's coverage, not proof that arbitrary wrapper
+logic is meaningful. A classification named `test-cloud-complete` conveys no
+implicit coverage authority. Do not map suites that the CI artifacts do not
+prove, or map affected checks merely to avoid running them.
