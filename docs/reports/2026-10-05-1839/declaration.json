@@ -1,0 +1,77 @@
+{
+  "schema": "aitm.graphql-usage.comparison/v1",
+  "commonRootId": "sha256:382ab54c044e6cdce14ad2a15c2f662a79b7e90ad6a556272de78fef3042aba2",
+  "declaredAt": "2026-10-05T04:26:36.858Z",
+  "startedAt": "2026-10-05T04:29:35.298Z",
+  "endedAt": "2026-10-05T05:29:40.298Z",
+  "participants": [
+    {
+      "worktreeId": "sha256:a06ec9e759b148f79a3716520b117eb8d965195118afcdcb7ab82fe91e0b3b76",
+      "sessionId": "sha256:f6dc574d350806fa2c5878318a8b012ec155befd83e97c2399c3c51a518fd51b"
+    },
+    {
+      "worktreeId": "sha256:0c1d44121cff84af1b349d756730227dc073814d164be0dc909794abce504e3b",
+      "sessionId": "sha256:bc6becef757b38bd49291d71a0e9d6d6bd25195f1fe5567437388ba682f6b799"
+    }
+  ],
+  "groups": [
+    {
+      "id": "native-query-invocations",
+      "operations": [
+        "anonymous.0564fa374bca2f7779514ced2dbbb3fe8ce4a36067b12adbe05af2d66e8536e7",
+        "anonymous.0a09de4dc0c3072fa1bffa3c9d52090ba6de709e96569dbaa94614e5cfdb252b",
+        "anonymous.31353da88c3c53547e2202b7c8c5d75bc259b05c156527ba1ddd933285dcdb43",
+        "anonymous.5947c36c187a469f79ab955f1eb875572b63c5d4b7a7cd53b0e3921e257ad39e",
+        "anonymous.6e738cbdb4bd0d44c4a01ca0d81f8fa0348800f4dc296173a88ea8333220bcf7",
+        "anonymous.75e7745a753dcc6e7bb172d6d311cdc26f24a188d33d50171c519b8e521043a8",
+        "anonymous.806cfcd7bad1aacf2c22ecc3d433b5c16d0c947f0d37272e1276782b3d4e4350",
+        "anonymous.a014cc2aaca3fbe84458a73fe515a579e6094c88053337b28c2db11050b6ebf9",
+        "anonymous.b2ea38f9b2b4ebe5107b7877ff3aaf76a634ace6dad36d9164ef3eb134d67cd1",
+        "anonymous.bddfdc412573bfcc8558eba33c15f1223649fd07508197f3d973ed99763d9d46",
+        "anonymous.c5c67459578b61e62839b31a93bde9e289768e55b7c7daace9629c295c299580",
+        "anonymous.cc1b2bb952a095c716c4ca1e75acbf1fecc2fcb04d41b6c96ea80078af476f96",
+        "anonymous.cf1d97f59243f1991a8ca4b9b4c343c88023dc66f9b7701a65eaae7b2a8d1dc4",
+        "anonymous.d7be73df600a5d9a53fdbaca2210859554c85e453556fd61cd2d506c1009e459",
+        "anonymous.e3c4a0d5483dd621339200e6205da9ade77448a1e869864d37ce74fdf73aefd1",
+        "anonymous.f0f493b51a8dac9be39ef648a0ee405ba5e46cda3926bf86b175973b54080a1b",
+        "anonymous.ff0fe7b2e4472490bcf64ede1f2294284949c8f594bc90380291abfe561b6250",
+        "gh.issue.view"
+      ],
+      "sites": [
+        "scripts/task-tracker/action-capture-bin/gh:120"
+      ],
+      "observationKind": "opaque-cli-invocation",
+      "signal": "opaque-invocation-volume"
+    },
+    {
+      "id": "native-mutation-invocations",
+      "operations": [
+        "anonymous.2a108f03695f1a3a168dc11c6d75923edcd55dcc5ea3f7599049b62759094c83",
+        "anonymous.32ecad6249ae0c14e4090a0e5f8a98bdebbec4e8332fde2807fe2d48ad9e4f81",
+        "anonymous.6766c3aeb2177999ad33fc9f4ca542e70bd9f0046b35db2bea0033e0276c918f",
+        "anonymous.6773602e4af4f1abddadb9da4afd3d35a25e14980b1c5b3f0884da11730d312c",
+        "anonymous.80ddd956a1d9fa7237935ab4cfbc39d6fc13c89d4763e8831fafd045418a5512",
+        "anonymous.c0be66beb033fc51e89587293fafb7ee3382d0fb3dbb7bdd89f7a9753227d926",
+        "gh.issue.comment",
+        "gh.issue.create",
+        "gh.issue.edit",
+        "gh.project.item-edit"
+      ],
+      "sites": [
+        "scripts/task-tracker/action-capture-bin/gh:120"
+      ],
+      "observationKind": "opaque-cli-invocation",
+      "signal": "opaque-invocation-volume"
+    }
+  ],
+  "inventory": [
+    {
+      "schemaVersion": "aitm.graphql-usage.inventory/v1",
+      "source": "scripts/task-tracker/action-capture-bin/gh",
+      "line": 120,
+      "classification": "opaque-gh-cli",
+      "reason": "shared action capture shim process boundary",
+      "coverage": "opaque"
+    }
+  ]
+}

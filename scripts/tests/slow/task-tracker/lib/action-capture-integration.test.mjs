@@ -13,6 +13,7 @@ import {
   summarizeActionCorpus,
 } from '../../../../task-tracker/lib/action-capture.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { PROJECT_ROOT_ALIASES } from '../../../../task-tracker/lib/runtime-storage.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const SHIM = path.join(ROOT, 'scripts', 'task-tracker', 'action-capture-bin', 'gh');
@@ -55,8 +56,11 @@ if (process.env.FAKE_GH_SIGNAL) {
 }
 
 function captureEnv(projectDir, realGh, overrides = {}) {
+  const env = { ...process.env };
+  // A parent's sandbox root cannot be authority for this independent fixture.
+  for (const key of PROJECT_ROOT_ALIASES) delete env[key];
   return {
-    ...process.env,
+    ...env,
     AITM_CAPTURE_REAL_GH: realGh,
     AITM_CAPTURE_PROJECT_DIR: projectDir,
     AITM_CAPTURE_REPOSITORY: 'o/r',
