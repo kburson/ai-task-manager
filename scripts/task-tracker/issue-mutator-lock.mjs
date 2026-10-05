@@ -55,6 +55,11 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { issueLockPath } from './paths.mjs';
+import {
+  assertRevisionCapability,
+  assertRevisionIssueLockOrder,
+  revisionDelegatesIssueLock,
+} from './lib/criteria-revision/interlock.mjs';
 
 // #656 — the mtime TTL is no longer the primary staleness signal. It is an
 // outer backstop, raised well above the longest expected guarded action (a
@@ -88,6 +93,10 @@ const selfPublished = new Map();
 function heldHere(token) {
   const store = heldContext.getStore();
   return store ? store.has(token) : false;
+}
+
+export function isIssueLockHeldLocally(issue) {
+  return heldHere(issueLockToken(issue));
 }
 
 function anyHeldHere() {
@@ -269,7 +278,16 @@ export async function withIssueLock(opts, fn) {
   // unlinks the holder and rmdirs the lock. A nested frame that duplicated that
   // teardown would release its parent's lock early. The holding frame stays the
   // sole owner of both the lock directory and the env restore.
-  if (isIssueLockHeld(issue)) return await fn();
+  if (opts.revisionContext) {
+    assertRevisionCapability(
+      opts.revisionCapability,
+      { ...opts.revisionContext, issues: [Number(issue)] },
+      opts.revisionPorts
+    );
+    assertRevisionIssueLockOrder(opts.revisionCapability, issue);
+    if (heldHere(token) || revisionDelegatesIssueLock(opts.revisionCapability, issue))
+      return await fn();
+  } else if (isIssueLockHeld(issue)) return await fn();
 
   const lockPath = issueLockPath(issue, projDir);
   mkdirSync(path.dirname(lockPath), { recursive: true });
