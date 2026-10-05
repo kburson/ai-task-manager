@@ -1,4 +1,4 @@
-// @story #1481
+// @story #1481 #1887
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -355,4 +355,70 @@ test('refuses command drift reported by the persisted write response', async () 
   });
   assert.equal(result.status, 'develop-evidence-invalid');
   assert.deepEqual(result.reasons, [{ code: 'vc-set-mismatch' }]);
+});
+
+test('fresh entry is rechecked after stale retirement before finalization', async () => {
+  const receipt = testReceipt();
+  const events = [];
+  const deps = passingDeps(testBody(receipt, 'develop'), events, receipt);
+  let checks = 0;
+  deps.entryPreflight = async ({ body }) => {
+    events.push('preflight');
+    checks += 1;
+    if (checks === 2) assert.equal(parseVerificationReceipt(body, 'test'), null);
+    return { status: 'ready' };
+  };
+  const result = await runVerbTest({
+    cfg,
+    issueNumber: ISSUE,
+    projectDir: process.cwd(),
+    now: () => INSTANT,
+    deps,
+  });
+  assert.ok(['passed', 'reverified'].includes(result.status), JSON.stringify(result));
+  assert.equal(checks, 2);
+  assert.deepEqual(events.slice(0, 4), ['preflight', 'retire', 'preflight', 'finalize']);
+});
+
+test('a new entry blocker after retirement prevents finalization and sandbox effects', async () => {
+  const receipt = testReceipt();
+  const events = [];
+  const deps = passingDeps(testBody(receipt, 'develop'), events, receipt);
+  let checks = 0;
+  deps.entryPreflight = async () => ({
+    status: ++checks === 1 ? 'ready' : 'blocked',
+    blockers: [{ code: 'worktree-mismatch' }],
+  });
+  const result = await runVerbTest({
+    cfg,
+    issueNumber: ISSUE,
+    projectDir: process.cwd(),
+    now: () => INSTANT,
+    deps,
+  });
+  assert.equal(result.status, 'entry-preflight-refused');
+  assert.deepEqual(events, ['retire']);
+});
+
+test('an independent initial entry blocker leaves the stale receipt and execution untouched', async () => {
+  const receipt = testReceipt();
+  const events = [];
+  const deps = passingDeps(testBody(receipt, 'develop'), events, receipt);
+  deps.entryPreflight = async () => ({
+    status: 'blocked',
+    blockers: [{ code: 'worktree-mismatch' }],
+  });
+  const result = await runVerbTest({
+    cfg,
+    issueNumber: ISSUE,
+    projectDir: process.cwd(),
+    now: () => INSTANT,
+    deps,
+  });
+  assert.equal(result.status, 'entry-preflight-refused');
+  assert.deepEqual(events, []);
+  assert.equal(
+    parseVerificationReceipt(await deps.fetchBody(), 'test').receiptId,
+    receipt.receiptId
+  );
 });

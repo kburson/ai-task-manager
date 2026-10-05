@@ -427,7 +427,13 @@ ancestor, synchronization should not manufacture an empty commit.
 
 After Test, any operation that moves HEAD—including a merge, rebase, amend, or
 empty commit—makes the exact-SHA receipt stale.
-That HEAD move requires a new `/task test #N` pass before Review. The re-Test is
+That HEAD move requires a new `/task test #N` pass before Review.
+For legacy issue-body receipts, Test entry predicts exact stale-receipt retirement
+without changing the issue. The locked runner retires the eligible old Test
+receipt after ordinary entry and command-authority checks, verifies read-back,
+and checks entry again before finalization or sandbox execution. Malformed,
+foreign-issue or ambiguous claims refuse retirement; current-head provenance
+continues to be audited. The re-Test is
 not redundant when the synchronized parent changed the tree: the earlier receipt
 did not observe those changes, even when they are outside the issue's own files.
 Sync again after Test only when the parent actually advanced or another
