@@ -589,7 +589,7 @@ its own recorded worktree, then run the registered `aitm refine <child> --size
 explicitly supplies the kind label; split-plan does not inherit it. Before
 accepting child readiness, read back each live child label and title: require
 `bug` and equality with `ensureKindPrefix(task.title, ['bug'])`, containing
-exactly one `🐞 [BUG] ` prefix. The prefix in these task headings is intentional;
+exactly one `🐞 [BUG]` prefix followed by a space. The prefix in these task headings is intentional;
 label-driven reconciliation idempotently preserves it. If title, label or pinned
 section disagree, stop and repair the governed linkage before further planning.
 For the existing #1851–#1856 children, retain their completed Refine evidence and

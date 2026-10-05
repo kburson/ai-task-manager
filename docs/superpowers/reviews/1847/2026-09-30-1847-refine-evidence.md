@@ -18,10 +18,11 @@ a future consumer criteria-revision proposal.
 | Consumer inventory | The implementation plan enumerates low-level body and canonical writers, lock-owning public verbs, hook admission, bind, proof generators, lifecycle evaluation, reconciliation, delivery and close. Coverage is executable: a registry/audit test must fail when a covered writer is omitted. |
 
 The #124 sizing source records are:
-- Forecast: https://github.com/kburson/ai-peer-review/issues/124#issuecomment-5896077136
-- Plan transition: https://github.com/kburson/ai-peer-review/issues/124#issuecomment-5896128348
-- Approval provenance: https://github.com/kburson/ai-peer-review/issues/124#issuecomment-5896659146
-- Superseding scope: https://github.com/kburson/ai-peer-review/issues/124#issuecomment-5901265966
+
+- [Forecast](https://github.com/kburson/ai-peer-review/issues/124#issuecomment-5896077136)
+- [Plan transition](https://github.com/kburson/ai-peer-review/issues/124#issuecomment-5896128348)
+- [Approval provenance](https://github.com/kburson/ai-peer-review/issues/124#issuecomment-5896659146)
+- [Superseding scope](https://github.com/kburson/ai-peer-review/issues/124#issuecomment-5901265966)
 
 The fixture is local audit input, explicitly non-executable and without
 authorization. Timing/history comments remain preserved on GitHub; they are not
