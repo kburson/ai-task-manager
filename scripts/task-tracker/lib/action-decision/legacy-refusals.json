@@ -968,7 +968,7 @@
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 4991,
+          "line": 4996,
           "fingerprint": "sha256:1f4f84c9a23cb774cb3a3dfaaee72679c500fda0cfad70ac870ef7feb2c887ee",
           "kind": "refusal"
         }
