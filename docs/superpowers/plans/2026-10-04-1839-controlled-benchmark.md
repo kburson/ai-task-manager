@@ -5,7 +5,7 @@ Parent reviewed plan: docs/superpowers/plans/2026-09-26-1818-graphql-usage-measu
 
 ## Task 1: Qualify controlled baseline evidence offline
 
-Write failing completion-gate tests in scripts/tests/integration/task-tracker/graphql-usage-baseline.test.mjs. Add a pure qualification helper under scripts/task-tracker/lib/graphql-usage and an offline CLI accepting report/run-manifest paths. Validate canonical timestamps, exact root/participants, predeclaration, enrollment, overlapping 60-minute collectors, completed creation-to-planning workflow evidence, observed traffic from both worktrees, existing comparison sufficiency and scoped exclusions. Return findings and per-completed-workflow volume/known-point normalization. Test fail-closed malformed evidence and all Task 5 gate cases. Run baseline and report suites, then commit with [#1839].
+Write failing completion-gate tests in scripts/tests/integration/task-tracker/graphql-usage-baseline.test.mjs. Add a pure qualification helper under scripts/task-tracker/lib/graphql-usage and an offline CLI accepting report/run-manifest paths. Validate canonical timestamps, exact root/participants, pre-run declaration, enrollment, overlapping 60-minute collectors, completed creation-to-planning workflow evidence, observed traffic from both worktrees, existing comparison sufficiency and scoped exclusions. Return findings and per-completed-workflow volume/known-point normalization. Test fail-closed malformed evidence and all Task 5 gate cases. Run baseline and report suites, then commit with [#1839].
 
 ## Task 2: Run disposable live measurement
 

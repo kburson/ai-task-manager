@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import os from 'node:os';
+import { mkdtempOutsideRepo } from '../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -347,7 +347,7 @@ test('inadequate candidate coverage and collection gaps never pass qualification
   }
 });
 test('offline CLI reads saved evidence, returns preliminary exit status, and needs no Git checkout', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'baseline-1839-'));
+  const dir = mkdtempOutsideRepo('baseline-1839-');
   try {
     const f = fixture();
     const rp = path.join(dir, 'report.json'),
@@ -365,6 +365,142 @@ test('offline CLI reads saved evidence, returns preliminary exit status, and nee
     await assert.rejects(
       promisify(execFile)(process.execPath, [cli, '--report', rp, '--run', mp], { cwd: dir }),
       (e) => e.code === 2 && JSON.parse(e.stdout).status === 'preliminary'
+    );
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+// @story #1839
+import { createHash } from 'node:crypto';
+const digest = (value) =>
+  'sha256:' + createHash('sha256').update(JSON.stringify(value)).digest('hex');
+function savedFixture() {
+  const f = fixture();
+  const configurationHashes = ['sha256:' + 'c'.repeat(64), 'sha256:' + 'c'.repeat(64)];
+  f.run.configurationId = digest(configurationHashes);
+  f.run.sourceCommit = 'f'.repeat(40);
+  const preflight = {
+    schema: 'aitm.graphql-usage.preflight/v1',
+    declaredAt: f.d.declaredAt,
+    declarationSha256: digest(f.d),
+    sourceCommit: f.run.sourceCommit,
+    recipeId: f.run.recipeId,
+    configurationHashes,
+    plannedWorkflows: 2,
+    repetitionsPerWorktree: 1,
+    workloadKind: 'controlled',
+  };
+  const smoke = {
+    schema: 'aitm.graphql-usage.smoke/v1',
+    repository: 'owner/repo',
+    issueNumber: 42,
+    sameResponseQueryCost: 1,
+    recordedQueryCost: 1,
+    queryCostMatches: true,
+    mutationCostUnavailable: true,
+    cleanupSucceeded: true,
+    observations: [
+      row('smoke-query', '2026-10-04T23:58:00.000Z', { repository: 'owner/repo', issueNumber: 42 }),
+      ...[1, 2].map((n) =>
+        row('smoke-mutation-' + n, '2026-10-04T23:58:0' + n + '.000Z', {
+          repository: 'owner/repo',
+          issueNumber: 42,
+          kind: 'mutation',
+          pointCost: null,
+          costSource: null,
+          costUnknownReason: 'mutation-cost-unavailable',
+          costCoverage: 'unknown',
+        })
+      ),
+    ],
+  };
+  return { report: f.report, run: f.run, declaration: f.d, preflight, smoke };
+}
+test('saved evidence verifies a frozen declaration, matched denominator and smoke cleanup offline', async () => {
+  const { qualifySavedEvidence } =
+    await import('../../../task-tracker/lib/graphql-usage/evidence.mjs');
+  assert.equal(qualifySavedEvidence(savedFixture()).status, 'decision-grade-controlled');
+});
+for (const [name, change] of [
+  ['declaration changed after freezing', (e) => e.declaration.groups[0].operations.push('Extra')],
+  ['report population changed', (e) => e.report.declaration.participants.pop()],
+  ['wrong source version', (e) => (e.run.sourceCommit = 'e'.repeat(40))],
+  ['wrong recipe', (e) => (e.run.recipeId = 'another-recipe')],
+  ['incomplete matched workload', (e) => (e.preflight.plannedWorkflows = 4)],
+  [
+    'unbalanced repetitions',
+    (e) => (e.run.workflows[1].worktreeId = e.run.workflows[0].worktreeId),
+  ],
+  ['configuration changed', (e) => (e.run.configurationId = 'other-config')],
+  ['smoke query cost mismatch', (e) => (e.smoke.sameResponseQueryCost = 9)],
+  ['missing cleanup mutation', (e) => e.smoke.observations.pop()],
+  ['failed cleanup', (e) => (e.smoke.cleanupSucceeded = false)],
+  ['invented mutation points', (e) => (e.smoke.observations[1].pointCost = 3)],
+  ['payload-bearing smoke record', (e) => (e.smoke.observations[0].body = 'private payload')],
+  ['duplicate smoke observations', (e) => (e.smoke.observations[2] = e.smoke.observations[1])],
+  [
+    'cleanup precedes query',
+    (e) =>
+      (e.smoke.observations[2].startedAt = e.smoke.observations[2].endedAt =
+        '2026-10-04T23:57:00.000Z'),
+  ],
+  ['late smoke', (e) => (e.smoke.observations[0].endedAt = '2026-10-05T00:01:00.000Z')],
+])
+  test('saved evidence remains preliminary: ' + name, async () => {
+    const { qualifySavedEvidence } =
+      await import('../../../task-tracker/lib/graphql-usage/evidence.mjs');
+    const e = savedFixture();
+    change(e);
+    const q = qualifySavedEvidence(e);
+    assert.equal(q.status, 'preliminary');
+    assert.ok(q.findings.length > 0);
+  });
+
+test('saved-evidence CLI verifies artifacts outside Git without GitHub access', async () => {
+  const dir = mkdtempOutsideRepo('saved-baseline-1839-');
+  try {
+    const evidence = savedFixture();
+    for (const [name, value] of Object.entries(evidence))
+      await fs.writeFile(path.join(dir, name + '.json'), JSON.stringify(value));
+    const cli = path.resolve('scripts/maintenance/verify-1839-baseline.mjs');
+    const options = { cwd: dir, env: { ...process.env, GH_TOKEN: '', GH_HOST: 'invalid.example' } };
+    const valid = await promisify(execFile)(process.execPath, [cli, dir], options);
+    assert.equal(JSON.parse(valid.stdout).status, 'decision-grade-controlled');
+    evidence.smoke.cleanupSucceeded = false;
+    await fs.writeFile(path.join(dir, 'smoke.json'), JSON.stringify(evidence.smoke));
+    await assert.rejects(
+      promisify(execFile)(process.execPath, [cli, dir], options),
+      (e) => e.code === 2 && JSON.parse(e.stdout).status === 'preliminary'
+    );
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('configured disposable tests refuse the source repository before any remote action', async () => {
+  const dir = mkdtempOutsideRepo('disposable-1839-');
+  try {
+    const source = process.cwd();
+    const own = JSON.parse(
+      await fs.readFile(path.join(source, '.ai-task-manager/task-tracker.json'), 'utf8')
+    );
+    const cfg = path.join(dir, 'config.json');
+    await fs.writeFile(
+      cfg,
+      JSON.stringify({ source, repository: own.repo, projectId: 'different-project' })
+    );
+    const cli = path.join(
+      source,
+      'scripts/tests/slow/task-tracker/graphql-usage-disposable.test.mjs'
+    );
+    const env = { ...process.env, AITM_DISPOSABLE_BASELINE_CONFIG: cfg };
+    delete env.AITM_DISPOSABLE_SMOKE_CONFIG;
+    delete env.NODE_TEST_CONTEXT;
+    await assert.rejects(
+      promisify(execFile)(process.execPath, ['--test', cli], { cwd: dir, env }),
+      (e) =>
+        e.code === 1 && (e.stdout + e.stderr).includes('Expected "actual" to be strictly unequal')
     );
   } finally {
     await fs.rm(dir, { recursive: true, force: true });

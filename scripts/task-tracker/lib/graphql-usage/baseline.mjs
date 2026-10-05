@@ -69,7 +69,7 @@ export function qualifyBaseline(report, run) {
       report.declaration.sha256 !== run.declarationSha256 ||
       report.declaration.declaredAt !== run.declaredAt
     )
-      finding('predeclaration identity mismatch');
+      finding('pre-run declaration identity mismatch');
     if (
       report.coverage.collectorVersions.length !== 1 ||
       report.coverage.collectorVersions[0] !== run.collectorVersion
@@ -106,7 +106,7 @@ export function qualifyBaseline(report, run) {
       new Set(declaredPairs).size !== declaredPairs.length ||
       participants.some((p) => !declaredPairs.includes(pair(p)))
     )
-      finding('participant sample differs from predeclaration');
+      finding('participant sample differs from pre-run declaration');
     let overlapStart = start,
       overlapEnd = end;
     for (const p of participants) {
