@@ -227,3 +227,33 @@ for (const [name, example] of literalExamples) {
     );
   });
 }
+
+for (const [name, example] of [
+  ['same-line comment', ['<!-- source note --!>']],
+  ['multiline comment', ['<!-- source note', '--!>']],
+]) {
+  test('HTML alternate end in ' + name + ' leaves later canonical AC live', () => {
+    const body = [
+      '## Scope',
+      '#### Acceptance Criteria',
+      '- [ ] ' + sourceLabel + ' <!-- aitm-verified cmd="`source-command`" -->',
+      ...example,
+      '## Acceptance Criteria',
+      '- [ ] ' + label + ' <!-- aitm-verified vc-list="vc:1" -->',
+      verification,
+    ].join('\n');
+    assert.deepEqual(
+      parseEvidenceAcs(body).map((ac) => ac.label),
+      [label]
+    );
+    assert.deepEqual(findEvidenceAc(body, label)?.evidenceCommands, [commands[0]]);
+    assert.equal(findAcSectionCheckbox(body, sourceLabel), null);
+    assert.equal(gateEvidenceTick(body, label).kind, 'refuse-ac-evidence');
+    const stamped = stampAcEvidenceMarker(body, label, fixtureEvidence);
+    assert.equal(gateEvidenceTick(stamped, label).kind, 'pass');
+    assert.deepEqual(
+      stamped.split('\n').slice(0, example.length + 4),
+      body.split('\n').slice(0, example.length + 4)
+    );
+  });
+}

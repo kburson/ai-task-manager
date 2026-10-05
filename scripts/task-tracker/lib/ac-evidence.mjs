@@ -168,7 +168,7 @@ function findCanonicalAcHeading(src) {
       continue;
     }
     if (comment) {
-      for (const token of raw.matchAll(/<!--|-->/g)) comment = token[0] === '<!--';
+      for (const token of raw.matchAll(/<!--|--!?>/g)) comment = token[0] === '<!--';
       continue;
     }
     if (marker) {
@@ -180,7 +180,7 @@ function findCanonicalAcHeading(src) {
       heading.index = index;
       return heading;
     }
-    for (const token of raw.matchAll(/<!--|-->/g)) comment = token[0] === '<!--';
+    for (const token of raw.matchAll(/<!--|--!?>/g)) comment = token[0] === '<!--';
   }
   return null;
 }
