@@ -134,8 +134,12 @@ function parseDeclaration(label, vcItems, { required = false } = {}) {
 function legacyRows(body) {
   const rows = [],
     seen = new Set();
-  let section = null;
+  let section = null,
+    cursor = 0;
   for (const line of body.split('\n')) {
+    const start = cursor,
+      end = start + line.length;
+    cursor = end + 1;
     const heading = /^(#{1,6})\s+(.+?)\s*$/.exec(line);
     if (heading) {
       const kind = sectionNames.get(heading[2]);
@@ -146,7 +150,7 @@ function legacyRows(body) {
       } else if (heading[1].length <= 2) section = null;
       continue;
     }
-    if (section && /^- \[[ x]\] /.test(line)) rows.push({ section, line });
+    if (section && /^- \[[ x]\] /.test(line)) rows.push({ section, line, start, end });
   }
   if (!seen.has('ac') || !seen.has('vc') || !seen.has('dod')) revisionError('missing-section');
   return rows;
@@ -278,8 +282,19 @@ function replacementIdentity(transaction, kind, ordinal) {
 function buildAfter({ definitions, edits, observation, transactionId }) {
   const after = [],
     changed = new Set(),
-    needed = new Set();
+    needed = new Set(),
+    newRootIds = new Map();
   let ordinal = 0;
+  const freshIdentity = (kind) => {
+    const identity = replacementIdentity(transactionId, kind, ++ordinal);
+    if (
+      observation.retiredIdentities.includes(identity) ||
+      definitions.some((x) => x.identity === identity) ||
+      after.some((x) => x.identity === identity)
+    )
+      revisionError('retired-identity');
+    return identity;
+  };
   const selected = new Map(edits.acceptanceCriteria.map((x) => [x.occurrence, x]));
   for (const d of definitions) {
     const edit = d.section === 'ac' ? selected.get(d.occurrence) : null;
@@ -293,12 +308,7 @@ function buildAfter({ definitions, edits, observation, transactionId }) {
     (d.declaration.vcIds ?? []).forEach((id) => needed.add(id));
     for (const r of edit.replacements) {
       r.declaration.vcIds.forEach((id) => needed.add(id));
-      const identity = replacementIdentity(transactionId, 'ac', ++ordinal);
-      if (
-        observation.retiredIdentities.includes(identity) ||
-        definitions.some((x) => x.identity === identity)
-      )
-        revisionError('retired-identity');
+      const identity = freshIdentity('ac');
       after.push({
         ...clone(d),
         identity,
@@ -324,11 +334,13 @@ function buildAfter({ definitions, edits, observation, transactionId }) {
       old = after[index];
     if (edit.operation === 'add') {
       if (old) revisionError('duplicate-root-VC');
-      const identity = replacementIdentity(transactionId, 'vc', ++ordinal);
+      const identity = freshIdentity('vc');
+      const rootId = observation.sourceKind === 'canonical-contract' ? identity : edit.id;
+      if (observation.sourceKind === 'canonical-contract') newRootIds.set(edit.id, identity);
       after.push({
         identity,
         section: 'vc',
-        rootId: edit.id,
+        rootId,
         occurrence: after.filter((x) => x.section === 'vc').length + 1,
         text: edit.command,
         declaration: { kind: 'commands', commands: [edit.command] },
@@ -351,9 +363,7 @@ function buildAfter({ definitions, edits, observation, transactionId }) {
     after[index] = {
       ...old,
       identity:
-        observation.sourceKind === 'canonical-contract'
-          ? old.identity
-          : replacementIdentity(transactionId, 'vc', ++ordinal),
+        observation.sourceKind === 'canonical-contract' ? old.identity : freshIdentity('vc'),
       text: edit.command,
       declaration: { kind: 'commands', commands: [edit.command] },
       declarationBytes: declarationBytes({ kind: 'commands', commands: [edit.command] }),
@@ -367,6 +377,12 @@ function buildAfter({ definitions, edits, observation, transactionId }) {
   after.sort(
     (a, b) => ['ac', 'vc', 'dod'].indexOf(a.section) - ['ac', 'vc', 'dod'].indexOf(b.section)
   );
+  if (newRootIds.size)
+    for (const d of after) {
+      if (d.declaration.kind !== 'vc-list') continue;
+      d.declaration.vcIds = d.declaration.vcIds.map((id) => newRootIds.get(id) ?? id);
+      d.declarationBytes = declarationBytes(d.declaration);
+    }
   resolveCommands(after);
   if (observation.sourceKind === 'canonical-contract')
     after.forEach((d) => {
@@ -388,6 +404,8 @@ function classifyMarkers(body) {
         identity: `marker-${hashRevisionValue([++ordinal, bytes]).slice(7)}`,
         bytes,
         criterionIdentity: null,
+        start: match.index,
+        end: match.index + bytes.length,
       });
   }
   return result;
@@ -494,7 +512,11 @@ function projectLegacy(
   transactionId
 ) {
   let body = observation.body.bytes;
+  const sourceRows = legacyRows(body),
+    patches = [];
   for (const d of definitions) {
+    const source = sourceRows.filter((x) => x.section === d.section)[d.occurrence - 1];
+    if (!source || source.line !== d.originalBytes) revisionError('stale-projection-occurrence');
     const mapping = after.filter(
       (x) => x.section === d.section && (x.identity === d.identity || x.occurrence === d.occurrence)
     );
@@ -520,17 +542,28 @@ function projectLegacy(
     )
       next = stripProof(next);
     if (mapping.length === 0 && d.section === 'vc') next = '';
-    if (next !== d.originalBytes) body = body.replace(d.originalBytes, () => next);
+    if (next !== d.originalBytes)
+      patches.push({ start: source.start, end: source.end, bytes: next });
   }
-  for (const edit of edits.verificationCommands.filter((x) => x.operation === 'add')) {
-    const rows = legacyRows(body).filter((x) => x.section === 'vc'),
-      last = rows.at(-1)?.line;
+  const additions = edits.verificationCommands.filter((x) => x.operation === 'add');
+  if (additions.length) {
+    const last = sourceRows.filter((x) => x.section === 'vc').at(-1);
     if (!last) revisionError('missing-VC-insertion-root');
-    body = body.replace(last, () => `${last}\n- [ ] \`${edit.command}\` <!-- id=${edit.id} -->`);
+    patches.push({
+      start: last.end,
+      end: last.end,
+      bytes: additions.map((edit) => `\n- [ ] \`${edit.command}\` <!-- id=${edit.id} -->`).join(''),
+    });
   }
-  for (const marker of classifyMarkers(observation.body.bytes))
-    if (invalidation.some((x) => x.identity === marker.identity && x.disposition === 'retired'))
-      body = body.replace(marker.bytes, '');
+  // Source ranges belong to the verified original section/occurrence, including insertion.
+  for (const patch of patches.sort((a, b) => b.start - a.start))
+    body = body.slice(0, patch.start) + patch.bytes + body.slice(patch.end);
+  // Remove retired marker occurrences by their own current source ranges as well.
+  const markerPatches = classifyMarkers(body).filter((marker) =>
+    invalidation.some((x) => x.identity === marker.identity && x.disposition === 'retired')
+  );
+  for (const marker of markerPatches.reverse())
+    body = body.slice(0, marker.start) + body.slice(marker.end);
   const marker = `<!-- aitm-criteria-revision schema="${REVISION_SCHEMA}" revision="${observation.revision + 1}" transaction-id="${transactionId}" semantic-digest="${digest}" -->`;
   body = body.replace(/<!--\s*aitm-criteria-revision\s[\s\S]*?-->\n?/g, '');
   return stampBodyVersion(
@@ -540,6 +573,12 @@ function projectLegacy(
 }
 function projectCanonical(observation, after) {
   const previous = observation.contract.value;
+  const rootIds = new Set(after.filter((x) => x.section === 'vc').map((x) => x.identity));
+  for (const d of after) {
+    if (d.section === 'vc' && d.rootId !== d.identity) revisionError('canonical-root-identity');
+    if (d.declaration.kind === 'vc-list' && d.declaration.vcIds.some((id) => !rootIds.has(id)))
+      revisionError('missing-canonical-root-reference');
+  }
   const definitions = {
     acceptanceCriteria: after
       .filter((x) => x.section === 'ac')
