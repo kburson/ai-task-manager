@@ -354,3 +354,38 @@ test('retired generated identity refuses legacy VC replacement', () => {
   c.observation.retiredIdentities = [root.identity];
   assert.throws(() => deriveProposal(c), /retired-identity/);
 });
+
+for (const operation of ['replace', 'delete'])
+  test(`original retired marker identities survive AC ${operation} projection`, () => {
+    const c = structuredClone(makeLegacyRevisionFixture().context),
+      aggregate = '<!-- aitm-ac-complete identity="inline-aggregate" -->',
+      unrelated = '<!-- unrelated synthetic="preserved" -->';
+    const edit = c.edits.acceptanceCriteria[0],
+      old = edit.oldBytes + ' ' + aggregate;
+    c.observation.body.bytes = c.observation.body.bytes
+      .replace(edit.oldBytes, old)
+      .replace('Synthetic scope', 'Synthetic scope\n' + unrelated);
+    edit.oldBytes = old;
+    edit.oldHash = hash(old);
+    edit.operation = operation;
+    if (operation === 'delete') edit.replacements = [];
+    const p = deriveProposal(c),
+      body = p.writeSet.find((x) => x.resource === 'issue-body').afterBytes,
+      retiredHashes = new Set(
+        p.invalidation.filter((x) => x.disposition === 'retired').map((x) => x.bytesHash)
+      );
+    const retiredMarkers = [...c.observation.body.bytes.matchAll(/<!--[\s\S]*?-->/g)]
+      .map((x) => x[0])
+      .filter((x) => retiredHashes.has(hash(x)));
+    assert.ok(retiredMarkers.includes(aggregate));
+    assert.ok(retiredMarkers.some((x) => x.includes('aitm-plan-approved')));
+    assert.ok(retiredMarkers.some((x) => x.includes('aitm-test-receipt')));
+    assert.ok(retiredMarkers.some((x) => x.includes('aitm-review-approved')));
+    for (const marker of retiredMarkers) assert.equal(body.includes(marker), false, marker);
+    for (const preserved of [
+      unrelated,
+      '<!-- aitm-entered-develop ts="2026-09-30T00:00:00Z" -->',
+      '<!-- aitm-timing-log synthetic="yes" -->',
+    ])
+      assert.ok(body.includes(preserved), preserved);
+  });
