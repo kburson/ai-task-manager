@@ -1,3 +1,4 @@
+// @story #1889
 import { isDeepStrictEqual } from 'node:util';
 import { timingActorKey } from '../lib/timing-actor.mjs';
 
@@ -56,7 +57,10 @@ export async function verbSwitch(ctx, target) {
   );
   try {
     const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
-    const binding = resolveBinding({ projectDir, now: nowIso });
+    const binding = {
+      ...resolveBinding({ projectDir, now: nowIso }),
+      bindingGenerationId: claim?.row?.bindingGenerationId ?? null,
+    };
     await drainQueueIfAny();
     const s = priorState;
     // #833 — self-bind no-op. Rebinding to the already-active, never-paused issue
