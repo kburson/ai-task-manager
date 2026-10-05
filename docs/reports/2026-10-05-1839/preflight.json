@@ -1,0 +1,55 @@
+{
+  "schema": "aitm.graphql-usage.preflight/v1",
+  "declaredAt": "2026-10-05T04:26:36.858Z",
+  "declarationSha256": "sha256:a544fd9a6cbe18f128423cc85d6da29bc457a52291e4d7294c9f05436be66910",
+  "sourceCommit": "6bfdeecf687d754becb0c0afffae08e3cd63f106",
+  "collectorVersion": "v1",
+  "collectorFiles": {
+    "scripts/task-tracker/lib/graphql-usage/collection.mjs": "sha256:6e83210512aba5e71e42190da02ddd67a7cd0856339c9015c74ed42c758f17e0",
+    "scripts/task-tracker/lib/graphql-usage/identity.mjs": "sha256:ff81898cfc02afc7496bf5b173ec0b15ae3648554381ee7efef126b1e523f377",
+    "scripts/task-tracker/lib/graphql-usage/storage.mjs": "sha256:56a768dc84e95c837deedcb079e4724fee9bfb72e0cffdcebd0a19f10aec2e4d",
+    "scripts/task-tracker/lib/action-capture.mjs": "sha256:297dbb31ce1bbd36052a4effa36e49392292205fdea7e59c2f09309c0e54f787",
+    "scripts/task-tracker/action-capture-bin/gh": "sha256:cf8321c38a27cb25f28164b6607d29a3a4cc5e8be557fe5ea090e9590f0eba04",
+    "scripts/task-tracker/graphql-usage-launch.mjs": "sha256:bd01908056eca7fb5d33723b1bf009ae58187ae508888e5b9d0e672c58a5e1a8"
+  },
+  "configurationHashes": [
+    "sha256:2e239fb0caa8eca25b1ec6332eb127eb131f67fa06b43946fdcae6b9c60f214d",
+    "sha256:2e239fb0caa8eca25b1ec6332eb127eb131f67fa06b43946fdcae6b9c60f214d"
+  ],
+  "recipeId": "sha256:1409a062bd8af13b896fbd6601c9ebe984776adcf4a66cd82139577a1d5b8e67",
+  "recipeFiles": {
+    "scope": "sha256:99c2e9e3f285aa2c204f1a821e5a6f797bf8ace45ba7e79fadbbd67713761273",
+    "ac": "sha256:aeaf4a4b59c286ba5c178da6bf8a52e1b6b10e7d093501f7de4f3b11d7294299",
+    "origin": "sha256:ff36b1d480213ca11700274c02c5fda9460628b70649e8fa3e8ad97064e281c6",
+    "story": "sha256:0a62d9d4a3601a66ab28efc52f0d80e893a62ccc73d28582fb8277cd3ce7fdbe",
+    "plan": "sha256:761acd7f80a784a40a8d1d834976691d97e5e2eddb1f3669f078e5e1aa15f11f",
+    "vc": "sha256:4ad787015f585a1bde5ed5c12fbe7df34939ee6849c0edd7be9d09b3761f90d9"
+  },
+  "workerSha256": "sha256:3cb8e996b9d86632f00a0fbd26240ea91a2f7812859bcbc729db9765c4c21460",
+  "workloadKind": "controlled",
+  "repetitionsPerWorktree": 2,
+  "spacingSeconds": 1800,
+  "plannedWorkflows": 4,
+  "commandSequence": [
+    "create-issue --shape solo --label documentation --priority p2",
+    "start --role agent",
+    "refine --size S --estimate 1 --priority p2 --rank repetition",
+    "refine --size S --estimate 1 --priority p2 --rank repetition",
+    "plan",
+    "stop"
+  ],
+  "controlledParameters": {
+    "shape": "solo",
+    "label": "documentation",
+    "priority": "p2",
+    "size": "S",
+    "estimateHours": 1
+  },
+  "population": "Exactly the two predeclared scratch launcher sessions; all smoke and pilot sessions are outside the interval.",
+  "comparableSignal": "Opaque native CLI invocation volume; no request-count or total-point inference.",
+  "pilot": {
+    "observations": 174,
+    "unknownAttribution": 0
+  },
+  "exclusions": "Preflight, smoke, aborted launches, production repository activity, other sessions, external tools and hidden CLI requests are excluded from the declared sample."
+}
