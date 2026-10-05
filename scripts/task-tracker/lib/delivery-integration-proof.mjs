@@ -1,4 +1,4 @@
-// @story #1811 #1873
+// @story #1811 #1873 #1892
 // Prove the integration that GitHub actually recorded. The requested merge
 // method and message are deliberately absent from this interface.
 
@@ -17,7 +17,7 @@ function freeze(value) {
 
 function validateInventory(sourceCommits, acceptedHeadSha) {
   if (!Array.isArray(sourceCommits) || sourceCommits.length === 0) fail('source-inventory');
-  const seen = new Set();
+  const seen = new Map();
   for (let index = 0; index < sourceCommits.length; index += 1) {
     const commit = sourceCommits[index];
     if (
@@ -28,14 +28,34 @@ function validateInventory(sourceCommits, acceptedHeadSha) {
       (commit.parents.length !== 1 && commit.parents.length !== 2) ||
       commit.parents.some((parent) => !sha(parent) || parent === commit.oid) ||
       new Set(commit.parents).size !== commit.parents.length ||
-      typeof commit.message !== 'string' ||
-      (index > 0 && commit.parents[0] !== sourceCommits[index - 1].oid)
+      typeof commit.message !== 'string'
     ) {
       fail('source-inventory');
     }
-    seen.add(commit.oid);
+    seen.set(commit.oid, { commit, index });
   }
   if (sourceCommits.at(-1).oid !== acceptedHeadSha) fail('source-inventory');
+  // Both sides of child merges belong to the inventory. Internal parent edges
+  // must precede their children; this also refuses cycles without recursive DFS.
+  for (const { commit, index } of seen.values()) {
+    if (commit.parents.some((parent) => seen.has(parent) && seen.get(parent).index >= index)) {
+      fail('source-inventory');
+    }
+  }
+  const reached = new Set();
+  const pending = [acceptedHeadSha];
+  while (pending.length > 0) {
+    const oid = pending.pop();
+    if (!seen.has(oid) || reached.has(oid)) continue;
+    reached.add(oid);
+    pending.push(...seen.get(oid).commit.parents);
+  }
+  if (reached.size !== seen.size) fail('source-inventory');
+  // The earliest provider entry may be an older child fork, rather than the
+  // first commit on the epic's own first-parent path.
+  let sourceBase = acceptedHeadSha;
+  while (seen.has(sourceBase)) sourceBase = seen.get(sourceBase).commit.parents[0];
+  return { sourceCommitsById: seen, sourceBase };
 }
 
 export async function verifyObservedIntegration({
@@ -72,7 +92,7 @@ export async function verifyObservedIntegration({
     pullRequest.sourceCommitsHeadSha !== acceptedHeadSha
   )
     fail('source-inventory');
-  validateInventory(sourceCommits, acceptedHeadSha);
+  const inventory = validateInventory(sourceCommits, acceptedHeadSha);
   const inspection = await inspectCommit({ commitSha: mergedCommitSha });
   if (
     !Array.isArray(inspection?.parents) ||
@@ -86,25 +106,36 @@ export async function verifyObservedIntegration({
     fail('trunk-reachability');
   }
   const parents = inspection.parents;
-  let sourceBase = sourceCommits[0].parents[0];
-  // A first-parent source history may incorporate delivered base commits.
-  // Every secondary parent must already belong to the actual integration base;
-  // the complete accepted delta still requires the ordinary content proof.
+  let sourceBase = inventory.sourceBase;
   const hasSourceMerges = sourceCommits.some((commit) => commit.parents.length === 2);
+  const hasChildMerges = sourceCommits.some(
+    (commit) => commit.parents.length === 2 && inventory.sourceCommitsById.has(commit.parents[1])
+  );
   for (const commit of sourceCommits) {
-    if (
-      commit.parents.length === 2 &&
-      (await isAncestor({ ancestor: commit.parents[1], descendant: parents[0] })) !== true
-    ) {
+    // A child fork can start from older trunk history. Every external boundary
+    // of a child graph must belong to the actual integration base; missing child
+    // commits cannot be treated as an already-integrated base merge.
+    if (hasChildMerges) {
+      for (const parent of commit.parents) {
+        if (
+          !inventory.sourceCommitsById.has(parent) &&
+          (await isAncestor({ ancestor: parent, descendant: parents[0] })) !== true
+        ) {
+          fail('source-inventory');
+        }
+      }
+    }
+    if (commit.parents.length !== 2 || inventory.sourceCommitsById.has(commit.parents[1])) {
+      continue;
+    }
+    const secondary = commit.parents[1];
+    if ((await isAncestor({ ancestor: secondary, descendant: parents[0] })) !== true) {
       fail('source-inventory');
     }
-    if (commit.parents.length === 2) {
-      const secondary = commit.parents[1];
-      if ((await isAncestor({ ancestor: sourceBase, descendant: secondary })) === true) {
-        sourceBase = secondary;
-      } else if ((await isAncestor({ ancestor: secondary, descendant: sourceBase })) !== true) {
-        fail('source-inventory');
-      }
+    if ((await isAncestor({ ancestor: sourceBase, descendant: secondary })) === true) {
+      sourceBase = secondary;
+    } else if ((await isAncestor({ ancestor: secondary, descendant: sourceBase })) !== true) {
+      fail('source-inventory');
     }
   }
   let method;
