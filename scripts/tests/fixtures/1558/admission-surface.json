@@ -1834,6 +1834,21 @@
       "fixtureId": null
     },
     {
+      "path": "scripts/task-tracker/graphql-usage-report.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": [
+        "node:fs/promises",
+        "node:util",
+        "./lib/graphql-usage/report.mjs",
+        "./lib/graphql-usage/report-render.mjs"
+      ],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Offline read-only usage-store companion. No lifecycle authority, enrollment or transport; explicit supplied root only.",
+      "fixtureId": null
+    },
+    {
       "path": "scripts/task-tracker/guidance.mjs",
       "classification": "agent-callable-standalone",
       "command": "guidance",

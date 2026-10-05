@@ -1,4 +1,4 @@
-// @story #1836
+// @story #1836 #1838
 // Local metadata only. Callers must await close before normal process exit.
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -499,6 +499,7 @@ function parseLines(text) {
   const partial = lines.pop().length > 0;
   const rows = [];
   let malformed = 0;
+  let unsupported = 0;
   for (const line of lines) {
     try {
       const row = JSON.parse(line);
@@ -511,13 +512,22 @@ function parseLines(text) {
       const validate = Object.hasOwn(validators, row?.schemaVersion)
         ? validators[row.schemaVersion]
         : null;
-      if (!validate) throw new Error('schema');
+      if (!validate) {
+        if (
+          typeof row?.schemaVersion === 'string' &&
+          /^aitm\.graphql-usage\.[a-z-]+\/v[0-9]+$/.test(row.schemaVersion)
+        ) {
+          unsupported++;
+          continue;
+        }
+        throw new Error('schema');
+      }
       rows.push(validate(row));
     } catch {
       malformed++;
     }
   }
-  return { rows, partial, malformed };
+  return { rows, partial, malformed, unsupported };
 }
 async function snapshotText(file, io) {
   const handle = await io.open(file, 'r');
@@ -532,7 +542,11 @@ async function snapshotText(file, io) {
       chunks.push(buffer.subarray(0, bytesRead));
       position += bytesRead;
     }
-    return Buffer.concat(chunks).toString('utf8');
+    return {
+      text: Buffer.concat(chunks).toString('utf8'),
+      readableBytes: size,
+      readBytes: position,
+    };
   } finally {
     await handle.close();
   }
@@ -547,6 +561,12 @@ export async function readUsage(root, { io = fs } = {}) {
     duplicateCount: 0,
     conflictCount: 0,
     partialLineCount: 0,
+    malformedLineCount: 0,
+    unreadableFileCount: 0,
+    unsupportedVersionCount: 0,
+    unclosedWriterCount: 0,
+    unclosedWriters: [],
+    extents: [],
     fileOpenCount: 0,
     elapsedMs: 0,
   };
@@ -556,8 +576,32 @@ export async function readUsage(root, { io = fs } = {}) {
     let parsed;
     try {
       result.fileOpenCount++;
-      parsed = parseLines(await snapshotText(file, io));
+      const snapshot = await snapshotText(file, io);
+      const fileId = hash(path.relative(root, file));
+      result.extents.push({
+        fileId,
+        readableBytes: snapshot.readableBytes,
+        readBytes: snapshot.readBytes,
+      });
+      if (snapshot.readBytes < snapshot.readableBytes) {
+        result.unreadableFileCount++;
+        result.diagnostics.push(usageDiagnostic('storage-failure'));
+      }
+      parsed = parseLines(snapshot.text);
+      result.malformedLineCount += parsed.malformed;
+      result.unsupportedVersionCount += parsed.unsupported;
+      const starts = parsed.rows.filter(
+        (row) => row.schemaVersion === schemas.diagnostic && row.code === 'writer-start'
+      );
+      const closes = parsed.rows.filter(
+        (row) => row.schemaVersion === schemas.diagnostic && row.code === 'writer-close'
+      );
+      if (starts.length > closes.length) {
+        result.unclosedWriterCount++;
+        result.unclosedWriters.push({ ...starts[0], fileId });
+      }
     } catch {
+      result.unreadableFileCount++;
       result.diagnostics.push(usageDiagnostic('storage-failure'));
       continue;
     }
