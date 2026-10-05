@@ -513,7 +513,11 @@ function projectLegacy(
 ) {
   let body = observation.body.bytes;
   const sourceRows = legacyRows(body),
-    patches = [];
+    patches = [],
+    coveredMarkers = new Set(),
+    retiredMarkers = classifyMarkers(body).filter((marker) =>
+      invalidation.some((x) => x.identity === marker.identity && x.disposition === 'retired')
+    );
   for (const d of definitions) {
     const source = sourceRows.filter((x) => x.section === d.section)[d.occurrence - 1];
     if (!source || source.line !== d.originalBytes) revisionError('stale-projection-occurrence');
@@ -525,6 +529,14 @@ function projectLegacy(
         ? edits.acceptanceCriteria.find((x) => x.occurrence === d.occurrence)
         : null;
     let next = d.originalBytes;
+    // Compose contained marker removals before replacing this original criterion range.
+    const rowMarkers = retiredMarkers.filter(
+      (marker) => marker.start >= source.start && marker.end <= source.end
+    );
+    for (const marker of rowMarkers.reverse()) {
+      next = next.slice(0, marker.start - source.start) + next.slice(marker.end - source.start);
+      coveredMarkers.add(marker.identity);
+    }
     if (edit)
       next = edit.replacements
         .map((r) => `- [ ] ${r.text} ${declarationBytes(r.declaration)}`)
@@ -555,15 +567,16 @@ function projectLegacy(
       bytes: additions.map((edit) => `\n- [ ] \`${edit.command}\` <!-- id=${edit.id} -->`).join(''),
     });
   }
-  // Source ranges belong to the verified original section/occurrence, including insertion.
+  // Keep original marker identities/ranges; changing earlier criteria must not renumber them.
+  for (const marker of retiredMarkers) {
+    if (coveredMarkers.has(marker.identity)) continue;
+    if (sourceRows.some((row) => marker.start < row.end && marker.end > row.start))
+      revisionError('ambiguous-marker-range');
+    patches.push({ start: marker.start, end: marker.end, bytes: '' });
+  }
+  // Criterion, insertion and non-overlapping marker ranges all refer to the original body.
   for (const patch of patches.sort((a, b) => b.start - a.start))
     body = body.slice(0, patch.start) + patch.bytes + body.slice(patch.end);
-  // Remove retired marker occurrences by their own current source ranges as well.
-  const markerPatches = classifyMarkers(body).filter((marker) =>
-    invalidation.some((x) => x.identity === marker.identity && x.disposition === 'retired')
-  );
-  for (const marker of markerPatches.reverse())
-    body = body.slice(0, marker.start) + body.slice(marker.end);
   const marker = `<!-- aitm-criteria-revision schema="${REVISION_SCHEMA}" revision="${observation.revision + 1}" transaction-id="${transactionId}" semantic-digest="${digest}" -->`;
   body = body.replace(/<!--\s*aitm-criteria-revision\s[\s\S]*?-->\n?/g, '');
   return stampBodyVersion(
