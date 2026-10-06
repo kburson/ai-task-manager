@@ -20,6 +20,8 @@ import { markerProvenanceProperties } from './evidence-provenance.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
 import { resolveCitedOrLiteralCommands, resolveVcListStrict } from './vc-ref.mjs';
 
+// #1897 — canonical issue ACs precede embedded source headings; legacy fallback remains.
+const CANONICAL_AC_HEADING_RE = /^##\s+Acceptance Criteria\b[^\n]*$/im;
 const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
 const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
 const BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
@@ -145,9 +147,47 @@ export function parseAcEvidence(text) {
   };
 }
 
+function findCanonicalAcHeading(src) {
+  // Only live canonical headings gain precedence. Keep original offsets and
+  // leave legacy matching/section termination unchanged.
+  let fence = null,
+    comment = false,
+    offset = 0;
+  for (const raw of src.split('\n')) {
+    const index = offset;
+    offset += raw.length + 1;
+    const marker = raw.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      if (
+        marker &&
+        marker[1][0] === fence[0] &&
+        marker[1].length >= fence.length &&
+        !marker[2].trim()
+      )
+        fence = null;
+      continue;
+    }
+    if (comment) {
+      for (const token of raw.matchAll(/<!--|--!?>/g)) comment = token[0] === '<!--';
+      continue;
+    }
+    if (marker) {
+      fence = marker[1];
+      continue;
+    }
+    const heading = raw.match(CANONICAL_AC_HEADING_RE);
+    if (heading) {
+      heading.index = index;
+      return heading;
+    }
+    for (const token of raw.matchAll(/<!--|--!?>/g)) comment = token[0] === '<!--';
+  }
+  return null;
+}
+
 function locateAcSection(body) {
   const src = String(body || '');
-  const m = src.match(AC_HEADING_RE);
+  const m = findCanonicalAcHeading(src) || src.match(AC_HEADING_RE);
   if (!m) return null;
   const start = m.index + m[0].length;
   const rest = src.slice(start);
