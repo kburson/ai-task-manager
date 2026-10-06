@@ -169,7 +169,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:a3d2e296bc8a99fb2f1cf376b9d63357833da9e8761d006e6c2f782065537b67"
+        "sitesSha256": "sha256:e6c711e647ca5380d34a665747255c88ff3e355251edc864a3d75c6294a62c93"
       },
       "rationale": "Plan approval needs an explicit valid marker or exception; no untyped text can approve it."
     },

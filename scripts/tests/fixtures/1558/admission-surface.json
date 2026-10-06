@@ -2600,6 +2600,7 @@
       "classification": "agent-callable-verb",
       "command": "plan-approve",
       "staticImports": [
+        "../lib/criteria-revision/plan-approval.mjs",
         "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
