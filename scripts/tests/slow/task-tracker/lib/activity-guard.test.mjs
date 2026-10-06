@@ -1,3 +1,4 @@
+// @story #1872
 // @story #65
 // Tests for scripts/task-tracker/activity-guard.mjs
 //
@@ -10,8 +11,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
+// @story #1873
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import url from 'node:url';
@@ -32,7 +35,7 @@ const BASH_GUARD = path.join(path.dirname(GUARD), 'bash-guard.mjs');
 // ---------------------------------------------------------------------------
 
 function makeRepo({ state } = {}) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
+  const dir = createRuntimeRootFixture('aitm-activity-guard-');
   // Init bare git repo so `git rev-parse --show-toplevel` works.
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
@@ -48,7 +51,7 @@ function makeRepo({ state } = {}) {
 }
 
 function makeRepoNoState() {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-activity-guard-'));
+  const dir = createRuntimeRootFixture('aitm-activity-guard-');
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   // No state file at all.
   return dir;
@@ -810,12 +813,17 @@ test('native hook session selects its own state instead of an environment sessio
 
 // @story #1848
 test('scratch shell allowance validates physical targets and preserves early code restrictions', () => {
-  const dir = makeRepo({ state: 'backlog' });
+  const dir = createRuntimeRootFixture('scratch-shell-');
+  setActiveTask('scratch-native', { issue: '#65', kanbanState: 'backlog' }, dir);
   try {
     mkdirSync(path.join(dir, '.scratch'));
     mkdirSync(path.join(dir, 'src'));
     symlinkSync(path.join(dir, 'src'), path.join(dir, '.scratch', 'alias'));
-    const payload = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+    const payload = (command) => ({
+      session_id: 'scratch-native',
+      tool_name: 'Bash',
+      tool_input: { command },
+    });
     assert.equal(
       runGuard({ cwd: dir, payload: payload("cat > .scratch/scope.md <<'EOF'\ntext\nEOF") })
         .decision,

@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #383
 // #383 — end-to-end slow-lane test proving the #345 evidence gate and the #362
 // checkbox-proof invariant are reconciled: a verifier-declaring AC carrying a
@@ -66,7 +70,7 @@ function writeConfig(sandbox) {
 function writeState(sandbox, issueNum) {
   // #573: the global ledger lives under `.tmp/aitm/state/`.
   mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
-  writeFileSync(
+  writeFixtureTrackerState(
     path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
     JSON.stringify({
       active: `#${issueNum}`,

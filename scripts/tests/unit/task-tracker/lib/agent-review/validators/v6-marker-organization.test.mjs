@@ -326,3 +326,80 @@ test('bootstrap registers the validator on the shared singleton', async () => {
     'marker-organization not registered'
   );
 });
+
+// @story #1873
+// Catch policy relocation and shifts caused by extracting a preceding marker.
+const PROTECTED_SCOPE = `## Scope
+
+${'  <!-- aitm-scope-evidence-policy:v1 -->  '}
+
+- [x] Inspect output <!-- aitm-reviewed-scope-evidence comment="123" sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" lineage="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" -->
+`;
+
+for (const [label, scope] of [
+  ['indented policy', PROTECTED_SCOPE],
+  [
+    'preceding ordinary marker',
+    PROTECTED_SCOPE.replace('## Scope\n', '## Scope\n<!-- aitm-entered-plan ts="earlier" -->\n'),
+  ],
+]) {
+  test(`#1873 preserves protected Scope positions with ${label}`, async () => {
+    const { validateReviewedDelta } =
+      await import('../../../../../../task-tracker/lib/reviewed-scope/record.mjs');
+    const body = `<!-- aitm-refine-complete ts="outside" -->\n\n${scope}\n## AITM Progress Markers\n\n<!-- aitm-body-version version="3" -->`;
+    const result = validate({ body });
+    assert.equal(result.pass, true);
+    const out = result.normalized ?? body;
+    assert.doesNotThrow(() => validateReviewedDelta(body, out));
+    assert.ok(out.includes(scope), 'protected section retains its marker bytes and positions');
+    assert.ok(out.indexOf('ts="outside"') > out.indexOf('## AITM Progress Markers'));
+    assert.equal(validate({ body: out }).normalized, undefined);
+  });
+}
+
+test('#1873 a real normalizer run permits its Review stamp without weakening the guard', async () => {
+  const { validateReviewedDelta } =
+    await import('../../../../../../task-tracker/lib/reviewed-scope/record.mjs');
+  const { createRegistry } =
+    await import('../../../../../../task-tracker/lib/agent-review/registry.mjs');
+  const { stampAgentReviewPassed, isAgentReviewComplete } =
+    await import('../../../../../../task-tracker/lib/agent-review/review-gate.mjs');
+  const body = `${PROTECTED_SCOPE}\n## Definition of Done\n\n- [ ] Agent Review Passed\n\n## AITM Progress Markers\n\n<!-- aitm-body-version version="3" -->`;
+  const isolated = createRegistry();
+  isolated.register({ id: 'marker-organization', validate });
+  const run = isolated.runAll({ body });
+  assert.equal(run.pass, true);
+  const stamped = stampAgentReviewPassed(run.normalizedBody ?? body, {
+    ts: '2026-10-04T00:00:00.000Z',
+    validators: run.validatorsRun,
+  });
+  assert.doesNotThrow(() => validateReviewedDelta(body, stamped));
+  assert.equal(isAgentReviewComplete(stamped), true);
+  assert.throws(
+    () =>
+      validateReviewedDelta(
+        stamped,
+        stamped.replace('  <!-- aitm-scope-evidence-policy:v1 -->  \n', '') +
+          '\n<!-- aitm-scope-evidence-policy:v1 -->'
+      ),
+    /reviewed-scope-policy-mutation/
+  );
+  assert.throws(
+    () => validateReviewedDelta(stamped, stamped.replace('comment="123"', 'comment="456"')),
+    /reviewed-scope-pointer-mutation/
+  );
+});
+
+// @story #1873
+for (const fence of ['```markdown', '~~~markdown']) {
+  test(`#1873 a fenced policy example cannot suppress live marker organization (${fence})`, () => {
+    const close = fence.startsWith('`') ? '```' : '~~~';
+    const example = [fence, '<!-- aitm-scope-evidence-policy:v1 -->', close].join('\n');
+    const live = '<!-- aitm-entered-plan ts="live" -->';
+    const body = `## Scope\n\n${example}\n\n${live}\n\n## AITM Progress Markers`;
+    const out = validate({ body }).normalized;
+    assert.ok(out.includes(example));
+    assert.ok(out.indexOf(live) > out.indexOf('## AITM Progress Markers'));
+    assert.equal(validate({ body: out }).normalized, undefined);
+  });
+}

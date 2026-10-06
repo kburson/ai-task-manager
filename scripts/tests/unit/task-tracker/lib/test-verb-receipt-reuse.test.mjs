@@ -517,3 +517,205 @@ test('/task test refuses when the completed sandbox fingerprint is dirty', async
   assert.ok(result.reasons.some(({ code }) => code === 'sandbox-dirty'));
   assert.match(comments.at(-1), /sandbox-dirty/);
 });
+
+// @story #1899
+async function runCloudCoverageFixture({
+  cloudExit = 0,
+  extraExit = 0,
+  multiple = false,
+  prerequisite = 'test-cloud-complete',
+} = {}) {
+  const commands = [
+    { command: 'npm test' },
+    { command: 'npm run test:slow' },
+    { command: 'node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs' },
+  ];
+  let body = [
+    '<!-- aitm-last-known-state: develop -->',
+    '## Verification Commands',
+    ...commands.map(({ command }, i) => '- [ ] `' + command + '` <!-- id=' + (i + 1) + ' -->'),
+  ].join('\n');
+  const providerConfig = {
+    id: 'project',
+    develop: {
+      iterationSteps: [],
+      finalSteps: [
+        { classification: 'lint-full', kind: 'lint', command: 'npm run lint' },
+        { classification: 'format-full', kind: 'format', command: 'npm run format:check' },
+      ],
+    },
+    test: {
+      setup: 'npm-ci',
+      steps: [
+        {
+          classification: prerequisite,
+          kind: 'test',
+          command: 'node scripts/maintenance/verify-ci-receipts.mjs',
+        },
+        ...(multiple
+          ? [
+              {
+                classification: 'test-extra',
+                kind: 'test',
+                command: 'node scripts/maintenance/verify-affected-or-cloud.mjs',
+              },
+            ]
+          : []),
+      ],
+      declaredCommandCoverage: [
+        {
+          command: 'npm test',
+          requires: multiple ? [prerequisite, 'test-extra'] : [prerequisite],
+        },
+        { command: 'npm run test:slow', requires: [prerequisite] },
+      ],
+    },
+  };
+  const base = developReceipt(commands);
+  base.provider = { id: 'project', requiredClassifications: ['lint-full', 'format-full'] };
+  base.commands = base.commands.map((command) => ({
+    ...command,
+    providerId: 'project',
+    kind: command.classification === 'lint-full' ? 'lint' : 'format',
+  }));
+  const executed = [];
+  const comments = [];
+  const result = await runVerbTest({
+    cfg: { ...cfg, verificationProvider: providerConfig },
+    issueNumber: 1089,
+    projectDir: process.cwd(),
+    now: () => INSTANT,
+    deps: {
+      fetchBody: async () => body,
+      mutateBody: async ({ mutate }) => {
+        body = mutate(body);
+        return { status: 'ok', body };
+      },
+      postComment: async ({ body: comment }) => comments.push(comment),
+      getHeadSha: async () => SHA,
+      runDevelopFinalization: async () => ({
+        ok: true,
+        fingerprint: fingerprint('/outer', commands),
+        receipt: base,
+      }),
+      createWorktree: async () => {},
+      removeWorktree: async () => {},
+      npmCi: async () => {},
+      getSandboxHeadSha: async () => SHA,
+      buildFingerprint: ({ verificationCommands }) => fingerprint('/sandbox', verificationCommands),
+      execInSandbox: async ({ argv }) => {
+        const command = argv.join(' ');
+        executed.push(command);
+        const exit =
+          command === 'node scripts/maintenance/verify-ci-receipts.mjs'
+            ? cloudExit
+            : command === 'node scripts/maintenance/verify-affected-or-cloud.mjs'
+              ? extraExit
+              : 0;
+        return {
+          exit,
+          stdout: 'fixture execution',
+          stderr: '',
+          durationMs: 5,
+          startedAt: INSTANT,
+          completedAt: INSTANT,
+        };
+      },
+      moveState: async () => ({ ok: true }),
+      logIssueTime: async () => {},
+    },
+  });
+  return { result, body, executed, comments };
+}
+
+test('native Test derives covered suites from cloud proof without forged execution records', async () => {
+  const { result, body, executed } = await runCloudCoverageFixture();
+  assert.equal(result.status, 'passed');
+  assert.deepEqual(executed, [
+    'node scripts/maintenance/verify-ci-receipts.mjs',
+    'node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs',
+  ]);
+  assert.deepEqual(
+    result.results
+      .filter(({ command }) => ['npm test', 'npm run test:slow'].includes(command))
+      .map(({ command, passed, receiptCommand }) => ({ command, passed, receiptCommand })),
+    [
+      { command: 'npm test', passed: true, receiptCommand: undefined },
+      { command: 'npm run test:slow', passed: true, receiptCommand: undefined },
+    ]
+  );
+  const receipt = parseVerificationReceipt(body, 'test');
+  assert.equal(receipt.provider.id, 'project');
+  assert.ok(
+    receipt.commands.some(
+      ({ classification, command, args }) =>
+        classification === 'test-cloud-complete' &&
+        command === 'node' &&
+        args.join(' ') === 'scripts/maintenance/verify-ci-receipts.mjs'
+    )
+  );
+  assert.ok(
+    receipt.commands.every(
+      ({ command, args }) =>
+        !['npm test', 'npm run test:slow'].includes([command, ...args].join(' '))
+    )
+  );
+  assert.ok(
+    receipt.commands.every(({ classification }) => !classification.startsWith('test-covered-'))
+  );
+});
+
+test('a failed cloud proof fails every dependent suite and never executes covered suites', async () => {
+  const { result, body, executed } = await runCloudCoverageFixture({ cloudExit: 1 });
+  assert.equal(result.status, 'failed');
+  assert.deepEqual(
+    result.results
+      .filter(({ command }) => ['npm test', 'npm run test:slow'].includes(command))
+      .map(({ passed }) => passed),
+    [false, false]
+  );
+  assert.ok(!executed.includes('npm test') && !executed.includes('npm run test:slow'));
+  assert.equal(parseVerificationReceipt(body, 'test'), null);
+});
+
+test('all explicit prerequisites must pass; an unrelated suite may still pass', async () => {
+  const { result, executed } = await runCloudCoverageFixture({ multiple: true, extraExit: 1 });
+  assert.equal(result.status, 'failed');
+  assert.equal(result.results.find(({ command }) => command === 'npm test').passed, false);
+  assert.equal(result.results.find(({ command }) => command === 'npm run test:slow').passed, true);
+  assert.ok(executed.includes('node scripts/maintenance/verify-affected-or-cloud.mjs'));
+  assert.ok(!executed.includes('npm test') && !executed.includes('npm run test:slow'));
+});
+
+test('a successful uncovered check cannot shadow a failed configured coverage prerequisite', async () => {
+  const { result, body } = await runCloudCoverageFixture({
+    cloudExit: 1,
+    prerequisite: 'test-targeted-1',
+  });
+  assert.equal(result.status, 'failed');
+  assert.deepEqual(
+    result.results
+      .filter(({ command }) => ['npm test', 'npm run test:slow'].includes(command))
+      .map(({ passed }) => passed),
+    [false, false]
+  );
+  assert.equal(parseVerificationReceipt(body, 'test'), null);
+});
+
+test('successful coverage retains distinct configured and uncovered execution identities', async () => {
+  const { result, body } = await runCloudCoverageFixture({ prerequisite: 'test-targeted-1' });
+  assert.equal(result.status, 'passed');
+  const receipt = parseVerificationReceipt(body, 'test');
+  assert.deepEqual(
+    receipt.commands
+      .filter(({ command }) => command === 'node')
+      .map(({ classification, args }) => ({ classification, args })),
+    [
+      { classification: 'test-targeted-1', args: ['scripts/maintenance/verify-ci-receipts.mjs'] },
+      {
+        classification: 'test-targeted-2',
+        args: ['--test', 'scripts/tests/unit/task-tracker/lib/markers.test.mjs'],
+      },
+    ]
+  );
+});

@@ -1,6 +1,7 @@
 // @story #310
 // Unit tests for scripts/task-tracker/lib/epic-children-gate.mjs (#135).
 
+import { legacyRankWavePorts } from '../../../fixtures/legacy-rank-wave.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
@@ -206,6 +207,7 @@ test('planRefineWipGate: refuses when an epic sibling already advances', async (
     cfg,
     issueNumber: 11,
     deps: {
+      ...legacyRankWavePorts,
       fetchParentIssue: async () => 5,
       fetchSiblings: async () => [
         { number: 10, state: 'develop' },
@@ -227,6 +229,7 @@ test('planRefineWipGate: fails closed when sibling fetch throws', async () => {
     cfg,
     issueNumber: 11,
     deps: {
+      ...legacyRankWavePorts,
       fetchParentIssue: async () => 5,
       fetchSiblings: async () => {
         throw new Error('network down');

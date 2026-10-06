@@ -1,3 +1,5 @@
+import { prepareGraphqlQuery } from '../../task-tracker/lib/graphql-usage/identity.mjs';
+import { usageEnabled } from '../../task-tracker/lib/graphql-usage/collection.mjs';
 import { promisify } from 'node:util';
 import { ghClient } from './gh-client.mjs';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
@@ -51,10 +53,25 @@ export async function gh(args, options = {}) {
 }
 
 export async function gql(query, variables = {}, options = {}) {
-  const payload = JSON.stringify({ query, variables });
-  const out = await gh(['api', 'graphql', '--input', '-'], { ...options, input: payload });
+  const env = options.env || process.env;
+  const prepared = usageEnabled(env)
+    ? prepareGraphqlQuery(query, { selectedOperation: options.operationName })
+    : { query, alias: null };
+  const payload = JSON.stringify({
+    query: prepared.query,
+    variables,
+    ...(options.operationName ? { operationName: options.operationName } : {}),
+  });
+  const { operationName: _operationName, ...transportOptions } = options;
+  if (prepared.alias)
+    transportOptions.env = {
+      ...env,
+      AITM_GRAPHQL_USAGE_PRIVATE: JSON.stringify({ alias: prepared.alias }),
+    };
+  const out = await gh(['api', 'graphql', '--input', '-'], { ...transportOptions, input: payload });
   const parsed = JSON.parse(out);
   if (parsed.errors) throw new Error(parsed.errors.map((e) => e.message).join('; '));
+  if (prepared.alias && parsed.data) delete parsed.data[prepared.alias];
   return parsed.data;
 }
 

@@ -427,7 +427,13 @@ ancestor, synchronization should not manufacture an empty commit.
 
 After Test, any operation that moves HEAD—including a merge, rebase, amend, or
 empty commit—makes the exact-SHA receipt stale.
-That HEAD move requires a new `/task test #N` pass before Review. The re-Test is
+That HEAD move requires a new `/task test #N` pass before Review.
+For legacy issue-body receipts, Test entry predicts exact stale-receipt retirement
+without changing the issue. The locked runner retires the eligible old Test
+receipt after ordinary entry and command-authority checks, verifies read-back,
+and checks entry again before finalization or sandbox execution. Malformed,
+foreign-issue or ambiguous claims refuse retirement; current-head provenance
+continues to be audited. The re-Test is
 not redundant when the synchronized parent changed the tree: the earlier receipt
 did not observe those changes, even when they are outside the issue's own files.
 Sync again after Test only when the parent actually advanced or another
@@ -654,8 +660,16 @@ thing:
 **Delivery split by parent.** How a done child reaches trunk forks on its parent:
 
 - A **non-trunk parent** takes the local merge-back path: rebase the child onto the
-  parent, run the close/done gates, fast-forward the parent, and delete the child
-  branch (verify-not-perform under the epic-branch guardrail).
+  parent, verify through the child project configuration, and fast-forward the
+  parent to the exact verified commit. Use `aitm merge-back <child#> <worktree-path> --preserve-worktree` to retain the checkout, branch and upstream while finishing
+  exact-head approval and close. Without this flag, successful integration removes
+  the child checkout and branch. A configured project provider runs its validated
+  Test plan and issue-declared commands; projects without one retain the Node
+  suite sections. Stale or missing CI evidence refuses integration after rebase:
+  push the rebased child, wait for green CI, then retry with fresh receipts. Failed
+  verification never falls back to host suites or cleans up the child. Recorded
+  parent checkout authority and source cleanliness are checked again before
+  integration (verify-not-perform under the epic-branch guardrail).
 
   > **Ratified-but-pending (#871 → [#1257](https://github.com/kburson/ai-task-manager/issues/1257)):**
   > the fast-forward step becomes a **squash**, so each child lands on its epic as
@@ -1668,3 +1682,12 @@ offender by making it exercise a `scripts/**` module, converting its assertions 
 a lint, or deleting it — do not append it to the baseline to silence the gate.
 
 `npm run quality` must exit 0 before close. CI runs the same script.
+
+## Authorized epic rank waves
+
+Sequential child execution remains the default. Explicitly adopted rank waves
+permit independent same-rank children while requiring every lower rank to be
+actually Done. Plan, Promote, Explain and pull-next share the admission policy;
+execution revalidates under a physical common-directory parent lock.
+See [Authorized epic rank waves](epic-rank-waves.md) for the registered
+`epic-wave` schemas, human source provenance, recovery, handoff and refresh.

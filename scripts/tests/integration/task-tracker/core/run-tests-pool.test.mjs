@@ -1,4 +1,4 @@
-// @story #863
+// @story #863 #1872
 /**
  * Pool-correctness verifier for #863 (vc:1).
  *
@@ -22,6 +22,7 @@ import {
   slowPoolConcurrency,
   subprocessPoolConcurrency,
   spawnTestChild,
+  createTestFileEnvironment,
 } from '../../../../run-tests-pool.mjs';
 import { describeSpawnResult } from '../../../../run-tests-report.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -269,4 +270,42 @@ test('spawnTestChild resolves (never rejects) on a spawn failure', async () => {
   const res = await spawnTestChild({ full: '/nope', env: process.env, _spawn: fakeSpawn });
   assert.equal(res.status, null);
   assert.equal(res.error?.code, 'ENOENT');
+});
+
+// Inherited canonical Test root aliases must not retarget controlled fixtures.
+test('test children own their root overrides while native identity and ordinary environment survive', async () => {
+  const dir = mkdtempProjectIsolated('pool-env-');
+  const full = path.join(dir, 'environment.mjs');
+  const aliases = [
+    'AI_TASK_MANAGER_PROJECT_DIR',
+    'TASK_TRACKER_PROJECT_DIR',
+    'CLAUDE_PROJECT_DIR',
+    'AITM_CAPTURE_PROJECT_DIR',
+  ];
+  const parent = {
+    ...process.env,
+    POOL_MARKER: 'retained',
+    ...Object.fromEntries(aliases.map((key) => [key, process.cwd()])),
+  };
+  writeFileSync(
+    full,
+    `const aliases = ${JSON.stringify(aliases)};
+    const inherited = aliases.filter(key => process.env[key] !== undefined);
+    process.env.AI_TASK_MANAGER_PROJECT_DIR = ${JSON.stringify(dir)};
+    console.log(JSON.stringify({ inherited, root: process.env.AI_TASK_MANAGER_PROJECT_DIR,
+      marker: process.env.POOL_MARKER, nativeSession: process.env.CODEX_THREAD_ID }));`
+  );
+  try {
+    const result = await spawnTestChild({ full, env: createTestFileEnvironment(parent) });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      inherited: [],
+      root: dir,
+      marker: 'retained',
+      ...(parent.CODEX_THREAD_ID === undefined ? {} : { nativeSession: parent.CODEX_THREAD_ID }),
+    });
+    assert.equal(parent.AI_TASK_MANAGER_PROJECT_DIR, process.cwd());
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

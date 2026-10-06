@@ -340,3 +340,220 @@ test('attributed creation requires fresh unique canonical identity and matching 
     /timing-publication:source/
   );
 });
+
+// @story #1876
+test('runtime opener replay ignores only its publisher-derived delta', () => {
+  const start = buildRow({
+    ts: now - 3000,
+    event: 'start',
+    actorKey: key,
+    deltaWords: 0,
+    wordMarker: 100,
+    fullWordMarker: 1000,
+  });
+  const started = appendRow(buildInitialComment(), start);
+  assert.equal(parseTimingRow(start).cells[5], '');
+  assert.equal(appendRow(started, start), started);
+  const pause = buildRow({
+    ts: now - 2000,
+    event: 'pause:blocked',
+    actorKey: key,
+    deltaWords: 0,
+    wordMarker: 110,
+    fullWordMarker: 1010,
+  });
+  const resumed = buildRow({
+    ts: now - 1000,
+    event: 'resumed',
+    actorKey: key,
+    deltaWords: 0,
+    wordMarker: 117,
+    fullWordMarker: 1020,
+  });
+  const body = appendRow(appendRow(started, pause), resumed);
+  assert.equal(
+    body
+      .split('\n')
+      .map(parseTimingRow)
+      .filter((row) => row?.event === 'resumed')[0].cells[5],
+    '7'
+  );
+  assert.equal(appendRow(body, resumed), body);
+});
+
+test('queued original opener drains after an accepted write loses its response', async () => {
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { default: path } = await import('node:path');
+  const { projectScratchDir } = await import('../../../../task-tracker/lib/scratch-dir.mjs');
+  const { enqueue, peek, drainMatching } = await import('../../../../task-tracker/queue.mjs');
+  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'actor-replay-'));
+  const queuePath = path.join(dir, 'queue.json');
+  let body = buildInitialComment();
+  let writes = 0;
+  const row = buildRow({
+    ts: now,
+    event: 'start',
+    actorKey: key,
+    deltaWords: 0,
+    wordMarker: 10,
+    fullWordMarker: 100,
+  });
+  const deps = {
+    findTimingComment: async () => ({ id: 'IC_replay', body }),
+    readCanonicalTimingSource: async () => ({
+      status: 'found',
+      source: {
+        repository: 'owner/repo',
+        issue: 1876,
+        commentNodeId: 'IC_replay',
+        body,
+      },
+    }),
+    updateTimingComment: async (_id, _repo, value) => {
+      body = value;
+      writes++;
+      if (writes === 1) throw new Error('response lost after acceptance');
+    },
+  };
+  try {
+    const result = await postTimingSafely(
+      { issue: 1876, repo: 'owner/repo', row, queuePath },
+      {
+        postTimingEvent: (args) => postTimingEvent({ ...args, lock: false, deps }),
+        enqueue,
+        warn: () => {},
+      }
+    );
+    assert.equal(result.queued, true);
+    assert.equal(peek(queuePath)[0].row, row);
+    const drained = await drainMatching(
+      (event) =>
+        postTimingEvent({
+          issueNumber: event.issue,
+          repo: 'owner/repo',
+          row: event.row,
+          lock: false,
+          deps,
+        }),
+      queuePath,
+      (event) => event.issue === 1876
+    );
+    assert.deepEqual(drained, { delivered: 1, pending: 0 });
+    assert.deepEqual(peek(queuePath), []);
+    assert.equal(writes, 1, 'the accepted original is acknowledged without another update');
+    assert.equal(
+      body
+        .split('\n')
+        .map(parseTimingRow)
+        .filter((value) => value?.actorKey).length,
+      1
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// @story #1876
+test('actor replay preserves every non-derived cell and marker in its identity', () => {
+  const start = buildRow({
+    ts: now - 3000,
+    event: 'start',
+    actorKey: key,
+    activeSec: 0,
+    idleSec: 0,
+    deltaWords: 0,
+    wordMarker: 100,
+    fullWordMarker: 1000,
+    description: 'original opener',
+  });
+  const body = appendRow(buildInitialComment(), start);
+  for (const extra of [
+    { ts: now - 2000 },
+    { wordMarker: 101 },
+    { fullWordMarker: 1001 },
+    { activeSec: 1 },
+    { idleSec: 1 },
+    { description: 'changed opener' },
+  ]) {
+    const changed = buildRow({
+      ts: now - 3000,
+      event: 'start',
+      actorKey: key,
+      activeSec: 0,
+      idleSec: 0,
+      deltaWords: 0,
+      wordMarker: 100,
+      fullWordMarker: 1000,
+      description: 'original opener',
+      ...extra,
+    });
+    assert.throws(() => appendRow(body, changed), /duplicate actor start/);
+  }
+  assert.throws(() => appendRow(body, start.replace('a=0', 'a=1')), /duplicate actor start/);
+  const independent = start.replace(key.slice(3), other.slice(3));
+  assert.notEqual(appendRow(body, independent), body);
+});
+
+test('an additional interval row cell is conflicting evidence, never an accepted replay', () => {
+  const original = make();
+  const body = appendRow(buildInitialComment(), original);
+  const changed = original.replace(' | <!-- aitm-actor:', ' | | new evidence | <!-- aitm-actor:');
+  assert.throws(() => appendRow(body, changed), /conflicting-interval/);
+});
+
+// @story #1873
+// Displayed word deltas are derived; Unknown recovery identity stays immutable.
+test('#1873 Unknown recovery publication remains idempotent after derived delta normalization', async () => {
+  const row = buildRow({
+    ts: now,
+    event: 'session-end-recovery',
+    actorKey: key,
+    activeSec: null,
+    idleSec: null,
+    deltaWords: 3,
+    wordMarker: 103,
+    fullWordMarker: 203,
+    description: 'prior session end unavailable',
+  });
+  let body = buildInitialComment();
+  let writes = 0;
+  const args = {
+    issueNumber: 1857,
+    repo: 'owner/repo',
+    row,
+    lock: false,
+    deps: {
+      readCanonicalTimingSource: async () => ({
+        status: 'found',
+        source: {
+          repository: 'owner/repo',
+          issue: 1857,
+          commentNodeId: 'IC_recovery',
+          body,
+        },
+      }),
+      updateTimingComment: async (_id, _repo, updated) => {
+        body = updated;
+        writes++;
+      },
+    },
+  };
+  await postTimingEvent(args);
+  await postTimingEvent(args);
+  assert.equal(writes, 1);
+  const rows = body
+    .split('\n')
+    .map(parseTimingRow)
+    .filter((entry) => entry?.actorKey);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].cells[3], 'Unknown');
+  assert.equal(rows[0].cells[4], 'Unknown');
+  assert.equal(rows[0].engagement, undefined);
+  assert.equal(appendRow(body, row), body);
+  const changed = row.replace('prior session end unavailable', 'distinct recovery observation');
+  assert.notEqual(
+    appendRow(body, changed),
+    body,
+    'distinct immutable content must remain distinct'
+  );
+});

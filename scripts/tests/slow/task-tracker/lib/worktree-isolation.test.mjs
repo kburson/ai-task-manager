@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @story #1872
+import { loadState } from '../../../../task-tracker/state.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #130
 // Worktree isolation — issue #130.
 //
@@ -38,25 +42,7 @@ function makeSandbox(prefix) {
 }
 
 function readState(dir) {
-  // Per-session migration (#212): bound-issue triple lives in
-  // <root>/.tmp/aitm/sessions/<sid>/active-task.json (#573). Fall back to the
-  // relocated global ledger if a session record isn't present.
-  const sid = process.env.CLAUDE_SESSION_ID || 'default-session';
-  const sessionPath = path.join(dir, '.tmp', 'aitm', 'sessions', sid, 'active-task.json');
-  const globalPath = path.join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
-  const globalRaw = (() => {
-    try {
-      return JSON.parse(readFileSync(globalPath, 'utf8'));
-    } catch {
-      return {};
-    }
-  })();
-  try {
-    const session = JSON.parse(readFileSync(sessionPath, 'utf8'));
-    return { ...globalRaw, active: session.issue ?? null };
-  } catch {
-    return { active: globalRaw.active ?? null, ...globalRaw };
-  }
+  return loadState(path.join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
 }
 
 const parent = makeSandbox('tt-iso-parent-');

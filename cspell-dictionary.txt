@@ -65,6 +65,7 @@ checkmarks
 checkpointing
 cheerleading
 chokepoint
+chokepoints
 chrono
 classoption
 comparables
@@ -178,6 +179,7 @@ inputtokens
 inspectable
 instrumentable
 interceptable
+interleavings
 investigable
 ismain
 issuecomment
@@ -341,6 +343,7 @@ realpath
 realpaths
 reappend
 reapproval
+reapprove
 reattribute
 reattributed
 reattributes
@@ -356,6 +359,7 @@ recharacterization
 recognisable
 recognises
 redelegated
+rederiving
 Redirections
 redirections
 redispatch
@@ -507,6 +511,8 @@ underspecified
 undertouched
 undrafted
 unestimated
+unfiled
+unforgeable
 ungated
 ungroomed
 uninspectable
@@ -517,6 +523,7 @@ unisolated
 unkeyed
 unlaned
 unlogged
+unmappable
 unmatch
 unmigrated
 unpark
@@ -608,3 +615,5 @@ reserialization
 unadopted
 unrun
 unadmittable
+AIPR
+ungranted

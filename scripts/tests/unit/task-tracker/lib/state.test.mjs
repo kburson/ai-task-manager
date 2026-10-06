@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 // @story #309
-// @story #1857
+// @story #1857 #1872
 // Fixture: this fixture owns its actor instead of using ambient session state.
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import {
   loadState,
@@ -20,8 +19,11 @@ import {
   durableWordMarkers,
 } from '../../../../task-tracker/state.mjs';
 
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-'));
-const statePath = path.join(tmp, 'state.json');
+// #1873 Pure filesystem state fixtures own a sanctioned runtime host; no Git.
+const fixtureParent = path.join(process.cwd(), '.ai-task-manager', 'runtime', 'test-fixtures');
+mkdirSync(fixtureParent, { recursive: true });
+const tmp = mkdtempSync(path.join(fixtureParent, 'tt-state-'));
+const statePath = path.join(tmp, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
 const preferredStatePath = path.join(tmp, '.ai-task-manager', 'task-tracker-state.json');
 const legacyStatePath = path.join(tmp, '.claude', 'task-tracker-state.json');
 
@@ -107,9 +109,14 @@ s = loadState(statePath);
 assert.deepEqual(s, ownBeforeCorruption);
 
 // Test 6: preferred .ai-task-manager state reads legacy .claude state as fallback
-saveState({ active: '#200', lastActive: '#199' }, legacyStatePath);
+// Actor authority belongs to the preferred root; legacy compatibility bytes
+// supply shared data, never another root's active actor binding.
+saveState({ active: '#200', lastActive: '#199', compatibilityValue: 'legacy' }, preferredStatePath);
+mkdirSync(path.dirname(legacyStatePath), { recursive: true });
+renameSync(preferredStatePath, legacyStatePath);
 s = loadState(preferredStatePath);
 assert.equal(s.active, '#200');
+assert.equal(s.compatibilityValue, 'legacy');
 
 // Test 7: writes go to preferred path after fallback read
 saveState({ ...s, active: '#201' }, preferredStatePath);
@@ -123,7 +130,7 @@ assert.equal(s.active, '#201');
 // '.ai-task-manager/task-tracker-state.json' relative to repo root.
 {
   const cwdBefore = process.cwd();
-  const relTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-rel-'));
+  const relTmp = mkdtempSync(path.join(fixtureParent, 'tt-state-rel-'));
   // #273 — sid resolution now consults the provider registry env keys
   // (CLAUDE_CODE_SESSION_ID, CLAUDE_SESSION_ID, CODEX_THREAD_ID,
   // CODEX_SESSION_ID, plus AI_TASK_MANAGER_SESSION_ID). Save+restore so this test pins the
@@ -210,7 +217,7 @@ assert.equal(
 // and returns 0 when the project has no state yet.
 {
   const cwdBefore = process.cwd();
-  const dwTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-dw-'));
+  const dwTmp = mkdtempSync(path.join(fixtureParent, 'tt-state-dw-'));
   const savedEnv = {
     CLAUDE_CODE_SESSION_ID: process.env.CLAUDE_CODE_SESSION_ID,
     CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID,

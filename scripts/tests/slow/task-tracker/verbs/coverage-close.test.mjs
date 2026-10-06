@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #613
+// @story #613 #1872
 // Coverage for verbs/close.mjs. Drives the real `verbClose` against a FLAT ctx
 // of injected fakes + a real temp state file, trapping process.exit so guard
 // exits are observable. `tickLifecycleOnClose` is hit directly via its
@@ -131,16 +131,15 @@ function makeCtx(statePath, dir, over = {}) {
 // Drive verbClose with managed state/env/cleanup; trap process.exit + capture
 // console. Dirty tests need the check ON (env unset); others skip it so the
 // real (possibly dirty) worktree never trips the guard.
+const setEnv = (key, value) =>
+  value === undefined ? delete process.env[key] : (process.env[key] = value);
 async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
   const previousCwd = process.cwd();
   const savedEnv = Object.fromEntries(
-    ['TT_SKIP_DIRTY_CHECK', 'CI', 'AI_TASK_MANAGER_PROJECT_DIR'].map((key) => [
-      key,
-      process.env[key],
-    ])
+    ['TT_SKIP_DIRTY_CHECK', 'CI', 'AI_TASK_MANAGER_PROJECT_DIR', 'AI_TASK_MANAGER_SESSION_ID'].map(
+      (key) => [key, process.env[key]]
+    )
   );
-  const setEnv = (key, value) =>
-    value === undefined ? delete process.env[key] : (process.env[key] = value);
   const real = { exit: process.exit, log: console.log, err: console.error, warn: console.warn };
   let dir,
     statePath,
@@ -157,6 +156,8 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
     setEnv('TT_SKIP_DIRTY_CHECK', dirty ? undefined : '1');
     setEnv('CI', ci);
     setEnv('AI_TASK_MANAGER_PROJECT_DIR', dir);
+    // This isolated fixture supplies its actor instead of borrowing a host session.
+    setEnv('AI_TASK_MANAGER_SESSION_ID', 'coverage-close-fixture');
     saveState(state, statePath);
     const ctx = makeCtx(statePath, dir, over);
     process.exit = (code) => {
@@ -806,8 +807,10 @@ test('nested fixture state never reads or clears its isolated parent session', (
   const outer = mkdtempOutsideRepo('aitm-1857-parent-');
   const child = join(outer, '.ai-task-manager', 'runtime', 'test-fixtures', 'child');
   const priorCwd = process.cwd(),
-    priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR,
+    priorSession = process.env.AI_TASK_MANAGER_SESSION_ID;
   try {
+    process.env.AI_TASK_MANAGER_SESSION_ID = 'coverage-close-parent-fixture';
     mkdirSync(child, { recursive: true });
     execFileSync('git', ['init', '-q', outer]);
     execFileSync('git', ['init', '-q', child]);
@@ -839,8 +842,8 @@ test('nested fixture state never reads or clears its isolated parent session', (
     assert.equal(readFileSync(sentinel, 'utf8'), bytes);
   } finally {
     process.chdir(priorCwd);
-    if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
-    else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
+    setEnv('AI_TASK_MANAGER_PROJECT_DIR', priorRoot);
+    setEnv('AI_TASK_MANAGER_SESSION_ID', priorSession);
     rmSync(outer, { recursive: true, force: true });
   }
 });

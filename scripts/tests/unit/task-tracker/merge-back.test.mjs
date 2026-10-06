@@ -1,4 +1,4 @@
-// @story #905
+// @story #905 #1882
 // #905 — merge a child back into its epic (design: "Merge-back protocol").
 // Opportunistically sync the epic onto its parent (skip if already current),
 // rebase the child onto the epic head, run the child's tests, then fast-forward
@@ -163,7 +163,10 @@ test('post-rebase test failure refuses the merge and skips cleanup', () => {
 });
 
 test('#864: the test-runner runs bounded sections, not the retired test:all', () => {
-  const src = readFileSync(path.join(__dir, '../../../task-tracker/merge-back.mjs'), 'utf8');
+  const src = readFileSync(
+    path.join(__dir, '../../../task-tracker/lib/merge-back-verification.mjs'),
+    'utf8'
+  );
   // No functional caller of the retired monolith may remain.
   assert.ok(
     !/\brun',\s*'test:all'|\['run',\s*'test:all'\]/.test(src),
@@ -578,4 +581,89 @@ test('#1485: the CLI wires the prefetched keyed graph, not a constant single nod
     !/parseBranchName\(/.test(src),
     'merge-back.mjs must not parse a branch name for issue identity (#1485)'
   );
+});
+
+// #1882: retained checkout is required for exact-head completion.
+test('#1882: preservation retains the child checkout, branch and upstream after integration', () => {
+  const git = makeGit({ childUpstream: 'refs/remotes/origin/feature/child/910' });
+  const result = mergeBack({
+    child: 910,
+    path: './.scratch/wt/910',
+    preserveWorktree: true,
+    deps: { graph, git, runTests: () => true },
+  });
+  assert.equal(result.merged, true);
+  const calls = git.calls.map((args) => args.join(' '));
+  assert.ok(calls.includes('merge --ff-only feature/child/910'));
+  assert.ok(!calls.some((call) => call.startsWith('worktree remove ')));
+  assert.ok(!calls.some((call) => call.startsWith('branch ')));
+  assert.ok(!calls.some((call) => call.startsWith('for-each-ref ')));
+});
+
+test('#1882: non-boolean verification cannot silently authorize a merge', () => {
+  for (const result of [Promise.resolve(false), {}, 'passed', 1]) {
+    const git = makeGit();
+    assert.throws(
+      () =>
+        mergeBack({
+          child: 910,
+          path: './.scratch/wt/910',
+          deps: { graph, git, runTests: () => result },
+        }),
+      /tests failed/
+    );
+    assert.ok(!git.calls.some((args) => args[0] === 'merge'));
+    assert.ok(!git.calls.some((args) => args[0] === 'worktree'));
+  }
+});
+
+test('#1882: invalid preservation values refuse before any Git mutation', () => {
+  const git = makeGit();
+  assert.throws(
+    () =>
+      mergeBack({
+        child: 910,
+        path: './.scratch/wt/910',
+        preserveWorktree: 'yes',
+        deps: { graph, git, runTests: () => true },
+      }),
+    /preserveWorktree/
+  );
+  assert.deepEqual(git.calls, []);
+});
+
+test('#1882: verification head drift refuses before parent integration', () => {
+  const git = makeGit();
+  let head = 'a'.repeat(40);
+  assert.throws(
+    () =>
+      mergeBack({
+        child: 910,
+        path: './.scratch/wt/910',
+        deps: {
+          graph,
+          git,
+          currentWorktreeHead: () => head,
+          runTests: () => {
+            head = 'b'.repeat(40);
+            return true;
+          },
+        },
+      }),
+    /verified.*HEAD|HEAD.*changed/
+  );
+  assert.ok(!git.calls.some((args) => args[0] === 'merge'));
+});
+
+test('#1882: parent integration uses the verified commit rather than a movable child ref', () => {
+  const git = makeGit();
+  const verified = 'a'.repeat(40);
+  const result = mergeBack({
+    child: 910,
+    path: './.scratch/wt/910',
+    preserveWorktree: true,
+    deps: { graph, git, currentWorktreeHead: () => verified, runTests: () => true },
+  });
+  assert.equal(result.merged, true);
+  assert.ok(git.calls.some((args) => args[0] === 'merge' && args[2] === verified));
 });

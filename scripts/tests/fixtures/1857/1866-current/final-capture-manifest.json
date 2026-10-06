@@ -1,10 +1,10 @@
 {
   "schema": "aitm.guidance-final-capture-manifest/v1",
   "capturePath": "scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json",
-  "captureSha256": "sha256:d13f4254a3f069b8ad8b1533e0d766cd320df7fb817d1c4421ba30fc92b0939c",
+  "captureSha256": "sha256:7886944a8689eb8b9a15c85f16e4d2a9693aeaf3ef9499959a26079416aef1ee",
   "scenarioManifestSha256": "sha256:b55639f9992f4f8ee99e3255120453185b49479df0249b655f7953d6ff305818",
-  "sourceInputsSha256": "sha256:dffdc9283979e46b1d884fbdfa9f2d529ba6396a056052d3d67733aa12017a2e",
-  "sourceCommit": "e545522e467e484bd96db3b327fc8ccd0047c086",
+  "sourceInputsSha256": "sha256:b472361751f0fdd89639008124cc4fb4abdf7b69a7bb65324cb345ad372f85b3",
+  "sourceCommit": "7af9dc2b60c0e70e7479b4061af320c68a171d4a",
   "productionPackage": {
     "name": "@kburson/ai-task-manager",
     "version": "0.1.0",
@@ -12,7 +12,7 @@
     "files": [
       {
         "path": "bin/aitm.mjs",
-        "sha256": "sha256:adc4accf281f1cd3a749b59c5a5c30c593219747dc94ca3e042acc0700c48c32"
+        "sha256": "sha256:decc8fa85508c2c6d5cf260315a7da4e58964d1c56c2c51b044e6a196fa6e05d"
       },
       {
         "path": "skill/SKILL.md",
@@ -35,7 +35,7 @@
         "sha256": "sha256:79ebbff818aee872e1fcd0b56458efd4f75a70d09d8ef5ca32861811364b3e23"
       }
     ],
-    "filesSha256": "sha256:93987155e1f7cdaf968cd34c0fbc47feae9eac6959e93d3cddd46f1566063efe"
+    "filesSha256": "sha256:ece6858026d23ba61dedea7a6e566d0b53bdfe6df5cc7b9ffd775f35a816ea9f"
   },
   "eventNames": [
     "ready-first-load",

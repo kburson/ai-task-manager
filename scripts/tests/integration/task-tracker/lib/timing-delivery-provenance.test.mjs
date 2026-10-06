@@ -1,4 +1,4 @@
-// @story #1857
+// @story #1857 #1894
 import { createCascadeOutcomeAuthority } from '../../../../task-tracker/lib/estimation/cascade-outcome-authority.mjs';
 import {
   parseVerificationReceipt,
@@ -524,6 +524,10 @@ test('skipped child wrapper without fresh lineage cannot become delivered timing
 test('root epic runtime consumes freshly verified merged receipt with empty parent Test commands', async () => {
   const gate = residentGate('research');
   gate.deliveryBody = gate.deliveryBody.replace('kind="research"', 'kind="epic"');
+  gate.deliveryBody +=
+    '\n<!-- aitm-plan-approved ts="2026-08-02T14:00:00.000Z" forecast-record-id="' +
+    forecastId +
+    '" -->\n<!-- aitm-fields: {"schema":1,"values":{"engagedTime":null}} -->\n';
   const intent = buildDeliveryIntent({
     intentId: '01J00000000000000000000843',
     supersedesIntentId: null,
@@ -604,17 +608,78 @@ test('root epic runtime consumes freshly verified merged receipt with empty pare
     return gate;
   };
   const h = harness({ resolveDeliveryAuthority, children: ['01J00000000000000000000842'] });
-  h.records.length = 0;
   const result = await h.runtime.ensure({
     issueNumber: issue,
-    forecastRecordId: null,
+    forecastRecordId: forecastId,
     body: gate.deliveryBody,
   });
+  const original = JSON.stringify(result.record);
+  const closeArgs = {
+    cfg: { repo: repository },
+    issueNum: issue,
+    acceptedSha: sha,
+    pexec: async () => ({ stdout: gate.deliveryBody }),
+    estimationOutcomeWriter: h.runtime,
+  };
+  assert.equal((await assertFieldsPersisted(closeArgs)).status, 'incomplete-telemetry-accepted');
+  assert.equal((await assertFieldsPersisted(closeArgs)).recordId, result.recordId);
+  assert.equal(JSON.stringify(h.records.at(-1)), original);
+  assert.equal(result.record.envelope.payload.forecastRecordId, null);
+  assert.equal(result.record.envelope.payload.actual.engagedHours, null);
+  assert.deepEqual(result.record.envelope.payload.landscape.childOutcomeRecordIds, [
+    '01J00000000000000000000842',
+  ]);
   assert.ok(verified > 0);
   assert.equal(result.record.envelope.payload.telemetry.verification.mode, 'merged-pr-delivery');
   assert.equal(result.record.envelope.payload.telemetry.verification.recordId, intent.intentId);
   assert.deepEqual(result.record.envelope.payload.actual.commands, []);
   assert.equal(result.record.envelope.payload.telemetry.forecastStatus, 'epic-not-applicable');
+  // A canonical aggregate must not satisfy the source-issue Close contract.
+  await assert.rejects(
+    () =>
+      assertFieldsPersisted({
+        ...closeArgs,
+        pexec: async () => ({
+          stdout: '<!-- aitm-fields: {"schema":1,"values":{"engagedTime":null}} -->',
+        }),
+        estimationOutcomeWriter: { ensure: async () => result },
+      }),
+    new RegExp('canonical incomplete outcome linkage')
+  );
+  for (const corrupt of [
+    (r) => {
+      r.record.envelope.repository = 'other/repo';
+    },
+    (r) => {
+      r.record.envelope.issue = 999;
+    },
+    (r) => {
+      r.record.commentNodeId = null;
+    },
+    (r) => {
+      r.recordId = '01J00000000000000000000899';
+    },
+    (r) => {
+      r.record.envelope.payload.telemetry.verificationSha = 'c'.repeat(40);
+    },
+    (r) => {
+      r.record.envelope.payload.kind = 'story';
+    },
+    (r) => {
+      r.record.envelope.payload.forecastRecordId = forecastId;
+    },
+  ]) {
+    const invalid = structuredClone(result);
+    corrupt(invalid);
+    await assert.rejects(
+      () =>
+        assertFieldsPersisted({
+          ...closeArgs,
+          estimationOutcomeWriter: { ensure: async () => invalid },
+        }),
+      new RegExp('canonical incomplete outcome linkage')
+    );
+  }
   const empty = harness({ resolveDeliveryAuthority });
   empty.records.length = 0;
   const emptyResult = await empty.runtime.ensure({

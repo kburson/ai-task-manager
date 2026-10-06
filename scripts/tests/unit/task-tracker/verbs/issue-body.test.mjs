@@ -239,3 +239,57 @@ test('canonical write enforces expected version and protected-marker invariants'
     /protected AITM markers changed/
   );
 });
+
+// @story #1873
+
+test('unstamped verifier declarations can migrate explicitly without changing proof or policy', () => {
+  const expected = '<!-- aitm-verified cmd="`npm test` `npm run test:slow`" -->';
+  const replacement =
+    '<!-- aitm-verified cmd="`node scripts/maintenance/verify-ci-receipts.mjs`" -->';
+  const base =
+    '## Definition of Done\n- [ ] All automated tests pass ' +
+    expected +
+    ' <!-- dod:functional:tests -->\n';
+  const operation = {
+    schema: 'aitm.issue-body-operation/v1',
+    kind: 'replace-verifier-declaration',
+    expected,
+    replacement,
+  };
+  assert.equal(applyIssueBodyOperation(base, operation), base.replace(expected, replacement));
+  for (const bad of [
+    { expected: expected.replace(' -->', ' exit="0" sha="abc" -->') },
+    { replacement: '<!-- aitm-scope-evidence-policy:v1 -->' },
+    { replacement: '<!-- aitm-verified cmd="`rm -rf src`" -->' },
+    { replacement: replacement.replace(' -->', ' exit="0" -->') },
+  ])
+    assert.throws(() => applyIssueBodyOperation(base, { ...operation, ...bad }), /issue-body/);
+  assert.throws(
+    () => applyIssueBodyOperation(base, { ...operation, kind: 'replace-exact' }),
+    /protected AITM/
+  );
+});
+
+// @story #1873
+
+test('verifier declaration migration refuses checked or historical proof-bearing DoD lines', () => {
+  const expected = '<!-- aitm-verified cmd="`npm test`" -->';
+  const replacement =
+    '<!-- aitm-verified cmd="`node scripts/maintenance/verify-ci-receipts.mjs`" -->';
+  const operation = {
+    schema: 'aitm.issue-body-operation/v1',
+    kind: 'replace-verifier-declaration',
+    expected,
+    replacement,
+  };
+  const base = '- [ ] All tests ' + expected + ' <!-- dod:functional:tests -->';
+  assert.throws(() => applyIssueBodyOperation(base.replace('[ ]', '[x]'), operation), /unchecked/);
+  assert.throws(
+    () =>
+      applyIssueBodyOperation(
+        base + ' <!-- aitm-dod-evidence:tests cmd="npm test" exit=0 sha=abc ts=now -->',
+        operation
+      ),
+    /proof-bearing/
+  );
+});

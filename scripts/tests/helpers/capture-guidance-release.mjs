@@ -535,6 +535,8 @@ if (args[0] === 'api' && args[1] === 'graphql') {
     const query = JSON.parse(input).query;
     if (recertification && query.includes('subIssues(')) {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: { subIssues: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } } }));
+    } else if (recertification && query.includes('parent { number }')) {
+      process.stdout.write(JSON.stringify({ data: { repository: { issue: { number: ${issue}, body, parent: null } } } }));
     } else if (query.includes('projectItems')) {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: {
         assignees: { nodes: [] },

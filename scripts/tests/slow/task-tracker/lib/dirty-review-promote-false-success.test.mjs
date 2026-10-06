@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+// @story #1872
+import { writeFixtureTrackerState } from '../../../helpers/tracker-state-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import {
+  createRuntimeRootFixture,
+  fixtureGitExecutable,
+} from '../../../helpers/runtime-root-fixture.mjs';
 // @story #710
 // Regression test for the false-success defect on a `review → done` promote when
 // the workspace is dirty.
@@ -35,7 +43,7 @@ const TT = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 // ─── Shared sandbox helpers (mirrors dirty-workspace-gate.test.mjs) ──────────
 
 function setupSandbox() {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-710-'));
+  const sandbox = createRuntimeRootFixture('aitm-710-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -68,7 +76,13 @@ function makeGitShim(sandbox, porcelain) {
     shim,
     `#!/usr/bin/env node
 import fs from 'node:fs';
+import {spawnSync} from 'node:child_process';
 const args = process.argv.slice(2);
+if (args.includes('--show-toplevel') || (args.includes('worktree') && args.includes('-z'))) {
+  const result = spawnSync(${JSON.stringify(fixtureGitExecutable)}, args, {stdio:'inherit'});
+  process.exit(result.status ?? 1);
+}
+
 const i = args.indexOf('status');
 if (i >= 0 && args.slice(i).some(a => a.startsWith('--porcelain'))) {
   fs.writeSync(1, ${JSON.stringify(porcelain)});
@@ -83,7 +97,7 @@ process.exit(0);
 async function setActive(sandbox, issue) {
   const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   mkdirSync(path.dirname(statePath), { recursive: true });
-  writeFileSync(
+  writeFixtureTrackerState(
     statePath,
     JSON.stringify({
       active: `#${issue}`,

@@ -776,6 +776,11 @@ if (_isMain)
           await verbComment(ctx);
           break;
         }
+        case 'epic-wave': {
+          const { verbEpicWave } = await import('./verbs/epic-wave.mjs');
+          await verbEpicWave(ctx);
+          break;
+        }
         case 'workflow-exception': {
           const { verbWorkflowException } = await import('./verbs/workflow-exception.mjs');
           await verbWorkflowException(ctx);

@@ -130,6 +130,7 @@ export const ROUTE_IDENTITIES = Object.freeze(
       verb: 'supersede',
       dispatch: 'verbs/supersede.mjs',
     },
+    { verb: 'epic-wave', dispatch: 'verbs/epic-wave.mjs' },
     {
       verb: 'pull-next',
       dispatch: 'verbs/pull-next.mjs',

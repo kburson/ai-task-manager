@@ -2407,6 +2407,9 @@ export async function verbClose(ctx) {
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
   let resolvedReviewAuthorization = null;
   let resolvedDeliveryGate = null;
+  // #1878: only the validated convergence decision sets this authority. All
+  // later refreshes, including estimation, must retain that durable provenance.
+  let resumeDeliveredCloseTransaction = null;
   let closeLifecycleEvidenceLoaded = false;
   let cachedCloseLifecycleEvidence = null;
   const loadCloseLifecycleEvidence = async (body) => {
@@ -2437,7 +2440,10 @@ export async function verbClose(ctx) {
 
   // #939 — resolve the receipt gate lazily after non-terminal convergence
   // inspection, but before any path performs a new terminal mutation.
-  const ensureDeliveryAuthorized = async ({ durableTransaction = null, refresh = false } = {}) => {
+  const ensureDeliveryAuthorized = async ({
+    durableTransaction = resumeDeliveredCloseTransaction,
+    refresh = false,
+  } = {}) => {
     if (SKIP_NETWORK || !closeIssueNum) return resolvedDeliveryGate;
     if (resolvedDeliveryGate && !refresh) return resolvedDeliveryGate;
     const previousGate = resolvedDeliveryGate;
@@ -2752,7 +2758,6 @@ export async function verbClose(ctx) {
   // #425 / #925 — converge the independent GitHub issue and project-board
   // signals. The additive close snapshot lets a CLOSED + not-Done issue be
   // classified as delivered, dead, or unauthorized before any mutation.
-  let resumeDeliveredCloseTransaction = null;
   let restartedDeliveredCloseTransaction = false;
   let resumeClosedIssue = false;
   let reopenedCloseRecoveryRecord = null;
@@ -4899,14 +4904,19 @@ export async function assertFieldsPersisted({
       });
       const record = result.record;
       const payload = record?.envelope?.payload;
+      // #1894 — epic orchestration aggregates children without an implementation forecast.
+      const isEpic = parseIssueKind(body) === 'epic';
+      const expectedKind = isEpic ? 'epic-orchestration' : 'story';
+      const expectedForecastRecordId = isEpic ? null : readPlanApprovedForecastRecordId(body);
       if (
         !isIncompleteOutcome(payload) ||
+        payload.kind !== expectedKind ||
         record.envelope.repository !== cfg.repo ||
         record.envelope.issue !== Number(issueNum) ||
         typeof record.commentNodeId !== 'string' ||
         record.envelope.recordId !== result.recordId ||
         payload.telemetry.verificationSha !== acceptedSha ||
-        payload.forecastRecordId !== readPlanApprovedForecastRecordId(body)
+        payload.forecastRecordId !== expectedForecastRecordId
       ) {
         throw new Error(
           'assertFieldsPersisted: canonical incomplete outcome linkage missing or inconsistent'

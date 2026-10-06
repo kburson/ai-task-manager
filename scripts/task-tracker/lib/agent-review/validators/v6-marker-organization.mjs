@@ -12,6 +12,7 @@
 //     `aitm-body-version` (also tolerating `aitm-issue-version` / the bare
 //     `issue-version` the design spec names) — are hoisted to the very top of
 //     the body, in that fixed order, one per line.
+//   - Protected Scope policy sections retain their standalone markers.
 //   - Every OTHER standalone `aitm-*` marker is gathered under the
 //     `## AITM Progress Markers` anchor heading, in original document order.
 //
@@ -97,6 +98,17 @@ export function validate({ body } = {}) {
   const lines = src.split('\n');
   const maskedLines = maskedSrc.split('\n');
   const anchorSourceIdx = maskedLines.findIndex((line) => ANCHOR_HEADING_RE.test(line));
+  // #1873 — extracting even an ordinary marker before a protected policy
+  // changes its guarded non-empty position. Keep that owning section opaque
+  // to marker organization, using masked headings so fenced examples stay inert.
+  const protectedSections = new Set();
+  let sectionIndex = -1;
+  for (let i = 0; i < maskedLines.length; i += 1) {
+    if (/^## /.test(maskedLines[i])) sectionIndex = i;
+    if (/<!--\s*aitm-scope-evidence-policy/.test(maskedLines[i]))
+      protectedSections.add(sectionIndex);
+  }
+  sectionIndex = -1;
   const hoist = []; // { name, text }
   const gather = []; // { text }
   const kept = []; // { text, sourceIndex } — non-marker lines, in place
@@ -104,6 +116,11 @@ export function validate({ body } = {}) {
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
     const maskedLine = maskedLines[i] ?? '';
+    if (/^## /.test(maskedLine)) sectionIndex = i;
+    if (protectedSections.has(sectionIndex)) {
+      kept.push({ text: line, sourceIndex: i });
+      continue;
+    }
     // #1111 — shared fence masking preserves every newline/offset while
     // replacing fenced content with spaces. Classification must consult the
     // masked line, but rebuilding always keeps the original bytes. Checking
@@ -164,7 +181,7 @@ export function validate({ body } = {}) {
 
   // Collapse any run of 3+ blank lines the extraction may have opened up, so
   // re-runs converge to a fixed point regardless of the input's blank spacing.
-  normalized = normalized.replace(/\n{3,}/g, '\n\n');
+  normalized = normalized.replace(/\n{3,}/g, '\n\n').replace(/\n+$/, '');
 
   if (normalized === src) {
     return { pass: true, failures: [] };

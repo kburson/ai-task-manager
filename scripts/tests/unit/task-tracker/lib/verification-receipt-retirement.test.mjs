@@ -1,4 +1,4 @@
-// @story #1481
+// @story #1481 #1887
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -8,6 +8,7 @@ import {
   upsertVerificationReceipt,
 } from '../../../../task-tracker/lib/verification-receipt.mjs';
 import {
+  planStaleTestReceiptRetirement,
   retireVerificationReceipt,
   retireVerificationReceiptMarker,
 } from '../../../../task-tracker/lib/verification-receipt-retirement.mjs';
@@ -194,4 +195,79 @@ test('governed retirement refuses failed writes and either read-back retaining t
     }),
     /fresh read-back still contains target/i
   );
+});
+
+test('stale projection removes only one exact Test claim and keeps other evidence', () => {
+  const { body, develop, testReceipt } = fixture();
+  const projected = planStaleTestReceiptRetirement(body, {
+    expectedIssue: ISSUE,
+    head: 'd'.repeat(40),
+  });
+  assert.equal(projected.receipt.receiptId, testReceipt.receiptId);
+  assert.equal(parseVerificationReceipt(projected.body, 'test'), null);
+  assert.equal(
+    parseVerificationReceipt(projected.body, 'develop-final').receiptId,
+    develop.receiptId
+  );
+  assert.equal(parseVerificationReceipt(body, 'test').receiptId, testReceipt.receiptId);
+});
+
+test('current and absent Test receipts are retained without eligibility', () => {
+  const { body } = fixture();
+  assert.deepEqual(planStaleTestReceiptRetirement(body, { expectedIssue: ISSUE, head: SHA }), {
+    body,
+    receipt: null,
+  });
+  assert.deepEqual(
+    planStaleTestReceiptRetirement('ordinary body', { expectedIssue: ISSUE, head: SHA }),
+    { body: 'ordinary body', receipt: null }
+  );
+});
+
+test('stale projection refuses malformed foreign ambiguous and missing authority', () => {
+  const { body, testReceipt } = fixture();
+  const marker = upsertVerificationReceipt('', testReceipt);
+  const different = upsertVerificationReceipt('', receipt('test'));
+  for (const source of [
+    body + marker,
+    body + different,
+    upsertVerificationReceipt(body, receipt('test', ISSUE + 1)),
+    body + '<!-- aitm-verification-receipt stage="test" data="not-json" -->',
+  ]) {
+    assert.throws(() =>
+      planStaleTestReceiptRetirement(source, { expectedIssue: ISSUE, head: 'd'.repeat(40) })
+    );
+  }
+  assert.throws(() =>
+    planStaleTestReceiptRetirement(body, { expectedIssue: ISSUE, head: 'short' })
+  );
+  assert.throws(() => planStaleTestReceiptRetirement(body, { head: SHA }));
+});
+
+test('stale retirement refuses fresh-base eligibility drift before writing', async () => {
+  const { body, testReceipt } = fixture();
+  const head = 'd'.repeat(40);
+  const currentClaim = upsertVerificationReceipt(body, { ...testReceipt, commitSha: head });
+  const competingClaim = body + upsertVerificationReceipt('', receipt('test'));
+  for (const freshBody of [currentClaim, competingClaim]) {
+    let writes = 0;
+    await assert.rejects(
+      retireVerificationReceipt({
+        cfg: { repo: 'o/r' },
+        issueNumber: ISSUE,
+        stage: 'test',
+        receiptId: testReceipt.receiptId,
+        staleHead: head,
+        deps: {
+          mutateIssueBody: async ({ mutate }) => {
+            const next = mutate(freshBody);
+            writes += 1;
+            return { status: 'ok', body: next };
+          },
+          fetchBody: async () => '',
+        },
+      })
+    );
+    assert.equal(writes, 0);
+  }
 });
