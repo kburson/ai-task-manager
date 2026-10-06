@@ -5,6 +5,7 @@ import {
   canonicalRecords,
   assertCanonicalAuthority,
   canonicalPrefixVectors,
+  sameRevisionObservation,
 } from './canonical.mjs';
 import { deriveResourceVector } from './proposal.mjs';
 import { hashBytes } from './schema.mjs';
@@ -127,8 +128,10 @@ export function createRevisionMemory(input) {
     'comments',
     'hostMessages',
     ...(Object.hasOwn(input, 'planning') ? ['planning'] : []),
+    ...(Object.hasOwn(input, 'planJournal') ? ['planJournal'] : []),
   ]);
   if (input.planning !== undefined) validatePlanningSnapshot(input.planning);
+  if (input.planJournal != null) validatePlanJournal(input.planJournal);
   validateRevisionObservation(input.observation);
   if (!Array.isArray(input.comments) || !Array.isArray(input.hostMessages))
     revisionError('memory-input');
@@ -153,6 +156,15 @@ export function createRevisionMemory(input) {
     m.ports
   );
   const backend = {
+    get snapshot() {
+      return clone({
+        observation: m.observation,
+        comments: m.comments,
+        hostMessages: m.hostMessages,
+        ...(m.planning ? { planning: m.planning } : {}),
+        ...(m.planJournal ? { planJournal: m.planJournal } : {}),
+      });
+    },
     get observation() {
       return clone(m.observation);
     },
@@ -501,61 +513,158 @@ export async function writeMemoryCanonical({ backend, capability, context, propo
   });
 }
 
+function validatePlanJournal(j) {
+  exactKeys(
+    j,
+    ['schema', 'before', 'after', 'audit', 'record', 'planning', 'comments', 'revisionEventHead'],
+    'plan-journal'
+  );
+  if (
+    j.schema !== 'aitm.memory-plan-journal/v1' ||
+    typeof j.audit !== 'string' ||
+    !Array.isArray(j.comments)
+  )
+    revisionError('plan-journal');
+  validateRevisionObservation(j.before);
+  validateRevisionObservation(j.after);
+  validatePlanningSnapshot(j.planning);
+}
+function planTargets(j) {
+  const targets = [],
+    o = clone(j.before),
+    comments = clone(j.comments);
+  targets.push({ step: null, observation: clone(o), comments: clone(comments) });
+  comments.push({ id: 'memory-plan-audit-' + j.record.recordId, body: j.audit });
+  targets.push({ step: 'plan-audit', observation: clone(o), comments: clone(comments) });
+  if (o.sourceKind === 'canonical-contract') {
+    o.canonicalArchive = clone(j.after.canonicalArchive);
+    o.capsule = clone(j.after.capsule);
+    targets.push({ step: 'plan-capsule', observation: clone(o), comments: clone(comments) });
+    o.contract = clone(j.after.contract);
+    targets.push({ step: 'plan-contract', observation: clone(o), comments: clone(comments) });
+    o.proofRecords = clone(j.after.proofRecords);
+    targets.push({ step: 'plan-proof', observation: clone(o), comments: clone(comments) });
+  }
+  o.body = clone(j.after.body);
+  targets.push({ step: 'plan-body', observation: clone(o), comments: clone(comments) });
+  return targets;
+}
+export function readMemoryPlanJournal(backend, context) {
+  const m = memory(backend),
+    j = m.planJournal;
+  if (!j) return null;
+  validatePlanJournal(j);
+  const o = readMemoryAuthority(backend, context),
+    planning = readMemoryPlanning(backend, context);
+  if (
+    !planTargets(j).some(
+      (t) =>
+        sameRevisionObservation(t.observation, o) &&
+        canonicalRecordJson(t.comments) === canonicalRecordJson(m.comments)
+    )
+  )
+    revisionError('plan-journal-prefix');
+  if (
+    canonicalRecordJson({ ...planning, bodyHash: j.planning.bodyHash }) !==
+    canonicalRecordJson(j.planning)
+  )
+    revisionError('plan-journal-planning-drift');
+  if (j.planning.bodyHash !== hashBytes(j.before.body.bytes))
+    revisionError('plan-journal-planning-drift');
+  if (o.sourceKind === 'canonical-contract') {
+    assertCanonicalAuthority(o, memoryNow(backend), 'plan-approve');
+    assertCanonicalAuthority(j.before, memoryNow(backend), 'plan-approve');
+  }
+  return clone(j);
+}
 export async function persistMemoryPlanApproval({ backend, token, before, after, audit, record }) {
-  const context = validateMemoryPlanWrite(token, { backend, before, after, audit, record }),
+  const { context, journal } = validateMemoryPlanWrite(token, {
+      backend,
+      before,
+      after,
+      audit,
+      record,
+    }),
     m = memory(backend);
-  if (canonicalRecordJson(m.observation) !== canonicalRecordJson(before))
+  if (!m.planJournal && !sameRevisionObservation(m.observation, before))
     revisionError('plan-before');
-  operation(m, 'plan-audit-write', () => {
-    m.comments.push({ id: 'memory-plan-audit-' + record.recordId, body: audit });
-    return true;
-  });
-  if (before.sourceKind === 'canonical-contract') {
-    assertCanonicalAuthority(before, memoryNow(backend), 'plan-approve');
-    await appendCapsule({
-      repository: context.repository,
-      issue: context.issue,
-      expectedHeadRecordId: before.capsule.head,
-      candidate: { envelope: record.envelope, visibleMarkdown: 'AITM current Plan approval.\n' },
-      deps: {
-        listIssueComments: async () => canonicalRecords(m.observation),
-        createIssueComment: async ({ body }) =>
-          operation(m, 'plan-capsule-write', () => {
-            if (body !== record.bytes) revisionError('plan-record-bytes');
-            m.observation.canonicalArchive.records.push({ recordId: record.recordId, bytes: body });
-            m.observation.capsule = { head: record.recordId, bytes: body };
-            return { commentNodeId: record.recordId };
-          }),
-        readBackComment: async () => ({
-          ...parseAitmRecord({
-            commentNodeId: record.recordId,
-            body: m.observation.capsule.bytes,
-            expectedRepository: context.repository,
-            expectedIssue: context.issue,
-          }),
-          body: m.observation.capsule.bytes,
-        }),
-      },
-    });
-    operation(m, 'plan-contract-write', () => {
-      m.observation.contract = clone(after.contract);
+  if (!m.planJournal)
+    operation(m, 'plan-journal-write', () => {
+      m.planJournal = clone(journal);
       return true;
     });
-    operation(m, 'plan-proof-write', () => {
-      m.observation.proofRecords = clone(after.proofRecords);
+  operation(m, 'plan-journal-readback', () => {
+    if (canonicalRecordJson(m.planJournal) !== canonicalRecordJson(journal))
+      revisionError('plan-journal-drift');
+    return true;
+  });
+  readMemoryPlanJournal(backend, context);
+  const targets = planTargets(journal);
+  let prefix = targets.findIndex(
+    (t) =>
+      sameRevisionObservation(t.observation, m.observation) &&
+      canonicalRecordJson(t.comments) === canonicalRecordJson(m.comments)
+  );
+  for (let i = 1; i < targets.length; i++) {
+    const target = targets[i],
+      step = target.step;
+    if (i > prefix) {
+      if (step === 'plan-capsule')
+        await appendCapsule({
+          repository: context.repository,
+          issue: context.issue,
+          expectedHeadRecordId: before.capsule.head,
+          candidate: {
+            envelope: record.envelope,
+            visibleMarkdown: 'AITM current Plan approval.\n',
+          },
+          deps: {
+            listIssueComments: async () => canonicalRecords(m.observation),
+            createIssueComment: async ({ body }) =>
+              operation(m, step + '-write', () => {
+                if (body !== record.bytes) revisionError('plan-record-bytes');
+                m.observation = clone(target.observation);
+                return { commentNodeId: record.recordId };
+              }),
+            readBackComment: async () => ({
+              ...parseAitmRecord({
+                commentNodeId: record.recordId,
+                body: m.observation.capsule.bytes,
+                expectedRepository: context.repository,
+                expectedIssue: context.issue,
+              }),
+              body: m.observation.capsule.bytes,
+            }),
+          },
+        });
+      else
+        operation(m, step + '-write', () => {
+          m.observation = clone(target.observation);
+          m.comments = clone(target.comments);
+          if (step === 'plan-body') m.planning.bodyHash = hashBytes(after.body.bytes);
+          return true;
+        });
+      prefix = i;
+    }
+    operation(m, step + '-readback', () => {
+      if (
+        !planTargets(journal)
+          .slice(i)
+          .some(
+            (t) =>
+              sameRevisionObservation(t.observation, m.observation) &&
+              canonicalRecordJson(t.comments) === canonicalRecordJson(m.comments)
+          )
+      )
+        revisionError('plan-readback');
       return true;
     });
   }
-  operation(m, 'plan-body-write', () => {
-    m.observation.body = clone(after.body);
-    m.planning.bodyHash = hashBytes(after.body.bytes);
-    return true;
-  });
   operation(m, 'plan-readback', () => {
-    if (canonicalRecordJson(m.observation) !== canonicalRecordJson(after))
-      revisionError('plan-readback');
+    if (!sameRevisionObservation(m.observation, after)) revisionError('plan-readback');
     return true;
   });
+  m.planJournal = null;
 }
 
 function validatePlanningSnapshot(value) {

@@ -100,6 +100,7 @@ import {
   readMemoryAuthority,
   memoryNow,
   readMemoryPlanning,
+  readMemoryPlanJournal,
   persistMemoryPlanApproval,
 } from './store.mjs';
 import {
@@ -121,13 +122,18 @@ import {
 } from '../github-records/delivery-contract.mjs';
 import { buildPlanApprovalAuditComment } from '../plan-approval-audit.mjs';
 import { upsertPlanApprovedMarker, parsePlanApprovedMarker } from '../markers.mjs';
-import { upsertEpicOrchestrationPlan } from '../epic-orchestration-plan.mjs';
+import {
+  upsertEpicOrchestrationPlan,
+  verifyEpicOrchestrationPlan,
+} from '../epic-orchestration-plan.mjs';
 import { stampBodyVersion, parseBodyVersion } from '../body-version.mjs';
 import { stampEntryMarker } from '../stage-entry-markers.mjs';
 import { parseEntryMarkers } from '../stage-entry-grammar.mjs';
 import { resolveStoryIntentSource } from '../story-intent-source.mjs';
 import { validateGovernedLinkedPlan } from '../governed-plan-policy.mjs';
 import { hashBytes } from './schema.mjs';
+import { deriveResourceVector } from './proposal.mjs';
+import { expectedResourceVector } from './records.mjs';
 const sessions = new WeakMap();
 function session(token) {
   const held = sessions.get(token);
@@ -149,7 +155,7 @@ export function validateMemoryPlanWrite(token, { backend, before, after, audit, 
     !equal(held.completed, { before, after, audit, record })
   )
     revisionError('plan-completion-capability');
-  return held.context;
+  return { context: held.context, journal: held.journal };
 }
 async function planningSource(o) {
   const source = await resolveContractSource({
@@ -203,9 +209,11 @@ export async function runMemoryPlanApproval({
   const planning = readMemoryPlanning(backend, context);
   if (!equal(planning.cfg, cfg)) revisionError('planning-config-mismatch');
   const { runPlanApprove } = await import('../../verbs/plan-approve.mjs');
-  const before = await observeRevision({ context, deps: backend });
-  if (expectedObservation && !sameCollectedObservation(expectedObservation, before))
+  const observed = await observeRevision({ context, deps: backend });
+  if (expectedObservation && !sameCollectedObservation(expectedObservation, observed))
     revisionError('plan-observation-drift');
+  const journal = readMemoryPlanJournal(backend, context),
+    before = resumePlanState(observed, journal);
   if (!['empty', 'applied'].includes(before.status))
     return { status: 'revision-approval-refused', code: before.status };
   if (o.stage !== 'plan' && !(o.stage === 'develop' && before.status === 'applied'))
@@ -213,7 +221,9 @@ export async function runMemoryPlanApproval({
   return withMemoryInterlock(backend, context, async (capability) => {
     if (!equal(readMemoryPlanning(backend, context), planning))
       revisionError('planning-snapshot-drift');
-    const current = await observeRevision({ context, deps: backend });
+    if (!equal(readMemoryPlanJournal(backend, context), journal))
+      revisionError('plan-journal-drift');
+    const current = resumePlanState(await observeRevision({ context, deps: backend }), journal);
     if (
       !equal(current.resourceVector, before.resourceVector) ||
       !sameRevisionObservation(current.observation, before.observation) ||
@@ -223,7 +233,7 @@ export async function runMemoryPlanApproval({
     const fresh = readMemoryAuthority(backend, context);
     if (fresh.sourceKind === 'canonical-contract')
       assertCanonicalAuthority(fresh, memoryNow(backend), 'plan-approve');
-    const source = await planningSource(fresh);
+    const source = await planningSource(journal?.before ?? fresh);
     const checklistBody = [
       '## Acceptance Criteria',
       ...source.contract.acceptanceCriteria.map((x) => '- [ ] ' + x.declaration),
@@ -242,6 +252,7 @@ export async function runMemoryPlanApproval({
         projectDir: projectDir || process.cwd(),
         live: true,
         completed: null,
+        journal,
       };
     sessions.set(token, held);
     try {
@@ -253,7 +264,8 @@ export async function runMemoryPlanApproval({
           revisionPlanToken: token,
           env,
           getBoardState: async () => readMemoryAuthority(backend, context).stage,
-          fetchIssueBody: async () => readMemoryAuthority(backend, context).body.bytes,
+          fetchIssueBody: async () =>
+            (journal?.before ?? readMemoryAuthority(backend, context)).body.bytes,
           fetchEpicChildren: async () => readMemoryPlanning(backend, context).epicChildren,
           resolveTrunkSha: async () => {
             const sha = readMemoryPlanning(backend, context).trunkSha;
@@ -267,6 +279,28 @@ export async function runMemoryPlanApproval({
     }
   });
 }
+function resumePlanState(current, journal) {
+  if (!journal) return current;
+  const chain = current.chain;
+  if (
+    !chain ||
+    chain.head !== journal.revisionEventHead ||
+    !['empty', 'applied'].includes(chain.status)
+  )
+    revisionError('plan-journal-chain');
+  if (chain.status === 'applied') {
+    const vector = deriveResourceVector(journal.before);
+    vector.revisionEventHead = chain.head;
+    if (
+      chain.effective.proposal.mode === 'abort' ||
+      !equal(vector, expectedResourceVector(chain.effective.proposal, chain.head))
+    )
+      revisionError('plan-journal-base');
+  } else if (journal.before.revision !== 0 || journal.before.revisionId !== null)
+    revisionError('plan-journal-base');
+  return { ...current, status: chain.status, observation: journal.before };
+}
+
 function projectedContract(contract, recordId) {
   const next = structuredClone(contract);
   next.revision++;
@@ -331,16 +365,21 @@ export async function finishMemoryPlanApproval(
 ) {
   const held = session(token),
     { backend, context } = held;
-  const before = readMemoryAuthority(backend, context);
+  const actual = readMemoryAuthority(backend, context),
+    before = held.journal?.before ?? actual;
   observeFresh(before.body.bytes);
   if (!equal(before.body, held.current.observation.body)) revisionError('plan-authority-drift');
   const source = await planningSource(before),
-    ts = memoryNow(backend);
-  const existing = await readCurrentMemoryPlanApproval({
-    backend,
-    context,
-    projectDir: held.projectDir,
-  });
+    ts = held.journal
+      ? (held.journal.record.envelope?.createdAt ?? held.journal.record.createdAt)
+      : memoryNow(backend);
+  const existing = held.journal
+    ? null
+    : await readCurrentMemoryPlanApproval({
+        backend,
+        context,
+        projectDir: held.projectDir,
+      });
   if (existing)
     return {
       status: 'already-approved',
@@ -348,7 +387,7 @@ export async function finishMemoryPlanApproval(
       mode: existing.payload.provenance.mode,
     };
   if (before.sourceKind === 'canonical-contract')
-    assertCanonicalAuthority(before, ts, 'plan-approve');
+    assertCanonicalAuthority(actual, memoryNow(backend), 'plan-approve');
   const payload = {
     schema: 'aitm.plan-approval-binding/v1',
     revisionId: held.current.effectiveProposal?.after.revisionId ?? null,
@@ -407,6 +446,15 @@ export async function finishMemoryPlanApproval(
     epicChildren: held.planning.epicChildren,
   });
   held.completed = { before, after, audit, record };
+  const journal = {
+    schema: 'aitm.memory-plan-journal/v1',
+    ...held.completed,
+    planning: { ...held.planning, bodyHash: hashBytes(before.body.bytes) },
+    comments: held.journal?.comments ?? backend.comments,
+    revisionEventHead: held.current.chain.head,
+  };
+  if (held.journal && !equal(held.journal, journal)) revisionError('plan-journal-targets');
+  held.journal = journal;
   await persistMemoryPlanApproval({ backend, token, ...held.completed });
   if (!equal(readMemoryAuthority(backend, context), after)) revisionError('plan-readback');
   return { status: 'approved', recordId, ts, mode: requestedMode };
@@ -511,30 +559,57 @@ export function currentPlanExtension({ observation, chain, backend }) {
   const marker = parsePlanApprovedMarker(observation.body.bytes);
   if (!marker || marker.ts !== ts || marker.mode !== payload.provenance.mode)
     revisionError('plan-approval-projection');
-  const ready =
-    new RegExp(
-      '<!--\\s*aitm-estimation-forecast-ready\\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\\s*-->',
-      'i'
-    ).exec(before.body.bytes)?.[1] ?? null;
-  if (marker.forecastRecordId !== ready && !(marker.forecastRecordId == null && ready === null))
-    revisionError('plan-approval-forecast');
-  const planning = readMemoryPlanning(backend, {
-    repository: observation.repository,
-    issue: observation.issue,
-  });
-  if (
-    Number.isInteger(planning.cfg.estimationRubricIssue) &&
-    planning.cfg.estimationRubricIssue > 0 &&
-    ready === null
-  )
-    revisionError('plan-approval-forecast');
-  if (marker.trunkSha && marker.trunkSha !== planning.trunkSha)
-    revisionError('plan-approval-trunk');
+  const { ready, planning } = currentPlanningBinding(backend, observation, resolved.binding);
   return approvalAfter(before, record, resolved.binding, {
     forecastRecordId: ready,
     trunkSha: marker.trunkSha ?? null,
     epicChildren: planning.epicChildren,
   });
+}
+
+function currentPlanningBinding(backend, observation, binding) {
+  const body = observation.body.bytes,
+    marker = parsePlanApprovedMarker(body);
+  if (
+    !marker ||
+    ['storyDigest', 'storyIntentDigest', 'storyIntentSource'].some(
+      (key) => marker[key] !== binding[key]
+    )
+  )
+    revisionError('plan-approval-source-projection');
+  const ready =
+    new RegExp(
+      '<!--\\s*aitm-estimation-forecast-ready\\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\\s*-->',
+      'i'
+    ).exec(body)?.[1] ?? null;
+  const planning = readMemoryPlanning(backend, {
+    repository: observation.repository,
+    issue: observation.issue,
+  });
+  if (
+    (marker.forecastRecordId ?? null) !== ready ||
+    (Number.isInteger(planning.cfg.estimationRubricIssue) &&
+      planning.cfg.estimationRubricIssue > 0 &&
+      ready === null)
+  )
+    revisionError('plan-approval-forecast');
+  const requiredTrunk =
+    parseEntryMarkers(body).some((e) => e.state === 'ready-for-plan') ||
+    planning.epicChildren.length > 0;
+  if (
+    (marker.trunkSha ?? null) !== (requiredTrunk ? planning.trunkSha : null) ||
+    (requiredTrunk && !planning.trunkSha)
+  )
+    revisionError('plan-approval-trunk');
+  if (
+    planning.epicChildren.length &&
+    !verifyEpicOrchestrationPlan(body, {
+      children: planning.epicChildren,
+      trunkSha: planning.trunkSha,
+    }).ok
+  )
+    revisionError('plan-approval-children');
+  return { ready, planning };
 }
 
 function baselinePlanDigest(contract) {
@@ -547,6 +622,7 @@ function baselinePlanDigest(contract) {
 }
 export async function readCurrentMemoryPlanApproval({ backend, context, projectDir }) {
   assertRevisionMemory(backend);
+  if (readMemoryPlanJournal(backend, context)) return null;
   const state = await observeRevision({ context, deps: backend });
   if (state.status === 'applied') {
     const expected = currentPlanExtension({
@@ -613,6 +689,20 @@ export async function readCurrentMemoryPlanApproval({ backend, context, projectD
     marker.mode !== payload.provenance.mode
   )
     revisionError('plan-approval-binding');
+  const proofs = o.proofRecords.filter((r) => r.identity === e.recordId);
+  if (
+    !equal(proofs, [
+      {
+        kind: 'plan-approval',
+        identity: e.recordId,
+        bytes: o.capsule.bytes,
+        criterionIdentity: null,
+      },
+    ]) ||
+    body.split(renderDeliveryContract({ contract: o.contract.value }).markdown).length !== 2
+  )
+    revisionError('plan-approval-projection');
+  currentPlanningBinding(backend, o, resolved.binding);
   const audit =
     payload.provenance.mode === 'full-auto'
       ? buildPlanApprovalAuditComment({ issueNumber: o.issue, ts: e.createdAt })
