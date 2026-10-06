@@ -1,7 +1,7 @@
-// @story #905 #1882
+// @story #905 #1882 #1902
 // #905 — merge a child back into its epic (design: "Merge-back protocol").
 // Opportunistically sync the epic onto its parent (skip if already current),
-// rebase the child onto the epic head, run the child's tests, then fast-forward
+// rebase the child only when its epic tip is not contained, verify, then fast-forward
 // only. Refuse on rebase conflict or test failure; clean up on success. git +
 // graph + test-runner injected.
 
@@ -32,6 +32,7 @@ const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
 
 function makeGit({
   grandparentIsAncestor = true,
+  childContainsParent = false,
   rebaseChildFails = false,
   childUpstream = '',
 } = {}) {
@@ -46,8 +47,9 @@ function makeGit({
       return childUpstream;
     }
     if (args[0] === 'merge-base' && args.includes('--is-ancestor')) {
-      if (!grandparentIsAncestor) {
-        const e = new Error('trunk moved ahead');
+      const contained = args[2] === 'trunk' ? grandparentIsAncestor : childContainsParent;
+      if (!contained) {
+        const e = new Error('requested ancestor is not contained');
         e.status = 1;
         throw e;
       }
@@ -65,7 +67,7 @@ function makeGit({
   return git;
 }
 
-test('clean fast-forward path: sync-skip, rebase child, test, ff, cleanup', () => {
+test('divergent child path: sync-skip, rebase child, test, ff, cleanup', () => {
   const git = makeGit(); // grandparent already ancestor → epic sync is a no-op
   const r = mergeBack({
     child: 910,
@@ -460,7 +462,10 @@ test('#1601: a recorded custom child branch drives rebase, merge, and cleanup', 
   });
 
   assert.equal(result.child, 'codex/custom-child');
-  assert.deepEqual(wtGit.calls[0], ['rebase', 'cloud-test-automation', 'codex/custom-child']);
+  assert.deepEqual(
+    wtGit.calls.find((args) => args[0] === 'rebase'),
+    ['rebase', 'cloud-test-automation', 'codex/custom-child']
+  );
   const calls = git.calls.map((args) => args.join(' '));
   assert.ok(calls.includes('merge --ff-only codex/custom-child'));
   assert.ok(calls.includes('worktree remove /wt/custom-child'));
@@ -521,7 +526,10 @@ test('#1485: a recorded custom epic branch drives rebase, checkout, and fast-for
   assert.equal(result.epic, 'cloud-test-automation');
   assert.equal(result.child, 'feature/child/910');
   // The child rebases onto the opaque recorded ref, never a synthesized canon.
-  assert.deepEqual(wtGit.calls[0], ['rebase', 'cloud-test-automation', 'feature/child/910']);
+  assert.deepEqual(
+    wtGit.calls.find((args) => args[0] === 'rebase'),
+    ['rebase', 'cloud-test-automation', 'feature/child/910']
+  );
   const kinds = git.calls.map((c) => c.join(' '));
   assert.ok(kinds.includes('checkout cloud-test-automation'));
   assert.ok(kinds.includes('merge --ff-only feature/child/910'));
@@ -666,4 +674,29 @@ test('#1882: parent integration uses the verified commit rather than a movable c
   });
   assert.equal(result.merged, true);
   assert.ok(git.calls.some((args) => args[0] === 'merge' && args[2] === verified));
+});
+
+test('#1902: contained-child verification race still refuses integration and cleanup', () => {
+  const git = makeGit({ childContainsParent: true });
+  let head = 'a'.repeat(40);
+  assert.throws(
+    () =>
+      mergeBack({
+        child: 910,
+        path: './.scratch/wt/910',
+        deps: {
+          graph,
+          git,
+          currentWorktreeHead: () => head,
+          runTests: () => {
+            head = 'b'.repeat(40);
+            return true;
+          },
+        },
+      }),
+    /verified.*HEAD|HEAD.*changed/
+  );
+  assert.ok(!git.calls.some((args) => args[0] === 'merge'));
+  assert.ok(!git.calls.some((args) => args[0] === 'worktree'));
+  assert.ok(!git.calls.some((args) => args[0] === 'rebase' && args[2] === 'feature/child/910'));
 });

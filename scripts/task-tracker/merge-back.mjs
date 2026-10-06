@@ -5,17 +5,18 @@ enforceDirectGuidance(import.meta.url, 'merge-back');
 //
 //   node scripts/task-tracker/merge-back.mjs <child#> <worktree-path> [--preserve-worktree]
 //
-// The protocol keeps the epic a clean linear integration branch:
+// The protocol keeps the epic a clean fast-forward integration branch:
 //   1. Opportunistic epic sync — if the epic's parent (grandparent of the child;
 //      trunk for a root epic) has advanced, rebase the epic onto it first. If the
 //      epic already contains that tip, this is a no-op.
-//   2. Rebase the child onto the epic head. A conflict here refuses the merge.
+//   2. Rebase the child only if it does not already contain the epic head.
+//      Otherwise preserve its reviewed commit and merge ancestry. Conflicts refuse.
 //   3. Run the child's tests in its worktree. A failure refuses the merge.
-//   4. `git merge --ff-only` the child into the epic — guaranteed linear.
+//   4. `git merge --ff-only` the verified child commit into the epic.
 //   5. On success, clean up unless --preserve-worktree retains completion context.
 //
-// Because every child rebases onto the epic before it lands, the epic stays a
-// clean fast-forward target and children never cross-contaminate. Core is injectable
+// Because every child contains the current epic before it lands, the epic stays
+// a clean fast-forward target while already-reviewed child history is retained. Core is injectable
 // (git + graph + test-runner); the CLI wires the real ones.
 
 import { resolve as resolvePath } from 'node:path';
@@ -116,17 +117,19 @@ export function mergeBack({ child, path, preserveWorktree = false, deps } = {}) 
     git(['rebase', grandparent, epicBranch]);
   }
 
-  // 2. Rebase the child onto the epic head, from inside the child worktree.
-  // Conflict → refuse.
-  try {
-    wtGit(['rebase', epicBranch, childBranch]);
-  } catch (err) {
-    throw new Error(
-      `merge-back: rebase conflict rebasing ${childBranch} onto ${epicBranch}: ${err.message}`
-    );
+  // 2. Synchronize only when the child does not already contain the epic head.
+  // Preserve reviewed merge topology when no rebase is needed; conflict → refuse.
+  if (!isAncestor(wtGit, epicBranch, childBranch)) {
+    try {
+      wtGit(['rebase', epicBranch, childBranch]);
+    } catch (err) {
+      throw new Error(
+        `merge-back: rebase conflict rebasing ${childBranch} onto ${epicBranch}: ${err.message}`
+      );
+    }
   }
 
-  // Pin the rebased commit so branch movement cannot integrate unverified code.
+  // Pin the synchronized commit so branch movement cannot integrate unverified code.
   const verifiedHead = deps.currentWorktreeHead?.();
 
   // 3. Run the child's tests. Failure → refuse (no merge, no cleanup).

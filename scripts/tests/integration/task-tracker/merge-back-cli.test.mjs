@@ -1,4 +1,4 @@
-// @story #1882
+// @story #1882 #1902
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -160,4 +160,140 @@ test('#1882: malformed child config refuses without falling back to host suites'
   await assert.rejects(run(['910', child, '--preserve-worktree'], deps), /JSON|property name/);
   assert.equal(git(parent, 'rev-parse', 'HEAD'), before);
   assert.ok(existsSync(child));
+});
+
+const headVerifier =
+  "import {execFileSync} from 'node:child_process'; import {writeFileSync} from 'node:fs'; writeFileSync('verified.txt',execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim());";
+
+// The integration parent is contained through a merge's second parent, matching
+// the reviewed-history case that an unnecessary rebase flattens.
+function reviewedMergeHistory(f) {
+  const { parent, child, git, before } = f;
+  git(child, 'checkout', '-b', 'codex/fixture-side', before);
+  writeFileSync(path.join(child, 'side.txt'), 'side contribution');
+  git(child, 'add', 'side.txt');
+  git(child, 'commit', '-qm', 'reviewed side contribution');
+  const side = git(child, 'rev-parse', 'HEAD');
+  git(child, 'checkout', 'codex/fixture-child');
+  git(child, 'merge', '--no-ff', '-m', 'reviewed side merge', 'codex/fixture-side');
+  const sideMerge = git(child, 'rev-parse', 'HEAD');
+  writeFileSync(path.join(parent, 'parent.txt'), 'parent advancement');
+  git(parent, 'add', 'parent.txt');
+  git(parent, 'commit', '-qm', 'integration parent advancement');
+  const parentTip = git(parent, 'rev-parse', 'HEAD');
+  git(child, 'merge', '--no-ff', '-m', 'reviewed parent merge', 'codex/fixture-parent');
+  git(child, 'branch', '--set-upstream-to', 'codex/fixture-parent');
+  const reviewed = git(child, 'rev-parse', 'HEAD');
+  git(child, 'merge-base', '--is-ancestor', parentTip, reviewed);
+  return { reviewed, parentTip, side, sideMerge };
+}
+
+test('#1902: already-contained merged child integrates the original reviewed SHA and topology', async (t) => {
+  const f = fixture(t, headVerifier);
+  const { reviewed, parentTip, side, sideMerge } = reviewedMergeHistory(f);
+  const result = await run(['910', f.child, '--preserve-worktree'], f.deps);
+  assert.equal(result.merged, true);
+  assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), reviewed);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), reviewed);
+  assert.equal(readFileSync(path.join(f.child, 'verified.txt'), 'utf8'), reviewed);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD^2'), parentTip);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD^1'), sideMerge);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD^1^2'), side);
+  assert.equal(f.git(f.child, 'branch', '--show-current'), 'codex/fixture-child');
+  assert.equal(
+    f.git(f.child, 'for-each-ref', '--format=%(upstream)', 'refs/heads/codex/fixture-child'),
+    'refs/heads/codex/fixture-parent'
+  );
+  assert.ok(existsSync(f.child));
+});
+
+test('#1902: contained merge history remains exact when configured verification refuses', async (t) => {
+  const f = fixture(t, 'process.exitCode = 1;');
+  const { reviewed, parentTip } = reviewedMergeHistory(f);
+  await assert.rejects(run(['910', f.child, '--preserve-worktree'], f.deps), /tests failed/);
+  assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), parentTip);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), reviewed);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD^2'), parentTip);
+  assert.ok(existsSync(f.child));
+  assert.equal(existsSync(path.join(f.parent, 'feature.txt')), false);
+});
+
+test('#1902: divergent child still rebases onto the current parent before verification', async (t) => {
+  const f = fixture(t, headVerifier);
+  const original = f.git(f.child, 'rev-parse', 'HEAD');
+  writeFileSync(path.join(f.parent, 'parent.txt'), 'divergent parent contribution');
+  f.git(f.parent, 'add', 'parent.txt');
+  f.git(f.parent, 'commit', '-qm', 'divergent parent advancement');
+  const parentTip = f.git(f.parent, 'rev-parse', 'HEAD');
+  await run(['910', f.child, '--preserve-worktree'], f.deps);
+  const integrated = f.git(f.parent, 'rev-parse', 'HEAD');
+  assert.notEqual(integrated, original);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), integrated);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD^'), parentTip);
+  assert.equal(readFileSync(path.join(f.child, 'verified.txt'), 'utf8'), integrated);
+  assert.equal(readFileSync(path.join(f.parent, 'feature.txt'), 'utf8'), 'child contribution');
+  assert.equal(
+    readFileSync(path.join(f.parent, 'parent.txt'), 'utf8'),
+    'divergent parent contribution'
+  );
+});
+
+test('#1902: divergent rebase conflict still refuses verification and parent integration', async (t) => {
+  const f = fixture(t);
+  const original = f.git(f.child, 'rev-parse', 'HEAD');
+  writeFileSync(path.join(f.parent, 'feature.txt'), 'conflicting parent contribution');
+  f.git(f.parent, 'add', 'feature.txt');
+  f.git(f.parent, 'commit', '-qm', 'conflicting parent advancement');
+  const parentTip = f.git(f.parent, 'rev-parse', 'HEAD');
+  await assert.rejects(run(['910', f.child, '--preserve-worktree'], f.deps), /rebase conflict/);
+  assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), parentTip);
+  assert.equal(f.git(f.child, 'rev-parse', 'refs/heads/codex/fixture-child'), original);
+  assert.equal(
+    readFileSync(path.join(f.parent, 'feature.txt'), 'utf8'),
+    'conflicting parent contribution'
+  );
+  assert.equal(existsSync(path.join(f.child, 'verified.txt')), false);
+  assert.ok(existsSync(f.child));
+  // Abort only this disposable fixture's real failed rebase after asserting refusal.
+  f.git(f.child, 'rebase', '--abort');
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), original);
+});
+
+test('#1902: dirty recorded parent refuses without changing either reviewed tip', async (t) => {
+  const f = fixture(t);
+  const childHead = f.git(f.child, 'rev-parse', 'HEAD');
+  writeFileSync(path.join(f.parent, 'uncommitted.txt'), 'preserve parent work');
+  await assert.rejects(
+    run(['910', f.child, '--preserve-worktree'], f.deps),
+    /parent checkout is dirty/
+  );
+  assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), f.before);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), childHead);
+  assert.equal(
+    readFileSync(path.join(f.parent, 'uncommitted.txt'), 'utf8'),
+    'preserve parent work'
+  );
+  assert.equal(existsSync(path.join(f.child, 'verified.txt')), false);
+});
+
+test('#1902: parent dirt introduced by verification refuses integration and is retained', async (t) => {
+  const f = fixture(t);
+  writeFileSync(
+    path.join(f.child, 'verify.mjs'),
+    "import {appendFileSync} from 'node:fs'; appendFileSync(" +
+      JSON.stringify(path.join(f.parent, 'package.json')) +
+      ",' ');"
+  );
+  f.git(f.child, 'add', 'verify.mjs');
+  f.git(f.child, 'commit', '-qm', 'verifier dirties integration checkout');
+  const childHead = f.git(f.child, 'rev-parse', 'HEAD');
+  await assert.rejects(
+    run(['910', f.child, '--preserve-worktree'], f.deps),
+    /parent checkout is dirty/
+  );
+  assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), f.before);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), childHead);
+  assert.ok(readFileSync(path.join(f.parent, 'package.json'), 'utf8').endsWith(' '));
+  assert.equal(existsSync(path.join(f.parent, 'feature.txt')), false);
+  assert.ok(existsSync(f.child));
 });
