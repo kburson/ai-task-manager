@@ -22,6 +22,7 @@ import {
   locateLifecycleSection,
 } from './lifecycle-dod.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
+import { locateAcSection } from './ac-section.mjs';
 import {
   parseProofMarker,
   hasExecutionProof,
@@ -306,20 +307,6 @@ export function stampEvidenceAndReconcile(body, key, evidence, declaredCommands 
 
 // Parse Acceptance Criteria checkbox state. Returns { total, ticked, allTicked }.
 // AC heading match is generous: `## Acceptance Criteria` or `### Acceptance Criteria`.
-const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
-const SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
-
-function locateAcSection(body) {
-  const src = String(body || '');
-  const m = src.match(AC_HEADING_RE);
-  if (!m) return null;
-  const start = m.index + m[0].length;
-  const rest = src.slice(start);
-  const end = rest.match(SECTION_END_RE);
-  const endIdx = end ? start + end.index : src.length;
-  return { start, end: endIdx, section: src.slice(start, endIdx) };
-}
-
 export function deriveAcsStatus(body) {
   const loc = locateAcSection(body);
   if (!loc) return { total: 0, ticked: 0, allTicked: false, sectionPresent: false };
