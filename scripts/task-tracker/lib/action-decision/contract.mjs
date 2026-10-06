@@ -312,6 +312,13 @@ export const CODE_DEFINITIONS = Object.freeze({
     ['registered-guard', 'authority-collection'],
     { phases: ['evaluation', 'collection'] }
   ),
+  'plan-approval-authority-unavailable': decisionIndeterminate(
+    'plan-approval-authority-unavailable',
+    ['plan-exit-plan-approved'],
+    args(['reason'], {
+      reason: enumType('current-approval-unverified', 'runtime-unregistered', 'directory-invalid'),
+    })
+  ),
   'plan-approval-missing': decisionBlocked('plan-approval-missing', registeredGuard, {
     disposition: 'registered-remediation',
   }),

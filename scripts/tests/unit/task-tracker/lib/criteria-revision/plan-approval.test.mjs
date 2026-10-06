@@ -448,3 +448,101 @@ test('all recognized memory Plan entrypoints reject foreign source roots before 
   );
   assert.ok(!backend.effects.some((e) => e.endsWith('-write')));
 });
+
+import {
+  normalizeRefusal,
+  validateBlocker,
+} from '../../../../../task-tracker/lib/action-decision/contract.mjs';
+test('current authority guard returns closed typed indeterminate refusals for absent, failed and unsupported authority', async () => {
+  const missing = planningMemory();
+  const cases = [
+    {
+      deps: {
+        get revisionBackend() {
+          throw new Error('backend unavailable');
+        },
+      },
+      body: '',
+      reason: 'current-approval-unverified',
+    },
+    {
+      deps: { revisionBackend: missing },
+      body: missing.observation.body.bytes,
+      reason: 'current-approval-unverified',
+    },
+    { deps: { revisionBackend: {} }, body: '', reason: 'current-approval-unverified' },
+    {
+      deps: {
+        revisionBackend: {
+          get observation() {
+            throw new Error('observation unavailable');
+          },
+        },
+      },
+      body: '',
+      reason: 'current-approval-unverified',
+    },
+    { deps: {}, body: missing.observation.body.bytes, reason: 'runtime-unregistered' },
+    {
+      deps: {},
+      body: '<!-- aitm-criteria-revision schema="aitm.criteria-revision/v1" -->',
+      reason: 'runtime-unregistered',
+    },
+    { deps: {}, body: '<!-- aitm-directory\n{ not-json }\n-->', reason: 'directory-invalid' },
+  ];
+  for (const entry of cases) {
+    const result = await planApprovedGuard.run({
+      toState: 'develop',
+      cfg: { gateAnalysisToDevelopment: true },
+      body: entry.body,
+      deps: entry.deps,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'plan-approval-authority-unavailable');
+    assert.deepEqual(result.args, { reason: entry.reason });
+    assert.deepEqual(result.noAutomaticRemediation, { reason: 'authority-investigation-required' });
+    const blocker = normalizeRefusal(result, {
+      guardId: 'plan-exit-plan-approved',
+      registeredGuardIds: ['plan-exit-plan-approved'],
+    });
+    assert.deepEqual(validateBlocker(blocker, { status: 'indeterminate' }), blocker);
+    assert.throws(() => validateBlocker(blocker, { status: 'blocked' }), /status/);
+    assert.throws(
+      () =>
+        validateBlocker(
+          { ...blocker, args: { reason: 'assumed-approved' } },
+          { status: 'indeterminate' }
+        ),
+      /args/
+    );
+    assert.throws(
+      () =>
+        validateBlocker(
+          { ...blocker, args: { ...blocker.args, approved: true } },
+          { status: 'indeterminate' }
+        ),
+      /args/
+    );
+    assert.throws(
+      () =>
+        validateBlocker(
+          { ...blocker, guardId: 'plan-exit-deep-dive' },
+          { status: 'indeterminate' }
+        ),
+      /producer/
+    );
+  }
+  assert.deepEqual(
+    missing.effects.filter((e) => e.endsWith('-write')),
+    []
+  );
+  assert.equal((await invoke(missing)).status, 'approved');
+  assert.deepEqual(
+    await planApprovedGuard.run({
+      toState: 'develop',
+      cfg: { gateAnalysisToDevelopment: true },
+      deps: { revisionBackend: missing },
+    }),
+    { ok: true }
+  );
+});

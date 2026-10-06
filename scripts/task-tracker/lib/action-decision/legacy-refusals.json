@@ -558,25 +558,25 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 59,
+          "line": 102,
           "fingerprint": "sha256:a59a626c789a89b81b587ef20a91548d67b622a3c167cc62bca5ef8015344cf5",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 65,
+          "line": 108,
           "fingerprint": "sha256:2caa9f02a36dd9613862ce1911c2b7ff1624b40c0a7ad38abc09a79c2325203f",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 72,
+          "line": 115,
           "fingerprint": "sha256:ff22e5660b12089b26aac6620e0d7a38f7639498484e2d430dc71ea8a3146838",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 75,
+          "line": 118,
           "fingerprint": "sha256:62ee146c3e3f83257bafdd9a5a13cf0c065724d53cc536935d93a06e66a48022",
           "kind": "refusal"
         }

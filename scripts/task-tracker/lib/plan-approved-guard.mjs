@@ -36,6 +36,16 @@ export async function defaultResolveTrunkSha({ cfg, projectDir }) {
 
 export const GUARD_ID = 'plan-exit-plan-approved';
 
+function authorityUnavailable(reason, detail) {
+  return {
+    ok: false,
+    code: 'plan-approval-authority-unavailable',
+    args: { reason },
+    noAutomaticRemediation: { reason: 'authority-investigation-required' },
+    reason: detail,
+  };
+}
+
 export const planApprovedGuard = {
   id: GUARD_ID,
   async run(ctx) {
@@ -52,34 +62,36 @@ export const planApprovedGuard = {
       return { ok: true };
     }
     const body = ctx?.body ?? '';
-    if (ctx.deps?.revisionBackend) {
-      const backend = ctx.deps.revisionBackend,
-        o = backend.observation;
-      try {
-        return {
-          ok: Boolean(
-            await readCurrentMemoryPlanApproval({
-              backend,
-              context: { repository: o.repository, issue: o.issue, executor: o.executor },
-              projectDir: ctx.projectDir,
-            })
-          ),
-        };
-      } catch (error) {
-        return { ok: false, reason: error.message };
+    try {
+      const backend = ctx.deps?.revisionBackend;
+      if (backend) {
+        const o = backend.observation;
+        const approval = await readCurrentMemoryPlanApproval({
+          backend,
+          context: { repository: o.repository, issue: o.issue, executor: o.executor },
+          projectDir: ctx.projectDir,
+        });
+        return approval
+          ? { ok: true }
+          : authorityUnavailable(
+              'current-approval-unverified',
+              'A complete current Plan approval could not be verified.'
+            );
       }
+    } catch (error) {
+      return authorityUnavailable('current-approval-unverified', error?.message ?? String(error));
     }
     try {
       if (
         parseIssueDirectory({ issueBody: body }) !== null ||
         /<!--\s*aitm-criteria-revision\b/.test(body)
       )
-        return {
-          ok: false,
-          reason: 'canonical Plan approval requires a registered complete authority runtime',
-        };
+        return authorityUnavailable(
+          'runtime-unregistered',
+          'canonical Plan approval requires a registered complete authority runtime'
+        );
     } catch (error) {
-      return { ok: false, reason: error.message };
+      return authorityUnavailable('directory-invalid', error.message);
     }
     if (hasPlanApprovedMarker(body)) {
       if (!parseEntryMarkers(body).some((entry) => entry.state === 'ready-for-plan')) {
