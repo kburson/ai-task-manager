@@ -1,3 +1,4 @@
+// @story #1904
 // @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
@@ -413,7 +414,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     runtimeRootAllowance +
     actorRuntimeEntries.length +
     8 + // #1859: six reviewed-scope modules, readiness guard and operator guide.
-    12; // #1872: ten admission modules, the collection grouping module and operator guide.
+    12 + // #1872: ten admission modules, the collection grouping module and operator guide.
+    1; // #1904: shared root AC section locator; actual package delta is exactly one file.
   assert.ok(files.includes('scripts/run-tests-shards.mjs'));
   assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(
@@ -434,6 +436,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
   for (const required of [
     'bin/cli.mjs',
     'bin/aitm.mjs',
+    'scripts/task-tracker/lib/ac-section.mjs',
     'scripts/task-tracker/lib/artifact-write-policy.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',

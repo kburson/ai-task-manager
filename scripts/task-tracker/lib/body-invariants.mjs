@@ -1,3 +1,4 @@
+import { locateAcSection } from './ac-section.mjs';
 // @story #1859
 // @story #1629
 // Body-invariant markers — the set of hidden HTML comment markers that
@@ -593,8 +594,6 @@ export class MalformedDeclarationCmdError extends Error {
 //
 // Returns `{ lineIndex, label, reason }` for each offending AC line, in body
 // order. Empty array means every AC is demonstrable (or honestly tagged).
-const AC_HEADING_RE = /^#{1,4}\s+Acceptance Criteria\b[^\n]*$/im;
-const AC_SECTION_END_RE = /^(#{1,4}\s|<!--\s*aitm-fields:)/m;
 const AC_BOX_RE = /^(\s*- \[)([ x])(\]\s+)(.+)$/;
 // #891 — anchored to the marker, not the visible label. The prior
 // `/invalid\s+[—-]+\s+non-demonstrable/i` form was a plain substring test
@@ -642,12 +641,9 @@ function acDeclaredCommands(text, vcItems = []) {
 
 export function findAcsWithoutVerifierOrInvalidTag(body) {
   const src = String(body || '');
-  const heading = src.match(AC_HEADING_RE);
-  if (!heading) return [];
-  const start = heading.index + heading[0].length;
-  const rest = src.slice(start);
-  const endMatch = rest.match(AC_SECTION_END_RE);
-  const endIdx = endMatch ? start + endMatch.index : src.length;
+  const loc = locateAcSection(src);
+  if (!loc) return [];
+  const { start, end: endIdx } = loc;
 
   // #762 — parse the issue's VC list once so citation-form ACs resolve to their
   // cited command(s) and are recognized as demonstrable.
@@ -730,12 +726,9 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
 // Returns `{ lineIndex, label, reason }` per offending AC, in body order.
 export function findAcsWithLegacyVerificationForm(body) {
   const src = String(body || '');
-  const heading = src.match(AC_HEADING_RE);
-  if (!heading) return [];
-  const start = heading.index + heading[0].length;
-  const rest = src.slice(start);
-  const endMatch = rest.match(AC_SECTION_END_RE);
-  const endIdx = endMatch ? start + endMatch.index : src.length;
+  const loc = locateAcSection(src);
+  if (!loc) return [];
+  const { start, end: endIdx } = loc;
 
   const vcItems = parseVerificationCommands(src);
   const lines = src.split('\n');
