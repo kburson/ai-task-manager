@@ -1,11 +1,13 @@
+import { deriveCanonicalWrites, canonicalPrefixVectors } from './canonical.mjs';
 // @story #1853
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
-import { deriveProposal } from './proposal.mjs';
+import { deriveProposal, deriveResourceVector } from './proposal.mjs';
 import { validateRevisionProposal, revisionError } from './schema.mjs';
 import {
   assertMemoryCapability,
   assertRevisionMemory,
   readMemoryBody,
+  readRevisionChain,
   writeMemoryBody,
 } from './store.mjs';
 import { parseBodyVersion } from '../body-version.mjs';
@@ -33,14 +35,10 @@ export function deriveLegacyWrites(proposal) {
     revisionError('legacy-write-set');
   return structuredClone(writes);
 }
-export async function withLegacyWriteCapability(
-  { backend, capability, context, proposal, before },
-  fn
-) {
+async function withBodyWriteCapability({ backend, capability, context, before, writes }, fn) {
   assertRevisionMemory(backend);
   assertMemoryCapability(backend, capability, context);
-  const writes = deriveLegacyWrites(proposal),
-    write = writes[0];
+  const write = writes.find((w) => w.resource === 'issue-body');
   if (!write) revisionError('legacy-write-empty');
   const token = Object.freeze({}),
     entry = {
@@ -57,6 +55,31 @@ export async function withLegacyWriteCapability(
   } finally {
     entry.live = false;
   }
+}
+export async function withLegacyWriteCapability(input, fn) {
+  return withBodyWriteCapability({ ...input, writes: deriveLegacyWrites(input.proposal) }, fn);
+}
+export async function withCanonicalBodyWriteCapability(input, fn) {
+  assertRevisionMemory(input.backend);
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  const chain = await readRevisionChain({ context: input.context, transport: input.backend });
+  if (
+    chain.status !== 'pending' ||
+    chain.effective?.proposal.proposalDigest !== input.proposal.proposalDigest
+  )
+    revisionError('canonical-effective-event');
+  const vector = { ...deriveResourceVector(input.backend.observation), revisionEventHead: null };
+  if (
+    canonicalRecordJson(vector) !==
+    canonicalRecordJson(canonicalPrefixVectors(input.proposal, null).at(-2))
+  )
+    revisionError('canonical-body-order');
+  const { writes } = deriveCanonicalWrites({
+    proposal: input.proposal,
+    contract: input.proposal.archive.observation.contract.value,
+    grant: input.proposal.archive.observation.grant,
+  });
+  return withBodyWriteCapability({ ...input, writes }, fn);
 }
 export function validateLegacyCapability(token, { repo, issueNumber, backend, base, next } = {}) {
   const m = capabilities.get(token);

@@ -1,3 +1,4 @@
+import { canonicalPrefixVectors } from './canonical.mjs';
 import { assertNoSecretRecordData } from '../github-records/record-secret-policy.mjs';
 // @story #1853
 // Complete single-comment archives. Rendering never truncates or redacts data.
@@ -73,6 +74,8 @@ export function createRevisionEvent({
   };
 }
 export function expectedResourceVector(proposal, head, { abort = false } = {}) {
+  if (proposal.authority.kind === 'canonical-contract' && !abort)
+    return canonicalPrefixVectors(proposal, head).at(-1);
   const v = structuredClone(proposal.archive.resourceVector);
   v.revisionEventHead = head;
   if (!abort)

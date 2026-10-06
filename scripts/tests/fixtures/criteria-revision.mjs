@@ -1,3 +1,7 @@
+import {
+  createAitmRecordEnvelope,
+  renderAitmRecord,
+} from '../../task-tracker/lib/github-records/record-envelope.mjs';
 // @story #1851
 import {
   createRevisionEvent,
@@ -201,7 +205,7 @@ export function makeLegacyRevisionFixture() {
     ],
   });
 }
-export function makeCanonicalRevisionFixture() {
+export function makeCanonicalRevisionFixture({ draftOnly = false } = {}) {
   const draft = createDraftContract({
     recordId: '01J00000000000000000000000',
     authorityEpoch: 1,
@@ -215,18 +219,22 @@ export function makeCanonicalRevisionFixture() {
       { logicalId: 'vc-independent', command: independentCommand },
     ],
     definitionOfDone: [{ logicalId: 'dod-shared', text: 'Shared DoD' }],
-    lifecycleProjection: {
-      acceptanceCriteria: { 'ac-hook': true, 'ac-independent': true },
-      verificationCommands: { 'vc-hook': true },
-      definitionOfDone: { 'dod-shared': true },
-    },
-    acceptedRecordIds: ['01J00000000000000000000002'],
+    lifecycleProjection: draftOnly
+      ? {}
+      : {
+          acceptanceCriteria: { 'ac-hook': true, 'ac-independent': true },
+          verificationCommands: { 'vc-hook': true },
+          definitionOfDone: { 'dod-shared': true },
+        },
+    acceptedRecordIds: draftOnly ? [] : ['01J00000000000000000000002'],
   });
-  const contract = sealContract({
-    contract: draft,
-    authorityEpoch: 1,
-    coordinatorGrantId: draft.coordinatorGrantId,
-  }).contract;
+  const contract = draftOnly
+    ? draft
+    : sealContract({
+        contract: draft,
+        authorityEpoch: 1,
+        coordinatorGrantId: draft.coordinatorGrantId,
+      }).contract;
   const observed = observation(
     '## Scope\nSynthetic scope\n' +
       renderDeliveryContract({ contract }).markdown +
@@ -243,7 +251,7 @@ export function makeCanonicalRevisionFixture() {
     parentGrantId: null,
     issuer: null,
     epoch: 1,
-    operations: ['amend-contract'],
+    operations: ['amend-contract', 'plan-approve'],
     branchBoundary: [executor.branch, 'trunk'],
     integrationBoundary: { sourceBranches: [executor.branch], destinationBranches: ['trunk'] },
     activatedAt: '2026-09-30T00:00:00.000Z',
@@ -255,6 +263,47 @@ export function makeCanonicalRevisionFixture() {
     coordinator: nativeGrant.coordinator,
     bytes: canonicalRecordJson(nativeGrant),
   };
+  const createdAt = '2026-09-30T00:00:00.000Z';
+  const grantEnvelope = createAitmRecordEnvelope({
+    repository: observed.repository,
+    issue: observed.issue,
+    recordType: 'coordinator-grant',
+    payload: nativeGrant,
+    recordId: '01J00000000000000000000003',
+    predecessor: null,
+    actor: nativeGrant.coordinator.actor,
+    epoch: 1,
+    grantId: nativeGrant.grantId,
+    createdAt,
+  });
+  const sealedEnvelope = createAitmRecordEnvelope({
+    repository: observed.repository,
+    issue: observed.issue,
+    recordType: draftOnly ? 'contract-amended' : 'contract-sealed',
+    payload: contract,
+    recordId: observed.capsule.head,
+    predecessor: grantEnvelope.recordId,
+    actor: nativeGrant.coordinator.actor,
+    epoch: 1,
+    grantId: nativeGrant.grantId,
+    createdAt,
+  });
+  const records = [grantEnvelope, sealedEnvelope].map((envelope) => ({
+    recordId: envelope.recordId,
+    bytes: renderAitmRecord({ envelope }),
+  }));
+  observed.capsule.bytes = records[1].bytes;
+  observed.canonicalArchive = {
+    records,
+    issueHierarchy: [{ issue: 124, parentIssue: null }],
+    coordinationProjectionBytes: canonicalRecordJson({
+      schema: 'aitm.coordination-projection/v1',
+      grantId: nativeGrant.grantId,
+      epoch: 1,
+      adoptionState: 'adopted',
+    }),
+    observedAt: createdAt,
+  };
   observed.criterionBindings = [
     { criterionIdentity: 'ac-hook', vcIds: ['vc-hook'], sourceBindings: [{ ...binding }] },
     {
@@ -264,20 +313,22 @@ export function makeCanonicalRevisionFixture() {
     },
     { criterionIdentity: 'dod-shared', vcIds: ['vc-hook'], sourceBindings: [{ ...binding }] },
   ];
-  observed.proofRecords = [
-    {
-      kind: 'ac-proof',
-      identity: 'canonical-independent-proof',
-      bytes: 'synthetic accepted independent proof',
-      criterionIdentity: 'ac-independent',
-    },
-    {
-      kind: 'plan-approval',
-      identity: 'canonical-plan-approval',
-      bytes: 'synthetic old Plan approval',
-      criterionIdentity: null,
-    },
-  ];
+  observed.proofRecords = draftOnly
+    ? []
+    : [
+        {
+          kind: 'ac-proof',
+          identity: 'canonical-independent-proof',
+          bytes: 'synthetic accepted independent proof',
+          criterionIdentity: 'ac-independent',
+        },
+        {
+          kind: 'plan-approval',
+          identity: 'canonical-plan-approval',
+          bytes: 'synthetic old Plan approval',
+          criterionIdentity: null,
+        },
+      ];
   const oldBytes = canonicalRecordJson(contract.acceptanceCriteria[0]);
   const fixture = finish(observed, {
     acceptanceCriteria: [

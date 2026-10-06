@@ -1,3 +1,13 @@
+import { validateMemoryPlanWrite } from './plan-approval.mjs';
+import { appendCapsule } from '../github-records/capsule-chain.mjs';
+import { parseAitmRecord } from '../github-records/record-envelope.mjs';
+import {
+  canonicalRecords,
+  assertCanonicalAuthority,
+  canonicalPrefixVectors,
+} from './canonical.mjs';
+import { deriveResourceVector } from './proposal.mjs';
+import { hashBytes } from './schema.mjs';
 // @story #1853
 // The collector is read-only and transport-neutral. Mutation is quarantined to
 // opaque, module-owned memory stores until the production fences are installed.
@@ -112,7 +122,13 @@ function memoryPorts(observation) {
 }
 export function createRevisionMemory(input) {
   canonicalRecordJson(input);
-  exactKeys(input, ['observation', 'comments', 'hostMessages']);
+  exactKeys(input, [
+    'observation',
+    'comments',
+    'hostMessages',
+    ...(Object.hasOwn(input, 'planning') ? ['planning'] : []),
+  ]);
+  if (input.planning !== undefined) validatePlanningSnapshot(input.planning);
   validateRevisionObservation(input.observation);
   if (!Array.isArray(input.comments) || !Array.isArray(input.hostMessages))
     revisionError('memory-input');
@@ -181,6 +197,10 @@ export function createRevisionMemory(input) {
     set supportedWriters(value) {
       if (typeof value !== 'boolean') revisionError('writers');
       m.supportedWriters = value;
+    },
+    replacePlanning(value) {
+      validatePlanningSnapshot(value);
+      m.planning = clone(value);
     },
     replaceAuthority(value) {
       validateRevisionObservation(value);
@@ -372,4 +392,216 @@ export function writeMemoryBody({ backend, capability, context, before, after, v
     m.observation.body = { bytes: after, version };
     return null;
   });
+}
+
+export function memoryNow(backend) {
+  memory(backend);
+  return new Date().toISOString();
+}
+export async function writeMemoryCanonical({ backend, capability, context, proposal, write }) {
+  assertMemoryCapability(backend, capability, context);
+  const m = memory(backend),
+    o = m.observation;
+  const chain = await readRevisionChain({ context, transport: backend });
+  if (
+    chain.status !== 'pending' ||
+    canonicalRecordJson(chain.effective?.proposal) !== canonicalRecordJson(proposal)
+  )
+    revisionError('canonical-effective-event');
+  if (
+    !proposal.writeSet.some(
+      (planned) => canonicalRecordJson(planned) === canonicalRecordJson(write)
+    )
+  )
+    revisionError('canonical-write-plan');
+  assertCanonicalAuthority(o, memoryNow(backend));
+  const vector = { ...deriveResourceVector(o), revisionEventHead: null };
+  const prefixes = canonicalPrefixVectors(proposal, null);
+  const prefix = prefixes.findLastIndex(
+    (candidate) => canonicalRecordJson(candidate) === canonicalRecordJson(vector)
+  );
+  const ordinal = proposal.writeSet
+    .filter((item) => item.resource !== 'revision-record')
+    .findIndex((item) => canonicalRecordJson(item) === canonicalRecordJson(write));
+  if (prefix < ordinal || prefix < 0) revisionError('canonical-write-order');
+  if (write.resource === 'capsule') {
+    const existing = o.canonicalArchive.records.find((r) => r.recordId === write.recordId);
+    if (existing) {
+      if (existing.bytes !== write.afterBytes) revisionError('canonical-capsule-conflict');
+      return;
+    }
+    if (hashBytes(o.capsule.bytes) !== write.beforeHash) revisionError('canonical-capsule-before');
+    checkpoint(m, 'capsule-write', 'failBefore');
+    const parsed = parseAitmRecord({
+      commentNodeId: write.recordId,
+      body: write.afterBytes,
+      expectedRepository: context.repository,
+      expectedIssue: context.issue,
+    });
+    await appendCapsule({
+      repository: context.repository,
+      issue: context.issue,
+      expectedHeadRecordId: o.capsule.head,
+      candidate: {
+        envelope: parsed.envelope,
+        visibleMarkdown: 'AITM criteria contract amendment.\n',
+      },
+      deps: {
+        listIssueComments: async () => canonicalRecords(o),
+        createIssueComment: async ({ body }) => {
+          if (body !== write.afterBytes) revisionError('canonical-capsule-bytes');
+          o.canonicalArchive.records.push({ recordId: write.recordId, bytes: body });
+          o.capsule = { head: write.recordId, bytes: body };
+          m.effects.push('capsule-write');
+          return { commentNodeId: write.recordId };
+        },
+        readBackComment: async () => ({
+          ...parseAitmRecord({
+            commentNodeId: write.recordId,
+            body: o.capsule.bytes,
+            expectedRepository: context.repository,
+            expectedIssue: context.issue,
+          }),
+          body: o.capsule.bytes,
+        }),
+      },
+    });
+    checkpoint(m, 'capsule-write', 'failAfter');
+    operation(m, 'capsule-readback', () => {
+      if (o.capsule.bytes !== write.afterBytes) revisionError('canonical-capsule-readback');
+      return true;
+    });
+    return;
+  }
+  const field =
+    write.resource === 'delivery-contract'
+      ? 'contract'
+      : write.resource === 'proof-projection'
+        ? 'proof'
+        : null;
+  if (!field) revisionError('canonical-write-resource');
+  const bytes = () =>
+    field === 'contract'
+      ? o.contract.bytes
+      : canonicalRecordJson({
+          proofRecords: o.proofRecords,
+          criterionBindings: o.criterionBindings,
+        });
+  if (hashBytes(bytes()) === write.afterHash) return;
+  if (hashBytes(bytes()) !== write.beforeHash) revisionError('canonical-projection-before');
+  operation(m, field + '-write', () => {
+    if (field === 'contract')
+      o.contract = { value: JSON.parse(write.afterBytes), bytes: write.afterBytes };
+    else Object.assign(o, JSON.parse(write.afterBytes));
+    return true;
+  });
+  operation(m, field + '-readback', () => {
+    if (hashBytes(bytes()) !== write.afterHash) revisionError('canonical-projection-readback');
+    return true;
+  });
+}
+
+export async function persistMemoryPlanApproval({ backend, token, before, after, audit, record }) {
+  const context = validateMemoryPlanWrite(token, { backend, before, after, audit, record }),
+    m = memory(backend);
+  if (canonicalRecordJson(m.observation) !== canonicalRecordJson(before))
+    revisionError('plan-before');
+  operation(m, 'plan-audit-write', () => {
+    m.comments.push({ id: 'memory-plan-audit-' + record.recordId, body: audit });
+    return true;
+  });
+  if (before.sourceKind === 'canonical-contract') {
+    assertCanonicalAuthority(before, memoryNow(backend), 'plan-approve');
+    await appendCapsule({
+      repository: context.repository,
+      issue: context.issue,
+      expectedHeadRecordId: before.capsule.head,
+      candidate: { envelope: record.envelope, visibleMarkdown: 'AITM current Plan approval.\n' },
+      deps: {
+        listIssueComments: async () => canonicalRecords(m.observation),
+        createIssueComment: async ({ body }) =>
+          operation(m, 'plan-capsule-write', () => {
+            if (body !== record.bytes) revisionError('plan-record-bytes');
+            m.observation.canonicalArchive.records.push({ recordId: record.recordId, bytes: body });
+            m.observation.capsule = { head: record.recordId, bytes: body };
+            return { commentNodeId: record.recordId };
+          }),
+        readBackComment: async () => ({
+          ...parseAitmRecord({
+            commentNodeId: record.recordId,
+            body: m.observation.capsule.bytes,
+            expectedRepository: context.repository,
+            expectedIssue: context.issue,
+          }),
+          body: m.observation.capsule.bytes,
+        }),
+      },
+    });
+    operation(m, 'plan-contract-write', () => {
+      m.observation.contract = clone(after.contract);
+      return true;
+    });
+    operation(m, 'plan-proof-write', () => {
+      m.observation.proofRecords = clone(after.proofRecords);
+      return true;
+    });
+  }
+  operation(m, 'plan-body-write', () => {
+    m.observation.body = clone(after.body);
+    m.planning.bodyHash = hashBytes(after.body.bytes);
+    return true;
+  });
+  operation(m, 'plan-readback', () => {
+    if (canonicalRecordJson(m.observation) !== canonicalRecordJson(after))
+      revisionError('plan-readback');
+    return true;
+  });
+}
+
+function validatePlanningSnapshot(value) {
+  canonicalRecordJson(value);
+  exactKeys(
+    value,
+    ['schema', 'repository', 'issue', 'bodyHash', 'epicChildren', 'trunkSha', 'cfg'],
+    'planning-snapshot'
+  );
+  if (
+    value.schema !== 'aitm.memory-planning/v1' ||
+    value.cfg === null ||
+    typeof value.cfg !== 'object' ||
+    Array.isArray(value.cfg) ||
+    value.cfg.repo !== value.repository ||
+    typeof value.repository !== 'string' ||
+    !Number.isSafeInteger(value.issue) ||
+    !/^sha256:[0-9a-f]{64}$/.test(value.bodyHash) ||
+    !Array.isArray(value.epicChildren) ||
+    (value.trunkSha !== null && !/^[0-9a-f]{40}$/.test(value.trunkSha))
+  )
+    revisionError('planning-snapshot');
+  for (const child of value.epicChildren) {
+    exactKeys(child, ['number', 'rank', 'blockedBy', 'state', 'closeReason'], 'planning-child');
+    if (
+      !Number.isSafeInteger(child.number) ||
+      child.number <= 0 ||
+      !Number.isFinite(child.rank) ||
+      !Array.isArray(child.blockedBy) ||
+      child.blockedBy.some((id) => !Number.isSafeInteger(id) || id <= 0) ||
+      !['open', 'closed'].includes(child.state) ||
+      ![null, 'completed', 'not_planned'].includes(child.closeReason)
+    )
+      revisionError('planning-child');
+  }
+}
+export function readMemoryPlanning(backend, context) {
+  const m = memory(backend),
+    value = m.planning;
+  if (!value) revisionError('planning-snapshot-unavailable');
+  validatePlanningSnapshot(value);
+  if (
+    value.repository !== context.repository ||
+    value.issue !== context.issue ||
+    value.bodyHash !== hashBytes(m.observation.body.bytes)
+  )
+    revisionError('planning-snapshot-stale');
+  return clone(value);
 }

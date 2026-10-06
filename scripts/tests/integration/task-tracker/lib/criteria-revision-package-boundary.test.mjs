@@ -1,4 +1,4 @@
-// @story #1853
+// @story #1854 #1853
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
@@ -8,7 +8,10 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { parseNpmPackReport } from '../../../helpers/npm-pack-report.mjs';
-import { makeLegacyRevisionFixture } from '../../../fixtures/criteria-revision.mjs';
+import {
+  makeLegacyRevisionFixture,
+  makeCanonicalRevisionFixture,
+} from '../../../fixtures/criteria-revision.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 function run(command, args, cwd) {
   const result = childProcess.spawnSync(command, args, {
@@ -189,6 +192,81 @@ test('packed deep-import engine and both body adapters keep transaction mutation
     });
     for (const writer of writers)
       await assert.rejects(call(writer, escaped, { revisionBackend: deps }), /revision/);
+    const canonical = await load('scripts/task-tracker/lib/criteria-revision/canonical.mjs');
+    const plan = await load('scripts/task-tracker/lib/criteria-revision/plan-approval.mjs');
+    const { withCanonicalBodyWriteCapability } = await load(
+      'scripts/task-tracker/lib/criteria-revision/legacy.mjs'
+    );
+    const cf = makeCanonicalRevisionFixture(),
+      cb = store.createRevisionMemory({
+        observation: cf.observation,
+        comments: [],
+        hostMessages: [cf.rawUserMessage],
+      });
+    const cc = {
+      repository: cf.observation.repository,
+      issue: cf.observation.issue,
+      executor: cf.observation.executor,
+    };
+    const bodyWrite = cf.proposal.writeSet.find((write) => write.resource === 'issue-body');
+    await assert.rejects(
+      canonical.applyCanonicalRevision({ capability: {}, proposal: cf.proposal, deps: {} }),
+      /production-quarantined/
+    );
+    await assert.rejects(plan.finishMemoryPlanApproval({}, {}), /plan-completion-capability/);
+    await assert.rejects(
+      plan.runMemoryPlanApproval({
+        issueNumber: 124,
+        cfg: { repo: cc.repository },
+        backend: { observation: cf.observation },
+      }),
+      /production-quarantined/
+    );
+    cb.failBefore = 'body-write';
+    await assert.rejects(
+      engine.applyRevision({ context: cc, request: cf.request, deps: cb }),
+      /interrupted/
+    );
+    let canonicalEscaped;
+    await store.withMemoryInterlock(cb, cc, async (capability) => {
+      await withCanonicalBodyWriteCapability(
+        {
+          backend: cb,
+          capability,
+          context: cc,
+          proposal: cf.proposal,
+          before: cb.observation.body.bytes,
+        },
+        async (token) => {
+          canonicalEscaped = token;
+          for (const writer of writers) {
+            for (const backend of [
+              { revisionBackend: deps },
+              {
+                revisionBackend: cb,
+                pushBody: () => {
+                  effects++;
+                },
+              },
+            ])
+              await assert.rejects(call(writer, token, backend, bodyWrite.afterBytes), /revision/);
+            await assert.rejects(
+              call(writer, token, { revisionBackend: cb }, bodyWrite.afterBytes + 'unrelated'),
+              /revision/
+            );
+          }
+        }
+      );
+    });
+    for (const writer of writers)
+      await assert.rejects(
+        call(writer, canonicalEscaped, { revisionBackend: cb }, bodyWrite.afterBytes),
+        /revision/
+      );
+    assert.equal(
+      (await engine.recoverRevision({ context: cc, request: cf.request, deps: cb })).status,
+      'applied'
+    );
     assert.equal(effects, 0);
     assert.equal(deps.effects.includes('body-write'), false);
     assert.equal(

@@ -12,6 +12,7 @@ const CAPSULE_TYPES = new Set([
   'record-disposition',
   'contract-sealed',
   'contract-amended',
+  'plan-approval',
   'lifecycle-transition',
   'handoff',
   'integration-result',

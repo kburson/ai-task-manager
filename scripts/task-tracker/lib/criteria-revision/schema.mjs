@@ -1,3 +1,4 @@
+import { validateCanonicalArchive } from './canonical.mjs';
 // @story #1851
 // Closed internal data contracts. Validation proves consistency, not remote freshness.
 import { createHash } from 'node:crypto';
@@ -234,6 +235,7 @@ export function validateRevisionObservation(value) {
     'retiredIdentities',
     'revision',
     'revisionId',
+    ...(value.sourceKind === 'canonical-contract' ? ['canonicalArchive'] : []),
   ]);
   if (value.schema !== OBSERVATION_SCHEMA) revisionError('observation-schema');
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value.repository)) revisionError('repository');
@@ -351,6 +353,7 @@ export function validateRevisionObservation(value) {
       canonicalRecordJson(rawGrant.coordinator) !== canonicalRecordJson(value.grant.coordinator)
     )
       revisionError('canonical-authority');
+    validateCanonicalArchive(value);
   } else revisionError('authority-kind');
   return value;
 }
@@ -497,7 +500,15 @@ export function validateRevisionProposal(value) {
     revisionError('resource-vector');
   for (const item of array(value.writeSet, 'write-set')) {
     exactKeys(item, ['resource', 'beforeHash', 'afterHash', 'recordId', 'afterBytes']);
-    if (!['issue-body', 'delivery-contract', 'revision-record'].includes(item.resource))
+    if (
+      ![
+        'issue-body',
+        'delivery-contract',
+        'revision-record',
+        'capsule',
+        'proof-projection',
+      ].includes(item.resource)
+    )
       revisionError('resource');
     digest(item.beforeHash, true);
     digest(item.afterHash);

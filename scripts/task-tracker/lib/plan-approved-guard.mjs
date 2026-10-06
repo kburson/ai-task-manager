@@ -1,3 +1,5 @@
+import { readCurrentMemoryPlanApproval } from './criteria-revision/plan-approval.mjs';
+import { parseIssueDirectory } from './github-records/issue-directory.mjs';
 // Plan-exit guard: human plan-approval marker (#277, parent epic #259).
 //
 // Refuses plan → develop unless `ctx.body` carries `<!-- aitm-plan-approved:
@@ -50,6 +52,35 @@ export const planApprovedGuard = {
       return { ok: true };
     }
     const body = ctx?.body ?? '';
+    if (ctx.deps?.revisionBackend) {
+      const backend = ctx.deps.revisionBackend,
+        o = backend.observation;
+      try {
+        return {
+          ok: Boolean(
+            await readCurrentMemoryPlanApproval({
+              backend,
+              context: { repository: o.repository, issue: o.issue, executor: o.executor },
+              projectDir: ctx.projectDir,
+            })
+          ),
+        };
+      } catch (error) {
+        return { ok: false, reason: error.message };
+      }
+    }
+    try {
+      if (
+        parseIssueDirectory({ issueBody: body }) !== null ||
+        /<!--\s*aitm-criteria-revision\b/.test(body)
+      )
+        return {
+          ok: false,
+          reason: 'canonical Plan approval requires a registered complete authority runtime',
+        };
+    } catch (error) {
+      return { ok: false, reason: error.message };
+    }
     if (hasPlanApprovedMarker(body)) {
       if (!parseEntryMarkers(body).some((entry) => entry.state === 'ready-for-plan')) {
         return { ok: true };

@@ -1,3 +1,4 @@
+import { deriveCanonicalAmendment, canonicalCapsuleWrite } from './canonical.mjs';
 // @story #1851
 import { reduceRevisionEvents } from './reducer.mjs';
 import { parseRevisionEvent, withRevisionValidation } from './records.mjs';
@@ -8,11 +9,7 @@ import { parseProofMarker, hasExecutionProof, serializeProofMarker } from '../pr
 import { resolveVcListStrict, resolveCitedOrLiteralCommands } from '../vc-ref.mjs';
 import { parseBodyVersion, stampBodyVersion } from '../body-version.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
-import {
-  createDraftContract,
-  renderDeliveryContract,
-  validateDeliveryContract,
-} from '../github-records/delivery-contract.mjs';
+import { renderDeliveryContract } from '../github-records/delivery-contract.mjs';
 import {
   REVISION_SCHEMA,
   REVISION_MODES,
@@ -37,7 +34,7 @@ const comments = /<!--[\s\S]*?-->/g;
 const markerKinds = [
   [/^aitm-(?:timing|entered-|stage-entry)/, 'historical'],
   [/^aitm-delivery-/, 'delivery'],
-  [/^aitm-plan-approved\b/, 'plan-approval'],
+  [/^aitm-(?:plan-approved|plan-approval-binding)\b/, 'plan-approval'],
   [/^aitm-(?:test-receipt|test-verified|test-complete)\b/, 'test'],
   [/^aitm-agent-review\b/, 'agent-review'],
   [/^aitm-(?:review-approved|final-review)\b/, 'final-review'],
@@ -607,40 +604,6 @@ function projectLegacy(
     observation.body.version + 1
   );
 }
-function projectCanonical(observation, after) {
-  const previous = observation.contract.value;
-  const rootIds = new Set(after.filter((x) => x.section === 'vc').map((x) => x.identity));
-  for (const d of after) {
-    if (d.section === 'vc' && d.rootId !== d.identity) revisionError('canonical-root-identity');
-    if (d.declaration.kind === 'vc-list' && d.declaration.vcIds.some((id) => !rootIds.has(id)))
-      revisionError('missing-canonical-root-reference');
-  }
-  const definitions = {
-    acceptanceCriteria: after
-      .filter((x) => x.section === 'ac')
-      .map((x) => ({ logicalId: x.identity, text: x.text })),
-    verificationCommands: after
-      .filter((x) => x.section === 'vc')
-      .map((x) => ({ logicalId: x.identity, command: x.text })),
-    definitionOfDone: after
-      .filter((x) => x.section === 'dod')
-      .map((x) => ({ logicalId: x.identity, text: x.text })),
-  };
-  const draft = createDraftContract({
-    recordId: previous.recordId,
-    authorityEpoch: previous.authorityEpoch,
-    coordinatorGrantId: previous.coordinatorGrantId,
-    ...definitions,
-  });
-  const contract = {
-    ...clone(draft),
-    status: previous.status,
-    revision: previous.revision + 1,
-    contractEpoch: previous.contractEpoch + 1,
-  };
-  validateDeliveryContract(contract);
-  return contract;
-}
 export function deriveResourceVector(observation) {
   const hashes = [
     {
@@ -678,6 +641,31 @@ export function deriveResourceVector(observation) {
       identity: observation.capsule.head,
       hash: hashBytes(observation.capsule.bytes),
     });
+  if (observation.canonicalArchive) {
+    const archive = observation.canonicalArchive;
+    hashes.push({
+      kind: 'criterion-bindings',
+      identity: 'declarations',
+      hash: hashRevisionValue(observation.criterionBindings),
+    });
+    hashes.push(
+      ...archive.records.map((r) => ({
+        kind: 'canonical-record',
+        identity: r.recordId,
+        hash: hashBytes(r.bytes),
+      }))
+    );
+    hashes.push({
+      kind: 'canonical-hierarchy',
+      identity: 'hierarchy',
+      hash: hashRevisionValue(archive.issueHierarchy),
+    });
+    hashes.push({
+      kind: 'coordination-projection',
+      identity: 'coordination',
+      hash: hashBytes(archive.coordinationProjectionBytes),
+    });
+  }
   const seen = new Set();
   for (const entry of hashes) {
     const key = canonicalRecordJson([entry.kind, entry.identity]);
@@ -874,25 +862,53 @@ function deriveScopedProposal(input) {
       afterBytes,
     });
   } else if (mode !== 'abort') {
-    const contract = projectCanonical(observation, after),
+    const contract = deriveCanonicalAmendment(observation, after),
       afterBytes = canonicalRecordJson(contract),
       oldProjection = renderDeliveryContract({ contract: observation.contract.value }).markdown;
     if (observation.body.bytes.split(oldProjection).length !== 2)
       revisionError('ambiguous-contract-projection');
+    let projectedBody = observation.body.bytes;
+    const retiredMarkers = classifyMarkers(projectedBody).filter((marker) =>
+      invalidation.some(
+        (item) => item.identity === marker.identity && item.disposition === 'retired'
+      )
+    );
+    for (const marker of retiredMarkers.sort((a, b) => b.start - a.start))
+      projectedBody = projectedBody.slice(0, marker.start) + projectedBody.slice(marker.end);
+    if (projectedBody.split(oldProjection).length !== 2)
+      revisionError('ambiguous-contract-projection');
     const bodyBytes = stampBodyVersion(
-      observation.body.bytes.replace(
-        oldProjection,
-        () => renderDeliveryContract({ contract }).markdown
-      ),
+      projectedBody.replace(oldProjection, () => renderDeliveryContract({ contract }).markdown),
       observation.body.version + 1
     );
+    const proofBytes = canonicalRecordJson({
+      proofRecords: [],
+      criterionBindings: after
+        .filter((d) => d.section !== 'vc')
+        .map((d) => ({
+          criterionIdentity: d.identity,
+          vcIds: d.declaration.kind === 'vc-list' ? d.declaration.vcIds : [],
+          sourceBindings: d.sourceBindings,
+        })),
+    });
     writeSet.push(
+      canonicalCapsuleWrite(observation, contract, operationId),
       {
         resource: 'delivery-contract',
         beforeHash: hashBytes(observation.contract.bytes),
         afterHash: hashBytes(afterBytes),
         recordId: `${operationId}-contract`,
         afterBytes,
+      },
+      {
+        resource: 'proof-projection',
+        beforeHash: hashRevisionValue({
+          proofRecords: observation.proofRecords,
+          criterionBindings: observation.criterionBindings,
+        }),
+        afterHash: hashBytes(proofBytes),
+        recordId: `${operationId}-proof`,
+        afterBytes: proofBytes,
       },
       {
         resource: 'issue-body',

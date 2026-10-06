@@ -1,3 +1,11 @@
+import { currentPlanExtension } from './plan-approval.mjs';
+import {
+  deriveCanonicalWrites,
+  applyCanonicalRevision,
+  canonicalPrefixVectors,
+  sameRevisionObservation,
+  assertCanonicalAuthority,
+} from './canonical.mjs';
 // @story #1853
 // Transaction mutation is confined to the opaque memory backend until Tasks5/6.
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
@@ -87,6 +95,11 @@ function vectorState(observation, chain) {
   const after = expectedResourceVector(p, chain.head);
   if (p.mode !== 'abort' && equal(vector, after)) return 'pending-after';
   if (equal(vector, before)) return 'pending-before';
+  if (
+    p.authority.kind === 'canonical-contract' &&
+    canonicalPrefixVectors(p, chain.head).some((v) => equal(v, vector))
+  )
+    return 'pending-prefix';
   return 'pending-drift';
 }
 async function collect(context, deps) {
@@ -94,11 +107,20 @@ async function collect(context, deps) {
   const observation = readMemoryAuthority(deps, context);
   validateRevisionObservation(observation);
   const chain = await readRevisionChain({ context, transport: deps });
+  let approvalExtension = null;
+  try {
+    approvalExtension = currentPlanExtension({ observation, chain, backend: deps });
+  } catch {
+    /* Invalid approval remains authority drift. */
+  }
+  const approvedAfter =
+    approvalExtension &&
+    equal(deriveResourceVector(observation), deriveResourceVector(approvalExtension));
   observation.revisionRecords = { complete: true, records: chain.events.map(revisionRecord) };
   if (chain.status !== 'empty') {
     const p = chain.effective.proposal;
     const after = p.writeSet.find((w) => w.resource === 'issue-body');
-    if (after && hashBytes(observation.body.bytes) === after.afterHash) {
+    if (after && (hashBytes(observation.body.bytes) === after.afterHash || approvedAfter)) {
       observation.identities = identities(
         p.after.definitions.map((d) => ({
           ...d,
@@ -127,7 +149,7 @@ async function collect(context, deps) {
   )
     revisionError('missing-revision-chain');
   validateRevisionObservation(observation);
-  const progress = vectorState(observation, chain);
+  const progress = approvedAfter ? 'pending-after' : vectorState(observation, chain);
   let status = chain.status === 'pending' ? progress : chain.status;
   if (chain.status === 'applied') {
     if (progress !== 'pending-after') status = 'authority-drift';
@@ -149,8 +171,16 @@ export async function observeRevision({ context, deps }) {
     return { status: 'indeterminate', code: String(error.message ?? error) };
   }
 }
+function deriveWrites(proposal) {
+  return proposal.authority.kind === 'legacy-body'
+    ? deriveLegacyWrites(proposal)
+    : deriveCanonicalWrites({
+        proposal,
+        contract: proposal.archive.observation.contract.value,
+        grant: proposal.archive.observation.grant,
+      });
+}
 function mutable(observation) {
-  if (observation.sourceKind !== 'legacy-body') revisionError('canonical-not-installed');
   if (
     !['refine', 'ready-for-plan', 'plan', 'develop'].includes(observation.stage) ||
     observation.issueState !== 'open' ||
@@ -198,11 +228,19 @@ export async function prepareRevision({ context, input, deps }) {
     );
     const current = await collect(context, deps),
       { chain, observation } = current;
+    if (observation.sourceKind === 'canonical-contract') {
+      const now = new Date().toISOString();
+      assertCanonicalAuthority(observation, now);
+      if (input.mode !== 'resume') observation.canonicalArchive.observedAt = now;
+    }
     if (input.mode === 'revision' && chain.status === 'pending')
       revisionError('pending-transaction');
     if (input.mode !== 'revision' && chain.status !== 'pending')
       revisionError('recovery-not-pending');
-    if (input.mode === 'resume' && !['pending-before', 'pending-after'].includes(current.status))
+    if (
+      input.mode === 'resume' &&
+      !['pending-before', 'pending-prefix', 'pending-after'].includes(current.status)
+    )
       revisionError('recovery-prefix');
     if (input.mode === 'abort' && !originalUntouched(current)) revisionError('abort-touched');
     const proposal = deriveProposal({
@@ -218,7 +256,7 @@ export async function prepareRevision({ context, input, deps }) {
           ? null
           : { transactionId: chain.root.transactionId, eventId: chain.head },
     });
-    deriveLegacyWrites(proposal);
+    deriveWrites(proposal);
     if (input.mode === 'forward-repair') noResurrection(chain, proposal.writeSet[0].afterBytes);
     const exact = input.authorizationSource !== undefined;
     const source = input.authorizationSource ?? {
@@ -260,6 +298,12 @@ function matchRequest(current, request, context) {
     chain = current.chain;
   if (!equal(p.executor, context.executor)) revisionError('executor-mismatch');
   mutable(current.observation);
+  if (current.observation.sourceKind === 'canonical-contract') {
+    const now = new Date().toISOString();
+    assertCanonicalAuthority(current.observation, now);
+    if (Date.parse(p.archive.observation.canonicalArchive.observedAt) > Date.parse(now))
+      revisionError('future-canonical-time');
+  }
   if (
     (chain.status === 'applied' || chain.status === 'aborted') &&
     chain.root.transactionId === p.transactionId
@@ -272,14 +316,15 @@ function matchRequest(current, request, context) {
     return 'terminal';
   }
   if (chain.status === 'pending' && chain.effective.proposal.proposalDigest === p.proposalDigest) {
-    if (!['pending-before', 'pending-after'].includes(current.status))
+    if (!['pending-before', 'pending-prefix', 'pending-after'].includes(current.status))
       revisionError('recovery-prefix');
     return 'retry';
   }
   if (p.mode === 'revision') {
     if (chain.status === 'pending') revisionError('pending-transaction');
     if (current.status !== chain.status) revisionError('authority-drift');
-    if (!equal(current.observation, p.archive.observation)) revisionError('stale-observation');
+    if (!sameRevisionObservation(current.observation, p.archive.observation))
+      revisionError('stale-observation');
     return 'new';
   }
   if (
@@ -287,10 +332,13 @@ function matchRequest(current, request, context) {
     p.priorTransaction.eventId !== chain.head ||
     p.priorTransaction.transactionId !== chain.root.transactionId ||
     p.observedResourceVector !== hashRevisionValue(current.resourceVector) ||
-    !equal(p.archive.observation, current.observation)
+    !sameRevisionObservation(p.archive.observation, current.observation)
   )
     revisionError('stale-recovery-vector');
-  if (p.mode === 'resume' && !['pending-before', 'pending-after'].includes(current.status))
+  if (
+    p.mode === 'resume' &&
+    !['pending-before', 'pending-prefix', 'pending-after'].includes(current.status)
+  )
     revisionError('recovery-prefix');
   if (p.mode === 'abort' && !originalUntouched(current)) revisionError('abort-touched');
   if (p.mode === 'forward-repair') noResurrection(chain, p.writeSet[0].afterBytes);
@@ -300,7 +348,7 @@ async function execute({ context, request, deps }) {
   try {
     boundary(context, deps);
     validateRevisionRequest(request);
-    deriveLegacyWrites(request.proposal);
+    deriveWrites(request.proposal);
     // Actual host provenance and both complete records are checked pre-lock.
     const authorizer = await authorize(request.proposal, request.authorizationSource, deps);
     const pre = await collect(context, deps),
@@ -349,6 +397,8 @@ async function execute({ context, request, deps }) {
       const p = current.chain.effective.proposal;
       if (p.mode === 'abort') {
         if (!originalUntouched(current)) revisionError('abort-touched');
+      } else if (p.authority.kind === 'canonical-contract') {
+        await applyCanonicalRevision({ capability, proposal: p, deps });
       } else if (current.status === 'pending-before') {
         assertMemoryCapability(deps, capability, context);
         await withLegacyWriteCapability(

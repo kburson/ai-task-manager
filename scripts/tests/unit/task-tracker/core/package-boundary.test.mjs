@@ -1,4 +1,4 @@
-// @story #1853 #1852 #1851 #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
+// @story #1854 #1853 #1852 #1851 #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -364,10 +364,12 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const criteriaRevisionEntries = [
     'scripts/task-tracker/lib/criteria-revision/admission.mjs',
     'scripts/task-tracker/lib/criteria-revision/authorization.mjs',
+    'scripts/task-tracker/lib/criteria-revision/canonical.mjs',
     'scripts/task-tracker/lib/criteria-revision/domain.mjs',
     'scripts/task-tracker/lib/criteria-revision/engine.mjs',
     'scripts/task-tracker/lib/criteria-revision/interlock.mjs',
     'scripts/task-tracker/lib/criteria-revision/legacy.mjs',
+    'scripts/task-tracker/lib/criteria-revision/plan-approval.mjs',
     'scripts/task-tracker/lib/criteria-revision/proposal.mjs',
     'scripts/task-tracker/lib/criteria-revision/records.mjs',
     'scripts/task-tracker/lib/criteria-revision/reducer.mjs',
@@ -377,7 +379,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   assert.deepEqual(
     files.filter((entry) => entry.startsWith('scripts/task-tracker/lib/criteria-revision/')).sort(),
     criteriaRevisionEntries,
-    '#1853 criteria-revision runtime surface must match the exact reviewed Tasks 1 through 3 module set'
+    '#1854 criteria-revision runtime surface must match the exact reviewed Tasks 1 through 4 module set'
   );
   const effectiveCeiling =
     ENTRY_CEILING +
