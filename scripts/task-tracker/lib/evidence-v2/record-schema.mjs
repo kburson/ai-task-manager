@@ -1,4 +1,5 @@
 // @story #1497
+import { validateRevisionEvidenceBinding } from '../criteria-revision/evidence-binding.mjs';
 import {
   exact,
   fail,
@@ -135,10 +136,15 @@ export function validateSubject(subject) {
       'recipeDigest',
       'environmentDigest',
       'gitInputs',
+      ...(subject.revisionBinding === undefined ? [] : ['revisionBinding']),
     ],
     'subject-keys'
   );
   if (subject.schema !== 'aitm.evidence-subject/v2') fail('subject-schema');
+  if (subject.revisionBinding !== undefined) {
+    validateRevisionEvidenceBinding(subject.revisionBinding);
+    if (subject.revisionBinding.repository !== subject.repositoryId?.nameWithOwner) fail('revision-repository-identity');
+  }
   repository(subject.repositoryId);
   exact(subject.source, ['objectFormat', 'treeOid', 'manifestDigest'], 'source-keys');
   if (

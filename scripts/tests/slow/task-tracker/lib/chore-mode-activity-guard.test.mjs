@@ -16,8 +16,8 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -42,7 +42,7 @@ function runGuard({ cwd, stdin }) {
 }
 
 function makeRepo() {
-  const root = realpathSync(mkdtempSync(join(projectScratchDir('test'), 'aitm-chore-guard-')));
+  const root = createRuntimeRootFixture('aitm-chore-guard-');
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'config', 'user.email', 'test@example.com');
   git(root, 'config', 'user.name', 'Test');

@@ -1,3 +1,7 @@
+import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
+import { setChecklistLine, setChecklistLines } from '../lib/checklist-body.mjs';
+export { setChecklistLine, setChecklistLines } from '../lib/checklist-body.mjs';
+import { withRevisionConsumer, currentRevisionExecutionScope, currentRevisionChecklistOperation, prepareRevisionChecklist, resumeRevisionChecklist, RevisionPolicyError } from '../lib/criteria-revision/policy.mjs';
 // @story #1859
 import { parseReviewedCheckArgs, recordReviewedScope } from '../lib/reviewed-scope/record.mjs';
 import { loadState } from '../state.mjs';
@@ -10,6 +14,43 @@ import { findEvidenceAc, findAcSectionCheckbox, stripMarkers } from '../lib/ac-e
 import { NON_DEMONSTRABLE_TAG_RE } from '../lib/body-invariants.mjs';
 import { escapeValue } from '../lib/marker-grammar.mjs';
 import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
+
+const nativeChecklistTokens = new WeakMap();
+// Reader only; tokens can be issued solely by the actual native adapter after
+// its evidence gate and independently held proof qualification have completed.
+export function readNativeChecklistOperation(token) {
+  const execution = nativeChecklistTokens.get(token);
+  if (!execution || canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(execution.scope))
+    throw new Error('native-checkbox-token');
+  return structuredClone(execution);
+}
+// Read-only assertion for the private original-intent retry. It returns no
+// token or authority and still runs the actual current native evidence gate.
+export function assertCurrentNativeChecklistOperation(execution) {
+  if (execution?.schema !== 'aitm.native-checkbox-operation/v1' ||
+      canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(execution.scope))
+    throw new Error('native-checkbox-current-scope');
+  if (execution.intent.desired === 'checked') for (const label of execution.intent.labels) {
+    if (gateEvidenceTick(execution.scope.observation.body.bytes, label).kind !== 'pass')
+      throw new Error('native-checkbox-current-evidence');
+  }
+}
+
+async function prepareNativeChecklist(ctx, labels, desired) {
+  const execution = await currentRevisionChecklistOperation({ intent: { labels, desired }, projectDir: ctx.projectDir });
+  if (!execution) return;
+  const token = Object.freeze({});
+  nativeChecklistTokens.set(token, execution);
+  try { await prepareRevisionChecklist(token); }
+  finally { nativeChecklistTokens.delete(token); }
+}
+function refuseUnsupportedNativeChecklist(labels, allowUnverifiedTicks = false) {
+  const scope = currentRevisionExecutionScope();
+  if (scope && (scope.observation.sourceKind !== 'legacy-body' || allowUnverifiedTicks ||
+      labels.some(label => /^(?:deep[- ]?dive complete|discussion complete)$/i.test(label.trim()))))
+    throw new RevisionPolicyError({ status: 'indeterminate', code: 'revision-topology-unsupported',
+      noAutomaticRemediation: { reason: 'authority-investigation-required' } });
+}
 
 // Toggle a single checklist line whose VISIBLE label matches `label`.
 //
@@ -88,60 +129,6 @@ export function toggleChecklistLines(body, labels) {
 //   { status: 'not-found' }
 //   { status: 'ambiguous', count: <n> }
 //   { status: 'set', body: <maybe-unchanged>, changed: <bool>, alreadyChecked: <bool> }
-export function setChecklistLine(body, label, desired) {
-  const targetChecked = desired === 'checked';
-  const wanted = stripMarkers(label);
-  const src = String(body);
-  const lines = src.split('\n');
-  const matches = [];
-  for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/^- \[([ x])\] (.+)$/);
-    if (!m) continue;
-    if (stripMarkers(m[2]) === wanted) {
-      matches.push({ index: i, checked: m[1] === 'x' });
-    }
-  }
-  if (matches.length === 0) return { status: 'not-found' };
-  if (matches.length > 1) return { status: 'ambiguous', count: matches.length };
-  const { index, checked: alreadyChecked } = matches[0];
-  const changed = alreadyChecked !== targetChecked;
-  if (!changed) {
-    // Byte-identical no-op: return the original string untouched.
-    return { status: 'set', body: src, changed: false, alreadyChecked };
-  }
-  lines[index] = lines[index].replace(/^- \[[ x]\]/, targetChecked ? '- [x]' : '- [ ]');
-  return { status: 'set', body: lines.join('\n'), changed: true, alreadyChecked };
-}
-
-// Fold `setChecklistLine` over many labels against one accumulating body. A
-// `not-found`/`ambiguous` label is recorded and skipped — it never aborts the
-// batch. Returns { body, results } where results is
-//   [{ label, status: 'set'|'not-found'|'ambiguous', changed, alreadyChecked, count? }]
-export function setChecklistLines(body, labels, desired) {
-  let current = body;
-  const results = [];
-  for (const label of labels) {
-    const r = setChecklistLine(current, label, desired);
-    if (r.status === 'not-found') {
-      results.push({ label, status: 'not-found', changed: false, alreadyChecked: false });
-      continue;
-    }
-    if (r.status === 'ambiguous') {
-      results.push({
-        label,
-        status: 'ambiguous',
-        changed: false,
-        alreadyChecked: false,
-        count: r.count,
-      });
-      continue;
-    }
-    current = r.body;
-    results.push({ label, status: 'set', changed: r.changed, alreadyChecked: r.alreadyChecked });
-  }
-  return { body: current, results };
-}
-
 // Parse `verbCheck` args. Batch mode is triggered by any `--label <v>` (repeatable)
 // or `--labels-file <path>`. Remaining positional tokens form the legacy single
 // label (joined with spaces). `--allow-unverified-ticks` (#567) is a boolean flag
@@ -254,6 +241,27 @@ export function appendUnverifiedTickAudit(body, { label, ts }) {
 //     `--allow-unverified-ticks` honest hatch).
 // Un-ticking is never a claim of proof, so `ensureUnchecked` runs no gate.
 async function runEnsure(ctx, desired) {
+  const state = loadState(ctx.statePath);
+  if (!state.active || state.active === 'discover') return runEnsureAdmitted(ctx, desired);
+  if (ctx.deps?.revisionBackend && !parseReviewedCheckArgs(ctx.rest, desired)) {
+    const parsed = parseCheckArgs(ctx.rest);
+    if (!parsed.allowUnverifiedTicks) {
+      const labels = [...parsed.labels];
+      if (parsed.labelsFile) {
+        const { readFile } = await import('node:fs/promises');
+        labels.push(...(await readFile(parsed.labelsFile, 'utf8')).split('\n').map(line => line.trim()).filter(Boolean));
+      }
+      if (!labels.length) labels.push(parsed.positional.join(' ').trim());
+      if (await resumeRevisionChecklist({ repository: ctx.cfg?.repo, issue: Number(state.active.replace(/^#/, '')),
+        backend: ctx.deps.revisionBackend, intent: { labels, desired }, projectDir: ctx.projectDir, pexec: ctx.pexec })) return;
+    }
+  }
+  return withRevisionConsumer({ repository: ctx.cfg?.repo, issue: Number(state.active.replace(/^#/, '')),
+    activity: 'issue-write', backend: ctx.deps?.revisionBackend, projectDir: ctx.projectDir },
+  () => runEnsureAdmitted(ctx, desired));
+}
+
+async function runEnsureAdmitted(ctx, desired) {
   const { cfg, statePath, projectDir, rest, pexec } = ctx;
   const checking = desired === 'checked';
   const reviewed = parseReviewedCheckArgs(rest, desired);
@@ -270,6 +278,7 @@ async function runEnsure(ctx, desired) {
 
   const verbName = checking ? 'ensureChecked' : 'ensureUnchecked';
   if (reviewed) {
+    if (currentRevisionExecutionScope()) refuseUnsupportedNativeChecklist([], true);
     const result = await recordReviewedScope({ ctx, ...reviewed });
     console.log(
       `[task-tracker] ${result.status === 'no-op' ? 'Already checked' : 'Checked'} reviewed Scope on ${s.active}`
@@ -307,6 +316,7 @@ async function runEnsure(ctx, desired) {
   }
 
   const label = parsed.positional.join(' ').trim();
+  refuseUnsupportedNativeChecklist([label], parsed.allowUnverifiedTicks);
   if (!label) {
     console.error(`Usage: /task ${verbName} "<label>"`);
     process.exit(1);
@@ -471,6 +481,7 @@ async function runEnsure(ctx, desired) {
       }
     }
   }
+  await prepareNativeChecklist(ctx, [label], desired);
   await mutateBody({
     issueNumber: issueNum,
     repo: cfg.repo,
@@ -527,6 +538,7 @@ async function runEnsureBatch({
   const { cfg, projectDir, pexec } = ctx;
   const checking = desired === 'checked';
   const auvAllowed = checking && allowUnverifiedTicks;
+  refuseUnsupportedNativeChecklist(labels, allowUnverifiedTicks);
   const mutateBody = ({ issueNumber, repo, mutate, allowUnverifiedTicks: auv = false }) =>
     mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec }, allowUnverifiedTicks: auv });
   // The deep-dive-complete special label is a checked-only marker route; under
@@ -618,6 +630,7 @@ async function runEnsureBatch({
       auvAllowed ? results.filter((r) => r.status === 'set' && r.changed).map((r) => r.label) : []
     );
     if (anyChanged) {
+      await prepareNativeChecklist(ctx, checklistLabels, desired);
       const ts = new Date().toISOString();
       // #295 — re-run the fold on FRESH base; reported per-label results above
       // reflect the diagnostic pass (pre-fetch).

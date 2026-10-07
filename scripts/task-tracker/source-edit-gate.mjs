@@ -30,6 +30,13 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { evaluateLocalRevisionActivity, quarantineLocalSourceEdit, withNativeLinkedSourceCorrection } from './lib/criteria-revision/policy.mjs';
+import { getActiveTask } from './session-state.mjs';
+import { assertRevisionMemory, withMemoryInterlock, assertMemoryCapability } from './lib/criteria-revision/store.mjs';
+import { observeRevision } from './lib/criteria-revision/engine.mjs';
+import { deriveLinkedPlanEdit } from './lib/criteria-revision/source-correction.mjs';
+import { hashBytes } from './lib/criteria-revision/schema.mjs';
+import { validateGovernedLinkedPlan, isGovernedPlanObservation } from './lib/governed-plan-policy.mjs';
 import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 import {
@@ -61,6 +68,63 @@ import {
 const pexec = promisify(execFile);
 
 export const CACHE_TTL_MS = 30_000;
+
+const nativeLinkedOperations = new WeakMap();
+export function readNativeLinkedSourceOperation(token) {
+  const held = nativeLinkedOperations.get(token);
+  if (!held?.live) throw new Error('criteria-revision:native-linked-source-token');
+  assertMemoryCapability(held.backend, held.capability, held.context);
+  return held;
+}
+async function nativeLinkedHook(payload, deps, projectDir, targets) {
+  const backend = deps.revisionBackend;
+  assertRevisionMemory(backend);
+  if (deps.revisionPorts) throw new Error('criteria-revision:source-foreign-ports');
+  const context = { repository: deps.cfg?.repo ?? backend.observation.repository,
+    issue: backend.observation.issue, executor: backend.observation.executor };
+  return withMemoryInterlock(backend, context, async capability => {
+    const before = backend.observation;
+    const binding = readExactSessionBinding(projectDir, { sessionId: payload.session_id });
+    const actual = readWorktreeIdentity({ projectDir });
+    const timed = getActiveTask(payload.session_id, projectDir);
+    if (!bindingMatches(actual, binding, context.issue) || !timed?.entryStartTs || timed.pausedAtTs ||
+        context.executor.sessionId !== payload.session_id || context.executor.worktree !== actual.worktreePath ||
+        context.executor.branch !== actual.worktreeBranch) throw new Error('criteria-revision:source-native-session');
+    const policy = validateGovernedLinkedPlan({ body: before.body.bytes, projectDir });
+    if (!policy.ok || !isGovernedPlanObservation(policy, { body: before.body.bytes, projectDir }))
+      throw new Error('criteria-revision:source-native-read');
+    if (!policy.observation) return null;
+    const physical = resolveMutationTarget(policy.observation.path, projectDir, projectDir).physical;
+    if (!targets.some(target => target.physical === physical)) return null;
+    if (targets.length !== 1 || !['Edit', 'Write'].includes(payload.tool_name))
+      throw new Error('criteria-revision:source-native-targets');
+    const raw = payload.tool_input, tool = payload.tool_name;
+    const actualTarget = resolveMutationTarget(raw.file_path, resolveInvocationDirectory(payload), projectDir);
+    if (actualTarget.physical !== physical || targets[0].physical !== actualTarget.physical)
+      throw new Error('criteria-revision:source-native-target');
+    const allowed = tool === 'Edit' ? ['file_path', 'old_string', 'new_string', 'replace_all'] : ['file_path', 'content'];
+    if (Object.keys(raw).some(key => !allowed.includes(key)) || !Object.hasOwn(raw, 'file_path'))
+      throw new Error('criteria-revision:source-native-input');
+    const input = tool === 'Edit' ? { old_string: raw.old_string, new_string: raw.new_string, replace_all: raw.replace_all ?? false }
+      : { content: raw.content };
+    const state = await observeRevision({ context, deps: backend });
+    const prior = state.nativeSourceJournal ?? backend.snapshot.nativeSourceRecords?.at(-1);
+    const retained = prior?.operation.schema === 'aitm.native-linked-plan-edit/v1' &&
+      prior.operation.path === policy.observation.path && JSON.stringify(prior.operation.input) === JSON.stringify(input) &&
+      prior.operation.tool === tool ? prior.sourceRead : null;
+    const observed = policy.observation;
+    const sourceRead = retained ?? { schema: 'aitm.native-plan-source-read/v1', bodyHash: hashBytes(before.body.bytes),
+      projectDir: observed.projectDir, key: observed.key, path: observed.path, text: observed.text, contentSha256: observed.contentSha256 };
+    const { operation } = deriveLinkedPlanEdit({ tool, path: observed.path, input, beforeText: sourceRead.text });
+    const token = Object.freeze({});
+    const held = { live: true, backend, capability, context, operation, sourceRead,
+      session: { sessionId: payload.session_id, projectDir: actual.worktreePath, branch: actual.worktreeBranch, entryStartTs: timed.entryStartTs } };
+    nativeLinkedOperations.set(token, held);
+    try { return await withNativeLinkedSourceCorrection({ token, backend, capability, writeDeps: deps.writeDeps }); }
+    finally { held.live = false; }
+  });
+}
+
 
 export const ALLOWLIST_PREFIXES = ['.tmp/', SCRATCH_REL_PREFIX];
 
@@ -511,6 +575,27 @@ export async function runHook(payload, deps = {}) {
       };
     }
   }
+  if (deps.revisionBackend && targets.length) {
+    try {
+      const native = await nativeLinkedHook(payload, deps, projectDir, validatedTargets);
+      if (native) return native;
+    } catch (error) {
+      return { decision: 'block', code: 'revision-authority-unavailable', reason: `[task-tracker] ${error.message}` };
+    }
+  }
+  if (targets.length) {
+    try {
+      const cfg = deps.cfg || loadConfig({ projectPath: configPath(projectDir) });
+      const revision = await quarantineLocalSourceEdit({ repository: cfg.repo,
+        targets: targets.map((target, index) => validatedTargets[index]?.lexical ?? target),
+        projectDir, sessionId: payload?.session_id }, deps.revisionPorts);
+      if (revision.status !== 'ready') return { decision: 'block', code: revision.code,
+        reason: `[task-tracker] ${revision.code}: linked source mutation requires trusted native authority.` };
+    } catch {
+      return { decision: 'block', code: 'revision-authority-unavailable',
+        reason: '[task-tracker] revision-authority-unavailable: source mutation context unavailable.' };
+    }
+  }
   // Resolve artifact-only mutations before consulting session or remote authority.
   const artifactDecisions = targets.map((filePath, index) =>
     decideSourceEdit({
@@ -538,6 +623,13 @@ export async function runHook(payload, deps = {}) {
       : payload?.session_id !== undefined
         ? null
         : loadBoundIssue(projectDir);
+
+  const localPolicy = (deps.loadPolicy || loadPolicy)(projectDir);
+  if (targets.some((filePath) => classifyEdit(normalizePath(filePath, projectDir), localPolicy) === 'WRITE_CODE')) {
+    const cfg = deps.cfg || loadConfig({ projectPath: configPath(projectDir) });
+    const revision = evaluateLocalRevisionActivity({ repository: cfg.repo, issue: Number(String(boundIssue || '').replace(/^#/, '')) }, { ...deps.revisionPorts, worktree: projectDir });
+    if (revision.status !== 'ready') return { decision: 'block', code: revision.code, reason: `[task-tracker] ${revision.code}: current revision activity admission is unavailable.` };
+  }
 
   let signals = { state: 'unknown', hasPostedMarker: false, hasCompleteMarker: false };
   if (!choreModeActive && boundIssue) {

@@ -1,3 +1,5 @@
+import { isMemoryStageEffectScope } from './criteria-revision/transport-quarantine.mjs';
+import { nativeSourceMarkerLoss, assertRevisionStageBodyEntry } from './criteria-revision/policy.mjs';
 import { validateLegacyCapability } from './criteria-revision/legacy.mjs';
 import { validateReviewedDelta } from './reviewed-scope/record.mjs';
 // @story #1859
@@ -89,7 +91,37 @@ export class MarkerLossError extends Error {
   }
 }
 
-export async function mutateIssueBody({
+const nativeInvariantRequests = new WeakMap();
+function sameOwnData(value, expected) {
+  const actual = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(actual);
+  return keys.length === Reflect.ownKeys(expected).length && keys.every(key => {
+    const a = actual[key], b = expected[key];
+    return b && Object.hasOwn(a, 'value') && a.value === b.value &&
+      a.enumerable === b.enumerable && a.configurable === b.configurable && a.writable === b.writable;
+  });
+}
+// Comparison only. The request is registered solely at the lexical invariant
+// wrapper below; copies, caller validators and data cannot register themselves.
+export function assertOriginalInvariantBodyRequest(input) {
+  const original = nativeInvariantRequests.get(input);
+  if (!original || !sameOwnData(input, original.descriptors) ||
+      !sameOwnData(original.deps, original.dependencyDescriptors)) throw new TypeError('native-invariant-body-request');
+}
+
+export function assertOriginalStageEntryWrapper(input, originalInput) {
+  assertOriginalInvariantBodyRequest(input);
+  if (nativeInvariantRequests.get(input).originalInput !== originalInput)
+    throw new TypeError('native-entry-invariant-request');
+}
+export async function mutateIssueBody(input = {}) {
+  try { assertRevisionStageBodyEntry(input); }
+  catch (error) {
+    if (!isMemoryStageEffectScope()) throw error;
+    const core = await import('./move-state/move-state-core.mjs');
+    core.assertNativeStageBodyInput(input);
+  }
+  const {
   issueNumber,
   repo,
   mutate,
@@ -106,7 +138,7 @@ export async function mutateIssueBody({
   validateFreshBase,
   validateFreshBaseAsync,
   expectedVersion,
-} = {}) {
+  } = input;
   if (criteriaRevisionCapability !== undefined) {
     if (Object.keys(deps).join(',') !== 'revisionBackend')
       throw new Error('criteria-revision:legacy-backend');
@@ -142,9 +174,10 @@ export async function mutateIssueBody({
               next,
             });
       const reviewedLine = validateReviewedDelta(baseBody, next, reviewedEvidenceCapability);
+      const sourceLoss = nativeSourceMarkerLoss(baseBody, next);
       if (!allowMarkerLoss) {
         const lost = findLostMarkers(baseBody, next).filter(
-          (name) => !revision?.allowedMarkerLoss.includes(name)
+          (name) => !revision?.allowedMarkerLoss.includes(name) && !sourceLoss.includes(name)
         );
         if (lost.length > 0) throw new MarkerLossError(issueNumber, lost);
       }
@@ -163,7 +196,7 @@ export async function mutateIssueBody({
       if (!allowMarkerLoss) {
         const sectionLoss = findUnexpectedSectionLoss(baseBody, next, {
           expectedRemovedHeadings,
-          allowLargeShrink: allowLargeShrink || revision !== null,
+          allowLargeShrink: allowLargeShrink || revision !== null || sourceLoss.length > 0,
         });
         if (sectionLoss) throw new UnexpectedSectionLossError(issueNumber, sectionLoss);
       }
@@ -229,7 +262,7 @@ export async function mutateIssueBody({
     return next;
   };
 
-  return versionedWriteBody({
+  const request = {
     issueNumber,
     repo,
     mutate: guardedMutate,
@@ -239,5 +272,10 @@ export async function mutateIssueBody({
     criteriaRevisionCapability,
     validateMutation,
     validateFreshBaseAsync,
-  });
+  };
+  if (!isMemoryStageEffectScope()) return versionedWriteBody(request);
+  nativeInvariantRequests.set(request, { originalInput: input, descriptors: Object.getOwnPropertyDescriptors(request),
+    deps, dependencyDescriptors: Object.getOwnPropertyDescriptors(deps) });
+  try { return await versionedWriteBody(request); }
+  finally { nativeInvariantRequests.delete(request); }
 }

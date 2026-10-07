@@ -1,3 +1,4 @@
+import { assertRevisionStageHostEffect, isMemoryStageEffectScope } from './criteria-revision/transport-quarantine.mjs';
 // @story #1857
 // An immutable pending row survives publication ambiguity and local cursor failure.
 import {
@@ -33,7 +34,7 @@ function keys(value, expected) {
 function digest(payload) {
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
-function validate(record, identity) {
+export function validateActorFlushJournal(record, identity) {
   if (
     !keys(record, ['schema', 'actor', 'provider', 'sid', 'digest', 'payload']) ||
     record.schema !== SCHEMA ||
@@ -115,6 +116,20 @@ function validate(record, identity) {
   }
   return record;
 }
+export function deriveActorFlushJournalRecord(input) {
+  if (!keys(input, ['identity', 'candidate'])) fail();
+  const { identity, candidate } = input;
+  return validateActorFlushJournal(
+    {
+      schema: SCHEMA,
+      actor: timingActorKey(identity),
+      ...identity,
+      digest: digest(candidate),
+      payload: structuredClone(candidate),
+    },
+    identity
+  );
+}
 export function readActorFlushJournal(file, identity) {
   if (!existsSync(file)) return null;
   let record;
@@ -123,26 +138,21 @@ export function readActorFlushJournal(file, identity) {
   } catch {
     fail();
   }
-  return validate(record, identity);
+  return validateActorFlushJournal(record, identity);
+}
+function prepareRecord(existing, identity, candidate) {
+  if (existing) {
+    validateActorFlushJournal(existing, identity);
+    if (candidate && digest(candidate) !== existing.digest) fail('ACTOR_FLUSH_CONFLICT');
+    return existing;
+  }
+  return candidate ? deriveActorFlushJournalRecord({ identity, candidate }) : null;
 }
 function prepare(file, identity, candidate) {
   return withLock(file, () => {
     const existing = readActorFlushJournal(file, identity);
-    if (existing) {
-      if (candidate && digest(candidate) !== existing.digest) fail('ACTOR_FLUSH_CONFLICT');
-      return existing;
-    }
-    if (!candidate) return null;
-    const record = validate(
-      {
-        schema: SCHEMA,
-        actor: timingActorKey(identity),
-        ...identity,
-        digest: digest(candidate),
-        payload: structuredClone(candidate),
-      },
-      identity
-    );
+    const record = prepareRecord(existing, identity, candidate);
+    if (existing || !record) return record;
     mkdirSync(path.dirname(file), { recursive: true });
     const temporary = file + '.tmp.' + process.pid;
     writeFileSync(temporary, JSON.stringify(record, null, 2) + String.fromCharCode(10));
@@ -150,28 +160,54 @@ function prepare(file, identity, candidate) {
     return record;
   });
 }
-export async function runActorFlushJournal({
-  file,
-  identity,
-  candidate = null,
-  publish,
-  commit,
-  fault = () => {},
-}) {
-  const record = prepare(file, identity, candidate);
+function assertRemovalRecord(current, identity, expectedDigest) {
+  if (current) validateActorFlushJournal(current, identity);
+  if (!current || current.digest !== expectedDigest) fail('ACTOR_FLUSH_CONFLICT');
+}
+export async function runActorFlushJournal(input) {
+  const { file, identity, candidate = null, publish, commit, fault = () => {} } = input;
+  let record, native = null;
+  if (isMemoryStageEffectScope()) {
+    native = await import('./move-state/move-state-core.mjs');
+    const existing = await native.beginNativeStageActorPreparation(input);
+    try {
+      record = prepareRecord(existing, identity, candidate);
+      await native.writeNativeStageActorPreparation(input, record);
+    } finally { native.endNativeStageActorPreparation(input); }
+    // Only the original runtime publisher remains live under the private token.
+    await native.beginNativeStageActorPublication(input);
+  } else {
+    assertRevisionStageHostEffect();
+    record = prepare(file, identity, candidate);
+  }
   if (!record) return { status: 'empty' };
   await fault('prepared');
   // The publisher must perform canonical exact-row reconciliation. A queued
   // result means durable original bytes, not confirmed remote publication.
-  const post = await publish(structuredClone(record.payload));
+  let post;
+  try { post = await publish(structuredClone(record.payload)); }
+  finally { if (native) native.endNativeStageActorPublication(input); }
   if (post?.ok !== true && post?.queued !== true) fail('ACTOR_FLUSH_PUBLICATION_UNRESOLVED');
   await fault('published');
-  await commit(structuredClone(record.payload));
+  if (native) await native.beginNativeStageActorCommit(input);
+  try { await commit(structuredClone(record.payload)); }
+  finally { if (native) native.endNativeStageActorCommit(input); }
   await fault('committed');
-  withLock(file, () => {
-    const current = readActorFlushJournal(file, identity);
-    if (!current || current.digest !== record.digest) fail('ACTOR_FLUSH_CONFLICT');
-    unlinkSync(file);
-  });
+  if (native) {
+    const current = await native.beginNativeStageActorRemoval(input);
+    try {
+      assertRemovalRecord(current, identity, record.digest);
+      await native.persistNativeStageActorRemoval(input);
+      await native.writeNativeStageActorRemoval(input);
+      await native.completeNativeStageActorRemoval(input);
+    } finally { native.endNativeStageActorRemoval(input); }
+  } else {
+    assertRevisionStageHostEffect();
+    withLock(file, () => {
+      const current = readActorFlushJournal(file, identity);
+      assertRemovalRecord(current, identity, record.digest);
+      unlinkSync(file);
+    });
+  }
   return { status: post.queued ? 'queued' : 'published', payload: record.payload, post };
 }

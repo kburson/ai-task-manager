@@ -127,6 +127,9 @@ function provenanceMeta(overrides = {}) {
       logicalCpuCount: 10,
     },
     discoveryInventory: sample().map(({ file }) => file),
+    executionSections: [
+      { name: 'serial', files: sample().map(({ file }) => file), elapsedMs: 6200 },
+    ],
     ...overrides,
   };
 }
@@ -186,7 +189,7 @@ test('serializeArtifact keys files by path and carries totals + slow bucket', ()
     slowPoolElapsedMs: 600,
     serialElapsedMs: 2000,
   });
-  assert.equal(art.schema, 5);
+  assert.equal(art.schema, 6);
   assert.equal(art.lane, 'all');
   assert.equal(art.generatedAt, '2026-07-19T00:00:00Z');
   assert.equal(art.count, 5);
@@ -299,7 +302,13 @@ test('normalizeTimingArtifact preserves schema 4 and schema 5 without fabricatin
   assert.equal(schema4.sourceSchema, 4);
   assert.equal(schema4.command, undefined);
 
-  const schema5Artifact = serializeArtifact(sample(), provenanceMeta());
+  const schema5Artifact = {
+    schema: 5,
+    command: 'node scripts/run-tests.mjs --lane all',
+    commit: 'a'.repeat(40),
+    runnerProfile: { label: 'local-test' },
+    elapsed: { serialMs: 6200 },
+  };
   const schema5 = normalizeTimingArtifact(schema5Artifact);
   assert.equal(schema5.sourceSchema, 5);
   assert.equal(schema5.command, 'node scripts/run-tests.mjs --lane all');
@@ -330,8 +339,37 @@ test('timing aggregation adds only bounded overhead per record', () => {
   }
   const t0 = process.hrtime.bigint();
   const report = buildTimingReport(big);
-  serializeArtifact(big, provenanceMeta({ discoveryInventory: big.map(({ file }) => file) }));
+  serializeArtifact(
+    big,
+    provenanceMeta({
+      discoveryInventory: big.map(({ file }) => file),
+      executionSections: [{ name: 'serial', files: big.map(({ file }) => file), elapsedMs: 60000 }],
+    })
+  );
   const perRecordMs = Number(process.hrtime.bigint() - t0) / 1e6 / big.length;
   assert.equal(report.count, 600);
   assert.ok(perRecordMs < 1, `expected < 1ms/record, got ${perRecordMs.toFixed(4)}ms`);
+});
+
+test('schema6 timing preserves exact measured sections and refuses incomplete or extra data', () => {
+  const sections = [
+    { name: 'serial', files: sample().map(({ file }) => file), elapsedMs: 6200.125 },
+  ];
+  const artifact = serializeArtifact(sample(), provenanceMeta({ executionSections: sections }));
+  assert.equal(artifact.schema, 6);
+  assert.deepEqual(artifact.executionSections, sections);
+  sections[0].files.pop();
+  assert.equal(artifact.executionSections[0].files.length, sample().length);
+  for (const executionSections of [
+    undefined,
+    [],
+    [{ name: 'serial', files: [], elapsedMs: 0 }],
+    [{ name: 'serial', files: sample().map(({ file }) => file), elapsedMs: -1 }],
+    [{ name: 'serial', files: sample().map(({ file }) => file), elapsedMs: 1, passed: true }],
+  ]) {
+    assert.throws(
+      () => serializeArtifact(sample(), provenanceMeta({ executionSections })),
+      /section/
+    );
+  }
 });

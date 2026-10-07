@@ -1,3 +1,4 @@
+import { withRevisionConsumer, prepareRevisionProof, resumeRevisionProof } from '../lib/criteria-revision/policy.mjs';
 // #345 — `/task ac-stamp "<ac label>"` runs the verifier command(s) declared by
 // an Acceptance Criteria checkbox line's `aitm-verified-by` markers and stamps
 // the resulting evidence marker
@@ -23,7 +24,7 @@ import {
   writeDirectoryContractOperation,
 } from '../lib/github-records/contract-write.mjs';
 
-export async function verbAcStamp(ctx) {
+async function verbAcStampAdmitted(ctx) {
   const { cfg, statePath, rest, pexec, projectDir } = ctx;
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') {
@@ -154,10 +155,12 @@ export async function verbAcStamp(ctx) {
     ran,
     firstFailure,
     sha: runSha,
+    nativeExecutionToken,
   } = await runVerifiers({
     commands: target.evidenceCommands,
     pexec,
     cwd: projectDir,
+    nativeProofIntent: { kind: 'ac', target: label },
     // #446 — content-addressed suite-run cache. The store lives in the REAL
     // project's machine-local tree (`.tmp/aitm/cache/`, #573), decoupled from
     // `cwd`, so repeat stamps of the same heavyweight command at one clean HEAD
@@ -212,6 +215,7 @@ export async function verbAcStamp(ctx) {
     return;
   }
 
+  await prepareRevisionProof(nativeExecutionToken);
   await mutateIssueBody({
     issueNumber: issueNum,
     repo: cfg.repo,
@@ -233,4 +237,15 @@ export async function verbAcStamp(ctx) {
   console.log(
     `[task-tracker] ✓ ac-stamp on ${s.active}: run-props (key=${target.key}) upserted onto the AC line's aitm-verified marker (sha=${sha}).`
   );
+}
+
+export async function verbAcStamp(ctx) {
+  const state = loadState(ctx.statePath);
+  if (!state.active || state.active === 'discover') return verbAcStampAdmitted(ctx);
+  if (await resumeRevisionProof({ repository: ctx.cfg.repo, issue: Number(String(state.active).replace(/^#/, '')),
+    backend: ctx.deps?.revisionBackend, intent: { kind: 'ac', target: String((ctx.rest || []).join(' ')).trim() },
+    projectDir: ctx.projectDir, pexec: ctx.pexec })) return;
+  return withRevisionConsumer({ repository: ctx.cfg.repo, issue: Number(String(state.active).replace(/^#/, '')),
+    activity: 'ac-stamp', backend: ctx.deps?.revisionBackend,
+  }, () => verbAcStampAdmitted(ctx));
 }

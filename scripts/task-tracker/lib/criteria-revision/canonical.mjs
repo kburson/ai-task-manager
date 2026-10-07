@@ -220,6 +220,7 @@ export function deriveCanonicalWrites({ proposal, contract, grant }) {
   if (p?.authority.kind !== 'canonical-contract') revisionError('canonical-authority-required');
   const derived = deriveProposal({
     observation: p.archive.observation,
+    ...(Object.hasOwn(p.archive, 'nativeIndividualProofs') ? { nativeIndividualProofs: p.archive.nativeIndividualProofs } : {}),
     edits: p.edits,
     reason: p.reason,
     mode: p.mode,

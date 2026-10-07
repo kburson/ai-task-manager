@@ -44,7 +44,7 @@ function lanes() {
       results: planShards(inventory, total).map((files, i) => ({
         exitCode: 0,
         timing: {
-          schema: 5,
+          schema: 6,
           lane,
           commit,
           generatedAt: '2026-10-04T21:00:00Z',
@@ -52,6 +52,7 @@ function lanes() {
           shard: { index: i + 1, total },
           count: files.length,
           discoveryInventory: files,
+          executionSections: [{ name: 'serial', files: [...files], elapsedMs: 1 }],
           files: Object.fromEntries(files.map((file) => [file, { status: 0, wallMs: 1 }])),
         },
       })),

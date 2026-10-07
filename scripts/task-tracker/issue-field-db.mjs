@@ -164,3 +164,32 @@ export function ensureIssueFieldDb(body, fieldDefs = [], projectValues = {}, opt
     reason: parsed.ok ? null : parsed.reason,
   };
 }
+
+
+// @story #1855
+// Shared native event binding calculation only. Returned write descriptions are
+// data, never an admitted transport or a stage completion claim. The current
+// CLI still selects config/definitions, samples its clock and performs IO.
+export function deriveEventFieldBinding(input) {
+  const expected = ['fieldKey', 'fieldType', 'fieldId', 'mode', 'resolved', 'values'];
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      Object.keys(input).sort().join(',') !== expected.sort().join(','))
+    throw new TypeError('event-field-input');
+  const { fieldKey, fieldType, fieldId, mode, resolved, values } = input;
+  if (typeof fieldKey !== 'string' || !fieldKey || typeof fieldType !== 'string' ||
+      typeof fieldId !== 'string' || (mode !== undefined && typeof mode !== 'string') ||
+      typeof resolved !== 'string' || !values || typeof values !== 'object' || Array.isArray(values))
+    throw new TypeError('event-field-input');
+  return deriveNativeEventFieldBinding(input);
+}
+
+// Native configuration historically uses truthiness/coercion. Recorded data is
+// closed above; the ordinary current CLI retains those original semantics.
+export function deriveNativeEventFieldBinding({ fieldKey, fieldType, fieldId, mode, resolved, values }) {
+  if (mode === 'set_once' && values[fieldKey])
+    return { changed: false, values: { ...values }, fieldWrite: null };
+  const value = fieldType === 'date' ? { date: resolved } : fieldType === 'text'
+    ? { text: resolved } : { number: Number(resolved) };
+  return { changed: true, values: { ...values, [fieldKey]: resolved },
+    fieldWrite: fieldId ? { fieldId, value } : null };
+}

@@ -1,9 +1,10 @@
 import { deriveCanonicalAmendment, canonicalCapsuleWrite } from './canonical.mjs';
+import { validateNativeIndividualProofs } from './proof-execution.mjs';
 // @story #1851
-import { reduceRevisionEvents } from './reducer.mjs';
-import { parseRevisionEvent, withRevisionValidation } from './records.mjs';
+import { reduceRevisionEvents, deriveCriteriaAuthorityHistory, selectEffectiveRevisionProposalEvents } from './reducer.mjs';
+import { parseRevisionEvent, revisionRecord, withRevisionValidation } from './records.mjs';
 import { parseAcceptanceCriteria } from '../acceptance-criteria.mjs';
-import { parseAcEvidence } from '../ac-evidence.mjs';
+import { parseAcEvidenceStructure as parseAcEvidence } from '../ac-evidence.mjs';
 import { parseVerificationCommands } from '../verification-commands.mjs';
 import { parseProofMarker, hasExecutionProof, serializeProofMarker } from '../proof-marker.mjs';
 import { resolveVcListStrict, resolveCitedOrLiteralCommands } from '../vc-ref.mjs';
@@ -264,6 +265,39 @@ function parseCanonical(observation) {
     });
   return defs;
 }
+// Data-only retained legacy parser. It uses the same grammar as live collection
+// without fabricating a complete authority observation from partial history.
+export function readLegacyProofDefinitions(input) {
+  exactKeys(input, ['body', 'identities', 'protectedSourceBindings'], 'legacy-proof-definition-input');
+  exactKeys(input.body, ['bytes', 'version'], 'legacy-proof-body');
+  if (typeof input.body.bytes !== 'string' || !Number.isSafeInteger(input.body.version) ||
+      input.body.version < 0 || parseBodyVersion(input.body.bytes) !== input.body.version)
+    revisionError('legacy-proof-body');
+  if (input.identities !== null) {
+    if (!Array.isArray(input.identities)) revisionError('legacy-proof-identities');
+    for (const item of input.identities) {
+      exactKeys(item, ['identity', 'section', 'rootId', 'definitionHash'], 'legacy-proof-identity');
+      if (typeof item.identity !== 'string' || !item.identity || !['ac', 'vc', 'dod'].includes(item.section) ||
+          (item.rootId !== null && typeof item.rootId !== 'string') || !/^sha256:[0-9a-f]{64}$/.test(item.definitionHash))
+        revisionError('legacy-proof-identity');
+    }
+  }
+  const definitions = parseLegacy(input);
+  resolveCommands(definitions); validateDefinitions(definitions);
+  if (input.identities && (input.identities.length !== definitions.length ||
+      new Set(input.identities.map(d => d.identity)).size !== input.identities.length)) revisionError('legacy-proof-identities');
+  return definitions;
+}
+export function readRevisionDefinitions(observation) {
+  validateRevisionObservation(observation);
+  if (observation.sourceKind === 'legacy-body') return readLegacyProofDefinitions({
+    body: observation.body, identities: observation.identities, protectedSourceBindings: observation.protectedSourceBindings,
+  });
+  const definitions = parseCanonical(observation);
+  resolveCommands(definitions); validateDefinitions(definitions);
+  return definitions;
+}
+
 function resolveCommands(definitions) {
   const roots = definitions.filter((x) => x.section === 'vc');
   for (const d of definitions) {
@@ -424,12 +458,14 @@ function eligibleLegacyProof(definition) {
     Number.isFinite(Date.parse(proof.ts))
   );
 }
-function manifest({ definitions, after, changed, observation, transactionId }) {
+function manifest({ definitions, after, changed, observation, transactionId, nativeIndividualProofs }) {
   const records = observation.revisionRecords.records;
-  const previous = records.length
-    ? reduceRevisionEvents(records.map((r) => parseRevisionEvent(r.bytes, { records }))).effective
-        ?.proposal
-    : null;
+  const history = deriveCriteriaAuthorityHistory(records.map(r => parseRevisionEvent(r.bytes, { records })));
+  const appliedId = history.terminals.at(-1)?.authorityEventId;
+  const applied = history.chain.events.find(event => event.eventId === appliedId);
+  const previous = nativeIndividualProofs === undefined
+    ? history.chain.effective?.proposal ?? null
+    : applied ? history.chain.events.find(event => event.eventId === applied.predecessorEventId).proposal : null;
   function preservedDependency(definition) {
     if (!previous) return observation.revision === 0;
     const prior = previous.after.definitions.find((d) => d.identity === definition.identity);
@@ -466,7 +502,8 @@ function manifest({ definitions, after, changed, observation, transactionId }) {
       observation.sourceKind === 'legacy-body' &&
       d.proof &&
       eligibleLegacyProof(d) &&
-      preservedDependency(d) &&
+      (preservedDependency(d) || nativeIndividualProofs?.some(witness =>
+        witness.criterionIdentity === d.identity && witness.after.proof.bytes === d.proof.bytes)) &&
       next &&
       d.declaration.kind !== 'none' &&
       hashSemanticContract([d]) === hashSemanticContract([next]) &&
@@ -529,7 +566,8 @@ function projectLegacy(
   edits,
   invalidation,
   digest,
-  transactionId
+  transactionId,
+  preserveRevisionHistory = false
 ) {
   let body = observation.body.bytes;
   const sourceRows = legacyRows(body),
@@ -597,6 +635,7 @@ function projectLegacy(
   // Criterion, insertion and non-overlapping marker ranges all refer to the original body.
   for (const patch of patches.sort((a, b) => b.start - a.start))
     body = body.slice(0, patch.start) + patch.bytes + body.slice(patch.end);
+  if (preserveRevisionHistory) return stampBodyVersion(body, observation.body.version + 1);
   const marker = `<!-- aitm-criteria-revision schema="${REVISION_SCHEMA}" revision="${observation.revision + 1}" transaction-id="${transactionId}" semantic-digest="${digest}" -->`;
   body = body.replace(/<!--\s*aitm-criteria-revision\s[\s\S]*?-->\n?/g, '');
   return stampBodyVersion(
@@ -704,6 +743,7 @@ function deriveScopedProposal(input) {
     'executor',
     'operationId',
     'transactionId',
+    ...(Object.hasOwn(input, 'nativeIndividualProofs') ? ['nativeIndividualProofs'] : []),
   ]);
   const {
     observation,
@@ -798,6 +838,8 @@ function deriveScopedProposal(input) {
         observation: clone(observation),
         definitions: clone(effective.archive.definitions),
         resourceVector: vector,
+        ...(Object.hasOwn(effective.archive, 'nativeIndividualProofs')
+          ? { nativeIndividualProofs: clone(effective.archive.nativeIndividualProofs) } : {}),
       },
     };
     delete proposal.proposalDigest;
@@ -806,6 +848,11 @@ function deriveScopedProposal(input) {
     if (records.some((r) => r.operationId === operationId)) revisionError('operation-conflict');
     return freeze(proposal);
   }
+  const nativeIndividualProofs = Object.hasOwn(input, 'nativeIndividualProofs')
+    ? validateNativeIndividualProofs({ witnesses: input.nativeIndividualProofs, observation,
+      chain: reduceRevisionEvents(records.map(r => parseRevisionEvent(r.bytes, { records }))) })
+    : undefined;
+  if (mode === 'abort' && nativeIndividualProofs?.length) revisionError('abort-native-proof');
   const definitions =
     observation.sourceKind === 'legacy-body'
       ? parseLegacy(observation)
@@ -826,7 +873,7 @@ function deriveScopedProposal(input) {
   if (!edits.acceptanceCriteria.length && !edits.verificationCommands.length && mode !== 'abort')
     revisionError('empty-edits');
   const invalidation =
-    mode === 'abort' ? [] : manifest({ definitions, after, changed, observation, transactionId });
+    mode === 'abort' ? [] : manifest({ definitions, after, changed, observation, transactionId, nativeIndividualProofs });
   validateDefinitions(after);
   const semanticContractDigest = hashSemanticContract(after),
     vector = deriveResourceVector(observation);
@@ -969,7 +1016,8 @@ function deriveScopedProposal(input) {
     edits: clone(edits),
     identityMap,
     invalidation,
-    archive: { observation: clone(observation), definitions, resourceVector: vector },
+    archive: { observation: clone(observation), definitions, resourceVector: vector,
+      ...(nativeIndividualProofs === undefined ? {} : { nativeIndividualProofs: clone(nativeIndividualProofs) }) },
     writeSet,
     after: {
       semanticContractDigest,
@@ -988,4 +1036,57 @@ function deriveScopedProposal(input) {
 export function renderApprovalStatement(proposal) {
   validateRevisionProposal(proposal);
   return `Approve criteria-revise ${proposal.mode} for ${proposal.repository}#${proposal.issue}, transaction ${proposal.transactionId}, proposal ${proposal.proposalDigest}, executor ${proposal.executor.sessionId}.`;
+}
+
+// Source corrections preserve criterion identity and transaction history while
+// retiring every claim whose protected source dependency has changed.
+export function deriveLegacySourceRetirement({ observation, definitions, sourceBindings }) {
+  if (observation.sourceKind !== 'legacy-body') revisionError('source-correction-kind');
+  const actual = readRevisionDefinitions({ ...observation, identities: definitions.map(d => ({
+    identity: d.identity, section: d.section, rootId: d.rootId,
+    definitionHash: hashSemanticContract([{ ...d, identity: 'unbound' }]),
+  })) });
+  if (hashSemanticContract(actual) !== hashSemanticContract(definitions)) revisionError('source-correction-definitions');
+  const after = clone(actual).map(d => ({ ...d, sourceBindings: clone(sourceBindings) }));
+  const invalidation = manifest({ definitions: actual, after, changed: new Set(actual.map(d => d.identity)),
+    observation, transactionId: observation.revisionId });
+  const body = projectLegacy(observation, actual, after, { acceptanceCriteria: [], verificationCommands: [] },
+    invalidation, hashSemanticContract(after), observation.revisionId, true);
+  return { body, definitions: after, invalidation };
+}
+
+
+// Data-only projection shared by live collection and sealed historical boundaries.
+// It cannot alter any observed resource or confer readiness/write authority.
+export function projectCollectedRevisionObservation(input) {
+  exactKeys(input, ['observation', 'chain', 'currentContract'], 'collector-projection-input');
+  const { observation, chain, currentContract } = input;
+  validateRevisionObservation(observation);
+  const { chain: verified, terminals } = deriveCriteriaAuthorityHistory(chain.events);
+  if (canonicalRecordJson(verified) !== canonicalRecordJson(chain) || !['empty', 'applied', 'aborted'].includes(verified.status))
+    revisionError('collector-projection-chain');
+  const authorityId = terminals.at(-1)?.authorityEventId ?? null;
+  if (currentContract === null) {
+    if (authorityId !== null) revisionError('collector-projection-contract');
+  } else {
+    exactKeys(currentContract, ['semanticContractDigest', 'revisionId', 'revision', 'definitions'], 'collector-contract');
+    validateDefinitions(currentContract.definitions);
+    const terminal = verified.events.find(event => event.eventId === authorityId);
+    if (!terminal || hashSemanticContract(currentContract.definitions) !== currentContract.semanticContractDigest ||
+        currentContract.revision !== terminal.outcome.revision || currentContract.revisionId !== terminal.outcome.revisionId)
+      revisionError('collector-projection-contract');
+  }
+  const result = clone(observation);
+  result.revisionRecords = { complete: true, records: chain.events.map(revisionRecord) };
+  result.identities = currentContract === null ? null : currentContract.definitions.map(definition => {
+    const d = { ...definition, sourceBindings: observation.protectedSourceBindings };
+    return { identity: d.identity, section: d.section, rootId: d.rootId,
+      definitionHash: hashSemanticContract([{ ...d, identity: 'unbound' }]) };
+  });
+  result.revision = currentContract?.revision ?? 0;
+  result.revisionId = currentContract?.revisionId ?? null;
+  result.retiredIdentities = [...new Set(selectEffectiveRevisionProposalEvents(chain.events).flatMap(e =>
+    e.proposal.identityMap.filter(m => !m.afterIdentities.includes(m.beforeIdentity)).map(m => m.beforeIdentity)))];
+  validateRevisionObservation(result);
+  return result;
 }

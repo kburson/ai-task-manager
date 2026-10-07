@@ -1,7 +1,8 @@
 // @story #1218
 // Deterministic built-in verification-provider registry and contract boundary.
 
-import { validateVerificationCommand } from './verification-allowlist.mjs';
+import path from 'node:path';
+import { validateVerificationCommand, parseVerificationCommandPolicy } from './verification-allowlist.mjs';
 import { createNodeVerificationProvider } from './verification-providers/node.mjs';
 import { createProjectVerificationProvider } from './verification-providers/project.mjs';
 
@@ -212,13 +213,33 @@ function wrapProvider(raw) {
   });
 }
 
-export function resolveVerificationProvider({
+export function resolveVerificationProvider(input = {}) {
+  return resolveProviderCore({ ...input,
+    validateCommand: input.deps?.validateCommand || validateVerificationCommand });
+}
+
+// Recorded plans are data, never current execution permission. No caller may
+// supply a validator, filesystem result, or alternate executable provider here.
+export function deriveRecordedDevelopFinalPlan(input) {
+  assertObject(input, 'recorded input must be an object');
+  assertExactKeys(input, new Set(['configuration', 'projectDir']), 'recorded input');
+  const { configuration, projectDir } = input;
+  assertObject(configuration, 'recorded configuration must be an object');
+  assertExactKeys(configuration, new Set(['verificationProvider', 'developVerification']), 'recorded configuration');
+  if (Object.keys(configuration).length !== 2 || typeof projectDir !== 'string' || !path.isAbsolute(projectDir))
+    fail('recorded configuration and original absolute worktree required');
+  return resolveProviderCore({ config: configuration.verificationProvider,
+    legacyDevelopVerification: configuration.developVerification, projectDir,
+    validateCommand: parseVerificationCommandPolicy }).planDevelopFinal();
+}
+
+function resolveProviderCore({
   config,
   projectDir = process.cwd(),
   legacyDevelopVerification = null,
   deps = {},
-} = {}) {
-  const validateCommand = deps.validateCommand || validateVerificationCommand;
+  validateCommand,
+}) {
   const appendTargeted = (input) => targetedSteps({ ...input, projectDir, validateCommand });
 
   if (config == null) {

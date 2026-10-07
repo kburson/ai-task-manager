@@ -42,6 +42,11 @@ export function validateRecord(record) {
   if (!['user', 'runner'].includes(record.actor.kind)) fail('actor-kind');
   validateInstant(record.recordedAt);
   validatePayload(record.recordType, record.payload);
+  if (record.recordType === 'candidate' && record.payload.subject.revisionBinding) {
+    const subject = record.payload.subject;
+    if (subject.revisionBinding.issue !== record.issueNumber || canonical(subject.repositoryId) !== canonical(record.repositoryId))
+      fail('revision-envelope-identity');
+  }
   if (record.recordId !== recordDigest(record)) fail('record-digest');
   return frozen(structuredClone(record));
 }

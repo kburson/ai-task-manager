@@ -1,3 +1,4 @@
+import { withRevisionConsumer, RevisionPolicyError } from '../criteria-revision/policy.mjs';
 // @story #1732
 // Execution-only Functional DoD persistence. A projection is never write authority.
 
@@ -51,7 +52,13 @@ function verifiedProjection(body, normalization, head, evaluatedAt) {
   return true;
 }
 
-export async function persistReadyNormalizations({
+export async function persistReadyNormalizations(input = {}) {
+  return withRevisionConsumer({ repository: input.repo, issue: input.issueNumber,
+    activity: 'body-write', backend: input.deps?.revisionBackend, projectDir: input.projectDir },
+    () => persistReadyNormalizationsAdmitted(input));
+}
+
+async function persistReadyNormalizationsAdmitted({
   issueNumber,
   repo,
   head,
@@ -77,6 +84,7 @@ export async function persistReadyNormalizations({
     try {
       return validateDecision(await refreshAndEvaluate({ body, projection, head, evaluatedAt }));
     } catch (cause) {
+      if (cause instanceof RevisionPolicyError) throw cause;
       if (cause instanceof NormalizationRefusalError) throw cause;
       throw new NormalizationRefusalError('normalization-authority-drift', cause);
     }
@@ -86,6 +94,7 @@ export async function persistReadyNormalizations({
   try {
     initial = await readBack();
   } catch (cause) {
+      if (cause instanceof RevisionPolicyError) throw cause;
     throw new NormalizationRefusalError('normalization-readback-failed', cause);
   }
   if (typeof initial?.body !== 'string' || initial.body.length === 0) {
@@ -125,6 +134,7 @@ export async function persistReadyNormalizations({
         try {
           current = await readBack();
         } catch (cause) {
+      if (cause instanceof RevisionPolicyError) throw cause;
           throw new NormalizationRefusalError('normalization-authority-drift', cause);
         }
         if (current?.head !== head) {
@@ -147,6 +157,7 @@ export async function persistReadyNormalizations({
       },
     });
   } catch (cause) {
+      if (cause instanceof RevisionPolicyError) throw cause;
     if (cause instanceof NonReadyNormalization) {
       return {
         decision: cause.decision,
@@ -163,6 +174,7 @@ export async function persistReadyNormalizations({
   try {
     observed = await readBack();
   } catch (cause) {
+      if (cause instanceof RevisionPolicyError) throw cause;
     throw new NormalizationRefusalError('normalization-readback-failed', cause);
   }
   if (typeof observed?.body !== 'string' || observed.body.length === 0) {

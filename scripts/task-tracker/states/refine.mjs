@@ -1,3 +1,4 @@
+import { criteriaRevisionAdmissionGuard } from '../lib/criteria-revision-admission-guard.mjs';
 // State object: refine (#292).
 //
 // Refine is the issue-shaping state: scope, ACs, plan metadata, board
@@ -13,7 +14,7 @@ import { refinementSnapshotGuard } from '../lib/refinement-snapshot-guard.mjs';
 
 export default Object.freeze({
   id: 'refine',
-  entryGuards: Object.freeze([contiguityEntryGuard, backlogExitChildParentStateGuard]),
+  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard, backlogExitChildParentStateGuard]),
   residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     // #357 — the `aitm-refine-complete` marker is the user's "refine is done"

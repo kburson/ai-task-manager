@@ -1,3 +1,4 @@
+import { criteriaRevisionAdmissionGuard } from '../lib/criteria-revision-admission-guard.mjs';
 // State object: plan (#292).
 //
 // Plan-stage exit-guards consolidated here via #277 (plan → develop). The
@@ -29,7 +30,7 @@ import { planExitOwnershipGuard } from '../lib/plan-exit-ownership-guard.mjs';
 
 export default Object.freeze({
   id: 'plan',
-  entryGuards: Object.freeze([contiguityEntryGuard]),
+  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard]),
   residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     blockedByGuard,

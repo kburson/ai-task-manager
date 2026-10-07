@@ -494,6 +494,7 @@ export function resolveStoryIntent({ body = '', plan = null } = {}) {
     intent: parsed.intent,
     source,
     location,
+    range: parsed.range,
     digest: intentDigest(parsed.intent),
     violations: [],
   };

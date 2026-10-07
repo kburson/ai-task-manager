@@ -8,6 +8,8 @@ import { describe, test } from 'node:test';
 
 import {
   buildVerificationFingerprint,
+  canonicalVerificationCommandSet,
+  canonicalRecordedVerificationCommandSet,
   createVerificationReceipt,
   upsertVerificationReceipt,
   validateVerificationReceipt,
@@ -459,4 +461,22 @@ describe('verification receipt validation refusals', () => {
     });
     assert.ok(reasonCodes(result).includes('receipt-malformed'));
   });
+});
+
+
+// @story #1855
+test('recorded command sets share canonical policy without current file eligibility', () => {
+  const projectDir = process.cwd();
+  const commands = [{ command: './scripts/recorded-root-1855-absent.sh' }, { command: ' npm   run lint ' }];
+  const recorded = canonicalRecordedVerificationCommandSet({ commands, projectDir });
+  assert.deepEqual(recorded, [['./scripts/recorded-root-1855-absent.sh'], ['npm', 'run', 'lint']]);
+  assert.throws(() => canonicalVerificationCommandSet(commands, { projectDir }), /script not found/);
+  assert.throws(() => canonicalRecordedVerificationCommandSet({ commands, projectDir, deps: {} }), /recorded command input/);
+  assert.throws(() => canonicalRecordedVerificationCommandSet({ commands, projectDir: './relative' }), /recorded command input/);
+  assert.throws(() => canonicalRecordedVerificationCommandSet({ commands: 'npm test', projectDir }), /recorded command input/);
+  assert.throws(() => canonicalRecordedVerificationCommandSet({ commands: ['npm run lint', 'npm   run lint'], projectDir }), /duplicate/);
+  for (const command of ['unknown-verifier', './scripts/../../outside.sh', './scripts/root.txt'])
+    assert.throws(() => canonicalRecordedVerificationCommandSet({ commands: [command], projectDir }), /invalid Verification Command/);
+  const live = ['npm run lint', 'node --test existing.test.mjs'];
+  assert.deepEqual(canonicalRecordedVerificationCommandSet({ commands: live, projectDir }), canonicalVerificationCommandSet(live, { projectDir }));
 });

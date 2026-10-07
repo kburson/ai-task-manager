@@ -1,3 +1,4 @@
+import { criteriaRevisionAdmissionGuard } from '../lib/criteria-revision-admission-guard.mjs';
 // State object: backlog (#292).
 //
 // Backlog is the entry state for every new issue. Its successor is Refine;
@@ -11,7 +12,7 @@ import { discussBlockGuard } from '../lib/discuss-block-guard.mjs';
 
 export default Object.freeze({
   id: 'backlog',
-  entryGuards: Object.freeze([contiguityEntryGuard]),
+  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard]),
   residentActions: Object.freeze([]),
   // #473 — an unresolved `{discuss}` directive hard-blocks the first forward
   // promotion out of Backlog, regardless of TT_FULL_AUTO.

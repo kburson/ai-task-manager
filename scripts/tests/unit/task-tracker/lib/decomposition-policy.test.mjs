@@ -1,4 +1,4 @@
-// @story #1052 #1281 #1712
+// @story #1052 #1281 #1712 #1855
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -8,6 +8,7 @@ import {
   classifyDecomposition,
   extractPlanTasks,
   linkedPlanReference,
+  linkedPlanReferenceRange,
   linkedPlanPath,
   parseDecompositionWaiver,
   resolvePlanPath,
@@ -571,4 +572,21 @@ Paragraph with \`literal text
 and <!-- comment-looking text --> inside the span\`
 Run: \`node --test visible.test.mjs\``);
   assert.deepEqual(task.commands, ['node --test visible.test.mjs']);
+});
+
+test('linked path range follows native visible field grammar and rejects ambiguous or hidden selection', () => {
+  for (const line of ['- **Source-plan**: docs/plan.md', '**Source-plan:** docs/plan.md', 'Source-plan: docs/plan.md @ abcdef0']) {
+    const body = `## Plan Metadata\n${line}\n- **Other**: retained\n\n## Notes\nunchanged`;
+    const range = linkedPlanReferenceRange(body);
+    assert.deepEqual(range.reference, { key: 'Source-plan', path: 'docs/plan.md' });
+    assert.equal(body.slice(range.start, range.end), 'docs/plan.md');
+    assert.equal(body.slice(0, range.start) + 'docs/next.md' + body.slice(range.end), body.replace('docs/plan.md', 'docs/next.md'));
+  }
+  for (const body of [
+    '## Plan Metadata\n- **Source-plan**: docs/a.md\n- **Source-plan**: docs/b.md',
+    '## Plan Metadata\n- **Source-plan**: docs/a.md\n## Plan Metadata\n- **Other**: x',
+    '## Plan Metadata\n<!-- - **Source-plan**: docs/a.md -->',
+    '## Plan Metadata\n- **Source-plan**: <!-- hidden --> docs/a.md',
+    '## Plan Metadata\n```md\n- **Source-plan**: docs/a.md\n```',
+  ]) assert.equal(linkedPlanReferenceRange(body), null, body);
 });

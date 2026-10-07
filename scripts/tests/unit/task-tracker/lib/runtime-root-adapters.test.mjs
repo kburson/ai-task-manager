@@ -29,3 +29,18 @@ test('explicit adapter scopes isolate concurrent tests and restore production de
       code: 'ROOT_IDENTITY_MISMATCH',
     });
 });
+
+// @story #1855
+test('native adapter absence assertion rejects every defined scope without inspecting it', () => {
+  assert.equal(storage.assertNativeRuntimeRootAdaptersAbsent(), undefined);
+  let inspected = 0;
+  const dangerous = new Proxy({}, { get() { inspected++; throw new Error('inspected'); }, ownKeys() { inspected++; throw new Error('inspected'); } });
+  for (const value of [null, {}, false, dangerous]) {
+    storage.withRuntimeRootAdapters(value, () => {
+      assert.throws(() => storage.assertNativeRuntimeRootAdaptersAbsent(), { code: 'ROOT_ADAPTERS_ACTIVE' });
+    });
+  }
+  assert.equal(inspected, 0);
+  assert.equal(storage.withRuntimeRootAdapters(undefined, () => storage.assertNativeRuntimeRootAdaptersAbsent()), undefined);
+  assert.equal(storage.assertNativeRuntimeRootAdaptersAbsent(), undefined);
+});

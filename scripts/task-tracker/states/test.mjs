@@ -1,3 +1,4 @@
+import { criteriaRevisionAdmissionGuard } from '../lib/criteria-revision-admission-guard.mjs';
 // @story #1859
 import { testExitReviewedScopeGuard } from '../lib/test-exit-reviewed-scope-guard.mjs';
 // State object: test (#292, #267).
@@ -18,7 +19,7 @@ import { testQuickCiAction } from '../lib/resident-actions/test-quick-ci.mjs';
 
 export default Object.freeze({
   id: 'test',
-  entryGuards: Object.freeze([contiguityEntryGuard, bodyGatesEntryGuardTest]),
+  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard, bodyGatesEntryGuardTest]),
   residentActions: Object.freeze([testQuickCiAction]),
   exitGuards: Object.freeze([
     blockedByGuard,

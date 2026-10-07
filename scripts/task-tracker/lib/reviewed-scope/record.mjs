@@ -1,4 +1,5 @@
 // @story #1859
+import { withRevisionConsumer } from '../criteria-revision/policy.mjs';
 import { isDeepStrictEqual } from 'node:util';
 import { loadState } from '../../state.mjs';
 import { pexec } from '../../../gh/lib/gh-client.mjs';
@@ -163,8 +164,15 @@ function replaceable(error) {
   );
 }
 export async function recordReviewedScope({ ctx, label, manifestPath }) {
-  const deps = { pexec: ctx.pexec ?? pexec, ...ctx.deps?.reviewedScope };
   const issueNumber = ctx.issueNumber ?? Number(loadState(ctx.statePath).active?.replace(/^#/, ''));
+  return withRevisionConsumer({ repository: ctx.cfg?.repo, issue: issueNumber, projectDir: ctx.projectDir,
+    backend: ctx.deps?.revisionBackend ?? ctx.deps?.reviewedScope?.revisionBackend, activity: 'issue-write' }, () =>
+    recordReviewedScopeAdmitted({ ctx, label, manifestPath, issueNumber }));
+}
+
+async function recordReviewedScopeAdmitted({ ctx, label, manifestPath, issueNumber }) {
+  const deps = { pexec: ctx.pexec ?? pexec, ...ctx.deps?.reviewedScope,
+    revisionBackend: ctx.deps?.revisionBackend ?? ctx.deps?.reviewedScope?.revisionBackend };
   const input = boundInput(ctx, issueNumber, deps);
   const readAuthority = deps.readRecordingAuthority ?? readRecordingAuthority;
   const readManifest = deps.readBoundManifest ?? readBoundManifest;
@@ -248,6 +256,7 @@ export async function recordReviewedScope({ ctx, label, manifestPath }) {
       recordedAt: (deps.now ?? (() => new Date().toISOString()))(),
     });
     const pointer = await ensureRecordComment({
+      projectDir: ctx.projectDir,
       repository: authority.repository,
       issue: issueNumber,
       record,

@@ -28,14 +28,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, projectItemForIssue } from './lib/github-projects.mjs';
+import { statusOptionFromData } from '../task-tracker/lib/move-state/github-mutation.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { normalizeStateId } from '../task-tracker/lib/lifecycle-policy/index.mjs';
-import { getProjectDir } from '../task-tracker/paths.mjs';
+import { getProjectDir, configPath } from '../task-tracker/paths.mjs';
+import { withRevisionConsumer } from '../task-tracker/lib/criteria-revision/policy.mjs';
 import {
   withIssueLock,
   IssueLockError,
-  isIssueLockHeld,
 } from '../task-tracker/issue-mutator-lock.mjs';
 // #559 — input/policy + transition-plan concerns extracted into focused,
 // independently-testable modules. The host owns process.exit / stderr / I/O;
@@ -93,6 +94,7 @@ export async function runMoveStateHost({
   invokingDir = process.cwd(),
   shelveBackwardGuardCapability = null,
   _observeGuardPhasePolicy = null,
+  revisionBackend = null,
 } = {}) {
   const { name: resolvedTailProfile } = resolveTailProfile(tailProfile);
   reviewAuthority = resolveReviewAuthority(reviewAuthority);
@@ -162,7 +164,9 @@ export async function runMoveStateHost({
 
   const configKey = STATE_TO_CONFIG_KEY[stateArg];
 
-  const cfg = loadConfig();
+  const cfg = loadConfig({ projectPath: configPath(projectDir) });
+  return withRevisionConsumer({ repository: cfg.repo, issue: issueArg, activity: 'stage-write',
+    backend: revisionBackend, projectDir }, async () => {
 
   // Verb-pipeline gate decision (precedence): env → --out-of-band → cfg → TTY →
   // refuse. The pure `decideVerbGate` owns the branch logic; the host owns the
@@ -268,9 +272,7 @@ export async function runMoveStateHost({
         }`,
         { owner, repo: repoName, issue: Number(issueNumber) }
       );
-      const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-      const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-      return String(node?.fieldValueByName?.optionId || '');
+      return statusOptionFromData(data, cfg.projectId);
     } catch {
       return '';
     }
@@ -440,18 +442,15 @@ export async function runMoveStateHost({
     return 0;
   };
 
-  // #1261 — the flag is issue-scoped, so only a frame holding THIS issue lets
-  // the mutation run unlocked. A frame holding a different issue falls through
-  // to a real acquisition below.
-  if (isIssueLockHeld(issueArg, env)) {
-    return await runMutation();
-  }
+  // Public mutation admission and authenticated nested lock reuse are owned
+  // by withIssueLock. A bare inherited environment flag cannot skip policy.
   try {
     return await withIssueLock(
       {
         issue: issueArg,
         verb: AITM_VERB_CONTEXT || 'move-state',
-        projDir: getProjectDir(env),
+        projDir: projectDir,
+        repository: cfg.repo,
       },
       runMutation
     );
@@ -462,4 +461,5 @@ export async function runMoveStateHost({
     }
     throw err;
   }
+  });
 }

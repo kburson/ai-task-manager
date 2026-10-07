@@ -1,3 +1,5 @@
+import { assertRevisionProductionTransport, assertRevisionStageHostEffect, isMemoryStageEffectScope } from './criteria-revision/transport-quarantine.mjs';
+import { withRevisionConsumer, assertRevisionBodyMutation, assertNativeStageBodyMutation, assertRevisionStageBodyEntry } from './criteria-revision/policy.mjs';
 import { writeLegacyBody } from './criteria-revision/legacy.mjs';
 // Optimistic-concurrency write helper for GitHub issue bodies (epic #288).
 //
@@ -12,7 +14,7 @@ import { writeLegacyBody } from './criteria-revision/legacy.mjs';
 // `deps` injection makes the whole helper testable without GitHub I/O.
 
 import { spawn } from 'node:child_process';
-import { BODY_VERSION_MARKER_RE, parseBodyVersion, stampBodyVersion } from './body-version.mjs';
+import { BODY_VERSION_MARKER_RE, parseBodyVersion, stampBodyVersion, stripBodyVersion, matchesBodyReadback } from './body-version.mjs';
 
 // Stale-input drift detection (#293).
 //
@@ -76,11 +78,7 @@ function assertMutateReturnedString({ ourLocal, issueNumber }) {
 
 export const DEFAULT_MAX_RETRIES = 3;
 
-export function stripBodyVersion(body) {
-  return String(body ?? '')
-    .replace(BODY_VERSION_MARKER_RE, '')
-    .replace(/\n{3,}/g, '\n\n');
-}
+export { stripBodyVersion };
 
 const stripVersion = stripBodyVersion;
 
@@ -241,6 +239,8 @@ export function ghPushArgs(repo, issueNumber) {
 }
 
 function ghFetchBody(repo, issueNumber) {
+  assertRevisionStageHostEffect();
+  assertRevisionProductionTransport();
   return new Promise((resolve, reject) => {
     const proc = spawn('gh', ghFetchArgs(repo, issueNumber), {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -261,6 +261,8 @@ function ghFetchBody(repo, issueNumber) {
 }
 
 function ghPushBody(repo, issueNumber, body) {
+  assertRevisionStageHostEffect();
+  assertRevisionProductionTransport();
   return new Promise((resolve, reject) => {
     const proc = spawn('gh', ghPushArgs(repo, issueNumber), {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -298,7 +300,7 @@ async function pexecPushBody(pexec, repo, issueNumber, body) {
   await pending;
 }
 
-export async function versionedWriteBody({
+async function versionedWriteBodyAdmitted({
   issueNumber,
   repo,
   mutate,
@@ -308,7 +310,7 @@ export async function versionedWriteBody({
   validateMutation,
   criteriaRevisionCapability,
   validateFreshBaseAsync,
-} = {}) {
+} = {}, nativeEntry) {
   if (criteriaRevisionCapability !== undefined) {
     return writeLegacyBody({
       token: criteriaRevisionCapability,
@@ -333,13 +335,15 @@ export async function versionedWriteBody({
     );
   }
   const injectedPexec = typeof deps.pexec === 'function' ? deps.pexec : null;
-  const fetchBody =
-    deps.fetchBody ||
+  const fetchBody = nativeEntry
+    ? () => nativeEntry.core.fetchNativeStageBody(nativeEntry.input)
+    : deps.fetchBody ||
     (injectedPexec
       ? (targetRepo, targetIssue) => pexecFetchBody(injectedPexec, targetRepo, targetIssue)
       : ghFetchBody);
-  const pushBody =
-    deps.pushBody ||
+  const pushBody = nativeEntry
+    ? (targetRepo, targetIssue, body) => nativeEntry.core.pushNativeStageBody(nativeEntry.input, body)
+    : deps.pushBody ||
     (injectedPexec
       ? (targetRepo, targetIssue, body) =>
           pexecPushBody(injectedPexec, targetRepo, targetIssue, body)
@@ -419,6 +423,11 @@ export async function versionedWriteBody({
     const targetVersion = remoteVersion + 1;
     const stamped = stampBodyVersion(stripVersion(ourLocal), targetVersion);
 
+    if (nativeEntry) {
+      await nativeEntry.core.prepareNativeStageBody(nativeEntry.input, remote, stamped);
+      await assertNativeStageBodyMutation(nativeEntry.input, remote, stamped);
+    }
+    assertRevisionBodyMutation(remote, stamped, nativeEntry?.input);
     await pushBody(repo, issueNumber, stamped);
 
     // Verify our exact body landed. Version alone is insufficient: two
@@ -426,8 +435,7 @@ export async function versionedWriteBody({
     // match could mask a lost write. Require byte-equality with our push —
     // modulo trailing whitespace, which `gh issue view -q .body` appends.
     const verifyRemote = await fetchBody(repo, issueNumber);
-    const norm = (s) => String(s ?? '').replace(/\s+$/, '');
-    if (norm(verifyRemote) === norm(stamped)) {
+    if (matchesBodyReadback(stamped, verifyRemote)) {
       // Surface the post-write verify-fetch (#655) as the verified live body.
       // `verifyRemote` is the byte-confirmed result of our write and is already
       // in hand — returning it adds no GitHub round-trip beyond the verify the
@@ -452,4 +460,22 @@ export async function versionedWriteBody({
     `versionedWriteBody: refusing after ${attempts} attempts on issue #${issueNumber}`,
     { reason: 'max-retries-exceeded', attempts, lastVersion }
   );
+}
+
+export async function versionedWriteBody(input = {}) {
+  try { assertRevisionStageBodyEntry(input); }
+  catch (error) {
+    if (!isMemoryStageEffectScope()) throw error;
+    const core = await import('./move-state/move-state-core.mjs');
+    await core.beginNativeStageBodyWrite(input);
+    try { return await versionedWriteBodyAdmitted(input, { core, input }); }
+    finally { core.endNativeStageBodyWrite(input); }
+  }
+  if (input.criteriaRevisionCapability !== undefined) return versionedWriteBodyAdmitted(input);
+  return withRevisionConsumer({
+    repository: input.repo,
+    issue: input.issueNumber,
+    activity: 'body-write',
+    backend: input.deps?.revisionBackend,
+  }, () => versionedWriteBodyAdmitted(input));
 }

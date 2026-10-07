@@ -1,3 +1,4 @@
+import { revisionEvidenceMarkerProperties, acceptsIndividualRevisionProof } from './criteria-revision/policy.mjs';
 // #345 — Acceptance Criteria evidence markers. Parallel to #303's Functional
 // DoD evidence path (`functional-dod-evidence.mjs`), but for AC checkbox lines
 // that carry an `aitm-verified cmd="<cmd>"` marker and no human-assigned key.
@@ -89,6 +90,13 @@ function extractCommands(text, vcItems = []) {
 }
 
 export function parseAcEvidence(text) {
+  if (!acceptsIndividualRevisionProof(String(text || ''), 'ac')) return null;
+  return parseAcEvidenceStructure(text);
+}
+
+// Transaction archives validate historical proof structure without treating it
+// as current reusable evidence. Live consumers call parseAcEvidence instead.
+export function parseAcEvidenceStructure(text) {
   const src = String(text || '');
   // #481 — single-marker form first: run-props on the line's `aitm-verified`
   // marker, the AC digest folded in as `key`. Requires cmd/sha/ts/key present
@@ -269,6 +277,11 @@ export function findAcSectionCheckbox(body, requestedLabel) {
 // Returns the (possibly-unchanged) body. Throws when no matching
 // evidence-bearing AC line exists or when evidence fields are malformed.
 export function stampAcEvidenceMarker(body, label, evidence) {
+  return renderAcEvidenceMarker(body, label, evidence, revisionEvidenceMarkerProperties({ body: String(body || '') }));
+}
+// Pure renderer for independently reconstructing an already authorized native
+// execution record. Formatting bytes does not authorize a write or proof reuse.
+function renderAcEvidenceMarker(body, label, evidence, revisionProperties) {
   const { cmd, sha, ts, exit } = evidence || {};
   if (typeof cmd !== 'string' || typeof sha !== 'string' || typeof ts !== 'string') {
     throw new Error('stampAcEvidenceMarker: evidence requires { cmd, sha, ts, exit }');
@@ -297,6 +310,7 @@ export function stampAcEvidenceMarker(body, label, evidence) {
     ts: String(ts),
     key: String(key),
     ...markerProvenanceProperties(evidence),
+    ...revisionProperties,
   });
   if (next === line) return src;
   lines[target.lineIndex] = next;
@@ -319,7 +333,10 @@ export function stampAcEvidenceMarker(body, label, evidence) {
 // `insertVerificationCommands` primitive — no logic copy — which carries the
 // #296 heading-level-aware section-end detection.
 export function stampAcEvidenceAndReconcile(body, label, evidence) {
-  const stamped = stampAcEvidenceMarker(body, label, evidence);
+  return renderAcEvidenceAndReconcile(body, label, evidence, revisionEvidenceMarkerProperties({ body: String(body || '') }));
+}
+export function renderAcEvidenceAndReconcile(body, label, evidence, revisionProperties) {
+  const stamped = renderAcEvidenceMarker(body, label, evidence, revisionProperties);
   const target = findEvidenceAc(stamped, label);
   if (!target) return stamped;
   const declared = new Set(target.evidenceCommands);

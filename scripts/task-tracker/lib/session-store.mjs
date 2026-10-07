@@ -29,9 +29,9 @@ import { gatesDir } from '../paths.mjs';
 // #682 — the default gate-store directory is resolved LAZILY via `gatesDir()`
 // (paths.mjs), so `AI_TASK_MANAGER_PROJECT_DIR` isolates the session store the
 // same way it isolates project config and every other #573 runtime artifact.
-// It MUST stay a per-call default-parameter expression (`dir = gatesDir()`) —
-// never a frozen module-level constant — so the project dir is read at call
-// time. In real runs no isolation env is set → getProjectDir() falls back to
+// It MUST stay a per-call default (`dir = gatesDir()`) — whether in the
+// parameter list or initial options destructuring — never a frozen module-level
+// constant, so the project dir is read at call time. In real runs no isolation env is set → getProjectDir() falls back to
 // cwd → `gatesDir()` yields `<cwd>/.tmp/aitm/gates`, byte-identical to the
 // legacy cwd-relative location (no behavior change for production).
 const FILE_PREFIX = 'task-tracker.session.';
@@ -50,20 +50,57 @@ function freshState(sessionId) {
   };
 }
 
-export function loadSession(sessionId, { fs = realFs, dir = gatesDir() } = {}) {
+function overlaySessionPolicy(sessionId, parsed) {
+  return {
+    ...freshState(sessionId),
+    ...parsed,
+    gates: { ...freshState(sessionId).gates, ...(parsed.gates || {}) },
+    sessionId,
+  };
+}
+
+// Original data only. Null bytes describe absence; this does not prove it.
+export function deriveRecordedSessionPolicy(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      Object.keys(input).sort().join(',') !== 'bytes,sessionId' ||
+      typeof input.sessionId !== 'string') throw new TypeError('recorded-session-policy');
+  if (input.bytes === null) return freshState(input.sessionId);
+  if (!input.sessionId || typeof input.bytes !== 'string') throw new TypeError('recorded-session-policy');
+  let parsed;
+  try { parsed = JSON.parse(input.bytes); } catch { throw new TypeError('recorded-session-policy'); }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError('recorded-session-policy');
+  return overlaySessionPolicy(input.sessionId, parsed);
+}
+
+const sessionSourceData = new WeakMap();
+export function readSessionPolicySourceData(result) {
+  return result && typeof result === 'object' ? sessionSourceData.get(result) ?? null : null;
+}
+export function loadSession(sessionId, options = {}) {
+  const { fs = realFs, dir = gatesDir() } = options;
   if (!sessionId) return freshState('');
   const p = sessionFilePath(sessionId, dir);
+  let capture = null;
   try {
-    if (!fs.existsSync(p)) return freshState(sessionId);
-    const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
-    return {
-      ...freshState(sessionId),
-      ...parsed,
-      gates: { ...freshState(sessionId).gates, ...(parsed.gates || {}) },
-      sessionId,
-    };
-  } catch {
-    return freshState(sessionId);
+    if (fs === realFs && Object.getPrototypeOf(options) === Object.prototype && Reflect.ownKeys(options).length === 0 &&
+        typeof sessionId === 'string') capture = { sessionId, path: p, exists: null, bytes: null, error: null };
+  } catch { /* Optional metadata cannot alter native permissive reads. */ }
+  const finish = result => {
+    if (capture) sessionSourceData.set(result, Object.freeze(capture));
+    return result;
+  };
+  try {
+    const exists = fs.existsSync(p);
+    if (capture) capture.exists = exists;
+    if (!exists) return finish(freshState(sessionId));
+    const bytes = fs.readFileSync(p, 'utf8');
+    if (capture) capture.bytes = bytes;
+    const parsed = JSON.parse(bytes);
+    return finish(overlaySessionPolicy(sessionId, parsed));
+  } catch (error) {
+    if (capture) capture.error = Object.freeze({ code: error?.code == null ? null : String(error.code),
+      message: String(error?.message ?? error) });
+    return finish(freshState(sessionId));
   }
 }
 

@@ -1,3 +1,4 @@
+import { withRevisionConsumer } from '../criteria-revision/policy.mjs';
 import { isDeepStrictEqual } from 'node:util';
 
 import { renderAitmRecord } from './record-envelope.mjs';
@@ -241,7 +242,7 @@ function assertAppendDeps(deps) {
   }
 }
 
-export async function appendCapsule({
+async function appendCapsuleAdmitted({
   repository,
   issue,
   expectedHeadRecordId,
@@ -325,4 +326,9 @@ export async function appendCapsule({
     throw chainError('readback-mismatch');
   }
   return Object.freeze({ record: createdRecords[0], chain });
+}
+
+// Revision admission encloses all transport effects, including readback/replay.
+export async function appendCapsule(input = {}) {
+  return withRevisionConsumer({ repository: input.repository, issue: input.issue, activity: 'capsule-write', backend: input.deps?.revisionBackend }, () => appendCapsuleAdmitted(input));
 }

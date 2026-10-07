@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { authorityResult } from '../../../fixtures/criteria-revision-runtime.mjs';
-import { withIssueLock, issueLockPath } from '../../../../task-tracker/issue-mutator-lock.mjs';
+import { withIssueLock, withAuthenticatedRevisionIssueLock, issueLockPath } from '../../../../task-tracker/issue-mutator-lock.mjs';
 const domain = await import('../../../../task-tracker/lib/criteria-revision/domain.mjs').catch(
   (e) => {
     if (e.code === 'ERR_MODULE_NOT_FOUND') return {};
@@ -152,7 +152,7 @@ test('strict-before-issue order is enforced and disabled issue-lock behavior is 
   await lock.withRevisionInterlock(
     r.context,
     async (capability) => {
-      await withIssueLock(
+      await withAuthenticatedRevisionIssueLock(
         {
           issue: 1852,
           projDir: r.first,
@@ -178,12 +178,12 @@ test('a real authenticated child reuses parent locks; fake flags and copied capa
   const childFile = path.join(r.root, 'child.mjs');
   fs.writeFileSync(
     childFile,
-    `import {withRevisionDelegation,withRevisionInterlock,assertRevisionCapability} from ${JSON.stringify(moduleURL)};import {withIssueLock,issueLockPath} from ${JSON.stringify(issueURL)};const c=JSON.parse(process.argv[2]),p=JSON.parse(process.argv[3]);if(process.argv[4]==='fake'){try{await withRevisionInterlock({...c,capability:{}},()=>{},p);process.exitCode=7;}catch(e){if(!/revision-capability|revision-lock-held/.test(e.message))throw e;}}else{await withRevisionDelegation(c,async capability=>{assertRevisionCapability(capability,c,p);await withRevisionInterlock({...c,capability},async()=>{await withIssueLock({issue:1852,projDir:c.executor.worktree,revisionContext:c,revisionCapability:capability,revisionPorts:p},()=>{});},p);},p);}`
+    `import {withRevisionDelegation,withRevisionInterlock,assertRevisionCapability} from ${JSON.stringify(moduleURL)};import {withAuthenticatedRevisionIssueLock,issueLockPath} from ${JSON.stringify(issueURL)};const c=JSON.parse(process.argv[2]),p=JSON.parse(process.argv[3]);if(process.argv[4]==='fake'){try{await withRevisionInterlock({...c,capability:{}},()=>{},p);process.exitCode=7;}catch(e){if(!/revision-capability|revision-lock-held/.test(e.message))throw e;}}else{await withRevisionDelegation(c,async capability=>{assertRevisionCapability(capability,c,p);await withRevisionInterlock({...c,capability},async()=>{await withAuthenticatedRevisionIssueLock({issue:1852,projDir:c.executor.worktree,revisionContext:c,revisionCapability:capability,revisionPorts:p},()=>{});},p);},p);}`
   );
   await lock.withRevisionInterlock(
     r.context,
     async (capability) => {
-      await withIssueLock(
+      await withAuthenticatedRevisionIssueLock(
         {
           issue: 1852,
           projDir: r.first,
@@ -220,7 +220,7 @@ test('issue-lock acquisition respects numeric order inside an expanded strict sc
   await lock.withRevisionInterlock(
     r.context,
     async (capability) => {
-      await withIssueLock(
+      await withAuthenticatedRevisionIssueLock(
         {
           issue: 1852,
           projDir: r.first,
@@ -230,7 +230,7 @@ test('issue-lock acquisition respects numeric order inside an expanded strict sc
         },
         async () => {
           await assert.rejects(
-            withIssueLock(
+            withAuthenticatedRevisionIssueLock(
               {
                 issue: 2,
                 projDir: r.first,
@@ -493,12 +493,12 @@ test('authenticated inherited issue locks participate in numeric ordering and ge
     childFile = path.join(r.root, 'ordered-child.mjs');
   fs.writeFileSync(
     childFile,
-    `import assert from 'node:assert/strict';import {withRevisionDelegation} from ${JSON.stringify(moduleURL)};import {withIssueLock} from ${JSON.stringify(issueURL)};const c=JSON.parse(process.argv[2]),p=JSON.parse(process.argv[3]);await withRevisionDelegation(c,async capability=>{const options={projDir:c.executor.worktree,revisionContext:c,revisionCapability:capability,revisionPorts:p};await withIssueLock({...options,issue:1852},()=>{});if(process.argv[4]==='both')await withIssueLock({...options,issue:2},()=>{});else await assert.rejects(withIssueLock({...options,issue:2},()=>{}),/revision-lock-order/);},p);`
+    `import assert from 'node:assert/strict';import {withRevisionDelegation} from ${JSON.stringify(moduleURL)};import {withAuthenticatedRevisionIssueLock} from ${JSON.stringify(issueURL)};const c=JSON.parse(process.argv[2]),p=JSON.parse(process.argv[3]);await withRevisionDelegation(c,async capability=>{const options={projDir:c.executor.worktree,revisionContext:c,revisionCapability:capability,revisionPorts:p};await withAuthenticatedRevisionIssueLock({...options,issue:1852},()=>{});if(process.argv[4]==='both')await withAuthenticatedRevisionIssueLock({...options,issue:2},()=>{});else await assert.rejects(withAuthenticatedRevisionIssueLock({...options,issue:2},()=>{}),/revision-lock-order/);},p);`
   );
   await lock.withRevisionInterlock(
     r.context,
     async (capability) => {
-      await withIssueLock(
+      await withAuthenticatedRevisionIssueLock(
         {
           issue: 1852,
           projDir: r.first,
@@ -524,8 +524,8 @@ test('authenticated inherited issue locks participate in numeric ordering and ge
         revisionCapability: capability,
         revisionPorts: r.ports,
       };
-      await withIssueLock({ ...options, issue: 2 }, () =>
-        withIssueLock({ ...options, issue: 1852 }, () =>
+      await withAuthenticatedRevisionIssueLock({ ...options, issue: 2 }, () =>
+        withAuthenticatedRevisionIssueLock({ ...options, issue: 1852 }, () =>
           lock.spawnRevisionDelegate(capability, childFile, [
             JSON.stringify(r.context),
             JSON.stringify(r.ports),

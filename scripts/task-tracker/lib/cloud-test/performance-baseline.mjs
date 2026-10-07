@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { validateExecutionSections } from '../../../run-tests-timing.mjs';
 
 const LANES = Object.freeze(['unit', 'integration', 'slow']);
 const SHA_RE = /^[0-9a-f]{40,64}$/;
@@ -55,7 +56,8 @@ function validateProfile(profile, lane) {
 }
 
 function validateArtifact({ artifact, lane, expectedHeadSha, discovered }) {
-  if (!artifact || artifact.schema !== 5) fail(`${lane} artifact must use schema 5`);
+  if (!artifact || ![5, 6].includes(artifact.schema))
+    fail(`${lane} artifact must use schema 5 or 6`);
   if (artifact.lane !== lane) fail(`${lane} lane does not match its artifact`);
   if (!Number.isFinite(Date.parse(artifact.generatedAt || ''))) {
     fail(`${lane} generated timestamp is missing or invalid`);
@@ -85,6 +87,7 @@ function validateArtifact({ artifact, lane, expectedHeadSha, discovered }) {
     }
     if (record.status !== 0) fail(`${lane} ${file} did not pass`);
   }
+  if (artifact.schema === 6) validateExecutionSections(artifact.executionSections, inventory);
   return { inventory, filePaths, runnerProfile };
 }
 

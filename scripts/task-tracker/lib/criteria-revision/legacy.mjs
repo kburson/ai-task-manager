@@ -19,6 +19,7 @@ export function deriveLegacyWrites(proposal) {
   if (p.authority.kind !== 'legacy-body') revisionError('legacy-authority-required');
   const derived = deriveProposal({
     observation: p.archive.observation,
+    ...(Object.hasOwn(p.archive, 'nativeIndividualProofs') ? { nativeIndividualProofs: p.archive.nativeIndividualProofs } : {}),
     edits: p.edits,
     reason: p.reason,
     mode: p.mode,

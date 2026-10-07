@@ -92,3 +92,38 @@ function reduceEvents(events) {
   }
   return state;
 }
+
+
+// Pure history classification. Transaction state is never replaced by the
+// surviving criteria authority, and this data does not grant current readiness.
+export function deriveCriteriaAuthorityHistory(events) {
+  const chain = reduceRevisionEvents(events), terminals = [];
+  let authorityEventId = null;
+  for (let index = 0; index < chain.events.length; index++) {
+    const terminal = chain.events[index];
+    if (!['applied', 'aborted'].includes(terminal.type)) continue;
+    const prefix = reduceRevisionEvents(chain.events.slice(0, index + 1));
+    if (terminal.type === 'applied') authorityEventId = terminal.eventId;
+    else {
+      const root = prefix.root.proposal.archive.resourceVector;
+      const abort = prefix.effective;
+      if (abort.proposal.mode !== 'abort' ||
+          !equal(abort.proposal.archive.resourceVector, { ...root, revisionEventHead: abort.predecessorEventId }) ||
+          !equal(terminal.observedResourceVector, { ...root, revisionEventHead: terminal.predecessorEventId }))
+        revisionError('abort-criteria-authority');
+    }
+    terminals.push({ head: terminal.eventId, status: terminal.type, authorityEventId });
+  }
+  return { chain, terminals };
+}
+
+
+// This selection is retirement data, never a filtered authority chain. An
+// untouched abort alone cancels proposed retirement; pending/partial proposals
+// remain conservative until their actual terminal is independently validated.
+export function selectEffectiveRevisionProposalEvents(events) {
+  const { chain, terminals } = deriveCriteriaAuthorityHistory(events);
+  const aborted = new Set(terminals.filter(t => t.status === 'aborted').map(t =>
+    chain.events.find(event => event.eventId === t.head).transactionId));
+  return chain.events.filter(event => event.proposal && !aborted.has(event.transactionId));
+}

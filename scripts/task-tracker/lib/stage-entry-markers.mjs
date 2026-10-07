@@ -127,6 +127,14 @@ export function stampEntryMarker(body, stage, ts, move = null) {
   return insertBeforeFieldDb(src, entryMarker(stage, ts, nextVisit, move));
 }
 
+// The native entry transform and visit accounting, without clock or I/O.
+// Current stamping and recorded replay share this exact operation.
+export function deriveEntryMarkerChange(body, stage, ts, move = null) {
+  const priorVisitCount = getStageVisitCount(body, stage);
+  const afterBody = stampEntryMarker(body, stage, ts, move);
+  return { body: afterBody, priorVisitCount, nextVisitCount: getStageVisitCount(afterBody, stage) };
+}
+
 // Returns an ordered list of `{stage, visit, ts}` tuples in document order.
 // Legacy markers without a visit suffix parse as `visit: 1`.
 export function parseEntryMarkers(body) {

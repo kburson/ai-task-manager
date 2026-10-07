@@ -1,3 +1,8 @@
+import { validateGovernedLinkedPlan } from '../governed-plan-policy.mjs';
+import { reconstructNativeHistory } from './source-correction.mjs';
+import { deriveCriteriaAuthorityHistory, selectEffectiveRevisionProposalEvents } from './reducer.mjs';
+import { nativeProofContinuation, projectNativeIndividualProofs } from './proof-execution.mjs';
+import { metadataContinuation } from './consumer-continuation.mjs';
 import { currentPlanExtension } from './plan-approval.mjs';
 import {
   deriveCanonicalWrites,
@@ -20,6 +25,7 @@ import {
 } from './schema.mjs';
 import {
   deriveProposal,
+  projectCollectedRevisionObservation,
   deriveResourceVector,
   hashSemanticContract,
   renderApprovalStatement,
@@ -36,6 +42,10 @@ import { deriveLegacyWrites, withLegacyWriteCapability } from './legacy.mjs';
 import {
   assertRevisionMemory,
   readMemoryAuthority,
+  readMemoryNativeHistory,
+  readMemoryPlanning,
+  readMemoryPlanJournal,
+  readMemoryNativeProofRecords,
   readRevisionChain,
   loadMemoryUserMessage,
   withMemoryInterlock,
@@ -60,8 +70,7 @@ function identities(definitions) {
 function retired(chain) {
   return [
     ...new Set(
-      chain.events
-        .filter((e) => e.proposal)
+      selectEffectiveRevisionProposalEvents(chain.events)
         .flatMap((e) =>
           e.proposal.identityMap
             .filter((m) => !m.afterIdentities.includes(m.beforeIdentity))
@@ -71,7 +80,7 @@ function retired(chain) {
   ];
 }
 function noResurrection(chain, bytes) {
-  for (const event of chain.events.filter((e) => e.proposal)) {
+  for (const event of selectEffectiveRevisionProposalEvents(chain.events)) {
     const p = event.proposal;
     const markers = [
       ...p.archive.observation.body.bytes.matchAll(new RegExp('<!--[\\s\\S]*?-->', 'g')),
@@ -107,22 +116,65 @@ async function collect(context, deps) {
   const observation = readMemoryAuthority(deps, context);
   validateRevisionObservation(observation);
   const chain = await readRevisionChain({ context, transport: deps });
+  const authorityId = deriveCriteriaAuthorityHistory(chain.events).terminals.at(-1)?.authorityEventId ?? null;
+  const authorityTerminal = chain.events.find(event => event.eventId === authorityId);
+  const criteriaAuthority = authorityTerminal ? { eventId: authorityId,
+    proposal: chain.events.find(event => event.eventId === authorityTerminal.predecessorEventId).proposal } : null;
+  let historyContinuation = null;
+  const nativeHistory = readMemoryNativeHistory(deps);
+  const historicalRecords = nativeHistory.order.some(ref => ref.revisionEventHead !== chain.head);
+  const changedObserver = observation.sourceKind === 'legacy-body' &&
+    [...nativeHistory.plans, ...nativeHistory.proofs, ...nativeHistory.sources].some(j => !equal(j.before.executor, observation.executor));
+  const historyValidated = nativeHistory.sources.length > 0 || (nativeHistory.stages ?? []).length > 0 || historicalRecords || changedObserver;
+  if (historyValidated) {
+    const sourceInput = { body: observation.body.bytes, projectDir: observation.executor.worktree };
+    const originalLinkedSource = canonicalRecordJson(validateGovernedLinkedPlan(sourceInput));
+    const originalNativeSources = canonicalRecordJson(deps.snapshot);
+    historyContinuation = await reconstructNativeHistory({ history: nativeHistory, chain, backend: deps, observation, pendingPlan: readMemoryPlanJournal(deps, context) });
+    boundary(context, deps);
+    if (canonicalRecordJson(deps.snapshot) !== originalNativeSources) revisionError('native-history-await-drift');
+    if (canonicalRecordJson(validateGovernedLinkedPlan(sourceInput)) !== originalLinkedSource)
+      revisionError('native-history-current-source');
+    if (historyContinuation?.planning) {
+      // A fully replayed pending stage retains the original planning read data
+      // across its own exact body prefix. This historical comparison cannot
+      // make a current planning read eligible or grant a pending effect.
+      const pendingStage = historyContinuation.status === 'pending-native-stage';
+      const actualPlanning = pendingStage ? deps.snapshot.planning : readMemoryPlanning(deps, context);
+      const planningBody = pendingStage ? historyContinuation.observation.body.bytes : observation.body.bytes;
+      if (!equal(actualPlanning, { ...historyContinuation.planning, bodyHash: hashBytes(planningBody) }))
+        revisionError('native-history-planning-drift');
+    }
+  }
   let approvalExtension = null;
   try {
-    approvalExtension = currentPlanExtension({ observation, chain, backend: deps });
+    if (!historyContinuation) approvalExtension = currentPlanExtension({ observation, chain, backend: deps });
   } catch {
     /* Invalid approval remains authority drift. */
   }
-  const approvedAfter =
+  let nativeContinuation = null;
+  const nativeRecords = readMemoryNativeProofRecords(deps);
+  if (nativeRecords.length && !historyValidated) {
+    if (!approvalExtension || chain.status !== 'applied') revisionError('native-proof-approval-unavailable');
+    nativeContinuation = nativeProofContinuation({ observation, expected: approvalExtension,
+      proposal: chain.effective.proposal, records: nativeRecords, revisionEventHead: chain.head, chain });
+  }
+  const approvedAfter = historyContinuation?.status === 'complete' ||
     approvalExtension &&
-    equal(deriveResourceVector(observation), deriveResourceVector(approvalExtension));
+    (nativeContinuation?.status === 'complete' || equal(deriveResourceVector(observation), deriveResourceVector(approvalExtension)) ||
+      (chain.status === 'applied' && metadataContinuation({ observation, expected: approvalExtension, proposal: chain.effective.proposal })));
   observation.revisionRecords = { complete: true, records: chain.events.map(revisionRecord) };
   if (chain.status !== 'empty') {
     const p = chain.effective.proposal;
     const after = p.writeSet.find((w) => w.resource === 'issue-body');
-    if (after && (hashBytes(observation.body.bytes) === after.afterHash || approvedAfter)) {
-      observation.identities = identities(
-        p.after.definitions.map((d) => ({
+    if (historyContinuation?.status === 'complete' && chain.status === 'aborted') {
+      Object.assign(observation, projectCollectedRevisionObservation({ observation, chain, currentContract: historyContinuation.currentContract }));
+    } else if (after && (hashBytes(observation.body.bytes) === after.afterHash || approvedAfter)) {
+      if (chain.status === 'applied') Object.assign(observation, projectCollectedRevisionObservation({
+        observation, chain, currentContract: historyContinuation?.currentContract ?? p.after,
+      }));
+      else observation.identities = identities(
+        (historyContinuation?.currentContract ?? p.after).definitions.map((d) => ({
           ...d,
           sourceBindings: observation.protectedSourceBindings,
         }))
@@ -149,19 +201,31 @@ async function collect(context, deps) {
   )
     revisionError('missing-revision-chain');
   validateRevisionObservation(observation);
-  const progress = approvedAfter ? 'pending-after' : vectorState(observation, chain);
+  const progress = approvedAfter ? (chain.status === 'aborted' ? 'pending-before' : 'pending-after') : vectorState(observation, chain);
   let status = chain.status === 'pending' ? progress : chain.status;
   if (chain.status === 'applied') {
     if (progress !== 'pending-after') status = 'authority-drift';
     else noResurrection(chain, observation.body.bytes);
   }
   if (chain.status === 'aborted' && progress !== 'pending-before') status = 'authority-drift';
+  if (nativeContinuation?.status === 'pending') status = 'pending-native-proof';
+  if (historyContinuation?.status.startsWith('pending-')) status = historyContinuation.status;
+  const nativeIndividualProofs = nativeRecords.length &&
+    (nativeContinuation?.status === 'complete' || historyValidated) && !status.startsWith('pending-native-')
+    ? projectNativeIndividualProofs({ observation, chain, completedProofRecords: nativeRecords }) : [];
   return {
     status,
     observation,
     chain,
+    nativeIndividualProofs,
     resourceVector: deriveResourceVector(observation),
     effectiveProposal: chain.effective?.proposal ?? null,
+    criteriaAuthority,
+    ...(historyContinuation ? { currentContract: historyContinuation.currentContract, nativeHistoryApproved: historyContinuation.approved } : {}),
+    ...(historyContinuation?.status === 'pending-native-proof' ? { nativeProofJournal: historyContinuation.journal } : {}),
+    ...(historyContinuation?.status === 'pending-native-source' ? { nativeSourceJournal: historyContinuation.journal } : {}),
+    ...(historyContinuation?.status === 'pending-native-plan' ? { nativePlanJournal: historyContinuation.journal } : {}),
+    ...(nativeContinuation?.status === 'pending' ? { nativeProofJournal: nativeContinuation.journal } : {}),
   };
 }
 export async function observeRevision({ context, deps }) {
@@ -245,6 +309,7 @@ export async function prepareRevision({ context, input, deps }) {
     if (input.mode === 'abort' && !originalUntouched(current)) revisionError('abort-touched');
     const proposal = deriveProposal({
       observation,
+      ...(input.mode === 'resume' ? {} : { nativeIndividualProofs: input.mode === 'abort' ? [] : current.nativeIndividualProofs }),
       edits: input.edits,
       reason: input.reason,
       mode: input.mode,
@@ -325,6 +390,8 @@ function matchRequest(current, request, context) {
     if (current.status !== chain.status) revisionError('authority-drift');
     if (!sameRevisionObservation(current.observation, p.archive.observation))
       revisionError('stale-observation');
+    if ((!Object.hasOwn(p.archive, 'nativeIndividualProofs') || !equal(p.archive.nativeIndividualProofs, current.nativeIndividualProofs)))
+      revisionError('native-individual-authority');
     return 'new';
   }
   if (
@@ -341,7 +408,11 @@ function matchRequest(current, request, context) {
   )
     revisionError('recovery-prefix');
   if (p.mode === 'abort' && !originalUntouched(current)) revisionError('abort-touched');
-  if (p.mode === 'forward-repair') noResurrection(chain, p.writeSet[0].afterBytes);
+  if (p.mode === 'abort' && (!Object.hasOwn(p.archive, 'nativeIndividualProofs') || p.archive.nativeIndividualProofs.length)) revisionError('native-individual-authority');
+  if (p.mode === 'forward-repair') {
+    if ((!Object.hasOwn(p.archive, 'nativeIndividualProofs') || !equal(p.archive.nativeIndividualProofs, current.nativeIndividualProofs))) revisionError('native-individual-authority');
+    noResurrection(chain, p.writeSet[0].afterBytes);
+  }
   return 'new';
 }
 async function execute({ context, request, deps }) {

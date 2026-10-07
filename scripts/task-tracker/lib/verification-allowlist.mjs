@@ -278,7 +278,7 @@ function validateBinRule(bin, argv) {
   return { ok: true };
 }
 
-export function validateVerificationCommand(raw, opts = {}) {
+export function parseVerificationCommandPolicy(raw, opts = {}) {
   if (typeof raw !== 'string') {
     return { ok: false, reason: 'command must be a string' };
   }
@@ -328,6 +328,17 @@ export function validateVerificationCommand(raw, opts = {}) {
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
     return { ok: false, reason: `path traversal outside scripts/: ${head}` };
   }
+  return { ok: true, argv };
+}
+
+// Current execution retains the same live file checks after shared syntax and
+// containment validation. The pure parser above supplies data only.
+export function validateVerificationCommand(raw, opts = {}) {
+  const parsed = parseVerificationCommandPolicy(raw, opts);
+  if (!parsed.ok || Object.prototype.hasOwnProperty.call(BIN_RULES, parsed.argv[0])) return parsed;
+  const { argv } = parsed;
+  const head = argv[0];
+  const resolved = path.resolve(opts.projectDir, head);
   if (!existsSync(resolved)) {
     return { ok: false, reason: `script not found: ${head}` };
   }

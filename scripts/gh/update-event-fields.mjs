@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'update-event-fields');
-import { existsSync, readFileSync } from 'node:fs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
-import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
-import { loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
+import { ensureIssueFieldDb, deriveNativeEventFieldBinding } from '../task-tracker/issue-field-db.mjs';
+import { loadProjectFieldDefs, loadProjectFieldEvents } from '../task-tracker/project-fields.mjs';
 import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
 import { STATE_TO_CONFIG_KEY } from '../task-tracker/lib/move-state/policy.mjs';
@@ -57,19 +56,6 @@ function projectDir() {
   return getProjectDir();
 }
 
-function loadEventBindings() {
-  const local = path.join(projectDir(), '.ai-task-manager', 'project-field-events.json');
-  const fallback = new URL('../../config/project-field-events.default.json', import.meta.url);
-  for (const file of [local, fallback]) {
-    try {
-      if (typeof file === 'string' && !existsSync(file)) continue;
-      return JSON.parse(readFileSync(file, 'utf8'));
-    } catch {
-      /* best-effort: optional read; fall back to default on parse/IO error */
-    }
-  }
-  return {};
-}
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -81,32 +67,6 @@ function nowText() {
 
 function fieldTypeForKey(fieldDefs, key) {
   return fieldDefs.find((d) => d.key === key)?.type || '';
-}
-
-async function writeFieldValue(fieldId, type, value) {
-  if (!fieldId) return;
-  if (type === 'date') {
-    await writeProjectFieldValue({
-      projectId: cfg.projectId,
-      itemId,
-      fieldId,
-      value: { date: value },
-    });
-  } else if (type === 'text') {
-    await writeProjectFieldValue({
-      projectId: cfg.projectId,
-      itemId,
-      fieldId,
-      value: { text: value },
-    });
-  } else {
-    await writeProjectFieldValue({
-      projectId: cfg.projectId,
-      itemId,
-      fieldId,
-      value: { number: Number(value) },
-    });
-  }
 }
 
 async function fetchIssueBody() {
@@ -130,11 +90,11 @@ async function writeIssueBody(body) {
 
 try {
   const eventName = STATE_TO_EVENT[state];
-  const bindings = loadEventBindings()[eventName] || [];
+  const bindings = loadProjectFieldEvents()[eventName] || [];
   const fieldDefs = loadProjectFieldDefs(projectDir());
   const issueBody = cfg.repo ? await fetchIssueBody() : '';
   let ensured = ensureIssueFieldDb(issueBody, fieldDefs);
-  const values = { ...ensured.values };
+  let values = { ...ensured.values };
   let issueDbChanged = ensured.changed;
   for (const binding of bindings) {
     const fieldKey = binding.field;
@@ -147,12 +107,14 @@ try {
     if (binding.value === 'today') resolved = today();
     else if (binding.value === 'now') resolved = nowText();
     else continue;
-    if (binding.mode === 'set_once' && values[fieldKey]) {
-      continue;
-    }
-    values[fieldKey] = resolved;
+    const derived = deriveNativeEventFieldBinding({ fieldKey, fieldType, fieldId,
+      mode: binding.mode, resolved, values });
+    if (!derived.changed) continue;
+    values = derived.values;
     issueDbChanged = true;
-    if (fieldId) await writeFieldValue(fieldId, fieldType, resolved);
+    if (derived.fieldWrite) await writeProjectFieldValue({
+      projectId: cfg.projectId, itemId, ...derived.fieldWrite,
+    });
     console.log(`✓ ${fieldKey} set for #${issue}`);
   }
   if (issueDbChanged && issueBody) {

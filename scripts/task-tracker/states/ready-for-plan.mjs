@@ -1,3 +1,4 @@
+import { criteriaRevisionAdmissionGuard } from '../lib/criteria-revision-admission-guard.mjs';
 // State object: Ready for Planning (#1211; the second slot was introduced in #433).
 //
 // Ready for Planning is the durable parking state between active Refine work
@@ -13,7 +14,7 @@ import { r4pEpicChildrenGuard } from '../lib/plan-epic-children-guard.mjs';
 
 export default Object.freeze({
   id: 'ready-for-plan',
-  entryGuards: Object.freeze([contiguityEntryGuard]),
+  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard]),
   residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     blockedByGuard,

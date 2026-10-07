@@ -44,6 +44,11 @@ export function memoryRuntime() {
       if ([...files.keys(), ...dirs].some((x) => x.startsWith(p + '/'))) throw error('ENOTEMPTY');
       if (!dirs.delete(p)) throw error('ENOENT');
     },
+    lstatSync(p) {
+      p = normalize(p);
+      if (!dirs.has(p) && !files.has(p)) throw error('ENOENT');
+      return { isDirectory: () => dirs.has(p), isSymbolicLink: () => false };
+    },
     realpathSync: normalize,
     readdirSync(p) {
       const prefix = normalize(p) + '/';

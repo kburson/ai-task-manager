@@ -248,6 +248,7 @@ function renderEvent(event) {
       'authorizer',
       'authorizationSource',
       'authorityEpoch',
+      'worktreePath',
     ],
   });
   const bytes = prefix + canonicalRecordJson(wireEvent(event)) + suffix;

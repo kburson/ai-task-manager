@@ -1,3 +1,4 @@
+import { criteriaRevisionAdmissionGuard } from '../lib/criteria-revision-admission-guard.mjs';
 // State object: review (#292).
 //
 // Review→done close-gates migrated here via #279:
@@ -32,7 +33,7 @@ import { reviewAgentValidationAction } from '../lib/resident-actions/review-agen
 
 export default Object.freeze({
   id: 'review',
-  entryGuards: Object.freeze([contiguityEntryGuard, bodyGatesEntryGuardReview]),
+  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard, bodyGatesEntryGuardReview]),
   residentActions: Object.freeze([reviewAgentValidationAction]),
   exitGuards: Object.freeze([
     blockedByGuard,

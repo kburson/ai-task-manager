@@ -356,3 +356,37 @@ test('clearProjectFieldValue: uses the canonical ProjectV2 clear mutation', asyn
   assert.match(payload.query, /clearProjectV2ItemFieldValue/);
   assert.deepEqual(payload.variables, { project: 'P', item: 'I', field: 'F' });
 });
+
+// #1855: Preserve actual transport/parser distinctions before recorded DATA factoring.
+test('gh: null close code retains original raw error fields rather than zero or a signal guess', async () => {
+  deps.spawn = fakeSpawn({ stdout: 'partial output\n', stderr: 'terminated\n', code: null });
+  await assert.rejects(gh(['api', 'graphql', '--input', '-'], { input: '{}' }), error => {
+    assert.equal(error.constructor, Error);
+    assert.equal(error.message, 'gh exited null: terminated\n');
+    assert.equal(error.code, null);
+    assert.equal(error.stdout, 'partial output\n');
+    assert.equal(error.stderr, 'terminated\n');
+    assert.equal(Object.hasOwn(error, 'signal'), false);
+    return true;
+  });
+});
+
+test('gql: missing data stays undefined and explicit data null stays null', async () => {
+  deps.spawn = fakeSpawn({ stdout: '{}' });
+  assert.equal(await gql('query{}', {}, { env: {} }), undefined);
+  deps.spawn = fakeSpawn({ stdout: '{"data":null}' });
+  assert.equal(await gql('query{}', {}, { env: {} }), null);
+});
+
+test('gql: malformed successful JSON shapes retain native property and API error behavior', async () => {
+  deps.spawn = fakeSpawn({ stdout: 'null' });
+  await assert.rejects(gql('query{}', {}, { env: {} }), TypeError);
+  deps.spawn = fakeSpawn({ stdout: '{"errors":{}}' });
+  await assert.rejects(gql('query{}', {}, { env: {} }), TypeError);
+  deps.spawn = fakeSpawn({ stdout: '{"errors":[],"data":{"ignored":true}}' });
+  await assert.rejects(gql('query{}', {}, { env: {} }), error => {
+    assert.equal(error.constructor, Error);
+    assert.equal(error.message, '');
+    return true;
+  });
+});

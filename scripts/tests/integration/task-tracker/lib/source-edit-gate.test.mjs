@@ -68,6 +68,7 @@ test('case (a) variants: refine + plan also refused', () => {
       toolName: 'Edit',
       filePath: 'src/foo.mjs',
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       boundIssue: '#42',
       choreModeActive: false,
       issueState: state,
@@ -136,6 +137,7 @@ test('case (c) variants #805: test/review/done REFUSE WRITE_CODE despite markers
       toolName: 'Edit',
       filePath: 'src/foo.mjs',
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       boundIssue: '#42',
       choreModeActive: false,
       issueState: state,
@@ -159,6 +161,7 @@ test('case (d): Edit on `.tmp/**` permitted regardless of state', () => {
       toolName: 'Write',
       filePath,
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       boundIssue: '#42',
       choreModeActive: false,
       issueState: 'backlog', // worst case
@@ -206,6 +209,7 @@ test('non-gated tools always allowed', () => {
       toolName: tool,
       filePath: 'src/foo.mjs',
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       boundIssue: null,
       choreModeActive: false,
       issueState: 'backlog',
@@ -270,6 +274,7 @@ test('runHook blocks in backlog state via injected signal resolver', async () =>
     { tool_name: 'Edit', tool_input: { file_path: 'src/foo.mjs' } },
     {
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       isChoreModeActive: () => false,
       loadBoundIssue: () => '#42',
       resolveIssueSignals: async () => ({
@@ -289,6 +294,7 @@ test('runHook bypasses entire signal fetch when chore-mode is active', async () 
     { tool_name: 'Edit', tool_input: { file_path: 'src/foo.mjs' } },
     {
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       isChoreModeActive: () => true,
       loadBoundIssue: () => null,
       resolveIssueSignals: async () => {
@@ -307,6 +313,7 @@ test('runHook tolerates signal fetch failure (falls through to decide)', async (
     { tool_name: 'Edit', tool_input: { file_path: 'src/foo.mjs' } },
     {
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       isChoreModeActive: () => false,
       loadBoundIssue: () => '#42',
       resolveIssueSignals: async () => {
@@ -325,6 +332,7 @@ test('runHook allowlists scratch without needing a bound issue or signals', asyn
     { tool_name: 'Write', tool_input: { file_path: '.scratch/inspect/probe.mjs' } },
     {
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       isChoreModeActive: () => false,
       loadBoundIssue: () => {
         touched = true;
@@ -352,6 +360,7 @@ test('native apply_patch envelope classifies every target with ordinary source-e
     },
     {
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       isChoreModeActive: () => false,
       loadBoundIssue: () => null,
     }
@@ -366,6 +375,7 @@ test('malformed native apply_patch envelope fails closed before ordinary allowan
     { tool_name: 'apply_patch', tool_input: { patch: 'not a patch' } },
     {
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       isChoreModeActive: () => true,
       loadBoundIssue: () => null,
     }
@@ -468,6 +478,7 @@ test('installed guard targets refuse before chore and scratch exits', () => {
       toolName: 'Write',
       filePath,
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       choreModeActive: true,
       boundIssue: null,
     });
@@ -553,6 +564,7 @@ for (const state of ['backlog', 'refine', 'ready-for-plan']) {
       toolName: 'Edit',
       filePath: 'docs/superpowers/specs/1848-design.md',
       projectDir: PROJECT_DIR,
+      cfg: { repo: 'owner/repo' },
       boundIssue: '#1848',
       choreModeActive: false,
       issueState: state,

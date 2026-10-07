@@ -47,3 +47,16 @@ export function bumpBodyVersion(body) {
   const current = parseBodyVersion(body);
   return stampBodyVersion(body, current + 1);
 }
+
+// Shared native version-insensitive base used by current writes and recorded data.
+export function stripBodyVersion(body) {
+  return String(body ?? '')
+    .replace(BODY_VERSION_MARKER_RE, '')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+// Native gh -q framing comparison. This does not normalize stored body bytes.
+export function matchesBodyReadback(expected, received) {
+  const norm = value => String(value ?? '').replace(/\s+$/, '');
+  return norm(received) === norm(expected);
+}

@@ -74,3 +74,22 @@ test('a new transaction cannot start while pending or after an unrelated termina
     ])
   );
 });
+
+
+// @story #1855
+test('retirement selector preserves pending and applied proposal data without replacing the full chain', () => {
+  const p = prepared();
+  assert.deepEqual(api.selectEffectiveRevisionProposalEvents([]), []);
+  assert.deepEqual(api.selectEffectiveRevisionProposalEvents([p]), [p]);
+  const applied = terminal(p);
+  assert.deepEqual(api.selectEffectiveRevisionProposalEvents([p, applied]), [p]);
+  assert.equal(api.deriveCriteriaAuthorityHistory([p, applied]).chain.head, applied.eventId);
+  assert.deepEqual(api.deriveCriteriaAuthorityHistory([p, applied]).chain.events, [p, applied]);
+});
+test('retirement selector never treats malformed or asserted abort status as an untouched terminal', () => {
+  const p = prepared(), end = terminal(p);
+  for (const events of [null, [p, p], [end], [p, { ...end, type: 'aborted' }],
+    [p, { ...end, observedResourceVector: p.proposal.archive.resourceVector }]]) {
+    assert.throws(() => api.selectEffectiveRevisionProposalEvents(events));
+  }
+});

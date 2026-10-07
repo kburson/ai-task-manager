@@ -1,3 +1,4 @@
+import { withRevisionConsumer, prepareRevisionProof, resumeRevisionProof } from '../lib/criteria-revision/policy.mjs';
 // #303 — `/task dod-stamp <key>` runs the verifier command(s) declared by a
 // stampable Functional DoD item's `aitm-verified-by` markers and stamps the
 // resulting evidence marker
@@ -28,7 +29,7 @@ import {
   writeDirectoryContractOperation,
 } from '../lib/github-records/contract-write.mjs';
 
-export async function verbDodStamp(ctx) {
+async function verbDodStampAdmitted(ctx) {
   const { cfg, statePath, rest, pexec, projectDir } = ctx;
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') {
@@ -184,10 +185,12 @@ export async function verbDodStamp(ctx) {
     ran,
     firstFailure,
     sha: runSha,
+    nativeExecutionToken,
   } = await runVerifiers({
     commands: target.evidenceCommands,
     pexec,
     cwd: projectDir,
+    nativeProofIntent: { kind: 'dod', target: key },
     env: cleanEnv,
     // #446 — content-addressed suite-run cache (see ac-stamp for rationale).
     cache: { dir: verifierCacheBaseDir(projectDir) },
@@ -245,6 +248,7 @@ export async function verbDodStamp(ctx) {
     return;
   }
 
+  await prepareRevisionProof(nativeExecutionToken);
   await mutateIssueBody({
     issueNumber: issueNum,
     repo: cfg.repo,
@@ -272,4 +276,15 @@ export async function verbDodStamp(ctx) {
   console.log(
     `[task-tracker] ✓ dod-stamp ${key} on ${s.active}: run-props upserted onto the dod:functional:${key} line's aitm-verified marker (sha=${sha}).`
   );
+}
+
+export async function verbDodStamp(ctx) {
+  const state = loadState(ctx.statePath);
+  if (!state.active || state.active === 'discover') return verbDodStampAdmitted(ctx);
+  if (await resumeRevisionProof({ repository: ctx.cfg.repo, issue: Number(String(state.active).replace(/^#/, '')),
+    backend: ctx.deps?.revisionBackend, intent: { kind: 'dod', target: String(ctx.rest?.[0] || '').toLowerCase() },
+    projectDir: ctx.projectDir, pexec: ctx.pexec })) return;
+  return withRevisionConsumer({ repository: ctx.cfg.repo, issue: Number(String(state.active).replace(/^#/, '')),
+    activity: 'dod-stamp', backend: ctx.deps?.revisionBackend,
+  }, () => verbDodStampAdmitted(ctx));
 }

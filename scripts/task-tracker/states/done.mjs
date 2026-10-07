@@ -1,3 +1,4 @@
+import { criteriaRevisionAdmissionGuard } from '../lib/criteria-revision-admission-guard.mjs';
 // State object: done (#292).
 //
 // Done is the terminal state: no forward exit. Entry guards (the
@@ -14,7 +15,7 @@ import { bodyGatesEntryGuardDone } from '../lib/body-gates-entry-guard.mjs';
 
 export default Object.freeze({
   id: 'done',
-  entryGuards: Object.freeze([bodyGatesEntryGuardDone]),
+  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, bodyGatesEntryGuardDone]),
   residentActions: Object.freeze([]),
   exitGuards: Object.freeze([]),
 });

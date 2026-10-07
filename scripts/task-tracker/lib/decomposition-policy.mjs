@@ -186,6 +186,29 @@ export function linkedPlanReference(body = '') {
   return null;
 }
 
+// Pure source-edit selection. Reuse the same visible markdown and flat-field
+// grammar as linkedPlanReference, while refusing ambiguity/hidden syntax.
+export function linkedPlanReferenceRange(body = '') {
+  const reference = linkedPlanReference(body);
+  if (!reference) return null;
+  const original = String(body).split('\n'), lines = visibleStructuralLines(body);
+  const bounds = sectionBounds(lines, 'Plan Metadata');
+  if (!bounds || sectionBounds(lines.slice(bounds.end), 'Plan Metadata')) return null;
+  const matches = [];
+  for (let i = bounds.start; i < bounds.end; i++) {
+    const field = parseMetadataField(lines[i]);
+    if (field?.key.toLowerCase() === reference.key.toLowerCase()) matches.push({ index: i, field });
+  }
+  if (matches.length !== 1) return null;
+  const { index, field } = matches[0];
+  if (lines[index] !== original[index]) return null;
+  const valueOffset = original[index].length - field.value.length;
+  const pathOffset = field.value.indexOf(reference.path);
+  if (pathOffset < 0 || field.value.slice(0, pathOffset).trim()) return null;
+  const start = original.slice(0, index).reduce((n, line) => n + line.length + 1, 0) + valueOffset + pathOffset;
+  return { reference, start, end: start + reference.path.length };
+}
+
 export function linkedPlanPath(body = '') {
   return linkedPlanReference(body)?.path || null;
 }

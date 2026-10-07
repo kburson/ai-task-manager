@@ -57,6 +57,7 @@ function observation(body) {
 }
 function finish(observed, edits) {
   const context = {
+    nativeIndividualProofs: [],
     observation: observed,
     edits,
     reason: 'Replace obsolete model hooks',

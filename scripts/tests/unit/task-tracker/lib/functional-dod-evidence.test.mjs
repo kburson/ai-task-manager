@@ -1,3 +1,4 @@
+import test from 'node:test';
 // @story #259
 import assert from 'node:assert/strict';
 
@@ -362,3 +363,40 @@ assert.throws(
 }
 
 console.log('ok functional-dod-evidence');
+
+
+// @story #1855
+for (const marker of ['<!-- dod:functional:tests -->', '<!-- dod:functional:unknown -->', '<!-- dod:functional: -->']) {
+  test(`historical Functional DoD declaration data preserves native grammar ${marker}`, async () => {
+    const native = await import('../../../../task-tracker/lib/functional-dod-evidence.mjs');
+    assert.equal(typeof native.parseFunctionalDodDeclarations, 'function');
+    const body = ['## Verification Commands', '- [ ] `node --test example.test.mjs` <!-- id=1 -->',
+      '## Definition of Done', '### Functional', `- [x] Verify behavior ${marker} <!-- aitm-verified vc-list="vc:1" -->`,
+      '### Lifecycle', '- [ ] Outside <!-- dod:functional:lint -->'].join('\n');
+    const actual = native.parseFunctionalDodDeclarations(body);
+    const live = native.parseFunctionalDodKeys(body);
+    assert.deepEqual(actual, live.map(({ key, label, lineIndex, checked, evidenceCommands }) =>
+      ({ key, label, lineIndex, checked, evidenceCommands })));
+    for (const item of actual) assert.deepEqual(Object.keys(item).sort(),
+      ['checked', 'evidenceCommands', 'key', 'label', 'lineIndex']);
+    assert.ok(actual.every(item => !item.label.includes('Outside')));
+    assert.equal(actual.length, marker.includes('functional: -->') ? 0 : 1);
+  });
+}
+
+
+// @story #1855
+for (const [name, props, expected] of [
+  ['actual vc declaration', 'vc-list="vc:1" sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ts="2026-09-30T12:00:00Z" exit="0"', true],
+  ['declaration only', 'vc-list="vc:1"', false],
+  ['partial execution', 'vc-list="vc:1" sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" exit="0"', false],
+  ['nonfinite execution', 'vc-list="vc:1" sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ts="2026-09-30T12:00:00Z" exit="NaN"', false],
+  ['missing exit', 'vc-list="vc:1" sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ts="2026-09-30T12:00:00Z"', false],
+]) test(`live Functional DoD VC evidence reads ${name}`, () => {
+  const body = ['## Verification Commands', '- [ ] `node --test example.test.mjs` <!-- id=1 -->',
+    '## Definition of Done', '### Functional', `- [ ] Verify <!-- dod:functional:tests --> <!-- aitm-verified ${props} -->`].join('\n');
+  const item = parseFunctionalDodKeys(body)[0];
+  assert.deepEqual(item.evidenceCommands, ['node --test example.test.mjs']);
+  assert.equal(Boolean(item.evidenceMarker), expected);
+  if (expected) assert.equal(item.evidenceMarker.cmd, 'vc:1');
+});

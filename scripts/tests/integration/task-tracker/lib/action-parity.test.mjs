@@ -13,6 +13,7 @@ import { test } from 'node:test';
 import {
   normalizeRefusal,
   REGISTERED_GUARD_IDS,
+  TYPED_NATIVE_GUARD_IDS,
   validateWarning,
 } from '../../../../task-tracker/lib/action-decision/contract.mjs';
 import { listLifecycleActions } from '../../../../task-tracker/lib/lifecycle-policy/actions.mjs';
@@ -268,8 +269,11 @@ test('legacy refusal and warning fallbacks remain inventoried and fail closed', 
   );
   assert.deepEqual(
     residual.entries.map(({ guardId }) => guardId),
-    REGISTERED_GUARD_IDS
+    Object.keys(inventory.guards).sort()
   );
+  assert.equal(TYPED_NATIVE_GUARD_IDS.some(id => Object.hasOwn(inventory.guards, id)), false);
+  assert.deepEqual(REGISTERED_GUARD_IDS,
+    [...Object.keys(inventory.guards), ...TYPED_NATIVE_GUARD_IDS].sort());
   for (const entry of residual.entries) {
     assert.equal(entry.disposition, 'manual-investigation');
     assert.ok(entry.rationale.length > 20, `${entry.guardId} requires a reviewed reason`);

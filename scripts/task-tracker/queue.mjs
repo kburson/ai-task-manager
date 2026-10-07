@@ -1,3 +1,4 @@
+import { assertRevisionStageHostEffect } from './lib/criteria-revision/transport-quarantine.mjs';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { legacyPathFor } from './paths.mjs';
@@ -69,6 +70,7 @@ export function peek(queuePath) {
 }
 
 export function enqueue(event, queuePath) {
+  assertRevisionStageHostEffect();
   return withLock(queuePath, () => {
     const items = read(queuePath);
     items.push({
@@ -79,6 +81,7 @@ export function enqueue(event, queuePath) {
   });
 }
 function snapshot(queuePath) {
+  assertRevisionStageHostEffect();
   return withLock(queuePath, () => {
     const items = read(queuePath);
     write(items, queuePath);
@@ -86,6 +89,7 @@ function snapshot(queuePath) {
   });
 }
 function consume(queuePath, completed) {
+  assertRevisionStageHostEffect();
   return withLock(queuePath, () => {
     const current = read(queuePath);
     for (const item of current) {

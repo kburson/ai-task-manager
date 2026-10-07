@@ -20,7 +20,8 @@
 
 import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
-import { splitTimingRowMarker } from '../timing-row-reader.mjs';
+import { withTimingTransition, buildRow as nativeBuildRow, postTimingEvent as nativePostTimingEvent } from '../../gh-timing-comment.mjs';
+import { isMemoryStageEffectScope } from '../criteria-revision/transport-quarantine.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
@@ -35,6 +36,21 @@ async function resolveTimingDeps(ctx) {
   const rows = deps.timingRows || (await import('../timing-rows.mjs'));
   const events = deps.phaseEvents || (await import('../../phase-events.mjs'));
   return { timing, rows, events };
+}
+
+const nativePhaseInputs = new WeakMap();
+// Comparison-only facts from the actual default emitter invocation. No input
+// constructor, current clock, context, function, or publication port escapes.
+export function readNativePhaseTimingInput(input, context) {
+  const record = nativePhaseInputs.get(input);
+  if (!record || record.context !== context) throw new TypeError('native-phase:original-input');
+  const fields = Object.getOwnPropertyDescriptors(input);
+  if (Object.keys(fields).sort().join(',') !== 'issueNumber,repo,row,timeoutMs' ||
+      Object.values(fields).some(field => !Object.hasOwn(field, 'value')) ||
+      JSON.stringify(input) !== record.bytes || context.transitionId !== record.transitionId ||
+      context.cfg?.repo !== input.repo || context.issueArg !== input.issueNumber ||
+      context.resolvedFromState !== 'develop' || context.stateArg !== 'test') throw new TypeError('native-phase:original-input');
+  return Object.freeze({ phase: record.phase, ts: record.ts, offsetMin: record.offsetMin });
 }
 
 // #128 — Paired lifecycle row emission. The chokepoint for all kanban
@@ -53,6 +69,10 @@ export async function emitPhasePairRows(ctx) {
     const { timing, events } = await resolveTimingDeps(ctx);
     const { buildRow, postTimingEvent } = timing;
     const { PHASE_EVENTS } = events;
+    const nativeMemory = isMemoryStageEffectScope();
+    if (nativeMemory && (buildRow !== nativeBuildRow || postTimingEvent !== nativePostTimingEvent ||
+        ctx.deps !== undefined || demoteFlag || resolvedFromState !== 'develop' || stateArg !== 'test'))
+      throw new TypeError('native-phase:original-emitter');
 
     if (ctx.deps?.flushBoundActorInterval) {
       await ctx.deps.flushBoundActorInterval({ issue: issueArg });
@@ -71,10 +91,13 @@ export async function emitPhasePairRows(ctx) {
     // carry no actor cursor and cannot credit that work again.
     const _phaseMarker = 0;
     const _phaseFullObservation = 0;
-    const withTransition = (row) => {
-      if (!ctx.transitionId) return row;
-      const { core, marker } = splitTimingRowMarker(row);
-      return `${core} <!-- aitm-transition move="${ctx.transitionId}" -->${marker}`;
+    const withTransition = (row) => withTimingTransition(row, ctx.transitionId);
+    const postSharedPhase = async (phase, row) => {
+      const input = { issueNumber: issueArg, repo: cfg.repo, row: withTransition(row), timeoutMs: 3000 };
+      if (nativeMemory) nativePhaseInputs.set(input, { context: ctx, bytes: JSON.stringify(input), phase, ts,
+        offsetMin: -new Date(ts).getTimezoneOffset(), transitionId: ctx.transitionId });
+      try { await postTimingEvent(input); }
+      finally { if (nativeMemory) nativePhaseInputs.delete(input); }
     };
 
     // First row: completion of the previous state (or `demoted` for demote).
@@ -141,12 +164,7 @@ export async function emitPhasePairRows(ctx) {
         wordMarker: _phaseMarker,
         fullWordMarker: _phaseFullObservation,
       });
-      await postTimingEvent({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        row: withTransition(row),
-        timeoutMs: 3000,
-      });
+      await postSharedPhase(`${prev}:complete`, row);
     }
 
     // Second row: entry into the new state. Share the same `ts` so the
@@ -190,12 +208,7 @@ export async function emitPhasePairRows(ctx) {
         wordMarker: _phaseMarker,
         fullWordMarker: _phaseFullObservation,
       });
-      await postTimingEvent({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        row: withTransition(row),
-        timeoutMs: 3000,
-      });
+      await postSharedPhase(`${stateArg}:enter`, row);
     }
   } catch (err) {
     process.stderr.write(`[move-state] #${issueArg}: phase-pair emission failed: ${err.message}\n`);

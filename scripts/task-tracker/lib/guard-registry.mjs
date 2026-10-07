@@ -105,6 +105,7 @@ function makeEmptyRegistry() {
 }
 
 export const GUARDS = makeEmptyRegistry();
+const registeredInvocations = new WeakMap();
 
 export function registerGuard(state, kind, guard) {
   if (!Object.prototype.hasOwnProperty.call(GUARDS, state)) {
@@ -126,6 +127,8 @@ export function registerGuard(state, kind, guard) {
     return false; // idempotent no-op
   }
   slot.push(guard);
+  if (!registeredInvocations.has(guard))
+    registeredInvocations.set(guard, { run: guard.run, id: guard.id });
   return true;
 }
 
@@ -200,10 +203,15 @@ function typedRequests(result) {
   );
 }
 
-async function invoke(guard, ctx) {
+async function invoke(guard, ctx, recordInvocation, recordResult) {
   let result;
   try {
-    result = await guard.run(ctx);
+    // Capture exactly the function called, before any await or user guard code.
+    // Preserve the method receiver without exposing callable references.
+    const run = guard.run;
+    recordInvocation(guard, run);
+    result = await Reflect.apply(run, guard, [ctx]);
+    recordResult(result);
   } catch (err) {
     return contractFailure(
       guard.id,
@@ -276,6 +284,41 @@ async function invoke(guard, ctx) {
   }
 }
 
+// Passive invocation data belongs only to the exact completed native result.
+// This conveys neither historical eligibility nor current execution authority.
+const invocationData = new WeakMap();
+const invocationResults = new WeakMap();
+export function readGuardInvocationData(result) {
+  return result && typeof result === 'object' ? invocationData.get(result) ?? null : null;
+}
+
+// Import no native guard closure on bare registry import. Only completed,
+// privately retained invocation membership reaches the fixed data reader.
+export async function readNativeGuardReadData(result) {
+  const entries = result && typeof result === 'object' ? invocationResults.get(result) : null;
+  if (!entries?.length || entries.some(entry => !entry.completed)) return null;
+  const selected = entries.filter(entry => ['develop-exit-code-complete', 'develop-exit-receipt', 'develop-exit-commit-trail-head'].includes(entry.invocation.id));
+  if (!selected.length || new Set(selected.map(entry => entry.invocation.id)).size !== selected.length ||
+      selected.some(entry => entry.data.state !== 'develop' || entry.data.phase !== 'exit')) return null;
+  const out = [];
+  for (const entry of selected) {
+    let data;
+    if (entry.invocation.id === 'develop-exit-code-complete') {
+      const { readDevelopCodeCompleteReadData } = await import('./develop-exit-code-complete-guard.mjs');
+      data = readDevelopCodeCompleteReadData(entry.result, entry.invocation);
+    } else if (entry.invocation.id === 'develop-exit-receipt') {
+      const { readDevelopReceiptReadData } = await import('./develop-exit-receipt-guard.mjs');
+      data = readDevelopReceiptReadData(entry.result, entry.invocation);
+    } else {
+      const { readDevelopCommitTrailHeadReadData } = await import('./develop-exit-commit-trail-head-guard.mjs');
+      data = readDevelopCommitTrailHeadReadData(entry.result, entry.invocation);
+    }
+    if (!data) return null;
+    out.push(Object.freeze({ invocation: entry.data, data }));
+  }
+  return Object.freeze(out);
+}
+
 export async function runGuards(
   fromState,
   toState,
@@ -285,16 +328,30 @@ export async function runGuards(
   const refusals = [];
   const warns = [];
   const requests = [];
+  const invocations = [];
+  const results = [];
+  let originalInvocations = true;
   let derived = Object.freeze({});
   const fromSlot = GUARDS[fromState];
   const toSlot = GUARDS[toState];
 
   function finish(out) {
+    if (originalInvocations) {
+      invocationData.set(out, Object.freeze(invocations));
+      if (results.every(entry => entry.completed)) invocationResults.set(out, results);
+    }
     if (warns.length > 0) out.warns = warns;
     if (requests.length > 0) out.humanDecision = { requests };
     else out.humanDecision = null;
     if (Object.keys(derived).length > 0) out.derived = derived;
     return out;
+  }
+
+  function recordInvocation(guard, run, entry) {
+    entry.invocation = { guard, run, id: guard.id };
+    const registered = registeredInvocations.get(guard);
+    if (!registered || registered.run !== run || registered.id !== guard.id)
+      originalInvocations = false;
   }
 
   function consume(g, r) {
@@ -315,12 +372,26 @@ export async function runGuards(
   // it as "no guards" rather than throwing, so transition logging stays clean.
   if (includeExitGuards && fromSlot) {
     for (const g of fromSlot.exit) {
-      consume(g, await invoke(g, ctx));
+      const data = Object.freeze({ ordinal: invocations.length, state: fromState, phase: 'exit', guardId: g.id });
+      const entry = { data, completed: false };
+      const result = await invoke(g, ctx, (guard, run) => recordInvocation(guard, run, entry), raw => {
+        entry.result = raw; entry.completed = true;
+      });
+      results.push(entry);
+      invocations.push(data);
+      consume(g, result);
     }
   }
   if (includeEntryGuards && toSlot) {
     for (const g of toSlot.entry) {
-      consume(g, await invoke(g, ctx));
+      const data = Object.freeze({ ordinal: invocations.length, state: toState, phase: 'entry', guardId: g.id });
+      const entry = { data, completed: false };
+      const result = await invoke(g, ctx, (guard, run) => recordInvocation(guard, run, entry), raw => {
+        entry.result = raw; entry.completed = true;
+      });
+      results.push(entry);
+      invocations.push(data);
+      consume(g, result);
     }
   }
 

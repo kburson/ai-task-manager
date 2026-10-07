@@ -12,7 +12,7 @@ import { normalizeTranscriptRecord } from '../providers/transcript-normalizer.mj
 
 import { existsSync } from 'node:fs';
 
-import { scanJsonlRecords } from './lib/jsonl-line-scanner.mjs';
+import { scanJsonlRecordsWithSource } from './lib/jsonl-line-scanner.mjs';
 
 // EPIC #823 timing model v2 (C3, AC1): a phase's active time is computed as its
 // span − Σ(pause/switch-out→resume brackets), reading no `idle`/`active-work`
@@ -23,6 +23,12 @@ import { scanJsonlRecords } from './lib/jsonl-line-scanner.mjs';
 export { computeActiveByPhaseSpans } from './lib/timing-rows.mjs';
 
 const ACTIVITY_TYPES = new Set(['user', 'assistant']);
+const activitySources = new WeakMap();
+
+// Exact original-result diagnostic data only, never a current timing authority.
+export function readActivitySourceData(result) {
+  return activitySources.get(result) ?? null;
+}
 
 export function readActivityEvidence(
   filePath,
@@ -46,8 +52,9 @@ export function readActivityEvidence(
   let sessionId = null;
   let invalid = false;
   let supported = false;
+  let source = null;
   try {
-    scanJsonlRecords(filePath, {
+    source = scanJsonlRecordsWithSource(filePath, {
       onMalformed() {
         invalid = true;
       },
@@ -104,11 +111,26 @@ export function readActivityEvidence(
   } catch {
     return { ...result, reason: 'transcript-unreadable' };
   }
+  const finish = value => {
+    // Ordinary callers retain their original mutable result. Only completed
+    // native scans with scalar inputs get detached frozen diagnostic facts.
+    if (typeof filePath === 'string' && (provider == null || typeof provider === 'string') &&
+        (sid == null || typeof sid === 'string') && Number.isFinite(idleThresholdMs) &&
+        value.events.every(Number.isFinite) &&
+        [value.activeEstimateSec, value.idleEstimateSec, value.knownEngagementMs].every(n => n === null || Number.isFinite(n))) {
+      activitySources.set(value, Object.freeze({ path: filePath, provider: provider ?? null, sid: sid ?? null,
+        startMs, endMs, idleThresholdMs, byteLength: source.byteLength, sha256: source.sha256,
+        status: value.status, reason: value.reason, events: Object.freeze([...value.events]),
+        activeEstimateSec: value.activeEstimateSec, idleEstimateSec: value.idleEstimateSec,
+        knownEngagementMs: value.knownEngagementMs }));
+    }
+    return value;
+  };
   result.events = [...new Set(result.events)].sort((a, b) => a - b);
-  if (invalid) return { ...result, reason: 'transcript-malformed' };
-  if (!supported) return { ...result, reason: 'transcript-unsupported' };
+  if (invalid) return finish({ ...result, reason: 'transcript-malformed' });
+  if (!supported) return finish({ ...result, reason: 'transcript-unsupported' });
   if (provider !== 'codex' || typeof sid !== 'string' || sessionId !== sid)
-    return { ...result, reason: 'window-identity-unconfirmed' };
+    return finish({ ...result, reason: 'window-identity-unconfirmed' });
   coverage.sort((a, b) => a[0] - b[0]);
   let cursor = startMs;
   for (const [start, end] of coverage) {
@@ -116,21 +138,21 @@ export function readActivityEvidence(
     if (end >= cursor) cursor = end;
   }
   if (cursor < endMs || !coverage.some(([start, end]) => start <= startMs && end >= startMs))
-    return result;
+    return finish(result);
   const estimate = computeActiveAndIdleSeconds({
     startMs,
     endMs,
     events: result.events,
     idleThresholdMs,
   });
-  return {
+  return finish({
     ...result,
     status: 'observed',
     reason: null,
     activeEstimateSec: estimate.activeSec,
     idleEstimateSec: estimate.idleSec,
     knownEngagementMs: endMs - startMs,
-  };
+  });
 }
 
 export function collectEventTimestamps(filePath, startMs, endMs) {

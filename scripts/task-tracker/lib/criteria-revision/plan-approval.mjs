@@ -1,69 +1,22 @@
+import { isGovernedPlanObservation } from '../governed-plan-policy.mjs';
 // @story #1854
 import path from 'node:path';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
-import { exactKeys, revisionError, hashRevisionValue } from './schema.mjs';
+import { exactKeys, revisionError, hashRevisionValue, validatePlanApprovalPayload } from './schema.mjs';
 const equal = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
-const hash = /^sha256:[0-9a-f]{64}$/;
-export function validatePlanApprovalPayload(payload) {
-  exactKeys(
-    payload,
-    [
-      'schema',
-      'revisionId',
-      'semanticContractDigest',
-      'contractEpoch',
-      'sourceBindings',
-      'provenance',
-    ],
-    'plan-approval-binding'
-  );
-  if (
-    payload.schema !== 'aitm.plan-approval-binding/v1' ||
-    (payload.revisionId !== null &&
-      (typeof payload.revisionId !== 'string' || !payload.revisionId)) ||
-    !hash.test(payload.semanticContractDigest) ||
-    (payload.contractEpoch !== null &&
-      (!Number.isSafeInteger(payload.contractEpoch) || payload.contractEpoch < 1))
-  )
-    revisionError('plan-approval-binding');
-  if (!Array.isArray(payload.sourceBindings) || payload.sourceBindings.length !== 3)
-    revisionError('plan-approval-source-binding');
-  const names = new Set();
-  for (const source of payload.sourceBindings) {
-    exactKeys(source, ['identity', 'hash'], 'plan-approval-source-binding');
-    if (
-      !['user-story', 'story-intent', 'linked-plan'].includes(source.identity) ||
-      names.has(source.identity) ||
-      !hash.test(source.hash)
-    )
-      revisionError('plan-approval-source-binding');
-    names.add(source.identity);
-  }
-  exactKeys(
-    payload.provenance,
-    ['mode', 'authorityReference', 'auditReference'],
-    'plan-approval-provenance'
-  );
-  if (
-    !['human', 'full-auto'].includes(payload.provenance.mode) ||
-    ['authorityReference', 'auditReference'].some(
-      (key) => typeof payload.provenance[key] !== 'string' || !payload.provenance[key].trim()
-    )
-  )
-    revisionError('plan-approval-provenance');
-  return payload;
-}
+export { validatePlanApprovalPayload } from './schema.mjs';
 export function validateRevisionPlanApproval(payload, observation) {
   validatePlanApprovalPayload(payload);
   const current = observation.observation,
-    p = observation.effectiveProposal;
+    p = observation.effectiveProposal,
+    contract = observation.currentContract ?? p?.after;
   if (
-    observation.status !== 'applied' ||
+    !['applied', 'aborted'].includes(observation.status) ||
     !p ||
     p.mode === 'abort' ||
-    current.revisionId !== p.after.revisionId ||
-    payload.revisionId !== p.after.revisionId ||
-    payload.semanticContractDigest !== p.after.semanticContractDigest ||
+    current.revisionId !== contract.revisionId ||
+    payload.revisionId !== contract.revisionId ||
+    payload.semanticContractDigest !== contract.semanticContractDigest ||
     payload.contractEpoch !== (current.contract?.value.contractEpoch ?? null) ||
     !equal(
       payload.sourceBindings,
@@ -84,13 +37,7 @@ export function validateRevisionPlanApproval(payload, observation) {
   }
   return true;
 }
-export function planSourceBindings(resolved, governedPlan) {
-  return [
-    { identity: 'user-story', hash: 'sha256:' + resolved.binding.storyDigest },
-    { identity: 'story-intent', hash: 'sha256:' + resolved.binding.storyIntentDigest },
-    { identity: 'linked-plan', hash: hashRevisionValue(governedPlan) },
-  ];
-}
+export { planSourceBindings } from '../story-intent-source.mjs';
 
 import { observeRevision } from './engine.mjs';
 import {
@@ -114,7 +61,9 @@ import {
   renderAitmRecord,
   parseAitmRecord,
 } from '../github-records/record-envelope.mjs';
-import { resolveContractSource } from '../github-records/contract-source.mjs';
+import { resolveContractSource, resolveContractSourceFromRecord } from '../github-records/contract-source.mjs';
+import { parseIssueDirectory } from '../github-records/issue-directory.mjs';
+import { deriveCriteriaAuthorityHistory } from './reducer.mjs';
 import { renderContractProjectionRecord } from '../github-records/contract-write.mjs';
 import {
   renderDeliveryContract,
@@ -129,7 +78,7 @@ import {
 import { stampBodyVersion, parseBodyVersion } from '../body-version.mjs';
 import { stampEntryMarker } from '../stage-entry-markers.mjs';
 import { parseEntryMarkers } from '../stage-entry-grammar.mjs';
-import { resolveStoryIntentSource } from '../story-intent-source.mjs';
+import { resolveStoryIntentSource, reconstructHistoricalPlanSource, planSourceBindings } from '../story-intent-source.mjs';
 import { validateGovernedLinkedPlan } from '../governed-plan-policy.mjs';
 import { hashBytes } from './schema.mjs';
 import { deriveResourceVector } from './proposal.mjs';
@@ -143,7 +92,7 @@ function session(token) {
 }
 export function memoryPlanSession(token) {
   const held = session(token);
-  return { reapproval: held.current.status === 'applied', checklistBody: held.checklistBody };
+  return { reapproval: held.current.criteriaAuthority !== null, checklistBody: held.checklistBody };
 }
 export function validateMemoryPlanWrite(token, { backend, before, after, audit, record }) {
   const held = session(token);
@@ -155,7 +104,7 @@ export function validateMemoryPlanWrite(token, { backend, before, after, audit, 
     !equal(held.completed, { before, after, audit, record })
   )
     revisionError('plan-completion-capability');
-  return { context: held.context, journal: held.journal };
+  return { context: held.context, journal: held.journal, capability: held.capability };
 }
 async function planningSource(o) {
   const source = await resolveContractSource({
@@ -214,9 +163,9 @@ export async function runMemoryPlanApproval({
     revisionError('plan-observation-drift');
   const journal = readMemoryPlanJournal(backend, context),
     before = resumePlanState(observed, journal);
-  if (!['empty', 'applied'].includes(before.status))
+  if (!['empty', 'applied', 'aborted'].includes(before.status))
     return { status: 'revision-approval-refused', code: before.status };
-  if (o.stage !== 'plan' && !(o.stage === 'develop' && before.status === 'applied'))
+  if (o.stage !== 'plan' && !(o.stage === 'develop' && before.criteriaAuthority))
     return { status: 'wrong-state' };
   return withMemoryInterlock(backend, context, async (capability) => {
     if (!equal(readMemoryPlanning(backend, context), planning))
@@ -227,7 +176,7 @@ export async function runMemoryPlanApproval({
     if (
       !equal(current.resourceVector, before.resourceVector) ||
       !sameRevisionObservation(current.observation, before.observation) ||
-      !['empty', 'applied'].includes(current.status)
+      !['empty', 'applied', 'aborted'].includes(current.status)
     )
       revisionError('plan-authority-drift');
     const fresh = readMemoryAuthority(backend, context);
@@ -285,9 +234,12 @@ function resumePlanState(current, journal) {
   if (
     !chain ||
     chain.head !== journal.revisionEventHead ||
-    !['empty', 'applied'].includes(chain.status)
+    !['empty', 'applied', 'aborted'].includes(chain.status)
   )
     revisionError('plan-journal-chain');
+  if (['applied', 'aborted'].includes(chain.status) && current.status === 'pending-native-plan' &&
+      equal(current.nativePlanJournal, journal))
+    return { ...current, status: chain.status, observation: journal.before };
   if (chain.status === 'applied') {
     const vector = deriveResourceVector(journal.before);
     vector.revisionEventHead = chain.head;
@@ -380,19 +332,29 @@ export async function finishMemoryPlanApproval(
         context,
         projectDir: held.projectDir,
       });
-  if (existing)
+  if (existing) {
+    if (backend.snapshot.pendingSource) {
+      const retained = backend.snapshot.nativePlanRecords?.at(-1);
+      if (!retained || !equal(retained.after, actual) ||
+          (retained.record.recordId ?? retained.record.envelope?.recordId) !== existing.recordId)
+        revisionError('native-source-completion-retained-plan');
+      held.journal = retained;
+      held.completed = { before: retained.before, after: retained.after, audit: retained.audit, record: retained.record };
+      await persistMemoryPlanApproval({ backend, token, ...held.completed });
+    }
     return {
       status: 'already-approved',
       recordId: existing.recordId,
       mode: existing.payload.provenance.mode,
     };
+  }
   if (before.sourceKind === 'canonical-contract')
     assertCanonicalAuthority(actual, memoryNow(backend), 'plan-approve');
   const payload = {
     schema: 'aitm.plan-approval-binding/v1',
-    revisionId: held.current.effectiveProposal?.after.revisionId ?? null,
+    revisionId: (held.current.currentContract ?? held.current.criteriaAuthority?.proposal.after)?.revisionId ?? null,
     semanticContractDigest:
-      held.current.effectiveProposal?.after.semanticContractDigest ??
+      (held.current.currentContract ?? held.current.criteriaAuthority?.proposal.after)?.semanticContractDigest ??
       baselinePlanDigest(source.contract),
     contractEpoch: before.contract?.value.contractEpoch ?? null,
     sourceBindings: planSourceBindings(resolved, governedPlan),
@@ -453,6 +415,13 @@ export async function finishMemoryPlanApproval(
     comments: held.journal?.comments ?? backend.comments,
     revisionEventHead: held.current.chain.head,
   };
+  if (governedPlan.observation) {
+    if (!isGovernedPlanObservation(governedPlan, { body: before.body.bytes, projectDir: held.projectDir }))
+      revisionError('plan-source-native-read');
+    const { projectDir, key, path: sourcePath, text, contentSha256 } = governedPlan.observation;
+    journal.sourceRead = { schema: 'aitm.native-plan-source-read/v1', bodyHash: hashBytes(before.body.bytes),
+      projectDir, key, path: sourcePath, text, contentSha256 };
+  }
   if (held.journal && !equal(held.journal, journal)) revisionError('plan-journal-targets');
   held.journal = journal;
   await persistMemoryPlanApproval({ backend, token, ...held.completed });
@@ -460,9 +429,18 @@ export async function finishMemoryPlanApproval(
   return { status: 'approved', recordId, ts, mode: requestedMode };
 }
 
+function criteriaProposal(chain) {
+  const { terminals } = deriveCriteriaAuthorityHistory(chain.events);
+  const id = terminals.at(-1)?.authorityEventId;
+  if (!id) return null;
+  const terminal = chain.events.find(event => event.eventId === id);
+  return chain.events.find(event => event.eventId === terminal.predecessorEventId)?.proposal ?? null;
+}
+
 export function currentPlanExtension({ observation, chain, backend }) {
-  if (chain.status !== 'applied' || chain.effective.proposal.mode === 'abort') return null;
-  const p = chain.effective.proposal;
+  if (!['applied', 'aborted'].includes(chain.status)) return null;
+  const p = criteriaProposal(chain);
+  if (!p) return null;
   const before =
     p.authority.kind === 'canonical-contract'
       ? canonicalAfterObservation(p)
@@ -472,6 +450,12 @@ export function currentPlanExtension({ observation, chain, backend }) {
       bytes: p.writeSet.find((w) => w.resource === 'issue-body').afterBytes,
       version: parseBodyVersion(p.writeSet.find((w) => w.resource === 'issue-body').afterBytes),
     };
+  return derivePlanExtension({ observation, chain, backend, before, currentContract: p.after });
+}
+
+function derivePlanExtension({ observation, chain, backend, before, currentContract, planningSnapshot, auditComments = backend.comments, historicalSource = null }) {
+  const p = criteriaProposal(chain);
+  if (!p) revisionError('plan-criteria-authority');
   let record, payload, ts;
   if (observation.sourceKind === 'canonical-contract') {
     const added = observation.canonicalArchive.records.filter(
@@ -526,15 +510,21 @@ export function currentPlanExtension({ observation, chain, backend }) {
     Date.parse(ts) > Date.now()
   )
     revisionError('plan-approval-time');
-  const projectDir = observation.executor.worktree,
-    governedPlan = validateGovernedLinkedPlan({ body: observation.body.bytes, projectDir }),
+  const projectDir = observation.executor.worktree;
+  let resolved, sourceBindings;
+  if (historicalSource) ({ resolved, sourceBindings } = historicalSource);
+  else {
+    const governedPlan = validateGovernedLinkedPlan({ body: observation.body.bytes, projectDir });
     resolved = resolveStoryIntentSource({ body: observation.body.bytes, projectDir, governedPlan });
-  if (!governedPlan.ok || !resolved.ok) revisionError('plan-approval-source-binding');
+    if (!governedPlan.ok || !resolved.ok) revisionError('plan-approval-source-binding');
+    sourceBindings = planSourceBindings(resolved, governedPlan);
+  }
   validateRevisionPlanApproval(payload, {
-    status: 'applied',
+    status: chain.status,
     observation: { ...observation, revisionId: p.after.revisionId },
     effectiveProposal: p,
-    planSourceBindings: planSourceBindings(resolved, governedPlan),
+    currentContract,
+    planSourceBindings: sourceBindings,
     ...(record.envelope ? { approvalEnvelope: record.envelope } : {}),
   });
   if (
@@ -548,7 +538,7 @@ export function currentPlanExtension({ observation, chain, backend }) {
       : `Plan approval recorded by ${observation.executor.adapter}:${observation.executor.sessionId} at ${ts}.`;
   if (
     hashBytes(audit) !== payload.provenance.auditReference ||
-    backend.comments.filter((c) => c.body === audit).length !== 1
+    auditComments.filter((c) => c.body === audit).length !== 1
   )
     revisionError('plan-approval-audit');
   if (
@@ -559,7 +549,7 @@ export function currentPlanExtension({ observation, chain, backend }) {
   const marker = parsePlanApprovedMarker(observation.body.bytes);
   if (!marker || marker.ts !== ts || marker.mode !== payload.provenance.mode)
     revisionError('plan-approval-projection');
-  const { ready, planning } = currentPlanningBinding(backend, observation, resolved.binding);
+  const { ready, planning } = currentPlanningBinding(backend, observation, resolved.binding, planningSnapshot);
   return approvalAfter(before, record, resolved.binding, {
     forecastRecordId: ready,
     trunkSha: marker.trunkSha ?? null,
@@ -567,7 +557,7 @@ export function currentPlanExtension({ observation, chain, backend }) {
   });
 }
 
-function currentPlanningBinding(backend, observation, binding) {
+function currentPlanningBinding(backend, observation, binding, planningSnapshot) {
   const body = observation.body.bytes,
     marker = parsePlanApprovedMarker(body);
   if (
@@ -582,10 +572,12 @@ function currentPlanningBinding(backend, observation, binding) {
       '<!--\\s*aitm-estimation-forecast-ready\\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\\s*-->',
       'i'
     ).exec(body)?.[1] ?? null;
-  const planning = readMemoryPlanning(backend, {
+  const planning = planningSnapshot ?? readMemoryPlanning(backend, {
     repository: observation.repository,
     issue: observation.issue,
   });
+  if (planning.bodyHash !== hashBytes(body) || planning.repository !== observation.repository || planning.issue !== observation.issue)
+    revisionError('plan-approval-planning-binding');
   if (
     (marker.forecastRecordId ?? null) !== ready ||
     (Number.isInteger(planning.cfg.estimationRubricIssue) &&
@@ -624,7 +616,24 @@ export async function readCurrentMemoryPlanApproval({ backend, context, projectD
   assertRevisionMemory(backend);
   if (readMemoryPlanJournal(backend, context)) return null;
   const state = await observeRevision({ context, deps: backend });
-  if (state.status === 'applied') {
+  if (['applied', 'aborted'].includes(state.status) && state.criteriaAuthority) {
+    if (state.currentContract) {
+      if (!state.nativeHistoryApproved) return null;
+      if (state.observation.sourceKind === 'canonical-contract') {
+        const o = state.observation;
+        const source = await planningSource(o);
+        const policy = validateGovernedLinkedPlan({ body: o.body.bytes, projectDir: o.executor.worktree });
+        const resolved = resolveStoryIntentSource({ body: o.body.bytes, projectDir: o.executor.worktree, governedPlan: policy });
+        if (!policy.ok || !resolved.ok) revisionError('plan-approval-source-binding');
+        return validateNativePlanObservation({ o, backend, source, resolved,
+          sourceBindings: planSourceBindings(resolved, policy), now: memoryNow(backend),
+          comments: backend.comments, criteriaState: state });
+      }
+      if (state.observation.sourceKind !== 'legacy-body') revisionError('source-plan-kind');
+      const markers = [...state.observation.body.bytes.matchAll(legacyBindingRE)];
+      if (markers.length !== 1) revisionError('source-plan-binding');
+      return JSON.parse(markers[0][1]);
+    }
     const expected = currentPlanExtension({
       observation: state.observation,
       chain: state.chain,
@@ -643,9 +652,18 @@ export async function readCurrentMemoryPlanApproval({ backend, context, projectD
     }
     return JSON.parse([...o.body.bytes.matchAll(legacyBindingRE)][0][1]);
   }
-  if (state.status !== 'empty') return null;
+  if (state.status !== 'empty' && !(state.status === 'aborted' && !state.criteriaAuthority)) return null;
   const o = state.observation;
   if (o.sourceKind !== 'canonical-contract') return null;
+  const source = await planningSource(o);
+  const policy = validateGovernedLinkedPlan({ body: o.body.bytes, projectDir: projectDir || o.executor.worktree });
+  const resolved = resolveStoryIntentSource({ body: o.body.bytes, projectDir: projectDir || o.executor.worktree, governedPlan: policy });
+  if (!policy.ok || !resolved.ok) revisionError('plan-approval-source-binding');
+  return validateNativePlanObservation({ o, backend, source, resolved,
+    sourceBindings: planSourceBindings(resolved, policy), now: memoryNow(backend), comments: backend.comments });
+}
+
+function validateNativePlanObservation({ o, backend, source, resolved, sourceBindings, now, comments, planningSnapshot, criteriaState = null }) {
   const e = parseAitmRecord({
     commentNodeId: o.capsule.head,
     body: o.capsule.bytes,
@@ -661,26 +679,25 @@ export async function readCurrentMemoryPlanApproval({ backend, context, projectD
   )
     revisionError('plan-approval-identity');
 
-  assertCanonicalAuthority(o, memoryNow(backend), 'plan-approve');
-  const source = await planningSource(o),
-    body = o.body.bytes;
-  const policy = validateGovernedLinkedPlan({
-      body,
-      projectDir: projectDir || o.executor.worktree,
-    }),
-    resolved = resolveStoryIntentSource({
-      body,
-      projectDir: projectDir || o.executor.worktree,
-      governedPlan: policy,
-    });
-  if (!policy.ok || !resolved.ok) revisionError('plan-approval-source-binding');
+  assertCanonicalAuthority(o, now, 'plan-approve');
+  const body = o.body.bytes;
+  if (!resolved.ok) revisionError('plan-approval-source-binding');
   const payload = e.payload,
     marker = parsePlanApprovedMarker(body);
+  if (criteriaState) {
+    validateRevisionPlanApproval(payload, {
+      status: criteriaState.status, observation: o,
+      effectiveProposal: criteriaState.criteriaAuthority.proposal,
+      currentContract: criteriaState.currentContract, planSourceBindings: sourceBindings,
+      approvalEnvelope: e,
+    });
+  }
   if (
-    payload.revisionId !== null ||
-    payload.semanticContractDigest !== baselinePlanDigest(source.contract) ||
+    (!criteriaState && (payload.revisionId !== null ||
+      payload.semanticContractDigest !== baselinePlanDigest(source.contract))) ||
+    e.authority.actor !== o.grant.coordinator.actor ||
     payload.contractEpoch !== o.contract.value.contractEpoch ||
-    !equal(payload.sourceBindings, planSourceBindings(resolved, policy)) ||
+    !equal(payload.sourceBindings, sourceBindings) ||
     e.authority.epoch !== o.grant.epoch ||
     e.authority.grantId !== o.grant.identity ||
     !o.contract.value.acceptedRecordIds.includes(e.recordId) ||
@@ -702,13 +719,13 @@ export async function readCurrentMemoryPlanApproval({ backend, context, projectD
     body.split(renderDeliveryContract({ contract: o.contract.value }).markdown).length !== 2
   )
     revisionError('plan-approval-projection');
-  currentPlanningBinding(backend, o, resolved.binding);
+  currentPlanningBinding(backend, o, resolved.binding, planningSnapshot);
   const audit =
     payload.provenance.mode === 'full-auto'
       ? buildPlanApprovalAuditComment({ issueNumber: o.issue, ts: e.createdAt })
       : `Plan approval recorded by ${o.executor.adapter}:${o.executor.sessionId} at ${e.createdAt}.`;
   if (
-    backend.comments.filter((c) => c.body === audit).length !== 1 ||
+    comments.filter((c) => c.body === audit).length !== 1 ||
     payload.provenance.auditReference !== hashBytes(audit) ||
     payload.provenance.authorityReference !== o.executor.adapter + ':' + o.executor.sessionId
   )
@@ -752,4 +769,74 @@ export async function approveCurrentRevision({
     env: provenance.mode === 'full-auto' ? { TT_FULL_AUTO: '1' } : {},
     expectedObservation: current,
   });
+}
+
+// Reconstruct a retained native completion against its exact predecessor. This
+// validates data; it issues neither a checks token nor write authority.
+function retainedCanonicalPlanningSource(observation) {
+  const directory = parseIssueDirectory({ issueBody: observation.body.bytes });
+  if (!directory) revisionError('plan-contract-source');
+  const body = renderContractProjectionRecord({ repository: observation.repository, issue: observation.issue,
+    contract: observation.contract.value, actor: observation.grant.coordinator.actor });
+  const record = { ...parseAitmRecord({ commentNodeId: directory.singletons['delivery-contract'], body,
+    expectedRepository: observation.repository, expectedIssue: observation.issue }), body };
+  return resolveContractSourceFromRecord({ repository: observation.repository, issue: observation.issue,
+    issueBody: observation.body.bytes, record });
+}
+
+function reconstructBaselinePlanRecord({ journal, expected, backend, pending }) {
+  if (journal.before.sourceKind !== 'canonical-contract' || !sameRevisionObservation(journal.before, expected))
+    revisionError('native-baseline-predecessor');
+  const record = journal.record, envelope = record.envelope;
+  if (!envelope || envelope.predecessor !== journal.before.capsule.head ||
+      envelope.authority.actor !== journal.before.grant.coordinator.actor ||
+      envelope.authority.epoch !== journal.before.grant.epoch || envelope.authority.grantId !== journal.before.grant.identity)
+    revisionError('native-baseline-authority');
+  assertCanonicalAuthority(journal.before, envelope.createdAt, 'plan-approve');
+  let resolved, sourceBindings;
+  if (journal.sourceRead) ({ resolved, sourceBindings } = reconstructHistoricalPlanSource({ sourceRead: journal.sourceRead,
+    body: journal.before.body.bytes, projectDir: journal.before.executor.worktree }));
+  else {
+    const policy = validateGovernedLinkedPlan({ body: journal.before.body.bytes, projectDir: journal.before.executor.worktree });
+    resolved = resolveStoryIntentSource({ body: journal.before.body.bytes, projectDir: journal.before.executor.worktree, governedPlan: policy });
+    if (!policy.ok || !resolved.ok) revisionError('plan-approval-source-binding');
+    sourceBindings = planSourceBindings(resolved, policy);
+  }
+  const comments = [...journal.comments, { id: 'memory-plan-audit-' + record.recordId, body: journal.audit }];
+  if ((pending ? journal.comments : comments).some(c => !backend.comments.some(actual => equal(c, actual))))
+    revisionError('native-plan-comments');
+  const planningSnapshot = { ...journal.planning, bodyHash: hashBytes(journal.after.body.bytes) };
+  validateNativePlanObservation({ o: journal.after, backend, source: retainedCanonicalPlanningSource(journal.after),
+    resolved, sourceBindings, now: envelope.createdAt, comments: pending ? comments : backend.comments, planningSnapshot });
+  const marker = parsePlanApprovedMarker(journal.after.body.bytes);
+  const { ready, planning } = currentPlanningBinding(backend, journal.after, resolved.binding, planningSnapshot);
+  const derived = approvalAfter(journal.before, record, resolved.binding,
+    { forecastRecordId: ready, trunkSha: marker.trunkSha ?? null, epicChildren: planning.epicChildren });
+  if (!sameRevisionObservation(derived, journal.after) || record.bytes !== journal.after.capsule.bytes ||
+      hashBytes(journal.audit) !== envelope.payload.provenance.auditReference) revisionError('native-baseline-effect');
+  return derived;
+}
+
+export function reconstructNativePlanRecord({ journal, expected, currentContract, chain, backend, pending = false }) {
+  if (journal.revisionEventHead !== chain.head || !sameRevisionObservation(journal.before, expected) ||
+      journal.planning.bodyHash !== hashBytes(journal.before.body.bytes))
+    revisionError('native-plan-predecessor');
+  const authority = deriveCriteriaAuthorityHistory(chain.events);
+  if (!authority.terminals.at(-1)?.authorityEventId)
+    return reconstructBaselinePlanRecord({ journal, expected, backend, pending });
+  const expectedComments = [...journal.comments, { id: 'memory-plan-audit-' + journal.record.recordId, body: journal.audit }];
+  if ((pending ? journal.comments : expectedComments).some(c => !backend.comments.some(actual => equal(c, actual))))
+    revisionError('native-plan-comments');
+  const historicalSource = journal.sourceRead ? reconstructHistoricalPlanSource({ sourceRead: journal.sourceRead,
+    body: journal.before.body.bytes, projectDir: journal.before.executor.worktree }) : null;
+  const derived = derivePlanExtension({ historicalSource, observation: journal.after, chain, backend, before: journal.before,
+    currentContract, planningSnapshot: { ...journal.planning, bodyHash: hashBytes(journal.after.body.bytes) },
+    auditComments: pending ? expectedComments : backend.comments });
+  if (!derived || !sameRevisionObservation(derived, journal.after)) revisionError('native-plan-effect');
+  const legacyRecord = journal.after.sourceKind === 'legacy-body'
+    ? JSON.parse([...journal.after.body.bytes.matchAll(legacyBindingRE)][0][1]) : null;
+  if (legacyRecord && !equal(legacyRecord, journal.record)) revisionError('native-plan-record');
+  if (hashBytes(journal.audit) !== (journal.record.envelope?.payload ?? journal.record.payload).provenance.auditReference)
+    revisionError('native-plan-audit');
+  return structuredClone(derived);
 }

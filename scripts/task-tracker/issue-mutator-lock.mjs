@@ -55,6 +55,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { issueLockPath } from './paths.mjs';
+import { withRevisionIssueMutation } from './lib/criteria-revision/policy.mjs';
 import {
   assertRevisionCapability,
   assertRevisionIssueLockOrder,
@@ -255,6 +256,22 @@ export function tryReclaimStale(lockPath, deps = {}) {
 }
 
 export async function withIssueLock(opts, fn) {
+  if (!opts?.issue) throw new Error('withIssueLock: issue is required');
+  if (!opts?.projDir) throw new Error('withIssueLock: projDir is required');
+  return withRevisionIssueMutation(opts, admitted => acquireIssueLock(admitted, fn));
+}
+
+// Internal interlock/delegation primitive: ownership and ordering only. Covered
+// semantic writers must use withIssueLock and their own policy boundary.
+export async function withAuthenticatedRevisionIssueLock(opts, fn) {
+  if (!opts?.revisionContext || !opts?.revisionCapability)
+    throw new Error('revision-capability');
+  assertRevisionCapability(opts.revisionCapability,
+    { ...opts.revisionContext, issues: [Number(opts.issue)] }, opts.revisionPorts);
+  return acquireIssueLock(opts, fn);
+}
+
+async function acquireIssueLock(opts, fn) {
   const {
     issue,
     verb = 'unknown',
