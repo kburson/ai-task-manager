@@ -4,9 +4,67 @@ import { appendCommitRow, assert, buildInitialTrail, buildRow, createHash, creat
 
 export function registerNativeStageCase(mode, entrypoint, fault = null) {
 const faultMode = mode;
+const sentinelLateCases = {
+  "sentinel-late-persist-token-accessor": [
+    "persist",
+    "token",
+    "accessor"
+  ],
+  "sentinel-late-persist-token-identity": [
+    "persist",
+    "token",
+    "identity"
+  ],
+  "sentinel-late-persist-invocation-accessor": [
+    "persist",
+    "invocation",
+    "accessor"
+  ],
+  "sentinel-late-persist-invocation-identity": [
+    "persist",
+    "invocation",
+    "identity"
+  ],
+  "sentinel-late-persist-step-accessor": [
+    "persist",
+    "step",
+    "accessor"
+  ],
+  "sentinel-late-persist-step-identity": [
+    "persist",
+    "step",
+    "identity"
+  ],
+  "sentinel-late-effect-token-accessor": [
+    "effect",
+    "token",
+    "accessor"
+  ],
+  "sentinel-late-effect-token-identity": [
+    "effect",
+    "token",
+    "identity"
+  ],
+  "sentinel-late-context-issue-accessor": [
+    "effect",
+    "issue",
+    "context-accessor"
+  ],
+  "sentinel-late-context-executor-accessor": [
+    "effect",
+    "executor",
+    "context-accessor"
+  ],
+  "sentinel-late-context-identity": [
+    "effect",
+    "sessionId",
+    "context-identity"
+  ]
+};
+const sentinelLate = sentinelLateCases[mode];
 const statusModes = ['status-source-read', 'status-source-unreleased', 'status-source-close', 'status-source-parse', 'status-source-parser', 'status-source-values', 'status-source-unused', 'status-source-exhausted', 'status-source-prefix', 'status-source-late-config', 'status-source-late-vector', 'status-source-custody-input', 'status-source-custody-output', 'status-source-custody-error'];
-const expectStage = ['board', 'board-prefix', 'board-exception', 'board-exception-prefix', 'sentinel-data', 'sentinel-history', 'sentinel-intent', 'sentinel-complete', 'sentinel-prefix'].includes(mode) ? 'entry-body' : mode === 'entry-adversarial' ? 'entry-body' : mode === 'entry-body-prefix' ? 'entry-body' : mode === 'entry-intent' ? 'entry-body' : mode === 'actor-journal-prefix' ? 'actor-journal' : mode === 'intent-prefix' ? 'intent' : mode;
-const originalName = faultMode === 'sentinel-complete' ? 'native sentinel effect preserves every other completed board resource' : faultMode === 'sentinel-prefix' ? 'native sentinel interruption retains its exact original durable prefix' : faultMode === 'sentinel-intent' ? 'native sentinel intent is durable before its body effect' : faultMode === 'sentinel-history' ? 'sentinel historical prefixes remain pending with complete unaffected resources' : faultMode === 'sentinel-data' ? 'sentinel DATA derives only from genuine completed board predecessor' : statusModes.includes(expectStage) && !['status-source-read', 'status-source-unreleased'].includes(expectStage) ? 'native raw Status ' + expectStage + ' preserves exact parser and pending semantics' : expectStage === 'root-adapter' ? 'native stage refuses active runtime identity adapter before journal admission' : expectStage === 'status-source-read' ? 'original native board consumes empty then target raw Status reads' : expectStage === 'status-source-unreleased' ? 'native raw Status missing next pair refuses before another write' : faultMode === 'board-exception-prefix' ? 'original board exception interruption retains exact unknown prefix' : faultMode === 'board-exception' ? 'original native board write throw is retained without confirmation or compensation' : faultMode === 'board-prefix' ? 'owned native board retains exact interrupted resource and pending denial' : faultMode === 'board' ? 'owned native stage verifies original board status before sentinel effects' : faultMode === 'entry-intent' ? 'owned native entry intent remains durable when body effect is interrupted' : expectStage === 'entry-helper-override' ? 'native entry refuses late helper substitution after actual phase completion' : expectStage === 'late-sources' ? 'native stage rechecks actual sources after historical replay awaits' : expectStage === 'entry-body' ? 'owned native stage persists original entry body before board effects' : String(expectStage).startsWith('phase-') && expectStage !== 'phase-pair' ? `owned native ${expectStage} validates exact shared phase history` : expectStage === 'transition-native' ? 'owned native transition identity retains original context and rejects copies' : expectStage === 'transition-override' ? 'complete native stage refuses caller transition identity before preparation' : expectStage === 'phase-pair' ? 'owned native stage publishes original two shared phase facts' : String(expectStage).startsWith('actor-final-') ? `owned native actor final ${expectStage.split('-')[2]} preserves every interrupted prefix` : expectStage === 'actor-final' ? 'owned native stage saves original outer actor final state only in memory' : expectStage === 'actor-remove' ? 'owned native stage removes original actor journal only in memory' : String(expectStage).startsWith('actor-checkpoint-') && String(expectStage).endsWith('-prefix') ? `owned native checkpoint ${expectStage.split('-')[2]} preserves every interrupted prefix` : expectStage === 'actor-checkpoint-host' ? 'owned native checkpoint refuses transient host journal removal lock' : expectStage === 'actor-checkpoint' ? 'owned native stage saves original actor checkpoint only in memory' : expectStage === 'actor-cursor-prefix' ? 'owned native actor cursor preserves every interrupted prefix' : expectStage === 'actor-cursor-legacy' ? 'owned native actor cursor preserves legacy sticky fields' : expectStage === 'actor-cursor-absent' ? 'owned native actor cursor creates genuine absent resource' : expectStage === 'actor-cursor' ? 'owned native stage commits original actor cursor only in memory' : expectStage === 'actor-publication-prefix' ? 'owned native actor publication preserves every interrupted prefix' : expectStage === 'actor-publication-existing' ? 'owned native stage updates existing actor timing only in memory' : expectStage === 'actor-publication' ? 'owned native stage publishes original actor row only in memory' : expectStage === 'actor-journal' ? 'owned native stage prepares sealed actor journal only in memory' : expectStage === 'actor-override' ? 'complete native stage refuses caller actor before preparation' : expectStage === 'intent' ? 'owned native stage persists original header and first intent before any effect' : expectStage === 'historical' ? 'original stage guard data replays native predicates without current readiness' : expectStage === 'preparation' ? 'owned native stage preparation cancels original emitter before host effects' : expectStage === 'vertical' ? 'owned native stage vertical continuation runs actor phase body board and tail' : expectStage ? 'complete native guards permit actual Develop to Test saga' : 'complete native stage guards remain fenced before any saga effect';
+const expectStage = sentinelLate ? 'entry-body' : ['board', 'board-prefix', 'board-exception', 'board-exception-prefix', 'sentinel-data', 'sentinel-history', 'sentinel-intent', 'sentinel-complete', 'sentinel-prefix'].includes(mode) ? 'entry-body' : mode === 'entry-adversarial' ? 'entry-body' : mode === 'entry-body-prefix' ? 'entry-body' : mode === 'entry-intent' ? 'entry-body' : mode === 'actor-journal-prefix' ? 'actor-journal' : mode === 'intent-prefix' ? 'intent' : mode;
+const originalName = sentinelLate ? 'native sentinel refuses late original input change: ' + mode : faultMode === 'sentinel-complete' ? 'native sentinel effect preserves every other completed board resource' : faultMode === 'sentinel-prefix' ? 'native sentinel interruption retains its exact original durable prefix' : faultMode === 'sentinel-intent' ? 'native sentinel intent is durable before its body effect' : faultMode === 'sentinel-history' ? 'sentinel historical prefixes remain pending with complete unaffected resources' : faultMode === 'sentinel-data' ? 'sentinel DATA derives only from genuine completed board predecessor' : statusModes.includes(expectStage) && !['status-source-read', 'status-source-unreleased'].includes(expectStage) ? 'native raw Status ' + expectStage + ' preserves exact parser and pending semantics' : expectStage === 'root-adapter' ? 'native stage refuses active runtime identity adapter before journal admission' : expectStage === 'status-source-read' ? 'original native board consumes empty then target raw Status reads' : expectStage === 'status-source-unreleased' ? 'native raw Status missing next pair refuses before another write' : faultMode === 'board-exception-prefix' ? 'original board exception interruption retains exact unknown prefix' : faultMode === 'board-exception' ? 'original native board write throw is retained without confirmation or compensation' : faultMode === 'board-prefix' ? 'owned native board retains exact interrupted resource and pending denial' : faultMode === 'board' ? 'owned native stage verifies original board status before sentinel effects' : faultMode === 'entry-intent' ? 'owned native entry intent remains durable when body effect is interrupted' : expectStage === 'entry-helper-override' ? 'native entry refuses late helper substitution after actual phase completion' : expectStage === 'late-sources' ? 'native stage rechecks actual sources after historical replay awaits' : expectStage === 'entry-body' ? 'owned native stage persists original entry body before board effects' : String(expectStage).startsWith('phase-') && expectStage !== 'phase-pair' ? `owned native ${expectStage} validates exact shared phase history` : expectStage === 'transition-native' ? 'owned native transition identity retains original context and rejects copies' : expectStage === 'transition-override' ? 'complete native stage refuses caller transition identity before preparation' : expectStage === 'phase-pair' ? 'owned native stage publishes original two shared phase facts' : String(expectStage).startsWith('actor-final-') ? `owned native actor final ${expectStage.split('-')[2]} preserves every interrupted prefix` : expectStage === 'actor-final' ? 'owned native stage saves original outer actor final state only in memory' : expectStage === 'actor-remove' ? 'owned native stage removes original actor journal only in memory' : String(expectStage).startsWith('actor-checkpoint-') && String(expectStage).endsWith('-prefix') ? `owned native checkpoint ${expectStage.split('-')[2]} preserves every interrupted prefix` : expectStage === 'actor-checkpoint-host' ? 'owned native checkpoint refuses transient host journal removal lock' : expectStage === 'actor-checkpoint' ? 'owned native stage saves original actor checkpoint only in memory' : expectStage === 'actor-cursor-prefix' ? 'owned native actor cursor preserves every interrupted prefix' : expectStage === 'actor-cursor-legacy' ? 'owned native actor cursor preserves legacy sticky fields' : expectStage === 'actor-cursor-absent' ? 'owned native actor cursor creates genuine absent resource' : expectStage === 'actor-cursor' ? 'owned native stage commits original actor cursor only in memory' : expectStage === 'actor-publication-prefix' ? 'owned native actor publication preserves every interrupted prefix' : expectStage === 'actor-publication-existing' ? 'owned native stage updates existing actor timing only in memory' : expectStage === 'actor-publication' ? 'owned native stage publishes original actor row only in memory' : expectStage === 'actor-journal' ? 'owned native stage prepares sealed actor journal only in memory' : expectStage === 'actor-override' ? 'complete native stage refuses caller actor before preparation' : expectStage === 'intent' ? 'owned native stage persists original header and first intent before any effect' : expectStage === 'historical' ? 'original stage guard data replays native predicates without current readiness' : expectStage === 'preparation' ? 'owned native stage preparation cancels original emitter before host effects' : expectStage === 'vertical' ? 'owned native stage vertical continuation runs actor phase body board and tail' : expectStage ? 'complete native guards permit actual Develop to Test saga' : 'complete native stage guards remain fenced before any saga effect';
 test(originalName + (fault ? ' [' + fault.when + ':' + fault.suffix + ']' : ''), async (t) => {
   if (process.env.AITM_NATIVE_STAGE_CONTEXT !== '1') {
     const isolation = createSandbox();
@@ -122,7 +180,7 @@ test(originalName + (fault ? ' [' + fault.when + ':' + fault.suffix + ']' : ''),
     const before = structuredClone(f.backend.snapshot);
     const ctx = { cfg, projectDir: f.projectDir, issueArg: String(f.context.issue), stateArg: 'test',
       resolvedFromState: 'develop', plan: { runGuardPipeline: true }, revisionBackend: f.backend };
-    if (['board', 'board-prefix', 'board-exception', 'board-exception-prefix', 'sentinel-data', 'sentinel-history', 'sentinel-intent', 'sentinel-complete', 'sentinel-prefix'].includes(faultMode) || statusModes.includes(expectStage)) {
+    if (['board', 'board-prefix', 'board-exception', 'board-exception-prefix', 'sentinel-data', 'sentinel-history', 'sentinel-intent', 'sentinel-complete', 'sentinel-prefix'].includes(faultMode) || sentinelLate || statusModes.includes(expectStage)) {
       const nativeProject = await import('../../../../gh/lib/github-projects.mjs');
       ctx.gh = nativeProject.gh; ctx.projectItemForIssue = nativeProject.projectItemForIssue;
       ctx.optionId = cfg.kanbanOptionTest;
@@ -606,6 +664,86 @@ test(originalName + (fault ? ' [' + fault.when + ':' + fault.suffix + ']' : ''),
           process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = originalTranscriptDir;
         }
       }
+      return;
+    }
+    if (sentinelLate) {
+      // A missing post-await continuity check must expose a getter or another
+      // durable operation. All observations forward the actual native calls.
+      const [phase, field, mutation] = sentinelLate;
+      const originalDescriptors = Object.getOwnPropertyDescriptors;
+      const originalReason = Object.getOwnPropertyDescriptor(Error.prototype, 'preparationReason');
+      assert.equal(originalReason, undefined);
+      const files = captureFiles(), errors = [];
+      let captures = 0, injections = 0, gets = 0, selected = null, queuedFailure = null;
+      let restoreTarget = null, restoreKey = null, restoreDescriptor = null;
+      let injectedSnapshot, injectedFiles, effectStart;
+      Object.defineProperty(Error.prototype, 'preparationReason', {
+        configurable: true,
+        get() {
+          if (injections && new Error().stack.includes('at prepareNativeStageAtBoundary')) errors.push(this);
+          return undefined;
+        },
+        set(value) { Object.defineProperty(this, 'preparationReason', {
+          value, enumerable: true, configurable: true, writable: true }); },
+      });
+      Object.getOwnPropertyDescriptors = function(value) {
+        const descriptors = Reflect.apply(originalDescriptors, this, arguments);
+        const stack = new Error().stack;
+        const caller = phase === 'persist' ? 'persistMemoryNativeStageSentinel' : 'writeMemoryNativeStageSentinel';
+        const keys = phase === 'persist' ? 'backend,capability,context,invocation,step,token' : 'backend,capability,context,invocation,token';
+        if (!selected && stack.includes('at sentinelStoreInputContinuity') && stack.includes(caller) &&
+            Reflect.ownKeys(descriptors).sort().join(',') === keys) {
+          selected = value; captures++;
+          queueMicrotask(() => {
+            try {
+              const snapshot = f.backend.snapshot, journal = snapshot.nativeStageRecords[0];
+              assert.ok(journal.steps.slice(0, 14).every(step => step.readback !== null));
+              assert.equal(journal.steps[13].outcome.kind, 'confirmed');
+              assert.equal(journal.steps.length, phase === 'persist' ? 14 : 15);
+              assert.deepEqual(f.backend.effects.filter(op => op.startsWith('native-stage-sentinel-')),
+                phase === 'persist' ? [] : ['native-stage-sentinel-intent-write', 'native-stage-sentinel-intent-readback']);
+              if (phase === 'effect') assert.equal(journal.steps[14].readback, null);
+              const context = descriptors.context.value;
+              restoreTarget = mutation === 'context-identity' ? context.executor :
+                mutation === 'context-accessor' ? context : value;
+              restoreKey = field;
+              restoreDescriptor = Object.getOwnPropertyDescriptor(restoreTarget, restoreKey);
+              assert.ok(restoreDescriptor && Object.hasOwn(restoreDescriptor, 'value'));
+              if (mutation.endsWith('accessor')) Object.defineProperty(restoreTarget, restoreKey, {
+                enumerable: true, configurable: true, get() { gets++; throw new Error('late getter must not run'); },
+              });
+              else Object.defineProperty(restoreTarget, restoreKey, { ...restoreDescriptor,
+                value: mutation === 'context-identity' ? 'changed-original-session' : {} });
+              injections++;
+              injectedSnapshot = f.backend.snapshot; injectedFiles = captureFiles(); effectStart = f.backend.effects.length;
+            } catch (error) { queuedFailure = error; }
+          });
+        }
+        return descriptors;
+      };
+      let result;
+      try { result = await moveState(ctx); }
+      finally {
+        Object.getOwnPropertyDescriptors = originalDescriptors;
+        if (restoreTarget && restoreDescriptor) Object.defineProperty(restoreTarget, restoreKey, restoreDescriptor);
+        delete Error.prototype.preparationReason;
+      }
+      const expectedError = mutation === 'context-accessor' ? 'criteria-revision:native-stage-sentinel-context' :
+        mutation === 'context-identity' ? 'criteria-revision:native-stage-sentinel-context-changed' :
+        mutation === 'accessor' ? 'criteria-revision:native-stage-sentinel-input' : 'criteria-revision:native-stage-sentinel-input-changed';
+      t.diagnostic(JSON.stringify({ sentinelLate: { mode, phase, captures, injections, gets,
+        queuedFailure: queuedFailure?.message ?? null, errors: errors.map(error => ({ name: error.name, message: error.message, stack: error.stack })),
+        result, operations: f.backend.effects.slice(effectStart) } }));
+      assert.equal(queuedFailure, null);
+      assert.equal(captures, 1); assert.equal(injections, 1); assert.equal(gets, 0);
+      assert.equal(errors.length, 1, 'capture actual original asynchronous TypeError at native outer catch');
+      assert.ok(errors[0] instanceof TypeError); assert.equal(errors[0].message, expectedError);
+      assert.equal(result.exit, 4); assert.equal(result.code, 'revision-authority-unavailable');
+      assert.equal(result.preparationReason, 'native-source-unavailable');
+      assert.deepEqual(f.backend.effects.slice(effectStart), []);
+      assert.deepEqual(f.backend.snapshot, injectedSnapshot);
+      assert.deepEqual(captureFiles(), injectedFiles); assert.deepEqual(captureFiles(), files);
+      assert.equal(Object.getOwnPropertyDescriptor(Error.prototype, 'preparationReason'), undefined);
       return;
     }
     if (['sentinel-complete', 'sentinel-prefix'].includes(faultMode)) {

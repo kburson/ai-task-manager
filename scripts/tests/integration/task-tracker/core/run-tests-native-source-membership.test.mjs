@@ -13,6 +13,17 @@ import { loadSerialSectionMetadata } from '../../../../run-tests-native-sections
 import { NATIVE_SERIAL_MEMBERS } from '../../../../run-tests-native-members.mjs';
 const root = fileURLToPath(new URL('../../../../../', import.meta.url));
 const modes = {
+  "sentinel-late-persist-token-accessor": "sentinel/persist-token",
+  "sentinel-late-persist-token-identity": "sentinel/persist-token",
+  "sentinel-late-persist-invocation-accessor": "sentinel/persist-invocation",
+  "sentinel-late-persist-invocation-identity": "sentinel/persist-invocation",
+  "sentinel-late-persist-step-accessor": "sentinel/persist-step",
+  "sentinel-late-persist-step-identity": "sentinel/persist-step",
+  "sentinel-late-effect-token-accessor": "sentinel/effect-authority",
+  "sentinel-late-effect-token-identity": "sentinel/effect-authority",
+  "sentinel-late-context-issue-accessor": "sentinel/context-continuity",
+  "sentinel-late-context-executor-accessor": "sentinel/context-continuity",
+  "sentinel-late-context-identity": "sentinel/context-continuity",
   false: 'captured-stage-authority',
   true: 'whole-transition',
   vertical: 'whole-transition',
