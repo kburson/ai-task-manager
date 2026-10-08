@@ -189,11 +189,20 @@ function defaultPaths() {
   };
 }
 
-function readJson(p) {
-  if (!existsSync(p)) return {};
+function readJson(p, capture = null) {
+  const exists = existsSync(p);
+  if (capture) capture.selectedExists = exists;
+  if (!exists) return {};
   try {
-    return JSON.parse(readFileSync(p, 'utf8'));
-  } catch {
+    const bytes = readFileSync(p, 'utf8');
+    if (capture) capture.bytes = bytes;
+    return JSON.parse(bytes);
+  } catch (error) {
+    if (capture)
+      capture.error = Object.freeze({
+        code: error?.code == null ? null : String(error.code),
+        message: String(error?.message ?? error),
+      });
     return {};
   }
 }
@@ -201,8 +210,9 @@ function readJson(p) {
 const READY_FOR_PLAN_CONFIG_KEY = 'kanbanOptionReadyForPlan';
 const LEGACY_READY_FOR_PLAN_CONFIG_KEYS = ['kanbanOptionAssigned', 'kanbanOptionOnDeck'];
 
-function withLegacyAssignedFallback(raw, source) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+function normalizeLegacyAssignedFallback(raw, source) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { value: raw, warnings: [] };
+  const warnings = [];
   const configured = [
     [READY_FOR_PLAN_CONFIG_KEY, raw[READY_FOR_PLAN_CONFIG_KEY]],
     ...LEGACY_READY_FOR_PLAN_CONFIG_KEYS.map((key) => [key, raw[key]]),
@@ -219,7 +229,7 @@ function withLegacyAssignedFallback(raw, source) {
     .map(([key]) => key)
     .filter((key) => LEGACY_READY_FOR_PLAN_CONFIG_KEYS.includes(key));
   if (legacyKeys.length > 0) {
-    console.warn(
+    warnings.push(
       `[aitm] ${source} config key${legacyKeys.length > 1 ? 's' : ''} ${legacyKeys.join(', ')} ` +
         `deprecated; use ${READY_FOR_PLAN_CONFIG_KEY}. The option id was loaded canonically.`
     );
@@ -228,7 +238,13 @@ function withLegacyAssignedFallback(raw, source) {
     normalized[READY_FOR_PLAN_CONFIG_KEY] = configured[0][1];
   }
   for (const key of LEGACY_READY_FOR_PLAN_CONFIG_KEYS) delete normalized[key];
-  return normalized;
+  return { value: normalized, warnings };
+}
+
+function withLegacyAssignedFallback(raw, source) {
+  const normalized = normalizeLegacyAssignedFallback(raw, source);
+  for (const warning of normalized.warnings) console.warn(warning);
+  return normalized.value;
 }
 
 // Return the raw project-config JSON without merging defaults. Used by the
@@ -290,6 +306,33 @@ export function getPreferences(paths = {}) {
   return mergePreferences(project.preferences);
 }
 
+const configSourceData = new WeakMap();
+export function readConfigSourceData(result) {
+  return result && typeof result === 'object' ? (configSourceData.get(result) ?? null) : null;
+}
+function readConfigLayer(currentPath, legacyPath, role, captures) {
+  const currentExists = existsSync(currentPath);
+  const selectedPath = currentExists ? currentPath : legacyPath || null;
+  const capture = captures
+    ? {
+        role,
+        currentPath,
+        currentExists,
+        legacyPath,
+        selectedPath,
+        selectedExists: null,
+        bytes: null,
+        error: null,
+      }
+    : null;
+  const value = currentExists
+    ? withLegacyAssignedFallback(readJson(currentPath, capture), role)
+    : legacyPath
+      ? withLegacyAssignedFallback(readJson(legacyPath, capture), `legacy ${role}`)
+      : {};
+  if (capture) captures.push(Object.freeze(capture));
+  return value;
+}
 export function loadConfig(paths = {}) {
   const defaults = defaultPaths();
   const projectPath = paths.projectPath ?? defaults.projectPath;
@@ -297,16 +340,22 @@ export function loadConfig(paths = {}) {
     paths.legacyProjectPath ?? (paths.projectPath ? null : defaults.legacyProjectPath);
   const userPath = paths.userPath ?? defaults.userPath;
   const legacyUserPath = paths.legacyUserPath ?? (paths.userPath ? null : defaults.legacyUserPath);
-  const user = existsSync(userPath)
-    ? withLegacyAssignedFallback(readJson(userPath), 'user')
-    : legacyUserPath
-      ? withLegacyAssignedFallback(readJson(legacyUserPath), 'legacy user')
-      : {};
-  const project = existsSync(projectPath)
-    ? withLegacyAssignedFallback(readJson(projectPath), 'project')
-    : legacyProjectPath
-      ? withLegacyAssignedFallback(readJson(legacyProjectPath), 'legacy project')
-      : {};
+  // Passive capture of the original native selection/read sequence only.
+  const captures =
+    [projectPath, userPath].every((value) => typeof value === 'string') &&
+    [legacyProjectPath, legacyUserPath].every(
+      (value) => value === null || typeof value === 'string'
+    )
+      ? []
+      : null;
+  const user = readConfigLayer(userPath, legacyUserPath, 'user', captures);
+  const project = readConfigLayer(projectPath, legacyProjectPath, 'project', captures);
+  const result = mergeNativeConfig(user, project);
+  if (captures) configSourceData.set(result, Object.freeze(captures));
+  return result;
+}
+
+function mergeNativeConfig(user, project) {
   const merged = { ...DEFAULTS };
   const sources = {};
   for (const k of Object.keys(DEFAULTS)) sources[k] = 'default';
@@ -341,6 +390,48 @@ export function loadConfig(paths = {}) {
   merged.preferences = mergePreferences(project.preferences);
   merged._sources = sources;
   return merged;
+}
+
+// Original selected native source data only. No source path or read port is
+// accepted, and the returned bytes do not authenticate that a read occurred.
+export function deriveRecordedConfig(input) {
+  const closed = (value, keys) =>
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).sort().join(',') === keys.sort().join(',');
+  if (!closed(input, ['project', 'user'])) throw new TypeError('recorded-config');
+  const read = (captured, role) => {
+    if (
+      !closed(captured, ['source', 'bytes']) ||
+      !['current', 'legacy', 'absent'].includes(captured.source)
+    )
+      throw new TypeError('recorded-config');
+    if (captured.source === 'absent') {
+      if (captured.bytes !== null) throw new TypeError('recorded-config');
+      return { value: {}, warnings: [] };
+    }
+    let raw;
+    try {
+      if (typeof captured.bytes !== 'string') throw new TypeError();
+      raw = JSON.parse(captured.bytes);
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TypeError();
+    } catch {
+      throw new TypeError('recorded-config');
+    }
+    return normalizeLegacyAssignedFallback(
+      raw,
+      captured.source === 'legacy' ? `legacy ${role}` : role
+    );
+  };
+  // Native loadConfig resolves user before project; warning and conflict order
+  // follows that same order without emitting diagnostics from historical data.
+  const user = read(input.user, 'user'),
+    project = read(input.project, 'project');
+  return {
+    config: mergeNativeConfig(user.value, project.value),
+    warnings: [...user.warnings, ...project.warnings],
+  };
 }
 
 function coerce(key, raw) {

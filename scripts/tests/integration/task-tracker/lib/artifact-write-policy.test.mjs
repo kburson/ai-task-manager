@@ -172,6 +172,21 @@ const writers = [
   "mkdir -p 'docs/my directory' '.scratch/my directory'",
   "touch 'docs/my draft.md' '.tmp/my script.sh'",
 ];
+// @story #1855
+test('complete leading-dot artifact targets retain native quarantine and containment checks', () => {
+  for (const command of [
+    'touch ././.scratch/gh/nested/scratch.txt ./.tmp/aitm/state/runtime.json',
+    "printf '%s' 'data' > ././docs/leading-dot.md",
+  ])
+    assert.equal(activity({ command }, 'Bash'), 'allow', command);
+  for (const command of [
+    'touch ././.scratch/../scripts/escape.mjs',
+    'touch ././docs/source-link/escape.mjs',
+    'touch ././.scratch/ok.txt scripts/source.mjs',
+  ])
+    assert.equal(activity({ command }, 'Bash'), 'block', command);
+});
+
 test('complete literal writers authorize artifacts without a matching binding', () => {
   for (const command of writers) {
     for (const state of states)

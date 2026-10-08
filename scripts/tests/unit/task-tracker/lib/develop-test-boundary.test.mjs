@@ -86,3 +86,57 @@ test('Develop exit refuses a receipt whose live Verification Commands changed', 
   assert.equal(result.ok, false);
   assert.match(result.reason, /develop-to-test-receipt-vc-set-mismatch/);
 });
+
+// @story #1855
+// Coherent historical receipt DATA is separate from current eligibility.
+test('recorded Develop receipt predicate shares native required results without current authority', async () => {
+  const receipts = await import('../../../../task-tracker/lib/verification-receipt.mjs');
+  const receipt = receipts.parseVerificationReceipt(receiptBody(), 'develop-final');
+  const input = { receipt, issueNumber: 937, headSha: SHA };
+  assert.equal(receipts.qualifyRecordedDevelopReceipt(input), true);
+  for (const change of [
+    (x) => {
+      x.issueNumber++;
+    },
+    (x) => {
+      x.headSha = 'c'.repeat(40);
+    },
+    (x) => {
+      x.receipt.commands[0].exitCode = 1;
+    },
+    (x) => {
+      x.receipt.commands.pop();
+    },
+    (x) => {
+      x.receipt.stage = 'test';
+    },
+    (x) => {
+      x.receipt = { ok: true, stage: 'develop-final', commitSha: SHA };
+    },
+    (x) => {
+      x.receipt.commands[0].args = ['run', 'weak-check'];
+    },
+  ]) {
+    const changed = structuredClone(input);
+    change(changed);
+    assert.equal(receipts.qualifyRecordedDevelopReceipt(changed), false);
+  }
+  assert.throws(
+    () => receipts.qualifyRecordedDevelopReceipt({ ...input, current: true }),
+    /recorded-develop-receipt/
+  );
+  const projected = structuredClone(input);
+  projected.receipt.provider = { id: 'project', requiredClassifications: ['native-custom'] };
+  projected.receipt.commands = [
+    {
+      classification: 'native-custom',
+      command: 'node',
+      args: ['check.mjs'],
+      exitCode: 0,
+      durationMs: 1,
+    },
+  ];
+  assert.equal(receipts.qualifyRecordedDevelopReceipt(projected), true);
+  projected.receipt.commands[0].exitCode = 2;
+  assert.equal(receipts.qualifyRecordedDevelopReceipt(projected), false);
+});

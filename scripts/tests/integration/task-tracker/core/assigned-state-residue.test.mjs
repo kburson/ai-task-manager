@@ -170,6 +170,10 @@ const ALLOWLIST = new Map(
       3,
       'historical volatile-cache fixtures',
     ],
+    'scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-local-data.test.mjs': [
+      2,
+      'legacy active-task read/write normalization and sticky-field byte parity',
+    ],
     'scripts/tests/unit/task-tracker/lib/session-state.test.mjs': [
       2,
       'historical session-cache fixtures',

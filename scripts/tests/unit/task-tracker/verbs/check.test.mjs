@@ -192,3 +192,35 @@ test('reviewed option mixtures refuse before state, batch, or directory I/O', as
     /reviewed-scope-options/
   );
 });
+
+// @story #1855
+for (const [name, invoke, rest] of [
+  [
+    'checked mixture',
+    verbEnsureChecked,
+    ['Work', '--reviewed-evidence', 'manifest.json', '--labels-file', 'unused'],
+  ],
+  ['unchecked evidence', verbEnsureUnchecked, ['Work', '--reviewed-evidence', 'manifest.json']],
+]) {
+  test(`invalid reviewed ${name} refuses before state-path access`, async () => {
+    let stateReads = 0;
+    let transportCalls = 0;
+    const ctx = {
+      rest,
+      get statePath() {
+        stateReads += 1;
+        throw new Error('unexpected state-path access');
+      },
+      pexec: async () => {
+        transportCalls += 1;
+        throw new Error('unexpected transport');
+      },
+    };
+    await assert.rejects(invoke(ctx), {
+      name: 'ReviewedScopeError',
+      code: 'reviewed-scope-options',
+    });
+    assert.equal(stateReads, 0);
+    assert.equal(transportCalls, 0);
+  });
+}

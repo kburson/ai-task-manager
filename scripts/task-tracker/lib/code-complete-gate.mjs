@@ -14,6 +14,7 @@
 // Pure-ish: all I/O (git, comment fetch) is injectable via deps.
 
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 import { parseAcceptanceCriteria } from './acceptance-criteria.mjs';
 import { resolveContractSource } from './github-records/contract-source.mjs';
@@ -29,7 +30,10 @@ import {
   hasEpicAcReconciledMarker,
 } from './issue-kind.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
-import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
+import {
+  attributingCommits as defaultAttributingCommits,
+  readCommitAttributionReadData,
+} from './commit-attribution.mjs';
 
 const pexec = promisify(execFile);
 
@@ -98,18 +102,67 @@ async function defaultListComments({ cfg, issueNumber }) {
   return JSON.parse(stdout || '[]');
 }
 
-async function defaultFilesForSha(sha) {
-  const { stdout } = await pexec('git', ['show', '--name-only', '--pretty=format:', sha], {
-    timeout: 15000,
-  });
+// Passive data is bound to this exact gate result; it does not attest stage
+// authority. Failures remain visible even where ordinary gating is best-effort.
+const nativeReadData = new WeakMap();
+export function readCodeCompleteReadData(result) {
+  return result && typeof result === 'object' ? (nativeReadData.get(result) ?? null) : null;
+}
+async function nativeGitRead(args, options, capture, fields) {
+  const cwd = options.cwd ?? process.cwd();
+  try {
+    const result = await pexec('git', args, options);
+    if (capture)
+      capture.push(
+        Object.freeze({
+          ...fields,
+          cwd,
+          stdout: String(result.stdout ?? ''),
+          stderr: String(result.stderr ?? ''),
+          exitCode: 0,
+        })
+      );
+    return result;
+  } catch (error) {
+    if (capture)
+      capture.push(
+        Object.freeze({
+          ...fields,
+          cwd,
+          stdout: String(error.stdout ?? ''),
+          stderr: String(error.stderr ?? ''),
+          exitCode: typeof error.code === 'number' ? error.code : null,
+        })
+      );
+    throw error;
+  }
+}
+
+async function defaultFilesForSha(sha, capture = null) {
+  const { stdout } = await nativeGitRead(
+    ['show', '--name-only', '--pretty=format:', sha],
+    {
+      timeout: 15000,
+    },
+    capture,
+    { kind: 'files', sha }
+  );
+  return parseNativeTouchedFiles(stdout);
+}
+function parseNativeTouchedFiles(stdout) {
   return String(stdout || '')
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean);
 }
 
-async function defaultDirtyFiles() {
-  const { stdout } = await pexec('git', ['status', '--porcelain'], { timeout: 15000 });
+async function defaultDirtyFiles(capture = null) {
+  const { stdout } = await nativeGitRead(['status', '--porcelain'], { timeout: 15000 }, capture, {
+    kind: 'dirty',
+  });
+  return parseNativeDirtyFiles(stdout);
+}
+function parseNativeDirtyFiles(stdout) {
   const dirty = new Set();
   for (const line of String(stdout || '').split('\n')) {
     if (!line) continue;
@@ -132,22 +185,60 @@ async function defaultDirtyFiles() {
 // Returns `{ ok, blocker, headSha, trailShas }`. Marker is canonical-truth
 // (full SHA); we compare prefix-either-direction so 6-char short forms in
 // callers still match a full SHA in the marker.
-export async function gateCommitTrailContainsHead({
-  cfg,
-  issueNumber,
-  projectDir,
-  deps = {},
-} = {}) {
+const nativeHeadReadData = new WeakMap();
+export function readCommitTrailHeadReadData(result) {
+  return result && typeof result === 'object' ? (nativeHeadReadData.get(result) ?? null) : null;
+}
+export async function gateCommitTrailContainsHead(input = {}) {
+  let capture = null;
+  try {
+    const deps = input.deps ?? {};
+    const descriptors = Object.getOwnPropertyDescriptors(deps);
+    if (
+      typeof input.projectDir === 'string' &&
+      typeof input.cfg?.repo === 'string' &&
+      Object.getPrototypeOf(deps) === Object.prototype &&
+      Reflect.ownKeys(descriptors).every(
+        (key) => key === 'listComments' && Object.hasOwn(descriptors[key], 'value')
+      )
+    )
+      capture = {
+        repository: input.cfg.repo,
+        issue: Number(input.issueNumber),
+        projectDir: input.projectDir,
+        reads: [],
+        attribution: null,
+      };
+  } catch {
+    /* Passive introspection must not affect ordinary injected gates. */
+  }
+  const result = await gateCommitTrailContainsHeadNative(input, capture);
+  if (capture)
+    nativeHeadReadData.set(
+      result,
+      Object.freeze({ ...capture, reads: Object.freeze(capture.reads) })
+    );
+  return result;
+}
+async function gateCommitTrailContainsHeadNative(
+  { cfg, issueNumber, projectDir, deps = {} } = {},
+  capture = null
+) {
   if (!cfg) throw new Error('gateCommitTrailContainsHead: cfg is required');
   if (!issueNumber) throw new Error('gateCommitTrailContainsHead: issueNumber is required');
   const listComments = deps.listComments || defaultListComments;
   const getHeadSha =
     deps.getHeadSha ||
     (async () => {
-      const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
-        cwd: projectDir,
-        timeout: 10_000,
-      });
+      const { stdout } = await nativeGitRead(
+        ['rev-parse', 'HEAD'],
+        {
+          cwd: projectDir,
+          timeout: 10_000,
+        },
+        capture?.reads,
+        { kind: 'head' }
+      );
       return String(stdout || '').trim();
     });
 
@@ -204,7 +295,7 @@ export async function gateCommitTrailContainsHead({
     };
   }
 
-  const inTrail = (sha) => trailShas.some((s) => sha.startsWith(s) || s.startsWith(sha));
+  const inTrail = (sha) => commitTrailIncludesSha({ sha, trailShas });
 
   const matched = inTrail(headSha);
   if (matched) {
@@ -234,7 +325,9 @@ export async function gateCommitTrailContainsHead({
       cwd: projectDir,
       refs: ['HEAD'],
     });
+    if (capture) capture.attribution = readCommitAttributionReadData(ownCommits);
   } catch (err) {
+    if (capture) capture.attribution = readCommitAttributionReadData(err);
     return {
       ok: false,
       blocker: `develop-to-test-attribution-failed: ${err.message}`,
@@ -260,46 +353,61 @@ export async function gateCommitTrailContainsHead({
   return { ok: true, headSha, trailShas };
 }
 
-export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {}) {
-  if (!cfg) throw new Error('gateCodeComplete: cfg is required');
-  if (!issueNumber) throw new Error('gateCodeComplete: issueNumber is required');
+function closedCodeData(input, names) {
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !== [...names].sort().join(',')
+  ) {
+    throw new Error('code-complete-data');
+  }
+}
+function stringArray(value) {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
 
-  const listComments = deps.listComments || defaultListComments;
-  const filesForSha = deps.filesForSha || defaultFilesForSha;
-  const dirtyFiles = deps.dirtyFiles || defaultDirtyFiles;
+// Pure original data predicates; these results carry no current guard authority.
+export function commitTrailIncludesSha(input) {
+  closedCodeData(input, ['sha', 'trailShas']);
+  const { sha, trailShas } = input;
+  if (typeof sha !== 'string' || !stringArray(trailShas)) throw new Error('code-complete-data');
+  return trailShas.some((s) => sha.startsWith(s) || s.startsWith(sha));
+}
 
+export function deriveCodeCompleteTouchBlockers(input) {
+  closedCodeData(input, ['touchedFiles', 'dirtyFiles']);
+  const { touchedFiles, dirtyFiles } = input;
+  if (!stringArray(touchedFiles) || !stringArray(dirtyFiles)) throw new Error('code-complete-data');
+  const dirty = new Set(dirtyFiles);
+  const dirtyInTouch = [...new Set(touchedFiles)].filter((f) => dirty.has(f));
+  return dirtyInTouch.length
+    ? [`code-complete-dirty-files: commit some changes or stash them: ${dirtyInTouch.join(', ')}`]
+    : [];
+}
+
+export function deriveCodeCompleteAcBlockers(input) {
+  closedCodeData(input, ['body', 'acceptanceCriteria']);
+  const { body, acceptanceCriteria } = input;
+  if (typeof body !== 'string' || !Array.isArray(acceptanceCriteria))
+    throw new Error('code-complete-data');
+  for (const ac of acceptanceCriteria) {
+    closedCodeData(ac, ['declaration', 'checked']);
+    if (typeof ac.declaration !== 'string' || typeof ac.checked !== 'boolean')
+      throw new Error('code-complete-data');
+  }
   const blockers = [];
-  // #494, #500 — no-commit deliverable lane. A no-commit-kind issue
-  // (`aitm-issue-kind kind=…`, one of audit/research/spike/epic) swaps the
-  // commit-trail requirement for a deliverable-evidence marker and permits ACs
-  // to be waived. Code-kind issues (the default) are unaffected: the branch
-  // below only diverges when `audit` is true.
   const audit = isNoCommitKind(body);
   const testStageDeferralEligible = !audit || parseIssueKind(body) === 'epic';
   const vcItems = parseVerificationCommands(body);
-
-  const resolve = deps.resolveContractSource || resolveContractSource;
-  let acs = null;
-  try {
-    const contractSource = await resolve({
-      repository: cfg.repo,
-      issue: Number(issueNumber),
-      issueBody: body,
-      graphql: deps.graphql,
-      readContractRecord: deps.readContractRecord,
-    });
-    acs = contractSource.contract.acceptanceCriteria.map(({ declaration, checked }) => {
-      const verifiedBy = resolveVerifiedBy(declaration);
-      return {
-        label: declaration,
-        checked,
-        verifiedBy: verifiedBy ? verifiedBy.trim() : null,
-      };
-    });
-  } catch (error) {
-    blockers.push(`code-complete-contract-source-failed: ${error.message}`);
-  }
-
+  const acs = acceptanceCriteria.map(({ declaration, checked }) => {
+    const verifiedBy = resolveVerifiedBy(declaration);
+    return {
+      label: declaration,
+      checked,
+      verifiedBy: verifiedBy ? verifiedBy.trim() : null,
+    };
+  });
   if (acs !== null && acs.length === 0) {
     blockers.push(
       'code-complete-no-ac-section: `## Acceptance Criteria` section not found in body'
@@ -333,6 +441,76 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
     }
   }
 
+  return blockers;
+}
+
+export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {}) {
+  if (!cfg) throw new Error('gateCodeComplete: cfg is required');
+  if (!issueNumber) throw new Error('gateCodeComplete: issueNumber is required');
+
+  const listComments = deps.listComments || defaultListComments;
+  const filesForSha = deps.filesForSha || defaultFilesForSha;
+  const dirtyFiles = deps.dirtyFiles || defaultDirtyFiles;
+
+  let capture = null;
+  try {
+    const descriptors = Object.getOwnPropertyDescriptors(deps);
+    if (
+      typeof body === 'string' &&
+      typeof cfg.repo === 'string' &&
+      Object.getPrototypeOf(deps) === Object.prototype &&
+      Object.keys(descriptors).every(
+        (key) => key === 'listComments' && Object.hasOwn(descriptors[key], 'value')
+      ) &&
+      filesForSha === defaultFilesForSha &&
+      dirtyFiles === defaultDirtyFiles
+    )
+      capture = [];
+  } catch {
+    /* Passive capture cannot change ordinary injected-dependency behavior. */
+  }
+  const finish = (result) => {
+    if (capture?.length)
+      nativeReadData.set(
+        result,
+        Object.freeze({
+          repository: cfg.repo,
+          issue: Number(issueNumber),
+          bodyHash: createHash('sha256').update(body).digest('hex'),
+          reads: Object.freeze(capture),
+        })
+      );
+    return result;
+  };
+  const blockers = [];
+  // #494, #500 — no-commit deliverable lane. A no-commit-kind issue
+  // (`aitm-issue-kind kind=…`, one of audit/research/spike/epic) swaps the
+  // commit-trail requirement for a deliverable-evidence marker and permits ACs
+  // to be waived. Code-kind issues (the default) are unaffected: the branch
+  // below only diverges when `audit` is true.
+  const audit = isNoCommitKind(body);
+
+  const resolve = deps.resolveContractSource || resolveContractSource;
+  let acs = null;
+  try {
+    const contractSource = await resolve({
+      repository: cfg.repo,
+      issue: Number(issueNumber),
+      issueBody: body,
+      graphql: deps.graphql,
+      readContractRecord: deps.readContractRecord,
+    });
+    acs = contractSource.contract.acceptanceCriteria.map(({ declaration, checked }) => ({
+      declaration,
+      checked,
+    }));
+  } catch (error) {
+    blockers.push(`code-complete-contract-source-failed: ${error.message}`);
+  }
+
+  if (acs !== null)
+    blockers.push(...deriveCodeCompleteAcBlockers({ body, acceptanceCriteria: acs }));
+
   let shas = [];
   if (audit) {
     // Deliverable-evidence gate: a posted deliverable (comment/document/
@@ -361,7 +539,7 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
         `code-complete-epic-unreconciled: epic #${issueNumber} has not been AC-reconciled — re-read the epic's goals against what its children actually delivered, record the mapping in the epic body, then run \`/task epic-reconcile ${issueNumber}\`. Epic ACs are provisional from decomposition until the last child lands, so this is the single reconciliation point.`
       );
     }
-    return { ok: blockers.length === 0, blockers, shas };
+    return finish({ ok: blockers.length === 0, blockers, shas });
   }
 
   try {
@@ -384,10 +562,21 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
   }
 
   if (shas.length > 0) {
+    if (capture) {
+      try {
+        await nativeGitRead(['rev-parse', '--show-toplevel'], { timeout: 15000 }, capture, {
+          kind: 'root',
+        });
+      } catch {
+        /* Passive unavailable root cannot change ordinary gate compatibility. */
+      }
+    }
     const touchSet = new Set();
     for (const sha of shas) {
       try {
-        const files = await filesForSha(sha);
+        const files = await (filesForSha === defaultFilesForSha
+          ? defaultFilesForSha(sha, capture)
+          : filesForSha(sha));
         for (const f of files) touchSet.add(f);
       } catch {
         // best-effort; missing-sha could itself be reported but we skip
@@ -395,18 +584,61 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
     }
     let dirty;
     try {
-      dirty = await dirtyFiles();
+      dirty = await (dirtyFiles === defaultDirtyFiles ? defaultDirtyFiles(capture) : dirtyFiles());
     } catch (err) {
       blockers.push(`code-complete-git-status-failed: ${err.message}`);
       dirty = new Set();
     }
-    const dirtyInTouch = [...touchSet].filter((f) => dirty.has(f));
-    if (dirtyInTouch.length) {
-      blockers.push(
-        `code-complete-dirty-files: commit some changes or stash them: ${dirtyInTouch.join(', ')}`
-      );
-    }
+    blockers.push(
+      ...deriveCodeCompleteTouchBlockers({ touchedFiles: [...touchSet], dirtyFiles: [...dirty] })
+    );
   }
 
-  return { ok: blockers.length === 0, blockers, shas };
+  return finish({ ok: blockers.length === 0, blockers, shas });
+}
+
+// Closed original leaf DATA; ordinary readers above retain their permissive
+// native parsing and exception behavior. This wrapper requires complete reads.
+export function deriveRecordedCodeCompleteGit(input) {
+  closedCodeData(input, ['projectDir', 'shas', 'reads']);
+  const { projectDir, shas, reads } = input;
+  if (
+    typeof projectDir !== 'string' ||
+    !projectDir ||
+    !Array.isArray(shas) ||
+    !shas.length ||
+    shas.some((sha) => typeof sha !== 'string' || !/^[a-f0-9]{7,40}$/i.test(sha)) ||
+    !Array.isArray(reads) ||
+    reads.length !== shas.length + 2
+  )
+    throw new TypeError('code-complete-data');
+  const touched = new Set();
+  let dirty = null;
+  for (let i = 0; i < reads.length; i++) {
+    const read = reads[i],
+      kind = i === 0 ? 'root' : i === reads.length - 1 ? 'dirty' : 'files';
+    closedCodeData(read, [
+      'kind',
+      'cwd',
+      'stdout',
+      'stderr',
+      'exitCode',
+      ...(kind === 'files' ? ['sha'] : []),
+    ]);
+    if (
+      read.kind !== kind ||
+      read.cwd !== projectDir ||
+      read.exitCode !== 0 ||
+      read.stderr !== '' ||
+      typeof read.stdout !== 'string'
+    )
+      throw new TypeError('code-complete-data');
+    if (kind === 'root') {
+      if (read.stdout.trim() !== projectDir) throw new TypeError('code-complete-data');
+    } else if (kind === 'files') {
+      if (read.sha !== shas[i - 1]) throw new TypeError('code-complete-data');
+      for (const file of parseNativeTouchedFiles(read.stdout)) touched.add(file);
+    } else dirty = parseNativeDirtyFiles(read.stdout);
+  }
+  return { touchedFiles: [...touched], dirtyFiles: [...dirty] };
 }

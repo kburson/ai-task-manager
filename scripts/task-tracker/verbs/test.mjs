@@ -1,3 +1,8 @@
+import {
+  withRevisionConsumer,
+  prepareRevisionDevelopReceipt,
+  resumeRevisionDevelopReceipt,
+} from '../lib/criteria-revision/policy.mjs';
 // `/task test` — sandboxed verification runner (#137).
 //
 // Replaces the in-place command runner that previously lived in review.mjs.
@@ -417,7 +422,7 @@ function buildAbortComment(diag, err) {
   ].join('\n');
 }
 
-export async function runVerbTest({
+async function runVerbTestAdmitted({
   cfg,
   issueNumber,
   projectDir,
@@ -898,6 +903,7 @@ export async function runVerbTest({
       });
       return { status: 'develop-final-invalid', sha, reasons: finalization?.reasons || [] };
     }
+    await prepareRevisionDevelopReceipt(finalization.nativeExecutionToken);
     await mutateBody({
       cfg,
       issueNum,
@@ -1551,7 +1557,7 @@ export { defaultRemoveWorktree, defaultCreateWorktree, defaultExecInSandbox };
 // #1169 — Test owns an issue-scoped interlock for its complete execution,
 // including exact-SHA receipt short-circuits. Acquiring here keeps every body,
 // receipt, sandbox, and mutation path inside the #656 PID-liveness primitive.
-export async function runTestWithEntryInterlock({
+async function runTestWithEntryInterlockAdmitted({
   cfg,
   issueNumber,
   projectDir,
@@ -1762,4 +1768,46 @@ export async function verbTest(ctx) {
       console.error(`/task test: unknown result status: ${result.status}`);
       process.exit(1);
   }
+}
+
+// Each exported execution entry acquires complete revision admission before any
+// caller-supplied lock, runner, transport, or timing callback can run.
+export async function runVerbTest(input = {}) {
+  if (!input.cfg || !input.issueNumber || !input.projectDir) return runVerbTestAdmitted(input);
+  await resumeRevisionDevelopReceipt({
+    repository: input.cfg.repo,
+    issue: Number(String(input.issueNumber).replace(/^#/, '')),
+    backend: input.deps?.revisionBackend,
+    projectDir: input.projectDir,
+    writeDeps: input.deps?.writeDeps,
+  });
+  return withRevisionConsumer(
+    {
+      repository: input.cfg.repo,
+      issue: Number(String(input.issueNumber).replace(/^#/, '')),
+      activity: 'stage-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => runVerbTestAdmitted(input)
+  );
+}
+export async function runTestWithEntryInterlock(input = {}) {
+  await resumeRevisionDevelopReceipt({
+    repository: input.cfg?.repo,
+    issue: Number(String(input.issueNumber).replace(/^#/, '')),
+    backend: input.deps?.revisionBackend,
+    projectDir: input.projectDir,
+    writeDeps: input.deps?.writeDeps,
+  });
+  return withRevisionConsumer(
+    {
+      repository: input.cfg?.repo,
+      issue: Number(String(input.issueNumber).replace(/^#/, '')),
+      activity: 'stage-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => runTestWithEntryInterlockAdmitted(input)
+  );
 }

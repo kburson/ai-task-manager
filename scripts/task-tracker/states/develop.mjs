@@ -1,3 +1,4 @@
+import { criteriaRevisionAdmissionGuard } from '../lib/criteria-revision-admission-guard.mjs';
 // State object: develop (#292).
 //
 // Develop→test gates (CODE_COMPLETE marker, AC-verification, commit-trail
@@ -15,7 +16,7 @@ import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit
 
 export default Object.freeze({
   id: 'develop',
-  entryGuards: Object.freeze([contiguityEntryGuard]),
+  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard]),
   residentActions: Object.freeze([developVerificationAction]),
   exitGuards: Object.freeze([
     blockedByGuard,

@@ -1,6 +1,27 @@
 // @story #1872
 // Pure collection grouping and complete-lane result validation.
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { partitionTestEntries, planSerialSections } from './run-tests-schedule.mjs';
+import { loadSerialSectionMetadata } from './run-tests-native-sections.mjs';
+import { validateExecutionSections } from './run-tests-timing.mjs';
+import { evaluateSections } from './run-tests-ceiling.mjs';
+const projectRoot = fileURLToPath(new URL('../', import.meta.url));
+
+function receiptSectionPlan(files) {
+  const entries = files.map((label) => ({ label, full: path.join(projectRoot, label) }));
+  const { pooledEntries, subprocessEntries, slowParallelEntries, serialEntries } =
+    partitionTestEntries(entries);
+  return [
+    { name: 'pooled', files: pooledEntries.map((e) => e.label) },
+    { name: 'subprocess', files: subprocessEntries.map((e) => e.label) },
+    { name: 'slow-parallel', files: slowParallelEntries.map((e) => e.label) },
+    ...planSerialSections(loadSerialSectionMetadata(serialEntries)).map((s) => ({
+      name: s.name,
+      files: s.entries.map((e) => e.label),
+    })),
+  ].filter((section) => section.files.length);
+}
 
 export function planShards(inventory, count) {
   if (!Number.isInteger(count) || count < 1 || count > 32) throw new Error('shard count invalid');
@@ -32,7 +53,7 @@ export function validateShardReceipts(receipts, { inventory, lane, commit, total
   const seen = new Set();
   for (const { timing, exitCode } of receipts) {
     if (exitCode !== 0) throw new Error('runner exit was not zero');
-    if (timing.schema !== 5 || timing.lane !== lane) throw new Error('receipt lane/schema invalid');
+    if (timing.schema !== 6 || timing.lane !== lane) throw new Error('receipt lane/schema invalid');
     if (timing.commit !== commit) throw new Error('receipt commit mismatch');
     if (
       !Number.isFinite(Date.parse(timing.generatedAt)) ||
@@ -59,6 +80,22 @@ export function validateShardReceipts(receipts, { inventory, lane, commit, total
     )
       throw new Error('receipt inventory mismatch');
     if (files.some((file) => timing.files[file].status !== 0)) throw new Error('test file failed');
+    const sections = validateExecutionSections(timing.executionSections, selected);
+    if (
+      JSON.stringify(sections.map(({ name, files }) => ({ name, files }))) !==
+      JSON.stringify(receiptSectionPlan(selected))
+    )
+      throw new Error('receipt execution section order or membership mismatch');
+    const verdict = evaluateSections({
+      lane,
+      env: {},
+      sections: sections.map((section) => ({
+        name: section.name,
+        count: section.files.length,
+        elapsedMs: section.elapsedMs,
+      })),
+    });
+    if (verdict.breached) throw new Error('receipt execution section ceiling exceeded');
   }
   return { lane, commit, shards: total, count: inventory.length };
 }

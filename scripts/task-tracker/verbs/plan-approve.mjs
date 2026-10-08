@@ -1,3 +1,8 @@
+import {
+  runMemoryPlanApproval,
+  memoryPlanSession,
+  finishMemoryPlanApproval,
+} from '../lib/criteria-revision/plan-approval.mjs';
 // `plan-approve` verb — Plan -> Develop approval gate.
 //
 // Records plan approval and its human/Full-Auto provenance on an issue by
@@ -120,6 +125,19 @@ export async function runPlanApprove({
 } = {}) {
   if (!issueNumber) throw new Error('plan-approve: issueNumber is required');
   if (!cfg) throw new Error('plan-approve: cfg is required');
+  if (deps.revisionBackend) {
+    if (Object.keys(deps).some((key) => !['revisionBackend', 'env'].includes(key)))
+      throw new Error('criteria-revision:plan-provider-override');
+    return runMemoryPlanApproval({
+      issueNumber,
+      cfg,
+      projectDir,
+      repairFromEvidence,
+      backend: deps.revisionBackend,
+      env: deps.env ?? process.env,
+    });
+  }
+  const revisionPlan = deps.revisionPlanToken ? memoryPlanSession(deps.revisionPlanToken) : null;
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
@@ -138,8 +156,14 @@ export async function runPlanApprove({
   const state = await getBoardState({ issueNumber, projectDir });
   const laterRepairState = ['develop', 'test', 'review'].includes(state);
   const automaticModernEligible =
-    !repairFromEvidence && requestedMode === 'full-auto' && laterRepairState;
-  if (state !== 'plan' && !adaptiveConfigured && !repairFromEvidence && !automaticModernEligible) {
+    !revisionPlan && !repairFromEvidence && requestedMode === 'full-auto' && laterRepairState;
+  if (
+    state !== 'plan' &&
+    !revisionPlan?.reapproval &&
+    !adaptiveConfigured &&
+    !repairFromEvidence &&
+    !automaticModernEligible
+  ) {
     return {
       status: 'wrong-state',
       message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'plan' — plan-approve only applies to issues in Plan.`,
@@ -147,7 +171,7 @@ export async function runPlanApprove({
   }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-  if (state === 'plan') {
+  if (!revisionPlan) {
     try {
       const directory = await (deps.readDirectoryContract || readDirectoryContract)({
         repository: cfg.repo,
@@ -415,8 +439,12 @@ export async function runPlanApprove({
   const hasApproval = hasPlanApprovedMarker(body);
   const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
   const lateRepair =
-    state !== 'plan' && hasApproval && frozenForecastRecordId === null && forecastRecordId !== null;
-  if (state !== 'plan' && !lateRepair) {
+    !revisionPlan &&
+    state !== 'plan' &&
+    hasApproval &&
+    frozenForecastRecordId === null &&
+    forecastRecordId !== null;
+  if (state !== 'plan' && !lateRepair && !revisionPlan?.reapproval) {
     return {
       status: 'wrong-state',
       message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'plan' — plan-approve only applies to issues in Plan.`,
@@ -479,7 +507,7 @@ export async function runPlanApprove({
 
   // #236 — refuse plan→develop approval if the body's AC/VC checklists contain
   // compound CLI commands that the /task test sandbox will later reject.
-  const lint = lintChecklistCommands(body);
+  const lint = lintChecklistCommands(revisionPlan?.checklistBody ?? body);
   const lintErrors = lint.violations.filter((v) => v.severity === 'error');
   if (lintErrors.length > 0) {
     return {
@@ -512,7 +540,7 @@ export async function runPlanApprove({
   const binding = resolved.binding;
   function observeFresh(base) {
     try {
-      if (parseIssueDirectory({ issueBody: base }) !== null)
+      if (!revisionPlan && parseIssueDirectory({ issueBody: base }) !== null)
         throw new Error('directory authority appeared');
     } catch (error) {
       throw new Error(directoryRefusal('directory-inspection-failed', error.message).message);
@@ -538,6 +566,17 @@ export async function runPlanApprove({
       );
     return current;
   }
+
+  if (revisionPlan)
+    return finishMemoryPlanApproval(deps.revisionPlanToken, {
+      resolved,
+      governedPlan,
+      binding,
+      forecastRecordId,
+      trunkSha,
+      requestedMode,
+      observeFresh,
+    });
 
   const hasPlanEntry = hasEntry(body, 'plan');
 

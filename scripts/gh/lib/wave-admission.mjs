@@ -32,6 +32,7 @@
 //   column survives additively as `boardState`; the disposition survives as
 //   `closeReason` (#888). Gates read `state`.
 
+import { canonicalRecordJson } from '../../task-tracker/lib/github-records/canonical-json.mjs';
 import { gql, splitRepo } from './github-projects.mjs';
 import {
   hasUnauthorizedCloseRecoveryMarker,
@@ -152,6 +153,15 @@ export async function fetchConfiguredProjectItem({
   projectId,
   gqlFn = gql,
 } = {}) {
+  return readConfiguredProjectItem({ issueNumber, repo, projectId, gqlFn });
+}
+
+// One native paging algorithm. The stage-only selector is private and can only
+// be reached through the fixed closed data reader below.
+async function readConfiguredProjectItem(
+  { issueNumber, repo, projectId, gqlFn },
+  nativeStage = false
+) {
   if (!repo || !projectId) throw new Error('wave-admission: configured project is required');
   const { owner, repoName } = splitRepo(repo);
   const matches = [];
@@ -160,7 +170,9 @@ export async function fetchConfiguredProjectItem({
 
   for (let page = 0; page < 1000; page++) {
     const data = await gqlFn(
-      `query($owner: String!, $repo: String!, $issue: Int!, $after: String) {
+      nativeStage
+        ? STAGE_MEMBERSHIP_QUERY
+        : `query($owner: String!, $repo: String!, $issue: Int!, $after: String) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issue) {
             projectItems(first: 50, after: $after) {
@@ -215,7 +227,9 @@ export async function fetchConfiguredProjectItem({
     }
     seenFieldCursors.add(fieldAfter);
     const data = await gqlFn(
-      `query($item: ID!, $after: String) {
+      nativeStage
+        ? STAGE_FIELDS_QUERY
+        : `query($item: ID!, $after: String) {
         node(id: $item) {
           ... on ProjectV2Item {
             fieldValues(first: 100, after: $after) { ${projectFieldSelection()} }
@@ -237,7 +251,11 @@ export async function fetchConfiguredProjectItem({
   }
   return {
     ...item,
-    fieldValues: { nodes: fieldNodes, pageInfo: { hasNextPage: false, endCursor: null } },
+    fieldValues: {
+      nodes: fieldNodes,
+      ...(nativeStage ? { totalCount: initialFields.totalCount } : {}),
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
   };
 }
 
@@ -609,4 +627,239 @@ export function mapSubIssueNodes(subs, cfgOrProjectId, { allowPlanProjection = f
     });
   }
   return out;
+}
+
+// Fixed stage query retains typename so unhandled native variants cannot look
+// like absent scalar fields. They remain typed unsupported before header seal.
+const STAGE_VALUE = `__typename
+  ... on ProjectV2ItemFieldNumberValue { id number field { ... on ProjectV2FieldCommon { id name } } }
+  ... on ProjectV2ItemFieldSingleSelectValue { id name optionId field { ... on ProjectV2FieldCommon { id name } } }
+  ... on ProjectV2ItemFieldTextValue { id text field { ... on ProjectV2FieldCommon { id name } } }
+  ... on ProjectV2ItemFieldDateValue { id date field { ... on ProjectV2FieldCommon { id name } } }`;
+const STAGE_IDENTITY = `id project { id } content { __typename ... on Issue { id number repository { nameWithOwner } } }`;
+const STAGE_FIELDS = `nodes { ${STAGE_VALUE} } totalCount pageInfo { hasNextPage endCursor }`;
+const STAGE_MEMBERSHIP_QUERY = `query AitmNativeStageMembership($owner: String!, $repo: String!, $issue: Int!, $after: String) {
+  repository(owner: $owner, name: $repo) { nameWithOwner issue(number: $issue) { number
+    projectItems(first: 50, after: $after) { nodes { ${STAGE_IDENTITY} fieldValues(first: 100) { ${STAGE_FIELDS} } }
+      totalCount pageInfo { hasNextPage endCursor } } } } }`;
+const STAGE_FIELDS_QUERY = `query AitmNativeStageFields($item: ID!, $after: String) {
+  node(id: $item) { ... on ProjectV2Item { ${STAGE_IDENTITY} fieldValues(first: 100, after: $after) { ${STAGE_FIELDS} } } } }`;
+const STAGE_FINAL_QUERY = `query AitmNativeStageItemIdentity($item: ID!) {
+  node(id: $item) { ... on ProjectV2Item { ${STAGE_IDENTITY} fieldValueByName(name: "Status") { ${STAGE_VALUE} } } } }`;
+const stageItemCaptures = new WeakMap();
+function freezeStageItem(value) {
+  if (value && typeof value === 'object') {
+    Object.values(value).forEach(freezeStageItem);
+    Object.freeze(value);
+  }
+  return value;
+}
+export function readNativeStageProjectItemData(result) {
+  const value = stageItemCaptures.get(result);
+  return value ? freezeStageItem(structuredClone(value)) : null;
+}
+const equalStageData = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
+async function readStrictStageItem(input, original, assertSource) {
+  const equal = equalStageData;
+  const refuse = (code = 'revision-authority-unavailable') => {
+    const error = new Error(code);
+    error.code = code;
+    throw error;
+  };
+  const { source, config } = original,
+    used = new Set(),
+    itemIds = new Set(),
+    fieldIds = new Set(),
+    valueIds = new Set();
+  let memberTotal = null,
+    fieldTotal = null,
+    selectedId = null;
+  let subjectNodeVariant;
+  const identity = (item) => {
+    if (
+      !item ||
+      typeof item.id !== 'string' ||
+      !item.id ||
+      typeof item.project?.id !== 'string' ||
+      item.content?.__typename !== 'Issue' ||
+      item.content.number !== input.issueNumber ||
+      item.content.repository?.nameWithOwner !== input.repo
+    )
+      refuse();
+    // Two exact data variants: original archives may omit every subject node
+    // ID; current captures contain the same real node ID at every read.
+    const present = Object.hasOwn(item.content, 'id');
+    const id = present ? item.content.id : null;
+    if (present && (typeof id !== 'string' || !id)) refuse();
+    if (subjectNodeVariant === undefined) subjectNodeVariant = { present, id };
+    else if (subjectNodeVariant.present !== present || subjectNodeVariant.id !== id) refuse();
+  };
+  const page = (connection, previous) => {
+    if (
+      !Array.isArray(connection?.nodes) ||
+      !Number.isSafeInteger(connection.totalCount) ||
+      connection.totalCount < 0 ||
+      typeof connection.pageInfo?.hasNextPage !== 'boolean' ||
+      !(
+        connection.pageInfo.endCursor === null || typeof connection.pageInfo.endCursor === 'string'
+      ) ||
+      (connection.pageInfo.hasNextPage && !connection.pageInfo.endCursor) ||
+      (previous !== null && previous !== connection.totalCount)
+    )
+      refuse();
+    return connection.totalCount;
+  };
+  const field = (node) => {
+    const variant = {
+      ProjectV2ItemFieldNumberValue: ['number'],
+      ProjectV2ItemFieldSingleSelectValue: ['name', 'optionId'],
+      ProjectV2ItemFieldTextValue: ['text'],
+      ProjectV2ItemFieldDateValue: ['date'],
+    }[node?.__typename];
+    if (!variant) refuse('revision-topology-unsupported');
+    if (
+      typeof node.id !== 'string' ||
+      !node.id ||
+      typeof node.field?.id !== 'string' ||
+      !node.field.id ||
+      typeof node.field.name !== 'string' ||
+      variant.some((key) =>
+        key === 'number' ? !Number.isFinite(node[key]) : typeof node[key] !== 'string'
+      )
+    )
+      refuse();
+  };
+  const collectFields = (connection) => {
+    fieldTotal = page(connection, fieldTotal);
+    for (const node of connection.nodes) {
+      field(node);
+      if (fieldIds.has(node.field.id) || valueIds.has(node.id)) refuse();
+      fieldIds.add(node.field.id);
+      valueIds.add(node.id);
+    }
+  };
+  const query = async (text, variables) => {
+    await assertSource();
+    const kind =
+      text === STAGE_MEMBERSHIP_QUERY
+        ? 'membership'
+        : text === STAGE_FIELDS_QUERY
+          ? 'fields'
+          : text === STAGE_FINAL_QUERY
+            ? 'final'
+            : null;
+    if (!kind) refuse();
+    const matches = source[kind].filter((pair) => equal(pair.request, variables));
+    if (matches.length !== 1 || used.has(matches[0])) refuse();
+    const pair = matches[0],
+      data = structuredClone(pair.response);
+    used.add(pair);
+    if (kind === 'membership') {
+      if (
+        data.repository?.nameWithOwner !== input.repo ||
+        data.repository?.issue?.number !== input.issueNumber
+      )
+        refuse();
+      const connection = data.repository.issue.projectItems;
+      memberTotal = page(connection, memberTotal);
+      for (const item of connection.nodes) {
+        identity(item);
+        if (itemIds.has(item.id)) refuse();
+        itemIds.add(item.id);
+        if (item.project.id === input.projectId) {
+          if (selectedId !== null) refuse();
+          selectedId = item.id;
+          collectFields(item.fieldValues);
+        }
+      }
+    } else {
+      identity(data.node);
+      if (data.node.id !== selectedId || data.node.project.id !== input.projectId) refuse();
+      if (kind === 'fields') collectFields(data.node.fieldValues);
+      else field(data.node.fieldValueByName);
+    }
+    return data;
+  };
+  const item = await readConfiguredProjectItem({ ...input, gqlFn: query }, true);
+  if (
+    itemIds.size !== memberTotal ||
+    fieldIds.size !== fieldTotal ||
+    item.id !== selectedId ||
+    item.fieldValues.nodes.length !== fieldTotal
+  )
+    refuse();
+  const final = await query(STAGE_FINAL_QUERY, { item: selectedId });
+  const status = item.fieldValues.nodes.filter((value) => value.field.id === config.kanbanFieldId);
+  if (
+    status.length !== 1 ||
+    !equal(final.node.fieldValueByName, status[0]) ||
+    !equal(final.node.content, item.content) ||
+    [...source.membership, ...source.fields, ...source.final].some((pair) => !used.has(pair))
+  )
+    refuse();
+  await assertSource();
+  return freezeStageItem(item);
+}
+
+export async function readNativeStageProjectItem(input) {
+  const { readNativeStageItemRead, RevisionPolicyError } =
+    await import('../../task-tracker/lib/criteria-revision/policy.mjs');
+  const refuse = (code = 'revision-authority-unavailable') => {
+    throw new RevisionPolicyError({
+      status: 'indeterminate',
+      code,
+      noAutomaticRemediation: { reason: 'authority-investigation-required' },
+    });
+  };
+  const original = await readNativeStageItemRead(input);
+  if (!original) return null;
+  try {
+    const item = await readStrictStageItem(input, original, async () => {
+      if (!equalStageData(await readNativeStageItemRead(input), original)) refuse();
+    });
+    if (typeof item.content.id !== 'string' || !item.content.id) refuse();
+    stageItemCaptures.set(item, structuredClone(original.source));
+    return item;
+  } catch (error) {
+    if (error instanceof RevisionPolicyError) throw error;
+    refuse(error.code === 'revision-topology-unsupported' ? error.code : undefined);
+  }
+}
+
+// Original raw DATA only. This shares the native reader/qualification core but
+// never enters current read selection or installs original-result membership.
+export async function deriveRecordedStageProjectItem(value) {
+  const { exactKeys, revisionError } =
+    await import('../../task-tracker/lib/criteria-revision/schema.mjs');
+  try {
+    canonicalRecordJson(value);
+    exactKeys(value, ['observation', 'lifecycleSources', 'projectId', 'kanbanFieldId']);
+    const { assertNativeLifecycleSourceData } =
+      await import('../../task-tracker/lib/criteria-revision/store.mjs');
+    assertNativeLifecycleSourceData({
+      source: value.lifecycleSources,
+      observation: value.observation,
+    });
+    if (
+      typeof value.projectId !== 'string' ||
+      !value.projectId ||
+      typeof value.kanbanFieldId !== 'string' ||
+      !value.kanbanFieldId
+    )
+      throw new TypeError();
+    return await readStrictStageItem(
+      {
+        repo: value.observation.repository,
+        issueNumber: value.observation.issue,
+        projectId: value.projectId,
+      },
+      {
+        source: value.lifecycleSources.remote.stageItem,
+        config: { kanbanFieldId: value.kanbanFieldId },
+      },
+      async () => {}
+    );
+  } catch {
+    revisionError('native-stage-item-data');
+  }
 }

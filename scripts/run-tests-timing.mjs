@@ -179,6 +179,43 @@ export function auditSlowBucket(records, thresholdMs = 2000) {
   };
 }
 
+// Closed measured data; receipt validation separately derives the actual plan.
+export function validateExecutionSections(sections, inventory) {
+  if (!Array.isArray(sections))
+    throw new Error('test timing artifact: execution sections required');
+  const names = new Set(),
+    files = new Set();
+  const result = sections.map((section) => {
+    if (
+      !section ||
+      Object.getPrototypeOf(section) !== Object.prototype ||
+      Reflect.ownKeys(section).sort().join(',') !== 'elapsedMs,files,name' ||
+      Object.values(Object.getOwnPropertyDescriptors(section)).some(
+        (d) => !Object.hasOwn(d, 'value') || !d.enumerable
+      ) ||
+      typeof section.name !== 'string' ||
+      !section.name ||
+      names.has(section.name) ||
+      !Array.isArray(section.files) ||
+      !section.files.length ||
+      typeof section.elapsedMs !== 'number' ||
+      !Number.isFinite(section.elapsedMs) ||
+      section.elapsedMs < 0
+    )
+      throw new Error('test timing artifact: execution section invalid');
+    names.add(section.name);
+    for (const file of section.files) {
+      if (typeof file !== 'string' || !file || files.has(file))
+        throw new Error('test timing artifact: duplicate or invalid section file');
+      files.add(file);
+    }
+    return { name: section.name, files: [...section.files], elapsedMs: section.elapsedMs };
+  });
+  if (JSON.stringify([...files].sort()) !== JSON.stringify([...inventory].sort()))
+    throw new Error('test timing artifact: section inventory mismatch');
+  return result;
+}
+
 // Serialize a run's records into the machine-readable artifact object, keyed by
 // repo-relative file path so two runs diff cleanly. `meta` carries run-level
 // context (lane, timestamp, totals). Pure — the runner writes the JSON.
@@ -244,7 +281,8 @@ export function serializeArtifact(records, meta = {}) {
     throw new Error('test timing artifact: discovery inventory differs from measured files');
   }
   return {
-    schema: 5,
+    schema: 6,
+    executionSections: validateExecutionSections(meta.executionSections, discoveryInventory),
     generatedAt: meta.generatedAt,
     lane: meta.lane,
     command: meta.command,
@@ -269,7 +307,7 @@ export function serializeArtifact(records, meta = {}) {
 // runner elapsed; never fabricate a phase duration from per-file sums.
 export function normalizeTimingArtifact(artifact) {
   const value = artifact && typeof artifact === 'object' ? artifact : {};
-  if ([2, 3, 4, 5].includes(value.schema)) {
+  if ([2, 3, 4, 5, 6].includes(value.schema)) {
     return {
       ...value,
       sourceSchema: value.schema,

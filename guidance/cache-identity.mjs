@@ -1,3 +1,4 @@
+// @story #1855
 // @story #1674
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -52,6 +53,23 @@ function gitPath(projectRoot, args, env) {
   return path.resolve(projectRoot, value);
 }
 
+// Resolve both native path facts in one invocation; unusual newline framing
+// retains the original separate readers rather than guessing path boundaries.
+function gitIndexPaths(projectRoot, env) {
+  const raw = execFileSync('git', ['rev-parse', '--git-dir', '--git-path', 'index'], {
+    cwd: projectRoot,
+    env,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  const values = raw.trim().split('\n');
+  if (values.length === 2) return values.map((value) => path.resolve(projectRoot, value.trim()));
+  return [
+    gitPath(projectRoot, ['--git-dir'], env),
+    gitPath(projectRoot, ['--git-path', 'index'], env),
+  ];
+}
+
 /** Include the effective linked-worktree index and any possible split-index dependency. */
 export function observeGitIndexIdentity(
   projectRoot,
@@ -59,8 +77,7 @@ export function observeGitIndexIdentity(
 ) {
   try {
     const env = gitIndexFile ? { ...process.env, GIT_INDEX_FILE: gitIndexFile } : process.env;
-    const gitDir = gitPath(projectRoot, ['--git-dir'], env);
-    const indexPath = gitPath(projectRoot, ['--git-path', 'index'], env);
+    const [gitDir, indexPath] = gitIndexPaths(projectRoot, env);
     const index = observeFileIdentity(indexPath);
     if (index.decision !== 'stat')
       return { decision: 'hash-and-recheck-tracking', gitDir, indexPath };

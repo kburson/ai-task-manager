@@ -1,3 +1,9 @@
+import { isMemoryStageEffectScope } from './criteria-revision/transport-quarantine.mjs';
+import {
+  nativeSourceMarkerLoss,
+  assertRevisionStageBodyEntry,
+} from './criteria-revision/policy.mjs';
+import { validateLegacyCapability } from './criteria-revision/legacy.mjs';
 import { validateReviewedDelta } from './reviewed-scope/record.mjs';
 // @story #1859
 // Canonical high-level helper for issue-body writes (#293).
@@ -88,23 +94,78 @@ export class MarkerLossError extends Error {
   }
 }
 
-export async function mutateIssueBody({
-  issueNumber,
-  repo,
-  mutate,
-  deps = {},
-  maxRetries,
-  allowMarkerLoss = false,
-  allowUnverifiedTicks = false,
-  evidenceStamp = false,
-  reviewedEvidenceCapability,
-  expectedRemovedHeadings = [],
-  allowLargeShrink = false,
-  allowMarkerAdvance = [],
-  validateFreshBase,
-  validateFreshBaseAsync,
-  expectedVersion,
-} = {}) {
+const nativeInvariantRequests = new WeakMap();
+function sameOwnData(value, expected) {
+  const actual = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(actual);
+  return (
+    keys.length === Reflect.ownKeys(expected).length &&
+    keys.every((key) => {
+      const a = actual[key],
+        b = expected[key];
+      return (
+        b &&
+        Object.hasOwn(a, 'value') &&
+        a.value === b.value &&
+        a.enumerable === b.enumerable &&
+        a.configurable === b.configurable &&
+        a.writable === b.writable
+      );
+    })
+  );
+}
+// Comparison only. The request is registered solely at the lexical invariant
+// wrapper below; copies, caller validators and data cannot register themselves.
+export function assertOriginalInvariantBodyRequest(input) {
+  const original = nativeInvariantRequests.get(input);
+  if (
+    !original ||
+    !sameOwnData(input, original.descriptors) ||
+    !sameOwnData(original.deps, original.dependencyDescriptors)
+  )
+    throw new TypeError('native-invariant-body-request');
+}
+
+export function assertOriginalStageEntryWrapper(input, originalInput) {
+  assertOriginalInvariantBodyRequest(input);
+  if (nativeInvariantRequests.get(input).originalInput !== originalInput)
+    throw new TypeError('native-entry-invariant-request');
+}
+export async function mutateIssueBody(input = {}) {
+  try {
+    assertRevisionStageBodyEntry(input);
+  } catch (error) {
+    if (!isMemoryStageEffectScope()) throw error;
+    const core = await import('./move-state/move-state-core.mjs');
+    core.assertNativeStageBodyInput(input);
+  }
+  const {
+    issueNumber,
+    repo,
+    mutate,
+    deps = {},
+    maxRetries,
+    allowMarkerLoss = false,
+    allowUnverifiedTicks = false,
+    evidenceStamp = false,
+    reviewedEvidenceCapability,
+    criteriaRevisionCapability,
+    expectedRemovedHeadings = [],
+    allowLargeShrink = false,
+    allowMarkerAdvance = [],
+    validateFreshBase,
+    validateFreshBaseAsync,
+    expectedVersion,
+  } = input;
+  if (criteriaRevisionCapability !== undefined) {
+    if (Object.keys(deps).join(',') !== 'revisionBackend')
+      throw new Error('criteria-revision:legacy-backend');
+    validateLegacyCapability(criteriaRevisionCapability, {
+      repo,
+      issueNumber,
+      backend: deps.revisionBackend,
+    });
+  }
   const warn = deps.warn || ((msg) => console.error(msg));
   if (issueNumber == null) throw new Error('mutateIssueBody: issueNumber is required');
   if (!repo) throw new Error('mutateIssueBody: repo is required');
@@ -120,9 +181,22 @@ export async function mutateIssueBody({
   const validateMutation = (baseBody, next) => {
     if (typeof validateFreshBase === 'function') validateFreshBase(baseBody, next);
     if (typeof next === 'string') {
+      const revision =
+        criteriaRevisionCapability === undefined
+          ? null
+          : validateLegacyCapability(criteriaRevisionCapability, {
+              repo,
+              issueNumber,
+              backend: deps.revisionBackend,
+              base: baseBody,
+              next,
+            });
       const reviewedLine = validateReviewedDelta(baseBody, next, reviewedEvidenceCapability);
+      const sourceLoss = nativeSourceMarkerLoss(baseBody, next);
       if (!allowMarkerLoss) {
-        const lost = findLostMarkers(baseBody, next);
+        const lost = findLostMarkers(baseBody, next).filter(
+          (name) => !revision?.allowedMarkerLoss.includes(name) && !sourceLoss.includes(name)
+        );
         if (lost.length > 0) throw new MarkerLossError(issueNumber, lost);
       }
       validateMarkerAdvances(baseBody, next, { allowMarkerAdvance });
@@ -140,7 +214,7 @@ export async function mutateIssueBody({
       if (!allowMarkerLoss) {
         const sectionLoss = findUnexpectedSectionLoss(baseBody, next, {
           expectedRemovedHeadings,
-          allowLargeShrink,
+          allowLargeShrink: allowLargeShrink || revision !== null || sourceLoss.length > 0,
         });
         if (sectionLoss) throw new UnexpectedSectionLossError(issueNumber, sectionLoss);
       }
@@ -206,14 +280,27 @@ export async function mutateIssueBody({
     return next;
   };
 
-  return versionedWriteBody({
+  const request = {
     issueNumber,
     repo,
     mutate: guardedMutate,
     deps,
     maxRetries,
     expectedVersion,
+    criteriaRevisionCapability,
     validateMutation,
     validateFreshBaseAsync,
+  };
+  if (!isMemoryStageEffectScope()) return versionedWriteBody(request);
+  nativeInvariantRequests.set(request, {
+    originalInput: input,
+    descriptors: Object.getOwnPropertyDescriptors(request),
+    deps,
+    dependencyDescriptors: Object.getOwnPropertyDescriptors(deps),
   });
+  try {
+    return await versionedWriteBody(request);
+  } finally {
+    nativeInvariantRequests.delete(request);
+  }
 }

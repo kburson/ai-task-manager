@@ -12,12 +12,16 @@
 // Scope: only fires for develop → test. Fail-open when ctx missing
 // cfg/issueNumber/body.
 
-import { gateCodeComplete } from './code-complete-gate.mjs';
-import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
+import { gateCodeComplete, readCodeCompleteReadData } from './code-complete-gate.mjs';
+import {
+  auditEvidenceBranchReachability,
+  readEvidenceBranchReadData,
+} from './evidence-branch-reachability.mjs';
 import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 
 export const GUARD_ID = 'develop-exit-code-complete';
+const nativeReadData = new WeakMap();
 
 function codeCompleteRefusal(blocker) {
   const match = /^code-complete-ac-(unticked|unverified): (.+)$/.exec(blocker);
@@ -49,13 +53,17 @@ export const developExitCodeCompleteGuard = {
     if (!ctx || !ctx.cfg || ctx.issueNumber == null) return { ok: true };
     if (typeof ctx.body !== 'string') return { ok: true };
     if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
+    let nativeAudit = false;
+    let ancestry = null;
     if (typeof ctx.projectDir === 'string') {
       const auditFn = ctx.deps?.evidenceBranchReachability || auditEvidenceBranchReachability;
+      nativeAudit = auditFn === auditEvidenceBranchReachability;
       const reachability = await auditFn({
         body: ctx.body,
         issueNumber: ctx.issueNumber,
         projectDir: ctx.projectDir,
       });
+      if (nativeAudit) ancestry = readEvidenceBranchReadData(reachability);
       if (!reachability.ok) {
         return {
           ok: false,
@@ -71,14 +79,38 @@ export const developExitCodeCompleteGuard = {
       body: ctx.body,
       deps: ctx.deps?.codeComplete,
     });
-    if (result.ok) return { ok: true };
-    return {
+    const finish = (out) => {
+      const data =
+        nativeAudit && gateFn === gateCodeComplete ? readCodeCompleteReadData(result) : null;
+      if (data && ancestry) nativeReadData.set(out, Object.freeze({ ...data, ancestry }));
+      return out;
+    };
+    if (result.ok) return finish({ ok: true });
+    return finish({
       ok: false,
       reason: (result.blockers || []).join('; ') || 'code-complete-refused',
       blockers: result.blockers || [],
       refusals: (result.blockers?.length ? result.blockers : ['code-complete-refused']).map(
         codeCompleteRefusal
       ),
-    };
+    });
   },
 };
+
+const originalRun = developExitCodeCompleteGuard.run;
+// Result data only; invocation references are compared, never called or returned.
+export function readDevelopCodeCompleteReadData(result, invocation) {
+  try {
+    if (
+      !invocation ||
+      Object.keys(invocation).sort().join(',') !== 'guard,id,run' ||
+      invocation.guard !== developExitCodeCompleteGuard ||
+      invocation.run !== originalRun ||
+      invocation.id !== GUARD_ID
+    )
+      return null;
+    return result && typeof result === 'object' ? (nativeReadData.get(result) ?? null) : null;
+  } catch {
+    return null;
+  }
+}

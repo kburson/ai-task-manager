@@ -1,13 +1,16 @@
 // @story #1857
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import childProcess, { execFileSync } from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getProjectDir } from '../../../../task-tracker/paths.mjs';
 import {
   PROJECT_ROOT_ALIASES,
   resolveRuntimeRoot,
+  readPhysicalRuntimeIdentity,
+  withRuntimeRootAdapters,
 } from '../../../../task-tracker/lib/runtime-storage.mjs';
 const fixtureParent = path.resolve('.ai-task-manager/runtime/test-fixtures');
 mkdirSync(fixtureParent, { recursive: true });
@@ -363,4 +366,132 @@ test('a final runtime record alias refuses even when its target exists', async (
   rmSync(file);
   symlinkSync(path.join(roots.projectRoot, '.tmp', 'forged-state.json'), file);
   assert.throws(() => storage.assertRuntimeReadable(roots), { code: 'RUNTIME_STATE_CORRUPT' });
+});
+
+// @story #1855
+// Forward actual native commands; this is diagnostic instrumentation, not a
+// source adapter or a stage authority fixture.
+test('native identical root aliases share only one synchronous identity observation', () => {
+  const original = childProcess.execFileSync,
+    calls = [];
+  childProcess.execFileSync = function (file, args, options) {
+    calls.push({ file, args: [...args] });
+    return Reflect.apply(original, this, arguments);
+  };
+  syncBuiltinESMExports();
+  try {
+    const env = Object.fromEntries(PROJECT_ROOT_ALIASES.map((alias) => [alias, root]));
+    for (let index = 0; index < 2; index++) {
+      const start = calls.length;
+      assert.equal(resolveRuntimeRoot({ cwd: root, env }).projectRoot, root);
+      const invoked = calls.slice(start);
+      assert.equal(invoked.length, 2, 'every invocation gets one fresh identity and census');
+      assert.deepEqual(
+        invoked.map((call) => call.args.slice(2)),
+        [
+          [
+            'rev-parse',
+            '--path-format=absolute',
+            '--show-toplevel',
+            '--git-dir',
+            '--git-common-dir',
+          ],
+          ['worktree', 'list', '--porcelain', '-z'],
+        ]
+      );
+      assert.ok(
+        invoked.every(
+          (call) => call.file === 'git' && call.args[0] === '-C' && call.args[1] === root
+        )
+      );
+    }
+  } finally {
+    childProcess.execFileSync = original;
+    syncBuiltinESMExports();
+  }
+});
+
+test('explicit and scoped identity wrappers retain every alias callback and original adapter getter order', () => {
+  const env = Object.fromEntries(PROJECT_ROOT_ALIASES.map((alias) => [alias, root]));
+  for (const scoped of [false, true]) {
+    const calls = [],
+      selected = [];
+    const adapters = {
+      get readIdentity() {
+        selected.push('identity');
+        return (directory) => {
+          calls.push(directory);
+          return readPhysicalRuntimeIdentity(directory);
+        };
+      },
+      get realpath() {
+        selected.push('physical');
+        return undefined;
+      },
+      get assertOutsideArtifacts() {
+        selected.push('artifacts');
+        return undefined;
+      },
+    };
+    const result = scoped
+      ? withRuntimeRootAdapters(adapters, () => resolveRuntimeRoot({ cwd: root, env }))
+      : resolveRuntimeRoot({ cwd: root, env, adapters });
+    assert.equal(result.projectRoot, root);
+    assert.deepEqual(selected, ['identity', 'physical', 'artifacts']);
+    assert.deepEqual(calls, [root, root, root, root, root]);
+  }
+});
+
+test('native root identity is fresh after Git metadata changes between invocations', () => {
+  const env = { AI_TASK_MANAGER_PROJECT_DIR: root },
+    head = path.join(root, '.git', 'HEAD');
+  const bytes = readFileSync(head);
+  assert.equal(resolveRuntimeRoot({ cwd: root, env }).projectRoot, root);
+  try {
+    rmSync(head);
+    assert.throws(() => resolveRuntimeRoot({ cwd: root, env }), { code: 'ROOT_IDENTITY_MISMATCH' });
+  } finally {
+    writeFileSync(head, bytes);
+  }
+  assert.equal(resolveRuntimeRoot({ cwd: root, env }).projectRoot, root);
+});
+
+test('native repeated foreign aliases preserve independent candidate objects across admission callbacks', () => {
+  const foreign = path.join(root, 'callback-foreign');
+  execFileSync('git', ['init', '-q', foreign]);
+  const candidates = [];
+  const result = resolveRuntimeRoot({
+    cwd: root,
+    env: { AI_TASK_MANAGER_PROJECT_DIR: foreign, TASK_TRACKER_PROJECT_DIR: foreign },
+    foreignWorktreeAdmission({ candidate }) {
+      candidates.push(candidate);
+      assert.equal(
+        Object.hasOwn(candidate, 'callbackMarker'),
+        false,
+        'native candidate is fresh DATA for each alias'
+      );
+      assert.equal(
+        candidate.worktreeIdentity.registeredRoots.includes('callback nested datum'),
+        false
+      );
+      candidate.callbackMarker = 'ordinary callback datum';
+      candidate.worktreeIdentity.registeredRoots.push('callback nested datum');
+      return true;
+    },
+  });
+  assert.equal(result.projectRoot, foreign);
+  assert.equal(candidates.length, 2);
+  assert.notEqual(candidates[0], candidates[1]);
+  assert.notEqual(candidates[0].worktreeIdentity, candidates[1].worktreeIdentity);
+  result.worktreeIdentity.registeredRoots.push('returned result datum');
+  assert.equal(
+    candidates[1].worktreeIdentity.registeredRoots.includes('returned result datum'),
+    false
+  );
+  assert.equal(
+    resolveRuntimeRoot({ cwd: foreign, env: {} }).worktreeIdentity.registeredRoots.includes(
+      'returned result datum'
+    ),
+    false
+  );
 });

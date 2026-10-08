@@ -145,3 +145,53 @@ test('publication failure leaves the cursor unchanged and conflicting or corrupt
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+import * as nativeJournal from '../../../../task-tracker/lib/actor-flush-journal.mjs';
+// @story #1855
+test('retained actor journal data validation shares actual prepared journal semantics without publication', async () => {
+  const root = createUnitRootFixture('retained-stage-actor-');
+  try {
+    const file = path.join(root, 'pending.json');
+    let effects = 0;
+    await assert.rejects(
+      runActorFlushJournal({
+        file,
+        identity,
+        candidate: candidate(),
+        publish: async () => {
+          effects++;
+        },
+        commit: async () => {
+          effects++;
+        },
+        fault: (step) => {
+          if (step === 'prepared') throw new Error('retained native preparation');
+        },
+      }),
+      /retained native preparation/
+    );
+    const bytes = readFileSync(file, 'utf8');
+    const record = JSON.parse(bytes);
+    assert.deepEqual(
+      nativeJournal.validateActorFlushJournal(record, identity),
+      readActorFlushJournal(file, identity)
+    );
+    assert.throws(
+      () => nativeJournal.validateActorFlushJournal({ ...record, success: true }, identity),
+      { code: 'ACTOR_FLUSH_INVALID' }
+    );
+    assert.throws(
+      () => nativeJournal.validateActorFlushJournal(record, { ...identity, sid: 'foreign-actor' }),
+      { code: 'ACTOR_FLUSH_INVALID' }
+    );
+    const changed = structuredClone(record);
+    changed.payload.checkpoint.lastWordMarker++;
+    assert.throws(() => nativeJournal.validateActorFlushJournal(changed, identity), {
+      code: 'ACTOR_FLUSH_INVALID',
+    });
+    assert.equal(readFileSync(file, 'utf8'), bytes);
+    assert.equal(effects, 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

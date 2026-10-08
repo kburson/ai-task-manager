@@ -1,3 +1,4 @@
+import { assertRevisionStageHostEffect } from './lib/criteria-revision/transport-quarantine.mjs';
 // @story #1889
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -7,10 +8,16 @@ import {
   SHARED_DIR_SEGMENT,
   TMP_AITM_SEGMENT,
 } from './paths.mjs';
-import { clearActiveTask, getActiveTask, setActiveTask } from './session-state.mjs';
+import {
+  clearActiveTask,
+  getActiveTask,
+  setActiveTask,
+  deriveRecordedActiveTaskRead,
+} from './session-state.mjs';
 import {
   ACTOR_TIMING_FIELDS,
   actorTimingStateRecord,
+  validateActorTimingState,
   readActorTimingState,
   writeActorTimingState,
 } from './lib/actor-timing-state.mjs';
@@ -244,20 +251,7 @@ export function projectDirForState(statePath) {
   return path.dirname(abs);
 }
 
-export function loadState(statePath) {
-  let readPath = statePath;
-  if (!existsSync(readPath)) {
-    const legacy = legacyPathFor(statePath);
-    if (legacy && existsSync(legacy)) readPath = legacy;
-  }
-  let parsed = {};
-  if (existsSync(readPath)) {
-    try {
-      parsed = JSON.parse(readFileSync(readPath, 'utf8'));
-    } catch {
-      parsed = {};
-    }
-  }
+function stateBase(parsed) {
   const base = { ...EMPTY_STATE, ...migrateLegacyFields(parsed) };
   for (const field of ACTOR_TIMING_FIELDS) delete base[field];
   Object.assign(base, EMPTY_STATE);
@@ -267,23 +261,15 @@ export function loadState(statePath) {
   // #1163 — checkout identity is per-session authority. Never inherit it from
   // the global compatibility ledger if an older writer happened to mirror it.
   for (const field of WORKTREE_SESSION_FIELDS) delete base[field];
-  // Per-session overlay (#212). When a session-scoped active-task.json exists,
-  // its values take precedence over any legacy fields surfaced from the global
-  // file. Missing-dir tolerated by getActiveTask (returns null).
-  const sid = currentSid();
-  const projDir = projectDirForState(statePath);
-  const ownTiming = readActorTimingState({ provider: aiAppName(), sid }, projDir);
+  return base;
+}
+
+function overlayState(base, ownTiming, cursor, active) {
   if (ownTiming) Object.assign(base, migrateLegacyFields(ownTiming));
   else {
-    // Upgrade only this actor's validated cumulative cursor. The shared legacy
-    // ledger cannot attribute another session's history to this actor.
-    const cursor = loadMarker(markerPathFor(sid, projDir), {
-      identity: { provider: aiAppName(), sid },
-    });
     base.lastWordMarker = cursor.words;
     base.lastFullWordMarker = cursor.wordsFull;
   }
-  const active = getActiveTask(sid, projDir);
   if (active && typeof active === 'object') {
     if (active.issue != null) {
       base.active = active.issue === 'plan' ? 'discover' : active.issue;
@@ -305,16 +291,7 @@ export function loadState(statePath) {
   return base;
 }
 
-export function saveState(state, statePath) {
-  const sid = currentSid();
-  const identity = { provider: aiAppName(), sid };
-  const actorRecord = actorTimingStateRecord(identity, migrateLegacyFields(state));
-  mkdirSync(path.dirname(statePath), { recursive: true });
-  const projDir = projectDirForState(statePath);
-  readActorTimingState(identity, projDir);
-  const priorBinding = getActiveTask(sid, projDir);
-  // Split: per-session triple goes to active-task.json; remainder stays in the
-  // global ledger file.
+function stateBinding(state, priorBinding) {
   const hasActiveBinding =
     state.active != null ||
     state.entryStartTs != null ||
@@ -334,32 +311,18 @@ export function saveState(state, statePath) {
       worktreeFields.bindingGenerationId === priorBinding?.bindingGenerationId
     )
       delete worktreeFields.bindingGenerationId;
-    setActiveTask(
-      sid,
-      {
-        ...(priorBinding?.issue === state.active ? priorBinding : {}),
-        issue: state.active ?? null,
-        entryStartTs: state.entryStartTs ?? null,
-        wordsAtStart: state.wordsAtEntryStart ?? 0,
-        ...worktreeFields,
-      },
-      projDir
-    );
-  } else {
-    clearActiveTask(sid, projDir);
+    return {
+      ...(priorBinding?.issue === state.active ? priorBinding : {}),
+      issue: state.active ?? null,
+      entryStartTs: state.entryStartTs ?? null,
+      wordsAtStart: state.wordsAtEntryStart ?? 0,
+      ...worktreeFields,
+    };
   }
-  // Actor history is separate from binding so a pause can clear authority while
-  // retaining only this actor's resume and word cursor evidence.
-  writeActorTimingState(identity, projDir, actorRecord.state);
-  void PER_SESSION_FIELDS;
-  let previous = {};
-  if (existsSync(statePath)) {
-    try {
-      previous = JSON.parse(readFileSync(statePath, 'utf8'));
-    } catch {
-      /* legacy unknown */
-    }
-  }
+  return null;
+}
+
+function sharedStatePayload(state, previous) {
   const shared = Object.fromEntries(
     Object.entries(state).filter(([key]) => !ACTOR_TIMING_FIELDS.includes(key))
   );
@@ -367,7 +330,257 @@ export function saveState(state, statePath) {
   // #218: never persist `state` to disk — issue body is the source of truth.
   delete globalPayload.state;
   for (const field of WORKTREE_SESSION_FIELDS) delete globalPayload[field];
-  writeFileSync(statePath, JSON.stringify(globalPayload, null, 2) + '\n', 'utf8');
+  return globalPayload;
+}
+
+// These closed projections validate recorded data only; their inputs are not
+// evidence of native reads, ownership, current binding, or completed writes.
+function recordedStateKeys(value, keys) {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join(',') !== [...keys].sort().join(',')
+  )
+    throw new TypeError('recorded-state');
+}
+function recordedStateObject(bytes, absent = false) {
+  if (absent && bytes === null) return null;
+  let value;
+  try {
+    if (typeof bytes !== 'string') throw new Error();
+    value = JSON.parse(bytes);
+  } catch {
+    throw new TypeError('recorded-state');
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new TypeError('recorded-state');
+  return value;
+}
+function recordedStateIdentity(identity) {
+  recordedStateKeys(identity, ['provider', 'sid']);
+  // Reuse the native identity and actor-state validator, including provider.
+  actorTimingStateRecord(identity, {});
+}
+export function deriveRecordedState(input) {
+  recordedStateKeys(input, ['sharedBytes', 'identity', 'actorBytes', 'cursor', 'activeBytes']);
+  recordedStateIdentity(input.identity);
+  const parsed = recordedStateObject(input.sharedBytes, true) ?? {};
+  const record = recordedStateObject(input.actorBytes, true);
+  const ownTiming = record === null ? null : validateActorTimingState(record, input.identity).state;
+  if (ownTiming === null) {
+    recordedStateKeys(input.cursor, ['words', 'wordsFull']);
+    if (
+      Object.values(input.cursor).some(
+        (value) => typeof value !== 'number' || !Number.isFinite(value) || value < 0
+      )
+    )
+      throw new TypeError('recorded-state');
+  } else if (input.cursor !== null) throw new TypeError('recorded-state');
+  return overlayState(
+    stateBase(parsed),
+    ownTiming,
+    input.cursor,
+    deriveRecordedActiveTaskRead({ bytes: input.activeBytes })
+  );
+}
+export function deriveRecordedStateSave(input) {
+  recordedStateKeys(input, ['stateBytes', 'identity', 'priorBindingBytes', 'previousBytes']);
+  recordedStateIdentity(input.identity);
+  const state = recordedStateObject(input.stateBytes);
+  const actorRecord = actorTimingStateRecord(input.identity, migrateLegacyFields(state));
+  const bindingRecord = stateBinding(
+    state,
+    deriveRecordedActiveTaskRead({ bytes: input.priorBindingBytes })
+  );
+  const shared = sharedStatePayload(state, recordedStateObject(input.previousBytes, true) ?? {});
+  return { actorRecord, bindingRecord, sharedBytes: JSON.stringify(shared, null, 2) + '\n' };
+}
+
+export function loadState(statePath) {
+  let readPath = statePath;
+  if (!existsSync(readPath)) {
+    const legacy = legacyPathFor(statePath);
+    if (legacy && existsSync(legacy)) readPath = legacy;
+  }
+  let parsed = {};
+  if (existsSync(readPath)) {
+    try {
+      parsed = JSON.parse(readFileSync(readPath, 'utf8'));
+    } catch {
+      parsed = {};
+    }
+  }
+  const base = stateBase(parsed);
+  // Per-session overlay (#212). When a session-scoped active-task.json exists,
+  // its values take precedence over any legacy fields surfaced from the global
+  // file. Missing-dir tolerated by getActiveTask (returns null).
+  const sid = currentSid();
+  const projDir = projectDirForState(statePath);
+  const ownTiming = readActorTimingState({ provider: aiAppName(), sid }, projDir);
+  let cursor = null;
+  if (!ownTiming) {
+    cursor = loadMarker(markerPathFor(sid, projDir), {
+      identity: { provider: aiAppName(), sid },
+    });
+  }
+  const active = getActiveTask(sid, projDir);
+  return overlayState(base, ownTiming, cursor, active);
+}
+
+// ONE private native control sequence. Host drives synchronously; the fixed
+// memory wrapper may await its private leaves without changing ordinary order.
+function* stateSaveProgram(state, statePath, sid, identity) {
+  const actorRecord = actorTimingStateRecord(identity, migrateLegacyFields(state));
+  yield { kind: 'mkdir', directory: path.dirname(statePath) };
+  const projDir = projectDirForState(statePath);
+  yield { kind: 'read-actor', identity, projDir };
+  const priorBinding = yield { kind: 'read-binding', sid, projDir };
+  const binding = stateBinding(state, priorBinding);
+  if (binding) yield { kind: 'set-binding', sid, record: binding, projDir };
+  else yield { kind: 'clear-binding', sid, projDir };
+  yield { kind: 'write-actor', identity, projDir, state: actorRecord.state };
+  void PER_SESSION_FIELDS;
+  const previous = yield { kind: 'read-shared', file: statePath };
+  const globalPayload = sharedStatePayload(state, previous);
+  yield {
+    kind: 'write-shared',
+    file: statePath,
+    bytes: JSON.stringify(globalPayload, null, 2) + '\n',
+  };
+}
+function runHostStateSaveOperation(operation) {
+  switch (operation.kind) {
+    case 'mkdir':
+      return mkdirSync(operation.directory, { recursive: true });
+    case 'read-actor':
+      return readActorTimingState(operation.identity, operation.projDir);
+    case 'read-binding':
+      return getActiveTask(operation.sid, operation.projDir);
+    case 'set-binding':
+      return setActiveTask(operation.sid, operation.record, operation.projDir);
+    case 'clear-binding':
+      return clearActiveTask(operation.sid, operation.projDir);
+    case 'write-actor':
+      return writeActorTimingState(operation.identity, operation.projDir, operation.state);
+    case 'read-shared': {
+      let previous = {};
+      if (existsSync(operation.file)) {
+        try {
+          previous = JSON.parse(readFileSync(operation.file, 'utf8'));
+        } catch {
+          /* legacy unknown */
+        }
+      }
+      return previous;
+    }
+    case 'write-shared':
+      return writeFileSync(operation.file, operation.bytes, 'utf8');
+    default:
+      throw new TypeError('native-state-operation');
+  }
+}
+const nativeCheckpointOperations = new WeakMap();
+export function assertNativeStageCheckpointOperation(invocation, operation) {
+  if (nativeCheckpointOperations.get(invocation) !== operation)
+    throw new TypeError('native-state-operation');
+}
+const nativeCheckpointWrites = new WeakMap();
+export function assertNativeStageTrackerWrite(invocation, intent) {
+  const original = nativeCheckpointWrites.get(invocation);
+  if (!original || JSON.stringify(original) !== JSON.stringify(intent))
+    throw new TypeError('native-state-write');
+}
+async function runMemoryStateSaveOperation(native, invocation, operation) {
+  switch (operation.kind) {
+    case 'mkdir':
+      return native.checkNativeStageCheckpointDirectory(invocation, operation);
+    case 'read-actor': {
+      const bytes = native.readNativeStageCheckpointActor(invocation, operation);
+      return bytes === null
+        ? null
+        : validateActorTimingState(JSON.parse(bytes), operation.identity).state;
+    }
+    case 'read-binding':
+      return deriveRecordedActiveTaskRead({
+        bytes: native.readNativeStageCheckpointBinding(invocation, operation),
+      });
+    case 'set-binding': {
+      const { setNativeStageActorTask } = await import('./session-state.mjs');
+      native.assertNativeStageCheckpointCurrent(invocation);
+      return await setNativeStageActorTask(invocation, operation);
+    }
+    case 'write-actor': {
+      const { writeNativeStageActorTiming } = await import('./lib/actor-timing-state.mjs');
+      native.assertNativeStageCheckpointCurrent(invocation);
+      return await writeNativeStageActorTiming(invocation, operation);
+    }
+    case 'read-shared': {
+      const bytes = native.readNativeStageCheckpointShared(invocation, operation);
+      return bytes === null ? {} : JSON.parse(bytes);
+    }
+    case 'write-shared': {
+      const source = await native.beginNativeStageCheckpointShared(invocation, operation);
+      try {
+        const intent = {
+          invocation: source.invocation,
+          file: operation.file,
+          stateBytes: source.stateBytes,
+          bytes: operation.bytes,
+        };
+        nativeCheckpointWrites.set(invocation, intent);
+        await native.persistNativeStageCheckpoint(invocation, intent);
+        await native.writeNativeStageCheckpoint(invocation);
+        await native.completeNativeStageCheckpoint(invocation);
+      } finally {
+        nativeCheckpointWrites.delete(invocation);
+        native.endNativeStageCheckpointLeaf(invocation);
+      }
+      return;
+    }
+    default:
+      throw new TypeError('native-state-operation');
+  }
+}
+export async function saveNativeStageActorCheckpoint(invocation) {
+  const native = await import('./lib/move-state/move-state-core.mjs');
+  const source = await native.beginNativeStageActorCheckpoint(invocation);
+  return await runNativeStageStateProgram(native, invocation, source);
+}
+export async function saveNativeStageActorFinal(invocation) {
+  const native = await import('./lib/move-state/move-state-core.mjs');
+  const source = await native.beginNativeStageActorFinal(invocation);
+  return await runNativeStageStateProgram(native, invocation, source);
+}
+async function runNativeStageStateProgram(native, invocation, source) {
+  try {
+    const program = stateSaveProgram(
+      JSON.parse(source.stateBytes),
+      source.statePath,
+      source.identity.sid,
+      source.identity
+    );
+    let next = program.next();
+    while (!next.done) {
+      nativeCheckpointOperations.set(invocation, next.value);
+      const result = await runMemoryStateSaveOperation(native, invocation, next.value);
+      native.assertNativeStageCheckpointCurrent(invocation);
+      nativeCheckpointOperations.delete(invocation);
+      next = program.next(result);
+    }
+  } finally {
+    nativeCheckpointOperations.delete(invocation);
+    native.endNativeStageActorCheckpoint(invocation);
+  }
+}
+
+export function saveState(state, statePath) {
+  assertRevisionStageHostEffect();
+  const sid = currentSid();
+  const identity = { provider: aiAppName(), sid };
+  const program = stateSaveProgram(state, statePath, sid, identity);
+  let next = program.next();
+  while (!next.done) next = program.next(runHostStateSaveOperation(next.value));
 }
 
 // #407 — next-state for a successful NON-terminal verb (test, review) that

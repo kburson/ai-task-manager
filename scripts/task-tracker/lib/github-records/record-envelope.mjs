@@ -1,3 +1,4 @@
+import { validatePlanApprovalPayload } from '../criteria-revision/plan-approval.mjs';
 // cspell:ignore HJKMNP ically ization ment noncanonical pousr tion
 // cspell:ignore apikey apikeypolicy credentialpolicy fortunecookie passwordpolicy
 // cspell:ignore priorauthorization sessioncookiepolicy tokencount
@@ -144,6 +145,9 @@ function validateEnvelope(envelope, { requireCurrentForecast = false } = {}) {
     ) {
       throw recordError('delivery-contract-authority');
     }
+  } else if (envelope.recordType === 'plan-approval') {
+    validatePlanApprovalPayload(envelope.payload);
+    assertNoSecretRecordData(envelope.payload, { safeKeyNames: ['authorityReference'] });
   } else {
     assertNoSecretRecordData(envelope.payload);
   }

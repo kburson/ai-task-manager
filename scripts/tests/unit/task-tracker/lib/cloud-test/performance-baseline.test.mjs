@@ -326,3 +326,20 @@ test('validation capacity preserves four slots and matches Free and Pro examples
   assert.equal(validationCapacity({ totalSlots: 40, heavyJobsPerValidation: 4 }), 9);
   assert.equal(requiredSlotsForValidations({ validations: 10, heavyJobsPerValidation: 4 }), 44);
 });
+
+test('calibration consumes schema6 measured data while retaining original schema5 history', () => {
+  const input = baselineInputs();
+  for (const artifact of Object.values(input.artifacts)) {
+    artifact.schema = 6;
+    artifact.executionSections = [
+      { name: 'serial', files: [...artifact.discoveryInventory], elapsedMs: 300 },
+    ];
+  }
+  const result = normalizeCloudTestBaseline(input);
+  assert.equal(result.measuredCommit, HEAD);
+  assert.equal(result.weights['scripts/tests/integration/c.test.mjs'].wallMs, 250);
+  const malformed = structuredClone(input);
+  delete malformed.artifacts.integration.executionSections;
+  assert.throws(() => normalizeCloudTestBaseline(malformed), /section/);
+  assert.equal(normalizeCloudTestBaseline(baselineInputs()).measuredCommit, HEAD);
+});

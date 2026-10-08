@@ -23,7 +23,7 @@ function receipts() {
   return groups.map((files, index) => ({
     exitCode: 0,
     timing: {
-      schema: 5,
+      schema: 6,
       lane: 'integration',
       commit,
       generatedAt: '2026-10-04T06:40:00Z',
@@ -31,6 +31,7 @@ function receipts() {
       shard: { index: index + 1, total: 3 },
       discoveryInventory: files,
       count: files.length,
+      executionSections: [{ name: 'serial', files: [...files], elapsedMs: 2 }],
       files: Object.fromEntries(files.map((file) => [file, { status: 0, wallMs: 1 }])),
     },
   }));
@@ -64,4 +65,53 @@ test('aggregate refuses an omitted test, failed assertion, or runner failure aft
   const ceiling = receipts();
   ceiling[0].exitCode = 1;
   assert.throws(() => validate(ceiling), /exit/);
+});
+
+test('aggregate independently refuses invalid execution sections and old receipts', () => {
+  const changes = [
+    (timing) => {
+      timing.schema = 5;
+    },
+    (timing) => {
+      delete timing.executionSections;
+    },
+    (timing) => {
+      timing.executionSections = [];
+    },
+    (timing) => {
+      timing.executionSections[0].files.pop();
+    },
+    (timing) => {
+      timing.executionSections[0].files.reverse();
+    },
+    (timing) => {
+      timing.executionSections.push(structuredClone(timing.executionSections[0]));
+    },
+    (timing) => {
+      timing.executionSections[0].files.push('extra.test.mjs');
+    },
+    (timing) => {
+      timing.executionSections[0].name = 'invented-budget';
+    },
+    (timing) => {
+      timing.executionSections[0].elapsedMs = 600001;
+    },
+    (timing) => {
+      timing.executionSections[0].elapsedMs = NaN;
+    },
+    (timing) => {
+      timing.executionSections[0].elapsedMs = -1;
+    },
+    (timing) => {
+      timing.executionSections[0].elapsedMs = '1';
+    },
+    (timing) => {
+      timing.executionSections[0].passed = true;
+    },
+  ];
+  for (const change of changes) {
+    const results = receipts();
+    change(results[0].timing);
+    assert.throws(() => validate(results), /schema|section|ceiling/, change.toString());
+  }
 });

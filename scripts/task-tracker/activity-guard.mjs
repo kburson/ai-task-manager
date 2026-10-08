@@ -29,6 +29,12 @@
 // `reconcile accept-live` to repair the body marker.
 
 import { readFileSync } from 'node:fs';
+import {
+  evaluateLocalRevisionActivity,
+  quarantineLocalSourceEdit,
+} from './lib/criteria-revision/policy.mjs';
+import { loadConfig } from './config.mjs';
+import { configPath } from './paths.mjs';
 import path from 'node:path';
 import { readWorktreeIdentity } from './lib/worktree-binding-guard.mjs';
 import {
@@ -104,6 +110,24 @@ if (toolName === 'apply_patch') {
     block(`[task-tracker] mutation target parsing failed: ${error.message}`);
   }
 }
+async function quarantineSourceTargets(targets) {
+  if (!targets.length) return;
+  try {
+    const contained = targets.map(
+      (target) => resolveMutationTarget(target, invocationDir, projectRoot).lexical
+    );
+    const cfg = loadConfig({ projectPath: configPath(projectRoot) });
+    const revision = await quarantineLocalSourceEdit({
+      repository: cfg.repo,
+      targets: contained,
+      projectDir: projectRoot,
+      sessionId: input.session_id,
+    });
+    if (revision.status !== 'ready') block(`[task-tracker] ${revision.code}`);
+  } catch (error) {
+    block(`[task-tracker] source mutation authority unavailable: ${error.message}`);
+  }
+}
 // Artifact authoring bypasses binding only after physical containment checks.
 if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
   const paths =
@@ -111,6 +135,7 @@ if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
       ? applyPatchTargets
       : [toolInput.file_path ?? toolInput.notebook_path ?? toolInput.path ?? ''];
   if (paths.length && paths.every((target) => typeof target === 'string' && target)) {
+    await quarantineSourceTargets(paths);
     try {
       const policies = paths.map((target) =>
         artifactPathPolicy(resolveMutationTarget(target, invocationDir, projectRoot).relative)
@@ -124,6 +149,17 @@ if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
   }
 } else if (toolName === 'Bash') {
   const artifact = resolveArtifactShell(toolInput.command, invocationDir, projectRoot);
+  const shellTargets = [
+    ...new Set([...(artifact.targets ?? []), ...extractWriteTargets(toolInput.command)]),
+  ];
+  // @story #1855 — preserve the complete artifact parser's leading-dot spelling.
+  await quarantineSourceTargets(
+    shellTargets.map((target) =>
+      artifact.status === 'allow' && artifact.targets.includes(target)
+        ? target.replace(/^(?:\.\/)+/, '')
+        : target
+    )
+  );
   if (artifact.status === 'block')
     block('[task-tracker] artifact target refused: ' + artifact.reason);
   if (artifact.status === 'allow') process.exit(0);
@@ -255,6 +291,19 @@ function commitMessageFileText(args, cwd) {
 // ---------------------------------------------------------------------------
 // Decision
 // ---------------------------------------------------------------------------
+
+// Revision admission is read per invocation, before cached stage or chore
+// allowances. Direct git -C commands use the actual resolved checkout above.
+if (
+  (activityClasses || [activityClass]).some((kind) => ['WRITE_CODE', 'COMMIT_CODE'].includes(kind))
+) {
+  const cfg = loadConfig({ projectPath: configPath(projectRoot) });
+  const revision = evaluateLocalRevisionActivity(
+    { repository: cfg.repo, issue: Number(String(activeIssue || '').replace(/^#/, '')) },
+    { worktree: projectRoot }
+  );
+  if (revision.status !== 'ready') block(`[task-tracker] ${revision.code}`);
+}
 
 // chore-mode bypass (#440). chore-mode is the sanctioned escape hatch for
 // editing source files when no issue can legitimately reach `develop` (e.g. an

@@ -1,3 +1,4 @@
+import { assertRevisionStageHostEffect } from './criteria-revision/transport-quarantine.mjs';
 // @story #1857
 // Session timing survives unbinding without becoming another actor's fallback.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -104,6 +105,7 @@ export function actorTimingStateRecord(identity, state) {
   );
 }
 export function writeActorTimingState(identity, root, state) {
+  assertRevisionStageHostEffect();
   const file = actorTimingStatePath(identity, root);
   const record = actorTimingStateRecord(identity, state);
   return withLock(file, () => {
@@ -114,4 +116,35 @@ export function writeActorTimingState(identity, root, state) {
     renameSync(temp, file);
     return record.state;
   });
+}
+
+const nativeStageActorStateWrites = new WeakMap();
+export function assertNativeStageActorStateWrite(invocation, intent) {
+  const original = nativeStageActorStateWrites.get(invocation);
+  if (!original || JSON.stringify(original) !== JSON.stringify(intent)) invalid();
+}
+export async function writeNativeStageActorTiming(invocation, operation) {
+  // The native record construction still precedes resource acquisition. The
+  // independently current existing record is reread/validated while locked.
+  const record = actorTimingStateRecord(operation?.identity, operation?.state);
+  const native = await import('./move-state/move-state-core.mjs');
+  const source = await native.beginNativeStageCheckpointActor(invocation, operation);
+  try {
+    if (source.beforeBytes !== null)
+      validateActorTimingState(JSON.parse(source.beforeBytes), source.identity);
+    const intent = {
+      invocation: source.invocation,
+      file: source.file,
+      stateBytes: source.stateBytes,
+      bytes: JSON.stringify(record, null, 2) + '\n',
+    };
+    nativeStageActorStateWrites.set(invocation, intent);
+    await native.persistNativeStageCheckpoint(invocation, intent);
+    await native.writeNativeStageCheckpoint(invocation);
+    await native.completeNativeStageCheckpoint(invocation);
+    return record.state;
+  } finally {
+    nativeStageActorStateWrites.delete(invocation);
+    native.endNativeStageCheckpointLeaf(invocation);
+  }
 }

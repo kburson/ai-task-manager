@@ -1,5 +1,14 @@
 // @story #1497
+import {
+  currentRevisionEvidenceBinding,
+  currentRevisionDefinitions,
+  matchesCurrentRevisionEvidence,
+} from '../criteria-revision/policy.mjs';
+import { validateRevisionEvidenceBinding } from '../criteria-revision/evidence-binding.mjs';
 import { canonical, exact, fail, textValue, digestValue, policyValue } from './value.mjs';
+import { parseProofMarker } from '../proof-marker.mjs';
+import { parseVcRefIndexes, resolveVcListStrict } from '../vc-ref.mjs';
+import { parseVerificationCommands } from '../verification-commands.mjs';
 const secretName = /(?:secret|token|password|passwd|credential|authorization|cookie|private.?key)/i;
 function section(body, name) {
   const heading = new RegExp(`^## ${name}[ \t]*$`, 'm').exec(body);
@@ -10,33 +19,49 @@ function section(body, name) {
 }
 
 export function projectRequirements({ body, target, policy }) {
-  const lines = section(body, 'Acceptance Criteria')
-    .split('\n')
-    .filter((l) => /^\s*- \[[ x]\]/i.test(l));
-  const acceptanceCriteria = lines.map((line, index) => {
-    const verificationIds = /<!--\s*aitm-verified\s+vc-list="([^"]+)"\s*-->/
-      .exec(line)?.[1]
-      .split(',')
-      .map((x) => x.trim());
-    if (!verificationIds?.length) fail('requirements-mapping');
-    const text = line
-      .replace(/^\s*- \[[ x]\]\s*/i, '')
-      .replace(/<!--[^]*?-->/g, '')
-      .trim();
-    return { id: `ac:${index + 1}`, text, verificationIds };
-  });
-  const verificationCommands = section(body, 'Verification Commands')
-    .split('\n')
-    .filter((l) => /^\s*- \[[ x]\]/i.test(l))
-    .map((line) => {
-      const id = /<!--\s*id=(\d+)\s*-->/.exec(line)?.[1];
-      const command = /`([^`]+)`/.exec(line)?.[1];
-      if (!id || !command) fail('requirements-command');
-      return { id: `vc:${id}`, command };
-    });
+  const revisionBinding = currentRevisionEvidenceBinding({ body });
+  const definitions = currentRevisionDefinitions({ body });
+  const vcItems = definitions ? null : parseVerificationCommands(body);
+  const verificationCommands = definitions
+    ? definitions
+        .filter((d) => d.section === 'vc')
+        .map((d) => ({ id: d.identity, command: d.text }))
+    : vcItems.map((item) => {
+        if (!Number.isInteger(item.id)) fail('requirements-command');
+        return { id: `vc:${item.id}`, command: item.command };
+      });
+  const acceptanceCriteria = definitions
+    ? definitions
+        .filter((d) => d.section === 'ac')
+        .map((d) => {
+          if (d.declaration.kind !== 'vc-list') fail('requirements-mapping');
+          return {
+            id: d.identity,
+            text: d.text,
+            verificationIds: d.declaration.vcIds.map((id) => {
+              const vc = definitions.find((item) => item.section === 'vc' && item.rootId === id);
+              if (!vc) fail('requirements-mapping');
+              return vc.identity;
+            }),
+          };
+        })
+    : section(body, 'Acceptance Criteria')
+        .split('\n')
+        .filter((line) => /^\s*- \[[ x]\]/i.test(line))
+        .map((line, index) => {
+          const props = parseProofMarker(line);
+          resolveVcListStrict(props?.['vc-list'], vcItems);
+          const verificationIds = parseVcRefIndexes(props['vc-list']).map((id) => `vc:${id}`);
+          const text = line
+            .replace(/^\s*- \[[ x]\]\s*/i, '')
+            .replace(/<!--[^]*?-->/g, '')
+            .trim();
+          return { id: `ac:${index + 1}`, text, verificationIds };
+        });
   if (!acceptanceCriteria.length || !verificationCommands.length) fail('requirements-incomplete');
   return {
     schema: 'aitm.requirements/v2',
+    ...(revisionBinding ? { revisionBinding } : {}),
     acceptanceCriteria,
     verificationCommands,
     target,
@@ -46,7 +71,14 @@ export function projectRequirements({ body, target, policy }) {
 export function validateInputs({ requirements, recipe, environment }) {
   exact(
     requirements,
-    ['schema', 'acceptanceCriteria', 'verificationCommands', 'target', 'policy'],
+    [
+      'schema',
+      'acceptanceCriteria',
+      'verificationCommands',
+      'target',
+      'policy',
+      ...(requirements.revisionBinding === undefined ? [] : ['revisionBinding']),
+    ],
     'requirements-keys'
   );
   if (
@@ -55,6 +87,10 @@ export function validateInputs({ requirements, recipe, environment }) {
     !requirements.verificationCommands?.length
   )
     fail('requirements-incomplete');
+  if (requirements.revisionBinding !== undefined)
+    validateRevisionEvidenceBinding(requirements.revisionBinding);
+  if (!matchesCurrentRevisionEvidence(requirements.revisionBinding, { structural: true }))
+    fail('requirements-revision-mismatch');
   policyValue(requirements.policy);
   if (!requirements.target || !Object.keys(requirements.target).length) fail('requirements-target');
   const ids = new Set();

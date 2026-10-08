@@ -2,10 +2,9 @@
 // cspell:ignore EISSUELOCKED
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { after, test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 
 import {
   issueLockPath,
@@ -15,8 +14,6 @@ import {
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const testVerbModule = await import('../../../../task-tracker/verbs/test.mjs');
-const testFile = fileURLToPath(import.meta.url);
-const repoRoot = path.resolve(path.dirname(testFile), '../../../../..');
 const scratchProjects = [];
 
 function runTestWithEntryInterlock(options) {
@@ -122,15 +119,47 @@ test('a second invocation for the same issue refuses and names the holding run',
   assert.equal((await first).status, 'passed');
 });
 
-test('the Test entry interlock has no force, environment, or config bypass', () => {
-  const source = readFileSync(path.join(repoRoot, 'scripts/task-tracker/verbs/test.mjs'), 'utf8');
-  const start = source.indexOf('export async function runTestWithEntryInterlock');
-  const end = source.indexOf('export async function verbTest', start);
-  assert.ok(start >= 0 && end > start, 'entry wrapper must be a distinct auditable function');
-  const wrapper = source.slice(start, end);
-
-  assert.match(wrapper, /acquireIssueLock\s*\(/);
-  assert.doesNotMatch(wrapper, /process\.env|config|override|bypass|force/i);
+test('forced Test rerun still refuses an already-held entry lock', async () => {
+  const projectDir = makeProject();
+  const entered = deferred();
+  const release = deferred();
+  const first = runTestWithEntryInterlock({
+    cfg: { repo: 'o/r' },
+    issueNumber: 1169,
+    projectDir,
+    deps: {
+      acquireIssueLock: acquireAs('first-test-run'),
+      runVerbTest: async () => {
+        entered.resolve();
+        await release.promise;
+        return { status: 'passed' };
+      },
+    },
+  });
+  await entered.promise;
+  let effects = 0;
+  try {
+    await assert.rejects(
+      runTestWithEntryInterlock({
+        cfg: { repo: 'o/r' },
+        issueNumber: 1169,
+        projectDir,
+        deps: {
+          forceRerun: true,
+          acquireIssueLock: acquireAs('forced-test-run'),
+          runVerbTest: async () => {
+            effects++;
+            return { status: 'passed' };
+          },
+        },
+      }),
+      (error) => error.code === 'EISSUELOCKED'
+    );
+    assert.equal(effects, 0);
+  } finally {
+    release.resolve();
+    await first;
+  }
 });
 
 test('a dead same-host holder is reclaimed through the #656 liveness path', async () => {

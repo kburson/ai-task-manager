@@ -198,14 +198,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/gh/ensure-wave-parent.mjs', 337, 'event-call', "'start'", ['start']),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      349,
+      498,
       'phase-call',
       "{ state: 'review', phase: 'complete' }",
       ['review:approved']
     ),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      358,
+      507,
       'phase-call',
       "{ state: 'done', phase: 'enter' }",
       ['issue:wrap']
@@ -235,7 +235,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ]),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      98,
+      153,
       'event-call',
       '`demoted:${stateArg}`',
       ['demoted:develop']
@@ -266,7 +266,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      137,
+      192,
       'phase-call',
       "{ state: prev, phase: 'complete' }",
       [
@@ -280,14 +280,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      167,
+      217,
       'phase-call',
       "{ state: 'done', phase: 'complete' }",
       ['issue:closed']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      186,
+      236,
       'phase-call',
       "{ state: stateArg, phase: 'enter' }",
       [
@@ -303,26 +303,26 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/audit-timing.mjs',
-      293,
+      338,
       'event-call',
       "'out-of-band-move'",
       ['out-of-band-move']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      324,
+      343,
       'event-call',
       "'gate-refused'",
       ['gate-refused']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      400,
+      419,
       'event-call',
       "'lifecycle-warn'",
       ['lifecycle-warn']
     ),
-    timingEmitter('scripts/task-tracker/runtime.mjs', 265, 'flush-call', 'event', [
+    timingEmitter('scripts/task-tracker/runtime.mjs', 442, 'flush-call', 'event', [
       'update',
       'pause:other',
       'review:failed',

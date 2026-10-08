@@ -19,6 +19,7 @@ export const BOUNDARY_PRODUCER_IDS = Object.freeze([
   'authority-collection',
   'action-navigation',
   'action-result-validation',
+  'revision-mutation',
 ]);
 export const AUTHORITY_RESOURCE_IDS = Object.freeze([
   'issue-body',
@@ -34,10 +35,14 @@ export const AUTHORITY_RESOURCE_IDS = Object.freeze([
   'occupancy',
   'migration-journal',
 ]);
+export const TYPED_NATIVE_GUARD_IDS = Object.freeze(['criteria-revision-admission']);
 export const REGISTERED_GUARD_IDS = Object.freeze(
-  Object.keys(
-    JSON.parse(readFileSync(new URL('./legacy-refusals.json', import.meta.url), 'utf8')).guards
-  ).sort()
+  [
+    ...Object.keys(
+      JSON.parse(readFileSync(new URL('./legacy-refusals.json', import.meta.url), 'utf8')).guards
+    ),
+    ...TYPED_NATIVE_GUARD_IDS,
+  ].sort()
 );
 
 const noArgs = () =>
@@ -105,6 +110,54 @@ const authoritySubject = Object.freeze({ type: 'authority-subject' });
 const registeredGuard = Object.freeze(['registered-guard']);
 
 export const CODE_DEFINITIONS = Object.freeze({
+  'revision-pending': definition({
+    code: 'revision-pending',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['blocked'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'revision-conflict': definition({
+    code: 'revision-conflict',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['blocked'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'revision-approval-stale': definition({
+    code: 'revision-approval-stale',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['blocked'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'revision-authority-unavailable': definition({
+    code: 'revision-authority-unavailable',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['indeterminate'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'revision-topology-unsupported': definition({
+    code: 'revision-topology-unsupported',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['indeterminate'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'criteria-revision-required': definition({
+    code: 'criteria-revision-required',
+    domain: 'decision-blocker',
+    producers: ['revision-mutation'],
+    severity: 'error',
+    statuses: ['blocked'],
+    phases: ['execution'],
+  }),
   'guard-error': decisionIndeterminate('guard-error', [
     'registered-guard',
     'action-result-validation',
@@ -311,6 +364,13 @@ export const CODE_DEFINITIONS = Object.freeze({
     'migration-freeze',
     ['registered-guard', 'authority-collection'],
     { phases: ['evaluation', 'collection'] }
+  ),
+  'plan-approval-authority-unavailable': decisionIndeterminate(
+    'plan-approval-authority-unavailable',
+    ['plan-exit-plan-approved'],
+    args(['reason'], {
+      reason: enumType('current-approval-unverified', 'runtime-unregistered', 'directory-invalid'),
+    })
   ),
   'plan-approval-missing': decisionBlocked('plan-approval-missing', registeredGuard, {
     disposition: 'registered-remediation',
@@ -541,6 +601,7 @@ function producerAllowed(producerId, allowed, registeredGuardIds = REGISTERED_GU
 }
 
 function producerPhase(producerId, definition, registeredGuardIds) {
+  if (producerId === 'revision-mutation') return 'execution';
   if (producerId === 'authority-collection') return 'collection';
   if (producerId === 'action-navigation') return 'navigation';
   if (producerId === 'action-result-validation') {

@@ -312,7 +312,16 @@ export function upsertProofMarker(line, props = {}) {
 // evidence for a superseded commit without losing what the forward re-drive
 // needs to know what to run again. A no-op on a line with no marker, or a
 // marker that already carries no run-props.
-const RUN_PROOF_KEYS = ['ts', 'sha', 'evidence', 'exit', 'worktree', 'branch', 'bound-issue'];
+const RUN_PROOF_KEYS = [
+  'ts',
+  'sha',
+  'evidence',
+  'exit',
+  'worktree',
+  'branch',
+  'bound-issue',
+  'revision-binding',
+];
 export function stripExecutionProof(line) {
   const src = String(line == null ? '' : line);
   const match = src.match(/<!--\s*aitm-verified\s+([\s\S]*?)\s*-->/);

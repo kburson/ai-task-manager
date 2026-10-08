@@ -302,15 +302,47 @@ test('runHook: resolve throws → falls through to refuse pre-develop default', 
   assert.equal(r.decision, 'block');
   assert.equal(r.code, 'source-edit-state-gate');
 });
-test('runHook: findProjectDir honours env override', async () => {
+// @story #1855
+test('runHook: matching native cwd and env root permit an owned artifact', async () => {
   const dir = project({ active: 'discover' });
   const prev = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  const priorCwd = process.cwd();
   process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
   try {
-    const r = await runHook({ tool_name: 'Edit', tool_input: { file_path: '.tmp/x.mjs' } });
-    // allowlisted path short-circuits before any gh work
-    assert.equal(r.reason, 'allowlisted-path');
+    process.chdir(dir);
+    const r = await runHook({
+      cwd: dir,
+      tool_name: 'Edit',
+      tool_input: { file_path: path.join(dir, '.tmp/x.mjs') },
+    });
+    assert.deepEqual(r, { decision: 'allow', reason: 'allowlisted-path' });
   } finally {
+    process.chdir(priorCwd);
+    if (prev === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = prev;
+  }
+});
+
+test('runHook: a foreign env root cannot replace the native invocation root', async () => {
+  const dir = project({ active: 'discover' });
+  const foreign = project({ active: 'discover' });
+  const prev = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  const priorCwd = process.cwd();
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = foreign;
+  try {
+    process.chdir(dir);
+    const r = await runHook({
+      cwd: dir,
+      tool_name: 'Edit',
+      tool_input: { file_path: path.join(dir, '.tmp/x.mjs') },
+    });
+    assert.deepEqual(r, {
+      decision: 'block',
+      code: 'revision-authority-unavailable',
+      reason: '[task-tracker] revision-authority-unavailable: source mutation context unavailable.',
+    });
+  } finally {
+    process.chdir(priorCwd);
     if (prev === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
     else process.env.AI_TASK_MANAGER_PROJECT_DIR = prev;
   }

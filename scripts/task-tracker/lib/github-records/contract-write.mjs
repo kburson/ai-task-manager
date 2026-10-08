@@ -1,3 +1,4 @@
+import { withRevisionConsumer } from '../criteria-revision/policy.mjs';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -168,7 +169,7 @@ export function planContractWrite({
   });
 }
 
-export async function executeContractWrite({ plan, records = [], deps = {}, crashAt } = {}) {
+async function executeContractWriteAdmitted({ plan, records = [], deps = {}, crashAt } = {}) {
   if (!plan?.operationId || !plan?.envelope || !plan?.projectedContract) fail('plan');
   if (
     typeof deps.appendRecord !== 'function' ||
@@ -254,7 +255,7 @@ async function createCommentWithGh({ repository, issue, body, pexec }) {
   return { commentNodeId: parsed.node_id };
 }
 
-export async function writeDirectoryContractOperation({
+async function writeDirectoryContractOperationAdmitted({
   repository,
   issue,
   issueBody,
@@ -395,4 +396,28 @@ export function renderContractProjectionRecord({ repository, issue, contract, ac
     envelope,
     visibleMarkdown: renderDeliveryContract({ contract }).markdown,
   });
+}
+
+export async function executeContractWrite(input = {}) {
+  return withRevisionConsumer(
+    {
+      repository: input.plan?.request?.repository,
+      issue: input.plan?.request?.issue,
+      activity: 'contract-write',
+      backend: input.deps?.revisionBackend,
+    },
+    () => executeContractWriteAdmitted(input)
+  );
+}
+
+export async function writeDirectoryContractOperation(input = {}) {
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'contract-write',
+      backend: input.deps?.revisionBackend,
+    },
+    () => writeDirectoryContractOperationAdmitted(input)
+  );
 }

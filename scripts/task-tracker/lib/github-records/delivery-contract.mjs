@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { validateCanonicalAmendmentCapability } from '../criteria-revision/canonical.mjs';
 
 import { canonicalRecordJson } from './canonical-json.mjs';
 import { assertNoSecretRecordData } from './record-secret-policy.mjs';
@@ -39,6 +40,7 @@ const DRAFT_INPUT_KEYS = [
   'verificationCommands',
 ];
 const AMEND_INPUT_KEYS = [
+  'criteriaRevisionCapability',
   'acceptanceCriteria',
   'authorityEpoch',
   'contract',
@@ -432,16 +434,19 @@ export function amendContract(input = {}) {
   } = input;
   validateContract(contract);
   if (expectedContractEpoch !== contract.contractEpoch) throw contractError('stale-epoch');
+  const revisionAmendment = input.criteriaRevisionCapability !== undefined;
+  const definitions = { acceptanceCriteria, verificationCommands, definitionOfDone };
+  if (revisionAmendment)
+    validateCanonicalAmendmentCapability(input.criteriaRevisionCapability, contract, definitions);
   if (
-    contract.status !== 'sealed' ||
+    (!revisionAmendment && contract.status !== 'sealed') ||
     authorityEpoch !== contract.authorityEpoch ||
     coordinatorGrantId !== contract.coordinatorGrantId
   ) {
     throw contractError('authority');
   }
-  const definitions = { acceptanceCriteria, verificationCommands, definitionOfDone };
   assertDefinitions(definitions);
-  assertNoRetiredLogicalIds(contract, definitions);
+  if (!revisionAmendment) assertNoRetiredLogicalIds(contract, definitions);
   if (orderedDefinitionJson(definitions) === orderedDefinitionJson(contract)) {
     throw contractError('no-op-amendment');
   }

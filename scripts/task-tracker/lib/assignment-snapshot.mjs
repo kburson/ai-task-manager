@@ -153,3 +153,133 @@ export function exactSingleton(snapshot, expectedLogin) {
   const owner = singletonOwner(snapshot?.assignees);
   return Boolean(expected && owner === expected);
 }
+
+// Closed original raw-source DATA. Both native current stage evaluation and
+// historical reconstruction invoke the SAME native paging and qualification.
+// This does not select transports, brand a current read, or issue authority.
+export async function deriveRecordedStageAssignment(value) {
+  const { canonicalRecordJson } = await import('./github-records/canonical-json.mjs');
+  const { exactKeys, revisionError } = await import('./criteria-revision/schema.mjs');
+  const refuse = () => revisionError('native-stage-assignment-data');
+  try {
+    canonicalRecordJson(value);
+    exactKeys(value, ['observation', 'lifecycleSources', 'projectId']);
+    const { assertNativeLifecycleSourceData } = await import('./criteria-revision/store.mjs');
+    assertNativeLifecycleSourceData({
+      source: value.lifecycleSources,
+      observation: value.observation,
+    });
+    if (typeof value.projectId !== 'string' || !value.projectId) refuse();
+    const { repository, issue } = value.observation,
+      [owner, repo] = repository.split('/');
+    const cfg = { repo: repository, projectId: value.projectId };
+    const remote = value.lifecycleSources.remote,
+      used = new Set();
+    const read = (entries, request) => {
+      const matches = entries.filter(
+        (entry) => canonicalRecordJson(entry.request) === canonicalRecordJson(request)
+      );
+      if (matches.length !== 1) refuse();
+      used.add(matches[0]);
+      return structuredClone(matches[0].response);
+    };
+    const reads = [],
+      itemIds = new Set(),
+      configuredItems = [];
+    let originalOwners = null;
+    const validateOwners = (data) => {
+      const nodes = data?.repository?.issue?.assignees?.nodes;
+      if (
+        !Array.isArray(nodes) ||
+        nodes.length >= 100 ||
+        nodes.some(
+          (node) =>
+            typeof node?.login !== 'string' ||
+            !/^[A-Za-z0-9][A-Za-z0-9-]*(?:\[bot\])?$/.test(node.login)
+        )
+      )
+        refuse();
+      const owners = canonicalLogins(nodes).sort();
+      if (
+        owners.length !== nodes.length ||
+        (originalOwners && canonicalRecordJson(owners) !== canonicalRecordJson(originalOwners))
+      )
+        refuse();
+      originalOwners ??= owners;
+    };
+    const snapshot = await fetchAssignmentSnapshot({
+      issueNumber: issue,
+      cfg,
+      deps: {
+        gql: async (query, request) => {
+          const isPage = query.includes('projectItems(first: 50, after: $cursor)');
+          const isFinal = query.includes('node(id: $item)');
+          if (
+            isPage === isFinal ||
+            request.owner !== owner ||
+            request.repo !== repo ||
+            request.issue !== issue
+          )
+            refuse();
+          const response = read(
+            isPage ? remote.assignments.pages : remote.assignments.final,
+            request
+          );
+          validateOwners(response);
+          if (isPage) {
+            const connection = response.repository.issue.projectItems;
+            if (
+              !Array.isArray(connection?.nodes) ||
+              connection.nodes.length > 50 ||
+              typeof connection.pageInfo?.hasNextPage !== 'boolean' ||
+              (connection.pageInfo.hasNextPage &&
+                (typeof connection.pageInfo.endCursor !== 'string' ||
+                  !connection.pageInfo.endCursor))
+            )
+              refuse();
+            for (const item of connection.nodes) {
+              if (
+                typeof item?.id !== 'string' ||
+                !item.id ||
+                itemIds.has(item.id) ||
+                typeof item?.project?.id !== 'string' ||
+                !item.project.id
+              )
+                refuse();
+              itemIds.add(item.id);
+              if (item.project.id === cfg.projectId) configuredItems.push(item);
+            }
+          } else if (
+            configuredItems.length !== 1 ||
+            request.item !== configuredItems[0].id ||
+            response.node?.project?.id !== cfg.projectId
+          )
+            refuse();
+          reads.push({
+            kind: isPage ? 'page' : 'final',
+            request: structuredClone(request),
+            response: structuredClone(response),
+          });
+          return response;
+        },
+      },
+    });
+    if (
+      configuredItems.length !== 1 ||
+      snapshot.state !== 'develop' ||
+      remote.assignments.pages.some((entry) => !used.has(entry)) ||
+      remote.assignments.final.some((entry) => !used.has(entry))
+    )
+      refuse();
+    return freezeRecordedAssignment({ reads, snapshot });
+  } catch {
+    refuse();
+  }
+}
+function freezeRecordedAssignment(value) {
+  if (value && typeof value === 'object') {
+    Object.values(value).forEach(freezeRecordedAssignment);
+    Object.freeze(value);
+  }
+  return value;
+}

@@ -22,6 +22,10 @@ import { GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 import { ISSUE_ID_GLOBAL_RE } from './commit-attribution-format.mjs';
 
 const defaultPexec = promisify(execFile);
+const nativeReadData = new WeakMap();
+export function readCommitAttributionReadData(result) {
+  return result && typeof result === 'object' ? (nativeReadData.get(result) ?? null) : null;
+}
 
 // Coerce an issue-number input (`731`, `'731'`, `'#731'`) to its digit string.
 // Throws on anything that is not a positive integer id — a malformed id would
@@ -75,11 +79,41 @@ export async function attributingCommits(
   const id = normalizeId(issueNumber);
   const token = `[#${id}]`;
   const scope = Array.isArray(refs) ? refs : [refs];
-  const { stdout } = await pexec(
-    'git',
-    ['log', ...scope, '--fixed-strings', `--grep=${token}`, '--format=%H%x09%s%x09%aI'],
-    { cwd, timeout: GIT_TIMEOUT_MS }
-  );
+  let capture = null;
+  try {
+    if (
+      pexec === defaultPexec &&
+      typeof cwd === 'string' &&
+      !annotateReachable &&
+      isReachable === undefined &&
+      scope.every((ref) => typeof ref === 'string')
+    )
+      capture = { issue: Number(id), cwd, refs: Object.freeze([...scope]) };
+  } catch {
+    /* Passive data collection cannot change ordinary inputs. */
+  }
+  let response;
+  try {
+    response = await pexec(
+      'git',
+      ['log', ...scope, '--fixed-strings', `--grep=${token}`, '--format=%H%x09%s%x09%aI'],
+      { cwd, timeout: GIT_TIMEOUT_MS }
+    );
+  } catch (error) {
+    if (capture && error && typeof error === 'object')
+      nativeReadData.set(
+        error,
+        Object.freeze({
+          ...capture,
+          stdout: String(error.stdout ?? ''),
+          stderr: String(error.stderr ?? ''),
+          exitCode: typeof error.code === 'number' ? error.code : null,
+          records: null,
+        })
+      );
+    throw error;
+  }
+  const { stdout } = response;
 
   const rows = stdout
     .split('\n')
@@ -96,6 +130,17 @@ export async function attributingCommits(
     }
   }
 
+  if (capture)
+    nativeReadData.set(
+      rows,
+      Object.freeze({
+        ...capture,
+        stdout: String(response.stdout ?? ''),
+        stderr: String(response.stderr ?? ''),
+        exitCode: 0,
+        records: Object.freeze(rows.map((row) => Object.freeze({ ...row }))),
+      })
+    );
   return rows;
 }
 

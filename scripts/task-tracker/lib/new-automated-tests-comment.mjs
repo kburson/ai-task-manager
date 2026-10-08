@@ -1,3 +1,5 @@
+import { withRevisionConsumer } from './criteria-revision/policy.mjs';
+import { assertRevisionProductionTransport } from './criteria-revision/transport-quarantine.mjs';
 // #674 — "New Automated Tests" comment, posted when Develop reaches
 // CODE_COMPLETE (i.e. the develop→test promotion succeeds).
 //
@@ -71,6 +73,7 @@ async function defaultShowShaTestDiff(sha, { cwd } = {}) {
 }
 
 async function defaultListComments({ cfg, issueNumber }) {
+  assertRevisionProductionTransport('gh');
   const { stdout } = await pexec(
     'gh',
     [
@@ -90,6 +93,7 @@ async function defaultListComments({ cfg, issueNumber }) {
 }
 
 async function defaultCreateComment({ cfg, issueNumber, body }) {
+  assertRevisionProductionTransport('gh');
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', cfg.repo, '--body', body], {
     timeout: 15000,
   });
@@ -135,6 +139,19 @@ export function buildNewAutomatedTestsComment(entries) {
 }
 
 export async function postNewAutomatedTestsComment({ cfg, issueNumber, cwd, deps = {} } = {}) {
+  return withRevisionConsumer(
+    {
+      repository: cfg?.repo,
+      issue: issueNumber,
+      projectDir: cwd,
+      backend: deps.revisionBackend,
+      activity: 'issue-write',
+    },
+    () => postNewAutomatedTestsCommentAdmitted({ cfg, issueNumber, cwd, deps })
+  );
+}
+
+async function postNewAutomatedTestsCommentAdmitted({ cfg, issueNumber, cwd, deps }) {
   if (!cfg?.repo) throw new Error('postNewAutomatedTestsComment: cfg.repo is required');
   if (!issueNumber) throw new Error('postNewAutomatedTestsComment: issueNumber is required');
 

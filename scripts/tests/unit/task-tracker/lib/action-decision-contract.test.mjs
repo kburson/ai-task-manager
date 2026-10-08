@@ -110,6 +110,7 @@ test('the decision vocabulary exposes its version and reserved boundary producer
     'authority-collection',
     'action-navigation',
     'action-result-validation',
+    'revision-mutation',
   ]);
   assert.equal(CODE_DEFINITIONS['unclassified-refusal'].domain, 'decision-blocker');
   assert.equal(CODE_DEFINITIONS['guidance-source-diverged'].domain, 'operational-warning');

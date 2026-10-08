@@ -46,6 +46,7 @@ import {
   createTestFileEnvironment,
 } from './run-tests-pool.mjs';
 import { partitionTestEntries, runTestPhases } from './run-tests-schedule.mjs';
+import { loadSerialSectionMetadata } from './run-tests-native-sections.mjs';
 import {
   findMainWorktreePath,
   fleetRegistryPath,
@@ -209,8 +210,13 @@ const CONCURRENCY = poolConcurrency();
 const SUBPROCESS_CONCURRENCY = subprocessPoolConcurrency();
 const SLOW_CONCURRENCY = slowPoolConcurrency();
 const runnable = files.filter((e) => !SKIP.has(e.label));
-const { pooledEntries, subprocessEntries, slowParallelEntries, serialEntries } =
-  partitionTestEntries(runnable);
+const {
+  pooledEntries,
+  subprocessEntries,
+  slowParallelEntries,
+  serialEntries: rawSerialEntries,
+} = partitionTestEntries(runnable);
+const serialEntries = loadSerialSectionMetadata(rawSerialEntries);
 
 // The aggregate remains useful observational timing, while #1157 evaluates the
 // already-distinct pool and serial execution phases as independently bounded
@@ -222,6 +228,7 @@ const {
   subprocessResults,
   slowParallelResults,
   serialResults,
+  executionSections,
   pooledPeakConcurrency,
   subprocessPeakConcurrency,
   slowParallelPeakConcurrency,
@@ -324,6 +331,7 @@ function writeTimingArtifact() {
       commit,
       runnerProfile,
       discoveryInventory: files.map(({ label }) => label),
+      executionSections,
       runnerElapsedMs: sectionElapsedMs,
       poolElapsedMs: pooledElapsedMs,
       subprocessPoolElapsedMs: subprocessElapsedMs,
@@ -389,20 +397,11 @@ if (leaked.length) {
 // `all` (the internal coverage/divergence union) remains exempt.
 const sectionCeilings = evaluateSections({
   lane,
-  sections: [
-    { name: 'pooled', count: pooledEntries.length, elapsedMs: pooledElapsedMs },
-    {
-      name: 'subprocess',
-      count: subprocessEntries.length,
-      elapsedMs: subprocessElapsedMs,
-    },
-    {
-      name: 'slow-parallel',
-      count: slowParallelEntries.length,
-      elapsedMs: slowParallelElapsedMs,
-    },
-    { name: 'serial', count: serialEntries.length, elapsedMs: serialElapsedMs },
-  ],
+  sections: executionSections.map(({ name, files, elapsedMs }) => ({
+    name,
+    count: files.length,
+    elapsedMs,
+  })),
 });
 console.log(`\n${formatSectionSummary(sectionCeilings)}`);
 if (sectionCeilings.breached) {

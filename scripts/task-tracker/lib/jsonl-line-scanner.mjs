@@ -3,12 +3,14 @@
 // the aggregate transcript size.
 import { closeSync, openSync, readSync } from 'node:fs';
 import { StringDecoder } from 'node:string_decoder';
+import { createHash } from 'node:crypto';
 
 const DEFAULT_CHUNK_SIZE = 64 * 1024;
 
-export function scanJsonlRecords(
+function scan(
   filePath,
-  { chunkSize = DEFAULT_CHUNK_SIZE, onRecord = () => {}, onMalformed = () => {} } = {}
+  { chunkSize = DEFAULT_CHUNK_SIZE, onRecord = () => {}, onMalformed = () => {} } = {},
+  digest = null
 ) {
   if (!Number.isInteger(chunkSize) || chunkSize < 1) {
     throw new RangeError('scanJsonlRecords: chunkSize must be a positive integer');
@@ -22,6 +24,7 @@ export function scanJsonlRecords(
   const decoder = new StringDecoder('utf8');
   let pending = '';
   let totalLines = 0;
+  let byteLength = 0;
 
   const visit = (line) => {
     if (line === '') return;
@@ -39,7 +42,12 @@ export function scanJsonlRecords(
   try {
     let bytesRead;
     while ((bytesRead = readSync(fd, buffer, 0, buffer.length, null)) > 0) {
-      pending += decoder.write(buffer.subarray(0, bytesRead));
+      const consumed = buffer.subarray(0, bytesRead);
+      if (digest) {
+        digest.update(consumed);
+        byteLength += bytesRead;
+      }
+      pending += decoder.write(consumed);
       let newline;
       while ((newline = pending.indexOf('\n')) !== -1) {
         visit(pending.slice(0, newline));
@@ -52,5 +60,17 @@ export function scanJsonlRecords(
     closeSync(fd);
   }
 
-  return totalLines;
+  return digest
+    ? Object.freeze({ totalLines, byteLength, sha256: digest.digest('hex') })
+    : totalLines;
+}
+
+export function scanJsonlRecords(filePath, options) {
+  return scan(filePath, options);
+}
+
+// Data from this exact consumed stream, not a stable filesystem snapshot or
+// authority to execute any lifecycle operation. Never reread or retain text.
+export function scanJsonlRecordsWithSource(filePath, options) {
+  return scan(filePath, options, createHash('sha256'));
 }

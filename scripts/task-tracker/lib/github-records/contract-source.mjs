@@ -184,6 +184,28 @@ export async function resolveContractSource({
   } catch (error) {
     fail('unavailable', error);
   }
+  return resolveContractSourceFromRecord({ repository, issue, issueBody, record });
+}
+
+// Pure canonical source reconstruction from a record already collected by the
+// caller. This validates data; it performs no IO and grants no current authority.
+export function resolveContractSourceFromRecord(input) {
+  if (
+    !input ||
+    Object.keys(input).length !== 4 ||
+    !['repository', 'issue', 'issueBody', 'record'].every((key) => Object.hasOwn(input, key))
+  )
+    fail('input');
+  const { repository, issue, issueBody, record } = input;
+  assertInput({ repository, issue, issueBody });
+  let directory;
+  try {
+    directory = parseIssueDirectory({ issueBody });
+  } catch (error) {
+    fail('directory', error);
+  }
+  if (!directory) fail('directory');
+  const commentNodeId = directory.singletons['delivery-contract'];
   const contract = validateRecord(record, { repository, issue, commentNodeId });
   return deepFreeze({
     sourceKind: 'github-records/v1',

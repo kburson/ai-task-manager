@@ -15,7 +15,7 @@ const parallelRecords = [
   { file: 'c.test.mjs', label: 'c.test.mjs', wallMs: 1000, inProcMs: 900, status: 0 },
 ];
 
-test('schema 5 separates every bounded phase elapsed from duration sums', () => {
+test('schema 6 separates every bounded phase elapsed from duration sums', () => {
   const artifact = serializeArtifact(parallelRecords, {
     lane: 'unit',
     generatedAt: '2026-09-02T00:00:00Z',
@@ -29,13 +29,16 @@ test('schema 5 separates every bounded phase elapsed from duration sums', () => 
       logicalCpuCount: 10,
     },
     discoveryInventory: parallelRecords.map(({ file }) => file),
+    executionSections: [
+      { name: 'pooled', files: parallelRecords.map(({ file }) => file), elapsedMs: 800 },
+    ],
     runnerElapsedMs: 1250,
     poolElapsedMs: 800,
     subprocessPoolElapsedMs: 300,
     slowPoolElapsedMs: 100,
     serialElapsedMs: 150,
   });
-  assert.equal(artifact.schema, 5);
+  assert.equal(artifact.schema, 6);
   assert.deepEqual(artifact.elapsed, {
     runnerMs: 1250,
     poolMs: 800,

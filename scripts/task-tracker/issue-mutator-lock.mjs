@@ -55,6 +55,12 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { issueLockPath } from './paths.mjs';
+import { withRevisionIssueMutation } from './lib/criteria-revision/policy.mjs';
+import {
+  assertRevisionCapability,
+  assertRevisionIssueLockOrder,
+  revisionDelegatesIssueLock,
+} from './lib/criteria-revision/interlock.mjs';
 
 // #656 — the mtime TTL is no longer the primary staleness signal. It is an
 // outer backstop, raised well above the longest expected guarded action (a
@@ -88,6 +94,10 @@ const selfPublished = new Map();
 function heldHere(token) {
   const store = heldContext.getStore();
   return store ? store.has(token) : false;
+}
+
+export function isIssueLockHeldLocally(issue) {
+  return heldHere(issueLockToken(issue));
 }
 
 function anyHeldHere() {
@@ -246,6 +256,24 @@ export function tryReclaimStale(lockPath, deps = {}) {
 }
 
 export async function withIssueLock(opts, fn) {
+  if (!opts?.issue) throw new Error('withIssueLock: issue is required');
+  if (!opts?.projDir) throw new Error('withIssueLock: projDir is required');
+  return withRevisionIssueMutation(opts, (admitted) => acquireIssueLock(admitted, fn));
+}
+
+// Internal interlock/delegation primitive: ownership and ordering only. Covered
+// semantic writers must use withIssueLock and their own policy boundary.
+export async function withAuthenticatedRevisionIssueLock(opts, fn) {
+  if (!opts?.revisionContext || !opts?.revisionCapability) throw new Error('revision-capability');
+  assertRevisionCapability(
+    opts.revisionCapability,
+    { ...opts.revisionContext, issues: [Number(opts.issue)] },
+    opts.revisionPorts
+  );
+  return acquireIssueLock(opts, fn);
+}
+
+async function acquireIssueLock(opts, fn) {
   const {
     issue,
     verb = 'unknown',
@@ -269,7 +297,16 @@ export async function withIssueLock(opts, fn) {
   // unlinks the holder and rmdirs the lock. A nested frame that duplicated that
   // teardown would release its parent's lock early. The holding frame stays the
   // sole owner of both the lock directory and the env restore.
-  if (isIssueLockHeld(issue)) return await fn();
+  if (opts.revisionContext) {
+    assertRevisionCapability(
+      opts.revisionCapability,
+      { ...opts.revisionContext, issues: [Number(issue)] },
+      opts.revisionPorts
+    );
+    assertRevisionIssueLockOrder(opts.revisionCapability, issue);
+    if (heldHere(token) || revisionDelegatesIssueLock(opts.revisionCapability, issue))
+      return await fn();
+  } else if (isIssueLockHeld(issue)) return await fn();
 
   const lockPath = issueLockPath(issue, projDir);
   mkdirSync(path.dirname(lockPath), { recursive: true });

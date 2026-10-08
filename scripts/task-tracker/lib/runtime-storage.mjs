@@ -147,6 +147,13 @@ export function readPhysicalRuntimeIdentity(directory) {
 
 const runtimeRootAdapters = new AsyncLocalStorage();
 
+// Native stage capture cannot derive physical identity from ambient adapters.
+// This assertion intentionally never inspects the supplied adapter object.
+export function assertNativeRuntimeRootAdaptersAbsent() {
+  if (runtimeRootAdapters.getStore() !== undefined)
+    fail('ROOT_ADAPTERS_ACTIVE', 'Native runtime source capture requires absent adapters');
+}
+
 // Explicit dependency injection for callers/tests; never selected by CLI or env.
 // Async scope restores defaults and keeps parallel calls independent.
 export function withRuntimeRootAdapters(adapters, operation) {
@@ -180,6 +187,16 @@ export function resolveRuntimeRoot({
   const resolvePhysical = adapters.realpath ?? physical;
   const checkArtifact = adapters.assertOutsideArtifacts ?? assertOutsideArtifacts;
   const invoking = identify(cwd);
+  // One synchronous native observation per identical physical directory. No
+  // adapter callback is skipped, and the next invocation always reads afresh.
+  const nativeIdentities =
+    identify === readPhysicalRuntimeIdentity &&
+    resolvePhysical === physical &&
+    checkArtifact === assertOutsideArtifacts
+      ? new Map()
+      : null;
+  if (nativeIdentities && path.resolve(cwd) === invoking.projectRoot)
+    nativeIdentities.set(invoking.projectRoot, structuredClone(invoking));
   checkArtifact(invoking.projectRoot);
   checkArtifact(invoking.mainRoot);
   const candidates = new Map();
@@ -192,7 +209,12 @@ export function resolveRuntimeRoot({
     }
     const candidatePath = resolvePhysical(path.resolve(cwd, value));
     checkArtifact(candidatePath);
-    const candidate = identify(candidatePath);
+    const cached = nativeIdentities?.get(candidatePath);
+    let candidate = cached ? structuredClone(cached) : null;
+    if (!candidate) {
+      candidate = identify(candidatePath);
+      nativeIdentities?.set(candidatePath, structuredClone(candidate));
+    }
     checkArtifact(candidate.projectRoot);
     checkArtifact(candidate.mainRoot);
     if (candidate.projectRoot !== invoking.projectRoot) {

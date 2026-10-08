@@ -79,6 +79,16 @@
           "kind": "test",
           "command": "node scripts/maintenance/verify-ci-receipts.mjs"
         }
+      ],
+      "declaredCommandCoverage": [
+        {
+          "command": "npm test",
+          "requires": ["test-cloud-complete"]
+        },
+        {
+          "command": "npm run test:slow",
+          "requires": ["test-cloud-complete"]
+        }
       ]
     }
   }

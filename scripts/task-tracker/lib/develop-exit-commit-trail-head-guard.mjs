@@ -13,12 +13,13 @@
 // cfg/issueNumber. projectDir defaults to TASK_TRACKER_PROJECT_DIR or cwd
 // inside the underlying gate's deps factory.
 
-import { gateCommitTrailContainsHead } from './code-complete-gate.mjs';
+import { gateCommitTrailContainsHead, readCommitTrailHeadReadData } from './code-complete-gate.mjs';
 import { isNoCommitKind } from './issue-kind.mjs';
 import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 import { resolveProjectDir } from './project-dir.mjs';
 
 export const GUARD_ID = 'develop-exit-commit-trail-head';
+const nativeReadData = new WeakMap();
 
 export const developExitCommitTrailHeadGuard = {
   id: GUARD_ID,
@@ -43,12 +44,37 @@ export const developExitCommitTrailHeadGuard = {
       projectDir,
       deps: ctx.deps?.commitTrailHead,
     });
-    if (result.ok) return { ok: true };
+    const finish = (out) => {
+      const data =
+        gateFn === gateCommitTrailContainsHead && resolveDir === resolveProjectDir
+          ? readCommitTrailHeadReadData(result)
+          : null;
+      if (data) nativeReadData.set(out, data);
+      return out;
+    };
+    if (result.ok) return finish({ ok: true });
     const reason = result.blocker || 'commit-trail-stale';
-    return {
+    return finish({
       ok: false,
       reason,
       blockers: [reason],
-    };
+    });
   },
 };
+
+const originalRun = developExitCommitTrailHeadGuard.run;
+export function readDevelopCommitTrailHeadReadData(result, invocation) {
+  try {
+    if (
+      !invocation ||
+      Object.keys(invocation).sort().join(',') !== 'guard,id,run' ||
+      invocation.guard !== developExitCommitTrailHeadGuard ||
+      invocation.run !== originalRun ||
+      invocation.id !== GUARD_ID
+    )
+      return null;
+    return result && typeof result === 'object' ? (nativeReadData.get(result) ?? null) : null;
+  } catch {
+    return null;
+  }
+}

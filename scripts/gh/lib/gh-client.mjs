@@ -1,3 +1,4 @@
+import { assertRevisionProductionTransport } from '../../task-tracker/lib/criteria-revision/transport-quarantine.mjs';
 import { execFile as nodeExecFile, spawn as nodeSpawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -53,12 +54,14 @@ function resolvesToDeclaredOfflineDouble(env) {
 }
 
 function defaultPexec(...args) {
+  assertRevisionProductionTransport(args[0]);
   const refusal = realGhRefusal(args[0], args[1], args[2]);
   if (refusal) return Promise.reject(refusal);
   return nodePexec(...args);
 }
 
 function defaultExecFile(...args) {
+  assertRevisionProductionTransport(args[0]);
   const refusal = realGhRefusal(args[0], args[1], args[2]);
   if (refusal) throw refusal;
   return nodeExecFile(...args);
@@ -67,6 +70,7 @@ function defaultExecFile(...args) {
 defaultExecFile[promisify.custom] = (...args) => defaultPexec(...args);
 
 function defaultSpawn(...args) {
+  assertRevisionProductionTransport(args[0]);
   const refusal = realGhRefusal(args[0], args[1], args[2]);
   if (refusal) throw refusal;
   return nodeSpawn(...args);

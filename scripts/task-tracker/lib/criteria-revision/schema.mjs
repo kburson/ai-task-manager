@@ -1,3 +1,4 @@
+import { validateCanonicalArchive } from './canonical.mjs';
 // @story #1851
 // Closed internal data contracts. Validation proves consistency, not remote freshness.
 import { createHash } from 'node:crypto';
@@ -234,6 +235,7 @@ export function validateRevisionObservation(value) {
     'retiredIdentities',
     'revision',
     'revisionId',
+    ...(value.sourceKind === 'canonical-contract' ? ['canonicalArchive'] : []),
   ]);
   if (value.schema !== OBSERVATION_SCHEMA) revisionError('observation-schema');
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value.repository)) revisionError('repository');
@@ -297,10 +299,13 @@ export function validateRevisionObservation(value) {
     value.revisionRecords.records.map((x) => x.eventId),
     'duplicate-event'
   );
-  unique(
-    value.revisionRecords.records.map((x) => x.operationId),
-    'duplicate-operation'
-  );
+  const operations = new Map();
+  for (const record of value.revisionRecords.records) {
+    const binding = `${record.transactionId}:${record.proposalDigest}`;
+    if (operations.has(record.operationId) && operations.get(record.operationId) !== binding)
+      revisionError('duplicate-operation');
+    operations.set(record.operationId, binding);
+  }
   strings(value.retiredIdentities, 'retired-identities');
   if (value.identities !== null) {
     for (const item of array(value.identities, 'identities')) {
@@ -348,6 +353,7 @@ export function validateRevisionObservation(value) {
       canonicalRecordJson(rawGrant.coordinator) !== canonicalRecordJson(value.grant.coordinator)
     )
       revisionError('canonical-authority');
+    validateCanonicalArchive(value);
   } else revisionError('authority-kind');
   return value;
 }
@@ -483,7 +489,14 @@ export function validateRevisionProposal(value) {
     value.invalidation.map((x) => x.identity),
     'duplicate-proof'
   );
-  exactKeys(value.archive, ['observation', 'definitions', 'resourceVector']);
+  exactKeys(value.archive, [
+    'observation',
+    'definitions',
+    'resourceVector',
+    ...(Object.hasOwn(value.archive, 'nativeIndividualProofs') ? ['nativeIndividualProofs'] : []),
+  ]);
+  if (Object.hasOwn(value.archive, 'nativeIndividualProofs'))
+    array(value.archive.nativeIndividualProofs, 'native-individual-array');
   validateRevisionObservation(value.archive.observation);
   validateDefinitions(value.archive.definitions);
   vector(value.archive.resourceVector);
@@ -494,7 +507,15 @@ export function validateRevisionProposal(value) {
     revisionError('resource-vector');
   for (const item of array(value.writeSet, 'write-set')) {
     exactKeys(item, ['resource', 'beforeHash', 'afterHash', 'recordId', 'afterBytes']);
-    if (!['issue-body', 'delivery-contract', 'revision-record'].includes(item.resource))
+    if (
+      ![
+        'issue-body',
+        'delivery-contract',
+        'revision-record',
+        'capsule',
+        'proof-projection',
+      ].includes(item.resource)
+    )
       revisionError('resource');
     digest(item.beforeHash, true);
     digest(item.afterHash);
@@ -527,6 +548,9 @@ export function validateRevisionRequest(value) {
   const p = value.proposal,
     derived = deriveProposal({
       observation: p.archive.observation,
+      ...(Object.hasOwn(p.archive, 'nativeIndividualProofs')
+        ? { nativeIndividualProofs: p.archive.nativeIndividualProofs }
+        : {}),
       edits: p.edits,
       reason: p.reason,
       mode: p.mode,
@@ -537,4 +561,55 @@ export function validateRevisionRequest(value) {
     });
   if (canonicalRecordJson(derived) !== canonicalRecordJson(p)) revisionError('derived-proposal');
   return value;
+}
+
+export function validatePlanApprovalPayload(payload) {
+  const hash = /^sha256:[0-9a-f]{64}$/;
+  exactKeys(
+    payload,
+    [
+      'schema',
+      'revisionId',
+      'semanticContractDigest',
+      'contractEpoch',
+      'sourceBindings',
+      'provenance',
+    ],
+    'plan-approval-binding'
+  );
+  if (
+    payload.schema !== 'aitm.plan-approval-binding/v1' ||
+    (payload.revisionId !== null &&
+      (typeof payload.revisionId !== 'string' || !payload.revisionId)) ||
+    !hash.test(payload.semanticContractDigest) ||
+    (payload.contractEpoch !== null &&
+      (!Number.isSafeInteger(payload.contractEpoch) || payload.contractEpoch < 1))
+  )
+    revisionError('plan-approval-binding');
+  if (!Array.isArray(payload.sourceBindings) || payload.sourceBindings.length !== 3)
+    revisionError('plan-approval-source-binding');
+  const names = new Set();
+  for (const source of payload.sourceBindings) {
+    exactKeys(source, ['identity', 'hash'], 'plan-approval-source-binding');
+    if (
+      !['user-story', 'story-intent', 'linked-plan'].includes(source.identity) ||
+      names.has(source.identity) ||
+      !hash.test(source.hash)
+    )
+      revisionError('plan-approval-source-binding');
+    names.add(source.identity);
+  }
+  exactKeys(
+    payload.provenance,
+    ['mode', 'authorityReference', 'auditReference'],
+    'plan-approval-provenance'
+  );
+  if (
+    !['human', 'full-auto'].includes(payload.provenance.mode) ||
+    ['authorityReference', 'auditReference'].some(
+      (key) => typeof payload.provenance[key] !== 'string' || !payload.provenance[key].trim()
+    )
+  )
+    revisionError('plan-approval-provenance');
+  return payload;
 }

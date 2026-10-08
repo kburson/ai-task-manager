@@ -1,5 +1,7 @@
 // @story #1859
+import { withRevisionConsumer } from '../criteria-revision/policy.mjs';
 import { pexec } from '../../../gh/lib/gh-client.mjs';
+import { validateBlocker } from '../action-decision/contract.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import {
   encodeRecord,
@@ -8,6 +10,23 @@ import {
   ReviewedScopeError,
   refuse,
 } from './model.mjs';
+
+function preserveRevisionTransportRefusal(error) {
+  if (
+    error?.name !== 'RevisionMemoryTransportError' ||
+    error.code !== 'revision-authority-unavailable' ||
+    error.status !== 'indeterminate' ||
+    error.blocker?.guardId !== 'revision-mutation'
+  )
+    return;
+  try {
+    validateBlocker(error.blocker, { status: error.status });
+  } catch {
+    return;
+  }
+  // This preserves a denial only; caller error data can never admit an effect.
+  throw error;
+}
 
 function databaseId(value) {
   const text = typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : value;
@@ -79,6 +98,7 @@ export async function readCurrentRecord({ repository, issue, pointer, deps = {} 
   try {
     comment = await transport(deps).read({ repository, commentId: pointer.commentId });
   } catch (error) {
+    preserveRevisionTransportRefusal(error);
     const refusal = new ReviewedScopeError('reviewed-scope-comment-unreadable', error.message);
     refusal.cause = error;
     throw refusal;
@@ -97,6 +117,7 @@ function sameCandidate(candidate, record, predecessor) {
   );
 }
 function uncertain(record, predecessor, cause) {
+  preserveRevisionTransportRefusal(cause);
   const error = new ReviewedScopeError(
     'reviewed-scope-comment-uncertain',
     cause?.message ?? String(cause)
@@ -113,6 +134,20 @@ function uncertain(record, predecessor, cause) {
   return error;
 }
 export async function ensureRecordComment({
+  repository,
+  issue,
+  projectDir,
+  record,
+  expectedPredecessor,
+  deps = {},
+}) {
+  return withRevisionConsumer(
+    { repository, issue, projectDir, backend: deps.revisionBackend, activity: 'issue-write' },
+    () => ensureRecordCommentAdmitted({ repository, issue, record, expectedPredecessor, deps })
+  );
+}
+
+async function ensureRecordCommentAdmitted({
   repository,
   issue,
   record,

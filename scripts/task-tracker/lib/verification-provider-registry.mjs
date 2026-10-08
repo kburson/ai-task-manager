@@ -1,13 +1,17 @@
 // @story #1218
 // Deterministic built-in verification-provider registry and contract boundary.
 
-import { validateVerificationCommand } from './verification-allowlist.mjs';
+import path from 'node:path';
+import {
+  validateVerificationCommand,
+  parseVerificationCommandPolicy,
+} from './verification-allowlist.mjs';
 import { createNodeVerificationProvider } from './verification-providers/node.mjs';
 import { createProjectVerificationProvider } from './verification-providers/project.mjs';
 
 const PROVIDER_KEYS = new Set(['id', 'develop', 'test']);
 const DEVELOP_KEYS = new Set(['iterationSteps', 'finalSteps']);
-const TEST_KEYS = new Set(['setup', 'steps', 'npmCiArgs']);
+const TEST_KEYS = new Set(['setup', 'steps', 'npmCiArgs', 'declaredCommandCoverage']);
 const STEP_KEYS = new Set(['classification', 'kind', 'command', 'label']);
 const STEP_KINDS = new Set(['format', 'lint', 'build', 'test', 'environment']);
 const CLASSIFICATION_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -114,18 +118,73 @@ function normalizeConfiguredSteps(
   );
 }
 
+// @story #1899
+function normalizeDeclaredCommandCoverage(value, { testSteps, projectDir, validateCommand }) {
+  if (value === undefined) return Object.freeze([]);
+  if (!Array.isArray(value)) fail('test.declaredCommandCoverage must be an array');
+  const configured = new Map(testSteps.map((step) => [step.classification, step]));
+  const executed = new Set(
+    testSteps.map(({ command, args }) => JSON.stringify([command, ...args]))
+  );
+  const seen = new Set();
+  return Object.freeze(
+    value.map((entry, index) => {
+      assertObject(entry, `coverage entry ${index + 1} must be an object`);
+      assertExactKeys(entry, new Set(['command', 'requires']), 'coverage');
+      if (typeof entry.command !== 'string' || entry.command.trim() === '') {
+        fail('coverage command must be non-empty');
+      }
+      const validation = validateCommand(entry.command, { projectDir });
+      if (!validation?.ok || !Array.isArray(validation.argv) || validation.argv.length === 0) {
+        fail(`coverage command rejected: ${validation?.reason || 'invalid argv'}`);
+      }
+      const commandKey = JSON.stringify(validation.argv);
+      if (seen.has(commandKey)) fail('duplicate coverage command');
+      if (executed.has(commandKey))
+        fail('coverage command already executes in configured Test steps');
+      seen.add(commandKey);
+      if (!Array.isArray(entry.requires) || entry.requires.length === 0) {
+        fail('coverage requires must be a non-empty array');
+      }
+      const requirements = new Set();
+      const requires = entry.requires.map((classification) => {
+        if (typeof classification !== 'string' || !CLASSIFICATION_RE.test(classification)) {
+          fail('coverage requirement must be a lowercase slug');
+        }
+        if (requirements.has(classification))
+          fail(`duplicate coverage requirement: ${classification}`);
+        requirements.add(classification);
+        const prerequisite = configured.get(classification);
+        if (!prerequisite) fail(`unknown coverage requirement: ${classification}`);
+        if (prerequisite.kind !== 'test') fail('coverage requirement must reference a test step');
+        return classification;
+      });
+      return Object.freeze({
+        command: validation.argv.join(' '),
+        commandKey,
+        requires: Object.freeze(requires),
+      });
+    })
+  );
+}
+
 function targetedSteps({ declaredCommands = [], existingSteps = [], projectDir, validateCommand }) {
   const existing = new Set(existingSteps.map(({ command, args }) => [command, ...args].join(' ')));
+  const classifications = new Set(existingSteps.map(({ classification }) => classification));
   let ordinal = 0;
   return declaredCommands.flatMap((item) => {
     const command = String(typeof item === 'string' ? item : item?.command || '').trim();
     if (!command || existing.has(command)) return [];
+    let classification;
+    do {
+      classification = `test-targeted-${++ordinal}`;
+    } while (classifications.has(classification));
+    classifications.add(classification);
     const validation = validateCommand(command, { projectDir });
     if (!validation?.ok || !Array.isArray(validation.argv) || validation.argv.length === 0) {
-      ordinal += 1;
       return [
         freezeStep({
-          classification: `test-targeted-${ordinal}`,
+          classification,
           kind: 'test',
           command,
           args: [],
@@ -135,10 +194,9 @@ function targetedSteps({ declaredCommands = [], existingSteps = [], projectDir, 
         }),
       ];
     }
-    ordinal += 1;
     return [
       freezeStep({
-        classification: `test-targeted-${ordinal}`,
+        classification,
         kind: 'test',
         command: validation.argv[0],
         args: validation.argv.slice(1),
@@ -158,13 +216,46 @@ function wrapProvider(raw) {
   });
 }
 
-export function resolveVerificationProvider({
+export function resolveVerificationProvider(input = {}) {
+  return resolveProviderCore({
+    ...input,
+    validateCommand: input.deps?.validateCommand || validateVerificationCommand,
+  });
+}
+
+// Recorded plans are data, never current execution permission. No caller may
+// supply a validator, filesystem result, or alternate executable provider here.
+export function deriveRecordedDevelopFinalPlan(input) {
+  assertObject(input, 'recorded input must be an object');
+  assertExactKeys(input, new Set(['configuration', 'projectDir']), 'recorded input');
+  const { configuration, projectDir } = input;
+  assertObject(configuration, 'recorded configuration must be an object');
+  assertExactKeys(
+    configuration,
+    new Set(['verificationProvider', 'developVerification']),
+    'recorded configuration'
+  );
+  if (
+    Object.keys(configuration).length !== 2 ||
+    typeof projectDir !== 'string' ||
+    !path.isAbsolute(projectDir)
+  )
+    fail('recorded configuration and original absolute worktree required');
+  return resolveProviderCore({
+    config: configuration.verificationProvider,
+    legacyDevelopVerification: configuration.developVerification,
+    projectDir,
+    validateCommand: parseVerificationCommandPolicy,
+  }).planDevelopFinal();
+}
+
+function resolveProviderCore({
   config,
   projectDir = process.cwd(),
   legacyDevelopVerification = null,
   deps = {},
-} = {}) {
-  const validateCommand = deps.validateCommand || validateVerificationCommand;
+  validateCommand,
+}) {
   const appendTargeted = (input) => targetedSteps({ ...input, projectDir, validateCommand });
 
   if (config == null) {
@@ -187,27 +278,41 @@ export function resolveVerificationProvider({
   assertExactKeys(config.test, TEST_KEYS, 'test');
   if (config.test.setup !== 'npm-ci') fail('test.setup must equal npm-ci');
 
+  const iterationSteps = normalizeConfiguredSteps(config.develop.iterationSteps, {
+    stage: 'develop.iterationSteps',
+    projectDir,
+    validateCommand,
+  });
+  const finalSteps = normalizeConfiguredSteps(config.develop.finalSteps, {
+    stage: 'develop.finalSteps',
+    projectDir,
+    validateCommand,
+    requireNonEmpty: true,
+  });
+  const testSteps = normalizeConfiguredSteps(config.test.steps, {
+    stage: 'test.steps',
+    projectDir,
+    validateCommand,
+    requireNonEmpty: true,
+  });
+  const declaredCommandCoverage = normalizeDeclaredCommandCoverage(
+    config.test.declaredCommandCoverage,
+    { testSteps, projectDir, validateCommand }
+  );
+  const commandIdentity = (command) => {
+    const result = validateCommand(command, { projectDir });
+    return result?.ok && Array.isArray(result.argv) ? JSON.stringify(result.argv) : null;
+  };
   const normalized = Object.freeze({
-    iterationSteps: normalizeConfiguredSteps(config.develop.iterationSteps, {
-      stage: 'develop.iterationSteps',
-      projectDir,
-      validateCommand,
-    }),
-    finalSteps: normalizeConfiguredSteps(config.develop.finalSteps, {
-      stage: 'develop.finalSteps',
-      projectDir,
-      validateCommand,
-      requireNonEmpty: true,
-    }),
-    testSteps: normalizeConfiguredSteps(config.test.steps, {
-      stage: 'test.steps',
-      projectDir,
-      validateCommand,
-      requireNonEmpty: true,
-    }),
+    iterationSteps,
+    finalSteps,
+    testSteps,
+    declaredCommandCoverage,
     setup: config.test.setup,
     npmCiArgs: normalizeNpmCiArgs(config.test.npmCiArgs),
   });
 
-  return wrapProvider(createProjectVerificationProvider({ config: normalized, appendTargeted }));
+  return wrapProvider(
+    createProjectVerificationProvider({ config: normalized, appendTargeted, commandIdentity })
+  );
 }

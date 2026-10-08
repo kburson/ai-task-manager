@@ -109,6 +109,7 @@ export function buildEvidenceSubject({
       : null;
   const identity = {
     schema: 'aitm.evidence-subject/v2',
+    ...(requirements.revisionBinding ? { revisionBinding: requirements.revisionBinding } : {}),
     repositoryId,
     source: {
       objectFormat: text(['rev-parse', '--show-object-format']),

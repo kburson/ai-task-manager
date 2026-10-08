@@ -1,7 +1,12 @@
+import {
+  assertRevisionStageHostEffect,
+  assertRevisionProductionTransport,
+  isMemoryStageEffectScope,
+} from './lib/criteria-revision/transport-quarantine.mjs';
 // GH timing comment — locate/create/append.
 // GH I/O uses `gh` CLI via execFile with timeout.
 
-import { timingActorMarker, timingEngagementMarker } from './lib/timing-actor.mjs';
+import { timingActorKey, timingActorMarker, timingEngagementMarker } from './lib/timing-actor.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
@@ -13,6 +18,7 @@ import {
   ensureTimingRowFullMarkerCell,
   isTableTimingTimestamp,
   parseTimingRow,
+  splitTimingRowMarker,
   replaceTimingRowCells,
   replaceTimingRowCell,
 } from './lib/timing-row-reader.mjs';
@@ -148,6 +154,43 @@ export function buildRow({
   if (Math.abs(tsMs - Date.now()) > RETROACTIVE_TS_WINDOW_MS) {
     throw new Error(RETROACTIVE_TS_ERROR);
   }
+  return renderTimingRow({
+    ts,
+    event,
+    activeMin,
+    idleMin,
+    activeSec,
+    idleSec,
+    deltaWords,
+    deltaWordsFull,
+    wordMarker,
+    fullWordMarker,
+    description,
+    phase,
+    actorKey,
+    engagement,
+  });
+}
+
+function renderTimingRow(
+  {
+    ts,
+    event,
+    activeMin,
+    idleMin,
+    activeSec,
+    idleSec,
+    deltaWords,
+    deltaWordsFull,
+    wordMarker,
+    fullWordMarker,
+    description = '',
+    phase,
+    actorKey,
+    engagement,
+  },
+  offsetMin
+) {
   // Phase descriptor — when supplied as `{state, phase}` (or `{state, kind}`),
   // resolve event + description from PHASE_EVENTS. Caller-supplied `event` /
   // `description` win when the descriptor is missing or unresolved; this keeps
@@ -205,9 +248,115 @@ export function buildRow({
       timingActorMarker(actorKey) +
       (engagement ? timingEngagementMarker(engagement) : '') +
       trailingMarker;
-  const row = `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${fullCell}${trailingMarker}`;
+  const row = `| ${fmtTs(ts, { offsetMin })} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${fullCell}${trailingMarker}`;
   if (actorKey) parseTimingRow(row);
   return row;
+}
+
+// Checks retained bytes only. Never returns a rendered actor row, changes the
+// current writer's clock check, or establishes original execution provenance.
+export function assertRecordedStageActorRow(input) {
+  try {
+    const closed = (value, keys) =>
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      Object.keys(value).sort().join(',') === [...keys].sort().join(',');
+    if (
+      !closed(input, [
+        'row',
+        'identity',
+        'ts',
+        'offsetMin',
+        'engagement',
+        'activeSec',
+        'idleSec',
+        'deltaWords',
+        'wordMarker',
+        'fullWordMarker',
+      ]) ||
+      !closed(input.identity, ['provider', 'sid']) ||
+      !closed(input.engagement, [
+        'startMs',
+        'endMs',
+        'activeEstimateSec',
+        'wordStart',
+        'wordEnd',
+        'fullWordStart',
+        'fullWordEnd',
+      ]) ||
+      typeof input.row !== 'string' ||
+      typeof input.ts !== 'string' ||
+      !Number.isFinite(Date.parse(input.ts)) ||
+      input.engagement.endMs !== Date.parse(input.ts) ||
+      !Number.isInteger(input.offsetMin) ||
+      Math.abs(input.offsetMin) > 840 ||
+      ['activeSec', 'idleSec', 'deltaWords', 'wordMarker', 'fullWordMarker'].some(
+        (key) => input[key] !== null && (!Number.isSafeInteger(input[key]) || input[key] < 0)
+      )
+    )
+      throw new TypeError();
+    const expected = renderTimingRow(
+      {
+        ts: input.ts,
+        actorKey: timingActorKey(input.identity),
+        engagement: input.engagement,
+        activeSec: input.activeSec,
+        idleSec: input.idleSec,
+        deltaWords: input.deltaWords,
+        wordMarker: input.wordMarker,
+        fullWordMarker: input.fullWordMarker,
+        event: 'update',
+        description: 'lifecycle boundary',
+      },
+      input.offsetMin
+    );
+    if (input.row !== expected) throw new TypeError();
+  } catch {
+    throw new TypeError('recorded-stage-actor-row');
+  }
+}
+
+// Shared native marker placement; transforms data only and never posts a row.
+export function withTimingTransition(row, transitionId) {
+  if (!transitionId) return row;
+  const { core, marker } = splitTimingRowMarker(row);
+  return `${core} <!-- aitm-transition move="${transitionId}" -->${marker}`;
+}
+
+// Only original Develop→Test phase facts. No actor engagement, accounting,
+// arbitrary event, clock override or current publication authority is accepted.
+export function buildRecordedPhaseRow(input) {
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !== 'offsetMin,phase,transitionId,ts' ||
+    typeof input.ts !== 'string' ||
+    !Number.isFinite(Date.parse(input.ts)) ||
+    !Number.isInteger(input.offsetMin) ||
+    Math.abs(input.offsetMin) > 840 ||
+    !['develop:complete', 'test:enter'].includes(input.phase) ||
+    typeof input.transitionId !== 'string' ||
+    !/^move:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+      input.transitionId
+    )
+  )
+    throw new TypeError('recorded-phase-data');
+  const [state, phase] = input.phase.split(':');
+  const row = renderTimingRow(
+    {
+      ts: input.ts,
+      phase: { state, phase },
+      activeSec: 0,
+      idleSec: 0,
+      deltaWords: 0,
+      wordMarker: 0,
+      fullWordMarker: 0,
+    },
+    input.offsetMin
+  );
+  return withTimingTransition(row, input.transitionId);
 }
 
 // #981 — narrow, explicit exemption from buildRow's retroactive-timestamp
@@ -412,8 +561,25 @@ export function writeLastKnownState(body, state) {
   if (typeof state !== 'string' || !state.trim()) {
     throw new Error('writeLastKnownState: state must be a non-empty string');
   }
+  return writeLastKnownStateAt({ body, state, ts: new Date().toISOString() });
+}
+
+// Original captured data only; the current writer above always samples its native clock.
+export function writeLastKnownStateAt(input) {
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !== 'body,state,ts' ||
+    typeof input.state !== 'string' ||
+    !input.state.trim() ||
+    typeof input.ts !== 'string' ||
+    !Number.isFinite(Date.parse(input.ts))
+  ) {
+    throw new Error('last-known-state-input');
+  }
+  const { body, state, ts } = input;
   const normalized = normalizeStateId(state);
-  const ts = new Date().toISOString();
   const block = `${serializeMarker('last-known-state', { state: normalized, ts })}\n`;
   const src = typeof body === 'string' ? body : '';
 
@@ -779,26 +945,142 @@ function appendRow(body, row) {
 
 // ---- GH shell-out helpers ----
 
+// Recorded DATA equality only: no row, timestamp override or current authority
+// escapes. The native append algorithm remains the sole byte derivation.
+export function assertRecordedStageActorTiming(input) {
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !== 'afterBody,beforeBody,row' ||
+    typeof input.row !== 'string' ||
+    typeof input.afterBody !== 'string' ||
+    (input.beforeBody !== null && typeof input.beforeBody !== 'string')
+  )
+    throw new TypeError('native-stage:actor-timing-data');
+  const parsed = parseTimingRow(input.row);
+  if (
+    !parsed?.actorKey ||
+    parsed.event !== 'update' ||
+    appendRow(input.beforeBody ?? buildInitialComment(), input.row) !== input.afterBody
+  )
+    throw new TypeError('native-stage:actor-timing-data');
+}
+
+// No-return comparison of an original shared phase fact. This does not render
+// a live row, invoke transport, or supply a current timing capability.
+export function assertRecordedStagePhaseTiming(input) {
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !==
+      'afterBody,beforeBody,offsetMin,phase,row,transitionId,ts' ||
+    typeof input.beforeBody !== 'string' ||
+    typeof input.afterBody !== 'string' ||
+    typeof input.row !== 'string'
+  )
+    throw new TypeError('native-stage:phase-timing-data');
+  const { phase, ts, offsetMin, transitionId } = input;
+  if (
+    input.row !== buildRecordedPhaseRow({ phase, ts, offsetMin, transitionId }) ||
+    appendRow(input.beforeBody, input.row) !== input.afterBody
+  )
+    throw new TypeError('native-stage:phase-timing-data');
+}
+
 async function ghExec(args, { timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS } = {}) {
+  assertRevisionProductionTransport('gh');
   const { stdout } = await pexec('gh', args, { timeout: timeoutMs });
   return stdout;
 }
 
-export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
-  const num = String(issueNumber).replace('#', '');
-  const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], { timeoutMs });
-  const { comments } = JSON.parse(out);
+const nativeTimingReads = new WeakMap();
+function freezeTimingData(value) {
+  if (value && typeof value === 'object') {
+    for (const child of Object.values(value)) freezeTimingData(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+export function readNativeTimingSourceData(result) {
+  return nativeTimingReads.get(result) ?? null;
+}
+function captureTimingResult(result, kind, reads) {
+  nativeTimingReads.set(result, freezeTimingData(structuredClone({ kind, reads, result })));
+  return result;
+}
+function parseTimingComments(stdout) {
+  const { comments } = JSON.parse(stdout);
   const hit = comments.find((c) => c.body.includes(TIMING_HEADING));
-  return hit ? { id: hit.id, url: hit.url, body: hit.body, comments } : null;
+  return { comments, value: hit ? { id: hit.id, url: hit.url, body: hit.body, comments } : null };
+}
+// Parser DATA only; it cannot confer complete-census or current-read authority.
+export function deriveRecordedTimingCommentData(input) {
+  if (!input || Object.keys(input).join(',') !== 'stdout' || typeof input.stdout !== 'string')
+    throw new TypeError('timing-source:recorded-input');
+  return freezeTimingData(parseTimingComments(input.stdout));
+}
+async function findTimingCommentRecord(issueNumber, repo, { timeoutMs } = {}) {
+  const num = String(issueNumber).replace('#', '');
+  const args = ['issue', 'view', num, '-R', repo, '--json', 'comments'];
+  const { readNativeStageTimingComments } = await import('./lib/criteria-revision/policy.mjs');
+  const execution = isMemoryStageEffectScope()
+    ? await import('./lib/move-state/move-state-core.mjs')
+    : null;
+  const executionRead = execution
+    ? await execution.readNativeStageExecutionTimingComments({ repo, issueNumber: num })
+    : null;
+  const supplied = executionRead ?? readNativeStageTimingComments({ repo, issueNumber: num });
+  let response;
+  if (supplied) {
+    response = supplied.response;
+    if (response.exitCode !== 0 || response.stderr !== '')
+      throw new Error('timing-source:transport');
+  } else response = { stdout: await ghExec(args, { timeoutMs }), stderr: '', exitCode: 0 };
+  const currentRead = executionRead
+    ? await execution.readNativeStageExecutionTimingComments({ repo, issueNumber: num })
+    : supplied
+      ? readNativeStageTimingComments({ repo, issueNumber: num })
+      : null;
+  if (supplied && JSON.stringify(currentRead) !== JSON.stringify(supplied))
+    throw new Error('timing-source:changed');
+  const { value } = parseTimingComments(response.stdout);
+  return { value, read: supplied ? { request: { file: 'gh', args }, response } : null };
+}
+export async function findTimingComment(issueNumber, repo, options = {}) {
+  return (await findTimingCommentRecord(issueNumber, repo, options)).value;
 }
 
 async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) {
   const num = String(issueNumber).replace('#', '');
+  if (isMemoryStageEffectScope()) {
+    const { writeNativeStageTimingComment } = await import('./lib/move-state/move-state-core.mjs');
+    const written = await writeNativeStageTimingComment({
+      repo,
+      issueNumber: num,
+      commentId: null,
+      body,
+    });
+    if (written) return written.url;
+  }
+  assertRevisionStageHostEffect();
   const out = await ghExec(['issue', 'comment', num, '-R', repo, '--body', body], { timeoutMs });
   return out.trim(); // URL of new comment
 }
 
 export async function updateTimingComment(commentId, repo, body, { timeoutMs } = {}) {
+  if (isMemoryStageEffectScope()) {
+    const { writeNativeStageTimingComment } = await import('./lib/move-state/move-state-core.mjs');
+    const written = await writeNativeStageTimingComment({
+      repo,
+      issueNumber: null,
+      commentId,
+      body,
+    });
+    if (written) return;
+  }
+  assertRevisionStageHostEffect();
   // gh doesn't have edit-comment by id for issues directly;
   // use GraphQL mutation.
   const mutation = `
@@ -823,16 +1105,23 @@ function timingLockPath(issueNumber, projDir = getProjectDir()) {
 //
 // The lock+retry path is the default. Tests can disable both by passing
 // `{ lock: false, retries: 0 }` to keep call counts deterministic.
-export async function postTimingEvent({
-  issueNumber,
-  repo,
-  row,
-  timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS,
-  retries = 2,
-  lock = true,
-  projDir,
-  deps = {},
-} = {}) {
+export async function postTimingEvent(input = {}) {
+  let native = null;
+  if (isMemoryStageEffectScope()) {
+    native = await import('./lib/move-state/move-state-core.mjs');
+    await native.beginNativeStageTiming(input);
+  }
+  const {
+    issueNumber,
+    repo,
+    row,
+    timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS,
+    retries = 2,
+    lock = true,
+    projDir,
+    deps = {},
+  } = input;
+  if (!native) assertRevisionStageHostEffect();
   const work = async () => {
     const find = deps.findTimingComment ?? findTimingComment;
     const update = deps.updateTimingComment ?? updateTimingComment;
@@ -842,6 +1131,7 @@ export async function postTimingEvent({
       const read = deps.readCanonicalTimingSource ?? readCanonicalTimingSource;
       const observe = async () => {
         const result = await read({ issueNumber: issue, repo, timeoutMs });
+        if (native) await native.noteNativeStageTimingRead(input, result);
         if (result?.status === 'error')
           throw result.error ?? new TypeError('timing-publication:source');
         if (result?.status === 'absent' && result.source === null) return null;
@@ -860,6 +1150,7 @@ export async function postTimingEvent({
       };
       const existing = await observe();
       const updated = appendRow(existing?.body ?? buildInitialComment(), row);
+      if (native) await native.prepareNativeStageTiming(input, existing, updated);
       if (existing) {
         // A lost response may already have committed these exact immutable
         // bytes. Re-observe instead of issuing another remote mutation.
@@ -876,17 +1167,44 @@ export async function postTimingEvent({
       ) {
         throw new TypeError('timing-publication:readback');
       }
+      if (native) await native.completeNativeStageTiming(input);
       return;
     }
+    let canonical = null;
+    if (native) {
+      canonical = await readCanonicalTimingSource({ issueNumber, repo, timeoutMs });
+      await native.noteNativeStageTimingRead(input, canonical);
+      if (canonical.status !== 'found') throw new TypeError('timing-publication:phase-source');
+    }
     const existing = await find(issueNumber, repo, { timeoutMs });
+    if (
+      native &&
+      (!existing ||
+        existing.id !== canonical.source.commentNodeId ||
+        existing.body !== canonical.source.body)
+    )
+      throw new TypeError('timing-publication:phase-source');
     if (existing) {
       const updated = appendRow(existing.body, row);
+      if (native) await native.prepareNativeStageTiming(input, canonical.source, updated);
       await update(existing.id, repo, updated, { timeoutMs });
     } else {
       const initial = appendRow(buildInitialComment(), row);
       await create(issueNumber, repo, initial, { timeoutMs });
     }
+    if (native) {
+      const observed = await readCanonicalTimingSource({ issueNumber, repo, timeoutMs });
+      await native.noteNativeStageTimingRead(input, observed);
+      await native.completeNativeStageTiming(input);
+    }
   };
+  if (native) {
+    try {
+      return await work();
+    } finally {
+      native.endNativeStageTiming(input);
+    }
+  }
   if (!lock) {
     return work();
   }
@@ -918,14 +1236,21 @@ export async function readTimingCommentBody({
     // accepts issue references and strips an optional `#` with String methods.
     // Normalize at this boundary so close-time outcome capture uses the same
     // production path as string-based timing callers.
-    const existing = await find(String(issueNumber), repo, { timeoutMs });
-    if (existing == null) return { status: 'absent', body: '', error: null, comments: [] };
-    return {
-      status: 'found',
-      body: existing.body ?? '',
-      error: null,
-      comments: Array.isArray(existing.comments) ? existing.comments : [],
-    };
+    const native =
+      find === findTimingComment
+        ? await findTimingCommentRecord(String(issueNumber), repo, { timeoutMs })
+        : null;
+    const existing = native ? native.value : await find(String(issueNumber), repo, { timeoutMs });
+    const result =
+      existing == null
+        ? { status: 'absent', body: '', error: null, comments: [] }
+        : {
+            status: 'found',
+            body: existing.body ?? '',
+            error: null,
+            comments: Array.isArray(existing.comments) ? existing.comments : [],
+          };
+    return native?.read ? captureTimingResult(result, 'legacy', [native.read]) : result;
   } catch (error) {
     return { status: 'error', body: '', error, comments: [] };
   }
@@ -1023,10 +1348,30 @@ export async function readCanonicalTimingSource({ issueNumber, repo, timeoutMs, 
       throw new TypeError('timing-source:input');
     }
     const [owner, name] = parts;
+    const selectedGraphql = deps.graphql;
+    const reads = [];
+    const { readNativeStageTimingPages } = await import('./lib/criteria-revision/policy.mjs');
+    const executionReader =
+      selectedGraphql == null && isMemoryStageEffectScope()
+        ? (await import('./lib/move-state/move-state-core.mjs')).readNativeStageExecutionTimingPages
+        : null;
+    const selectedPages = async () =>
+      (executionReader ? await executionReader({ repo, issueNumber: issue }) : null) ??
+      readNativeStageTimingPages({ repo, issueNumber: issue });
+    const supplied = selectedGraphql == null ? await selectedPages() : null;
     const graphql =
-      deps.graphql ??
-      (async ({ after }) =>
-        JSON.parse(
+      selectedGraphql ??
+      (async ({ after }) => {
+        if (supplied) {
+          const pair = supplied[reads.length];
+          if (
+            !pair ||
+            JSON.stringify(pair.request) !== JSON.stringify({ owner, name, issue, after })
+          )
+            throw new Error('timing-source:request');
+          return structuredClone(pair.response);
+        }
+        return JSON.parse(
           await ghExec(
             [
               'api',
@@ -1043,7 +1388,18 @@ export async function readCanonicalTimingSource({ issueNumber, repo, timeoutMs, 
             ],
             { timeoutMs }
           )
-        ));
+        );
+      });
+    const finish = async (result) => {
+      if (selectedGraphql != null) return result;
+      if (
+        supplied &&
+        (JSON.stringify(reads) !== JSON.stringify(supplied) ||
+          JSON.stringify(await selectedPages()) !== JSON.stringify(supplied))
+      )
+        throw new Error('timing-source:changed-or-unused');
+      return supplied ? captureTimingResult(result, 'canonical', reads) : result;
+    };
     const seenIds = new Set();
     const seenCursors = new Set();
     const hits = [];
@@ -1051,6 +1407,11 @@ export async function readCanonicalTimingSource({ issueNumber, repo, timeoutMs, 
     let total = null;
     for (let page = 0; page < 1000; page++) {
       const response = await graphql({ owner, name, issue, after });
+      if (selectedGraphql == null) {
+        if (supplied && JSON.stringify(await selectedPages()) !== JSON.stringify(supplied))
+          throw new Error('timing-source:changed');
+        reads.push({ request: { owner, name, issue, after }, response: structuredClone(response) });
+      }
       const repository = response?.data?.repository;
       const remoteIssue = repository?.issue;
       const comments = remoteIssue?.comments;
@@ -1086,12 +1447,12 @@ export async function readCanonicalTimingSource({ issueNumber, repo, timeoutMs, 
       if (!comments.pageInfo.hasNextPage) {
         if (seenIds.size !== total || hits.length > 1)
           throw new TypeError('timing-source:ambiguous-or-incomplete');
-        if (!hits.length) return { status: 'absent', source: null, error: null };
-        return {
+        if (!hits.length) return await finish({ status: 'absent', source: null, error: null });
+        return await finish({
           status: 'found',
           source: { repository: repo, issue, commentNodeId: hits[0].id, body: hits[0].body },
           error: null,
-        };
+        });
       }
       const cursor = comments.pageInfo.endCursor;
       if (typeof cursor !== 'string' || !cursor || seenCursors.has(cursor))

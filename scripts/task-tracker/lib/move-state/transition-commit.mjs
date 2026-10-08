@@ -133,28 +133,190 @@ async function defaultReadComment(ctx, id) {
   return JSON.parse(stdout);
 }
 
+const stageCensusContexts = new WeakMap();
+const stageCensusResults = new WeakMap();
+function freezeCensus(value) {
+  if (value && typeof value === 'object') {
+    Object.values(value).forEach(freezeCensus);
+    Object.freeze(value);
+  }
+  return value;
+}
+function parseCommentPages(response) {
+  const pages = JSON.parse(response.stdout || '[]');
+  return { pages, result: pages.flat() };
+}
+function qualifyStageCommentCensus({ pages, result }, input, retained, refuse) {
+  if (!Array.isArray(pages) || pages.some((page) => !Array.isArray(page))) refuse();
+  const ids = new Set(),
+    nodes = new Map();
+  for (const comment of result) {
+    if (
+      !comment ||
+      !Number.isSafeInteger(comment.id) ||
+      comment.id < 1 ||
+      ids.has(comment.id) ||
+      typeof comment.node_id !== 'string' ||
+      !comment.node_id ||
+      nodes.has(comment.node_id) ||
+      typeof comment.body !== 'string' ||
+      comment.issue_url !== `https://api.github.com/repos/${input.repository}/issues/${input.issue}`
+    )
+      refuse();
+    ids.add(comment.id);
+    nodes.set(comment.node_id, comment.body);
+  }
+  if (retained.some((comment) => !nodes.has(comment.id) || nodes.get(comment.id) !== comment.body))
+    refuse();
+  return result;
+}
 async function defaultListComments(ctx) {
-  const { stdout } = await ctx.pexec(
-    'gh',
-    ['api', '--paginate', '--slurp', `repos/${ctx.cfg.repo}/issues/${ctx.issueArg}/comments`],
-    { timeout: 30_000 }
-  );
-  return JSON.parse(stdout || '[]').flat();
+  const native = stageCensusContexts.get(ctx);
+  let response;
+  if (native) response = native.read.response;
+  else
+    response = await ctx.pexec(
+      'gh',
+      ['api', '--paginate', '--slurp', `repos/${ctx.cfg.repo}/issues/${ctx.issueArg}/comments`],
+      { timeout: 30_000 }
+    );
+  const { pages, result } = parseCommentPages(response); // ONE ordinary native page parser/order.
+  if (native) stageCensusResults.set(result, { ...native, pages });
+  return result;
+}
+
+// Original default invocation DATA only. The private context has no caller
+// pexec/list helper, and neither it nor a read port is returned.
+export async function readNativeStageCommentCensus(input) {
+  const { readNativeStageCommentRead, RevisionPolicyError } =
+    await import('../criteria-revision/policy.mjs');
+  const refuse = () => {
+    throw new RevisionPolicyError({
+      status: 'indeterminate',
+      code: 'revision-authority-unavailable',
+      noAutomaticRemediation: { reason: 'authority-investigation-required' },
+    });
+  };
+  const native = readNativeStageCommentRead(input);
+  if (!native) return null;
+  if (native.read.response.exitCode !== 0 || native.read.response.stderr !== '') refuse();
+  const ctx = { cfg: { repo: input.repository }, issueArg: input.issue };
+  stageCensusContexts.set(ctx, native);
+  try {
+    let result;
+    try {
+      result = await defaultListComments(ctx);
+    } catch {
+      refuse();
+    }
+    const captured = stageCensusResults.get(result);
+    if (
+      !captured ||
+      canonicalJson(readNativeStageCommentRead(input)) !== canonicalJson(native) ||
+      !Array.isArray(captured.pages) ||
+      captured.pages.some((page) => !Array.isArray(page))
+    )
+      refuse();
+    qualifyStageCommentCensus({ pages: captured.pages, result }, input, native.retained, refuse);
+    return freezeCensus(result);
+  } finally {
+    stageCensusContexts.delete(ctx);
+  }
+}
+export function readNativeStageCommentCensusData(result) {
+  const captured = stageCensusResults.get(result);
+  return captured && Object.isFrozen(result) ? freezeCensus(structuredClone(captured.read)) : null;
+}
+
+// Retained raw DATA cannot acquire current read membership or authorize writes.
+export async function deriveRecordedStageCommentCensus(value) {
+  const { exactKeys, revisionError } = await import('../criteria-revision/schema.mjs');
+  try {
+    canonicalJson(value);
+    exactKeys(value, ['observation', 'lifecycleSources', 'retained']);
+    const { assertNativeLifecycleSourceData } = await import('../criteria-revision/store.mjs');
+    assertNativeLifecycleSourceData({
+      source: value.lifecycleSources,
+      observation: value.observation,
+    });
+    if (!Array.isArray(value.retained)) throw new TypeError();
+    for (const comment of value.retained) {
+      exactKeys(comment, ['id', 'body']);
+      if (typeof comment.id !== 'string' || !comment.id || typeof comment.body !== 'string')
+        throw new TypeError();
+    }
+    const pair = value.lifecycleSources.remote.stageComments;
+    if (!pair || pair.response.exitCode !== 0 || pair.response.stderr !== '') throw new TypeError();
+    const refuse = () => {
+      throw new TypeError();
+    };
+    return freezeCensus(
+      qualifyStageCommentCensus(
+        parseCommentPages(pair.response),
+        value.observation,
+        value.retained,
+        refuse
+      )
+    );
+  } catch {
+    revisionError('native-stage-comment-data');
+  }
+}
+
+// Native record DATA shared by current publication and original stage replay.
+// This does not authenticate the supplied actor, markers, or execution.
+export function deriveTransitionCommitRecord({
+  transitionId,
+  repository,
+  issue,
+  source,
+  target,
+  visitMarker,
+  actor,
+  sentinelMarker,
+}) {
+  return validateRecord({
+    schema: TRANSITION_COMMIT_SCHEMA,
+    transitionId,
+    repository,
+    issue,
+    source,
+    target,
+    visitMarker,
+    actor,
+    sentinelFingerprint: fingerprint(sentinelMarker),
+  });
+}
+
+function selectTransitionActor(actor, githubActor, user) {
+  return actor || githubActor || user || 'aitm';
+}
+// Retained environment DATA only; original/current identity requires separate
+// native capture. Empty and absent values preserve the ordinary fallback.
+export function deriveRecordedTransitionActor(input) {
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !== 'githubActor,user' ||
+    Object.values(input).some((value) => value !== null && typeof value !== 'string')
+  )
+    throw new TypeError('recorded-transition-actor');
+  return selectTransitionActor(undefined, input.githubActor, input.user);
 }
 
 function transitionRecord(ctx, evidence = {}) {
   const visitMarker = evidence.visitMarker ?? ctx.transitionEvidence?.visitMarker;
   const sentinelMarker = evidence.sentinelMarker ?? ctx.transitionEvidence?.sentinelMarker;
-  return validateRecord({
-    schema: TRANSITION_COMMIT_SCHEMA,
+  return deriveTransitionCommitRecord({
     transitionId: ctx.transitionId,
     repository: ctx.cfg.repo,
     issue: Number(ctx.issueArg),
     source: ctx.resolvedFromState || 'unknown',
     target: ctx.stateArg,
     visitMarker,
-    actor: ctx.actor || process.env.GITHUB_ACTOR || process.env.USER || 'aitm',
-    sentinelFingerprint: fingerprint(sentinelMarker),
+    actor: selectTransitionActor(ctx.actor, process.env.GITHUB_ACTOR, process.env.USER),
+    sentinelMarker,
   });
 }
 

@@ -1,3 +1,4 @@
+import { assertRevisionStageHostEffect } from './lib/criteria-revision/transport-quarantine.mjs';
 // Word counter — extracted from tally-chat-words.mjs for reuse.
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
@@ -10,7 +11,7 @@ import {
   collectTranscriptStringLeaves,
   normalizeTranscriptRecord,
 } from '../providers/transcript-normalizer.mjs';
-import { scanJsonlRecords } from './lib/jsonl-line-scanner.mjs';
+import { scanJsonlRecordsWithSource } from './lib/jsonl-line-scanner.mjs';
 import { resolveSessionId } from './lib/session-id.mjs';
 import { timingActorKey } from './lib/timing-actor.mjs';
 import { withLock } from './fleet-registry.mjs';
@@ -86,11 +87,15 @@ export function jsonlPath(sid) {
 }
 
 export function markerPathFor(sid, owningRoot = projectDir()) {
+  return markerPathForActor({ provider: aiAppName(), sid }, owningRoot);
+}
+// Native path DATA shared with original-record validation; no file is accessed.
+export function markerPathForActor(identity, owningRoot) {
   return path.join(
     owningRoot,
-    getProvider(aiAppName()).stateDir,
+    getProvider(identity.provider).stateDir,
     'session-tracking',
-    `${sid}.json`
+    `${identity.sid}.json`
   );
 }
 
@@ -189,6 +194,85 @@ export function loadMarker(markerPath, { identity = cursorIdentity() } = {}) {
   }
 }
 
+// ONE native merge/validation core. Its historical caller only compares
+// existing record bytes; it cannot return a backdated record or grant a write.
+function markerRecord(existing, identity, line, words, task, wordsFull, ts) {
+  const record = {
+    ...existing,
+    schema: 'aitm.word-cursor/v1',
+    actor: timingActorKey(identity),
+    ...identity,
+    wordCount: { ...existing.wordCount, line, words, wordsFull, task, ts },
+  };
+  validateWordCursor(record, identity);
+  return record;
+}
+export function assertRecordedStageActorCursor(input) {
+  if (
+    !input ||
+    Object.getPrototypeOf(input) !== Object.prototype ||
+    Object.keys(input).sort().join(',') !==
+      'afterBytes,beforeBytes,identity,line,task,ts,words,wordsFull'
+  )
+    invalidCursor();
+  const { beforeBytes, afterBytes, identity, line, words, task, wordsFull, ts } = input;
+  if (
+    !identity ||
+    Object.keys(identity).sort().join(',') !== 'provider,sid' ||
+    (typeof beforeBytes !== 'string' && beforeBytes !== null) ||
+    typeof afterBytes !== 'string' ||
+    typeof ts !== 'string' ||
+    !Number.isFinite(Date.parse(ts))
+  )
+    invalidCursor();
+  const existing = beforeBytes === null ? {} : JSON.parse(beforeBytes);
+  if (beforeBytes !== null) validateWordCursor(existing, identity);
+  const record = markerRecord(existing, identity, line, words, task, wordsFull, ts);
+  if (JSON.stringify(record, null, 2) + '\n' !== afterBytes) invalidCursor();
+}
+
+const nativeStageCursorWrites = new WeakMap();
+export function assertNativeStageCursorWrite(invocation, intent) {
+  const original = nativeStageCursorWrites.get(invocation);
+  if (!original || JSON.stringify(original) !== JSON.stringify(intent)) invalidCursor();
+}
+// Only the original runtime commit's opaque invocation can select the fixed
+// memory path. Native host saveMarker below remains synchronous and unchanged.
+export async function saveNativeStageActorMarker(invocation) {
+  const native = await import('./lib/move-state/move-state-core.mjs');
+  const source = await native.beginNativeStageActorCursor(invocation);
+  try {
+    const existing = source.beforeBytes === null ? {} : JSON.parse(source.beforeBytes);
+    if (source.beforeBytes !== null) validateWordCursor(existing, source.identity);
+    const ts = new Date().toISOString();
+    const record = markerRecord(
+      existing,
+      source.identity,
+      source.line,
+      source.words,
+      source.task,
+      source.wordsFull,
+      ts
+    );
+    const intent = {
+      file: source.file,
+      line: source.line,
+      words: source.words,
+      wordsFull: source.wordsFull,
+      task: source.task,
+      ts,
+      bytes: JSON.stringify(record, null, 2) + '\n',
+    };
+    nativeStageCursorWrites.set(invocation, intent);
+    await native.persistNativeStageActorCursor(invocation, intent);
+    await native.writeNativeStageActorCursor(invocation);
+    await native.completeNativeStageActorCursor(invocation);
+  } finally {
+    nativeStageCursorWrites.delete(invocation);
+    native.endNativeStageActorCursor(invocation);
+  }
+}
+
 export function saveMarker(
   markerPath,
   line,
@@ -197,23 +281,18 @@ export function saveMarker(
   wordsFull = words,
   { identity = cursorIdentity() } = {}
 ) {
+  assertRevisionStageHostEffect();
   return withLock(markerPath, () => {
     const existing = readCursor(markerPath, identity) ?? {};
-    const record = {
-      ...existing,
-      schema: 'aitm.word-cursor/v1',
-      actor: timingActorKey(identity),
-      ...identity,
-      wordCount: {
-        ...existing.wordCount,
-        line,
-        words,
-        wordsFull,
-        task,
-        ts: new Date().toISOString(),
-      },
-    };
-    validateWordCursor(record, identity);
+    const record = markerRecord(
+      existing,
+      identity,
+      line,
+      words,
+      task,
+      wordsFull,
+      new Date().toISOString()
+    );
     mkdirSync(path.dirname(markerPath), { recursive: true });
     const temporary = markerPath + '.tmp.' + process.pid;
     writeFileSync(temporary, JSON.stringify(record, null, 2) + '\n', 'utf8');
@@ -299,6 +378,13 @@ function unavailableCodexResult(code, { sid, filePath, onDiagnostic }) {
   return countResult({ code });
 }
 
+const wordCountSources = new WeakMap();
+
+// Passive original-result data only. A matching copy is not a native read.
+export function readWordCountSourceData(result) {
+  return wordCountSources.get(result) ?? null;
+}
+
 // Three-tier word count from `fromLine`:
 //   Tier 1  — monologue + user prose (`text` blocks + string content).
 //   Tier 2  — stay-abreast = Tier 1 + tool-summary chips.  Returned as `count`
@@ -330,7 +416,7 @@ export function countWords(filePath, fromLine = 0, options = {}) {
   let toolInputWords = 0;
   let toolResultWords = 0;
   let codexSchemaRecognized = false;
-  const totalLines = scanJsonlRecords(filePath, {
+  const source = scanJsonlRecordsWithSource(filePath, {
     onRecord(obj, i) {
       const normalized = normalizeTranscriptRecord(obj);
       if (normalized.schema === 'codex-rollout-v1' && normalized.recognized) {
@@ -362,5 +448,32 @@ export function countWords(filePath, fromLine = 0, options = {}) {
       onDiagnostic,
     });
   }
-  return countResult({ count, totalLines, fullExpansion });
+  const result = countResult({ count, totalLines: source.totalLines, fullExpansion });
+  // Preserve ordinary permissive counting inputs. Only closed scalar source
+  // facts are eligible for passive capture; unavailable/throwing reads above
+  // never acquire a record, and this record grants no execution authority.
+  if (
+    typeof filePath === 'string' &&
+    Number.isSafeInteger(fromLine) &&
+    fromLine >= 0 &&
+    (provider === null || typeof provider === 'string') &&
+    (sid === null || typeof sid === 'string')
+  ) {
+    wordCountSources.set(
+      result,
+      Object.freeze({
+        path: filePath,
+        provider,
+        sid,
+        fromLine,
+        byteLength: source.byteLength,
+        sha256: source.sha256,
+        totalLines: source.totalLines,
+        status: result.status,
+        count,
+        fullExpansion,
+      })
+    );
+  }
+  return result;
 }
