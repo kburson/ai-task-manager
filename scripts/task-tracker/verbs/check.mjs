@@ -269,9 +269,10 @@ export function appendUnverifiedTickAudit(body, { label, ts }) {
 //     `--allow-unverified-ticks` honest hatch).
 // Un-ticking is never a claim of proof, so `ensureUnchecked` runs no gate.
 async function runEnsure(ctx, desired) {
+  const reviewed = parseReviewedCheckArgs(ctx.rest, desired);
   const state = loadState(ctx.statePath);
   if (!state.active || state.active === 'discover') return runEnsureAdmitted(ctx, desired);
-  if (ctx.deps?.revisionBackend && !parseReviewedCheckArgs(ctx.rest, desired)) {
+  if (ctx.deps?.revisionBackend && !reviewed) {
     const parsed = parseCheckArgs(ctx.rest);
     if (!parsed.allowUnverifiedTicks) {
       const labels = [...parsed.labels];
