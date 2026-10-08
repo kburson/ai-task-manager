@@ -179,7 +179,12 @@ Preserve original timestamps for delayed actor and shared-boundary events. Order
 
 Late insertion deterministically rederives every affected subsequent lane allocation and duration projection in one coordinated canonical-body mutation. For start at 0, update at 20, and a late boundary at 10, the final body allocates 10 seconds to the boundary and 10 to the update. Do not merely subtract previously credited intervals or add the boundary on top. Retain immutable source identity, record the projection revision and validate conservation before mutation. Historical repair follows the same identity/reallocation contract.
 
-The original actor-flush journal payload and digest remain immutable. Publication resolves its source identity against the current canonical projection, acknowledges an already-admitted source without replaying credit, and commits its checkpoint only after correlated read-back. Lost-response recovery validates source admission and the current projection rather than requiring the old row bytes to remain the current rendering. Conflicting immutable evidence or an invalid projection refuses rather than being treated as a replay.
+The original actor-flush journal payload and digest remain immutable. Preserve two distinct successful checkpoint paths:
+
+1. Confirmed remote publication resolves source identity against the current valid canonical projection and acknowledges admission after correlated read-back, without another slice or word credit.
+2. Durable queue acceptance advances the existing local checkpoint once the exact immutable payload is durably queued, while explicitly reporting remote publication as pending. Later queue delivery reconciles source identity and the current projection, verifies canonical read-back, then acknowledges and removes that delivery.
+
+If neither succeeds, keep the checkpoint unchanged and retain recoverable journal evidence. Existing terminal and outcome gates still require remote delivery before freezing immutable evidence; queued acceptance is never remote publication. Lost-response and restart recovery validate source admission or exact queued payload as appropriate rather than requiring old rendered row bytes to remain current. Conflicting immutable evidence or an invalid projection refuses rather than being treated as replay.
 
 Keep existing sealed outcome schema validation on its original derivation semantics. Do not silently replace deriveActorEngagement for old outcome validation with the new whole-second allocation model. Add a separate model-dispatched projection path; compatible lexical readers may accept new metadata while old-schema validators ignore it semantically and retain their original numeric rules. Regression tests must exercise the actual outcome reuse adapters, not only record-byte preservation.
 
@@ -207,7 +212,7 @@ For a Plan visit with 120 Active seconds and 180 Idle seconds, Plan is 120 secon
 
 ## Additional SAR regression requirements
 
-Add delayed actor/shared-boundary insertion, equal-second ordering, atomic lifecycle-pair admission, original journal replay after reallocation and repair, and conflicting immutable evidence cases. Add actual sealed-outcome reuse validation after reader rollout, protected-prefix and suffix repair refusal, incomplete reference-discovery refusal, and allowed append-only successor validation. Add legacy/actor parity for interrupted Plan/Review, repeated and open visits, cross-stage uncertainty, integer-second subtotals and aggregate minute conversion. These extend AC4, AC5 and AC6 without changing source timestamps or sealed record semantics.
+Add delayed actor/shared-boundary insertion, equal-second ordering, atomic lifecycle-pair admission, original journal replay after reallocation and repair, and conflicting immutable evidence cases. Add actual sealed-outcome reuse validation after reader rollout, protected-prefix and suffix repair refusal, incomplete reference-discovery refusal, and allowed append-only successor validation. Add legacy/actor parity for interrupted Plan/Review, repeated and open visits, cross-stage uncertainty, integer-second subtotals and aggregate minute conversion. Also test remote failure followed by durable enqueue, local checkpoint advancement without interval/word recount at the next flush, restart after queue acceptance, queue-write failure preserving the checkpoint, and subsequent delivery after projection reallocation. These extend AC4, AC5 and AC6 without changing source timestamps or sealed record semantics.
 
 ## Review and handoff
 
