@@ -21,6 +21,23 @@ import { hashBytes } from '../../../../task-tracker/lib/criteria-revision/schema
 import { observeRevision } from '../../../../task-tracker/lib/criteria-revision/engine.mjs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
 import { currentSessionId } from '../../../../task-tracker/word-counter.mjs';
+import { before, after } from 'node:test';
+
+const originalFixtureSid = process.env.AI_TASK_MANAGER_SESSION_ID;
+const originalFixtureApp = process.env.AI_TASK_MANAGER_APP_NAME;
+before(() => {
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-native-source-adapters';
+  process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+  assert.equal(currentSessionId(), 'fixture-native-source-adapters');
+  assert.match(currentSessionId(), /^[A-Za-z0-9][A-Za-z0-9_-]{0,255}$/);
+});
+after(() => {
+  if (originalFixtureSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+  else process.env.AI_TASK_MANAGER_SESSION_ID = originalFixtureSid;
+  if (originalFixtureApp === undefined) delete process.env.AI_TASK_MANAGER_APP_NAME;
+  else process.env.AI_TASK_MANAGER_APP_NAME = originalFixtureApp;
+});
+
 const story = {
   asA: 'release operator',
   iWant: 'stop partial publication because registry checks can fail',

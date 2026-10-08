@@ -543,6 +543,23 @@ for (const freshSession of [false, true])
 
 import { reconstructNativeHistory } from '../../../../task-tracker/lib/criteria-revision/source-correction.mjs';
 import { readMemoryNativeHistory } from '../../../../task-tracker/lib/criteria-revision/store.mjs';
+import { before, after } from 'node:test';
+
+const originalFixtureSid = process.env.AI_TASK_MANAGER_SESSION_ID;
+const originalFixtureApp = process.env.AI_TASK_MANAGER_APP_NAME;
+before(() => {
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-native-source-correction';
+  process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+  assert.equal(currentSessionId(), 'fixture-native-source-correction');
+  assert.match(currentSessionId(), /^[A-Za-z0-9][A-Za-z0-9_-]{0,255}$/);
+});
+after(() => {
+  if (originalFixtureSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+  else process.env.AI_TASK_MANAGER_SESSION_ID = originalFixtureSid;
+  if (originalFixtureApp === undefined) delete process.env.AI_TASK_MANAGER_APP_NAME;
+  else process.env.AI_TASK_MANAGER_APP_NAME = originalFixtureApp;
+});
+
 for (const changed of ['observation', 'planning', 'comments'])
   test(`awaited native history refuses ${changed} drift before returning current authority`, async () => {
     const f = await setup();

@@ -91,6 +91,22 @@ import {
 } from '../../../../task-tracker/lib/criteria-revision/engine.mjs';
 import { hashBytes } from '../../../../task-tracker/lib/criteria-revision/schema.mjs';
 import { parseBodyVersion } from '../../../../task-tracker/lib/body-version.mjs';
+import { before, after } from 'node:test';
+
+const originalFixtureSid = process.env.AI_TASK_MANAGER_SESSION_ID;
+const originalFixtureApp = process.env.AI_TASK_MANAGER_APP_NAME;
+before(() => {
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-native-proof-execution';
+  process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+  assert.equal(currentSessionId(), 'fixture-native-proof-execution');
+  assert.match(currentSessionId(), /^[A-Za-z0-9][A-Za-z0-9_-]{0,255}$/);
+});
+after(() => {
+  if (originalFixtureSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+  else process.env.AI_TASK_MANAGER_SESSION_ID = originalFixtureSid;
+  if (originalFixtureApp === undefined) delete process.env.AI_TASK_MANAGER_APP_NAME;
+  else process.env.AI_TASK_MANAGER_APP_NAME = originalFixtureApp;
+});
 
 async function realNativeStamp(s, fault = null, kind = 'ac') {
   writeFileSync(path.join(s.context.sourceRoot, 'package-lock.json'), '{}');
