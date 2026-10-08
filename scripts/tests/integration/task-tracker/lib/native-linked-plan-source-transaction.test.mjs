@@ -32,12 +32,18 @@ import { hashBytes } from '../../../../task-tracker/lib/criteria-revision/schema
 // default-root read in that process deterministic even when the user's host has
 // unrelated enabled domains; no runtime/port root override is passed to a hook.
 const originalProcessHome = process.env.HOME;
+const originalProcessSid = process.env.AI_TASK_MANAGER_SESSION_ID;
+const originalProcessApp = process.env.AI_TASK_MANAGER_APP_NAME;
 
 let isolatedProcessHome;
 
 before(() => {
   isolatedProcessHome = mkdtempProjectIsolated('aitm-linked-source-host-');
   process.env.HOME = isolatedProcessHome;
+  const fixtureSid = `fixture-${path.basename(isolatedProcessHome)}`;
+  process.env.AI_TASK_MANAGER_SESSION_ID = fixtureSid;
+  process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+  assert.equal(currentSessionId(), fixtureSid);
   assert.equal(
     revisionRuntime().configRoot,
     path.join(isolatedProcessHome, '.ai-task-manager', 'criteria-revision-domains')
@@ -47,6 +53,10 @@ before(() => {
 after(() => {
   if (originalProcessHome === undefined) delete process.env.HOME;
   else process.env.HOME = originalProcessHome;
+  if (originalProcessSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+  else process.env.AI_TASK_MANAGER_SESSION_ID = originalProcessSid;
+  if (originalProcessApp === undefined) delete process.env.AI_TASK_MANAGER_APP_NAME;
+  else process.env.AI_TASK_MANAGER_APP_NAME = originalProcessApp;
   fs.rmSync(isolatedProcessHome, { recursive: true, force: true });
 });
 

@@ -1,4 +1,7 @@
 // @story #1855
+// This direct native integration fixture owns its test-process actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // cspell:words unadmitted
 import { runPlanApprove } from '../../../../task-tracker/verbs/plan-approve.mjs';
 import { createRevisionMemory } from '../../../../task-tracker/lib/criteria-revision/store.mjs';
@@ -19,13 +22,19 @@ import { readCurrentMemoryPlanApproval } from '../../../../task-tracker/lib/crit
 
 test('actual governed Scope correction preserves criterion identities and original transaction while making normal Plan approval stale', async () => {
   const s = createSandbox();
+  const priorSid = process.env.AI_TASK_MANAGER_SESSION_ID;
   try {
+    process.env.AI_TASK_MANAGER_SESSION_ID = s.env.AI_TASK_MANAGER_SESSION_ID;
     const sid = currentSessionId();
+    assert.equal(sid, s.context.runId);
+    assert.match(sid, /^run-[a-f0-9-]+$/);
     const { backend, context } = await approvedFixture({
       worktree: s.context.sourceRoot,
       branch: 'trunk',
       sessionId: sid,
     });
+    assert.equal(context.executor.sessionId, sid);
+    assert.equal(backend.observation.executor.sessionId, sid);
     setActiveTask(
       sid,
       {
@@ -139,6 +148,8 @@ test('actual governed Scope correction preserves criterion identities and origin
       'fresh normal source-bound Plan approval restores ordinary admission after restart'
     );
   } finally {
+    if (priorSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+    else process.env.AI_TASK_MANAGER_SESSION_ID = priorSid;
     s.dispose();
   }
 });

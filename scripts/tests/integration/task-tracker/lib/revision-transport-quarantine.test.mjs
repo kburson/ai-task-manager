@@ -359,7 +359,8 @@ for (const route of ['entry', 'failure-audit', 'versioned'])
                   },
                 },
               });
-      await invoke();
+      const ordinary = await invoke();
+      if (route === 'failure-audit') assert.equal(ordinary.mode, 'posted');
       assert.ok(
         calls.length > 0,
         'ordinary callback route is reachable without the stage-only denial'
@@ -372,11 +373,9 @@ for (const route of ['entry', 'failure-audit', 'versioned'])
         caught = error;
       }
       assert.deepEqual(calls, [], 'stage-only scope must refuse before caller callbacks');
-      if (route === 'failure-audit') assert.equal(result.mode, 'error');
-      else {
-        assert.ok(caught);
-        refused(caught);
-      }
+      assert.equal(result, undefined);
+      assert.ok(caught);
+      refused(caught);
     } finally {
       s.dispose();
     }

@@ -1,4 +1,7 @@
 // @story #1855
+// This direct native integration fixture owns its test-process actor.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // cspell:words unadmitted
 import { writeFileSync } from 'node:fs';
 import { createRevisionMemory } from '../../../../task-tracker/lib/criteria-revision/store.mjs';

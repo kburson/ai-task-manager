@@ -149,9 +149,17 @@ if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
   }
 } else if (toolName === 'Bash') {
   const artifact = resolveArtifactShell(toolInput.command, invocationDir, projectRoot);
-  await quarantineSourceTargets([
+  const shellTargets = [
     ...new Set([...(artifact.targets ?? []), ...extractWriteTargets(toolInput.command)]),
-  ]);
+  ];
+  // @story #1855 — preserve the complete artifact parser's leading-dot spelling.
+  await quarantineSourceTargets(
+    shellTargets.map((target) =>
+      artifact.status === 'allow' && artifact.targets.includes(target)
+        ? target.replace(/^(?:\.\/)+/, '')
+        : target
+    )
+  );
   if (artifact.status === 'block')
     block('[task-tracker] artifact target refused: ' + artifact.reason);
   if (artifact.status === 'allow') process.exit(0);
