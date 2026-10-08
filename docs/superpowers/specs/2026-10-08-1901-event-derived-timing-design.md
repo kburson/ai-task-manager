@@ -76,7 +76,7 @@ A resume closes interruption. Other boundaries may partition it without closing 
 
 Duplicate starts, repeated departures, out-of-order events and conflicting evidence produce explicit reasons. A later valid opener can restore future calculation without erasing earlier ambiguity.
 
-Orphan/session-end recovery publication is not the observed end of a lost session. If that end is missing, stop extending its engagement and retain an unavailable tail. Fresh engagement requires a fresh observed opener. Long gaps are Active only with valid continuous engagement evidence; departure-bracketed gaps are Idle regardless of length. The old 12-hour backfill cap cannot reject the five-day Idle example.
+Orphan/session-end recovery publication is not the observed end of a lost session. If that end is missing, stop extending its engagement and retain an unavailable tail. Fresh engagement requires a fresh observed opener. A bounded interval from a recorded opener to its matching actor-owned closing observation is entirely Active when no departure or attributable pause lies inside it, regardless of transcript gaps or elapsed length. An opener alone does not prove an end at another actor or shared event. Departure-bracketed gaps are Idle regardless of length. The old 12-hour backfill cap cannot reject the five-day Idle example.
 
 ### Actors and legacy bridge
 
@@ -90,7 +90,7 @@ This recovers 453660 seconds Idle without assigning historical identity. Later a
 
 ### Lifecycle boundaries and totals
 
-Shared lifecycle facts partition all valid open lanes at their timestamp and do not establish engagement. The first row in a same-instant pair receives preceding slices; the second receives zero. Preserve per-lane allocations. Shared cells show their sum only when that dimension is fully known; otherwise show Unknown with a separately inspectable known subtotal.
+Shared lifecycle facts partition only lanes with closing engagement evidence reaching that timestamp, as specified in the XPR clarification below; an unmatched opener alone is insufficient. They do not establish engagement. The first row in a same-instant pair receives preceding slices; the second receives zero. Preserve per-lane allocations. Shared cells show their sum only when that dimension is fully known; otherwise show Unknown with a separately inspectable known subtotal.
 
 For #1854, the boundary receives five seconds and the later update receives 901 seconds. Original engagement evidence spanning both remains evidence and is not credited again.
 
@@ -148,7 +148,7 @@ The current `updateIssueComment` accepts ID/body without compare-and-swap. Local
 
 Lost-response retry first observes the target: matching body/provenance succeeds without another mutation. Rerunning repair is byte-identical. Preserve timestamps, events, order, descriptions, words/cursors, actors and unrelated suffixes; do not synthesize history.
 
-Roll out readers first, then producers, then dry-run repair. Build/test apply capability within this defect. Actual historical GitHub apply remains a separately authorized operational action, with changed totals and unknown remainder visible in its preview.
+Roll out a reader-compatible release first, keep new producer emission disabled by default, and activate only under the mixed-version rollout contract below; dry-run repair follows. Build/test apply capability within this defect. Actual historical GitHub apply remains a separately authorized operational action, with changed totals and unknown remainder visible in its preview.
 
 ## Acceptance and verification
 
@@ -177,7 +177,7 @@ At first admission retain a stable source identity and canonical evidence digest
 
 Preserve original timestamps for delayed actor and shared-boundary events. Order by normalized event tick, then stable source order at that tick; retain original ordering for existing equal-tick rows and completion-before-entry within a lifecycle pair. Newly arriving equal-tick rows receive a durable source order after existing rows at that tick. Never advance their timestamp to the current tail to manufacture ordering. Lifecycle pairs are admitted together in their defined order.
 
-Late insertion deterministically rederives every affected subsequent lane allocation and duration projection in one coordinated canonical-body mutation. For start at 0, update at 20, and a late boundary at 10, the final body allocates 10 seconds to the boundary and 10 to the update. Do not merely subtract previously credited intervals or add the boundary on top. Retain immutable source identity, record the projection revision and validate conservation before mutation. Historical repair follows the same identity/reallocation contract.
+Late insertion deterministically rederives every affected subsequent lane allocation and duration projection in one canonical-body mutation under the full-projection read-back, bounded retry and refusal contract below. This does not assert compare-and-swap or global atomic writer exclusion. For start at 0, update at 20, and a late boundary at 10, the final body allocates 10 seconds to the boundary and 10 to the update. Do not merely subtract previously credited intervals or add the boundary on top. Retain immutable source identity, record the projection revision and validate conservation before mutation. Historical repair follows the same identity/reallocation contract.
 
 The original actor-flush journal payload and digest remain immutable. Preserve two distinct successful checkpoint paths:
 
@@ -196,13 +196,13 @@ Append-only successors outside protected regions remain allowed only when they s
 
 The event-delta/v1 public projection uses these explicit formulas across legacy and actor histories. Query at the latest recorded event horizon; no implicit local-clock tail is added.
 
-| Scalar                                                           | Slice dimension and scope                                                            | Conversion                                                  |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| totalActiveSec / engagedSec                                      | Sum Active over all attributable lanes and stages, including unassigned-stage slices | Integer seconds; Review is never added again                |
-| totalIdleSec                                                     | Sum Idle over all attributable lanes and stages                                      | Integer seconds                                             |
-| planSec / reviewSec                                              | Sum Active assigned to Plan / Review stage visits respectively                       | Integer seconds, aggregated across visits                   |
-| per-stage Idle                                                   | Sum Idle assigned to that stage                                                      | Integer seconds, separately exposed                         |
-| totalActiveMin / engagedMin / totalIdleMin / planMin / reviewMin | Corresponding complete seconds scalar divided by 60                                  | Math.round after aggregating seconds; no per-visit rounding |
+| Scalar                                                           | Slice dimension and scope                                                                   | Conversion                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| totalActiveSec / engagedSec                                      | Sum Active over all attributable lanes and stages, including unassigned-stage slices        | Integer seconds; Review is never added again                |
+| totalIdleSec                                                     | Sum Idle over all attributable lanes and stages; overlapping lane Idle can exceed wall time | Integer seconds                                             |
+| planSec / reviewSec                                              | Sum Active assigned to Plan / Review stage visits respectively                              | Integer seconds, aggregated across visits                   |
+| per-stage Idle                                                   | Sum Idle assigned to that stage                                                             | Integer seconds, separately exposed                         |
+| totalActiveMin / engagedMin / totalIdleMin / planMin / reviewMin | Corresponding complete seconds scalar divided by 60                                         | Math.round after aggregating seconds; no per-visit rounding |
 
 SessionTime retains its existing independent wall-span definition and board codec. Do not substitute summed actor effort for that field. All changed scalar numeric values continue through the unchanged board display/sorting codec. The uniform minute conversion above replaces the conflicting legacy per-visit and actor fractional Plan conversions for the new projection only. Old sealed outcome calculation remains on its pinned semantics.
 
@@ -221,3 +221,65 @@ Review choices: shared engine A, whole-second precision, narrow legacy idle brid
 After spec approval, write the issue-numbered implementation plan and satisfy refinement/Plan gates before code. This spec does not replace the later governed deep dive.
 
 Design timing stays bound to #1901: design:start at drafting, design:review at human-review handoff, design:complete after design review completes. The baseline rejects these as Event slugs; record exact labels in Description on sanctioned update rows. New event vocabulary is outside this defect.
+
+## XPR clarifications: live convergence and evidence bounds
+
+### Full-projection publication verification
+
+A live mutation builds the event insertion and all affected allocation rewrites in memory and submits them as one complete comment-body mutation. There is no intermediate remote insert-before-rewrite step. Local writer locking serializes participants sharing that lock; it does not provide cross-worktree or cross-host exclusion.
+
+Replace own-row-only append read-back with verification of the entire observed projection: canonical immutable source evidence, unique admission/source order, every derived allocation/cell/seconds marker, known subtotals, conservation and the current source-inventory digest must agree with a fresh derivation of the observed body. Also verify retention of every immutable source event known from the pre-write snapshot and candidate admission unit. Verify protected sealed-source bytes before every attempt.
+
+On drift, merge the immutable source events already known to the operation with the freshly observed source, rederive the complete unprotected projection, and retry. Bound the operation to three mutation attempts, including the first. Conflicting immutable source identity, protected-byte intersection, invalid source history, or exhausted retries returns a typed refusal/pending publication; preserve the immutable journal/queue evidence and report the conflict. Never acknowledge remote completion from own-row presence alone. Later journal/queue delivery retries the same source admission rather than generating new events.
+
+Concurrent participants can momentarily observe a stale projection. Every compatible reader rederives and checks the complete observed projection before treating stored seconds or board projections as authoritative. On mismatch it reports `projection-stale`, retains diagnostic known subtotals and refuses complete authoritative totals or evidence until reconciliation succeeds. A consumer must not silently trust stale stored cells because its own row is present. Per-issue summaries identify the exact source digest they represent. This is detection and eventual convergence among compatible, recoverable writers, not a CAS guarantee. Unregistered/manual mutations remain outside that writer protocol; operators must suspend participating writers before editing a Timing Log manually. Historical batch apply still requires its exclusive maintenance window and protected-source checks.
+
+Add two-writer tests with stale snapshots, late insertion/reallocation, lost responses and overwrites; prove full-projection read-back detects stale allocations, retains known immutable events and either converges within the limit or preserves pending evidence without false remote success. Test readers encountering the temporarily stale body and a journal replay after another writer changes the projection.
+
+### Which lanes a boundary can credit
+
+A matching actor-owned update, departure, or bounded engagement endpoint supplies that lane's closing observation. A live lifecycle publisher may additionally record its own continued bound engagement through the boundary in immutable source evidence, including actor identity and original endpoints. It may not attest continued engagement for other actors. The pure engine consumes these recorded facts without consulting transcript heuristics, leases or implicit current time.
+
+A shared boundary cannot turn another lane's lone opener into an observed end. Its elapsed slice remains pending/unavailable until that lane's own closing evidence establishes a window spanning the boundary. When such evidence arrives, deterministic reallocation splits that observed window at the already recorded boundaries under the publication convergence contract. Until then, affected totals expose a known subtotal and unavailable remainder; do not credit the lane with elapsed Active through successive unrelated stages.
+
+If the session never returns, no later boundary credits its unobserved tail. A later recovery event with a missing original end also leaves that tail unavailable; previously bounded, observed slices remain valid and are not revoked merely because a future tail was lost. The single-stream legacy prefix uses its own ordered observations as lane evidence; the legacy Idle bridge closes and retires that legacy interruption, so it cannot remain a second open lane after actor adoption.
+
+Test an actor opening and never closing while another actor advances stages over days, a late missing-end recovery, a later valid own endpoint spanning earlier boundaries, and legacy-lane retirement. Totals must contain only bounded observed Active contributions, with explicit pending uncertainty for unobserved tails.
+
+### Currently observed rows change visible meaning
+
+Apply event-delta/v1 to all enabled-model rows, including rows whose transcript estimate was previously observed. A matching actor-owned end after an overnight transcript gap, with no departure or attributable pause, closes a full event-level Active interval and zero event-level Idle. Do not reintroduce an idle-threshold or completed-turn requirement to classify that interval. Conversely, an opener without such an end supplies no multi-day Active duration by itself.
+
+`idleThresholdMinutes`, `computeActiveAndIdleSeconds` and transcript idle heuristics remain estimate-only if retained. They must not supply or gate visible event-model seconds. Preserve the original `aitm-engagement active=` estimate and any separately identified estimate data. Historical preview distinguishes `unknown-recovered`, `observed-estimate-reclassified`, `stale-seconds-reconciled` and `display-only` changes. Report old/new Active/Idle and board Engaged/Plan/Review deltas for each category; the operator must see that previously observed Active may increase and transcript Idle may move to zero. Sealed-source restrictions still forbid applying protected examples in place.
+
+Add an observed Codex window with a long transcript gap and a matching own end: visible Active equals the full bounded event interval, Idle is zero, and the old transcript estimate remains unchanged. This is a specified metrics change, not a claim that every elapsed second was CPU activity.
+
+## XPR clarifications: rollout and lifecycle admission
+
+### Mixed-version rollout
+
+Release N first adds tolerant lexical reading of the new suffix and both duration grammars, source/projection separation, full-projection validation, replay handling and old-outcome compatibility. New emission and live reallocation remain disabled by default through the repository-level setting `timingDurationModel`, whose default is `legacy` and whose opt-in value is `event-delta/v1`. Disabled mode preserves old row grammar and visible accounting. Every public producer, repair apply path and runtime adapter checks this setting; dry-run/export can calculate the new model without emitting it.
+
+Activation is an explicit operator rollout action after every allowed host, session and sibling worktree that accesses the same comment has at least reader-compatible release N. Record the concrete release version, participating writers/consumers and configuration revision in the rollout checklist. Suspended stale sessions must be upgraded before resuming. The gate is not backward-compatible enforcement in an old binary that ignores it: unsupported readers/writers must be excluded operationally before activation. If the participant inventory/readiness cannot be established, leave emission disabled. Do not promise that arbitrary old installations can safely coexist after activation.
+
+For new enabled-model rows, the lexical suffix order after the final table delimiter is: optional transition; optional actor; optional engagement (requires actor); optional complete `row-sec`; required `aitm-duration:v1`; optional cost; then preserved opaque metadata. Non-actor shared rows omit actor/engagement. Partial-duration rows omit a misleading complete seconds pair. Existing historical suffix bytes remain unchanged unless an explicitly permitted repair rewrites that row; tolerant readers accept their legacy/composed order and diagnose duplicate or conflicting recognized markers. Known original metadata and new source-attestation fields are immutable; only the duration projection subsection may be rederived.
+
+A baseline 0.1.0 checkout reader is not compatible with enabled output: actor rows can throw `TIMING_ACTOR_INVALID`, non-actor suffix extraction can fail to expose seconds to estimation, and its duration codec rejects the new clock grammar. Test those exact baseline behaviors as the declared incompatibility, plus disabled emission producing bytes those readers can still consume. Test release-N lexical/codec readers on enabled output. Do not call a thrown old-reader parse safe degradation.
+
+Enumerate display-sensitive consumers in the implementation plan: `deriveActorEngagement` and its historical-work predicate, phase-span/row duration helpers, rollup, estimation-stage reading, outcome/source-successor validation, timing-log sequence validation, backfill/heal/rename and every producer formatter. Event-model consumers use decoded seconds/availability instead of display heuristics. Old-schema snapshot validation retains historical semantics for original rows. Its compatibility view of newly formatted successors recognizes new known-zero cells as zero and reads original source evidence/estimates, without substituting mutable duration projections into old telemetry. It must preserve exact original snapshot digest/byte checks and pass existing outcome reuse adapters. Do not globally change the old-format explicit-zero literal behavior as an incidental fix.
+
+Test original sealed outcomes after release-N reader rollout, valid new-format append-only successors (including explicit zero and multi-day cells), rejection of invalid successors, and refusal to activate/apply with incompatible or unaccounted participants.
+
+### Retained lifecycle pre-flush and atomic pair
+
+Retain the bound actor's pre-flush as a separate journaled event and existing word-banking checkpoint. An update is not a departure: it closes the credited slice up to its own timestamp and leaves engagement available for a later matching observation. Duration belongs to the pre-flush row up to that tick. The first lifecycle row owns only the remaining observed slice from that tick to the boundary; the second row of the pair owns zero. Bank words on the pre-flush under the existing word contract; do not duplicate or move them merely to align duration cells. Later word growth retains its own cursor semantics.
+
+The pre-flush is not part of the lifecycle pair's remote mutation. Once remotely published or durably queued, it remains an independently recoverable event. Prepare completion plus entry as one immutable admission unit sharing a timestamp, transition identity and stable pair order, and publish/queue both together; never acknowledge a single half as the admitted pair. If failure occurs after pre-flush but before pair preparation/admission, retain that valid flush and retry only the missing pair. If the pair payload already exists, retries use its original source identity and timestamp. Do not roll back the flush, invent a departure, or rerun word credit. The board transition authority remains with its existing governed operation; timing failure reports pending evidence and does not fabricate a new transition.
+
+Test remote or queued pre-flush followed by pair failure, restart with the pair pending, lost response after complete pair admission, same-second pair replay and a retained pre-flush several seconds before the boundary. Every case must preserve the requested #1854 five-second boundary and prevent double counting of time or words.
+
+### Implementation planning boundaries
+
+The implementation plan should stage tolerant readers/engine, enabled producers/display/scalars, and guarded repair/export/reallocation verification as distinct verifiable delivery steps while retaining this defect's full AC1–AC6. If linked stories are later needed, enumerate existing children first and use governed issue creation; this specification invents no child IDs and authorizes no stage skipping.
+
+Summed Idle is per-lane waiting duration, just as summed Active is per-lane engaged duration. Either can exceed wall time when lanes overlap. Neither substitutes for SessionTime wall span. The pre-existing old-format zero literal mismatch is separately identified in the XPR disposition and is not silently fixed by changing sealed historical semantics.
