@@ -360,7 +360,7 @@ test('clearProjectFieldValue: uses the canonical ProjectV2 clear mutation', asyn
 // #1855: Preserve actual transport/parser distinctions before recorded DATA factoring.
 test('gh: null close code retains original raw error fields rather than zero or a signal guess', async () => {
   deps.spawn = fakeSpawn({ stdout: 'partial output\n', stderr: 'terminated\n', code: null });
-  await assert.rejects(gh(['api', 'graphql', '--input', '-'], { input: '{}' }), error => {
+  await assert.rejects(gh(['api', 'graphql', '--input', '-'], { input: '{}' }), (error) => {
     assert.equal(error.constructor, Error);
     assert.equal(error.message, 'gh exited null: terminated\n');
     assert.equal(error.code, null);
@@ -384,7 +384,7 @@ test('gql: malformed successful JSON shapes retain native property and API error
   deps.spawn = fakeSpawn({ stdout: '{"errors":{}}' });
   await assert.rejects(gql('query{}', {}, { env: {} }), TypeError);
   deps.spawn = fakeSpawn({ stdout: '{"errors":[],"data":{"ignored":true}}' });
-  await assert.rejects(gql('query{}', {}, { env: {} }), error => {
+  await assert.rejects(gql('query{}', {}, { env: {} }), (error) => {
     assert.equal(error.constructor, Error);
     assert.equal(error.message, '');
     return true;

@@ -130,13 +130,21 @@ export async function writeNativeStageActorTiming(invocation, operation) {
   const native = await import('./move-state/move-state-core.mjs');
   const source = await native.beginNativeStageCheckpointActor(invocation, operation);
   try {
-    if (source.beforeBytes !== null) validateActorTimingState(JSON.parse(source.beforeBytes), source.identity);
-    const intent = { invocation: source.invocation, file: source.file, stateBytes: source.stateBytes,
-      bytes: JSON.stringify(record, null, 2) + '\n' };
+    if (source.beforeBytes !== null)
+      validateActorTimingState(JSON.parse(source.beforeBytes), source.identity);
+    const intent = {
+      invocation: source.invocation,
+      file: source.file,
+      stateBytes: source.stateBytes,
+      bytes: JSON.stringify(record, null, 2) + '\n',
+    };
     nativeStageActorStateWrites.set(invocation, intent);
     await native.persistNativeStageCheckpoint(invocation, intent);
     await native.writeNativeStageCheckpoint(invocation);
     await native.completeNativeStageCheckpoint(invocation);
     return record.state;
-  } finally { nativeStageActorStateWrites.delete(invocation); native.endNativeStageCheckpointLeaf(invocation); }
+  } finally {
+    nativeStageActorStateWrites.delete(invocation);
+    native.endNativeStageCheckpointLeaf(invocation);
+  }
 }

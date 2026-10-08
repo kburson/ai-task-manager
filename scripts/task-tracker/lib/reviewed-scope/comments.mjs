@@ -12,9 +12,18 @@ import {
 } from './model.mjs';
 
 function preserveRevisionTransportRefusal(error) {
-  if (error?.name !== 'RevisionMemoryTransportError' || error.code !== 'revision-authority-unavailable' ||
-      error.status !== 'indeterminate' || error.blocker?.guardId !== 'revision-mutation') return;
-  try { validateBlocker(error.blocker, { status: error.status }); } catch { return; }
+  if (
+    error?.name !== 'RevisionMemoryTransportError' ||
+    error.code !== 'revision-authority-unavailable' ||
+    error.status !== 'indeterminate' ||
+    error.blocker?.guardId !== 'revision-mutation'
+  )
+    return;
+  try {
+    validateBlocker(error.blocker, { status: error.status });
+  } catch {
+    return;
+  }
   // This preserves a denial only; caller error data can never admit an effect.
   throw error;
 }
@@ -124,9 +133,18 @@ function uncertain(record, predecessor, cause) {
   error.cause = cause;
   return error;
 }
-export async function ensureRecordComment({ repository, issue, projectDir, record, expectedPredecessor, deps = {} }) {
-  return withRevisionConsumer({ repository, issue, projectDir, backend: deps.revisionBackend,
-    activity: 'issue-write' }, () => ensureRecordCommentAdmitted({ repository, issue, record, expectedPredecessor, deps }));
+export async function ensureRecordComment({
+  repository,
+  issue,
+  projectDir,
+  record,
+  expectedPredecessor,
+  deps = {},
+}) {
+  return withRevisionConsumer(
+    { repository, issue, projectDir, backend: deps.revisionBackend, activity: 'issue-write' },
+    () => ensureRecordCommentAdmitted({ repository, issue, record, expectedPredecessor, deps })
+  );
 }
 
 async function ensureRecordCommentAdmitted({

@@ -2,7 +2,10 @@ import path from 'node:path';
 import { currentSessionId } from '../word-counter.mjs';
 import { assertGovernedMutationSession } from './issue-body.mjs';
 import { stripBodyVersion } from '../lib/versioned-issue-write.mjs';
-import { withRevisionConsumer, withNativeSourceCorrection } from '../lib/criteria-revision/policy.mjs';
+import {
+  withRevisionConsumer,
+  withNativeSourceCorrection,
+} from '../lib/criteria-revision/policy.mjs';
 // `user-story` verb (alias `story`) — author/repair the `## User Story` section.
 //
 // CLI: /task user-story [#N] --as "<role>" --want "<goal>" --so-that "<benefit>"
@@ -98,8 +101,17 @@ export function readNativeUserStoryOperation(token) {
 }
 export async function runUserStory(input = {}) {
   const { target, cfg, story, deps = {}, projectDir = getProjectDir() } = input;
-  const ordinary = () => withRevisionConsumer({ repository: cfg?.repo, issue: target, activity: 'body-write',
-    backend: deps.revisionBackend, projectDir }, () => runUserStoryAdmitted(input));
+  const ordinary = () =>
+    withRevisionConsumer(
+      {
+        repository: cfg?.repo,
+        issue: target,
+        activity: 'body-write',
+        backend: deps.revisionBackend,
+        projectDir,
+      },
+      () => runUserStoryAdmitted(input)
+    );
   // Injected mutation callbacks remain ordinary covered consumers.
   if (!deps.revisionBackend || deps.mutateIssueBody) return ordinary();
   if (!Number.isInteger(target) || target <= 0 || !cfg?.repo)
@@ -109,23 +121,47 @@ export async function runUserStory(input = {}) {
   assertGovernedMutationSession(state, target);
   if (path.resolve(state.worktreePath ?? '') !== path.resolve(projectDir))
     throw new Error('criteria-revision:native-user-story-worktree');
-  const token = Object.freeze({}), held = { live: true, value: {
-    repository: cfg.repo, issue: target, operation: { schema: 'aitm.native-user-story-operation/v1', story },
-    session: { sessionId: currentSessionId(), projectDir: path.resolve(projectDir), branch: state.worktreeBranch, entryStartTs: state.entryStartTs },
-  } };
+  const token = Object.freeze({}),
+    held = {
+      live: true,
+      value: {
+        repository: cfg.repo,
+        issue: target,
+        operation: { schema: 'aitm.native-user-story-operation/v1', story },
+        session: {
+          sessionId: currentSessionId(),
+          projectDir: path.resolve(projectDir),
+          branch: state.worktreeBranch,
+          entryStartTs: state.entryStartTs,
+        },
+      },
+    };
   nativeStoryOperations.set(token, held);
   try {
-    const result = await withNativeSourceCorrection({ token, backend: deps.revisionBackend }, async journal => {
-      if (!journal) return ordinary();
-      const result = await mutateIssueBody({ repo: cfg.repo, issueNumber: target,
-        deps: { ...deps.writeDeps, revisionBackend: deps.revisionBackend }, expectedVersion: journal.before.body.version,
-        mutate: () => stripBodyVersion(journal.after.body.bytes) });
-      if (result.body !== journal.after.body.bytes) throw new Error('criteria-revision:native-user-story-readback');
-      return { status: result.status === 'no-op' ? 'no-op' : 'written', target };
-    });
-    return { status: result.status === 'no-op' ? 'no-op' : 'written', target,
-      ...(result.advisory ? { advisory: result.advisory } : {}) };
-  } finally { held.live = false; }
+    const result = await withNativeSourceCorrection(
+      { token, backend: deps.revisionBackend },
+      async (journal) => {
+        if (!journal) return ordinary();
+        const result = await mutateIssueBody({
+          repo: cfg.repo,
+          issueNumber: target,
+          deps: { ...deps.writeDeps, revisionBackend: deps.revisionBackend },
+          expectedVersion: journal.before.body.version,
+          mutate: () => stripBodyVersion(journal.after.body.bytes),
+        });
+        if (result.body !== journal.after.body.bytes)
+          throw new Error('criteria-revision:native-user-story-readback');
+        return { status: result.status === 'no-op' ? 'no-op' : 'written', target };
+      }
+    );
+    return {
+      status: result.status === 'no-op' ? 'no-op' : 'written',
+      target,
+      ...(result.advisory ? { advisory: result.advisory } : {}),
+    };
+  } finally {
+    held.live = false;
+  }
 }
 async function runUserStoryAdmitted({
   target,
@@ -140,8 +176,11 @@ async function runUserStoryAdmitted({
   if (!cfg || !cfg.repo) {
     throw new Error('user-story: cfg.repo is required');
   }
-  const mutateBody = deps.mutateIssueBody || (deps.writeDeps
-    ? args => mutateIssueBody({ ...args, deps: deps.writeDeps }) : defaultMutateIssueBody);
+  const mutateBody =
+    deps.mutateIssueBody ||
+    (deps.writeDeps
+      ? (args) => mutateIssueBody({ ...args, deps: deps.writeDeps })
+      : defaultMutateIssueBody);
   const writeRes = await mutateBody({
     issueNumber: target,
     repo: cfg.repo,

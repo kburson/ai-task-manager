@@ -8,7 +8,12 @@ import {
   SHARED_DIR_SEGMENT,
   TMP_AITM_SEGMENT,
 } from './paths.mjs';
-import { clearActiveTask, getActiveTask, setActiveTask, deriveRecordedActiveTaskRead } from './session-state.mjs';
+import {
+  clearActiveTask,
+  getActiveTask,
+  setActiveTask,
+  deriveRecordedActiveTaskRead,
+} from './session-state.mjs';
 import {
   ACTOR_TIMING_FIELDS,
   actorTimingStateRecord,
@@ -307,12 +312,12 @@ function stateBinding(state, priorBinding) {
     )
       delete worktreeFields.bindingGenerationId;
     return {
-        ...(priorBinding?.issue === state.active ? priorBinding : {}),
-        issue: state.active ?? null,
-        entryStartTs: state.entryStartTs ?? null,
-        wordsAtStart: state.wordsAtEntryStart ?? 0,
-        ...worktreeFields,
-      };
+      ...(priorBinding?.issue === state.active ? priorBinding : {}),
+      issue: state.active ?? null,
+      entryStartTs: state.entryStartTs ?? null,
+      wordsAtStart: state.wordsAtEntryStart ?? 0,
+      ...worktreeFields,
+    };
   }
   return null;
 }
@@ -331,8 +336,12 @@ function sharedStatePayload(state, previous) {
 // These closed projections validate recorded data only; their inputs are not
 // evidence of native reads, ownership, current binding, or completed writes.
 function recordedStateKeys(value, keys) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) ||
-      Object.keys(value).sort().join(',') !== [...keys].sort().join(','))
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join(',') !== [...keys].sort().join(',')
+  )
     throw new TypeError('recorded-state');
 }
 function recordedStateObject(bytes, absent = false) {
@@ -341,8 +350,11 @@ function recordedStateObject(bytes, absent = false) {
   try {
     if (typeof bytes !== 'string') throw new Error();
     value = JSON.parse(bytes);
-  } catch { throw new TypeError('recorded-state'); }
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('recorded-state');
+  } catch {
+    throw new TypeError('recorded-state');
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new TypeError('recorded-state');
   return value;
 }
 function recordedStateIdentity(identity) {
@@ -358,17 +370,29 @@ export function deriveRecordedState(input) {
   const ownTiming = record === null ? null : validateActorTimingState(record, input.identity).state;
   if (ownTiming === null) {
     recordedStateKeys(input.cursor, ['words', 'wordsFull']);
-    if (Object.values(input.cursor).some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0))
+    if (
+      Object.values(input.cursor).some(
+        (value) => typeof value !== 'number' || !Number.isFinite(value) || value < 0
+      )
+    )
       throw new TypeError('recorded-state');
   } else if (input.cursor !== null) throw new TypeError('recorded-state');
-  return overlayState(stateBase(parsed), ownTiming, input.cursor, deriveRecordedActiveTaskRead({ bytes: input.activeBytes }));
+  return overlayState(
+    stateBase(parsed),
+    ownTiming,
+    input.cursor,
+    deriveRecordedActiveTaskRead({ bytes: input.activeBytes })
+  );
 }
 export function deriveRecordedStateSave(input) {
   recordedStateKeys(input, ['stateBytes', 'identity', 'priorBindingBytes', 'previousBytes']);
   recordedStateIdentity(input.identity);
   const state = recordedStateObject(input.stateBytes);
   const actorRecord = actorTimingStateRecord(input.identity, migrateLegacyFields(state));
-  const bindingRecord = stateBinding(state, deriveRecordedActiveTaskRead({ bytes: input.priorBindingBytes }));
+  const bindingRecord = stateBinding(
+    state,
+    deriveRecordedActiveTaskRead({ bytes: input.priorBindingBytes })
+  );
   const shared = sharedStatePayload(state, recordedStateObject(input.previousBytes, true) ?? {});
   return { actorRecord, bindingRecord, sharedBytes: JSON.stringify(shared, null, 2) + '\n' };
 }
@@ -419,45 +443,68 @@ function* stateSaveProgram(state, statePath, sid, identity) {
   void PER_SESSION_FIELDS;
   const previous = yield { kind: 'read-shared', file: statePath };
   const globalPayload = sharedStatePayload(state, previous);
-  yield { kind: 'write-shared', file: statePath, bytes: JSON.stringify(globalPayload, null, 2) + '\n' };
+  yield {
+    kind: 'write-shared',
+    file: statePath,
+    bytes: JSON.stringify(globalPayload, null, 2) + '\n',
+  };
 }
 function runHostStateSaveOperation(operation) {
   switch (operation.kind) {
-    case 'mkdir': return mkdirSync(operation.directory, { recursive: true });
-    case 'read-actor': return readActorTimingState(operation.identity, operation.projDir);
-    case 'read-binding': return getActiveTask(operation.sid, operation.projDir);
-    case 'set-binding': return setActiveTask(operation.sid, operation.record, operation.projDir);
-    case 'clear-binding': return clearActiveTask(operation.sid, operation.projDir);
-    case 'write-actor': return writeActorTimingState(operation.identity, operation.projDir, operation.state);
+    case 'mkdir':
+      return mkdirSync(operation.directory, { recursive: true });
+    case 'read-actor':
+      return readActorTimingState(operation.identity, operation.projDir);
+    case 'read-binding':
+      return getActiveTask(operation.sid, operation.projDir);
+    case 'set-binding':
+      return setActiveTask(operation.sid, operation.record, operation.projDir);
+    case 'clear-binding':
+      return clearActiveTask(operation.sid, operation.projDir);
+    case 'write-actor':
+      return writeActorTimingState(operation.identity, operation.projDir, operation.state);
     case 'read-shared': {
       let previous = {};
       if (existsSync(operation.file)) {
-        try { previous = JSON.parse(readFileSync(operation.file, 'utf8')); }
-        catch { /* legacy unknown */ }
+        try {
+          previous = JSON.parse(readFileSync(operation.file, 'utf8'));
+        } catch {
+          /* legacy unknown */
+        }
       }
       return previous;
     }
-    case 'write-shared': return writeFileSync(operation.file, operation.bytes, 'utf8');
-    default: throw new TypeError('native-state-operation');
+    case 'write-shared':
+      return writeFileSync(operation.file, operation.bytes, 'utf8');
+    default:
+      throw new TypeError('native-state-operation');
   }
 }
 const nativeCheckpointOperations = new WeakMap();
 export function assertNativeStageCheckpointOperation(invocation, operation) {
-  if (nativeCheckpointOperations.get(invocation) !== operation) throw new TypeError('native-state-operation');
+  if (nativeCheckpointOperations.get(invocation) !== operation)
+    throw new TypeError('native-state-operation');
 }
 const nativeCheckpointWrites = new WeakMap();
 export function assertNativeStageTrackerWrite(invocation, intent) {
   const original = nativeCheckpointWrites.get(invocation);
-  if (!original || JSON.stringify(original) !== JSON.stringify(intent)) throw new TypeError('native-state-write');
+  if (!original || JSON.stringify(original) !== JSON.stringify(intent))
+    throw new TypeError('native-state-write');
 }
 async function runMemoryStateSaveOperation(native, invocation, operation) {
   switch (operation.kind) {
-    case 'mkdir': return native.checkNativeStageCheckpointDirectory(invocation, operation);
+    case 'mkdir':
+      return native.checkNativeStageCheckpointDirectory(invocation, operation);
     case 'read-actor': {
       const bytes = native.readNativeStageCheckpointActor(invocation, operation);
-      return bytes === null ? null : validateActorTimingState(JSON.parse(bytes), operation.identity).state;
+      return bytes === null
+        ? null
+        : validateActorTimingState(JSON.parse(bytes), operation.identity).state;
     }
-    case 'read-binding': return deriveRecordedActiveTaskRead({ bytes: native.readNativeStageCheckpointBinding(invocation, operation) });
+    case 'read-binding':
+      return deriveRecordedActiveTaskRead({
+        bytes: native.readNativeStageCheckpointBinding(invocation, operation),
+      });
     case 'set-binding': {
       const { setNativeStageActorTask } = await import('./session-state.mjs');
       native.assertNativeStageCheckpointCurrent(invocation);
@@ -475,15 +522,24 @@ async function runMemoryStateSaveOperation(native, invocation, operation) {
     case 'write-shared': {
       const source = await native.beginNativeStageCheckpointShared(invocation, operation);
       try {
-        const intent = { invocation: source.invocation, file: operation.file, stateBytes: source.stateBytes, bytes: operation.bytes };
+        const intent = {
+          invocation: source.invocation,
+          file: operation.file,
+          stateBytes: source.stateBytes,
+          bytes: operation.bytes,
+        };
         nativeCheckpointWrites.set(invocation, intent);
         await native.persistNativeStageCheckpoint(invocation, intent);
         await native.writeNativeStageCheckpoint(invocation);
         await native.completeNativeStageCheckpoint(invocation);
-      } finally { nativeCheckpointWrites.delete(invocation); native.endNativeStageCheckpointLeaf(invocation); }
+      } finally {
+        nativeCheckpointWrites.delete(invocation);
+        native.endNativeStageCheckpointLeaf(invocation);
+      }
       return;
     }
-    default: throw new TypeError('native-state-operation');
+    default:
+      throw new TypeError('native-state-operation');
   }
 }
 export async function saveNativeStageActorCheckpoint(invocation) {
@@ -498,7 +554,12 @@ export async function saveNativeStageActorFinal(invocation) {
 }
 async function runNativeStageStateProgram(native, invocation, source) {
   try {
-    const program = stateSaveProgram(JSON.parse(source.stateBytes), source.statePath, source.identity.sid, source.identity);
+    const program = stateSaveProgram(
+      JSON.parse(source.stateBytes),
+      source.statePath,
+      source.identity.sid,
+      source.identity
+    );
     let next = program.next();
     while (!next.done) {
       nativeCheckpointOperations.set(invocation, next.value);
@@ -507,7 +568,10 @@ async function runNativeStageStateProgram(native, invocation, source) {
       nativeCheckpointOperations.delete(invocation);
       next = program.next(result);
     }
-  } finally { nativeCheckpointOperations.delete(invocation); native.endNativeStageActorCheckpoint(invocation); }
+  } finally {
+    nativeCheckpointOperations.delete(invocation);
+    native.endNativeStageActorCheckpoint(invocation);
+  }
 }
 
 export function saveState(state, statePath) {

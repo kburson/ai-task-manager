@@ -1,7 +1,14 @@
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import { setChecklistLine, setChecklistLines } from '../lib/checklist-body.mjs';
 export { setChecklistLine, setChecklistLines } from '../lib/checklist-body.mjs';
-import { withRevisionConsumer, currentRevisionExecutionScope, currentRevisionChecklistOperation, prepareRevisionChecklist, resumeRevisionChecklist, RevisionPolicyError } from '../lib/criteria-revision/policy.mjs';
+import {
+  withRevisionConsumer,
+  currentRevisionExecutionScope,
+  currentRevisionChecklistOperation,
+  prepareRevisionChecklist,
+  resumeRevisionChecklist,
+  RevisionPolicyError,
+} from '../lib/criteria-revision/policy.mjs';
 // @story #1859
 import { parseReviewedCheckArgs, recordReviewedScope } from '../lib/reviewed-scope/record.mjs';
 import { loadState } from '../state.mjs';
@@ -20,36 +27,57 @@ const nativeChecklistTokens = new WeakMap();
 // its evidence gate and independently held proof qualification have completed.
 export function readNativeChecklistOperation(token) {
   const execution = nativeChecklistTokens.get(token);
-  if (!execution || canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(execution.scope))
+  if (
+    !execution ||
+    canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(execution.scope)
+  )
     throw new Error('native-checkbox-token');
   return structuredClone(execution);
 }
 // Read-only assertion for the private original-intent retry. It returns no
 // token or authority and still runs the actual current native evidence gate.
 export function assertCurrentNativeChecklistOperation(execution) {
-  if (execution?.schema !== 'aitm.native-checkbox-operation/v1' ||
-      canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(execution.scope))
+  if (
+    execution?.schema !== 'aitm.native-checkbox-operation/v1' ||
+    canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(execution.scope)
+  )
     throw new Error('native-checkbox-current-scope');
-  if (execution.intent.desired === 'checked') for (const label of execution.intent.labels) {
-    if (gateEvidenceTick(execution.scope.observation.body.bytes, label).kind !== 'pass')
-      throw new Error('native-checkbox-current-evidence');
-  }
+  if (execution.intent.desired === 'checked')
+    for (const label of execution.intent.labels) {
+      if (gateEvidenceTick(execution.scope.observation.body.bytes, label).kind !== 'pass')
+        throw new Error('native-checkbox-current-evidence');
+    }
 }
 
 async function prepareNativeChecklist(ctx, labels, desired) {
-  const execution = await currentRevisionChecklistOperation({ intent: { labels, desired }, projectDir: ctx.projectDir });
+  const execution = await currentRevisionChecklistOperation({
+    intent: { labels, desired },
+    projectDir: ctx.projectDir,
+  });
   if (!execution) return;
   const token = Object.freeze({});
   nativeChecklistTokens.set(token, execution);
-  try { await prepareRevisionChecklist(token); }
-  finally { nativeChecklistTokens.delete(token); }
+  try {
+    await prepareRevisionChecklist(token);
+  } finally {
+    nativeChecklistTokens.delete(token);
+  }
 }
 function refuseUnsupportedNativeChecklist(labels, allowUnverifiedTicks = false) {
   const scope = currentRevisionExecutionScope();
-  if (scope && (scope.observation.sourceKind !== 'legacy-body' || allowUnverifiedTicks ||
-      labels.some(label => /^(?:deep[- ]?dive complete|discussion complete)$/i.test(label.trim()))))
-    throw new RevisionPolicyError({ status: 'indeterminate', code: 'revision-topology-unsupported',
-      noAutomaticRemediation: { reason: 'authority-investigation-required' } });
+  if (
+    scope &&
+    (scope.observation.sourceKind !== 'legacy-body' ||
+      allowUnverifiedTicks ||
+      labels.some((label) =>
+        /^(?:deep[- ]?dive complete|discussion complete)$/i.test(label.trim())
+      ))
+  )
+    throw new RevisionPolicyError({
+      status: 'indeterminate',
+      code: 'revision-topology-unsupported',
+      noAutomaticRemediation: { reason: 'authority-investigation-required' },
+    });
 }
 
 // Toggle a single checklist line whose VISIBLE label matches `label`.
@@ -249,16 +277,37 @@ async function runEnsure(ctx, desired) {
       const labels = [...parsed.labels];
       if (parsed.labelsFile) {
         const { readFile } = await import('node:fs/promises');
-        labels.push(...(await readFile(parsed.labelsFile, 'utf8')).split('\n').map(line => line.trim()).filter(Boolean));
+        labels.push(
+          ...(await readFile(parsed.labelsFile, 'utf8'))
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+        );
       }
       if (!labels.length) labels.push(parsed.positional.join(' ').trim());
-      if (await resumeRevisionChecklist({ repository: ctx.cfg?.repo, issue: Number(state.active.replace(/^#/, '')),
-        backend: ctx.deps.revisionBackend, intent: { labels, desired }, projectDir: ctx.projectDir, pexec: ctx.pexec })) return;
+      if (
+        await resumeRevisionChecklist({
+          repository: ctx.cfg?.repo,
+          issue: Number(state.active.replace(/^#/, '')),
+          backend: ctx.deps.revisionBackend,
+          intent: { labels, desired },
+          projectDir: ctx.projectDir,
+          pexec: ctx.pexec,
+        })
+      )
+        return;
     }
   }
-  return withRevisionConsumer({ repository: ctx.cfg?.repo, issue: Number(state.active.replace(/^#/, '')),
-    activity: 'issue-write', backend: ctx.deps?.revisionBackend, projectDir: ctx.projectDir },
-  () => runEnsureAdmitted(ctx, desired));
+  return withRevisionConsumer(
+    {
+      repository: ctx.cfg?.repo,
+      issue: Number(state.active.replace(/^#/, '')),
+      activity: 'issue-write',
+      backend: ctx.deps?.revisionBackend,
+      projectDir: ctx.projectDir,
+    },
+    () => runEnsureAdmitted(ctx, desired)
+  );
 }
 
 async function runEnsureAdmitted(ctx, desired) {

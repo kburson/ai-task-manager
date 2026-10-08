@@ -1,4 +1,7 @@
-import { evaluateNativeRevisionStageGuards, RevisionPolicyError } from '../criteria-revision/policy.mjs';
+import {
+  evaluateNativeRevisionStageGuards,
+  RevisionPolicyError,
+} from '../criteria-revision/policy.mjs';
 // INTERNAL — library module for the state-movement boundary (#559).
 //
 // Guard-execution concern extracted from `scripts/gh/move-state.mjs`: the
@@ -84,8 +87,11 @@ export async function runGuardExecution(ctx) {
   if (nativeEvaluation !== null) {
     for (const refusal of nativeEvaluation.guardResult.refusals ?? [])
       process.stderr.write(`[native-stage-read] ${refusal.reason ?? refusal.code ?? refusal.id}\n`);
-    const refusal = new RevisionPolicyError({ status: 'indeterminate', code: 'revision-authority-unavailable',
-      noAutomaticRemediation: { reason: 'authority-investigation-required' } });
+    const refusal = new RevisionPolicyError({
+      status: 'indeterminate',
+      code: 'revision-authority-unavailable',
+      noAutomaticRemediation: { reason: 'authority-investigation-required' },
+    });
     process.stderr.write(`[native-stage-read] stage execution remains unavailable\n`);
     return { exit: 4, code: refusal.code, blocker: refusal.blocker, nativeEvaluation };
   }

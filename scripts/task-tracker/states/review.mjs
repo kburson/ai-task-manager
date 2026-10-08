@@ -33,7 +33,11 @@ import { reviewAgentValidationAction } from '../lib/resident-actions/review-agen
 
 export default Object.freeze({
   id: 'review',
-  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard, bodyGatesEntryGuardReview]),
+  entryGuards: Object.freeze([
+    criteriaRevisionAdmissionGuard,
+    contiguityEntryGuard,
+    bodyGatesEntryGuardReview,
+  ]),
   residentActions: Object.freeze([reviewAgentValidationAction]),
   exitGuards: Object.freeze([
     blockedByGuard,

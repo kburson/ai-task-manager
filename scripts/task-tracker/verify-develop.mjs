@@ -32,68 +32,134 @@ const nativeEqual = (left, right) => canonicalRecordJson(left) === canonicalReco
 function nativeConfiguration(projectDir) {
   const projectPath = path.join(projectDir, '.ai-task-manager', 'task-tracker.json');
   const legacyProjectPath = path.join(projectDir, '.claude', 'task-tracker.json');
-  const pairs = [[projectPath, legacyProjectPath],
-    [path.join(os.homedir(), '.ai-task-manager', 'task-tracker-config.json'), path.join(os.homedir(), '.claude', 'task-tracker-config.json')]];
-  for (const pair of pairs) for (const file of pair) {
-    try { lstatSync(file); }
-    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
-    const value = JSON.parse(readFileSync(file, 'utf8'));
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('native-final-configuration');
-    break;
-  }
+  const pairs = [
+    [projectPath, legacyProjectPath],
+    [
+      path.join(os.homedir(), '.ai-task-manager', 'task-tracker-config.json'),
+      path.join(os.homedir(), '.claude', 'task-tracker-config.json'),
+    ],
+  ];
+  for (const pair of pairs)
+    for (const file of pair) {
+      try {
+        lstatSync(file);
+      } catch (error) {
+        if (error.code === 'ENOENT') continue;
+        throw error;
+      }
+      const value = JSON.parse(readFileSync(file, 'utf8'));
+      if (!value || typeof value !== 'object' || Array.isArray(value))
+        throw new Error('native-final-configuration');
+      break;
+    }
   const cfg = loadConfig({ projectPath, legacyProjectPath });
-  return { repository: cfg.repo, configuration: {
-    verificationProvider: cfg.verificationProvider ?? null,
-    developVerification: cfg.developVerification ?? null,
-  } };
+  return {
+    repository: cfg.repo,
+    configuration: {
+      verificationProvider: cfg.verificationProvider ?? null,
+      developVerification: cfg.developVerification ?? null,
+    },
+  };
 }
-function nativeFinalContext({ projectDir, issueNumber, verificationCommands, verificationProvider, developVerification, deps }) {
+function nativeFinalContext({
+  projectDir,
+  issueNumber,
+  verificationCommands,
+  verificationProvider,
+  developVerification,
+  deps,
+}) {
   const scope = currentRevisionExecutionScope();
   if (!scope) return null;
-  if (Object.keys(deps).length || scope.observation.sourceKind !== 'legacy-body' ||
-      path.resolve(projectDir) !== scope.executor.worktree || Number(issueNumber) !== scope.binding.issue ||
-      currentSessionId() !== scope.executor.sessionId) throw new Error('native-final-scope');
+  if (
+    Object.keys(deps).length ||
+    scope.observation.sourceKind !== 'legacy-body' ||
+    path.resolve(projectDir) !== scope.executor.worktree ||
+    Number(issueNumber) !== scope.binding.issue ||
+    currentSessionId() !== scope.executor.sessionId
+  )
+    throw new Error('native-final-scope');
   const task = getActiveTask(currentSessionId(), projectDir);
-  if (String(task?.issue).replace(/^#/, '') !== String(issueNumber) || !task?.entryStartTs || task.paused ||
-      !Number.isFinite(Date.parse(task.entryStartTs)) || task.worktreePath !== scope.executor.worktree ||
-      task.worktreeBranch !== scope.executor.branch) throw new Error('native-final-timed-binding');
+  if (
+    String(task?.issue).replace(/^#/, '') !== String(issueNumber) ||
+    !task?.entryStartTs ||
+    task.paused ||
+    !Number.isFinite(Date.parse(task.entryStartTs)) ||
+    task.worktreePath !== scope.executor.worktree ||
+    task.worktreeBranch !== scope.executor.branch
+  )
+    throw new Error('native-final-timed-binding');
   const selected = nativeConfiguration(scope.executor.worktree);
-  if (selected.repository !== scope.binding.repository ||
-      (verificationProvider !== undefined && !nativeEqual(verificationProvider, selected.configuration.verificationProvider)) ||
-      (developVerification !== undefined && !nativeEqual(developVerification, selected.configuration.developVerification)))
+  if (
+    selected.repository !== scope.binding.repository ||
+    (verificationProvider !== undefined &&
+      !nativeEqual(verificationProvider, selected.configuration.verificationProvider)) ||
+    (developVerification !== undefined &&
+      !nativeEqual(developVerification, selected.configuration.developVerification))
+  )
     throw new Error('native-final-configuration');
   const actualCommands = parseVerificationCommands(scope.observation.body.bytes);
-  if (!nativeEqual(canonicalVerificationCommandSet(verificationCommands, { projectDir }),
-      canonicalVerificationCommandSet(actualCommands, { projectDir }))) throw new Error('native-final-declarations');
-  const plan = resolveVerificationProvider({ projectDir, config: selected.configuration.verificationProvider ?? undefined,
-    legacyDevelopVerification: selected.configuration.developVerification ?? undefined }).planDevelopFinal();
-  const fingerprint = buildVerificationFingerprint({ projectDir, commitSha: gitHead(projectDir), verificationCommands: actualCommands });
+  if (
+    !nativeEqual(
+      canonicalVerificationCommandSet(verificationCommands, { projectDir }),
+      canonicalVerificationCommandSet(actualCommands, { projectDir })
+    )
+  )
+    throw new Error('native-final-declarations');
+  const plan = resolveVerificationProvider({
+    projectDir,
+    config: selected.configuration.verificationProvider ?? undefined,
+    legacyDevelopVerification: selected.configuration.developVerification ?? undefined,
+  }).planDevelopFinal();
+  const fingerprint = buildVerificationFingerprint({
+    projectDir,
+    commitSha: gitHead(projectDir),
+    verificationCommands: actualCommands,
+  });
   const provenance = captureEvidenceProvenance({ projectDir, boundIssue: issueNumber });
-  if (!gitClean(projectDir) || provenance.worktreePath !== scope.executor.worktree || provenance.branch !== scope.executor.branch)
+  if (
+    !gitClean(projectDir) ||
+    provenance.worktreePath !== scope.executor.worktree ||
+    provenance.branch !== scope.executor.branch
+  )
     throw new Error('native-final-provenance');
-  return structuredClone({ scope, configuration: selected.configuration, plan, fingerprint, provenance });
+  return structuredClone({
+    scope,
+    configuration: selected.configuration,
+    plan,
+    fingerprint,
+    provenance,
+  });
 }
 // A historical execution is checked against the genuine current held native
 // context. This assertion issues no token, capability, or readiness value.
 export function assertCurrentNativeDevelopExecution(execution) {
-  const current = nativeFinalContext({ projectDir: execution.scope.executor.worktree,
+  const current = nativeFinalContext({
+    projectDir: execution.scope.executor.worktree,
     issueNumber: execution.binding.issue,
-    verificationCommands: parseVerificationCommands(execution.scope.observation.body.bytes), deps: {} });
-  if (!current || !nativeEqual(current.scope, execution.scope)) throw new Error('native-final-execution-scope');
+    verificationCommands: parseVerificationCommands(execution.scope.observation.body.bytes),
+    deps: {},
+  });
+  if (!current || !nativeEqual(current.scope, execution.scope))
+    throw new Error('native-final-execution-scope');
   for (const key of ['configuration', 'plan', 'fingerprint', 'provenance'])
     if (!nativeEqual(current[key], execution[key])) throw new Error('native-final-execution-drift');
 }
 // Read-only opaque token reader; serialized results cannot register execution.
 export function readNativeDevelopExecution(token) {
   const value = nativeFinalExecutions.get(token);
-  if (!value || !nativeEqual(value.scope, currentRevisionExecutionScope())) throw new Error('native-final-token');
-  const current = nativeFinalContext({ projectDir: value.scope.executor.worktree, issueNumber: value.binding.issue,
-    verificationCommands: parseVerificationCommands(value.scope.observation.body.bytes), deps: {} });
+  if (!value || !nativeEqual(value.scope, currentRevisionExecutionScope()))
+    throw new Error('native-final-token');
+  const current = nativeFinalContext({
+    projectDir: value.scope.executor.worktree,
+    issueNumber: value.binding.issue,
+    verificationCommands: parseVerificationCommands(value.scope.observation.body.bytes),
+    deps: {},
+  });
   for (const key of ['configuration', 'plan', 'fingerprint', 'provenance'])
     if (!nativeEqual(current[key], value[key])) throw new Error('native-final-execution-drift');
   return structuredClone(value);
 }
-
 
 const FORMATTABLE_RE = /\.(?:c?js|mjs|json|jsonc|md|ya?ml)$/i;
 const JAVASCRIPT_RE = /\.(?:c?js|mjs)$/i;
@@ -256,8 +322,23 @@ export function runDevelopVerification({
   }
   let native = null;
   if (mode === 'final') {
-    try { native = nativeFinalContext({ projectDir, issueNumber, verificationCommands, verificationProvider, developVerification, deps }); }
-    catch (error) { return { ok: false, mode, commands: [], reasons: [{ code: 'native-final-authority', message: error.message }] }; }
+    try {
+      native = nativeFinalContext({
+        projectDir,
+        issueNumber,
+        verificationCommands,
+        verificationProvider,
+        developVerification,
+        deps,
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        mode,
+        commands: [],
+        reasons: [{ code: 'native-final-authority', message: error.message }],
+      };
+    }
     if (native) {
       verificationProvider = native.configuration.verificationProvider ?? undefined;
       developVerification = native.configuration.developVerification ?? undefined;
@@ -445,12 +526,31 @@ export function runDevelopVerification({
     });
     const result = { ok: true, mode, commands, reasons: [], fingerprint, receipt };
     if (native) {
-      const after = nativeFinalContext({ projectDir, issueNumber, verificationCommands, verificationProvider, developVerification, deps });
-      if (!nativeEqual(native, after) || !nativeEqual(fingerprint, native.fingerprint) || !nativeEqual(finalPlan, native.plan))
+      const after = nativeFinalContext({
+        projectDir,
+        issueNumber,
+        verificationCommands,
+        verificationProvider,
+        developVerification,
+        deps,
+      });
+      if (
+        !nativeEqual(native, after) ||
+        !nativeEqual(fingerprint, native.fingerprint) ||
+        !nativeEqual(finalPlan, native.plan)
+      )
         throw new Error('native-final-execution-drift');
       const token = Object.freeze({});
-      nativeFinalExecutions.set(token, structuredClone({ schema: 'aitm.native-develop-final-execution/v1',
-        ...native, binding: native.scope.binding, commands, receipt }));
+      nativeFinalExecutions.set(
+        token,
+        structuredClone({
+          schema: 'aitm.native-develop-final-execution/v1',
+          ...native,
+          binding: native.scope.binding,
+          commands,
+          receipt,
+        })
+      );
       result.nativeExecutionToken = token;
     }
     return result;

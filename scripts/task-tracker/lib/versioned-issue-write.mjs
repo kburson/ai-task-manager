@@ -1,5 +1,14 @@
-import { assertRevisionProductionTransport, assertRevisionStageHostEffect, isMemoryStageEffectScope } from './criteria-revision/transport-quarantine.mjs';
-import { withRevisionConsumer, assertRevisionBodyMutation, assertNativeStageBodyMutation, assertRevisionStageBodyEntry } from './criteria-revision/policy.mjs';
+import {
+  assertRevisionProductionTransport,
+  assertRevisionStageHostEffect,
+  isMemoryStageEffectScope,
+} from './criteria-revision/transport-quarantine.mjs';
+import {
+  withRevisionConsumer,
+  assertRevisionBodyMutation,
+  assertNativeStageBodyMutation,
+  assertRevisionStageBodyEntry,
+} from './criteria-revision/policy.mjs';
 import { writeLegacyBody } from './criteria-revision/legacy.mjs';
 // Optimistic-concurrency write helper for GitHub issue bodies (epic #288).
 //
@@ -14,7 +23,13 @@ import { writeLegacyBody } from './criteria-revision/legacy.mjs';
 // `deps` injection makes the whole helper testable without GitHub I/O.
 
 import { spawn } from 'node:child_process';
-import { BODY_VERSION_MARKER_RE, parseBodyVersion, stampBodyVersion, stripBodyVersion, matchesBodyReadback } from './body-version.mjs';
+import {
+  BODY_VERSION_MARKER_RE,
+  parseBodyVersion,
+  stampBodyVersion,
+  stripBodyVersion,
+  matchesBodyReadback,
+} from './body-version.mjs';
 
 // Stale-input drift detection (#293).
 //
@@ -300,17 +315,20 @@ async function pexecPushBody(pexec, repo, issueNumber, body) {
   await pending;
 }
 
-async function versionedWriteBodyAdmitted({
-  issueNumber,
-  repo,
-  mutate,
-  deps = {},
-  maxRetries = DEFAULT_MAX_RETRIES,
-  expectedVersion,
-  validateMutation,
-  criteriaRevisionCapability,
-  validateFreshBaseAsync,
-} = {}, nativeEntry) {
+async function versionedWriteBodyAdmitted(
+  {
+    issueNumber,
+    repo,
+    mutate,
+    deps = {},
+    maxRetries = DEFAULT_MAX_RETRIES,
+    expectedVersion,
+    validateMutation,
+    criteriaRevisionCapability,
+    validateFreshBaseAsync,
+  } = {},
+  nativeEntry
+) {
   if (criteriaRevisionCapability !== undefined) {
     return writeLegacyBody({
       token: criteriaRevisionCapability,
@@ -338,16 +356,17 @@ async function versionedWriteBodyAdmitted({
   const fetchBody = nativeEntry
     ? () => nativeEntry.core.fetchNativeStageBody(nativeEntry.input)
     : deps.fetchBody ||
-    (injectedPexec
-      ? (targetRepo, targetIssue) => pexecFetchBody(injectedPexec, targetRepo, targetIssue)
-      : ghFetchBody);
+      (injectedPexec
+        ? (targetRepo, targetIssue) => pexecFetchBody(injectedPexec, targetRepo, targetIssue)
+        : ghFetchBody);
   const pushBody = nativeEntry
-    ? (targetRepo, targetIssue, body) => nativeEntry.core.pushNativeStageBody(nativeEntry.input, body)
+    ? (targetRepo, targetIssue, body) =>
+        nativeEntry.core.pushNativeStageBody(nativeEntry.input, body)
     : deps.pushBody ||
-    (injectedPexec
-      ? (targetRepo, targetIssue, body) =>
-          pexecPushBody(injectedPexec, targetRepo, targetIssue, body)
-      : ghPushBody);
+      (injectedPexec
+        ? (targetRepo, targetIssue, body) =>
+            pexecPushBody(injectedPexec, targetRepo, targetIssue, body)
+        : ghPushBody);
 
   let attempts = 0;
   let lastBase = null;
@@ -463,19 +482,26 @@ async function versionedWriteBodyAdmitted({
 }
 
 export async function versionedWriteBody(input = {}) {
-  try { assertRevisionStageBodyEntry(input); }
-  catch (error) {
+  try {
+    assertRevisionStageBodyEntry(input);
+  } catch (error) {
     if (!isMemoryStageEffectScope()) throw error;
     const core = await import('./move-state/move-state-core.mjs');
     await core.beginNativeStageBodyWrite(input);
-    try { return await versionedWriteBodyAdmitted(input, { core, input }); }
-    finally { core.endNativeStageBodyWrite(input); }
+    try {
+      return await versionedWriteBodyAdmitted(input, { core, input });
+    } finally {
+      core.endNativeStageBodyWrite(input);
+    }
   }
   if (input.criteriaRevisionCapability !== undefined) return versionedWriteBodyAdmitted(input);
-  return withRevisionConsumer({
-    repository: input.repo,
-    issue: input.issueNumber,
-    activity: 'body-write',
-    backend: input.deps?.revisionBackend,
-  }, () => versionedWriteBodyAdmitted(input));
+  return withRevisionConsumer(
+    {
+      repository: input.repo,
+      issue: input.issueNumber,
+      activity: 'body-write',
+      backend: input.deps?.revisionBackend,
+    },
+    () => versionedWriteBodyAdmitted(input)
+  );
 }

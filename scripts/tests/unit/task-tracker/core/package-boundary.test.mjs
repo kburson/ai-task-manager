@@ -1,4 +1,4 @@
-// @story #1854 #1853 #1852 #1851 #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
+// @story #1855 #1854 #1853 #1852 #1851 #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -365,22 +365,38 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'scripts/task-tracker/lib/criteria-revision/admission.mjs',
     'scripts/task-tracker/lib/criteria-revision/authorization.mjs',
     'scripts/task-tracker/lib/criteria-revision/canonical.mjs',
+    'scripts/task-tracker/lib/criteria-revision/consumer-continuation.mjs',
     'scripts/task-tracker/lib/criteria-revision/domain.mjs',
     'scripts/task-tracker/lib/criteria-revision/engine.mjs',
+    'scripts/task-tracker/lib/criteria-revision/evidence-binding.mjs',
     'scripts/task-tracker/lib/criteria-revision/interlock.mjs',
     'scripts/task-tracker/lib/criteria-revision/legacy.mjs',
+    'scripts/task-tracker/lib/criteria-revision/native-stage-data.mjs',
     'scripts/task-tracker/lib/criteria-revision/plan-approval.mjs',
+    'scripts/task-tracker/lib/criteria-revision/policy.mjs',
+    'scripts/task-tracker/lib/criteria-revision/proof-execution.mjs',
     'scripts/task-tracker/lib/criteria-revision/proposal.mjs',
     'scripts/task-tracker/lib/criteria-revision/records.mjs',
     'scripts/task-tracker/lib/criteria-revision/reducer.mjs',
     'scripts/task-tracker/lib/criteria-revision/schema.mjs',
+    'scripts/task-tracker/lib/criteria-revision/source-correction.mjs',
+    'scripts/task-tracker/lib/criteria-revision/stage-execution.mjs',
     'scripts/task-tracker/lib/criteria-revision/store.mjs',
+    'scripts/task-tracker/lib/criteria-revision/transport-quarantine.mjs',
   ];
   assert.deepEqual(
     files.filter((entry) => entry.startsWith('scripts/task-tracker/lib/criteria-revision/')).sort(),
     criteriaRevisionEntries,
-    '#1854 criteria-revision runtime surface must match the exact reviewed Tasks 1 through 4 module set'
+    '#1855 criteria-revision runtime surface must match the exact declared Tasks 1 through 5 WIP module set'
   );
+  // #1855 declares these additional shared runtime and native scheduling modules.
+  const task5SharedEntries = [
+    'scripts/run-tests-native-members.mjs',
+    'scripts/run-tests-native-sections.mjs',
+    'scripts/task-tracker/lib/checklist-body.mjs',
+    'scripts/task-tracker/lib/criteria-revision-admission-guard.mjs',
+  ];
+  for (const entry of task5SharedEntries) assert.ok(files.includes(entry), `missing ${entry}`);
   const effectiveCeiling =
     ENTRY_CEILING +
     recoveryEntryAllowance +
@@ -430,6 +446,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     graphqlUsageCollectionAllowance +
     graphqlUsageReportAllowance +
     criteriaRevisionEntries.length +
+    task5SharedEntries.length +
     draftBranchAllowance +
     artifactPolicyAllowance +
     actorReplayRecoveryAllowance +

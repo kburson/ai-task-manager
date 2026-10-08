@@ -57,6 +57,6 @@ export function stripBodyVersion(body) {
 
 // Native gh -q framing comparison. This does not normalize stored body bytes.
 export function matchesBodyReadback(expected, received) {
-  const norm = value => String(value ?? '').replace(/\s+$/, '');
+  const norm = (value) => String(value ?? '').replace(/\s+$/, '');
   return norm(received) === norm(expected);
 }

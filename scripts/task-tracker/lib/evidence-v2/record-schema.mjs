@@ -143,7 +143,8 @@ export function validateSubject(subject) {
   if (subject.schema !== 'aitm.evidence-subject/v2') fail('subject-schema');
   if (subject.revisionBinding !== undefined) {
     validateRevisionEvidenceBinding(subject.revisionBinding);
-    if (subject.revisionBinding.repository !== subject.repositoryId?.nameWithOwner) fail('revision-repository-identity');
+    if (subject.revisionBinding.repository !== subject.repositoryId?.nameWithOwner)
+      fail('revision-repository-identity');
   }
   repository(subject.repositoryId);
   exact(subject.source, ['objectFormat', 'treeOid', 'manifestDigest'], 'source-keys');

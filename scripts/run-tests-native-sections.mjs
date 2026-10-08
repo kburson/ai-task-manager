@@ -3,6 +3,7 @@
 // the reviewed membership table; neither missing nor new native members vanish.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import * as espree from 'espree';
 import { NATIVE_SERIAL_MEMBERS } from './run-tests-native-members.mjs';
 
 for (const member of Object.values(NATIVE_SERIAL_MEMBERS)) {
@@ -43,8 +44,8 @@ function validateMetadata(value) {
     value.mode === 'board-exception-prefix'
       ? ['write', 'readback', 'outcome-write', 'outcome-readback']
       : ['intent-prefix', 'status-source-prefix'].includes(value.mode)
-      ? ['write', 'readback']
-      : ['intent-write', 'intent-readback', 'effect-write', 'effect-readback'];
+        ? ['write', 'readback']
+        : ['intent-write', 'intent-readback', 'effect-write', 'effect-readback'];
   if (!['failBefore', 'failAfter'].includes(value.when) || !suffixes.includes(value.suffix)) fail();
 }
 export function nativeSerialSection(entry) {
@@ -76,12 +77,38 @@ export function parseNativeSerialRegistration(source) {
   let when = null,
     suffix = null;
   if (match[2]) {
-    if ([...match[2].matchAll(/"(?:when|suffix)"\s*:/g)].length !== 2) fail();
-    let fault;
+    let expression;
     try {
-      fault = JSON.parse(match[2]);
+      const parsed = espree.parse(`(${match[2]})`, {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      });
+      if (parsed.body.length !== 1 || parsed.body[0].type !== 'ExpressionStatement') fail();
+      expression = parsed.body[0].expression;
     } catch {
       fail();
+    }
+    if (expression.type !== 'ObjectExpression' || expression.properties.length !== 2) fail();
+    const fault = {};
+    for (const property of expression.properties) {
+      if (
+        property.type !== 'Property' ||
+        property.kind !== 'init' ||
+        property.computed ||
+        property.method ||
+        property.shorthand ||
+        property.value.type !== 'Literal' ||
+        typeof property.value.value !== 'string'
+      )
+        fail();
+      const key =
+        property.key.type === 'Identifier'
+          ? property.key.name
+          : property.key.type === 'Literal'
+            ? property.key.value
+            : null;
+      if (!['when', 'suffix'].includes(key) || Object.hasOwn(fault, key)) fail();
+      fault[key] = property.value.value;
     }
     if (Object.keys(fault).sort().join(',') !== 'suffix,when') fail();
     ({ when, suffix } = fault);

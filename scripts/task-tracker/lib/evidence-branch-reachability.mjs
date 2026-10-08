@@ -14,17 +14,23 @@ import { readWorktreeIdentity } from './worktree-binding-guard.mjs';
 const pexec = promisify(execFile);
 const nativeReadData = new WeakMap();
 export function readEvidenceBranchReadData(result) {
-  return result && typeof result === 'object' ? nativeReadData.get(result) ?? null : null;
+  return result && typeof result === 'object' ? (nativeReadData.get(result) ?? null) : null;
 }
 const PROOF_MARKER_RE = /<!--\s*aitm-verified\s+[\s\S]*?-->/g;
 const SHA_RE = /^[0-9a-f]{7,40}$/i;
 
 function completeProvenance(item) {
   const sha = item.kind === 'evidence marker' ? item.sha : String(item.sha || '');
-  return typeof sha === 'string' && SHA_RE.test(sha) &&
-    typeof item.branch === 'string' && item.branch.length > 0 &&
-    typeof item.worktreePath === 'string' && item.worktreePath.length > 0 &&
-    Number.isInteger(item.boundIssue) && item.boundIssue > 0;
+  return (
+    typeof sha === 'string' &&
+    SHA_RE.test(sha) &&
+    typeof item.branch === 'string' &&
+    item.branch.length > 0 &&
+    typeof item.worktreePath === 'string' &&
+    item.worktreePath.length > 0 &&
+    Number.isInteger(item.boundIssue) &&
+    item.boundIssue > 0
+  );
 }
 function withCompleteness(item) {
   return { ...item, complete: completeProvenance(item) };
@@ -39,13 +45,15 @@ function proofEvidence(body) {
     const provenanceKeys = ['worktree', 'branch', 'bound-issue'];
     const present = provenanceKeys.filter((key) => props[key] !== undefined);
     if (present.length === 0) continue; // additive compatibility for legacy proof
-    evidence.push(withCompleteness({
-      kind: 'evidence marker',
-      sha: props.sha,
-      branch: props.branch,
-      worktreePath: props.worktree,
-      boundIssue: Number(props['bound-issue']),
-    }));
+    evidence.push(
+      withCompleteness({
+        kind: 'evidence marker',
+        sha: props.sha,
+        branch: props.branch,
+        worktreePath: props.worktree,
+        boundIssue: Number(props['bound-issue']),
+      })
+    );
   }
   return evidence;
 }
@@ -75,13 +83,30 @@ async function defaultIsAncestor({ ancestor, descendant, projectDir }, capture =
       cwd: projectDir,
       timeout: GIT_TIMEOUT_MS,
     });
-    if (capture) capture.reads.push(Object.freeze({ ancestor, descendant, cwd: projectDir,
-      stdout: String(result.stdout ?? ''), stderr: String(result.stderr ?? ''), exitCode: 0 }));
+    if (capture)
+      capture.reads.push(
+        Object.freeze({
+          ancestor,
+          descendant,
+          cwd: projectDir,
+          stdout: String(result.stdout ?? ''),
+          stderr: String(result.stderr ?? ''),
+          exitCode: 0,
+        })
+      );
     return true;
   } catch (error) {
-    if (capture) capture.reads.push(Object.freeze({ ancestor, descendant, cwd: projectDir,
-      stdout: String(error.stdout ?? ''), stderr: String(error.stderr ?? ''),
-      exitCode: typeof error.code === 'number' ? error.code : null }));
+    if (capture)
+      capture.reads.push(
+        Object.freeze({
+          ancestor,
+          descendant,
+          cwd: projectDir,
+          stdout: String(error.stdout ?? ''),
+          stderr: String(error.stderr ?? ''),
+          exitCode: typeof error.code === 'number' ? error.code : null,
+        })
+      );
     if (Number(error?.code) === 1) return false;
     throw new Error(
       `git merge-base --is-ancestor ${ancestor} ${descendant} failed: ${error?.message || error}`
@@ -99,17 +124,26 @@ function unreachableReason({ item, issueNumber, boundBranch }) {
 
 // Captured original data only. This does not perform Git reads or grant readiness.
 export function qualifyEvidenceBranchItem(input) {
-  const closed = (value, names) => value && typeof value === 'object' &&
-    !Array.isArray(value) && Object.keys(value).sort().join(',') === names.sort().join(',');
-  if (!closed(input, ['item', 'issueNumber', 'boundBranch', 'ancestryExitCode']) ||
-      !closed(input.item, ['kind', 'sha', 'branch', 'worktreePath', 'boundIssue']) ||
-      typeof input.item.kind !== 'string' || typeof input.boundBranch !== 'string' ||
-      !input.boundBranch || input.issueNumber == null ||
-      ![null, 0, 1].includes(input.ancestryExitCode)) throw new TypeError('evidence-branch-data');
+  const closed = (value, names) =>
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).sort().join(',') === names.sort().join(',');
+  if (
+    !closed(input, ['item', 'issueNumber', 'boundBranch', 'ancestryExitCode']) ||
+    !closed(input.item, ['kind', 'sha', 'branch', 'worktreePath', 'boundIssue']) ||
+    typeof input.item.kind !== 'string' ||
+    typeof input.boundBranch !== 'string' ||
+    !input.boundBranch ||
+    input.issueNumber == null ||
+    ![null, 0, 1].includes(input.ancestryExitCode)
+  )
+    throw new TypeError('evidence-branch-data');
   const { item, issueNumber, boundBranch, ancestryExitCode } = input;
-  if (!completeProvenance(item)) return [
-    `evidence-branch-provenance-incomplete: ${item.kind} carries partial or malformed provenance`,
-  ];
+  if (!completeProvenance(item))
+    return [
+      `evidence-branch-provenance-incomplete: ${item.kind} carries partial or malformed provenance`,
+    ];
   if (ancestryExitCode === null) throw new TypeError('evidence-branch-data');
   return ancestryExitCode === 1 ? [unreachableReason({ item, issueNumber, boundBranch })] : [];
 }
@@ -131,11 +165,24 @@ export async function auditEvidenceBranchReachability({
   try {
     if (Object.getPrototypeOf(deps) === Object.prototype && Reflect.ownKeys(deps).length === 0)
       capture = { identity: null, identityError: null, reads: [] };
-  } catch { /* Optional introspection does not alter ordinary injected reads. */ }
-  const finish = result => {
-    if (capture) nativeReadData.set(result, Object.freeze({ issue: Number(issueNumber), projectDir,
-      bodyHash: createHash('sha256').update(String(body || '')).digest('hex'),
-      identity: capture.identity, identityError: capture.identityError, reads: Object.freeze(capture.reads) }));
+  } catch {
+    /* Optional introspection does not alter ordinary injected reads. */
+  }
+  const finish = (result) => {
+    if (capture)
+      nativeReadData.set(
+        result,
+        Object.freeze({
+          issue: Number(issueNumber),
+          projectDir,
+          bodyHash: createHash('sha256')
+            .update(String(body || ''))
+            .digest('hex'),
+          identity: capture.identity,
+          identityError: capture.identityError,
+          reads: Object.freeze(capture.reads),
+        })
+      );
     return result;
   };
   const evidence = collectEvidenceWithProvenance(body);
@@ -162,7 +209,14 @@ export async function auditEvidenceBranchReachability({
   for (const item of evidence) {
     const { complete, ...original } = item;
     if (!complete) {
-      reasons.push(...qualifyEvidenceBranchItem({ item: original, issueNumber, boundBranch, ancestryExitCode: null }));
+      reasons.push(
+        ...qualifyEvidenceBranchItem({
+          item: original,
+          issueNumber,
+          boundBranch,
+          ancestryExitCode: null,
+        })
+      );
       continue;
     }
     let reachable = reachableBySha.get(item.sha);
@@ -170,7 +224,10 @@ export async function auditEvidenceBranchReachability({
       try {
         reachable = Boolean(
           await (isAncestor === defaultIsAncestor
-            ? defaultIsAncestor({ ancestor: item.sha, descendant: boundBranch, projectDir }, capture)
+            ? defaultIsAncestor(
+                { ancestor: item.sha, descendant: boundBranch, projectDir },
+                capture
+              )
             : isAncestor({ ancestor: item.sha, descendant: boundBranch, projectDir }))
         );
         reachableBySha.set(item.sha, reachable);
@@ -179,7 +236,14 @@ export async function auditEvidenceBranchReachability({
         continue;
       }
     }
-    reasons.push(...qualifyEvidenceBranchItem({ item: original, issueNumber, boundBranch, ancestryExitCode: reachable ? 0 : 1 }));
+    reasons.push(
+      ...qualifyEvidenceBranchItem({
+        item: original,
+        issueNumber,
+        boundBranch,
+        ancestryExitCode: reachable ? 0 : 1,
+      })
+    );
   }
 
   return finish({ ok: reasons.length === 0, reasons, boundBranch, evidence });

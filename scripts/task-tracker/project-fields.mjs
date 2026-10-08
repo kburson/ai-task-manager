@@ -23,7 +23,10 @@ export const TIMING_DURATION_FIELD_KEYS = new Set([
 
 const nativeFieldSources = new WeakMap();
 function freezeFieldSource(value) {
-  if (value && typeof value === 'object') { Object.values(value).forEach(freezeFieldSource); Object.freeze(value); }
+  if (value && typeof value === 'object') {
+    Object.values(value).forEach(freezeFieldSource);
+    Object.freeze(value);
+  }
   return value;
 }
 export function readProjectFieldSourceData(original) {
@@ -34,16 +37,26 @@ export function readProjectFieldSourceData(original) {
 function loadNativeFields({ dir, kind, filename, fallback, empty }) {
   const local = path.join(dir, '.ai-task-manager', filename);
   const reads = [];
-  const retain = value => {
+  const retain = (value) => {
     // Optional passive capture cannot change the original permissive JSON result.
     try {
-      if (value && typeof value === 'object') nativeFieldSources.set(value,
-        freezeFieldSource(structuredClone({ kind, directory: dir, reads })));
-    } catch { /* unavailable source capture leaves ordinary loader semantics */ }
+      if (value && typeof value === 'object')
+        nativeFieldSources.set(
+          value,
+          freezeFieldSource(structuredClone({ kind, directory: dir, reads }))
+        );
+    } catch {
+      /* unavailable source capture leaves ordinary loader semantics */
+    }
     return value;
   };
   for (const file of [local, fallback]) {
-    const read = { path: typeof file === 'string' ? file : fileURLToPath(file), exists: null, bytes: null, error: null };
+    const read = {
+      path: typeof file === 'string' ? file : fileURLToPath(file),
+      exists: null,
+      bytes: null,
+      error: null,
+    };
     reads.push(read);
     try {
       // Preserve original selection/read order. A URL fallback was always read
@@ -62,12 +75,22 @@ function loadNativeFields({ dir, kind, filename, fallback, empty }) {
   return retain(empty);
 }
 export function loadProjectFieldDefs(dir = getProjectDir()) {
-  return loadNativeFields({ dir, kind: 'definitions', filename: 'project-fields.json',
-    fallback: new URL('../../config/project-fields.default.json', import.meta.url), empty: [] });
+  return loadNativeFields({
+    dir,
+    kind: 'definitions',
+    filename: 'project-fields.json',
+    fallback: new URL('../../config/project-fields.default.json', import.meta.url),
+    empty: [],
+  });
 }
 export function loadProjectFieldEvents(dir = getProjectDir()) {
-  return loadNativeFields({ dir, kind: 'events', filename: 'project-field-events.json',
-    fallback: new URL('../../config/project-field-events.default.json', import.meta.url), empty: {} });
+  return loadNativeFields({
+    dir,
+    kind: 'events',
+    filename: 'project-field-events.json',
+    fallback: new URL('../../config/project-field-events.default.json', import.meta.url),
+    empty: {},
+  });
 }
 
 export function fieldIdFor(cfg, key) {

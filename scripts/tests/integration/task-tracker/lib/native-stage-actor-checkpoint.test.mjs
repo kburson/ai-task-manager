@@ -1,3 +1,3 @@
 // @story #1855
 import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
-registerNativeStageCase("actor-checkpoint", import.meta.url);
+registerNativeStageCase('actor-checkpoint', import.meta.url);

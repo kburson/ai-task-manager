@@ -139,9 +139,16 @@ export function buildNewAutomatedTestsComment(entries) {
 }
 
 export async function postNewAutomatedTestsComment({ cfg, issueNumber, cwd, deps = {} } = {}) {
-  return withRevisionConsumer({ repository: cfg?.repo, issue: issueNumber,
-    projectDir: cwd, backend: deps.revisionBackend, activity: 'issue-write' }, () =>
-    postNewAutomatedTestsCommentAdmitted({ cfg, issueNumber, cwd, deps }));
+  return withRevisionConsumer(
+    {
+      repository: cfg?.repo,
+      issue: issueNumber,
+      projectDir: cwd,
+      backend: deps.revisionBackend,
+      activity: 'issue-write',
+    },
+    () => postNewAutomatedTestsCommentAdmitted({ cfg, issueNumber, cwd, deps })
+  );
 }
 
 async function postNewAutomatedTestsCommentAdmitted({ cfg, issueNumber, cwd, deps }) {

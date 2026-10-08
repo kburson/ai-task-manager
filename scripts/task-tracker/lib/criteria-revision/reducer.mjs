@@ -1,4 +1,4 @@
-// @story #1853
+// @story #1853 #1855
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { revisionError, hashRevisionValue } from './schema.mjs';
 import {
@@ -9,10 +9,11 @@ import {
 } from './records.mjs';
 const equal = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
 export function reduceRevisionEvents(events) {
-  return withRevisionValidation(() => reduceEvents(events));
+  return withRevisionValidation(() => reduceEvents(events).chain);
 }
 function reduceEvents(events) {
   if (!Array.isArray(events)) revisionError('event-chain');
+  const terminalContexts = [];
   const ids = new Set(),
     operations = new Set(),
     transactions = new Set();
@@ -85,31 +86,39 @@ function reduceEvents(events) {
         if (!equal(event, expected)) revisionError('terminal-binding');
         state.status = event.type;
         state.terminal = event;
+        terminalContexts.push({ terminal: event, root: state.root, effective: state.effective });
       }
     }
     state.head = event.eventId;
     state.events.push(event);
   }
-  return state;
+  return { chain: state, terminalContexts };
 }
-
 
 // Pure history classification. Transaction state is never replaced by the
 // surviving criteria authority, and this data does not grant current readiness.
 export function deriveCriteriaAuthorityHistory(events) {
-  const chain = reduceRevisionEvents(events), terminals = [];
+  return withRevisionValidation(() => deriveAuthorityHistory(events));
+}
+function deriveAuthorityHistory(events) {
+  const { chain, terminalContexts } = reduceEvents(events),
+    terminals = [];
   let authorityEventId = null;
-  for (let index = 0; index < chain.events.length; index++) {
-    const terminal = chain.events[index];
-    if (!['applied', 'aborted'].includes(terminal.type)) continue;
-    const prefix = reduceRevisionEvents(chain.events.slice(0, index + 1));
+  for (const { terminal, root: rootEvent, effective: abort } of terminalContexts) {
     if (terminal.type === 'applied') authorityEventId = terminal.eventId;
     else {
-      const root = prefix.root.proposal.archive.resourceVector;
-      const abort = prefix.effective;
-      if (abort.proposal.mode !== 'abort' ||
-          !equal(abort.proposal.archive.resourceVector, { ...root, revisionEventHead: abort.predecessorEventId }) ||
-          !equal(terminal.observedResourceVector, { ...root, revisionEventHead: terminal.predecessorEventId }))
+      const root = rootEvent.proposal.archive.resourceVector;
+      if (
+        abort.proposal.mode !== 'abort' ||
+        !equal(abort.proposal.archive.resourceVector, {
+          ...root,
+          revisionEventHead: abort.predecessorEventId,
+        }) ||
+        !equal(terminal.observedResourceVector, {
+          ...root,
+          revisionEventHead: terminal.predecessorEventId,
+        })
+      )
         revisionError('abort-criteria-authority');
     }
     terminals.push({ head: terminal.eventId, status: terminal.type, authorityEventId });
@@ -117,13 +126,15 @@ export function deriveCriteriaAuthorityHistory(events) {
   return { chain, terminals };
 }
 
-
 // This selection is retirement data, never a filtered authority chain. An
 // untouched abort alone cancels proposed retirement; pending/partial proposals
 // remain conservative until their actual terminal is independently validated.
 export function selectEffectiveRevisionProposalEvents(events) {
   const { chain, terminals } = deriveCriteriaAuthorityHistory(events);
-  const aborted = new Set(terminals.filter(t => t.status === 'aborted').map(t =>
-    chain.events.find(event => event.eventId === t.head).transactionId));
-  return chain.events.filter(event => event.proposal && !aborted.has(event.transactionId));
+  const aborted = new Set(
+    terminals
+      .filter((t) => t.status === 'aborted')
+      .map((t) => chain.events.find((event) => event.eventId === t.head).transactionId)
+  );
+  return chain.events.filter((event) => event.proposal && !aborted.has(event.transactionId));
 }

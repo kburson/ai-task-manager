@@ -1,5 +1,10 @@
 // @story #1855
-import { assert, nativeFinalFixture, observeRevision, test } from './native-continuation-fixtures.mjs';
+import {
+  assert,
+  nativeFinalFixture,
+  observeRevision,
+  test,
+} from './native-continuation-fixtures.mjs';
 
 test('native Test retries the original pending Develop receipt after restart without rerunning commands', async () => {
   const f = await nativeFinalFixture();
@@ -10,7 +15,10 @@ test('native Test retries the original pending Develop receipt after restart wit
     assert.deepEqual(f.effects, ['comment', 'actual-finalization']);
     const original = f.backend.snapshot.nativeProofRecords[0];
     f.restart();
-    assert.equal((await observeRevision({ context: f.context, deps: f.backend })).status, 'pending-native-proof');
+    assert.equal(
+      (await observeRevision({ context: f.context, deps: f.backend })).status,
+      'pending-native-proof'
+    );
     const second = await f.invoke();
     assert.equal(second.error, undefined);
     assert.equal(second.result.status, 'move-failed');
@@ -20,8 +28,10 @@ test('native Test retries the original pending Develop receipt after restart wit
     const third = await f.invoke();
     assert.equal(third.error, undefined);
     assert.equal(third.result.status, 'move-failed');
-    assert.equal(f.effects.filter(effect => effect === 'actual-finalization').length, 1);
-    assert.equal(f.effects.filter(effect => effect === 'body-push').length, 1);
+    assert.equal(f.effects.filter((effect) => effect === 'actual-finalization').length, 1);
+    assert.equal(f.effects.filter((effect) => effect === 'body-push').length, 1);
     assert.deepEqual(f.backend.snapshot.nativeProofRecords, [original]);
-  } finally { f.dispose(); }
+  } finally {
+    f.dispose();
+  }
 });

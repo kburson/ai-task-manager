@@ -18,26 +18,49 @@ import { STATE_MACHINE } from '../states/index.mjs';
 
 // Capture original native objects AND functions before external code can
 // replace both mutable containers with a matching substitute. Data only.
-const originalCatalog = new Map(STATE_MACHINE.order.map(state => {
-  const source = STATE_MACHINE.get(state);
-  return [state, Object.fromEntries(['exit', 'entry'].map(phase => [phase,
-    source[`${phase}Guards`].map(guard => ({ guard, run: guard.run, id: guard.id })),
-  ]))];
-}));
+const originalCatalog = new Map(
+  STATE_MACHINE.order.map((state) => {
+    const source = STATE_MACHINE.get(state);
+    return [
+      state,
+      Object.fromEntries(
+        ['exit', 'entry'].map((phase) => [
+          phase,
+          source[`${phase}Guards`].map((guard) => ({ guard, run: guard.run, id: guard.id })),
+        ])
+      ),
+    ];
+  })
+);
 export function readNativeGuardCatalog(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input) ||
-      Object.keys(input).sort().join(',') !== 'fromState,toState' ||
-      !originalCatalog.has(input.fromState) || !originalCatalog.has(input.toState)) return null;
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !== 'fromState,toState' ||
+    !originalCatalog.has(input.fromState) ||
+    !originalCatalog.has(input.toState)
+  )
+    return null;
   const data = [];
-  for (const [state, phase] of [[input.fromState, 'exit'], [input.toState, 'entry']]) {
+  for (const [state, phase] of [
+    [input.fromState, 'exit'],
+    [input.toState, 'entry'],
+  ]) {
     const original = originalCatalog.get(state)[phase];
     const registered = GUARDS[state]?.[phase];
     const declared = STATE_MACHINE.get(state)?.[`${phase}Guards`];
-    if (!Array.isArray(registered) || !Array.isArray(declared) ||
-        registered.length !== original.length || declared.length !== original.length) return null;
+    if (
+      !Array.isArray(registered) ||
+      !Array.isArray(declared) ||
+      registered.length !== original.length ||
+      declared.length !== original.length
+    )
+      return null;
     for (let i = 0; i < original.length; i++) {
       const { guard, run, id } = original[i];
-      if (registered[i] !== guard || declared[i] !== guard || guard.run !== run || guard.id !== id) return null;
+      if (registered[i] !== guard || declared[i] !== guard || guard.run !== run || guard.id !== id)
+        return null;
       data.push(Object.freeze({ ordinal: data.length, state, phase, guardId: id }));
     }
   }

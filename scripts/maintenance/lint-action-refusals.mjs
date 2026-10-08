@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url';
 
 import * as espree from 'espree';
 
-import { CODE_DEFINITIONS, TYPED_NATIVE_GUARD_IDS } from '../task-tracker/lib/action-decision/contract.mjs';
+import {
+  CODE_DEFINITIONS,
+  TYPED_NATIVE_GUARD_IDS,
+} from '../task-tracker/lib/action-decision/contract.mjs';
 import { discoverFiles } from '../task-tracker/lib/discover-test-files.mjs';
 import { STATE_MACHINE } from '../task-tracker/states/index.mjs';
 
@@ -164,16 +167,24 @@ function analyzeSource({ file, source }) {
     ) {
       guardIds.add(id);
       const branch = { id, emissions: [], invalidReturns: 0 };
-      walk(run.body, returned => {
+      walk(run.body, (returned) => {
         if (returned.type !== 'ReturnStatement') return;
         const value = returned.argument;
-        if (value?.type !== 'ObjectExpression') { branch.invalidReturns++; return; }
+        if (value?.type !== 'ObjectExpression') {
+          branch.invalidReturns++;
+          return;
+        }
         if (literal(property(value, 'ok')) === true) return;
         const branchCode = literal(property(value, 'code'));
-        if (literal(property(value, 'ok')) !== false || typeof branchCode !== 'string' ||
-            property(value, 'args') === null ||
-            (property(value, 'remediation') === null && property(value, 'noAutomaticRemediation') === null)) {
-          branch.invalidReturns++; return;
+        if (
+          literal(property(value, 'ok')) !== false ||
+          typeof branchCode !== 'string' ||
+          property(value, 'args') === null ||
+          (property(value, 'remediation') === null &&
+            property(value, 'noAutomaticRemediation') === null)
+        ) {
+          branch.invalidReturns++;
+          return;
         }
         branch.emissions.push({ code: branchCode, line: value.loc.start.line });
       });
@@ -253,10 +264,16 @@ function lintCodeEmissions(analysis, diagnostics) {
       diagnostics.push(`${location}: illegal decision code ${emission.code}`);
     }
     if (analysis.guardIds.length > 0) {
-      const owners = analysis.guardBranches.filter(branch =>
-        branch.emissions.some(value => value.line === emission.line && value.code === emission.code));
-      if (!definition.allowedProducerIds.includes('registered-guard') &&
-          (owners.length === 0 || owners.some(owner => !definition.allowedProducerIds.includes(owner.id)))) {
+      const owners = analysis.guardBranches.filter((branch) =>
+        branch.emissions.some(
+          (value) => value.line === emission.line && value.code === emission.code
+        )
+      );
+      if (
+        !definition.allowedProducerIds.includes('registered-guard') &&
+        (owners.length === 0 ||
+          owners.some((owner) => !definition.allowedProducerIds.includes(owner.id)))
+      ) {
         diagnostics.push(`${location}: illegal producer ${emission.code}`);
       } else if (!definition.legalPhases.includes('evaluation')) {
         diagnostics.push(`${location}: illegal phase ${emission.code}`);
@@ -297,11 +314,18 @@ export function lintRefusalInventory({ inventory, sources, registeredGuardIds })
     const frozen = inventory.guards[guardId];
     if (!frozen && TYPED_NATIVE_GUARD_IDS.includes(guardId)) {
       const branches = nativeBranches.get(guardId) ?? [];
-      const emissions = branches.flatMap(branch => branch.emissions);
-      if (branches.length !== 1 || branches.some(branch => branch.invalidReturns > 0) ||
-          emissions.length === 0 || (actualByGuard.get(guardId) ?? []).length > 0 ||
-          emissions.some(({ code }) => !CODE_DEFINITIONS[code]?.allowedProducerIds.includes(guardId) ||
-            !CODE_DEFINITIONS[code]?.legalPhases.includes('evaluation'))) {
+      const emissions = branches.flatMap((branch) => branch.emissions);
+      if (
+        branches.length !== 1 ||
+        branches.some((branch) => branch.invalidReturns > 0) ||
+        emissions.length === 0 ||
+        (actualByGuard.get(guardId) ?? []).length > 0 ||
+        emissions.some(
+          ({ code }) =>
+            !CODE_DEFINITIONS[code]?.allowedProducerIds.includes(guardId) ||
+            !CODE_DEFINITIONS[code]?.legalPhases.includes('evaluation')
+        )
+      ) {
         diagnostics.push(`${guardId}: typed native guard lacks complete source-bound emissions`);
       }
       continue;
@@ -422,7 +446,9 @@ function runCli() {
     process.exitCode = 1;
     return;
   }
-  console.log(`lint:action-refusals: ${Object.keys(inventory.guards).length} frozen legacy guards; ${TYPED_NATIVE_GUARD_IDS.length} source-validated typed native guards`);
+  console.log(
+    `lint:action-refusals: ${Object.keys(inventory.guards).length} frozen legacy guards; ${TYPED_NATIVE_GUARD_IDS.length} source-validated typed native guards`
+  );
 }
 
 if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) runCli();

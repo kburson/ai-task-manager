@@ -1,4 +1,7 @@
-import { assertRevisionStageHostEffect, isMemoryStageEffectScope } from './criteria-revision/transport-quarantine.mjs';
+import {
+  assertRevisionStageHostEffect,
+  isMemoryStageEffectScope,
+} from './criteria-revision/transport-quarantine.mjs';
 // @story #1857
 // An immutable pending row survives publication ambiguity and local cursor failure.
 import {
@@ -166,14 +169,17 @@ function assertRemovalRecord(current, identity, expectedDigest) {
 }
 export async function runActorFlushJournal(input) {
   const { file, identity, candidate = null, publish, commit, fault = () => {} } = input;
-  let record, native = null;
+  let record,
+    native = null;
   if (isMemoryStageEffectScope()) {
     native = await import('./move-state/move-state-core.mjs');
     const existing = await native.beginNativeStageActorPreparation(input);
     try {
       record = prepareRecord(existing, identity, candidate);
       await native.writeNativeStageActorPreparation(input, record);
-    } finally { native.endNativeStageActorPreparation(input); }
+    } finally {
+      native.endNativeStageActorPreparation(input);
+    }
     // Only the original runtime publisher remains live under the private token.
     await native.beginNativeStageActorPublication(input);
   } else {
@@ -185,13 +191,19 @@ export async function runActorFlushJournal(input) {
   // The publisher must perform canonical exact-row reconciliation. A queued
   // result means durable original bytes, not confirmed remote publication.
   let post;
-  try { post = await publish(structuredClone(record.payload)); }
-  finally { if (native) native.endNativeStageActorPublication(input); }
+  try {
+    post = await publish(structuredClone(record.payload));
+  } finally {
+    if (native) native.endNativeStageActorPublication(input);
+  }
   if (post?.ok !== true && post?.queued !== true) fail('ACTOR_FLUSH_PUBLICATION_UNRESOLVED');
   await fault('published');
   if (native) await native.beginNativeStageActorCommit(input);
-  try { await commit(structuredClone(record.payload)); }
-  finally { if (native) native.endNativeStageActorCommit(input); }
+  try {
+    await commit(structuredClone(record.payload));
+  } finally {
+    if (native) native.endNativeStageActorCommit(input);
+  }
   await fault('committed');
   if (native) {
     const current = await native.beginNativeStageActorRemoval(input);
@@ -200,7 +212,9 @@ export async function runActorFlushJournal(input) {
       await native.persistNativeStageActorRemoval(input);
       await native.writeNativeStageActorRemoval(input);
       await native.completeNativeStageActorRemoval(input);
-    } finally { native.endNativeStageActorRemoval(input); }
+    } finally {
+      native.endNativeStageActorRemoval(input);
+    }
   } else {
     assertRevisionStageHostEffect();
     withLock(file, () => {

@@ -16,7 +16,11 @@ export function evaluateReuse({ candidate, verification, policy }) {
   } catch {
     return result('refuse', 'malformed-candidate');
   }
-  if (!matchesCurrentRevisionEvidence(candidate.payload.subject.revisionBinding, { issue: candidate.issueNumber }))
+  if (
+    !matchesCurrentRevisionEvidence(candidate.payload.subject.revisionBinding, {
+      issue: candidate.issueNumber,
+    })
+  )
     return result('refuse', 'revision-binding-mismatch');
   if (verification?.schema === 'aitm.verification-receipt/v1')
     return result('verify', 'legacy-inputs-incomplete');

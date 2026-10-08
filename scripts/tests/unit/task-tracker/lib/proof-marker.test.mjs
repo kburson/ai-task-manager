@@ -358,7 +358,8 @@ console.log('proof-marker.test.mjs: all assertions passed');
 
 // @story #1855
 it('retires revision authority with execution proof while preserving declaration', () => {
-  const line = '- [x] Current criterion <!-- aitm-verified vc-list="vc:1" ts="2026-10-06T00:00:00.000Z" sha="abc1234" revision-binding="old-revision" -->';
+  const line =
+    '- [x] Current criterion <!-- aitm-verified vc-list="vc:1" ts="2026-10-06T00:00:00.000Z" sha="abc1234" revision-binding="old-revision" -->';
   const retired = stripExecutionProof(line);
   assert.equal(parseProofMarker(retired)['vc-list'], 'vc:1');
   assert.equal(parseProofMarker(retired)['revision-binding'], undefined);

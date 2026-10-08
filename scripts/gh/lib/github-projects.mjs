@@ -5,7 +5,10 @@ import { promisify } from 'node:util';
 import { ghClient } from './gh-client.mjs';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from '../../task-tracker/lib/process-timeouts.mjs';
-import { assertRevisionStageHostEffect, isMemoryStageEffectScope } from '../../task-tracker/lib/criteria-revision/transport-quarantine.mjs';
+import {
+  assertRevisionStageHostEffect,
+  isMemoryStageEffectScope,
+} from '../../task-tracker/lib/criteria-revision/transport-quarantine.mjs';
 
 // Injectable child_process seam (#645): production wiring defaults to the real
 // node:child_process bindings; tests override `deps.execFile`/`deps.spawn` to
@@ -97,10 +100,17 @@ export function parseNativeStageStatusResponse(input) {
     canonicalRecordJson(input);
     if (Object.keys(input).length !== 1 || !Object.hasOwn(input, 'response')) throw new TypeError();
     const response = input.response;
-    if (!response || Object.keys(response).sort().join(',') !== 'exitCode,stderr,stdout' ||
-        typeof response.stdout !== 'string' || typeof response.stderr !== 'string' ||
-        !(response.exitCode === null || Number.isSafeInteger(response.exitCode))) throw new TypeError();
-  } catch { throw new TypeError('native-stage-status-response'); }
+    if (
+      !response ||
+      Object.keys(response).sort().join(',') !== 'exitCode,stderr,stdout' ||
+      typeof response.stdout !== 'string' ||
+      typeof response.stderr !== 'string' ||
+      !(response.exitCode === null || Number.isSafeInteger(response.exitCode))
+    )
+      throw new TypeError();
+  } catch {
+    throw new TypeError('native-stage-status-response');
+  }
   const { stdout, stderr, exitCode } = input.response;
   if (exitCode !== 0) throw ghCloseError(exitCode, stdout, stderr);
   return parseGraphqlOutput(stdout, null);

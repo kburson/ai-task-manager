@@ -154,7 +154,6 @@ export function assertNativeRuntimeRootAdaptersAbsent() {
     fail('ROOT_ADAPTERS_ACTIVE', 'Native runtime source capture requires absent adapters');
 }
 
-
 // Explicit dependency injection for callers/tests; never selected by CLI or env.
 // Async scope restores defaults and keeps parallel calls independent.
 export function withRuntimeRootAdapters(adapters, operation) {
@@ -190,8 +189,12 @@ export function resolveRuntimeRoot({
   const invoking = identify(cwd);
   // One synchronous native observation per identical physical directory. No
   // adapter callback is skipped, and the next invocation always reads afresh.
-  const nativeIdentities = identify === readPhysicalRuntimeIdentity && resolvePhysical === physical &&
-    checkArtifact === assertOutsideArtifacts ? new Map() : null;
+  const nativeIdentities =
+    identify === readPhysicalRuntimeIdentity &&
+    resolvePhysical === physical &&
+    checkArtifact === assertOutsideArtifacts
+      ? new Map()
+      : null;
   if (nativeIdentities && path.resolve(cwd) === invoking.projectRoot)
     nativeIdentities.set(invoking.projectRoot, structuredClone(invoking));
   checkArtifact(invoking.projectRoot);

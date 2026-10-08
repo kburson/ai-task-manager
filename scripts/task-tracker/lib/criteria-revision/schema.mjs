@@ -489,9 +489,14 @@ export function validateRevisionProposal(value) {
     value.invalidation.map((x) => x.identity),
     'duplicate-proof'
   );
-  exactKeys(value.archive, ['observation', 'definitions', 'resourceVector',
-    ...(Object.hasOwn(value.archive, 'nativeIndividualProofs') ? ['nativeIndividualProofs'] : [])]);
-  if (Object.hasOwn(value.archive, 'nativeIndividualProofs')) array(value.archive.nativeIndividualProofs, 'native-individual-array');
+  exactKeys(value.archive, [
+    'observation',
+    'definitions',
+    'resourceVector',
+    ...(Object.hasOwn(value.archive, 'nativeIndividualProofs') ? ['nativeIndividualProofs'] : []),
+  ]);
+  if (Object.hasOwn(value.archive, 'nativeIndividualProofs'))
+    array(value.archive.nativeIndividualProofs, 'native-individual-array');
   validateRevisionObservation(value.archive.observation);
   validateDefinitions(value.archive.definitions);
   vector(value.archive.resourceVector);
@@ -543,7 +548,9 @@ export function validateRevisionRequest(value) {
   const p = value.proposal,
     derived = deriveProposal({
       observation: p.archive.observation,
-      ...(Object.hasOwn(p.archive, 'nativeIndividualProofs') ? { nativeIndividualProofs: p.archive.nativeIndividualProofs } : {}),
+      ...(Object.hasOwn(p.archive, 'nativeIndividualProofs')
+        ? { nativeIndividualProofs: p.archive.nativeIndividualProofs }
+        : {}),
       edits: p.edits,
       reason: p.reason,
       mode: p.mode,

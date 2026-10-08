@@ -10,9 +10,15 @@ test('native Test public entry resumes its original receipt before acquiring the
     const original = structuredClone(f.backend.snapshot.nativeProofRecords);
     const resumed = await f.invoke({ entryInterlock: true });
     assert.equal(resumed.error, undefined);
-    assert.equal(resumed.result.status, 'entry-preflight-refused', 'normal native preflight remains enforced after fixed receipt completion');
-    assert.equal(f.effects.filter(effect => effect === 'actual-finalization').length, 1);
-    assert.equal(f.effects.filter(effect => effect === 'body-push').length, 1);
+    assert.equal(
+      resumed.result.status,
+      'entry-preflight-refused',
+      'normal native preflight remains enforced after fixed receipt completion'
+    );
+    assert.equal(f.effects.filter((effect) => effect === 'actual-finalization').length, 1);
+    assert.equal(f.effects.filter((effect) => effect === 'body-push').length, 1);
     assert.deepEqual(f.backend.snapshot.nativeProofRecords, original);
-  } finally { f.dispose(); }
+  } finally {
+    f.dispose();
+  }
 });

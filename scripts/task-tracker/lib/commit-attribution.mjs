@@ -24,9 +24,8 @@ import { ISSUE_ID_GLOBAL_RE } from './commit-attribution-format.mjs';
 const defaultPexec = promisify(execFile);
 const nativeReadData = new WeakMap();
 export function readCommitAttributionReadData(result) {
-  return result && typeof result === 'object' ? nativeReadData.get(result) ?? null : null;
+  return result && typeof result === 'object' ? (nativeReadData.get(result) ?? null) : null;
 }
-
 
 // Coerce an issue-number input (`731`, `'731'`, `'#731'`) to its digit string.
 // Throws on anything that is not a positive integer id — a malformed id would
@@ -82,9 +81,17 @@ export async function attributingCommits(
   const scope = Array.isArray(refs) ? refs : [refs];
   let capture = null;
   try {
-    if (pexec === defaultPexec && typeof cwd === 'string' && !annotateReachable && isReachable === undefined &&
-        scope.every(ref => typeof ref === 'string')) capture = { issue: Number(id), cwd, refs: Object.freeze([...scope]) };
-  } catch { /* Passive data collection cannot change ordinary inputs. */ }
+    if (
+      pexec === defaultPexec &&
+      typeof cwd === 'string' &&
+      !annotateReachable &&
+      isReachable === undefined &&
+      scope.every((ref) => typeof ref === 'string')
+    )
+      capture = { issue: Number(id), cwd, refs: Object.freeze([...scope]) };
+  } catch {
+    /* Passive data collection cannot change ordinary inputs. */
+  }
   let response;
   try {
     response = await pexec(
@@ -93,9 +100,17 @@ export async function attributingCommits(
       { cwd, timeout: GIT_TIMEOUT_MS }
     );
   } catch (error) {
-    if (capture && error && typeof error === 'object') nativeReadData.set(error, Object.freeze({ ...capture,
-      stdout: String(error.stdout ?? ''), stderr: String(error.stderr ?? ''),
-      exitCode: typeof error.code === 'number' ? error.code : null, records: null }));
+    if (capture && error && typeof error === 'object')
+      nativeReadData.set(
+        error,
+        Object.freeze({
+          ...capture,
+          stdout: String(error.stdout ?? ''),
+          stderr: String(error.stderr ?? ''),
+          exitCode: typeof error.code === 'number' ? error.code : null,
+          records: null,
+        })
+      );
     throw error;
   }
   const { stdout } = response;
@@ -115,9 +130,17 @@ export async function attributingCommits(
     }
   }
 
-  if (capture) nativeReadData.set(rows, Object.freeze({ ...capture, stdout: String(response.stdout ?? ''),
-    stderr: String(response.stderr ?? ''), exitCode: 0,
-    records: Object.freeze(rows.map(row => Object.freeze({ ...row }))) }));
+  if (capture)
+    nativeReadData.set(
+      rows,
+      Object.freeze({
+        ...capture,
+        stdout: String(response.stdout ?? ''),
+        stderr: String(response.stderr ?? ''),
+        exitCode: 0,
+        records: Object.freeze(rows.map((row) => Object.freeze({ ...row }))),
+      })
+    );
   return rows;
 }
 

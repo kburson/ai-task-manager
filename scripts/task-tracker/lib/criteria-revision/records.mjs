@@ -1,6 +1,6 @@
 import { canonicalPrefixVectors } from './canonical.mjs';
 import { assertNoSecretRecordData } from '../github-records/record-secret-policy.mjs';
-// @story #1853
+// @story #1853 #1855
 // Complete single-comment archives. Rendering never truncates or redacts data.
 import { renderApprovalStatement } from './proposal.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
@@ -21,7 +21,7 @@ const equal = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
 let validationScope = null;
 export function withRevisionValidation(work) {
   if (validationScope) return work();
-  validationScope = { parsed: new Map(), events: new Set() };
+  validationScope = { parsed: new Map(), envelopes: new Map(), events: new Set() };
   try {
     const result = work();
     if (result && typeof result.then === 'function') revisionError('async-validation-scope');
@@ -271,6 +271,14 @@ export function readRevisionEnvelope(bytes) {
   if (prefix + canonicalRecordJson(e) + suffix !== bytes) revisionError('event-noncanonical');
   return e;
 }
+// Private decoded DATA is immutable and lives only inside this synchronous scope.
+// Every caller still checks its complete supplied dependency graph independently.
+function readScopedEnvelope(bytes) {
+  if (validationScope.envelopes.has(bytes)) return validationScope.envelopes.get(bytes);
+  const event = readRevisionEnvelope(bytes);
+  if (event !== null) validationScope.envelopes.set(bytes, immutable(event));
+  return event;
+}
 function referenceRecords(event) {
   return event.proposal?.archive?.observation?.revisionRecords?.records ?? [];
 }
@@ -292,7 +300,7 @@ function dependencyOrder(event, available, visiting = new Set(), ordered = new M
     const bytes = available.get(ref.eventId);
     if (typeof bytes !== 'string' || hashBytes(bytes) !== ref.bytesHash)
       revisionError('event-reference-unavailable');
-    const prior = readRevisionEnvelope(bytes);
+    const prior = readScopedEnvelope(bytes);
     if (
       !prior ||
       ['eventId', 'transactionId', 'operationId', 'proposalDigest'].some(
@@ -308,7 +316,7 @@ function dependencyOrder(event, available, visiting = new Set(), ordered = new M
 }
 export function parseRevisionEvent(bytes, { records = [] } = {}) {
   return withRevisionValidation(() => {
-    const wire = readRevisionEnvelope(bytes);
+    const wire = readScopedEnvelope(bytes);
     if (wire === null) return null;
     const available = new Map();
     for (const record of records) {

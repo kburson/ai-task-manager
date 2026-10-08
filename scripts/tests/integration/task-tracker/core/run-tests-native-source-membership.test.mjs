@@ -13,17 +13,17 @@ import { loadSerialSectionMetadata } from '../../../../run-tests-native-sections
 import { NATIVE_SERIAL_MEMBERS } from '../../../../run-tests-native-members.mjs';
 const root = fileURLToPath(new URL('../../../../../', import.meta.url));
 const modes = {
-  "sentinel-late-persist-token-accessor": "sentinel/persist-token",
-  "sentinel-late-persist-token-identity": "sentinel/persist-token",
-  "sentinel-late-persist-invocation-accessor": "sentinel/persist-invocation",
-  "sentinel-late-persist-invocation-identity": "sentinel/persist-invocation",
-  "sentinel-late-persist-step-accessor": "sentinel/persist-step",
-  "sentinel-late-persist-step-identity": "sentinel/persist-step",
-  "sentinel-late-effect-token-accessor": "sentinel/effect-authority",
-  "sentinel-late-effect-token-identity": "sentinel/effect-authority",
-  "sentinel-late-context-issue-accessor": "sentinel/context-continuity",
-  "sentinel-late-context-executor-accessor": "sentinel/context-continuity",
-  "sentinel-late-context-identity": "sentinel/context-continuity",
+  'sentinel-late-persist-token-accessor': 'sentinel/persist-token',
+  'sentinel-late-persist-token-identity': 'sentinel/persist-token',
+  'sentinel-late-persist-invocation-accessor': 'sentinel/persist-invocation',
+  'sentinel-late-persist-invocation-identity': 'sentinel/persist-invocation',
+  'sentinel-late-persist-step-accessor': 'sentinel/persist-step',
+  'sentinel-late-persist-step-identity': 'sentinel/persist-step',
+  'sentinel-late-effect-token-accessor': 'sentinel/effect-authority',
+  'sentinel-late-effect-token-identity': 'sentinel/effect-authority',
+  'sentinel-late-context-issue-accessor': 'sentinel/context-continuity',
+  'sentinel-late-context-executor-accessor': 'sentinel/context-continuity',
+  'sentinel-late-context-identity': 'sentinel/context-continuity',
   false: 'captured-stage-authority',
   true: 'whole-transition',
   vertical: 'whole-transition',
@@ -137,16 +137,20 @@ test('canonical source registrations independently agree with exact semantic mem
         actual.mode === 'board-exception-prefix'
           ? ['write', 'readback', 'outcome-write', 'outcome-readback']
           : ['intent-prefix', 'status-source-prefix'].includes(actual.mode)
-          ? ['write', 'readback']
-          : actual.mode === 'actor-journal-prefix'
-            ? ['effect-write', 'effect-readback']
-            : ['intent-write', 'intent-readback', 'effect-write', 'effect-readback'];
+            ? ['write', 'readback']
+            : actual.mode === 'actor-journal-prefix'
+              ? ['effect-write', 'effect-readback']
+              : ['intent-write', 'intent-readback', 'effect-write', 'effect-readback'];
       assert.ok(allowed.includes(fault.suffix), file);
-      expected = actual.mode === 'status-source-prefix' ? 'board-status-source/record' : actual.mode === 'board-exception-prefix'
-        ? 'board-exception/' + (['outcome-write', 'outcome-readback'].includes(fault.suffix) ? 'outcome' : 'record')
-        : actual.mode.slice(0, -7) +
-        '/' +
-        (['effect-write', 'effect-readback'].includes(fault.suffix) ? 'effect' : 'intent');
+      expected =
+        actual.mode === 'status-source-prefix'
+          ? 'board-status-source/record'
+          : actual.mode === 'board-exception-prefix'
+            ? 'board-exception/' +
+              (['outcome-write', 'outcome-readback'].includes(fault.suffix) ? 'outcome' : 'record')
+            : actual.mode.slice(0, -7) +
+              '/' +
+              (['effect-write', 'effect-readback'].includes(fault.suffix) ? 'effect' : 'intent');
     } else {
       assert.equal(call.arguments.length, 2, file);
       assert.equal(actual.when, null, file);

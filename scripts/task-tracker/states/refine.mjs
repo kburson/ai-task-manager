@@ -14,7 +14,11 @@ import { refinementSnapshotGuard } from '../lib/refinement-snapshot-guard.mjs';
 
 export default Object.freeze({
   id: 'refine',
-  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard, backlogExitChildParentStateGuard]),
+  entryGuards: Object.freeze([
+    criteriaRevisionAdmissionGuard,
+    contiguityEntryGuard,
+    backlogExitChildParentStateGuard,
+  ]),
   residentActions: Object.freeze([]),
   exitGuards: Object.freeze([
     // #357 — the `aitm-refine-complete` marker is the user's "refine is done"

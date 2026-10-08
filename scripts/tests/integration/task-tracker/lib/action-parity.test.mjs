@@ -271,9 +271,14 @@ test('legacy refusal and warning fallbacks remain inventoried and fail closed', 
     residual.entries.map(({ guardId }) => guardId),
     Object.keys(inventory.guards).sort()
   );
-  assert.equal(TYPED_NATIVE_GUARD_IDS.some(id => Object.hasOwn(inventory.guards, id)), false);
-  assert.deepEqual(REGISTERED_GUARD_IDS,
-    [...Object.keys(inventory.guards), ...TYPED_NATIVE_GUARD_IDS].sort());
+  assert.equal(
+    TYPED_NATIVE_GUARD_IDS.some((id) => Object.hasOwn(inventory.guards, id)),
+    false
+  );
+  assert.deepEqual(
+    REGISTERED_GUARD_IDS,
+    [...Object.keys(inventory.guards), ...TYPED_NATIVE_GUARD_IDS].sort()
+  );
   for (const entry of residual.entries) {
     assert.equal(entry.disposition, 'manual-investigation');
     assert.ok(entry.rationale.length > 20, `${entry.guardId} requires a reviewed reason`);

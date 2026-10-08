@@ -123,18 +123,43 @@ test('forced Test rerun still refuses an already-held entry lock', async () => {
   const projectDir = makeProject();
   const entered = deferred();
   const release = deferred();
-  const first = runTestWithEntryInterlock({ cfg: { repo: 'o/r' }, issueNumber: 1169,
-    projectDir, deps: { acquireIssueLock: acquireAs('first-test-run'),
-      runVerbTest: async () => { entered.resolve(); await release.promise; return { status: 'passed' }; } } });
+  const first = runTestWithEntryInterlock({
+    cfg: { repo: 'o/r' },
+    issueNumber: 1169,
+    projectDir,
+    deps: {
+      acquireIssueLock: acquireAs('first-test-run'),
+      runVerbTest: async () => {
+        entered.resolve();
+        await release.promise;
+        return { status: 'passed' };
+      },
+    },
+  });
   await entered.promise;
   let effects = 0;
   try {
-    await assert.rejects(runTestWithEntryInterlock({ cfg: { repo: 'o/r' }, issueNumber: 1169,
-      projectDir, deps: { forceRerun: true, acquireIssueLock: acquireAs('forced-test-run'),
-        runVerbTest: async () => { effects++; return { status: 'passed' }; } } }),
-    error => error.code === 'EISSUELOCKED');
+    await assert.rejects(
+      runTestWithEntryInterlock({
+        cfg: { repo: 'o/r' },
+        issueNumber: 1169,
+        projectDir,
+        deps: {
+          forceRerun: true,
+          acquireIssueLock: acquireAs('forced-test-run'),
+          runVerbTest: async () => {
+            effects++;
+            return { status: 'passed' };
+          },
+        },
+      }),
+      (error) => error.code === 'EISSUELOCKED'
+    );
     assert.equal(effects, 0);
-  } finally { release.resolve(); await first; }
+  } finally {
+    release.resolve();
+    await first;
+  }
 });
 
 test('a dead same-host holder is reclaimed through the #656 liveness path', async () => {

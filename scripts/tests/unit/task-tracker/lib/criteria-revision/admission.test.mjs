@@ -57,7 +57,13 @@ test('missing, corrupt, wrong-version, dirty and restarted-domain admission deny
     'bad',
     JSON.stringify({ ...JSON.parse(good), schema: 'future' }),
     JSON.stringify({ ...JSON.parse(good), dirty: true }),
-    JSON.stringify(Object.fromEntries(Object.entries({ ...JSON.parse(good), schema: 'aitm.revision-admission/v1' }).filter(([key]) => key !== 'localPlan'))),
+    JSON.stringify(
+      Object.fromEntries(
+        Object.entries({ ...JSON.parse(good), schema: 'aitm.revision-admission/v1' }).filter(
+          ([key]) => key !== 'localPlan'
+        )
+      )
+    ),
   ]) {
     r.files.set(p, value);
     assert.equal(api.readAdmission(r.context, r.ports).state, 'deny');
@@ -170,9 +176,13 @@ test('a revised admission requires the current revision, contract epoch and prot
     o.revision = 1;
     o.revisionId = 'revision-one';
     const planSources = ['user-story', 'story-intent', 'linked-plan'].map((identity, index) => ({
-      identity, hash: identity === 'linked-plan'
-        ? hashRevisionValue(validateGovernedLinkedPlan({ body: o.body.bytes, projectDir: o.executor.worktree }))
-        : 'sha256:' + String(index + 1).repeat(64),
+      identity,
+      hash:
+        identity === 'linked-plan'
+          ? hashRevisionValue(
+              validateGovernedLinkedPlan({ body: o.body.bytes, projectDir: o.executor.worktree })
+            )
+          : 'sha256:' + String(index + 1).repeat(64),
     }));
     o.protectedSourceBindings.push(...planSources);
     o.revisionRecords.records = [
@@ -202,7 +212,10 @@ test('a revised admission requires the current revision, contract epoch and prot
   }
   await api.refreshAdmission({ context: r.context, observe: revised }, r.ports);
   assert.equal(api.readAdmission(r.context, r.ports).state, 'allow');
-  assert.deepEqual(api.readAdmission(r.context, r.ports).sourceBindings, revised().observation.protectedSourceBindings);
+  assert.deepEqual(
+    api.readAdmission(r.context, r.ports).sourceBindings,
+    revised().observation.protectedSourceBindings
+  );
   for (const change of [
     (x) => {
       x.authority.planApproval.revisionId = 'old';
@@ -219,12 +232,29 @@ test('a revised admission requires the current revision, contract epoch and prot
     (x) => {
       x.authority.planApproval.provenance = null;
     },
-    (x) => { x.observation.protectedSourceBindings = x.observation.protectedSourceBindings.filter(b => b.identity !== 'user-story'); },
-    (x) => { x.observation.protectedSourceBindings.find(b => b.identity === 'linked-plan').hash = 'sha256:' + 'f'.repeat(64); },
-    (x) => { x.observation.protectedSourceBindings.push({ ...x.observation.protectedSourceBindings[0] }); },
-    (x) => { x.authority.planApproval.sourceBindings[1] = { ...x.authority.planApproval.sourceBindings[0] }; },
-    (x) => { x.authority.planApproval.extra = true; },
-    (x) => { x.observation.revisionRecords.records[0].eventId = 'foreign-head'; },
+    (x) => {
+      x.observation.protectedSourceBindings = x.observation.protectedSourceBindings.filter(
+        (b) => b.identity !== 'user-story'
+      );
+    },
+    (x) => {
+      x.observation.protectedSourceBindings.find((b) => b.identity === 'linked-plan').hash =
+        'sha256:' + 'f'.repeat(64);
+    },
+    (x) => {
+      x.observation.protectedSourceBindings.push({ ...x.observation.protectedSourceBindings[0] });
+    },
+    (x) => {
+      x.authority.planApproval.sourceBindings[1] = {
+        ...x.authority.planApproval.sourceBindings[0],
+      };
+    },
+    (x) => {
+      x.authority.planApproval.extra = true;
+    },
+    (x) => {
+      x.observation.revisionRecords.records[0].eventId = 'foreign-head';
+    },
   ]) {
     const result = revised();
     change(result);

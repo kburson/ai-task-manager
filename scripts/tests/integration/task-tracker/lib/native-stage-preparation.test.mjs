@@ -1,3 +1,3 @@
 // @story #1855
 import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
-registerNativeStageCase("preparation", import.meta.url);
+registerNativeStageCase('preparation', import.meta.url);

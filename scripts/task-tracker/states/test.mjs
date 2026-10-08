@@ -19,7 +19,11 @@ import { testQuickCiAction } from '../lib/resident-actions/test-quick-ci.mjs';
 
 export default Object.freeze({
   id: 'test',
-  entryGuards: Object.freeze([criteriaRevisionAdmissionGuard, contiguityEntryGuard, bodyGatesEntryGuardTest]),
+  entryGuards: Object.freeze([
+    criteriaRevisionAdmissionGuard,
+    contiguityEntryGuard,
+    bodyGatesEntryGuardTest,
+  ]),
   residentActions: Object.freeze([testQuickCiAction]),
   exitGuards: Object.freeze([
     blockedByGuard,

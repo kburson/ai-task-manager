@@ -19,9 +19,17 @@ function memoryEffectRefusal() {
   const noAutomaticRemediation = { reason: 'authority-investigation-required' };
   const error = new Error(code);
   error.name = 'RevisionMemoryTransportError';
-  Object.assign(error, { code, status: 'indeterminate', noAutomaticRemediation,
-    blocker: Object.freeze(validateBlocker({ guardId: 'revision-mutation', code, args: {},
-      noAutomaticRemediation }, { status: 'indeterminate' })) });
+  Object.assign(error, {
+    code,
+    status: 'indeterminate',
+    noAutomaticRemediation,
+    blocker: Object.freeze(
+      validateBlocker(
+        { guardId: 'revision-mutation', code, args: {}, noAutomaticRemediation },
+        { status: 'indeterminate' }
+      )
+    ),
+  });
   return error;
 }
 
@@ -37,4 +45,6 @@ export function assertRevisionStageHostEffect() {
 
 // Read-only scope classification. True adds no permission: the fixed native
 // branch must independently prove its original token/invocation or refuse.
-export function isMemoryStageEffectScope() { return stageEffects.getStore() === true; }
+export function isMemoryStageEffectScope() {
+  return stageEffects.getStore() === true;
+}

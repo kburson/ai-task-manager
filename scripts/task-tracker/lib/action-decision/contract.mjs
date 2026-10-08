@@ -37,9 +37,12 @@ export const AUTHORITY_RESOURCE_IDS = Object.freeze([
 ]);
 export const TYPED_NATIVE_GUARD_IDS = Object.freeze(['criteria-revision-admission']);
 export const REGISTERED_GUARD_IDS = Object.freeze(
-  [...Object.keys(
-    JSON.parse(readFileSync(new URL('./legacy-refusals.json', import.meta.url), 'utf8')).guards
-  ), ...TYPED_NATIVE_GUARD_IDS].sort()
+  [
+    ...Object.keys(
+      JSON.parse(readFileSync(new URL('./legacy-refusals.json', import.meta.url), 'utf8')).guards
+    ),
+    ...TYPED_NATIVE_GUARD_IDS,
+  ].sort()
 );
 
 const noArgs = () =>
@@ -107,18 +110,54 @@ const authoritySubject = Object.freeze({ type: 'authority-subject' });
 const registeredGuard = Object.freeze(['registered-guard']);
 
 export const CODE_DEFINITIONS = Object.freeze({
-  'revision-pending': definition({ code: 'revision-pending', domain: 'decision-blocker',
-    producers: ['criteria-revision-admission', 'revision-mutation'], severity: 'error', statuses: ['blocked'], phases: ['evaluation', 'execution'] }),
-  'revision-conflict': definition({ code: 'revision-conflict', domain: 'decision-blocker',
-    producers: ['criteria-revision-admission', 'revision-mutation'], severity: 'error', statuses: ['blocked'], phases: ['evaluation', 'execution'] }),
-  'revision-approval-stale': definition({ code: 'revision-approval-stale', domain: 'decision-blocker',
-    producers: ['criteria-revision-admission', 'revision-mutation'], severity: 'error', statuses: ['blocked'], phases: ['evaluation', 'execution'] }),
-  'revision-authority-unavailable': definition({ code: 'revision-authority-unavailable', domain: 'decision-blocker',
-    producers: ['criteria-revision-admission', 'revision-mutation'], severity: 'error', statuses: ['indeterminate'], phases: ['evaluation', 'execution'] }),
-  'revision-topology-unsupported': definition({ code: 'revision-topology-unsupported', domain: 'decision-blocker',
-    producers: ['criteria-revision-admission', 'revision-mutation'], severity: 'error', statuses: ['indeterminate'], phases: ['evaluation', 'execution'] }),
-  'criteria-revision-required': definition({ code: 'criteria-revision-required', domain: 'decision-blocker',
-    producers: ['revision-mutation'], severity: 'error', statuses: ['blocked'], phases: ['execution'] }),
+  'revision-pending': definition({
+    code: 'revision-pending',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['blocked'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'revision-conflict': definition({
+    code: 'revision-conflict',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['blocked'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'revision-approval-stale': definition({
+    code: 'revision-approval-stale',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['blocked'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'revision-authority-unavailable': definition({
+    code: 'revision-authority-unavailable',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['indeterminate'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'revision-topology-unsupported': definition({
+    code: 'revision-topology-unsupported',
+    domain: 'decision-blocker',
+    producers: ['criteria-revision-admission', 'revision-mutation'],
+    severity: 'error',
+    statuses: ['indeterminate'],
+    phases: ['evaluation', 'execution'],
+  }),
+  'criteria-revision-required': definition({
+    code: 'criteria-revision-required',
+    domain: 'decision-blocker',
+    producers: ['revision-mutation'],
+    severity: 'error',
+    statuses: ['blocked'],
+    phases: ['execution'],
+  }),
   'guard-error': decisionIndeterminate('guard-error', [
     'registered-guard',
     'action-result-validation',

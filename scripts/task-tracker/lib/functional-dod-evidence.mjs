@@ -1,4 +1,7 @@
-import { revisionEvidenceMarkerProperties, acceptsIndividualRevisionProof } from './criteria-revision/policy.mjs';
+import {
+  revisionEvidenceMarkerProperties,
+  acceptsIndividualRevisionProof,
+} from './criteria-revision/policy.mjs';
 // #303 — Functional DoD evidence markers: every box ticked in the
 // `#### Functional (verified at Test)` subsection must carry a hidden marker
 // proving the verification was actually run. The checkbox is the visible
@@ -129,8 +132,14 @@ function parseFunctionalEvidence(text, key, evidenceCommands = []) {
   if (hasExecutionProof(src)) {
     const props = parseProofMarker(src);
     const command = props?.cmd ?? props?.['vc-list'];
-    if (typeof command === 'string' && command.trim() && props.sha != null && props.ts != null &&
-        (props.cmd != null || (props.exit != null && String(props.exit).trim() && evidenceCommands.length > 0))) {
+    if (
+      typeof command === 'string' &&
+      command.trim() &&
+      props.sha != null &&
+      props.ts != null &&
+      (props.cmd != null ||
+        (props.exit != null && String(props.exit).trim() && evidenceCommands.length > 0))
+    ) {
       // Existing cmd-form markers predate explicit exit stamping. Preserve
       // that legacy read shape; new VC proof admission requires explicit exit.
       const exit = props.cmd != null && props.exit == null ? 0 : Number(props.exit);
@@ -165,7 +174,11 @@ export function projectFunctionalDodEvidence(contractSource) {
       label: item.label,
       declaration: item.declaration,
       evidenceCommands: [...item.evidenceCommands],
-      evidenceMarker: parseFunctionalEvidence(item.declaration, candidate ?? item.logicalId, item.evidenceCommands),
+      evidenceMarker: parseFunctionalEvidence(
+        item.declaration,
+        candidate ?? item.logicalId,
+        item.evidenceCommands
+      ),
       classification: key === null ? null : KEY_CLASSIFICATION[key],
     };
   });
@@ -215,17 +228,21 @@ function walkFunctionalDodDeclarations(body) {
     const rest = box[4];
     const km = rest.match(KEY_MARKER_RE);
     if (!km) continue;
-    out.push({ rest, originalKey: km[1], declaration: {
-      key: km[1].toLowerCase(),
-      lineIndex: i,
-      checked: box[2] === 'x',
-      label: rest
-        .replace(KEY_MARKER_RE, '')
-        .replace(EVIDENCE_ANY_RE, '')
-        .replace(/<!--[\s\S]*?-->/g, '')
-        .trim(),
-      evidenceCommands: extractCommands(rest, vcItems),
-    } });
+    out.push({
+      rest,
+      originalKey: km[1],
+      declaration: {
+        key: km[1].toLowerCase(),
+        lineIndex: i,
+        checked: box[2] === 'x',
+        label: rest
+          .replace(KEY_MARKER_RE, '')
+          .replace(EVIDENCE_ANY_RE, '')
+          .replace(/<!--[\s\S]*?-->/g, '')
+          .trim(),
+        evidenceCommands: extractCommands(rest, vcItems),
+      },
+    });
   }
   return out;
 }
@@ -259,7 +276,12 @@ export function findEvidenceMarker(body, key) {
 // marker still carries a command record. Returns the (possibly-unchanged) body.
 // Throws on unknown key or when the keyed line is absent.
 export function stampEvidenceMarker(body, key, evidence) {
-  return renderEvidenceMarker(body, key, evidence, revisionEvidenceMarkerProperties({ body: String(body || '') }));
+  return renderEvidenceMarker(
+    body,
+    key,
+    evidence,
+    revisionEvidenceMarkerProperties({ body: String(body || '') })
+  );
 }
 function renderEvidenceMarker(body, key, evidence, revisionProperties) {
   const k = String(key || '').toLowerCase();
@@ -317,11 +339,23 @@ function renderEvidenceMarker(body, key, evidence, revisionProperties) {
 // heading-level-aware primitive `ac-stamp` uses — which creates the section when
 // absent, so a legacy body with no VC section is handled rather than throwing.
 export function stampEvidenceAndReconcile(body, key, evidence, declaredCommands = []) {
-  return renderEvidenceAndReconcile(body, key, evidence, declaredCommands, revisionEvidenceMarkerProperties({ body: String(body || '') }));
+  return renderEvidenceAndReconcile(
+    body,
+    key,
+    evidence,
+    declaredCommands,
+    revisionEvidenceMarkerProperties({ body: String(body || '') })
+  );
 }
 // Pure formatting is not evidence authority. The native journal reader derives
 // these properties from validated execution and compares the complete result.
-export function renderEvidenceAndReconcile(body, key, evidence, declaredCommands, revisionProperties) {
+export function renderEvidenceAndReconcile(
+  body,
+  key,
+  evidence,
+  declaredCommands,
+  revisionProperties
+) {
   const stamped = renderEvidenceMarker(body, key, evidence, revisionProperties);
   const declared = new Set((declaredCommands || []).filter(Boolean));
   if (!declared.size) return stamped;

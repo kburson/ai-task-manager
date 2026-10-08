@@ -5,7 +5,10 @@ import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
-import { ensureIssueFieldDb, deriveNativeEventFieldBinding } from '../task-tracker/issue-field-db.mjs';
+import {
+  ensureIssueFieldDb,
+  deriveNativeEventFieldBinding,
+} from '../task-tracker/issue-field-db.mjs';
 import { loadProjectFieldDefs, loadProjectFieldEvents } from '../task-tracker/project-fields.mjs';
 import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
@@ -55,7 +58,6 @@ if (!cfg.projectId) process.exit(0);
 function projectDir() {
   return getProjectDir();
 }
-
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -107,14 +109,23 @@ try {
     if (binding.value === 'today') resolved = today();
     else if (binding.value === 'now') resolved = nowText();
     else continue;
-    const derived = deriveNativeEventFieldBinding({ fieldKey, fieldType, fieldId,
-      mode: binding.mode, resolved, values });
+    const derived = deriveNativeEventFieldBinding({
+      fieldKey,
+      fieldType,
+      fieldId,
+      mode: binding.mode,
+      resolved,
+      values,
+    });
     if (!derived.changed) continue;
     values = derived.values;
     issueDbChanged = true;
-    if (derived.fieldWrite) await writeProjectFieldValue({
-      projectId: cfg.projectId, itemId, ...derived.fieldWrite,
-    });
+    if (derived.fieldWrite)
+      await writeProjectFieldValue({
+        projectId: cfg.projectId,
+        itemId,
+        ...derived.fieldWrite,
+      });
     console.log(`✓ ${fieldKey} set for #${issue}`);
   }
   if (issueDbChanged && issueBody) {

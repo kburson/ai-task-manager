@@ -13,7 +13,10 @@
 // cfg/issueNumber/body.
 
 import { gateCodeComplete, readCodeCompleteReadData } from './code-complete-gate.mjs';
-import { auditEvidenceBranchReachability, readEvidenceBranchReadData } from './evidence-branch-reachability.mjs';
+import {
+  auditEvidenceBranchReachability,
+  readEvidenceBranchReadData,
+} from './evidence-branch-reachability.mjs';
 import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 
@@ -76,8 +79,9 @@ export const developExitCodeCompleteGuard = {
       body: ctx.body,
       deps: ctx.deps?.codeComplete,
     });
-    const finish = out => {
-      const data = nativeAudit && gateFn === gateCodeComplete ? readCodeCompleteReadData(result) : null;
+    const finish = (out) => {
+      const data =
+        nativeAudit && gateFn === gateCodeComplete ? readCodeCompleteReadData(result) : null;
       if (data && ancestry) nativeReadData.set(out, Object.freeze({ ...data, ancestry }));
       return out;
     };
@@ -97,9 +101,16 @@ const originalRun = developExitCodeCompleteGuard.run;
 // Result data only; invocation references are compared, never called or returned.
 export function readDevelopCodeCompleteReadData(result, invocation) {
   try {
-    if (!invocation || Object.keys(invocation).sort().join(',') !== 'guard,id,run' ||
-        invocation.guard !== developExitCodeCompleteGuard || invocation.run !== originalRun ||
-        invocation.id !== GUARD_ID) return null;
-    return result && typeof result === 'object' ? nativeReadData.get(result) ?? null : null;
-  } catch { return null; }
+    if (
+      !invocation ||
+      Object.keys(invocation).sort().join(',') !== 'guard,id,run' ||
+      invocation.guard !== developExitCodeCompleteGuard ||
+      invocation.run !== originalRun ||
+      invocation.id !== GUARD_ID
+    )
+      return null;
+    return result && typeof result === 'object' ? (nativeReadData.get(result) ?? null) : null;
+  } catch {
+    return null;
+  }
 }

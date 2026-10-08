@@ -2,7 +2,10 @@
 // Deterministic built-in verification-provider registry and contract boundary.
 
 import path from 'node:path';
-import { validateVerificationCommand, parseVerificationCommandPolicy } from './verification-allowlist.mjs';
+import {
+  validateVerificationCommand,
+  parseVerificationCommandPolicy,
+} from './verification-allowlist.mjs';
 import { createNodeVerificationProvider } from './verification-providers/node.mjs';
 import { createProjectVerificationProvider } from './verification-providers/project.mjs';
 
@@ -214,8 +217,10 @@ function wrapProvider(raw) {
 }
 
 export function resolveVerificationProvider(input = {}) {
-  return resolveProviderCore({ ...input,
-    validateCommand: input.deps?.validateCommand || validateVerificationCommand });
+  return resolveProviderCore({
+    ...input,
+    validateCommand: input.deps?.validateCommand || validateVerificationCommand,
+  });
 }
 
 // Recorded plans are data, never current execution permission. No caller may
@@ -225,12 +230,23 @@ export function deriveRecordedDevelopFinalPlan(input) {
   assertExactKeys(input, new Set(['configuration', 'projectDir']), 'recorded input');
   const { configuration, projectDir } = input;
   assertObject(configuration, 'recorded configuration must be an object');
-  assertExactKeys(configuration, new Set(['verificationProvider', 'developVerification']), 'recorded configuration');
-  if (Object.keys(configuration).length !== 2 || typeof projectDir !== 'string' || !path.isAbsolute(projectDir))
+  assertExactKeys(
+    configuration,
+    new Set(['verificationProvider', 'developVerification']),
+    'recorded configuration'
+  );
+  if (
+    Object.keys(configuration).length !== 2 ||
+    typeof projectDir !== 'string' ||
+    !path.isAbsolute(projectDir)
+  )
     fail('recorded configuration and original absolute worktree required');
-  return resolveProviderCore({ config: configuration.verificationProvider,
-    legacyDevelopVerification: configuration.developVerification, projectDir,
-    validateCommand: parseVerificationCommandPolicy }).planDevelopFinal();
+  return resolveProviderCore({
+    config: configuration.verificationProvider,
+    legacyDevelopVerification: configuration.developVerification,
+    projectDir,
+    validateCommand: parseVerificationCommandPolicy,
+  }).planDevelopFinal();
 }
 
 function resolveProviderCore({

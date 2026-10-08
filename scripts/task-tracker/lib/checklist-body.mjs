@@ -55,4 +55,3 @@ export function setChecklistLines(body, labels, desired) {
   }
   return { body: current, results };
 }
-

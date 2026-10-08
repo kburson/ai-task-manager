@@ -111,18 +111,38 @@ export function readActivityEvidence(
   } catch {
     return { ...result, reason: 'transcript-unreadable' };
   }
-  const finish = value => {
+  const finish = (value) => {
     // Ordinary callers retain their original mutable result. Only completed
     // native scans with scalar inputs get detached frozen diagnostic facts.
-    if (typeof filePath === 'string' && (provider == null || typeof provider === 'string') &&
-        (sid == null || typeof sid === 'string') && Number.isFinite(idleThresholdMs) &&
-        value.events.every(Number.isFinite) &&
-        [value.activeEstimateSec, value.idleEstimateSec, value.knownEngagementMs].every(n => n === null || Number.isFinite(n))) {
-      activitySources.set(value, Object.freeze({ path: filePath, provider: provider ?? null, sid: sid ?? null,
-        startMs, endMs, idleThresholdMs, byteLength: source.byteLength, sha256: source.sha256,
-        status: value.status, reason: value.reason, events: Object.freeze([...value.events]),
-        activeEstimateSec: value.activeEstimateSec, idleEstimateSec: value.idleEstimateSec,
-        knownEngagementMs: value.knownEngagementMs }));
+    if (
+      typeof filePath === 'string' &&
+      (provider == null || typeof provider === 'string') &&
+      (sid == null || typeof sid === 'string') &&
+      Number.isFinite(idleThresholdMs) &&
+      value.events.every(Number.isFinite) &&
+      [value.activeEstimateSec, value.idleEstimateSec, value.knownEngagementMs].every(
+        (n) => n === null || Number.isFinite(n)
+      )
+    ) {
+      activitySources.set(
+        value,
+        Object.freeze({
+          path: filePath,
+          provider: provider ?? null,
+          sid: sid ?? null,
+          startMs,
+          endMs,
+          idleThresholdMs,
+          byteLength: source.byteLength,
+          sha256: source.sha256,
+          status: value.status,
+          reason: value.reason,
+          events: Object.freeze([...value.events]),
+          activeEstimateSec: value.activeEstimateSec,
+          idleEstimateSec: value.idleEstimateSec,
+          knownEngagementMs: value.knownEngagementMs,
+        })
+      );
     }
     return value;
   };

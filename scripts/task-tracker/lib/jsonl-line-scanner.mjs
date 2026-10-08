@@ -60,7 +60,9 @@ function scan(
     closeSync(fd);
   }
 
-  return digest ? Object.freeze({ totalLines, byteLength, sha256: digest.digest('hex') }) : totalLines;
+  return digest
+    ? Object.freeze({ totalLines, byteLength, sha256: digest.digest('hex') })
+    : totalLines;
 }
 
 export function scanJsonlRecords(filePath, options) {

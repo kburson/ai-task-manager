@@ -330,5 +330,13 @@ async function appendCapsuleAdmitted({
 
 // Revision admission encloses all transport effects, including readback/replay.
 export async function appendCapsule(input = {}) {
-  return withRevisionConsumer({ repository: input.repository, issue: input.issue, activity: 'capsule-write', backend: input.deps?.revisionBackend }, () => appendCapsuleAdmitted(input));
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'capsule-write',
+      backend: input.deps?.revisionBackend,
+    },
+    () => appendCapsuleAdmitted(input)
+  );
 }

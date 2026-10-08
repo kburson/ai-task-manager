@@ -8,7 +8,8 @@ import { createSandbox } from '../../../helpers/evidence-v2/sandbox.mjs';
 test('native default session capture distinguishes absence, bytes and corruption without injected authority', () => {
   const s = createSandbox();
   try {
-    const moduleUrl = new URL('../../../../task-tracker/lib/session-store.mjs', import.meta.url).href;
+    const moduleUrl = new URL('../../../../task-tracker/lib/session-store.mjs', import.meta.url)
+      .href;
     const script = `
       import assert from 'node:assert/strict';
       import * as fs from 'node:fs';
@@ -37,8 +38,13 @@ test('native default session capture distinguishes absence, bytes and corruption
       assert.throws(() => policy.deriveRecordedSessionPolicy({ sessionId: sid, bytes: failed.bytes }), /recorded-session-policy/);
       assert.equal(policy.readSessionPolicySourceData(policy.loadSession('')), null);
     `;
-    const output = execFileSync(process.execPath, ['--input-type=module', '-e', script],
-      { cwd: s.context.sourceRoot, env: s.env, encoding: 'utf8' });
+    const output = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+      cwd: s.context.sourceRoot,
+      env: s.env,
+      encoding: 'utf8',
+    });
     assert.equal(output, '');
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });

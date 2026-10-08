@@ -29,7 +29,10 @@
 // `reconcile accept-live` to repair the body marker.
 
 import { readFileSync } from 'node:fs';
-import { evaluateLocalRevisionActivity, quarantineLocalSourceEdit } from './lib/criteria-revision/policy.mjs';
+import {
+  evaluateLocalRevisionActivity,
+  quarantineLocalSourceEdit,
+} from './lib/criteria-revision/policy.mjs';
 import { loadConfig } from './config.mjs';
 import { configPath } from './paths.mjs';
 import path from 'node:path';
@@ -110,12 +113,20 @@ if (toolName === 'apply_patch') {
 async function quarantineSourceTargets(targets) {
   if (!targets.length) return;
   try {
-    const contained = targets.map(target => resolveMutationTarget(target, invocationDir, projectRoot).lexical);
+    const contained = targets.map(
+      (target) => resolveMutationTarget(target, invocationDir, projectRoot).lexical
+    );
     const cfg = loadConfig({ projectPath: configPath(projectRoot) });
-    const revision = await quarantineLocalSourceEdit({ repository: cfg.repo, targets: contained,
-      projectDir: projectRoot, sessionId: input.session_id });
+    const revision = await quarantineLocalSourceEdit({
+      repository: cfg.repo,
+      targets: contained,
+      projectDir: projectRoot,
+      sessionId: input.session_id,
+    });
     if (revision.status !== 'ready') block(`[task-tracker] ${revision.code}`);
-  } catch (error) { block(`[task-tracker] source mutation authority unavailable: ${error.message}`); }
+  } catch (error) {
+    block(`[task-tracker] source mutation authority unavailable: ${error.message}`);
+  }
 }
 // Artifact authoring bypasses binding only after physical containment checks.
 if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
@@ -138,7 +149,9 @@ if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
   }
 } else if (toolName === 'Bash') {
   const artifact = resolveArtifactShell(toolInput.command, invocationDir, projectRoot);
-  await quarantineSourceTargets([...new Set([...(artifact.targets ?? []), ...extractWriteTargets(toolInput.command)])]);
+  await quarantineSourceTargets([
+    ...new Set([...(artifact.targets ?? []), ...extractWriteTargets(toolInput.command)]),
+  ]);
   if (artifact.status === 'block')
     block('[task-tracker] artifact target refused: ' + artifact.reason);
   if (artifact.status === 'allow') process.exit(0);
@@ -273,10 +286,14 @@ function commitMessageFileText(args, cwd) {
 
 // Revision admission is read per invocation, before cached stage or chore
 // allowances. Direct git -C commands use the actual resolved checkout above.
-if ((activityClasses || [activityClass]).some(kind => ['WRITE_CODE', 'COMMIT_CODE'].includes(kind))) {
+if (
+  (activityClasses || [activityClass]).some((kind) => ['WRITE_CODE', 'COMMIT_CODE'].includes(kind))
+) {
   const cfg = loadConfig({ projectPath: configPath(projectRoot) });
-  const revision = evaluateLocalRevisionActivity({ repository: cfg.repo,
-    issue: Number(String(activeIssue || '').replace(/^#/, '')) }, { worktree: projectRoot });
+  const revision = evaluateLocalRevisionActivity(
+    { repository: cfg.repo, issue: Number(String(activeIssue || '').replace(/^#/, '')) },
+    { worktree: projectRoot }
+  );
   if (revision.status !== 'ready') block(`[task-tracker] ${revision.code}`);
 }
 

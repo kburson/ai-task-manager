@@ -2,7 +2,10 @@
 // cspell:ignore ABCDEFGHJKMNPQRSTVWXYZ CROCKFORD HJKMNP
 // Versioned, exact-SHA verification evidence shared by Develop, Test, and Review.
 
-import { currentRevisionEvidenceBinding, matchesCurrentRevisionEvidence } from './criteria-revision/policy.mjs';
+import {
+  currentRevisionEvidenceBinding,
+  matchesCurrentRevisionEvidence,
+} from './criteria-revision/policy.mjs';
 import { validateRevisionEvidenceBinding } from './criteria-revision/evidence-binding.mjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
@@ -103,9 +106,17 @@ export function canonicalVerificationCommandSet(commands = [], { projectDir } = 
 // Historical data only. Current fingerprints and eligibility always use the
 // live wrapper above; this API cannot accept a caller policy or file result.
 export function canonicalRecordedVerificationCommandSet(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input) ||
-      Object.keys(input).length !== 2 || !Object.hasOwn(input, 'commands') || !Object.hasOwn(input, 'projectDir') ||
-      typeof input.projectDir !== 'string' || !path.isAbsolute(input.projectDir) || !Array.isArray(input.commands))
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).length !== 2 ||
+    !Object.hasOwn(input, 'commands') ||
+    !Object.hasOwn(input, 'projectDir') ||
+    typeof input.projectDir !== 'string' ||
+    !path.isAbsolute(input.projectDir) ||
+    !Array.isArray(input.commands)
+  )
     throw new TypeError('verification-receipt: recorded command input');
   return canonicalCommandSet(input.commands, input.projectDir, parseVerificationCommandPolicy);
 }
@@ -288,7 +299,11 @@ function malformedReceipt(receipt) {
     return true;
   if (!Number.isInteger(receipt.issue) || receipt.issue <= 0) return true;
   if (receipt.revisionBinding !== undefined) {
-    try { validateRevisionEvidenceBinding(receipt.revisionBinding); } catch { return true; }
+    try {
+      validateRevisionEvidenceBinding(receipt.revisionBinding);
+    } catch {
+      return true;
+    }
     if (receipt.revisionBinding.issue !== receipt.issue) return true;
   }
   if (typeof receipt.stage !== 'string' || receipt.stage.length === 0) return true;
@@ -399,11 +414,7 @@ function malformedReceipt(receipt) {
   });
 }
 
-export function validateVerificationReceiptShape({
-  receipt,
-  expectedIssue,
-  expectedStage,
-} = {}) {
+export function validateVerificationReceiptShape({ receipt, expectedIssue, expectedStage } = {}) {
   const reasons = [];
   if (malformedReceipt(receipt)) reasons.push(reason('receipt-malformed'));
   if (reasons.length === 0 && expectedStage !== undefined && receipt.stage !== expectedStage) {
@@ -439,7 +450,13 @@ export function validateVerificationReceiptShape({
 // records. Current consumers additionally require the live revision binding.
 export function validateVerificationReceiptStructure(input = {}) {
   const result = validateVerificationReceiptShape(input);
-  if (result.ok && !matchesCurrentRevisionEvidence(input.receipt.revisionBinding, { issue: input.receipt.issue, structural: true }))
+  if (
+    result.ok &&
+    !matchesCurrentRevisionEvidence(input.receipt.revisionBinding, {
+      issue: input.receipt.issue,
+      structural: true,
+    })
+  )
     return { ...result, ok: false, reasons: [reason('receipt-revision-mismatch')] };
   return result;
 }
@@ -535,15 +552,27 @@ export function requiredDevelopReceiptClassifications(receipt) {
 // match an independently reconstructed earlier native execution; this boolean
 // cannot establish current revision, command, source, or execution authority.
 export function qualifyRecordedDevelopReceipt(input) {
-  if (!input || Object.getPrototypeOf(input) !== Object.prototype ||
-      Reflect.ownKeys(input).sort().join(',') !== 'headSha,issueNumber,receipt')
+  if (
+    !input ||
+    Object.getPrototypeOf(input) !== Object.prototype ||
+    Reflect.ownKeys(input).sort().join(',') !== 'headSha,issueNumber,receipt'
+  )
     throw new TypeError('recorded-develop-receipt');
   const { receipt, issueNumber, headSha } = input;
-  const structural = validateVerificationReceiptShape({ receipt,
-    expectedIssue: Number(issueNumber), expectedStage: 'develop-final' });
-  return structural.ok && receipt.commitSha === headSha &&
-    requiredDevelopReceiptClassifications(receipt).every(classification =>
-      receipt.commands.some(command => command.classification === classification && command.exitCode === 0));
+  const structural = validateVerificationReceiptShape({
+    receipt,
+    expectedIssue: Number(issueNumber),
+    expectedStage: 'develop-final',
+  });
+  return (
+    structural.ok &&
+    receipt.commitSha === headSha &&
+    requiredDevelopReceiptClassifications(receipt).every((classification) =>
+      receipt.commands.some(
+        (command) => command.classification === classification && command.exitCode === 0
+      )
+    )
+  );
 }
 
 export function hasEarnedDocsOnlyLaneSkip(receipt) {

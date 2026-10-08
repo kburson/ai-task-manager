@@ -1,5 +1,8 @@
 import { isMemoryStageEffectScope } from './criteria-revision/transport-quarantine.mjs';
-import { nativeSourceMarkerLoss, assertRevisionStageBodyEntry } from './criteria-revision/policy.mjs';
+import {
+  nativeSourceMarkerLoss,
+  assertRevisionStageBodyEntry,
+} from './criteria-revision/policy.mjs';
 import { validateLegacyCapability } from './criteria-revision/legacy.mjs';
 import { validateReviewedDelta } from './reviewed-scope/record.mjs';
 // @story #1859
@@ -95,18 +98,32 @@ const nativeInvariantRequests = new WeakMap();
 function sameOwnData(value, expected) {
   const actual = Object.getOwnPropertyDescriptors(value);
   const keys = Reflect.ownKeys(actual);
-  return keys.length === Reflect.ownKeys(expected).length && keys.every(key => {
-    const a = actual[key], b = expected[key];
-    return b && Object.hasOwn(a, 'value') && a.value === b.value &&
-      a.enumerable === b.enumerable && a.configurable === b.configurable && a.writable === b.writable;
-  });
+  return (
+    keys.length === Reflect.ownKeys(expected).length &&
+    keys.every((key) => {
+      const a = actual[key],
+        b = expected[key];
+      return (
+        b &&
+        Object.hasOwn(a, 'value') &&
+        a.value === b.value &&
+        a.enumerable === b.enumerable &&
+        a.configurable === b.configurable &&
+        a.writable === b.writable
+      );
+    })
+  );
 }
 // Comparison only. The request is registered solely at the lexical invariant
 // wrapper below; copies, caller validators and data cannot register themselves.
 export function assertOriginalInvariantBodyRequest(input) {
   const original = nativeInvariantRequests.get(input);
-  if (!original || !sameOwnData(input, original.descriptors) ||
-      !sameOwnData(original.deps, original.dependencyDescriptors)) throw new TypeError('native-invariant-body-request');
+  if (
+    !original ||
+    !sameOwnData(input, original.descriptors) ||
+    !sameOwnData(original.deps, original.dependencyDescriptors)
+  )
+    throw new TypeError('native-invariant-body-request');
 }
 
 export function assertOriginalStageEntryWrapper(input, originalInput) {
@@ -115,29 +132,30 @@ export function assertOriginalStageEntryWrapper(input, originalInput) {
     throw new TypeError('native-entry-invariant-request');
 }
 export async function mutateIssueBody(input = {}) {
-  try { assertRevisionStageBodyEntry(input); }
-  catch (error) {
+  try {
+    assertRevisionStageBodyEntry(input);
+  } catch (error) {
     if (!isMemoryStageEffectScope()) throw error;
     const core = await import('./move-state/move-state-core.mjs');
     core.assertNativeStageBodyInput(input);
   }
   const {
-  issueNumber,
-  repo,
-  mutate,
-  deps = {},
-  maxRetries,
-  allowMarkerLoss = false,
-  allowUnverifiedTicks = false,
-  evidenceStamp = false,
-  reviewedEvidenceCapability,
-  criteriaRevisionCapability,
-  expectedRemovedHeadings = [],
-  allowLargeShrink = false,
-  allowMarkerAdvance = [],
-  validateFreshBase,
-  validateFreshBaseAsync,
-  expectedVersion,
+    issueNumber,
+    repo,
+    mutate,
+    deps = {},
+    maxRetries,
+    allowMarkerLoss = false,
+    allowUnverifiedTicks = false,
+    evidenceStamp = false,
+    reviewedEvidenceCapability,
+    criteriaRevisionCapability,
+    expectedRemovedHeadings = [],
+    allowLargeShrink = false,
+    allowMarkerAdvance = [],
+    validateFreshBase,
+    validateFreshBaseAsync,
+    expectedVersion,
   } = input;
   if (criteriaRevisionCapability !== undefined) {
     if (Object.keys(deps).join(',') !== 'revisionBackend')
@@ -274,8 +292,15 @@ export async function mutateIssueBody(input = {}) {
     validateFreshBaseAsync,
   };
   if (!isMemoryStageEffectScope()) return versionedWriteBody(request);
-  nativeInvariantRequests.set(request, { originalInput: input, descriptors: Object.getOwnPropertyDescriptors(request),
-    deps, dependencyDescriptors: Object.getOwnPropertyDescriptors(deps) });
-  try { return await versionedWriteBody(request); }
-  finally { nativeInvariantRequests.delete(request); }
+  nativeInvariantRequests.set(request, {
+    originalInput: input,
+    descriptors: Object.getOwnPropertyDescriptors(request),
+    deps,
+    dependencyDescriptors: Object.getOwnPropertyDescriptors(deps),
+  });
+  try {
+    return await versionedWriteBody(request);
+  } finally {
+    nativeInvariantRequests.delete(request);
+  }
 }

@@ -389,3 +389,291 @@ for (const operation of ['replace', 'delete'])
     ])
       assert.ok(body.includes(preserved), preserved);
   });
+
+// @story #1855
+test('collector projection shares one synchronous validation scope across its pure phases', async () => {
+  const { createRevisionEvent, createTerminalEvent, withRevisionValidation } =
+    await import('../../../../../task-tracker/lib/criteria-revision/records.mjs');
+  const { reduceRevisionEvents } =
+    await import('../../../../../task-tracker/lib/criteria-revision/reducer.mjs');
+  const { projectCollectedRevisionObservation } =
+    await import('../../../../../task-tracker/lib/criteria-revision/proposal.mjs');
+  const { parseBodyVersion } = await import('../../../../../task-tracker/lib/body-version.mjs');
+  const f = makeLegacyRevisionFixture();
+  const prepared = createRevisionEvent({ request: f.request, predecessorEventId: null });
+  const terminal = createTerminalEvent({ events: [prepared] });
+  const observation = structuredClone(f.observation);
+  observation.body.bytes = f.proposal.writeSet.find(
+    (write) => write.resource === 'issue-body'
+  ).afterBytes;
+  observation.body.version = parseBodyVersion(observation.body.bytes);
+  const input = {
+    observation,
+    chain: reduceRevisionEvents([prepared, terminal]),
+    currentContract: f.proposal.after,
+  };
+  const original = Object.getOwnPropertyDescriptor;
+  let count = 0;
+  Object.getOwnPropertyDescriptor = function (object, key) {
+    if (object === prepared.proposal && key === 'mode') count++;
+    return original.call(Object, object, key);
+  };
+  try {
+    const expected = withRevisionValidation(() => projectCollectedRevisionObservation(input));
+    const scopedCount = count;
+    assert.ok(scopedCount > 0, 'actual original proposal must be observed');
+    count = 0;
+    const actual = projectCollectedRevisionObservation(input);
+    const actualCount = count;
+    assert.deepEqual(actual, expected);
+    assert.equal(
+      actualCount,
+      scopedCount,
+      'one public projection must not rebuild the same pure validation scope between phases'
+    );
+  } finally {
+    Object.getOwnPropertyDescriptor = original;
+  }
+});
+
+// Independent original full projection, retained before the scope correction.
+import {
+  exactKeys,
+  revisionError,
+  validateRevisionObservation,
+  validateDefinitions,
+} from '../../../../../task-tracker/lib/criteria-revision/schema.mjs';
+import { canonicalRecordJson } from '../../../../../task-tracker/lib/github-records/canonical-json.mjs';
+import {
+  createRevisionEvent,
+  createTerminalEvent,
+  revisionRecord,
+} from '../../../../../task-tracker/lib/criteria-revision/records.mjs';
+import {
+  deriveCriteriaAuthorityHistory,
+  selectEffectiveRevisionProposalEvents,
+  reduceRevisionEvents,
+} from '../../../../../task-tracker/lib/criteria-revision/reducer.mjs';
+import { projectCollectedRevisionObservation } from '../../../../../task-tracker/lib/criteria-revision/proposal.mjs';
+function originalCollectedProjection(input) {
+  exactKeys(input, ['observation', 'chain', 'currentContract'], 'collector-projection-input');
+  const { observation, chain, currentContract } = input;
+  validateRevisionObservation(observation);
+  const { chain: verified, terminals } = deriveCriteriaAuthorityHistory(chain.events);
+  if (
+    canonicalRecordJson(verified) !== canonicalRecordJson(chain) ||
+    !['empty', 'applied', 'aborted'].includes(verified.status)
+  )
+    revisionError('collector-projection-chain');
+  const authorityId = terminals.at(-1)?.authorityEventId ?? null;
+  if (currentContract === null) {
+    if (authorityId !== null) revisionError('collector-projection-contract');
+  } else {
+    exactKeys(
+      currentContract,
+      ['semanticContractDigest', 'revisionId', 'revision', 'definitions'],
+      'collector-contract'
+    );
+    validateDefinitions(currentContract.definitions);
+    const terminal = verified.events.find((event) => event.eventId === authorityId);
+    if (
+      !terminal ||
+      hashSemanticContract(currentContract.definitions) !==
+        currentContract.semanticContractDigest ||
+      currentContract.revision !== terminal.outcome.revision ||
+      currentContract.revisionId !== terminal.outcome.revisionId
+    )
+      revisionError('collector-projection-contract');
+  }
+  const result = structuredClone(observation);
+  result.revisionRecords = { complete: true, records: chain.events.map(revisionRecord) };
+  result.identities =
+    currentContract === null
+      ? null
+      : currentContract.definitions.map((definition) => {
+          const d = { ...definition, sourceBindings: observation.protectedSourceBindings };
+          return {
+            identity: d.identity,
+            section: d.section,
+            rootId: d.rootId,
+            definitionHash: hashSemanticContract([{ ...d, identity: 'unbound' }]),
+          };
+        });
+  result.revision = currentContract?.revision ?? 0;
+  result.revisionId = currentContract?.revisionId ?? null;
+  result.retiredIdentities = [
+    ...new Set(
+      selectEffectiveRevisionProposalEvents(chain.events).flatMap((e) =>
+        e.proposal.identityMap
+          .filter((m) => !m.afterIdentities.includes(m.beforeIdentity))
+          .map((m) => m.beforeIdentity)
+      )
+    ),
+  ];
+  validateRevisionObservation(result);
+  return result;
+}
+
+function projectionFixture(make = makeLegacyRevisionFixture, mode = 'applied') {
+  const f = make();
+  const observation = structuredClone(f.observation);
+  if (mode === 'empty')
+    return { observation, chain: reduceRevisionEvents([]), currentContract: null };
+  const prepared = createRevisionEvent({ request: f.request, predecessorEventId: null });
+  const events = [prepared];
+  if (mode === 'resume' || mode === 'aborted') {
+    let request = f.resumeRequest;
+    if (mode === 'aborted') {
+      const proposal = deriveProposal({
+        ...f.resumeContext,
+        mode: 'abort',
+        operationId: 'projection-abort',
+      });
+      request = {
+        ...f.resumeRequest,
+        proposal,
+        authorizationSource: {
+          ...f.authorizationSource,
+          statementHash: hash(renderApprovalStatement(proposal)),
+        },
+      };
+    }
+    events.push(
+      createRevisionEvent({
+        request,
+        predecessorEventId: prepared.eventId,
+        rootEventId: prepared.eventId,
+        rootProposalDigest: prepared.proposalDigest,
+      })
+    );
+  }
+  events.push(createTerminalEvent({ events, type: mode === 'aborted' ? 'aborted' : 'applied' }));
+  return {
+    observation,
+    chain: reduceRevisionEvents(events),
+    currentContract: mode === 'aborted' ? null : f.proposal.after,
+  };
+}
+for (const [name, make, mode] of [
+  ['empty', makeLegacyRevisionFixture, 'empty'],
+  ['legacy applied', makeLegacyRevisionFixture, 'applied'],
+  ['canonical applied', makeCanonicalRevisionFixture, 'applied'],
+  ['legacy resume', makeLegacyRevisionFixture, 'resume'],
+  ['legacy untouched abort', makeLegacyRevisionFixture, 'aborted'],
+])
+  test(
+    'collector scope preserves original projection and independent mutable returns: ' + name,
+    () => {
+      const input = projectionFixture(make, mode);
+      const before = structuredClone(input);
+      const expected = originalCollectedProjection(input);
+      const result = projectCollectedRevisionObservation(input);
+      assert.deepEqual(result, expected);
+      assert.deepEqual(input, before);
+      result.body.bytes += ' changed result';
+      result.retiredIdentities.push('changed-result');
+      if (result.revisionRecords.records.length)
+        result.revisionRecords.records[0].bytes += ' changed result';
+      assert.deepEqual(input, before);
+      assert.deepEqual(projectCollectedRevisionObservation(input), expected);
+    }
+  );
+test('collector scope preserves original refusal classification and fresh input validation', () => {
+  const original = projectionFixture();
+  const cases = [
+    [
+      'extra input',
+      (input) => {
+        input.extra = true;
+      },
+    ],
+    [
+      'observation shape',
+      (input) => {
+        input.observation.extra = true;
+      },
+    ],
+    [
+      'chain status',
+      (input) => {
+        input.chain.status = 'empty';
+      },
+    ],
+    [
+      'missing predecessor',
+      (input) => {
+        input.chain.events.shift();
+      },
+    ],
+    [
+      'duplicate event',
+      (input) => {
+        input.chain.events.push(input.chain.events[0]);
+      },
+    ],
+    [
+      'order',
+      (input) => {
+        input.chain.events.reverse();
+      },
+    ],
+    [
+      'foreign repository',
+      (input) => {
+        input.chain.events[1].repository = 'foreign/repo';
+      },
+    ],
+    [
+      'changed sealed write',
+      (input) => {
+        input.chain.events[0].proposal.writeSet[0].afterBytes += ' changed';
+      },
+    ],
+    [
+      'changed authority',
+      (input) => {
+        input.currentContract.semanticContractDigest = hash('wrong');
+      },
+    ],
+    [
+      'missing authority',
+      (input) => {
+        input.currentContract = null;
+      },
+    ],
+  ];
+  function refusal(read, input) {
+    try {
+      read(input);
+      return null;
+    } catch (error) {
+      return { constructor: error.constructor, message: error.message, code: error.code };
+    }
+  }
+  for (const [name, mutate] of cases) {
+    const input = structuredClone(original);
+    const before = projectCollectedRevisionObservation(input);
+    mutate(input);
+    const expected = refusal(originalCollectedProjection, input);
+    assert.ok(expected, name + ': original algorithm must refuse');
+    assert.equal(expected.constructor, TypeError, name);
+    assert.ok(expected.message.startsWith('criteria-revision:'), name);
+    assert.equal(expected.code, undefined, name);
+    const actual = refusal(projectCollectedRevisionObservation, input);
+    assert.deepEqual(actual, expected, name);
+    assert.deepEqual(
+      projectCollectedRevisionObservation(original),
+      before,
+      name + ': a thrown call must not retain scope'
+    );
+  }
+  const graph = projectionFixture(makeLegacyRevisionFixture, 'resume');
+  projectCollectedRevisionObservation(graph);
+  graph.chain.events[1].proposal.archive.observation.revisionRecords.records[0].bytes +=
+    ' changed raw';
+  const expected = refusal(originalCollectedProjection, graph);
+  assert.ok(expected);
+  assert.equal(expected.constructor, TypeError);
+  assert.ok(expected.message.startsWith('criteria-revision:'));
+  assert.deepEqual(refusal(projectCollectedRevisionObservation, graph), expected);
+});

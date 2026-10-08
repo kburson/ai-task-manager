@@ -8,7 +8,11 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { authorityResult } from '../../../fixtures/criteria-revision-runtime.mjs';
-import { withIssueLock, withAuthenticatedRevisionIssueLock, issueLockPath } from '../../../../task-tracker/issue-mutator-lock.mjs';
+import {
+  withIssueLock,
+  withAuthenticatedRevisionIssueLock,
+  issueLockPath,
+} from '../../../../task-tracker/issue-mutator-lock.mjs';
 const domain = await import('../../../../task-tracker/lib/criteria-revision/domain.mjs').catch(
   (e) => {
     if (e.code === 'ERR_MODULE_NOT_FOUND') return {};

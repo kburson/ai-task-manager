@@ -44,7 +44,10 @@ export function validateRecord(record) {
   validatePayload(record.recordType, record.payload);
   if (record.recordType === 'candidate' && record.payload.subject.revisionBinding) {
     const subject = record.payload.subject;
-    if (subject.revisionBinding.issue !== record.issueNumber || canonical(subject.repositoryId) !== canonical(record.repositoryId))
+    if (
+      subject.revisionBinding.issue !== record.issueNumber ||
+      canonical(subject.repositoryId) !== canonical(record.repositoryId)
+    )
       fail('revision-envelope-identity');
   }
   if (record.recordId !== recordDigest(record)) fail('record-digest');

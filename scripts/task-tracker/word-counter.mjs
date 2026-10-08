@@ -91,7 +91,12 @@ export function markerPathFor(sid, owningRoot = projectDir()) {
 }
 // Native path DATA shared with original-record validation; no file is accessed.
 export function markerPathForActor(identity, owningRoot) {
-  return path.join(owningRoot, getProvider(identity.provider).stateDir, 'session-tracking', `${identity.sid}.json`);
+  return path.join(
+    owningRoot,
+    getProvider(identity.provider).stateDir,
+    'session-tracking',
+    `${identity.sid}.json`
+  );
 }
 
 export function ensureSessionTracking(sid) {
@@ -203,12 +208,23 @@ function markerRecord(existing, identity, line, words, task, wordsFull, ts) {
   return record;
 }
 export function assertRecordedStageActorCursor(input) {
-  if (!input || Object.getPrototypeOf(input) !== Object.prototype ||
-      Object.keys(input).sort().join(',') !== 'afterBytes,beforeBytes,identity,line,task,ts,words,wordsFull') invalidCursor();
+  if (
+    !input ||
+    Object.getPrototypeOf(input) !== Object.prototype ||
+    Object.keys(input).sort().join(',') !==
+      'afterBytes,beforeBytes,identity,line,task,ts,words,wordsFull'
+  )
+    invalidCursor();
   const { beforeBytes, afterBytes, identity, line, words, task, wordsFull, ts } = input;
-  if (!identity || Object.keys(identity).sort().join(',') !== 'provider,sid' ||
-      typeof beforeBytes !== 'string' && beforeBytes !== null || typeof afterBytes !== 'string' ||
-      typeof ts !== 'string' || !Number.isFinite(Date.parse(ts))) invalidCursor();
+  if (
+    !identity ||
+    Object.keys(identity).sort().join(',') !== 'provider,sid' ||
+    (typeof beforeBytes !== 'string' && beforeBytes !== null) ||
+    typeof afterBytes !== 'string' ||
+    typeof ts !== 'string' ||
+    !Number.isFinite(Date.parse(ts))
+  )
+    invalidCursor();
   const existing = beforeBytes === null ? {} : JSON.parse(beforeBytes);
   if (beforeBytes !== null) validateWordCursor(existing, identity);
   const record = markerRecord(existing, identity, line, words, task, wordsFull, ts);
@@ -229,9 +245,24 @@ export async function saveNativeStageActorMarker(invocation) {
     const existing = source.beforeBytes === null ? {} : JSON.parse(source.beforeBytes);
     if (source.beforeBytes !== null) validateWordCursor(existing, source.identity);
     const ts = new Date().toISOString();
-    const record = markerRecord(existing, source.identity, source.line, source.words, source.task, source.wordsFull, ts);
-    const intent = { file: source.file, line: source.line, words: source.words, wordsFull: source.wordsFull,
-      task: source.task, ts, bytes: JSON.stringify(record, null, 2) + '\n' };
+    const record = markerRecord(
+      existing,
+      source.identity,
+      source.line,
+      source.words,
+      source.task,
+      source.wordsFull,
+      ts
+    );
+    const intent = {
+      file: source.file,
+      line: source.line,
+      words: source.words,
+      wordsFull: source.wordsFull,
+      task: source.task,
+      ts,
+      bytes: JSON.stringify(record, null, 2) + '\n',
+    };
     nativeStageCursorWrites.set(invocation, intent);
     await native.persistNativeStageActorCursor(invocation, intent);
     await native.writeNativeStageActorCursor(invocation);
@@ -253,7 +284,15 @@ export function saveMarker(
   assertRevisionStageHostEffect();
   return withLock(markerPath, () => {
     const existing = readCursor(markerPath, identity) ?? {};
-    const record = markerRecord(existing, identity, line, words, task, wordsFull, new Date().toISOString());
+    const record = markerRecord(
+      existing,
+      identity,
+      line,
+      words,
+      task,
+      wordsFull,
+      new Date().toISOString()
+    );
     mkdirSync(path.dirname(markerPath), { recursive: true });
     const temporary = markerPath + '.tmp.' + process.pid;
     writeFileSync(temporary, JSON.stringify(record, null, 2) + '\n', 'utf8');
@@ -413,11 +452,28 @@ export function countWords(filePath, fromLine = 0, options = {}) {
   // Preserve ordinary permissive counting inputs. Only closed scalar source
   // facts are eligible for passive capture; unavailable/throwing reads above
   // never acquire a record, and this record grants no execution authority.
-  if (typeof filePath === 'string' && Number.isSafeInteger(fromLine) && fromLine >= 0 &&
-      (provider === null || typeof provider === 'string') && (sid === null || typeof sid === 'string')) {
-    wordCountSources.set(result, Object.freeze({ path: filePath, provider, sid, fromLine,
-      byteLength: source.byteLength, sha256: source.sha256, totalLines: source.totalLines,
-      status: result.status, count, fullExpansion }));
+  if (
+    typeof filePath === 'string' &&
+    Number.isSafeInteger(fromLine) &&
+    fromLine >= 0 &&
+    (provider === null || typeof provider === 'string') &&
+    (sid === null || typeof sid === 'string')
+  ) {
+    wordCountSources.set(
+      result,
+      Object.freeze({
+        path: filePath,
+        provider,
+        sid,
+        fromLine,
+        byteLength: source.byteLength,
+        sha256: source.sha256,
+        totalLines: source.totalLines,
+        status: result.status,
+        count,
+        fullExpansion,
+      })
+    );
   }
   return result;
 }

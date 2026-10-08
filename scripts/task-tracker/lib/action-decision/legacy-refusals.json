@@ -215,14 +215,80 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 60,
+          "line": 68,
           "fingerprint": "sha256:35ab73220d5c1a4b647728fd346de0fcce347f558603dcefadb1056ebe79e6ee",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 75,
+          "line": 89,
           "fingerprint": "sha256:7c2785bf0d639ed741cdcdd532b8eb5c1a7036c8d03ca66c1866e6434647de85",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 139,
+          "fingerprint": "sha256:89ba15d414a78c3d4a03cd77ddd3f7ba20a6b11c5ee8ebd98f8d2e72434961a5",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 188,
+          "fingerprint": "sha256:d8eb197a2107124deb7962a14c74dcdeec6f4ab44d313bdc620f8f3499289517",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 216,
+          "fingerprint": "sha256:3c693a9b7de1d8fcf8f1d12d5416c59eab109e2efb50ae2f1e34ab5b1ef8d5c3",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 238,
+          "fingerprint": "sha256:3a1f40a151b721f448ffd98109ca91bd4f3bb4fe8f2540cbea46b48742f8f9ab",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 262,
+          "fingerprint": "sha256:f14b034cb0d0891b82e7ba55b900e1fc61541627a4dc44d3737ca649552db809",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 266,
+          "fingerprint": "sha256:f443e91417f72d8502284b57b4d304125d54d667d22c61938c134dde7877e207",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 273,
+          "fingerprint": "sha256:56be51985a8b39409957c5a2c79fa4e4f48b50424f950913cf43e9b59392035e",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 279,
+          "fingerprint": "sha256:7c3260c24e30c176de2ce388d41c9c61a6700e37b14dfa0444245e84dacf511f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 394,
+          "fingerprint": "sha256:b1873bcee682e0fb8805c27130d1783bf29e7e2bd35f6ee7314d6b99d0504e2f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 417,
+          "fingerprint": "sha256:b1873bcee682e0fb8805c27130d1783bf29e7e2bd35f6ee7314d6b99d0504e2f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 435,
+          "fingerprint": "sha256:b6b71a7d2a933033846fa2877f6cc3bfd46c79d8988ed6d8047c28cf3dd77cae",
           "kind": "refusal"
         }
       ]
@@ -232,8 +298,74 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/develop-exit-commit-trail-head-guard.mjs",
-          "line": 48,
+          "line": 57,
           "fingerprint": "sha256:7c7b585b6ca87256b49c4f0129e0fec3529452a230c203dadb94cdc7476453d3",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 139,
+          "fingerprint": "sha256:89ba15d414a78c3d4a03cd77ddd3f7ba20a6b11c5ee8ebd98f8d2e72434961a5",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 188,
+          "fingerprint": "sha256:d8eb197a2107124deb7962a14c74dcdeec6f4ab44d313bdc620f8f3499289517",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 216,
+          "fingerprint": "sha256:3c693a9b7de1d8fcf8f1d12d5416c59eab109e2efb50ae2f1e34ab5b1ef8d5c3",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 238,
+          "fingerprint": "sha256:3a1f40a151b721f448ffd98109ca91bd4f3bb4fe8f2540cbea46b48742f8f9ab",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 262,
+          "fingerprint": "sha256:f14b034cb0d0891b82e7ba55b900e1fc61541627a4dc44d3737ca649552db809",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 266,
+          "fingerprint": "sha256:f443e91417f72d8502284b57b4d304125d54d667d22c61938c134dde7877e207",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 273,
+          "fingerprint": "sha256:56be51985a8b39409957c5a2c79fa4e4f48b50424f950913cf43e9b59392035e",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 279,
+          "fingerprint": "sha256:7c3260c24e30c176de2ce388d41c9c61a6700e37b14dfa0444245e84dacf511f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 394,
+          "fingerprint": "sha256:b1873bcee682e0fb8805c27130d1783bf29e7e2bd35f6ee7314d6b99d0504e2f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 417,
+          "fingerprint": "sha256:b1873bcee682e0fb8805c27130d1783bf29e7e2bd35f6ee7314d6b99d0504e2f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 435,
+          "fingerprint": "sha256:b6b71a7d2a933033846fa2877f6cc3bfd46c79d8988ed6d8047c28cf3dd77cae",
           "kind": "refusal"
         }
       ]
@@ -254,20 +386,86 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
-          "line": 55,
+          "line": 61,
           "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
-          "line": 73,
+          "line": 114,
           "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
-          "line": 80,
+          "line": 121,
           "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 139,
+          "fingerprint": "sha256:89ba15d414a78c3d4a03cd77ddd3f7ba20a6b11c5ee8ebd98f8d2e72434961a5",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 188,
+          "fingerprint": "sha256:d8eb197a2107124deb7962a14c74dcdeec6f4ab44d313bdc620f8f3499289517",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 216,
+          "fingerprint": "sha256:3c693a9b7de1d8fcf8f1d12d5416c59eab109e2efb50ae2f1e34ab5b1ef8d5c3",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 238,
+          "fingerprint": "sha256:3a1f40a151b721f448ffd98109ca91bd4f3bb4fe8f2540cbea46b48742f8f9ab",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 262,
+          "fingerprint": "sha256:f14b034cb0d0891b82e7ba55b900e1fc61541627a4dc44d3737ca649552db809",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 266,
+          "fingerprint": "sha256:f443e91417f72d8502284b57b4d304125d54d667d22c61938c134dde7877e207",
+          "kind": "warning"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 273,
+          "fingerprint": "sha256:56be51985a8b39409957c5a2c79fa4e4f48b50424f950913cf43e9b59392035e",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 279,
+          "fingerprint": "sha256:7c3260c24e30c176de2ce388d41c9c61a6700e37b14dfa0444245e84dacf511f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 394,
+          "fingerprint": "sha256:b1873bcee682e0fb8805c27130d1783bf29e7e2bd35f6ee7314d6b99d0504e2f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 417,
+          "fingerprint": "sha256:b1873bcee682e0fb8805c27130d1783bf29e7e2bd35f6ee7314d6b99d0504e2f",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/guard-registry.mjs",
+          "line": 435,
+          "fingerprint": "sha256:b6b71a7d2a933033846fa2877f6cc3bfd46c79d8988ed6d8047c28cf3dd77cae",
           "kind": "refusal"
         }
       ]
@@ -1060,20 +1258,32 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/test.mjs",
-          "line": 787,
+          "line": 792,
           "fingerprint": "sha256:a5d9c8340bf9d6fbebf6f93c763f5ca7189a761bb4598925fd2d0ffbc163944f",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/test.mjs",
-          "line": 1430,
+          "line": 1436,
           "fingerprint": "sha256:8cc9d3ebf8e3df5d903cde58cec69efcfcdf958d583b3828264a93ee38e14902",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/test.mjs",
-          "line": 1432,
+          "line": 1438,
           "fingerprint": "sha256:5c2c3790301c73f999ca5c3b7636eb06f5b03795e722594dcdf7fdb41085426c",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/test.mjs",
+          "line": 1776,
+          "fingerprint": "sha256:b54eab67fa458fe5f80c744ffb6740c48f668a256207fee0596e36e91d2eba4a",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/verbs/test.mjs",
+          "line": 1792,
+          "fingerprint": "sha256:b54eab67fa458fe5f80c744ffb6740c48f668a256207fee0596e36e91d2eba4a",
           "kind": "refusal"
         }
       ]

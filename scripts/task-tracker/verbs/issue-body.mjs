@@ -267,23 +267,46 @@ export async function runIssueBodyVerb(ctx, deps = {}) {
     fail('operation-file', error?.message || String(error));
   }
   const operation = parseIssueBodyOperation(raw);
-  const ordinary = () => runIssueBodyOperation({ issueNumber: args.issueNumber, repo: ctx.cfg?.repo, operation, deps });
+  const ordinary = () =>
+    runIssueBodyOperation({ issueNumber: args.issueNumber, repo: ctx.cfg?.repo, operation, deps });
   if (!deps.revisionBackend) return ordinary();
-  const token = Object.freeze({}), held = { live: true, value: { operation, repository: ctx.cfg?.repo, issue: args.issueNumber,
-    session: { sessionId: currentSessionId(), projectDir: path.resolve(ctx.projectDir),
-      branch: state.worktreeBranch, entryStartTs: state.entryStartTs } } };
-  if (path.resolve(state.worktreePath ?? '') !== held.value.session.projectDir) fail('session worktree');
+  const token = Object.freeze({}),
+    held = {
+      live: true,
+      value: {
+        operation,
+        repository: ctx.cfg?.repo,
+        issue: args.issueNumber,
+        session: {
+          sessionId: currentSessionId(),
+          projectDir: path.resolve(ctx.projectDir),
+          branch: state.worktreeBranch,
+          entryStartTs: state.entryStartTs,
+        },
+      },
+    };
+  if (path.resolve(state.worktreePath ?? '') !== held.value.session.projectDir)
+    fail('session worktree');
   sourceOperations.set(token, held);
   try {
-    return await withNativeSourceCorrection({ token, backend: deps.revisionBackend }, async journal => {
-      if (!journal) return ordinary();
-      const result = await mutateIssueBody({ repo: ctx.cfg.repo, issueNumber: args.issueNumber,
-        expectedVersion: journal.before.body.version, deps: { ...deps.writeDeps, revisionBackend: deps.revisionBackend },
-        mutate: () => stripBodyVersion(journal.after.body.bytes) });
-      if (result.body !== journal.after.body.bytes) fail('source read-back mismatch');
-      return result;
-    });
-  } finally { held.live = false; }
+    return await withNativeSourceCorrection(
+      { token, backend: deps.revisionBackend },
+      async (journal) => {
+        if (!journal) return ordinary();
+        const result = await mutateIssueBody({
+          repo: ctx.cfg.repo,
+          issueNumber: args.issueNumber,
+          expectedVersion: journal.before.body.version,
+          deps: { ...deps.writeDeps, revisionBackend: deps.revisionBackend },
+          mutate: () => stripBodyVersion(journal.after.body.bytes),
+        });
+        if (result.body !== journal.after.body.bytes) fail('source read-back mismatch');
+        return result;
+      }
+    );
+  } finally {
+    held.live = false;
+  }
 }
 
 export async function verbIssueBody(ctx) {

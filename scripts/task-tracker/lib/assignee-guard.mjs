@@ -46,7 +46,8 @@ export async function defaultFetchCurrentUser() {
   const { readNativeStageIdentityData } = await import('./criteria-revision/policy.mjs');
   const native = readNativeStageIdentityData();
   if (native !== null) return String(native.response.stdout).trim();
-  const { assertRevisionProductionTransport } = await import('./criteria-revision/transport-quarantine.mjs');
+  const { assertRevisionProductionTransport } =
+    await import('./criteria-revision/transport-quarantine.mjs');
   assertRevisionProductionTransport('gh');
   const { stdout } = await pexec('gh', ['api', 'user', '--jq', '.login'], {
     timeout: GH_API_TIMEOUT_MS,

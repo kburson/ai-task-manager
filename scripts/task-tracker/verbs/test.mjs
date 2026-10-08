@@ -1,4 +1,8 @@
-import { withRevisionConsumer, prepareRevisionDevelopReceipt, resumeRevisionDevelopReceipt } from '../lib/criteria-revision/policy.mjs';
+import {
+  withRevisionConsumer,
+  prepareRevisionDevelopReceipt,
+  resumeRevisionDevelopReceipt,
+} from '../lib/criteria-revision/policy.mjs';
 // `/task test` — sandboxed verification runner (#137).
 //
 // Replaces the in-place command runner that previously lived in review.mjs.
@@ -1770,20 +1774,40 @@ export async function verbTest(ctx) {
 // caller-supplied lock, runner, transport, or timing callback can run.
 export async function runVerbTest(input = {}) {
   if (!input.cfg || !input.issueNumber || !input.projectDir) return runVerbTestAdmitted(input);
-  await resumeRevisionDevelopReceipt({ repository: input.cfg.repo,
-    issue: Number(String(input.issueNumber).replace(/^#/, '')), backend: input.deps?.revisionBackend,
-    projectDir: input.projectDir, writeDeps: input.deps?.writeDeps });
-  return withRevisionConsumer({ repository: input.cfg.repo,
-    issue: Number(String(input.issueNumber).replace(/^#/, '')), activity: 'stage-write',
-    backend: input.deps?.revisionBackend, projectDir: input.projectDir,
-  }, () => runVerbTestAdmitted(input));
+  await resumeRevisionDevelopReceipt({
+    repository: input.cfg.repo,
+    issue: Number(String(input.issueNumber).replace(/^#/, '')),
+    backend: input.deps?.revisionBackend,
+    projectDir: input.projectDir,
+    writeDeps: input.deps?.writeDeps,
+  });
+  return withRevisionConsumer(
+    {
+      repository: input.cfg.repo,
+      issue: Number(String(input.issueNumber).replace(/^#/, '')),
+      activity: 'stage-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => runVerbTestAdmitted(input)
+  );
 }
 export async function runTestWithEntryInterlock(input = {}) {
-  await resumeRevisionDevelopReceipt({ repository: input.cfg?.repo,
-    issue: Number(String(input.issueNumber).replace(/^#/, '')), backend: input.deps?.revisionBackend,
-    projectDir: input.projectDir, writeDeps: input.deps?.writeDeps });
-  return withRevisionConsumer({ repository: input.cfg?.repo,
-    issue: Number(String(input.issueNumber).replace(/^#/, '')), activity: 'stage-write',
-    backend: input.deps?.revisionBackend, projectDir: input.projectDir,
-  }, () => runTestWithEntryInterlockAdmitted(input));
+  await resumeRevisionDevelopReceipt({
+    repository: input.cfg?.repo,
+    issue: Number(String(input.issueNumber).replace(/^#/, '')),
+    backend: input.deps?.revisionBackend,
+    projectDir: input.projectDir,
+    writeDeps: input.deps?.writeDeps,
+  });
+  return withRevisionConsumer(
+    {
+      repository: input.cfg?.repo,
+      issue: Number(String(input.issueNumber).replace(/^#/, '')),
+      activity: 'stage-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => runTestWithEntryInterlockAdmitted(input)
+  );
 }

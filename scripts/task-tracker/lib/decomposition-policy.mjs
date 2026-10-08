@@ -191,7 +191,8 @@ export function linkedPlanReference(body = '') {
 export function linkedPlanReferenceRange(body = '') {
   const reference = linkedPlanReference(body);
   if (!reference) return null;
-  const original = String(body).split('\n'), lines = visibleStructuralLines(body);
+  const original = String(body).split('\n'),
+    lines = visibleStructuralLines(body);
   const bounds = sectionBounds(lines, 'Plan Metadata');
   if (!bounds || sectionBounds(lines.slice(bounds.end), 'Plan Metadata')) return null;
   const matches = [];
@@ -205,7 +206,8 @@ export function linkedPlanReferenceRange(body = '') {
   const valueOffset = original[index].length - field.value.length;
   const pathOffset = field.value.indexOf(reference.path);
   if (pathOffset < 0 || field.value.slice(0, pathOffset).trim()) return null;
-  const start = original.slice(0, index).reduce((n, line) => n + line.length + 1, 0) + valueOffset + pathOffset;
+  const start =
+    original.slice(0, index).reduce((n, line) => n + line.length + 1, 0) + valueOffset + pathOffset;
   return { reference, start, end: start + reference.path.length };
 }
 

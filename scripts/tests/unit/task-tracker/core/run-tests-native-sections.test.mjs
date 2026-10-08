@@ -98,3 +98,36 @@ test('actual scheduler executes semantic sections sequentially and records order
   ]);
   assert.ok(result.serialElapsedMs >= 2, 'aggregate remains separately observed');
 });
+
+test('native formatted fault literals retain the same closed registration as original JSON', () => {
+  const expected = { mode: 'phase-12-prefix', when: 'failBefore', suffix: 'intent-write' };
+  assert.deepEqual(
+    parseNativeSerialRegistration(wrapper('{"when":"failBefore","suffix":"intent-write"}')),
+    expected
+  );
+  assert.deepEqual(
+    parseNativeSerialRegistration(wrapper("{ when: 'failBefore', suffix: 'intent-write', }")),
+    expected
+  );
+  assert.deepEqual(
+    parseNativeSerialRegistration(wrapper("{ 'suffix': 'intent-write', when: 'failBefore' }")),
+    expected
+  );
+});
+
+test('native fault literal parsing rejects executable and ambiguous property forms', () => {
+  for (const fault of [
+    "{ ['when']: 'failBefore', suffix: 'intent-write' }",
+    "{ when: 'failBefore', when: 'failAfter', suffix: 'intent-write' }",
+    "{ when, suffix: 'intent-write' }",
+    "{ ...other, when: 'failBefore', suffix: 'intent-write' }",
+    "{ get when() { return 'failBefore'; }, suffix: 'intent-write' }",
+    "{ when() { return 'failBefore'; }, suffix: 'intent-write' }",
+    "{ when: `failBefore`, suffix: 'intent-write' }",
+    "{ when: caller(), suffix: 'intent-write' }",
+    "{ when: 'fail' + 'Before', suffix: 'intent-write' }",
+    "{ when: 'failBefore', suffix: 'intent-write', ready: true }",
+    "{ when: null, suffix: 'intent-write' }",
+  ])
+    assert.throws(() => parseNativeSerialRegistration(wrapper(fault)), /metadata/);
+});

@@ -1,4 +1,7 @@
-import { isMemoryStageEffectScope, assertRevisionStageHostEffect } from './lib/criteria-revision/transport-quarantine.mjs';
+import {
+  isMemoryStageEffectScope,
+  assertRevisionStageHostEffect,
+} from './lib/criteria-revision/transport-quarantine.mjs';
 // Runtime context shared by the dispatcher and all lifecycle verb modules.
 //
 // `buildContext()` parses argv, loads config, and bundles the cross-verb helpers
@@ -15,7 +18,13 @@ import { pexec } from '../gh/lib/gh-client.mjs';
 import { loadConfig } from './config.mjs';
 import { runTimingFieldUpdate } from './lib/timing-field-result.mjs';
 import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
-import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf, readNativeTimingSourceData } from './gh-timing-comment.mjs';
+import {
+  postTimingEvent,
+  buildRow,
+  readTimingCommentBody,
+  bodyOf,
+  readNativeTimingSourceData,
+} from './gh-timing-comment.mjs';
 import { lastRowTsFromBody, lastRowFromBody } from './lib/timing-rows.mjs';
 import { parseTimingRow } from './lib/timing-row-reader.mjs';
 import { timingActorKey } from './lib/timing-actor.mjs';
@@ -43,7 +52,14 @@ import {
 import { readActivityEvidence, readActivitySourceData } from './active-time.mjs';
 import { recordSessionRefOnChange } from './lib/session-ref.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
-import { advanceWordMarker, stateFullWordMarker, loadState, saveState, saveNativeStageActorCheckpoint, saveNativeStageActorFinal } from './state.mjs';
+import {
+  advanceWordMarker,
+  stateFullWordMarker,
+  loadState,
+  saveState,
+  saveNativeStageActorCheckpoint,
+  saveNativeStageActorFinal,
+} from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { runMoveStateHost } from '../gh/move-state.mjs';
@@ -66,27 +82,42 @@ const nativeActorContexts = new WeakMap();
 const nativeActorCandidates = new WeakMap();
 const nativeActorResults = new WeakMap();
 const nativeActorFinalInputs = new WeakMap();
-function actorOuterRefusal() { assertRevisionStageHostEffect(); throw new Error('native-actor-outer-invocation'); }
+function actorOuterRefusal() {
+  assertRevisionStageHostEffect();
+  throw new Error('native-actor-outer-invocation');
+}
 function ownActorValues(value, seen = new Set()) {
   if (!value || typeof value !== 'object' || seen.has(value)) actorOuterRefusal();
   seen.add(value);
-  const fields = Object.getOwnPropertyDescriptors(value), prototype = Object.getPrototypeOf(value);
-  if ((prototype !== Object.prototype && prototype !== Array.prototype) ||
-      Reflect.ownKeys(fields).some(key => typeof key !== 'string') ||
-      Object.entries(fields).some(([key, field]) => !Object.hasOwn(field, 'value') ||
-        !field.enumerable && !(Array.isArray(value) && key === 'length') ||
+  const fields = Object.getOwnPropertyDescriptors(value),
+    prototype = Object.getPrototypeOf(value);
+  if (
+    (prototype !== Object.prototype && prototype !== Array.prototype) ||
+    Reflect.ownKeys(fields).some((key) => typeof key !== 'string') ||
+    Object.entries(fields).some(
+      ([key, field]) =>
+        !Object.hasOwn(field, 'value') ||
+        (!field.enumerable && !(Array.isArray(value) && key === 'length')) ||
         ['undefined', 'function', 'symbol', 'bigint'].includes(typeof field.value) ||
-        typeof field.value === 'number' && !Number.isFinite(field.value)))
+        (typeof field.value === 'number' && !Number.isFinite(field.value))
+    )
+  )
     actorOuterRefusal();
-  for (const field of Object.values(fields)) if (field.value && typeof field.value === 'object') ownActorValues(field.value, seen);
+  for (const field of Object.values(fields))
+    if (field.value && typeof field.value === 'object') ownActorValues(field.value, seen);
   seen.delete(value);
   return fields;
 }
 export function assertNativeActorOuterContext(context) {
   const original = nativeActorContexts.get(context);
   const fields = original && Object.getOwnPropertyDescriptors(context);
-  if (!original || Object.entries(original).some(([key, value]) => !fields[key] ||
-      !Object.hasOwn(fields[key], 'value') || fields[key].value !== value))
+  if (
+    !original ||
+    Object.entries(original).some(
+      ([key, value]) =>
+        !fields[key] || !Object.hasOwn(fields[key], 'value') || fields[key].value !== value
+    )
+  )
     actorOuterRefusal();
 }
 export function assertNativeActorCandidateContext(candidate, context) {
@@ -95,11 +126,20 @@ export function assertNativeActorCandidateContext(candidate, context) {
 }
 export function readNativeActorFinalInput(invocation, context, candidate) {
   assertNativeActorCandidateContext(candidate, context);
-  const input = nativeActorFinalInputs.get(invocation), result = input && nativeActorResults.get(input.result);
-  if (!input || input.context !== context || input.candidate !== candidate || !result ||
-      result.context !== context || result.candidate !== candidate) throw new Error('native-actor-final-invocation');
+  const input = nativeActorFinalInputs.get(invocation),
+    result = input && nativeActorResults.get(input.result);
+  if (
+    !input ||
+    input.context !== context ||
+    input.candidate !== candidate ||
+    !result ||
+    result.context !== context ||
+    result.candidate !== candidate
+  )
+    throw new Error('native-actor-final-invocation');
   ownActorValues(input.result);
-  if (JSON.stringify(input.result) !== result.bytes) throw new Error('native-actor-final-invocation');
+  if (JSON.stringify(input.result) !== result.bytes)
+    throw new Error('native-actor-final-invocation');
   return input.stateBytes;
 }
 const nativeLastRowReads = new WeakMap();
@@ -111,18 +151,27 @@ function freezeActorSource(value) {
   return value;
 }
 export function readActorFlushSourceData(original) {
-  return original && typeof original === 'object' ? actorFlushSources.get(original) ?? null : null;
+  return original && typeof original === 'object'
+    ? (actorFlushSources.get(original) ?? null)
+    : null;
 }
 
-// Returnless original invocation identity check; callable leaves never escape.
+// No-return original invocation identity check; callable leaves never escape.
 export function assertNativeActorJournalInvocation(input) {
   const original = nativeActorJournalInvocations.get(input);
   if (!original) throw new Error('native-actor-journal-invocation');
   const fields = Object.getOwnPropertyDescriptors(input);
   const publisher = Object.getOwnPropertyDescriptor(original.context, 'safePostTiming');
-  if (Object.keys(fields).sort().join(',') !== 'candidate,commit,file,identity,publish' ||
-      Object.entries(original.values).some(([key, value]) => !fields[key] || !Object.hasOwn(fields[key], 'value') || fields[key].value !== value) ||
-      !publisher || !Object.hasOwn(publisher, 'value') || publisher.value !== original.publisher)
+  if (
+    Object.keys(fields).sort().join(',') !== 'candidate,commit,file,identity,publish' ||
+    Object.entries(original.values).some(
+      ([key, value]) =>
+        !fields[key] || !Object.hasOwn(fields[key], 'value') || fields[key].value !== value
+    ) ||
+    !publisher ||
+    !Object.hasOwn(publisher, 'value') ||
+    publisher.value !== original.publisher
+  )
     throw new Error('native-actor-journal-invocation');
 }
 
@@ -132,11 +181,19 @@ export function assertNativeActorTimingInvocation(input, journalInput) {
   const source = nativeActorTimingInvocations.get(input);
   const journal = nativeActorJournalInvocations.get(journalInput);
   const fields = Object.getOwnPropertyDescriptors(input);
-  if (!source || source.context !== journal.context ||
-      Object.keys(fields).sort().join(',') !== 'issueNumber,repo,row,timeoutMs' ||
-      Object.entries(source.values).some(([key, value]) => !fields[key] || !Object.hasOwn(fields[key], 'value') || fields[key].value !== value) ||
-      input.issueNumber !== journalInput.candidate.issue || input.row !== journalInput.candidate.row ||
-      input.repo !== source.context.cfg.repo || input.timeoutMs !== source.context.cfg.hookNetworkTimeoutMs)
+  if (
+    !source ||
+    source.context !== journal.context ||
+    Object.keys(fields).sort().join(',') !== 'issueNumber,repo,row,timeoutMs' ||
+    Object.entries(source.values).some(
+      ([key, value]) =>
+        !fields[key] || !Object.hasOwn(fields[key], 'value') || fields[key].value !== value
+    ) ||
+    input.issueNumber !== journalInput.candidate.issue ||
+    input.row !== journalInput.candidate.row ||
+    input.repo !== source.context.cfg.repo ||
+    input.timeoutMs !== source.context.cfg.hookNetworkTimeoutMs
+  )
     throw new Error('native-actor-timing-invocation');
 }
 
@@ -144,9 +201,15 @@ export function assertNativeActorCommitInvocation(input, journalInput) {
   assertNativeActorJournalInvocation(journalInput);
   const source = nativeActorCommitInvocations.get(input);
   const fields = input && Object.getOwnPropertyDescriptors(input);
-  if (!source || source.journal !== journalInput ||
-      Object.keys(fields).sort().join(',') !== 'identity,markerPath,payload,statePath' ||
-      Object.entries(source.values).some(([key, value]) => !fields[key] || !Object.hasOwn(fields[key], 'value') || fields[key].value !== value))
+  if (
+    !source ||
+    source.journal !== journalInput ||
+    Object.keys(fields).sort().join(',') !== 'identity,markerPath,payload,statePath' ||
+    Object.entries(source.values).some(
+      ([key, value]) =>
+        !fields[key] || !Object.hasOwn(fields[key], 'value') || fields[key].value !== value
+    )
+  )
     throw new Error('native-actor-commit-invocation');
 }
 
@@ -391,13 +454,24 @@ export async function flushBoundActorInterval(
       fullWordsAtEntryStart: result.lastFullWordMarker,
     };
     if (native) {
-      const original = nativeActorResults.get(result), invocation = Object.freeze({});
-      nativeActorFinalInputs.set(invocation, { context: ctx, candidate: original.candidate, result, stateBytes: JSON.stringify(finalState) });
-      try { await saveNativeStageActorFinal(invocation); }
-      finally { nativeActorFinalInputs.delete(invocation); }
+      const original = nativeActorResults.get(result),
+        invocation = Object.freeze({});
+      nativeActorFinalInputs.set(invocation, {
+        context: ctx,
+        candidate: original.candidate,
+        result,
+        stateBytes: JSON.stringify(finalState),
+      });
+      try {
+        await saveNativeStageActorFinal(invocation);
+      } finally {
+        nativeActorFinalInputs.delete(invocation);
+      }
     } else saveState(finalState, ctx.statePath);
     return { status: 'flushed', ...result };
-  } finally { if (native) native.endNativeStageActorOuter(ctx); }
+  } finally {
+    if (native) native.endNativeStageActorOuter(ctx);
+  }
 }
 
 export function buildContext(rawArgv = process.argv.slice(2), { executionContext = null } = {}) {
@@ -475,11 +549,17 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
         queuePath,
         skipNetwork: SKIP_NETWORK,
       },
-      { postTimingEvent: async (input) => {
-        nativeActorTimingInvocations.set(input, { context: ctx, values: { ...input } });
-        try { return await postTimingEvent(input); }
-        finally { nativeActorTimingInvocations.delete(input); }
-      }, enqueue }
+      {
+        postTimingEvent: async (input) => {
+          nativeActorTimingInvocations.set(input, { context: ctx, values: { ...input } });
+          try {
+            return await postTimingEvent(input);
+          } finally {
+            nativeActorTimingInvocations.delete(input);
+          }
+        },
+        enqueue,
+      }
     );
   };
 
@@ -531,28 +611,32 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
   ctx.safeReadLastRow = (issue, actorKey = null) => {
     let promise;
     promise = (async () => {
-    if (SKIP_NETWORK) return null;
-    try {
-      const result = await readTimingCommentBody({
-        issueNumber: String(issue).replace(/^#/, ''),
-        repo: cfg.repo,
-        timeoutMs: cfg.hookNetworkTimeoutMs,
-      });
-      const source = readNativeTimingSourceData(result);
-      const row = !actorKey ? lastRowFromBody(bodyOf(result)) : (
-        bodyOf(result)
-          .split(String.fromCharCode(10))
-          .map(parseTimingRow)
-          .filter((row) => row?.actorKey === actorKey)
-          .at(-1) ?? null
-      );
-      // Membership certifies the actual completed native selection as data.
-      // A parser error still follows the ordinary catch below, without capture.
-      if (source) nativeLastRowReads.set(promise, freezeActorSource(structuredClone({ issue, actorKey, source, row })));
-      return row;
-    } catch {
-      return null;
-    }
+      if (SKIP_NETWORK) return null;
+      try {
+        const result = await readTimingCommentBody({
+          issueNumber: String(issue).replace(/^#/, ''),
+          repo: cfg.repo,
+          timeoutMs: cfg.hookNetworkTimeoutMs,
+        });
+        const source = readNativeTimingSourceData(result);
+        const row = !actorKey
+          ? lastRowFromBody(bodyOf(result))
+          : (bodyOf(result)
+              .split(String.fromCharCode(10))
+              .map(parseTimingRow)
+              .filter((row) => row?.actorKey === actorKey)
+              .at(-1) ?? null);
+        // Membership certifies the actual completed native selection as data.
+        // A parser error still follows the ordinary catch below, without capture.
+        if (source)
+          nativeLastRowReads.set(
+            promise,
+            freezeActorSource(structuredClone({ issue, actorKey, source, row }))
+          );
+        return row;
+      } catch {
+        return null;
+      }
     })();
     return promise;
   };
@@ -636,11 +720,15 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     const journalFile = actorTimingStatePath(identity, projectDir) + '.flush.json';
     let activeJournalInput = null;
     const commitFlush = async (payload) => {
-      let native = null, invocation = null;
+      let native = null,
+        invocation = null;
       if (isMemoryStageEffectScope()) {
         native = await import('./lib/move-state/move-state-core.mjs');
         invocation = { payload, markerPath: markerPathFor(sid), identity, statePath };
-        nativeActorCommitInvocations.set(invocation, { journal: activeJournalInput, values: { ...invocation } });
+        nativeActorCommitInvocations.set(invocation, {
+          journal: activeJournalInput,
+          values: { ...invocation },
+        });
       }
       try {
         if (native) await native.beginNativeStageActorCommitInvocation(invocation);
@@ -653,7 +741,9 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
         if (!stateMatches(payload.previous) && !stateMatches(payload.checkpoint))
           throw new Error('ACTOR_FLUSH_STATE_CONFLICT');
         if (payload.cursor) {
-          const marker = native ? native.readNativeStageActorCursor(invocation) : loadMarker(markerPathFor(sid));
+          const marker = native
+            ? native.readNativeStageActorCursor(invocation)
+            : loadMarker(markerPathFor(sid));
           const observed = { line: marker.line, words: marker.words, wordsFull: marker.wordsFull };
           const matches = (expected) =>
             Object.keys(observed).every((key) => observed[key] === expected[key]);
@@ -661,32 +751,53 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
             throw new Error('ACTOR_FLUSH_CURSOR_CONFLICT');
           const after = payload.cursor.after;
           if (native) await saveNativeStageActorMarker(invocation);
-          else saveMarker(markerPathFor(sid), after.line, after.words, payload.issue, after.wordsFull);
+          else
+            saveMarker(markerPathFor(sid), after.line, after.words, payload.issue, after.wordsFull);
         }
         const checkpointState = { ...current, ...payload.checkpoint };
         if (native) {
           nativeActorCheckpointInputs.set(invocation, JSON.stringify(checkpointState));
-          try { await saveNativeStageActorCheckpoint(invocation); }
-          finally { nativeActorCheckpointInputs.delete(invocation); }
+          try {
+            await saveNativeStageActorCheckpoint(invocation);
+          } finally {
+            nativeActorCheckpointInputs.delete(invocation);
+          }
         } else saveState(checkpointState, statePath);
         Object.assign(state, payload.checkpoint);
       } finally {
-        if (native) { nativeActorCommitInvocations.delete(invocation); native.endNativeStageActorCommitInvocation(invocation); }
+        if (native) {
+          nativeActorCommitInvocations.delete(invocation);
+          native.endNativeStageActorCommitInvocation(invocation);
+        }
       }
     };
     const journal = async (candidate = null) => {
-      const input = { file: journalFile, identity, candidate,
-        publish: (payload) => ctx.safePostTiming(payload.issue, payload.row), commit: commitFlush };
-      nativeActorJournalInvocations.set(input, { values: { ...input }, context: ctx, publisher: nativeSafePostTiming });
+      const input = {
+        file: journalFile,
+        identity,
+        candidate,
+        publish: (payload) => ctx.safePostTiming(payload.issue, payload.row),
+        commit: commitFlush,
+      };
+      nativeActorJournalInvocations.set(input, {
+        values: { ...input },
+        context: ctx,
+        publisher: nativeSafePostTiming,
+      });
       activeJournalInput = input;
-      try { return await runActorFlushJournal(input); }
-      finally { activeJournalInput = null; nativeActorJournalInvocations.delete(input); }
+      try {
+        return await runActorFlushJournal(input);
+      } finally {
+        activeJournalInput = null;
+        nativeActorJournalInvocations.delete(input);
+      }
     };
     if (!opts.computeOnly) {
       if (loadState(statePath).active !== state.active)
         throw new Error('ACTOR_FLUSH_BINDING_CHANGED');
       const pending = readActorFlushJournal(journalFile, identity);
-      const { assertNativeStageActorReadBoundary } = await import('./lib/move-state/move-state-core.mjs');
+      const { assertNativeStageActorReadBoundary } =
+        await import('./lib/move-state/move-state-core.mjs');
       assertNativeStageActorReadBoundary({ projectDir, journalFile, identity, pending });
       if (pending) {
         if (pending.payload.issue !== state.active) throw new Error('ACTOR_FLUSH_BINDING_CHANGED');
@@ -695,15 +806,26 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     }
     if (opts.recoverOnly) return { status: 'reconciled' };
     let cursorBefore = null;
-    let wordSource = null, activitySource = null, wordResolution = null, activityResolution = null;
-    let candidateSource = null, lastRowSource = null, originalCandidate = null;
-    const finishFlush = result => {
+    let wordSource = null,
+      activitySource = null,
+      wordResolution = null,
+      activityResolution = null;
+    let candidateSource = null,
+      lastRowSource = null,
+      originalCandidate = null;
+    const finishFlush = (result) => {
       if (candidateSource) actorFlushSources.set(result, candidateSource);
       if (originalCandidate) {
         try {
           ownActorValues(result);
-          nativeActorResults.set(result, { context: ctx, candidate: originalCandidate, bytes: JSON.stringify(result) });
-        } catch (error) { if (isMemoryStageEffectScope()) throw error; }
+          nativeActorResults.set(result, {
+            context: ctx,
+            candidate: originalCandidate,
+            bytes: JSON.stringify(result),
+          });
+        } catch (error) {
+          if (isMemoryStageEffectScope()) throw error;
+        }
       }
       return result;
     };
@@ -757,13 +879,27 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
       // Capture before the actual journal sees this exact candidate. Copies and
       // recovered serialized journals never gain original membership here.
       try {
-        candidateSource = freezeActorSource(structuredClone({ projectDir, statePath, journalFile,
-          identity, ts, skipNetwork: SKIP_NETWORK,
-          resolutions: { word: wordResolution, activity: activityResolution },
-          word: wordSource, activity: activitySource, timing: lastRowSource, candidate }));
+        candidateSource = freezeActorSource(
+          structuredClone({
+            projectDir,
+            statePath,
+            journalFile,
+            identity,
+            ts,
+            skipNetwork: SKIP_NETWORK,
+            resolutions: { word: wordResolution, activity: activityResolution },
+            word: wordSource,
+            activity: activitySource,
+            timing: lastRowSource,
+            candidate,
+          })
+        );
         actorFlushSources.set(candidate, candidateSource);
-      } catch { candidateSource = null; }
-      const { suspendNativeStageActorCandidate } = await import('./lib/move-state/move-state-core.mjs');
+      } catch {
+        candidateSource = null;
+      }
+      const { suspendNativeStageActorCandidate } =
+        await import('./lib/move-state/move-state-core.mjs');
       await suspendNativeStageActorCandidate(candidate);
       const result = await journal(candidate);
       return result.post;
@@ -872,7 +1008,10 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     // Fault Z guard below detect an unclosed finalize/orphan `idle` tail.
     const lastRowRead = opts.computeOnly ? null : ctx.safeReadLastRow(state.active, actorKey);
     const lastRow = lastRowRead === null ? null : await lastRowRead;
-    lastRowSource = lastRowRead && typeof lastRowRead === 'object' ? nativeLastRowReads.get(lastRowRead) ?? null : null;
+    lastRowSource =
+      lastRowRead && typeof lastRowRead === 'object'
+        ? (nativeLastRowReads.get(lastRowRead) ?? null)
+        : null;
     const priorEnd = lastRow?.actorKey === actorKey ? lastRow.engagement?.endMs : null;
     const startMs = Number.isSafeInteger(priorEnd)
       ? Math.max(entryStartMs, priorEnd)
@@ -1186,6 +1325,10 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     cfg,
   });
 
-  nativeActorContexts.set(ctx, { flushActiveToGH: ctx.flushActiveToGH, statePath: ctx.statePath, cfg: ctx.cfg });
+  nativeActorContexts.set(ctx, {
+    flushActiveToGH: ctx.flushActiveToGH,
+    statePath: ctx.statePath,
+    cfg: ctx.cfg,
+  });
   return ctx;
 }

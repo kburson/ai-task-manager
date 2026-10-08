@@ -2,7 +2,10 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
-import { resolveVerificationProvider, deriveRecordedDevelopFinalPlan } from '../../../../task-tracker/lib/verification-provider-registry.mjs';
+import {
+  resolveVerificationProvider,
+  deriveRecordedDevelopFinalPlan,
+} from '../../../../task-tracker/lib/verification-provider-registry.mjs';
 
 const projectDir = process.cwd();
 
@@ -458,23 +461,46 @@ test('targeted coverage checks cannot reuse configured classification identities
   assert.deepEqual(plan.derivedSteps[0].requires, ['test-targeted-1', 'test-targeted-2']);
 });
 
-
 // @story #1855
 test('recorded final plan is closed data with complete shared provider syntax validation', () => {
   const config = projectConfig();
   config.test.steps[0].command = './scripts/recorded-obsolete-file-1855.sh';
-  const input = { projectDir, configuration: { verificationProvider: config, developVerification: null } };
+  const input = {
+    projectDir,
+    configuration: { verificationProvider: config, developVerification: null },
+  };
   const plan = deriveRecordedDevelopFinalPlan(input);
   assert.equal(plan.providerId, 'project');
   assert.equal(plan.stage, 'develop-final');
   assert.equal(typeof plan.planTest, 'undefined');
   assert.ok(Object.isFrozen(plan));
   assert.throws(() => resolveVerificationProvider({ projectDir, config }), /script not found/);
-  assert.throws(() => deriveRecordedDevelopFinalPlan({ ...input, deps: { validateCommand: accept } }), /unknown recorded input key/);
-  assert.throws(() => deriveRecordedDevelopFinalPlan({ ...input, configuration: { ...input.configuration, historical: true } }), /unknown recorded configuration key/);
-  assert.throws(() => deriveRecordedDevelopFinalPlan({ ...input, configuration: { verificationProvider: config } }), /required/);
-  assert.throws(() => deriveRecordedDevelopFinalPlan({ ...input, projectDir: './relative' }), /required/);
-  for (const command of ['unknown-verifier', './scripts/../../outside.sh', './scripts/unsafe.txt']) {
+  assert.throws(
+    () => deriveRecordedDevelopFinalPlan({ ...input, deps: { validateCommand: accept } }),
+    /unknown recorded input key/
+  );
+  assert.throws(
+    () =>
+      deriveRecordedDevelopFinalPlan({
+        ...input,
+        configuration: { ...input.configuration, historical: true },
+      }),
+    /unknown recorded configuration key/
+  );
+  assert.throws(
+    () =>
+      deriveRecordedDevelopFinalPlan({ ...input, configuration: { verificationProvider: config } }),
+    /required/
+  );
+  assert.throws(
+    () => deriveRecordedDevelopFinalPlan({ ...input, projectDir: './relative' }),
+    /required/
+  );
+  for (const command of [
+    'unknown-verifier',
+    './scripts/../../outside.sh',
+    './scripts/unsafe.txt',
+  ]) {
     const bad = structuredClone(input);
     bad.configuration.verificationProvider.test.steps[0].command = command;
     assert.throws(() => deriveRecordedDevelopFinalPlan(bad), /rejected/);
@@ -483,8 +509,15 @@ test('recorded final plan is closed data with complete shared provider syntax va
   duplicate.configuration.verificationProvider.test.steps[1].classification = 'simulator-ready';
   assert.throws(() => deriveRecordedDevelopFinalPlan(duplicate), /duplicate classification/);
   const coverage = structuredClone(input);
-  coverage.configuration.verificationProvider.test.declaredCommandCoverage = [{ command: 'unknown-verifier', requires: ['xcode-tests'] }];
+  coverage.configuration.verificationProvider.test.declaredCommandCoverage = [
+    { command: 'unknown-verifier', requires: ['xcode-tests'] },
+  ];
   assert.throws(() => deriveRecordedDevelopFinalPlan(coverage), /coverage command rejected/);
-  assert.deepEqual(deriveRecordedDevelopFinalPlan({ projectDir,
-    configuration: { verificationProvider: null, developVerification: null } }), resolveVerificationProvider({ projectDir }).planDevelopFinal());
+  assert.deepEqual(
+    deriveRecordedDevelopFinalPlan({
+      projectDir,
+      configuration: { verificationProvider: null, developVerification: null },
+    }),
+    resolveVerificationProvider({ projectDir }).planDevelopFinal()
+  );
 });

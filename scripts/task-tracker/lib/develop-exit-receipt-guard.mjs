@@ -24,8 +24,15 @@ function resolveHead(ctx, reads) {
     reads.push(Object.freeze({ cwd: options.cwd, stdout, stderr: '', exitCode: 0 }));
     return stdout.trim();
   } catch (error) {
-    if (options) reads.push(Object.freeze({ cwd: options.cwd, stdout: String(error.stdout ?? ''),
-      stderr: String(error.stderr ?? ''), exitCode: Number.isInteger(error.status) ? error.status : null }));
+    if (options)
+      reads.push(
+        Object.freeze({
+          cwd: options.cwd,
+          stdout: String(error.stdout ?? ''),
+          stderr: String(error.stderr ?? ''),
+          exitCode: Number.isInteger(error.status) ? error.status : null,
+        })
+      );
     return null;
   }
 }
@@ -59,22 +66,34 @@ export const developExitReceiptGuard = Object.freeze({
       const contextFields = Object.getOwnPropertyDescriptors(ctx);
       const contextPrototype = Object.getPrototypeOf(ctx);
       const plain = contextPrototype === Object.prototype || contextPrototype === null;
-      const dataFields = Object.values(contextFields).every(field => Object.hasOwn(field, 'value'));
-      const inherited = key => contextPrototype !== null && Object.getOwnPropertyDescriptor(contextPrototype, key) !== undefined;
+      const dataFields = Object.values(contextFields).every((field) =>
+        Object.hasOwn(field, 'value')
+      );
+      const inherited = (key) =>
+        contextPrototype !== null &&
+        Object.getOwnPropertyDescriptor(contextPrototype, key) !== undefined;
       const deps = contextFields.deps?.value;
       const fields = deps == null ? {} : Object.getOwnPropertyDescriptors(deps);
       const prototype = deps == null ? null : Object.getPrototypeOf(deps);
       // Never execute optional ctx/deps getters or move their original reads.
-      native = plain && dataFields && !Object.hasOwn(contextFields, 'headSha') &&
+      native =
+        plain &&
+        dataFields &&
+        !Object.hasOwn(contextFields, 'headSha') &&
         !['headSha', 'deps', 'projectDir'].some(inherited) &&
-        (deps == null || ((prototype === Object.prototype || prototype === null) &&
-          !Object.hasOwn(fields, 'readDevelopReceipt') &&
-          (prototype === null || Object.getOwnPropertyDescriptor(prototype, 'readDevelopReceipt') === undefined) &&
-          Object.values(fields).every(field => Object.hasOwn(field, 'value'))));
-    } catch { native = false; }
+        (deps == null ||
+          ((prototype === Object.prototype || prototype === null) &&
+            !Object.hasOwn(fields, 'readDevelopReceipt') &&
+            (prototype === null ||
+              Object.getOwnPropertyDescriptor(prototype, 'readDevelopReceipt') === undefined) &&
+            Object.values(fields).every((field) => Object.hasOwn(field, 'value'))));
+    } catch {
+      native = false;
+    }
     const headSha = resolveHead(ctx, reads);
-    const finish = out => {
-      if (native && reads.length === 1) nativeReadData.set(out, Object.freeze({ projectDir: reads[0].cwd, head: reads[0] }));
+    const finish = (out) => {
+      if (native && reads.length === 1)
+        nativeReadData.set(out, Object.freeze({ projectDir: reads[0].cwd, head: reads[0] }));
       return out;
     };
     const readReceipt =
@@ -106,9 +125,16 @@ export const developExitReceiptGuard = Object.freeze({
 const originalRun = developExitReceiptGuard.run;
 export function readDevelopReceiptReadData(result, invocation) {
   try {
-    if (!invocation || Object.keys(invocation).sort().join(',') !== 'guard,id,run' ||
-        invocation.guard !== developExitReceiptGuard || invocation.run !== originalRun ||
-        invocation.id !== GUARD_ID) return null;
-    return result && typeof result === 'object' ? nativeReadData.get(result) ?? null : null;
-  } catch { return null; }
+    if (
+      !invocation ||
+      Object.keys(invocation).sort().join(',') !== 'guard,id,run' ||
+      invocation.guard !== developExitReceiptGuard ||
+      invocation.run !== originalRun ||
+      invocation.id !== GUARD_ID
+    )
+      return null;
+    return result && typeof result === 'object' ? (nativeReadData.get(result) ?? null) : null;
+  } catch {
+    return null;
+  }
 }

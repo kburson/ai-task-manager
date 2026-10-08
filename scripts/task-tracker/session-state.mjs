@@ -53,11 +53,16 @@ export function getActiveTask(sid, projDir) {
 // Closed source DATA only; actual read selection and absence remain the
 // native collector's responsibility. Shares the ordinary read normalization.
 export function deriveRecordedActiveTaskRead(input) {
-  if (!input || Object.keys(input).join(',') !== 'bytes' ||
-      input.bytes !== null && typeof input.bytes !== 'string') throw new TypeError('recorded-active-task-read');
+  if (
+    !input ||
+    Object.keys(input).join(',') !== 'bytes' ||
+    (input.bytes !== null && typeof input.bytes !== 'string')
+  )
+    throw new TypeError('recorded-active-task-read');
   if (input.bytes === null) return null;
   const parsed = JSON.parse(input.bytes);
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError('recorded-active-task-read');
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+    throw new TypeError('recorded-active-task-read');
   return normalizeCachedKanbanState(parsed);
 }
 
@@ -96,14 +101,26 @@ function activeTaskPayload(record, existing, boundAt) {
 // Closed historical data projection only. Null existing bytes means captured
 // absence; this function cannot establish that a native read actually occurred.
 export function deriveRecordedActiveTask(input) {
-  const invalid = () => { throw new TypeError('recorded-active-task'); };
-  if (!input || typeof input !== 'object' || Array.isArray(input) ||
-      Object.keys(input).sort().join(',') !== 'boundAt,existingBytes,recordBytes' ||
-      typeof input.boundAt !== 'string' || !Number.isFinite(Date.parse(input.boundAt))) invalid();
-  const parse = bytes => {
+  const invalid = () => {
+    throw new TypeError('recorded-active-task');
+  };
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !== 'boundAt,existingBytes,recordBytes' ||
+    typeof input.boundAt !== 'string' ||
+    !Number.isFinite(Date.parse(input.boundAt))
+  )
+    invalid();
+  const parse = (bytes) => {
     if (typeof bytes !== 'string') invalid();
     let value;
-    try { value = JSON.parse(bytes); } catch { invalid(); }
+    try {
+      value = JSON.parse(bytes);
+    } catch {
+      invalid();
+    }
     if (!value || typeof value !== 'object' || Array.isArray(value)) invalid();
     return value;
   };
@@ -116,7 +133,8 @@ export function deriveRecordedActiveTask(input) {
 const nativeStageSessionWrites = new WeakMap();
 export function assertNativeStageSessionWrite(invocation, intent) {
   const original = nativeStageSessionWrites.get(invocation);
-  if (!original || JSON.stringify(original) !== JSON.stringify(intent)) throw new TypeError('native-session-write');
+  if (!original || JSON.stringify(original) !== JSON.stringify(intent))
+    throw new TypeError('native-session-write');
 }
 // Only the original saveState program operation can enter this fixed memory
 // leaf. The sticky read and fallback clock stay inside resource serialization.
@@ -125,18 +143,29 @@ export async function setNativeStageActorTask(invocation, operation) {
   const source = await native.beginNativeStageCheckpointSession(invocation, operation);
   try {
     const record = operation.record;
-    if (!record || typeof record !== 'object') throw new Error('setActiveTask: record must be an object');
-    const existing = record.issue != null && source.beforeBytes !== null ? JSON.parse(source.beforeBytes) : null;
+    if (!record || typeof record !== 'object')
+      throw new Error('setActiveTask: record must be an object');
+    const existing =
+      record.issue != null && source.beforeBytes !== null ? JSON.parse(source.beforeBytes) : null;
     const boundAt = record.boundAt ?? new Date().toISOString();
     const payload = activeTaskPayload(record, existing, boundAt);
-    const intent = { invocation: source.invocation, file: source.file, stateBytes: source.stateBytes,
-      recordBytes: JSON.stringify(record), boundAt, bytes: JSON.stringify(payload, null, 2) + '\n' };
+    const intent = {
+      invocation: source.invocation,
+      file: source.file,
+      stateBytes: source.stateBytes,
+      recordBytes: JSON.stringify(record),
+      boundAt,
+      bytes: JSON.stringify(payload, null, 2) + '\n',
+    };
     nativeStageSessionWrites.set(invocation, intent);
     await native.persistNativeStageCheckpoint(invocation, intent);
     await native.writeNativeStageCheckpoint(invocation);
     await native.completeNativeStageCheckpoint(invocation);
     return payload;
-  } finally { nativeStageSessionWrites.delete(invocation); native.endNativeStageCheckpointLeaf(invocation); }
+  } finally {
+    nativeStageSessionWrites.delete(invocation);
+    native.endNativeStageCheckpointLeaf(invocation);
+  }
 }
 
 // Persists the active-task record for `sid`. Stamps `boundAt` to the current
@@ -172,18 +201,38 @@ function sessionKanbanPayload(rawExisting, kanbanState) {
 
 // Data-only projection for the bounded recorded Develop-to-Test tail.
 export function deriveRecordedSessionKanban(input) {
-  const invalid = () => { throw new TypeError('recorded-session-kanban'); };
-  if (!input || typeof input !== 'object' || Array.isArray(input) ||
-      Object.keys(input).sort().join(',') !== 'existingBytes,state' || input.state !== 'test') invalid();
+  const invalid = () => {
+    throw new TypeError('recorded-session-kanban');
+  };
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !== 'existingBytes,state' ||
+    input.state !== 'test'
+  )
+    invalid();
   let existing = null;
   if (input.existingBytes !== null) {
     if (typeof input.existingBytes !== 'string') invalid();
-    try { existing = JSON.parse(input.existingBytes); } catch { invalid(); }
+    try {
+      existing = JSON.parse(input.existingBytes);
+    } catch {
+      invalid();
+    }
     if (!existing || typeof existing !== 'object' || Array.isArray(existing)) invalid();
   }
   const { payload, changed } = sessionKanbanPayload(existing, input.state);
-  return { payload, changed, bytes: payload === null ? null :
-    changed ? JSON.stringify(payload, null, 2) + '\n' : input.existingBytes };
+  return {
+    payload,
+    changed,
+    bytes:
+      payload === null
+        ? null
+        : changed
+          ? JSON.stringify(payload, null, 2) + '\n'
+          : input.existingBytes,
+  };
 }
 
 // #218 follow-up: stamps a derived `kanbanState` field onto the record. The

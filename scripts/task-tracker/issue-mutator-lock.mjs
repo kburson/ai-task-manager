@@ -258,16 +258,18 @@ export function tryReclaimStale(lockPath, deps = {}) {
 export async function withIssueLock(opts, fn) {
   if (!opts?.issue) throw new Error('withIssueLock: issue is required');
   if (!opts?.projDir) throw new Error('withIssueLock: projDir is required');
-  return withRevisionIssueMutation(opts, admitted => acquireIssueLock(admitted, fn));
+  return withRevisionIssueMutation(opts, (admitted) => acquireIssueLock(admitted, fn));
 }
 
 // Internal interlock/delegation primitive: ownership and ordering only. Covered
 // semantic writers must use withIssueLock and their own policy boundary.
 export async function withAuthenticatedRevisionIssueLock(opts, fn) {
-  if (!opts?.revisionContext || !opts?.revisionCapability)
-    throw new Error('revision-capability');
-  assertRevisionCapability(opts.revisionCapability,
-    { ...opts.revisionContext, issues: [Number(opts.issue)] }, opts.revisionPorts);
+  if (!opts?.revisionContext || !opts?.revisionCapability) throw new Error('revision-capability');
+  assertRevisionCapability(
+    opts.revisionCapability,
+    { ...opts.revisionContext, issues: [Number(opts.issue)] },
+    opts.revisionPorts
+  );
   return acquireIssueLock(opts, fn);
 }
 

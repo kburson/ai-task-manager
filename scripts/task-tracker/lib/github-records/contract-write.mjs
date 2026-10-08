@@ -399,9 +399,25 @@ export function renderContractProjectionRecord({ repository, issue, contract, ac
 }
 
 export async function executeContractWrite(input = {}) {
-  return withRevisionConsumer({ repository: input.plan?.request?.repository, issue: input.plan?.request?.issue, activity: 'contract-write', backend: input.deps?.revisionBackend }, () => executeContractWriteAdmitted(input));
+  return withRevisionConsumer(
+    {
+      repository: input.plan?.request?.repository,
+      issue: input.plan?.request?.issue,
+      activity: 'contract-write',
+      backend: input.deps?.revisionBackend,
+    },
+    () => executeContractWriteAdmitted(input)
+  );
 }
 
 export async function writeDirectoryContractOperation(input = {}) {
-  return withRevisionConsumer({ repository: input.repository, issue: input.issue, activity: 'contract-write', backend: input.deps?.revisionBackend }, () => writeDirectoryContractOperationAdmitted(input));
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'contract-write',
+      backend: input.deps?.revisionBackend,
+    },
+    () => writeDirectoryContractOperationAdmitted(input)
+  );
 }

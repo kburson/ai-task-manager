@@ -53,9 +53,16 @@ function verifiedProjection(body, normalization, head, evaluatedAt) {
 }
 
 export async function persistReadyNormalizations(input = {}) {
-  return withRevisionConsumer({ repository: input.repo, issue: input.issueNumber,
-    activity: 'body-write', backend: input.deps?.revisionBackend, projectDir: input.projectDir },
-    () => persistReadyNormalizationsAdmitted(input));
+  return withRevisionConsumer(
+    {
+      repository: input.repo,
+      issue: input.issueNumber,
+      activity: 'body-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => persistReadyNormalizationsAdmitted(input)
+  );
 }
 
 async function persistReadyNormalizationsAdmitted({
@@ -94,7 +101,7 @@ async function persistReadyNormalizationsAdmitted({
   try {
     initial = await readBack();
   } catch (cause) {
-      if (cause instanceof RevisionPolicyError) throw cause;
+    if (cause instanceof RevisionPolicyError) throw cause;
     throw new NormalizationRefusalError('normalization-readback-failed', cause);
   }
   if (typeof initial?.body !== 'string' || initial.body.length === 0) {
@@ -134,7 +141,7 @@ async function persistReadyNormalizationsAdmitted({
         try {
           current = await readBack();
         } catch (cause) {
-      if (cause instanceof RevisionPolicyError) throw cause;
+          if (cause instanceof RevisionPolicyError) throw cause;
           throw new NormalizationRefusalError('normalization-authority-drift', cause);
         }
         if (current?.head !== head) {
@@ -157,7 +164,7 @@ async function persistReadyNormalizationsAdmitted({
       },
     });
   } catch (cause) {
-      if (cause instanceof RevisionPolicyError) throw cause;
+    if (cause instanceof RevisionPolicyError) throw cause;
     if (cause instanceof NonReadyNormalization) {
       return {
         decision: cause.decision,
@@ -174,7 +181,7 @@ async function persistReadyNormalizationsAdmitted({
   try {
     observed = await readBack();
   } catch (cause) {
-      if (cause instanceof RevisionPolicyError) throw cause;
+    if (cause instanceof RevisionPolicyError) throw cause;
     throw new NormalizationRefusalError('normalization-readback-failed', cause);
   }
   if (typeof observed?.body !== 'string' || observed.body.length === 0) {

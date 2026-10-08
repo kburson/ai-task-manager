@@ -225,8 +225,20 @@ test('registerGuard rejects reserved boundary producer ids', async () => {
 test('native guard invocation data records real ordered attempts and cannot be copied from a result', async () => {
   const registry = await freshRegistry();
   const calls = [];
-  registry.registerGuard('develop', 'exit', { id: 'captured-exit', run: () => { calls.push('exit'); throw new Error('actual refusal'); } });
-  registry.registerGuard('test', 'entry', { id: 'captured-entry', run: () => { calls.push('entry'); return { ok: true }; } });
+  registry.registerGuard('develop', 'exit', {
+    id: 'captured-exit',
+    run: () => {
+      calls.push('exit');
+      throw new Error('actual refusal');
+    },
+  });
+  registry.registerGuard('test', 'entry', {
+    id: 'captured-entry',
+    run: () => {
+      calls.push('entry');
+      return { ok: true };
+    },
+  });
   const result = await registry.runGuards('develop', 'test', {});
   assert.deepEqual(calls, ['exit', 'entry']);
   assert.equal(result.ok, false);
@@ -240,29 +252,73 @@ test('native guard invocation data records real ordered attempts and cannot be c
   assert.equal(registry.readGuardInvocationData(null), null);
   registry.GUARDS.develop.exit.length = 0;
   assert.equal(data.length, 2);
-  assert.deepEqual(registry.readGuardInvocationData(await registry.runGuards('unknown', 'unknown', {})), []);
-  assert.deepEqual(registry.readGuardInvocationData(await registry.runGuards('develop', 'test', {}, { includeEntryGuards: false })), []);
+  assert.deepEqual(
+    registry.readGuardInvocationData(await registry.runGuards('unknown', 'unknown', {})),
+    []
+  );
+  assert.deepEqual(
+    registry.readGuardInvocationData(
+      await registry.runGuards('develop', 'test', {}, { includeEntryGuards: false })
+    ),
+    []
+  );
 });
-
 
 test('native invocation data refuses a later function replaced and restored during an awaited guard', async () => {
   const registry = await freshRegistry();
   let release, entered;
-  const started = new Promise(resolve => { entered = resolve; });
-  const gate = new Promise(resolve => { release = resolve; });
-  const first = { id: 'awaited-original', async run() { entered(); await gate; return { ok: true }; } };
-  let originalCalls = 0, substitutedCalls = 0;
-  const later = { id: 'later-original', run() { assert.equal(this, later); originalCalls++; return { ok: true }; } };
+  const started = new Promise((resolve) => {
+    entered = resolve;
+  });
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const first = {
+    id: 'awaited-original',
+    async run() {
+      entered();
+      await gate;
+      return { ok: true };
+    },
+  };
+  let originalCalls = 0,
+    substitutedCalls = 0;
+  const later = {
+    id: 'later-original',
+    run() {
+      assert.equal(this, later);
+      originalCalls++;
+      return { ok: true };
+    },
+  };
   const original = later.run;
   registry.registerGuard('develop', 'exit', first);
   registry.registerGuard('test', 'entry', later);
   const pending = registry.runGuards('develop', 'test', {});
   await started;
-  later.run = function () { assert.equal(this, later); substitutedCalls++; later.run = original; return { ok: true }; };
+  later.run = function () {
+    assert.equal(this, later);
+    substitutedCalls++;
+    later.run = original;
+    return { ok: true };
+  };
   release();
   const result = await pending;
-  assert.equal(result.ok, true, 'ordinary registry compatibility is retained; this is passive qualification only');
-  assert.equal(later.run, original, 'pre/post catalog equality cannot detect the actual substitution');
-  assert.equal(originalCalls, 0); assert.equal(substitutedCalls, 1);
-  assert.equal(registry.readGuardInvocationData(result), null, 'substituted execution cannot qualify native invocation data');
+  assert.equal(
+    result.ok,
+    true,
+    'ordinary registry compatibility is retained; this is passive qualification only'
+  );
+  assert.equal(
+    later.run,
+    original,
+    'pre/post catalog equality cannot detect the actual substitution'
+  );
+  assert.equal(originalCalls, 0);
+  assert.equal(substitutedCalls, 1);
+  assert.equal(
+    registry.readGuardInvocationData(result),
+    null,
+    'substituted execution cannot qualify native invocation data'
+  );
 });

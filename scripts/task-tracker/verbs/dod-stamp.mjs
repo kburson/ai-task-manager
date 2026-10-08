@@ -1,4 +1,8 @@
-import { withRevisionConsumer, prepareRevisionProof, resumeRevisionProof } from '../lib/criteria-revision/policy.mjs';
+import {
+  withRevisionConsumer,
+  prepareRevisionProof,
+  resumeRevisionProof,
+} from '../lib/criteria-revision/policy.mjs';
 // #303 — `/task dod-stamp <key>` runs the verifier command(s) declared by a
 // stampable Functional DoD item's `aitm-verified-by` markers and stamps the
 // resulting evidence marker
@@ -281,10 +285,24 @@ async function verbDodStampAdmitted(ctx) {
 export async function verbDodStamp(ctx) {
   const state = loadState(ctx.statePath);
   if (!state.active || state.active === 'discover') return verbDodStampAdmitted(ctx);
-  if (await resumeRevisionProof({ repository: ctx.cfg.repo, issue: Number(String(state.active).replace(/^#/, '')),
-    backend: ctx.deps?.revisionBackend, intent: { kind: 'dod', target: String(ctx.rest?.[0] || '').toLowerCase() },
-    projectDir: ctx.projectDir, pexec: ctx.pexec })) return;
-  return withRevisionConsumer({ repository: ctx.cfg.repo, issue: Number(String(state.active).replace(/^#/, '')),
-    activity: 'dod-stamp', backend: ctx.deps?.revisionBackend,
-  }, () => verbDodStampAdmitted(ctx));
+  if (
+    await resumeRevisionProof({
+      repository: ctx.cfg.repo,
+      issue: Number(String(state.active).replace(/^#/, '')),
+      backend: ctx.deps?.revisionBackend,
+      intent: { kind: 'dod', target: String(ctx.rest?.[0] || '').toLowerCase() },
+      projectDir: ctx.projectDir,
+      pexec: ctx.pexec,
+    })
+  )
+    return;
+  return withRevisionConsumer(
+    {
+      repository: ctx.cfg.repo,
+      issue: Number(String(state.active).replace(/^#/, '')),
+      activity: 'dod-stamp',
+      backend: ctx.deps?.revisionBackend,
+    },
+    () => verbDodStampAdmitted(ctx)
+  );
 }

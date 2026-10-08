@@ -1,5 +1,8 @@
 import { currentRevisionExecutionScope } from './criteria-revision/policy.mjs';
-import { buildVerificationFingerprint, createVerificationReceipt } from './verification-receipt.mjs';
+import {
+  buildVerificationFingerprint,
+  createVerificationReceipt,
+} from './verification-receipt.mjs';
 import { captureEvidenceProvenance } from './evidence-provenance.mjs';
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { resolveNativeProofIntent } from './criteria-revision/proof-execution.mjs';
@@ -10,7 +13,10 @@ const nativeExecutions = new WeakMap();
 // completed execution; its opaque token is useful solely in the held scope.
 export function readNativeVerifierExecution(token) {
   const record = nativeExecutions.get(token);
-  if (!record || canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(record.scope))
+  if (
+    !record ||
+    canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(record.scope)
+  )
     throw new Error('native-proof-token');
   return structuredClone(record);
 }
@@ -148,18 +154,37 @@ async function treeIdentity(pexec, cwd) {
 // behave byte-identically to the pre-#446 runner. `now` is an injectable clock
 // (() => ISO string) used to timestamp fresh runs that get recorded; defaults to
 // `new Date().toISOString()`.
-export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer, cache, env, nativeProofIntent } = {}) {
+export async function runVerifiers({
+  commands,
+  pexec,
+  cwd,
+  timeout,
+  maxBuffer,
+  cache,
+  env,
+  nativeProofIntent,
+} = {}) {
   const list = Array.isArray(commands) ? commands : [];
   const scope = currentRevisionExecutionScope();
-  let fingerprint = null, provenance = null, cacheNamespace = null;
+  let fingerprint = null,
+    provenance = null,
+    cacheNamespace = null;
   if (scope && nativeProofIntent) {
     const resolved = resolveNativeProofIntent(scope, nativeProofIntent);
-    if (canonicalRecordJson(resolved.commands) !== canonicalRecordJson(list)) throw new Error('native-proof-commands');
+    if (canonicalRecordJson(resolved.commands) !== canonicalRecordJson(list))
+      throw new Error('native-proof-commands');
     provenance = captureEvidenceProvenance({ projectDir: cwd, boundIssue: scope.binding.issue });
-    if (provenance.worktreePath !== scope.executor.worktree || provenance.branch !== scope.executor.branch)
+    if (
+      provenance.worktreePath !== scope.executor.worktree ||
+      provenance.branch !== scope.executor.branch
+    )
       throw new Error('native-proof-execution-scope');
     const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { cwd });
-    fingerprint = buildVerificationFingerprint({ projectDir: cwd, commitSha: String(stdout).trim(), verificationCommands: list });
+    fingerprint = buildVerificationFingerprint({
+      projectDir: cwd,
+      commitSha: String(stdout).trim(),
+      verificationCommands: list,
+    });
     cacheNamespace = hashBytes(canonicalRecordJson({ binding: scope.binding, fingerprint }));
   }
   const runOptions = {
@@ -168,7 +193,7 @@ export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer, c
     maxBuffer: maxBuffer ?? 64 * 1024 * 1024,
     ...(env !== undefined ? { env } : {}),
   };
-  // A legacy cache entry carries no reconstructable native revision proof.
+  // A legacy cache entry carries no reconstructible native revision proof.
   // Revised execution therefore requires a real run until a validated durable
   // record can supply reuse; the exact future namespace is retained below.
   const cacheDir = !scope && cache && cache.dir;
@@ -198,7 +223,8 @@ export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer, c
 
     const [bin, ...args] = argv;
     let exit = 0;
-    const startedAt = new Date().toISOString(), startedMs = performance.now();
+    const startedAt = new Date().toISOString(),
+      startedMs = performance.now();
     try {
       await pexec(bin, args, runOptions);
     } catch (err) {
@@ -207,9 +233,16 @@ export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer, c
     }
     const ts = nowFn();
     ran.push({ cmd: raw, exit, cached: false, ts });
-    if (scope) nativeCommands.push({ classification: `native-verifier:${nativeCommands.length + 1}`,
-      command: bin, args, exitCode: exit, durationMs: performance.now() - startedMs,
-      startedAt, completedAt: ts });
+    if (scope)
+      nativeCommands.push({
+        classification: `native-verifier:${nativeCommands.length + 1}`,
+        command: bin,
+        args,
+        exitCode: exit,
+        durationMs: performance.now() - startedMs,
+        startedAt,
+        completedAt: ts,
+      });
 
     // Cache write: record only genuine green runs at a clean tree for eligible
     // commands. `record` itself re-asserts these preconditions and prunes the
@@ -232,15 +265,39 @@ export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer, c
   };
   if (scope && nativeProofIntent && result.allPassed && ran.length === list.length) {
     const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { cwd });
-    const after = buildVerificationFingerprint({ projectDir: cwd, commitSha: String(stdout).trim(), verificationCommands: list });
-    if (canonicalRecordJson(after) !== canonicalRecordJson(fingerprint) ||
-        canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(scope))
+    const after = buildVerificationFingerprint({
+      projectDir: cwd,
+      commitSha: String(stdout).trim(),
+      verificationCommands: list,
+    });
+    if (
+      canonicalRecordJson(after) !== canonicalRecordJson(fingerprint) ||
+      canonicalRecordJson(currentRevisionExecutionScope()) !== canonicalRecordJson(scope)
+    )
       throw new Error('native-proof-execution-drift');
-    const receipt = createVerificationReceipt({ issueNumber: scope.binding.issue, stage: 'native-verifier',
-      fingerprint, commands: nativeCommands, executionContext: provenance });
+    const receipt = createVerificationReceipt({
+      issueNumber: scope.binding.issue,
+      stage: 'native-verifier',
+      fingerprint,
+      commands: nativeCommands,
+      executionContext: provenance,
+    });
     const token = Object.freeze({});
-    nativeExecutions.set(token, structuredClone({ schema: 'aitm.native-verifier-execution/v1',
-      scope, intent: nativeProofIntent, binding: scope.binding, commands: list, results: ran, fingerprint, provenance, cacheNamespace, receipt }));
+    nativeExecutions.set(
+      token,
+      structuredClone({
+        schema: 'aitm.native-verifier-execution/v1',
+        scope,
+        intent: nativeProofIntent,
+        binding: scope.binding,
+        commands: list,
+        results: ran,
+        fingerprint,
+        provenance,
+        cacheNamespace,
+        receipt,
+      })
+    );
     result.nativeExecutionToken = token;
     result.sha = fingerprint.commitSha;
   }

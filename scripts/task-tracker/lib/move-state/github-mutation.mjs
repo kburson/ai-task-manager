@@ -28,7 +28,10 @@ import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { assertRevisionStageHostEffect, isMemoryStageEffectScope } from '../criteria-revision/transport-quarantine.mjs';
+import {
+  assertRevisionStageHostEffect,
+  isMemoryStageEffectScope,
+} from '../criteria-revision/transport-quarantine.mjs';
 
 // #711 — how many times the write+read-back cycle is attempted before
 // runStatusWrite gives up and fails loudly, and the base backoff between them.
@@ -73,7 +76,11 @@ async function defaultReadBackStatusOptionId(input) {
     if (source === null) return statusOptionFromData(data, input.cfg.projectId);
     const { parseNativeStageStatusResponse } = await import('../../../gh/lib/github-projects.mjs');
     const response = core.readNativeStageStatusSourceResponse(input, data);
-    const captured = evaluateStatusResponse(parseNativeStageStatusResponse, response, input.cfg.projectId);
+    const captured = evaluateStatusResponse(
+      parseNativeStageStatusResponse,
+      response,
+      input.cfg.projectId
+    );
     const original = nativeBoardRequests.get(input);
     assertOriginalNativeBoardRequest(input, original?.invocation, 'status');
     nativeBoardStatuses.set(input, { invocation: original.invocation, response, captured });
@@ -81,16 +88,19 @@ async function defaultReadBackStatusOptionId(input) {
       await core.recordNativeStageBoardStatusSource(input);
       assertOriginalNativeBoardRequest(input, original.invocation, 'status');
       return captured.value;
-    } finally { nativeBoardStatuses.delete(input); }
+    } finally {
+      nativeBoardStatuses.delete(input);
+    }
   }
   const { cfg, issueNumber } = input;
   try {
     const { gql, splitRepo } = await import('../../../gh/lib/github-projects.mjs');
     const { owner, repoName } = splitRepo(cfg.repo);
-    const data = await gql(
-      STATUS_OPTION_QUERY,
-      { owner, repo: repoName, issue: Number(issueNumber) }
-    );
+    const data = await gql(STATUS_OPTION_QUERY, {
+      owner,
+      repo: repoName,
+      issue: Number(issueNumber),
+    });
     return statusOptionFromData(data, cfg.projectId);
   } catch {
     return '';
@@ -100,8 +110,18 @@ async function defaultReadBackStatusOptionId(input) {
 // Native request/parse DATA shared by the ordinary loop and exact stage replay.
 // These functions do not execute a request or qualify its source.
 export function statusWriteArgs({ projectId, itemId, fieldId, optionId }) {
-  return ['project', 'item-edit', '--project-id', projectId, '--id', itemId,
-    '--field-id', fieldId, '--single-select-option-id', optionId];
+  return [
+    'project',
+    'item-edit',
+    '--project-id',
+    projectId,
+    '--id',
+    itemId,
+    '--field-id',
+    fieldId,
+    '--single-select-option-id',
+    optionId,
+  ];
 }
 export function statusOptionFromData(data, projectId) {
   const nodes = data?.repository?.issue?.projectItems?.nodes || [];
@@ -114,37 +134,67 @@ export function statusOptionFromData(data, projectId) {
 export async function deriveRecordedStageStatusResponse(input) {
   try {
     canonicalRecordJson(input);
-    if (Object.keys(input).sort().join(',') !== 'projectId,response' ||
-        typeof input.projectId !== 'string' || !input.projectId) throw new TypeError();
-  } catch { throw new TypeError('native-stage-status-response'); }
+    if (
+      Object.keys(input).sort().join(',') !== 'projectId,response' ||
+      typeof input.projectId !== 'string' ||
+      !input.projectId
+    )
+      throw new TypeError();
+  } catch {
+    throw new TypeError('native-stage-status-response');
+  }
   input = structuredClone(input);
   const { parseNativeStageStatusResponse } = await import('../../../gh/lib/github-projects.mjs');
-  return evaluateStatusResponse(parseNativeStageStatusResponse, input.response, input.projectId).facts;
+  return evaluateStatusResponse(parseNativeStageStatusResponse, input.response, input.projectId)
+    .facts;
 }
 // Only native synchronous parsers are caught here. Current scope, imports and
 // recording remain outside this private parser boundary.
 function evaluateStatusResponse(parser, response, projectId) {
   let data;
-  try { data = parser({ response }); }
-  catch (error) {
+  try {
+    data = parser({ response });
+  } catch (error) {
     if (error instanceof TypeError && error.message === 'native-stage-status-response') throw error;
-    const facts = freezeStatusData({ kind: 'threw', error: response.exitCode !== 0
-      ? { kind: 'close', name: error.name, message: error.message, code: error.code, stdout: error.stdout, stderr: error.stderr }
-      : { kind: 'graphql', name: error.name, message: error.message } });
+    const facts = freezeStatusData({
+      kind: 'threw',
+      error:
+        response.exitCode !== 0
+          ? {
+              kind: 'close',
+              name: error.name,
+              message: error.message,
+              code: error.code,
+              stdout: error.stdout,
+              stderr: error.stderr,
+            }
+          : { kind: 'graphql', name: error.name, message: error.message },
+    });
     return { facts, error, value: '' };
   }
-  let status, statusError = null;
-  try { status = { kind: 'returned', value: statusOptionFromData(data, projectId) }; }
-  catch (error) { statusError = error; status = { kind: 'threw', name: error.name, message: error.message }; }
-  const facts = freezeStatusData({ kind: 'returned', result: data === undefined
-    ? { kind: 'undefined' } : { kind: 'json', value: data }, status });
+  let status,
+    statusError = null;
+  try {
+    status = { kind: 'returned', value: statusOptionFromData(data, projectId) };
+  } catch (error) {
+    statusError = error;
+    status = { kind: 'threw', name: error.name, message: error.message };
+  }
+  const facts = freezeStatusData({
+    kind: 'returned',
+    result: data === undefined ? { kind: 'undefined' } : { kind: 'json', value: data },
+    status,
+  });
   return { facts, data, statusError, value: status.kind === 'returned' ? status.value : '' };
 }
 
 function freezeStatusData(value) {
-  try { canonicalRecordJson(value); }
-  catch { throw new TypeError('native-stage-status-record'); }
-  const freeze = member => {
+  try {
+    canonicalRecordJson(value);
+  } catch {
+    throw new TypeError('native-stage-status-record');
+  }
+  const freeze = (member) => {
     if (member && typeof member === 'object') {
       for (const child of Object.values(member)) freeze(child);
       Object.freeze(member);
@@ -166,15 +216,27 @@ const nativeBoardResults = new WeakMap();
 const nativeBoardFailures = new WeakMap();
 const nativeBoardStatuses = new WeakMap();
 function sameOwnBoardData(value, original) {
-  if (!value || ![Object.prototype, Array.prototype, null].includes(Object.getPrototypeOf(value))) throw new TypeError('native-board-request');
+  if (!value || ![Object.prototype, Array.prototype, null].includes(Object.getPrototypeOf(value)))
+    throw new TypeError('native-board-request');
   const current = Object.getOwnPropertyDescriptors(value);
-  if (Reflect.ownKeys(current).length !== Reflect.ownKeys(original).length || Reflect.ownKeys(current).some(key => {
-    const a = current[key], b = original[key];
-    return !b || !Object.hasOwn(a, 'value') || a.value !== b.value || a.enumerable !== b.enumerable ||
-      a.configurable !== b.configurable || a.writable !== b.writable;
-  })) throw new TypeError('native-board-request');
+  if (
+    Reflect.ownKeys(current).length !== Reflect.ownKeys(original).length ||
+    Reflect.ownKeys(current).some((key) => {
+      const a = current[key],
+        b = original[key];
+      return (
+        !b ||
+        !Object.hasOwn(a, 'value') ||
+        a.value !== b.value ||
+        a.enumerable !== b.enumerable ||
+        a.configurable !== b.configurable ||
+        a.writable !== b.writable
+      );
+    })
+  )
+    throw new TypeError('native-board-request');
 }
-// Returnless comparisons only. Registration is lexical to the one native loop.
+// No-return comparisons only. Registration is lexical to the one native loop.
 export function assertOriginalNativeBoardInvocation(invocation, ctx) {
   const original = nativeBoardInvocations.get(invocation);
   if (!original || original.ctx !== ctx) throw new TypeError('native-board-invocation');
@@ -183,7 +245,8 @@ export function assertOriginalNativeBoardInvocation(invocation, ctx) {
 export function assertOriginalNativeBoardRequest(input, invocation, kind) {
   const original = nativeBoardRequests.get(input);
   const owner = nativeBoardInvocations.get(invocation);
-  if (!original || !owner || original.invocation !== invocation || original.kind !== kind) throw new TypeError('native-board-request');
+  if (!original || !owner || original.invocation !== invocation || original.kind !== kind)
+    throw new TypeError('native-board-request');
   assertOriginalNativeBoardInvocation(invocation, owner.ctx);
   sameOwnBoardData(input, original.descriptors);
 }
@@ -193,41 +256,72 @@ export function assertOriginalNativeBoardResult(result, ctx) {
   sameOwnBoardData(result, original.descriptors);
 }
 function nativeBoardErrorData(error) {
-  if (!error || Object.getPrototypeOf(error) !== Error.prototype) throw new TypeError('native-board-error');
+  if (!error || Object.getPrototypeOf(error) !== Error.prototype)
+    throw new TypeError('native-board-error');
   const descriptors = Object.getOwnPropertyDescriptors(error);
-  if (Reflect.ownKeys(descriptors).some(key => typeof key !== 'string' || !['stack', 'message', 'name', 'code'].includes(key)))
+  if (
+    Reflect.ownKeys(descriptors).some(
+      (key) => typeof key !== 'string' || !['stack', 'message', 'name', 'code'].includes(key)
+    )
+  )
     throw new TypeError('native-board-error');
-  for (const key of ['message', 'name', 'code']) if (descriptors[key] && !Object.hasOwn(descriptors[key], 'value'))
-    throw new TypeError('native-board-error');
-  const name = descriptors.name?.value ?? 'Error', message = descriptors.message?.value, code = descriptors.code?.value ?? null;
-  if (typeof name !== 'string' || typeof message !== 'string' || !(code === null || typeof code === 'string' || Number.isSafeInteger(code)))
+  for (const key of ['message', 'name', 'code'])
+    if (descriptors[key] && !Object.hasOwn(descriptors[key], 'value'))
+      throw new TypeError('native-board-error');
+  const name = descriptors.name?.value ?? 'Error',
+    message = descriptors.message?.value,
+    code = descriptors.code?.value ?? null;
+  if (
+    typeof name !== 'string' ||
+    typeof message !== 'string' ||
+    !(code === null || typeof code === 'string' || Number.isSafeInteger(code))
+  )
     throw new TypeError('native-board-error');
   return { descriptors, facts: { kind: 'threw', name, message, code } };
 }
 // Exact original thrown value, never a caller error-data registration surface.
 export function readOriginalNativeBoardFailure(input, invocation, error) {
   const original = nativeBoardFailures.get(invocation);
-  if (!original || original.input !== input || original.error !== error) throw new TypeError('native-board-failure');
+  if (!original || original.input !== input || original.error !== error)
+    throw new TypeError('native-board-failure');
   assertOriginalNativeBoardRequest(input, invocation, 'write');
   const current = nativeBoardErrorData(error);
-  if (Reflect.ownKeys(current.descriptors).length !== Reflect.ownKeys(original.descriptors).length ||
-      Reflect.ownKeys(current.descriptors).some(key => {
-        const a = current.descriptors[key], b = original.descriptors[key];
-        return !b || a.value !== b.value || a.get !== b.get || a.set !== b.set || a.writable !== b.writable ||
-          a.enumerable !== b.enumerable || a.configurable !== b.configurable;
-      })) throw new TypeError('native-board-failure');
+  if (
+    Reflect.ownKeys(current.descriptors).length !== Reflect.ownKeys(original.descriptors).length ||
+    Reflect.ownKeys(current.descriptors).some((key) => {
+      const a = current.descriptors[key],
+        b = original.descriptors[key];
+      return (
+        !b ||
+        a.value !== b.value ||
+        a.get !== b.get ||
+        a.set !== b.set ||
+        a.writable !== b.writable ||
+        a.enumerable !== b.enumerable ||
+        a.configurable !== b.configurable
+      );
+    })
+  )
+    throw new TypeError('native-board-failure');
   return Object.freeze({ ...current.facts });
 }
 // Detached facts from the actual original parser invocation; no supplied
 // result/error can register here, and absent/copy/getter inputs fail first.
 export function readOriginalNativeBoardStatus(input, invocation) {
   const original = nativeBoardStatuses.get(input);
-  if (!original || original.invocation !== invocation) throw new TypeError('native-board-status-custody');
+  if (!original || original.invocation !== invocation)
+    throw new TypeError('native-board-status-custody');
   assertOriginalNativeBoardRequest(input, invocation, 'status');
-  return freezeStatusData(structuredClone({ transport: original.response, ...original.captured.facts }));
+  return freezeStatusData(
+    structuredClone({ transport: original.response, ...original.captured.facts })
+  );
 }
 function registerBoardRequest(input, invocation, kind) {
-  nativeBoardRequests.set(input, { invocation, kind, descriptors: Object.getOwnPropertyDescriptors(input) });
+  nativeBoardRequests.set(input, {
+    invocation,
+    kind,
+    descriptors: Object.getOwnPropertyDescriptors(input),
+  });
   return input;
 }
 export async function runStatusWrite(ctx) {
@@ -238,10 +332,15 @@ export async function runStatusWrite(ctx) {
   const core = await import('./move-state-core.mjs');
   core.assertNativeStageBoardContext(ctx);
   const invocation = Object.freeze({});
-  nativeBoardInvocations.set(invocation, { ctx, core, descriptors: Object.getOwnPropertyDescriptors(ctx) });
+  nativeBoardInvocations.set(invocation, {
+    ctx,
+    core,
+    descriptors: Object.getOwnPropertyDescriptors(ctx),
+  });
   let begun = false;
   try {
-    await core.beginNativeStageBoard(ctx, invocation); begun = true;
+    await core.beginNativeStageBoard(ctx, invocation);
+    begun = true;
     assertOriginalNativeBoardInvocation(invocation, ctx);
     const result = await runStatusWriteAdmitted(ctx, invocation);
     assertOriginalNativeBoardInvocation(invocation, ctx);
@@ -264,8 +363,11 @@ async function runStatusWriteAdmitted(ctx, invocation) {
     const request = { repo: cfg.repo, projectId: cfg.projectId, issueNumber: issueArg };
     if (invocation) registerBoardRequest(request, invocation, 'item');
     let result;
-    try { result = await projectItemForIssue(request); }
-    finally { if (invocation) nativeBoardRequests.delete(request); }
+    try {
+      result = await projectItemForIssue(request);
+    } finally {
+      if (invocation) nativeBoardRequests.delete(request);
+    }
     itemId = result.itemId;
     if (!itemId) {
       process.stderr.write(
@@ -301,26 +403,45 @@ async function runStatusWriteAdmitted(ctx, invocation) {
     let confirmed = false;
     let lastSeen = '';
     for (let attempt = 1; attempt <= STATUS_WRITE_MAX_ATTEMPTS; attempt++) {
-      const writeRequest = statusWriteArgs({ projectId: cfg.projectId, itemId, fieldId: cfg.kanbanFieldId, optionId });
+      const writeRequest = statusWriteArgs({
+        projectId: cfg.projectId,
+        itemId,
+        fieldId: cfg.kanbanFieldId,
+        optionId,
+      });
       if (invocation) registerBoardRequest(writeRequest, invocation, 'write');
-      try { await gh(writeRequest); }
-      catch (error) {
+      try {
+        await gh(writeRequest);
+      } catch (error) {
         if (invocation) {
           try {
             const captured = nativeBoardErrorData(error);
-            nativeBoardFailures.set(invocation, { input: writeRequest, error, descriptors: captured.descriptors });
-            await nativeBoardInvocations.get(invocation).core.recordNativeStageBoardFailure(writeRequest, error);
+            nativeBoardFailures.set(invocation, {
+              input: writeRequest,
+              error,
+              descriptors: captured.descriptors,
+            });
+            await nativeBoardInvocations
+              .get(invocation)
+              .core.recordNativeStageBoardFailure(writeRequest, error);
           } catch {
             // Recording uncertainty retains pending. Preserve the original
             // native thrown value; it never becomes exit7 or compensation.
-          } finally { nativeBoardFailures.delete(invocation); }
+          } finally {
+            nativeBoardFailures.delete(invocation);
+          }
         }
         throw error;
-      } finally { if (invocation) nativeBoardRequests.delete(writeRequest); }
+      } finally {
+        if (invocation) nativeBoardRequests.delete(writeRequest);
+      }
       const readRequest = { cfg, issueNumber: issueArg };
       if (invocation) registerBoardRequest(readRequest, invocation, 'status');
-      try { lastSeen = await readBackStatusOptionId(readRequest); }
-      finally { if (invocation) nativeBoardRequests.delete(readRequest); }
+      try {
+        lastSeen = await readBackStatusOptionId(readRequest);
+      } finally {
+        if (invocation) nativeBoardRequests.delete(readRequest);
+      }
       if (lastSeen === optionId) {
         confirmed = true;
         break;
@@ -365,12 +486,22 @@ export function readNativeEntryRequest(input, ctx) {
   const original = nativeEntryRequests.get(input);
   if (!original || original.ctx !== ctx) throw new TypeError('native-entry-request');
   const descriptors = Object.getOwnPropertyDescriptors(input);
-  if (Reflect.ownKeys(descriptors).length !== Reflect.ownKeys(original.descriptors).length ||
-      Reflect.ownKeys(descriptors).some(key => {
-        const a = descriptors[key], b = original.descriptors[key];
-        return !b || !Object.hasOwn(a, 'value') || a.value !== b.value || a.enumerable !== b.enumerable ||
-          a.configurable !== b.configurable || a.writable !== b.writable;
-      })) throw new TypeError('native-entry-request');
+  if (
+    Reflect.ownKeys(descriptors).length !== Reflect.ownKeys(original.descriptors).length ||
+    Reflect.ownKeys(descriptors).some((key) => {
+      const a = descriptors[key],
+        b = original.descriptors[key];
+      return (
+        !b ||
+        !Object.hasOwn(a, 'value') ||
+        a.value !== b.value ||
+        a.enumerable !== b.enumerable ||
+        a.configurable !== b.configurable ||
+        a.writable !== b.writable
+      );
+    })
+  )
+    throw new TypeError('native-entry-request');
   return structuredClone(original.facts);
 }
 export async function stampEntryMarkers(ctx) {
@@ -421,14 +552,26 @@ export async function stampEntryMarkers(ctx) {
         const nextBody = writeLastKnownState(entry.body, stateArg);
         nextVisitCount = entry.nextVisitCount;
         const original = nativeEntryRequests.get(request);
-        if (original) original.facts = { entryTs: stampTs, stateTs: readLastKnownState(nextBody).ts, visit: nextVisitCount };
+        if (original)
+          original.facts = {
+            entryTs: stampTs,
+            stateTs: readLastKnownState(nextBody).ts,
+            visit: nextVisitCount,
+          };
         return nextBody;
       },
     };
-    if (isMemoryStageEffectScope()) nativeEntryRequests.set(request, { ctx,
-      descriptors: Object.getOwnPropertyDescriptors(request), facts: { entryTs: stampTs, stateTs: null, visit: null } });
-    try { await mutateBody(request); }
-    finally { nativeEntryRequests.delete(request); }
+    if (isMemoryStageEffectScope())
+      nativeEntryRequests.set(request, {
+        ctx,
+        descriptors: Object.getOwnPropertyDescriptors(request),
+        facts: { entryTs: stampTs, stateTs: null, visit: null },
+      });
+    try {
+      await mutateBody(request);
+    } finally {
+      nativeEntryRequests.delete(request);
+    }
     // #741 — the stage the authoritative `aitm-last-known-state` marker points at
     // BEFORE this stamp advances it. Returned to the saga so a subsequent failed
     // board write can compensate by rolling the marker back to this value,

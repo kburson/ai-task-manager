@@ -1,77 +1,339 @@
+// cspell:words comman criteri relati unexecu
 // @story #1855
 // Reviewed semantic membership, never the discovery universe. Unknown native files refuse.
 export const NATIVE_SERIAL_MEMBERS = Object.freeze({
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-token-accessor.test.mjs": {"section": "native/sentinel/persist-token", "registration": {"mode": "sentinel-late-persist-token-accessor", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-token-identity.test.mjs": {"section": "native/sentinel/persist-token", "registration": {"mode": "sentinel-late-persist-token-identity", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-invocation-accessor.test.mjs": {"section": "native/sentinel/persist-invocation", "registration": {"mode": "sentinel-late-persist-invocation-accessor", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-invocation-identity.test.mjs": {"section": "native/sentinel/persist-invocation", "registration": {"mode": "sentinel-late-persist-invocation-identity", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-step-accessor.test.mjs": {"section": "native/sentinel/persist-step", "registration": {"mode": "sentinel-late-persist-step-accessor", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-step-identity.test.mjs": {"section": "native/sentinel/persist-step", "registration": {"mode": "sentinel-late-persist-step-identity", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-effect-token-accessor.test.mjs": {"section": "native/sentinel/effect-authority", "registration": {"mode": "sentinel-late-effect-token-accessor", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-effect-token-identity.test.mjs": {"section": "native/sentinel/effect-authority", "registration": {"mode": "sentinel-late-effect-token-identity", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-context-issue-accessor.test.mjs": {"section": "native/sentinel/context-continuity", "registration": {"mode": "sentinel-late-context-issue-accessor", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-context-executor-accessor.test.mjs": {"section": "native/sentinel/context-continuity", "registration": {"mode": "sentinel-late-context-executor-accessor", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-context-identity.test.mjs": {"section": "native/sentinel/context-continuity", "registration": {"mode": "sentinel-late-context-identity", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-complete.test.mjs": {"section": "native/sentinel-complete", "registration": {"mode": "sentinel-complete", "when": null, "suffix": null}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent-write-failBefore.test.mjs": {"section": "native/sentinel/intent", "registration": {"mode": "sentinel-prefix", "when": "failBefore", "suffix": "intent-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent-write-failAfter.test.mjs": {"section": "native/sentinel/intent", "registration": {"mode": "sentinel-prefix", "when": "failAfter", "suffix": "intent-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent-readback-failBefore.test.mjs": {"section": "native/sentinel/intent", "registration": {"mode": "sentinel-prefix", "when": "failBefore", "suffix": "intent-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent-readback-failAfter.test.mjs": {"section": "native/sentinel/intent", "registration": {"mode": "sentinel-prefix", "when": "failAfter", "suffix": "intent-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-effect-write-failBefore.test.mjs": {"section": "native/sentinel/effect", "registration": {"mode": "sentinel-prefix", "when": "failBefore", "suffix": "effect-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-effect-write-failAfter.test.mjs": {"section": "native/sentinel/effect", "registration": {"mode": "sentinel-prefix", "when": "failAfter", "suffix": "effect-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-effect-readback-failBefore.test.mjs": {"section": "native/sentinel/effect", "registration": {"mode": "sentinel-prefix", "when": "failBefore", "suffix": "effect-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-sentinel-effect-readback-failAfter.test.mjs": {"section": "native/sentinel/effect", "registration": {"mode": "sentinel-prefix", "when": "failAfter", "suffix": "effect-readback"}},
-  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent.test.mjs': { section: 'native/sentinel-intent', registration: { mode: 'sentinel-intent', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-history.test.mjs': { section: 'native/sentinel-history', registration: { mode: 'sentinel-history', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-data.test.mjs': { section: 'native/sentinel-data', registration: { mode: 'sentinel-data', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-custody-error.test.mjs': { section: 'native/board-status-source/custody', registration: { mode: 'status-source-custody-error', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-custody-output.test.mjs': { section: 'native/board-status-source/custody', registration: { mode: 'status-source-custody-output', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-custody-input.test.mjs': { section: 'native/board-status-source/custody', registration: { mode: 'status-source-custody-input', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-late-vector.test.mjs': { section: 'native/board-status-source/current', registration: { mode: 'status-source-late-vector', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-late-config.test.mjs': { section: 'native/board-status-source/current', registration: { mode: 'status-source-late-config', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-write-failBefore.test.mjs': { section: 'native/board-status-source/record', registration: { mode: 'status-source-prefix', when: 'failBefore', suffix: 'write' } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-write-failAfter.test.mjs': { section: 'native/board-status-source/record', registration: { mode: 'status-source-prefix', when: 'failAfter', suffix: 'write' } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-readback-failBefore.test.mjs': { section: 'native/board-status-source/record', registration: { mode: 'status-source-prefix', when: 'failBefore', suffix: 'readback' } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-readback-failAfter.test.mjs': { section: 'native/board-status-source/record', registration: { mode: 'status-source-prefix', when: 'failAfter', suffix: 'readback' } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-close.test.mjs': { section: 'native/board-status-source/errors', registration: { mode: 'status-source-close', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-parse.test.mjs': { section: 'native/board-status-source/errors', registration: { mode: 'status-source-parse', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-parser.test.mjs': { section: 'native/board-status-source/errors', registration: { mode: 'status-source-parser', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-values.test.mjs': { section: 'native/board-status-source/values', registration: { mode: 'status-source-values', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-unused.test.mjs': { section: 'native/board-status-source/values', registration: { mode: 'status-source-unused', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-exhausted.test.mjs': { section: 'native/board-status-source/values', registration: { mode: 'status-source-exhausted', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-read.test.mjs': { section: 'native/stage-current-source', registration: { mode: 'status-source-read', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-root-adapter.test.mjs': { section: 'native/stage-current-source', registration: { mode: 'root-adapter', when: null, suffix: null } },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source.test.mjs': { section: 'native/stage-current-source', registration: null },
-  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-quarantine.test.mjs': { section: 'native/stage-current-source', registration: { mode: 'status-source-unreleased', when: null, suffix: null } },
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-exception-write-failBefore.test.mjs": {"section": "native/board-exception/record", "registration": {"mode": "board-exception-prefix", "when": "failBefore", "suffix": "write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-exception-write-failAfter.test.mjs": {"section": "native/board-exception/record", "registration": {"mode": "board-exception-prefix", "when": "failAfter", "suffix": "write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-exception-readback-failBefore.test.mjs": {"section": "native/board-exception/record", "registration": {"mode": "board-exception-prefix", "when": "failBefore", "suffix": "readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-exception-readback-failAfter.test.mjs": {"section": "native/board-exception/record", "registration": {"mode": "board-exception-prefix", "when": "failAfter", "suffix": "readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-exception-outcome-write-failBefore.test.mjs": {"section": "native/board-exception/outcome", "registration": {"mode": "board-exception-prefix", "when": "failBefore", "suffix": "outcome-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-exception-outcome-write-failAfter.test.mjs": {"section": "native/board-exception/outcome", "registration": {"mode": "board-exception-prefix", "when": "failAfter", "suffix": "outcome-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-exception-outcome-readback-failBefore.test.mjs": {"section": "native/board-exception/outcome", "registration": {"mode": "board-exception-prefix", "when": "failBefore", "suffix": "outcome-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-exception-outcome-readback-failAfter.test.mjs": {"section": "native/board-exception/outcome", "registration": {"mode": "board-exception-prefix", "when": "failAfter", "suffix": "outcome-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-exception.test.mjs": { section: "native/board-exception", registration: { mode: "board-exception", when: null, suffix: null } },
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-intent-write-failBefore.test.mjs": {"section": "native/board/intent", "registration": {"mode": "board-prefix", "when": "failBefore", "suffix": "intent-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-intent-write-failAfter.test.mjs": {"section": "native/board/intent", "registration": {"mode": "board-prefix", "when": "failAfter", "suffix": "intent-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-intent-readback-failBefore.test.mjs": {"section": "native/board/intent", "registration": {"mode": "board-prefix", "when": "failBefore", "suffix": "intent-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-intent-readback-failAfter.test.mjs": {"section": "native/board/intent", "registration": {"mode": "board-prefix", "when": "failAfter", "suffix": "intent-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-effect-write-failBefore.test.mjs": {"section": "native/board/effect", "registration": {"mode": "board-prefix", "when": "failBefore", "suffix": "effect-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-effect-write-failAfter.test.mjs": {"section": "native/board/effect", "registration": {"mode": "board-prefix", "when": "failAfter", "suffix": "effect-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-effect-readback-failBefore.test.mjs": {"section": "native/board/effect", "registration": {"mode": "board-prefix", "when": "failBefore", "suffix": "effect-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-effect-readback-failAfter.test.mjs": {"section": "native/board/effect", "registration": {"mode": "board-prefix", "when": "failAfter", "suffix": "effect-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-board-status.test.mjs": { section: "native/board-status-baseline", registration: { mode: "board", when: null, suffix: null } },
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-adversarial.test.mjs": { section: "native/entry-body-baseline", registration: { mode: "entry-adversarial", when: null, suffix: null } },
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-body-intent-write-failBefore.test.mjs": {"section": "native/entry-body/intent", "registration": {"mode": "entry-body-prefix", "when": "failBefore", "suffix": "intent-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-body-intent-write-failAfter.test.mjs": {"section": "native/entry-body/intent", "registration": {"mode": "entry-body-prefix", "when": "failAfter", "suffix": "intent-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-body-intent-readback-failBefore.test.mjs": {"section": "native/entry-body/intent", "registration": {"mode": "entry-body-prefix", "when": "failBefore", "suffix": "intent-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-body-intent-readback-failAfter.test.mjs": {"section": "native/entry-body/intent", "registration": {"mode": "entry-body-prefix", "when": "failAfter", "suffix": "intent-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-body-effect-write-failBefore.test.mjs": {"section": "native/entry-body/effect", "registration": {"mode": "entry-body-prefix", "when": "failBefore", "suffix": "effect-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-body-effect-write-failAfter.test.mjs": {"section": "native/entry-body/effect", "registration": {"mode": "entry-body-prefix", "when": "failAfter", "suffix": "effect-write"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-body-effect-readback-failBefore.test.mjs": {"section": "native/entry-body/effect", "registration": {"mode": "entry-body-prefix", "when": "failBefore", "suffix": "effect-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-body-effect-readback-failAfter.test.mjs": {"section": "native/entry-body/effect", "registration": {"mode": "entry-body-prefix", "when": "failAfter", "suffix": "effect-readback"}},
-  "scripts/tests/integration/task-tracker/lib/native-stage-entry-intent.test.mjs": {
-    section: "native/entry-body-baseline", registration: { mode: "entry-intent", when: null, suffix: null }
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-token-accessor.test.mjs':
+    {
+      section: 'native/sentinel/persist-token',
+      registration: { mode: 'sentinel-late-persist-token-accessor', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-token-identity.test.mjs':
+    {
+      section: 'native/sentinel/persist-token',
+      registration: { mode: 'sentinel-late-persist-token-identity', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-invocation-accessor.test.mjs':
+    {
+      section: 'native/sentinel/persist-invocation',
+      registration: { mode: 'sentinel-late-persist-invocation-accessor', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-invocation-identity.test.mjs':
+    {
+      section: 'native/sentinel/persist-invocation',
+      registration: { mode: 'sentinel-late-persist-invocation-identity', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-step-accessor.test.mjs':
+    {
+      section: 'native/sentinel/persist-step',
+      registration: { mode: 'sentinel-late-persist-step-accessor', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-step-identity.test.mjs':
+    {
+      section: 'native/sentinel/persist-step',
+      registration: { mode: 'sentinel-late-persist-step-identity', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-effect-token-accessor.test.mjs':
+    {
+      section: 'native/sentinel/effect-authority',
+      registration: { mode: 'sentinel-late-effect-token-accessor', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-effect-token-identity.test.mjs':
+    {
+      section: 'native/sentinel/effect-authority',
+      registration: { mode: 'sentinel-late-effect-token-identity', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-context-issue-accessor.test.mjs':
+    {
+      section: 'native/sentinel/context-continuity',
+      registration: { mode: 'sentinel-late-context-issue-accessor', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-context-executor-accessor.test.mjs':
+    {
+      section: 'native/sentinel/context-continuity',
+      registration: { mode: 'sentinel-late-context-executor-accessor', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-context-identity.test.mjs':
+    {
+      section: 'native/sentinel/context-continuity',
+      registration: { mode: 'sentinel-late-context-identity', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-complete.test.mjs': {
+    section: 'native/sentinel-complete',
+    registration: { mode: 'sentinel-complete', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent-write-failBefore.test.mjs':
+    {
+      section: 'native/sentinel/intent',
+      registration: { mode: 'sentinel-prefix', when: 'failBefore', suffix: 'intent-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent-write-failAfter.test.mjs':
+    {
+      section: 'native/sentinel/intent',
+      registration: { mode: 'sentinel-prefix', when: 'failAfter', suffix: 'intent-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent-readback-failBefore.test.mjs':
+    {
+      section: 'native/sentinel/intent',
+      registration: { mode: 'sentinel-prefix', when: 'failBefore', suffix: 'intent-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent-readback-failAfter.test.mjs':
+    {
+      section: 'native/sentinel/intent',
+      registration: { mode: 'sentinel-prefix', when: 'failAfter', suffix: 'intent-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-effect-write-failBefore.test.mjs':
+    {
+      section: 'native/sentinel/effect',
+      registration: { mode: 'sentinel-prefix', when: 'failBefore', suffix: 'effect-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-effect-write-failAfter.test.mjs':
+    {
+      section: 'native/sentinel/effect',
+      registration: { mode: 'sentinel-prefix', when: 'failAfter', suffix: 'effect-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-effect-readback-failBefore.test.mjs':
+    {
+      section: 'native/sentinel/effect',
+      registration: { mode: 'sentinel-prefix', when: 'failBefore', suffix: 'effect-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-effect-readback-failAfter.test.mjs':
+    {
+      section: 'native/sentinel/effect',
+      registration: { mode: 'sentinel-prefix', when: 'failAfter', suffix: 'effect-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-intent.test.mjs': {
+    section: 'native/sentinel-intent',
+    registration: { mode: 'sentinel-intent', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-history.test.mjs': {
+    section: 'native/sentinel-history',
+    registration: { mode: 'sentinel-history', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-data.test.mjs': {
+    section: 'native/sentinel-data',
+    registration: { mode: 'sentinel-data', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-custody-error.test.mjs': {
+    section: 'native/board-status-source/custody',
+    registration: { mode: 'status-source-custody-error', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-custody-output.test.mjs': {
+    section: 'native/board-status-source/custody',
+    registration: { mode: 'status-source-custody-output', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-custody-input.test.mjs': {
+    section: 'native/board-status-source/custody',
+    registration: { mode: 'status-source-custody-input', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-late-vector.test.mjs': {
+    section: 'native/board-status-source/current',
+    registration: { mode: 'status-source-late-vector', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-late-config.test.mjs': {
+    section: 'native/board-status-source/current',
+    registration: { mode: 'status-source-late-config', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-write-failBefore.test.mjs':
+    {
+      section: 'native/board-status-source/record',
+      registration: { mode: 'status-source-prefix', when: 'failBefore', suffix: 'write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-write-failAfter.test.mjs':
+    {
+      section: 'native/board-status-source/record',
+      registration: { mode: 'status-source-prefix', when: 'failAfter', suffix: 'write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-readback-failBefore.test.mjs':
+    {
+      section: 'native/board-status-source/record',
+      registration: { mode: 'status-source-prefix', when: 'failBefore', suffix: 'readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-readback-failAfter.test.mjs':
+    {
+      section: 'native/board-status-source/record',
+      registration: { mode: 'status-source-prefix', when: 'failAfter', suffix: 'readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-close.test.mjs': {
+    section: 'native/board-status-source/errors',
+    registration: { mode: 'status-source-close', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-parse.test.mjs': {
+    section: 'native/board-status-source/errors',
+    registration: { mode: 'status-source-parse', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-parser.test.mjs': {
+    section: 'native/board-status-source/errors',
+    registration: { mode: 'status-source-parser', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-values.test.mjs': {
+    section: 'native/board-status-source/values',
+    registration: { mode: 'status-source-values', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-unused.test.mjs': {
+    section: 'native/board-status-source/values',
+    registration: { mode: 'status-source-unused', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-exhausted.test.mjs': {
+    section: 'native/board-status-source/values',
+    registration: { mode: 'status-source-exhausted', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-read.test.mjs': {
+    section: 'native/stage-current-source',
+    registration: { mode: 'status-source-read', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-root-adapter.test.mjs': {
+    section: 'native/stage-current-source',
+    registration: { mode: 'root-adapter', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source.test.mjs': {
+    section: 'native/stage-current-source',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-status-source-quarantine.test.mjs': {
+    section: 'native/stage-current-source',
+    registration: { mode: 'status-source-unreleased', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-exception-write-failBefore.test.mjs':
+    {
+      section: 'native/board-exception/record',
+      registration: { mode: 'board-exception-prefix', when: 'failBefore', suffix: 'write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-exception-write-failAfter.test.mjs':
+    {
+      section: 'native/board-exception/record',
+      registration: { mode: 'board-exception-prefix', when: 'failAfter', suffix: 'write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-exception-readback-failBefore.test.mjs':
+    {
+      section: 'native/board-exception/record',
+      registration: { mode: 'board-exception-prefix', when: 'failBefore', suffix: 'readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-exception-readback-failAfter.test.mjs':
+    {
+      section: 'native/board-exception/record',
+      registration: { mode: 'board-exception-prefix', when: 'failAfter', suffix: 'readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-exception-outcome-write-failBefore.test.mjs':
+    {
+      section: 'native/board-exception/outcome',
+      registration: { mode: 'board-exception-prefix', when: 'failBefore', suffix: 'outcome-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-exception-outcome-write-failAfter.test.mjs':
+    {
+      section: 'native/board-exception/outcome',
+      registration: { mode: 'board-exception-prefix', when: 'failAfter', suffix: 'outcome-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-exception-outcome-readback-failBefore.test.mjs':
+    {
+      section: 'native/board-exception/outcome',
+      registration: {
+        mode: 'board-exception-prefix',
+        when: 'failBefore',
+        suffix: 'outcome-readback',
+      },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-exception-outcome-readback-failAfter.test.mjs':
+    {
+      section: 'native/board-exception/outcome',
+      registration: {
+        mode: 'board-exception-prefix',
+        when: 'failAfter',
+        suffix: 'outcome-readback',
+      },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-exception.test.mjs': {
+    section: 'native/board-exception',
+    registration: { mode: 'board-exception', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-intent-write-failBefore.test.mjs':
+    {
+      section: 'native/board/intent',
+      registration: { mode: 'board-prefix', when: 'failBefore', suffix: 'intent-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-intent-write-failAfter.test.mjs': {
+    section: 'native/board/intent',
+    registration: { mode: 'board-prefix', when: 'failAfter', suffix: 'intent-write' },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-intent-readback-failBefore.test.mjs':
+    {
+      section: 'native/board/intent',
+      registration: { mode: 'board-prefix', when: 'failBefore', suffix: 'intent-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-intent-readback-failAfter.test.mjs':
+    {
+      section: 'native/board/intent',
+      registration: { mode: 'board-prefix', when: 'failAfter', suffix: 'intent-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-effect-write-failBefore.test.mjs':
+    {
+      section: 'native/board/effect',
+      registration: { mode: 'board-prefix', when: 'failBefore', suffix: 'effect-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-effect-write-failAfter.test.mjs': {
+    section: 'native/board/effect',
+    registration: { mode: 'board-prefix', when: 'failAfter', suffix: 'effect-write' },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-effect-readback-failBefore.test.mjs':
+    {
+      section: 'native/board/effect',
+      registration: { mode: 'board-prefix', when: 'failBefore', suffix: 'effect-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-effect-readback-failAfter.test.mjs':
+    {
+      section: 'native/board/effect',
+      registration: { mode: 'board-prefix', when: 'failAfter', suffix: 'effect-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-board-status.test.mjs': {
+    section: 'native/board-status-baseline',
+    registration: { mode: 'board', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-adversarial.test.mjs': {
+    section: 'native/entry-body-baseline',
+    registration: { mode: 'entry-adversarial', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-body-intent-write-failBefore.test.mjs':
+    {
+      section: 'native/entry-body/intent',
+      registration: { mode: 'entry-body-prefix', when: 'failBefore', suffix: 'intent-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-body-intent-write-failAfter.test.mjs':
+    {
+      section: 'native/entry-body/intent',
+      registration: { mode: 'entry-body-prefix', when: 'failAfter', suffix: 'intent-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-body-intent-readback-failBefore.test.mjs':
+    {
+      section: 'native/entry-body/intent',
+      registration: { mode: 'entry-body-prefix', when: 'failBefore', suffix: 'intent-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-body-intent-readback-failAfter.test.mjs':
+    {
+      section: 'native/entry-body/intent',
+      registration: { mode: 'entry-body-prefix', when: 'failAfter', suffix: 'intent-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-body-effect-write-failBefore.test.mjs':
+    {
+      section: 'native/entry-body/effect',
+      registration: { mode: 'entry-body-prefix', when: 'failBefore', suffix: 'effect-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-body-effect-write-failAfter.test.mjs':
+    {
+      section: 'native/entry-body/effect',
+      registration: { mode: 'entry-body-prefix', when: 'failAfter', suffix: 'effect-write' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-body-effect-readback-failBefore.test.mjs':
+    {
+      section: 'native/entry-body/effect',
+      registration: { mode: 'entry-body-prefix', when: 'failBefore', suffix: 'effect-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-body-effect-readback-failAfter.test.mjs':
+    {
+      section: 'native/entry-body/effect',
+      registration: { mode: 'entry-body-prefix', when: 'failAfter', suffix: 'effect-readback' },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-intent.test.mjs': {
+    section: 'native/entry-body-baseline',
+    registration: { mode: 'entry-intent', when: null, suffix: null },
   },
   'scripts/tests/integration/task-tracker/lib/native-activity-source-capture.test.mjs': {
     section: 'native/word-activity-actor-capture',
@@ -310,8 +572,65 @@ export const NATIVE_SERIAL_MEMBERS = Object.freeze({
     section: 'native/lifecycle-closure',
     registration: null,
   },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-approval-history.test.mjs':
+    {
+      section: 'native/linked-source-history',
+      registration: null,
+    },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-admission.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-hooks.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-transaction.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-execution.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-history.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-pointer.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-successor.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-abort-prefix.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-abort-current.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-linked-plan-source-freshness.test.mjs': {
+    section: 'native/linked-source-history',
+    registration: null,
+  },
   'scripts/tests/integration/task-tracker/lib/native-linked-plan-source.test.mjs': {
     section: 'native/linked-source-history',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-proof-execution-abort.test.mjs': {
+    section: 'native/individual-execution',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-proof-execution-authority.test.mjs': {
+    section: 'native/individual-execution',
+    registration: null,
+  },
+  'scripts/tests/integration/task-tracker/lib/native-proof-execution-drift.test.mjs': {
+    section: 'native/individual-execution',
     registration: null,
   },
   'scripts/tests/integration/task-tracker/lib/native-proof-execution.test.mjs': {

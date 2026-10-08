@@ -61,20 +61,31 @@ function overlaySessionPolicy(sessionId, parsed) {
 
 // Original data only. Null bytes describe absence; this does not prove it.
 export function deriveRecordedSessionPolicy(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input) ||
-      Object.keys(input).sort().join(',') !== 'bytes,sessionId' ||
-      typeof input.sessionId !== 'string') throw new TypeError('recorded-session-policy');
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    Array.isArray(input) ||
+    Object.keys(input).sort().join(',') !== 'bytes,sessionId' ||
+    typeof input.sessionId !== 'string'
+  )
+    throw new TypeError('recorded-session-policy');
   if (input.bytes === null) return freshState(input.sessionId);
-  if (!input.sessionId || typeof input.bytes !== 'string') throw new TypeError('recorded-session-policy');
+  if (!input.sessionId || typeof input.bytes !== 'string')
+    throw new TypeError('recorded-session-policy');
   let parsed;
-  try { parsed = JSON.parse(input.bytes); } catch { throw new TypeError('recorded-session-policy'); }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError('recorded-session-policy');
+  try {
+    parsed = JSON.parse(input.bytes);
+  } catch {
+    throw new TypeError('recorded-session-policy');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+    throw new TypeError('recorded-session-policy');
   return overlaySessionPolicy(input.sessionId, parsed);
 }
 
 const sessionSourceData = new WeakMap();
 export function readSessionPolicySourceData(result) {
-  return result && typeof result === 'object' ? sessionSourceData.get(result) ?? null : null;
+  return result && typeof result === 'object' ? (sessionSourceData.get(result) ?? null) : null;
 }
 export function loadSession(sessionId, options = {}) {
   const { fs = realFs, dir = gatesDir() } = options;
@@ -82,10 +93,17 @@ export function loadSession(sessionId, options = {}) {
   const p = sessionFilePath(sessionId, dir);
   let capture = null;
   try {
-    if (fs === realFs && Object.getPrototypeOf(options) === Object.prototype && Reflect.ownKeys(options).length === 0 &&
-        typeof sessionId === 'string') capture = { sessionId, path: p, exists: null, bytes: null, error: null };
-  } catch { /* Optional metadata cannot alter native permissive reads. */ }
-  const finish = result => {
+    if (
+      fs === realFs &&
+      Object.getPrototypeOf(options) === Object.prototype &&
+      Reflect.ownKeys(options).length === 0 &&
+      typeof sessionId === 'string'
+    )
+      capture = { sessionId, path: p, exists: null, bytes: null, error: null };
+  } catch {
+    /* Optional metadata cannot alter native permissive reads. */
+  }
+  const finish = (result) => {
     if (capture) sessionSourceData.set(result, Object.freeze(capture));
     return result;
   };
@@ -98,8 +116,11 @@ export function loadSession(sessionId, options = {}) {
     const parsed = JSON.parse(bytes);
     return finish(overlaySessionPolicy(sessionId, parsed));
   } catch (error) {
-    if (capture) capture.error = Object.freeze({ code: error?.code == null ? null : String(error.code),
-      message: String(error?.message ?? error) });
+    if (capture)
+      capture.error = Object.freeze({
+        code: error?.code == null ? null : String(error.code),
+        message: String(error?.message ?? error),
+      });
     return finish(freshState(sessionId));
   }
 }

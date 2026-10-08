@@ -1,4 +1,4 @@
-// @story #1853
+// @story #1853 #1855
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -211,4 +211,161 @@ test('verified graph scope cannot hide unavailable, duplicate, tampered or mutat
     /async-validation-scope/
   );
   assert.deepEqual(api.parseRevisionEvent(bytes, { records }), recovery);
+});
+
+test('one synchronous graph validation decodes each identical envelope once', () => {
+  const f = makeLegacyRevisionFixture();
+  const root = api.createRevisionEvent({ request: f.request, predecessorEventId: null });
+  const rootBytes = api.renderRevisionEvent(root);
+  const recovery = api.createRevisionEvent({
+    request: f.resumeRequest,
+    predecessorEventId: root.eventId,
+    rootEventId: root.eventId,
+    rootProposalDigest: root.proposalDigest,
+  });
+  const bytes = api.renderRevisionEvent(recovery);
+  const records = [{ eventId: root.eventId, bytes: rootBytes }];
+  const prefix = '<!-- aitm.criteria-revision-event/v1 -->\n```json\n';
+  const payload = rootBytes.slice(prefix.length, -5);
+  const original = JSON.parse;
+  let decodes = 0;
+  try {
+    JSON.parse = function (...args) {
+      if (args[0] === payload) decodes++;
+      return Reflect.apply(original, this, args);
+    };
+    api.withRevisionValidation(() => {
+      assert.deepEqual(api.parseRevisionEvent(bytes, { records }), recovery);
+      assert.deepEqual(api.parseRevisionEvent(bytes, { records }), recovery);
+    });
+  } finally {
+    JSON.parse = original;
+  }
+  assert.equal(JSON.parse, original);
+  assert.equal(decodes, 1);
+});
+
+test('decoded envelope reuse keeps public results mutable and scopes independent', () => {
+  const root = event();
+  const bytes = api.renderRevisionEvent(root);
+  const prefix = '<!-- aitm.criteria-revision-event/v1 -->\n```json\n';
+  const payload = bytes.slice(prefix.length, -5);
+  const original = JSON.parse;
+  let decodes = 0;
+  const counts = [];
+  const sentinel = new Error('scope cleanup');
+  try {
+    JSON.parse = function (...args) {
+      if (args[0] === payload) decodes++;
+      return Reflect.apply(original, this, args);
+    };
+    api.withRevisionValidation(() => {
+      assert.deepEqual(api.parseRevisionEvent(bytes), root);
+      assert.deepEqual(api.parseRevisionEvent(bytes), root);
+    });
+    counts.push(decodes);
+    assert.throws(
+      () =>
+        api.withRevisionValidation(() => {
+          assert.deepEqual(api.parseRevisionEvent(bytes), root);
+          throw sentinel;
+        }),
+      (error) => error === sentinel
+    );
+    counts.push(decodes);
+    assert.deepEqual(api.parseRevisionEvent(bytes), root);
+    counts.push(decodes);
+  } finally {
+    JSON.parse = original;
+  }
+  assert.deepEqual(counts, [1, 2, 3]);
+  api.withRevisionValidation(() => {
+    const parsed = api.parseRevisionEvent(bytes);
+    const wire = api.readRevisionEnvelope(bytes);
+    assert.equal(Object.isFrozen(parsed), false);
+    assert.equal(Object.isFrozen(wire), false);
+    assert.equal(Object.isFrozen(wire.proposal.archive.observation.body), false);
+    parsed.proposal.archive.observation.body.bytes += ' parsed mutation';
+    wire.proposal.archive.observation.body.bytes += ' public mutation';
+    assert.deepEqual(api.parseRevisionEvent(bytes), root);
+    assert.deepEqual(api.readRevisionEnvelope(bytes), root);
+  });
+});
+
+test('warm envelope DATA preserves fresh graph and exact refusal semantics', () => {
+  const f = makeLegacyRevisionFixture();
+  const root = api.createRevisionEvent({ request: f.request, predecessorEventId: null });
+  const rootBytes = api.renderRevisionEvent(root);
+  const recovery = api.createRevisionEvent({
+    request: f.resumeRequest,
+    predecessorEventId: root.eventId,
+    rootEventId: root.eventId,
+    rootProposalDigest: root.proposalDigest,
+  });
+  const bytes = api.renderRevisionEvent(recovery);
+  const records = [{ eventId: root.eventId, bytes: rootBytes }];
+  const prefix = '<!-- aitm.criteria-revision-event/v1 -->\n```json\n';
+  const wireBytes = (value) => prefix + canonicalRecordJson(value) + '\n```\n';
+  const mismatched = api.readRevisionEnvelope(bytes);
+  mismatched.proposal.archive.observation.revisionRecords.records[0].operationId += '-foreign';
+  const cyclic = api.readRevisionEnvelope(bytes);
+  const self = cyclic.proposal.archive.observation.revisionRecords.records[0];
+  self.eventId = cyclic.eventId;
+  self.reference.eventId = cyclic.eventId;
+  const cyclicBytes = wireBytes(cyclic);
+  const forged = api.readRevisionEnvelope(bytes);
+  forged.proposal.writeSet[0].afterBytes += ' forged';
+  const cases = [
+    { name: 'complete', bytes, records },
+    { name: 'missing', bytes, records: [] },
+    { name: 'duplicate', bytes, records: [...records, ...records] },
+    { name: 'changed raw bytes', bytes, records: [{ ...records[0], bytes: rootBytes + ' ' }] },
+    { name: 'foreign reference identity', bytes: wireBytes(mismatched), records },
+    {
+      name: 'cycle',
+      bytes: cyclicBytes,
+      records: [{ eventId: cyclic.eventId, bytes: cyclicBytes }],
+    },
+    { name: 'forged write', bytes: wireBytes(forged), records },
+    { name: 'noncanonical', bytes: bytes + ' ', records },
+    { name: 'invalid json', bytes: prefix + '{broken}\n```\n', records },
+    { name: 'foreign type', bytes: {}, records },
+    { name: 'ordinary comment', bytes: 'ordinary comment', records },
+  ];
+  const observe = (input) => {
+    try {
+      return { value: api.parseRevisionEvent(input.bytes, { records: input.records }) };
+    } catch (error) {
+      return { constructor: error.constructor, message: error.message, code: error.code };
+    }
+  };
+  const standalone = cases.map(observe);
+  assert.deepEqual(standalone[0].value, recovery);
+  assert.equal(standalone.at(-1).value, null);
+  const categories = [
+    'event-reference-unavailable',
+    'duplicate-event-reference',
+    'event-reference-unavailable',
+    'event-reference-binding',
+    'event-reference-cycle',
+    'write-set-bytes',
+    'event-envelope',
+    'event-json',
+    'event-bytes',
+  ];
+  standalone.slice(1, -1).forEach((result, index) => {
+    assert.equal(Object.hasOwn(result, 'constructor'), true, cases[index + 1].name);
+    assert.equal(result.constructor, TypeError, cases[index + 1].name);
+    assert.equal(result.message, `criteria-revision:${categories[index]}`, cases[index + 1].name);
+    assert.equal(result.code, undefined, cases[index + 1].name);
+  });
+  api.withRevisionValidation(() => {
+    assert.deepEqual(api.parseRevisionEvent(bytes, { records }), recovery);
+    cases.forEach((input, i) => assert.deepEqual(observe(input), standalone[i], input.name));
+    const changed = structuredClone(records);
+    assert.deepEqual(api.parseRevisionEvent(bytes, { records: changed }), recovery);
+    changed[0].bytes += ' changed after read';
+    assert.throws(() => api.parseRevisionEvent(bytes, { records: changed }), /reference/);
+    assert.deepEqual(api.parseRevisionEvent(bytes, { records }), recovery);
+  });
 });

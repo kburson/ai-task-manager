@@ -165,14 +165,24 @@ function replaceable(error) {
 }
 export async function recordReviewedScope({ ctx, label, manifestPath }) {
   const issueNumber = ctx.issueNumber ?? Number(loadState(ctx.statePath).active?.replace(/^#/, ''));
-  return withRevisionConsumer({ repository: ctx.cfg?.repo, issue: issueNumber, projectDir: ctx.projectDir,
-    backend: ctx.deps?.revisionBackend ?? ctx.deps?.reviewedScope?.revisionBackend, activity: 'issue-write' }, () =>
-    recordReviewedScopeAdmitted({ ctx, label, manifestPath, issueNumber }));
+  return withRevisionConsumer(
+    {
+      repository: ctx.cfg?.repo,
+      issue: issueNumber,
+      projectDir: ctx.projectDir,
+      backend: ctx.deps?.revisionBackend ?? ctx.deps?.reviewedScope?.revisionBackend,
+      activity: 'issue-write',
+    },
+    () => recordReviewedScopeAdmitted({ ctx, label, manifestPath, issueNumber })
+  );
 }
 
 async function recordReviewedScopeAdmitted({ ctx, label, manifestPath, issueNumber }) {
-  const deps = { pexec: ctx.pexec ?? pexec, ...ctx.deps?.reviewedScope,
-    revisionBackend: ctx.deps?.revisionBackend ?? ctx.deps?.reviewedScope?.revisionBackend };
+  const deps = {
+    pexec: ctx.pexec ?? pexec,
+    ...ctx.deps?.reviewedScope,
+    revisionBackend: ctx.deps?.revisionBackend ?? ctx.deps?.reviewedScope?.revisionBackend,
+  };
   const input = boundInput(ctx, issueNumber, deps);
   const readAuthority = deps.readRecordingAuthority ?? readRecordingAuthority;
   const readManifest = deps.readBoundManifest ?? readBoundManifest;

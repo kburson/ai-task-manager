@@ -1,3 +1,6 @@
 // @story #1855
 import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
-registerNativeStageCase("board-prefix", import.meta.url, {"when":"failBefore","suffix":"intent-readback"});
+registerNativeStageCase('board-prefix', import.meta.url, {
+  when: 'failBefore',
+  suffix: 'intent-readback',
+});

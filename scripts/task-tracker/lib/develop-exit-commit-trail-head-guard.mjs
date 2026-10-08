@@ -44,9 +44,11 @@ export const developExitCommitTrailHeadGuard = {
       projectDir,
       deps: ctx.deps?.commitTrailHead,
     });
-    const finish = out => {
-      const data = gateFn === gateCommitTrailContainsHead && resolveDir === resolveProjectDir
-        ? readCommitTrailHeadReadData(result) : null;
+    const finish = (out) => {
+      const data =
+        gateFn === gateCommitTrailContainsHead && resolveDir === resolveProjectDir
+          ? readCommitTrailHeadReadData(result)
+          : null;
       if (data) nativeReadData.set(out, data);
       return out;
     };
@@ -63,9 +65,16 @@ export const developExitCommitTrailHeadGuard = {
 const originalRun = developExitCommitTrailHeadGuard.run;
 export function readDevelopCommitTrailHeadReadData(result, invocation) {
   try {
-    if (!invocation || Object.keys(invocation).sort().join(',') !== 'guard,id,run' ||
-        invocation.guard !== developExitCommitTrailHeadGuard || invocation.run !== originalRun ||
-        invocation.id !== GUARD_ID) return null;
-    return result && typeof result === 'object' ? nativeReadData.get(result) ?? null : null;
-  } catch { return null; }
+    if (
+      !invocation ||
+      Object.keys(invocation).sort().join(',') !== 'guard,id,run' ||
+      invocation.guard !== developExitCommitTrailHeadGuard ||
+      invocation.run !== originalRun ||
+      invocation.id !== GUARD_ID
+    )
+      return null;
+    return result && typeof result === 'object' ? (nativeReadData.get(result) ?? null) : null;
+  } catch {
+    return null;
+  }
 }

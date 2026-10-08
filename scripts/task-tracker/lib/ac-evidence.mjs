@@ -1,4 +1,7 @@
-import { revisionEvidenceMarkerProperties, acceptsIndividualRevisionProof } from './criteria-revision/policy.mjs';
+import {
+  revisionEvidenceMarkerProperties,
+  acceptsIndividualRevisionProof,
+} from './criteria-revision/policy.mjs';
 // #345 — Acceptance Criteria evidence markers. Parallel to #303's Functional
 // DoD evidence path (`functional-dod-evidence.mjs`), but for AC checkbox lines
 // that carry an `aitm-verified cmd="<cmd>"` marker and no human-assigned key.
@@ -277,7 +280,12 @@ export function findAcSectionCheckbox(body, requestedLabel) {
 // Returns the (possibly-unchanged) body. Throws when no matching
 // evidence-bearing AC line exists or when evidence fields are malformed.
 export function stampAcEvidenceMarker(body, label, evidence) {
-  return renderAcEvidenceMarker(body, label, evidence, revisionEvidenceMarkerProperties({ body: String(body || '') }));
+  return renderAcEvidenceMarker(
+    body,
+    label,
+    evidence,
+    revisionEvidenceMarkerProperties({ body: String(body || '') })
+  );
 }
 // Pure renderer for independently reconstructing an already authorized native
 // execution record. Formatting bytes does not authorize a write or proof reuse.
@@ -333,7 +341,12 @@ function renderAcEvidenceMarker(body, label, evidence, revisionProperties) {
 // `insertVerificationCommands` primitive — no logic copy — which carries the
 // #296 heading-level-aware section-end detection.
 export function stampAcEvidenceAndReconcile(body, label, evidence) {
-  return renderAcEvidenceAndReconcile(body, label, evidence, revisionEvidenceMarkerProperties({ body: String(body || '') }));
+  return renderAcEvidenceAndReconcile(
+    body,
+    label,
+    evidence,
+    revisionEvidenceMarkerProperties({ body: String(body || '') })
+  );
 }
 export function renderAcEvidenceAndReconcile(body, label, evidence, revisionProperties) {
   const stamped = renderAcEvidenceMarker(body, label, evidence, revisionProperties);
