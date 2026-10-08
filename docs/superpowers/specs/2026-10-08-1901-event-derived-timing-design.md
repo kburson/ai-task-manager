@@ -102,7 +102,7 @@ Issue/actor totals sum disjoint slices. Review/Plan projections use these alloca
 
 Add a pure policy module, proposed as `lib/timing-duration-derivation.mjs`. Inputs are lexically parsed ordered rows, scoped pause evidence and explicit candidate event/time. Outputs are per-row allocations, lane state, known subtotals, completeness and reasons. No network, transcript reads, writes or implicit clock reads.
 
-A row result has nullable Active/Idle seconds and ordered allocations. Each allocation identifies lane kind/key, endpoint ticks, seconds, source row references and method. Shared rows have multiple allocations. Replay equality includes source event identity and allocations rather than display text alone.
+A row result has nullable Active/Idle seconds and ordered allocations. Each allocation identifies lane kind/key, endpoint ticks, seconds, source row references and method. Shared rows have multiple allocations. Replay identity compares immutable source evidence. Derived allocations are a mutable projection validated separately, as defined below.
 
 Keep `lib/timing-row-reader.mjs` as the lexical leaf. Centralize suffix parsing/replacement and preserve transition, actor, engagement, cost and opaque metadata. Coordinate with #1735's composed-suffix contract; do not presume its proposed helpers exist at this baseline.
 
@@ -168,6 +168,46 @@ Capture full exact #1854 legacy/actor history and #1851/#1852 regression inputs 
 Extend vc:1–vc:4 and add focused derivation/runtime tests, including actor-flush-journal, integration actor-flush-isolation, bind-event and move-state audit coverage. Freeze exact runnable commands and reconcile issue verification mappings in the implementation plan. Retain normal repository test/lint/format and governed Test requirements.
 
 Prove slice uniqueness, Active+Idle conservation for known windows, conserved splits, actor isolation, replay-stable totals, honest malformed/unavailable diagnostics and rendered/numeric agreement.
+
+## Publication identity, reallocation and sealed-source compatibility
+
+Separate immutable source-event identity from its mutable duration projection. Source identity contains the original timestamp (including precision and offset), event, actor/lane identity, engagement endpoints and original estimate, cumulative word cursors, description, transition identity, and all unrelated suffix metadata. Publisher-owned Active/Idle cells, row-sec and event-duration derivation metadata are projection fields. Preserve the existing publisher-owned Delta Words normalization contract separately; this defect does not alter word accounting or repair word cells.
+
+At first admission retain a stable source identity and canonical evidence digest in derivation metadata. For historical rows derive that identity from the preserved source fields, not from mutable duration cells. A source key alone is insufficient: compare the full immutable evidence digest. Same identity and evidence acknowledge the current validated projection without another slice or word credit. Changes to immutable evidence remain conflicts. A mutable allocation revision or repaired display cannot invalidate replay of an original immutable journal row.
+
+Preserve original timestamps for delayed actor and shared-boundary events. Order by normalized event tick, then stable source order at that tick; retain original ordering for existing equal-tick rows and completion-before-entry within a lifecycle pair. Newly arriving equal-tick rows receive a durable source order after existing rows at that tick. Never advance their timestamp to the current tail to manufacture ordering. Lifecycle pairs are admitted together in their defined order.
+
+Late insertion deterministically rederives every affected subsequent lane allocation and duration projection in one coordinated canonical-body mutation. For start at 0, update at 20, and a late boundary at 10, the final body allocates 10 seconds to the boundary and 10 to the update. Do not merely subtract previously credited intervals or add the boundary on top. Retain immutable source identity, record the projection revision and validate conservation before mutation. Historical repair follows the same identity/reallocation contract.
+
+The original actor-flush journal payload and digest remain immutable. Publication resolves its source identity against the current canonical projection, acknowledges an already-admitted source without replaying credit, and commits its checkpoint only after correlated read-back. Lost-response recovery validates source admission and the current projection rather than requiring the old row bytes to remain the current rendering. Conflicting immutable evidence or an invalid projection refuses rather than being treated as a replay.
+
+Keep existing sealed outcome schema validation on its original derivation semantics. Do not silently replace deriveActorEngagement for old outcome validation with the new whole-second allocation model. Add a separate model-dispatched projection path; compatible lexical readers may accept new metadata while old-schema validators ignore it semantically and retain their original numeric rules. Regression tests must exercise the actual outcome reuse adapters, not only record-byte preservation.
+
+Before repair or publication-driven reallocation, enumerate sealed source references for the canonical timing comment and identify protected exact prefix and suffix bytes. The current outcome validator checks both. If reference discovery is incomplete, mutation is refused. A proposed change intersecting those protected bytes is preview/export only, with diagnostic sealed-source-protected identifying the record, source digest and protected region. Neither reformatting, derivation-suffix insertion nor late insertion may change those bytes. Preserve all referenced records and their validators.
+
+Append-only successors outside protected regions remain allowed only when they satisfy existing source-lineage and successor validation, including ordering and engagement consistency. An insertion requiring protected-prefix reallocation is refused; never move its timestamp or credit it elsewhere. Extending authoritative repair lineage across protected sources is outside this defect and requires a separately designed, authorized change. Therefore some closed historical examples can be recalculated/exported but cannot be applied in place under this scope.
+
+## Public scalar projection contract
+
+The event-delta/v1 public projection uses these explicit formulas across legacy and actor histories. Query at the latest recorded event horizon; no implicit local-clock tail is added.
+
+| Scalar                                                           | Slice dimension and scope                                                            | Conversion                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| totalActiveSec / engagedSec                                      | Sum Active over all attributable lanes and stages, including unassigned-stage slices | Integer seconds; Review is never added again                |
+| totalIdleSec                                                     | Sum Idle over all attributable lanes and stages                                      | Integer seconds                                             |
+| planSec / reviewSec                                              | Sum Active assigned to Plan / Review stage visits respectively                       | Integer seconds, aggregated across visits                   |
+| per-stage Idle                                                   | Sum Idle assigned to that stage                                                      | Integer seconds, separately exposed                         |
+| totalActiveMin / engagedMin / totalIdleMin / planMin / reviewMin | Corresponding complete seconds scalar divided by 60                                  | Math.round after aggregating seconds; no per-visit rounding |
+
+SessionTime retains its existing independent wall-span definition and board codec. Do not substitute summed actor effort for that field. All changed scalar numeric values continue through the unchanged board display/sorting codec. The uniform minute conversion above replaces the conflicting legacy per-visit and actor fractional Plan conversions for the new projection only. Old sealed outcome calculation remains on its pinned semantics.
+
+Closed slices in an open visit contribute normally. Unobserved future time beyond the recorded horizon contributes nothing. A genuinely unavailable interval at or before the horizon yields null only for projections that it could affect; expose the known subtotal and reasons. Uncertainty restricted to Develop cannot invalidate an otherwise complete Plan total. Unknown stage assignment can affect either stage projection and is reported explicitly. Known Idle-only intervals do not make Active unknown. Actor attribution uncertainty can leave an event-known legacy contribution available at issue level while per-actor attribution remains unavailable.
+
+For a Plan visit with 120 Active seconds and 180 Idle seconds, Plan is 120 seconds / 2 minutes, with 180 seconds Idle separately. For closed Plan Active visits of 20 and 20 seconds, Plan is 40 seconds / 1 minute, not zero from per-visit rounding. Plan and Review are Active subsets of Engaged and must never be added to it a second time.
+
+## Additional SAR regression requirements
+
+Add delayed actor/shared-boundary insertion, equal-second ordering, atomic lifecycle-pair admission, original journal replay after reallocation and repair, and conflicting immutable evidence cases. Add actual sealed-outcome reuse validation after reader rollout, protected-prefix and suffix repair refusal, incomplete reference-discovery refusal, and allowed append-only successor validation. Add legacy/actor parity for interrupted Plan/Review, repeated and open visits, cross-stage uncertainty, integer-second subtotals and aggregate minute conversion. These extend AC4, AC5 and AC6 without changing source timestamps or sealed record semantics.
 
 ## Review and handoff
 
