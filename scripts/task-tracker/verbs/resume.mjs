@@ -1,3 +1,4 @@
+import { withRevisionConsumer, RevisionPolicyError } from '../lib/criteria-revision/policy.mjs';
 // @story #1889
 import { isDeepStrictEqual } from 'node:util';
 import { timingActorKey } from '../lib/timing-actor.mjs';
@@ -150,7 +151,7 @@ export async function wakeReviewResidents(ctx, target) {
 // `/task resume` — two paths:
 //   no arg: only valid after `/task pause` (s.paused === true). Rebinds lastActive.
 //   #N arg: unrestricted rebind to a specific issue (works after pause OR stop).
-export async function verbResume(ctx) {
+async function resumeAdmitted(ctx) {
   const { cfg, statePath, projectDir, role, drainQueueIfAny, safePostTiming, nowIso } = ctx;
   const target = ctx.rest[0];
 
@@ -561,4 +562,55 @@ export async function verbResume(ctx) {
   } catch (error) {
     rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
   }
+}
+
+export async function verbResume(ctx) {
+  const raw = ctx.rest[0];
+  const explicit = /^#?\d+$/.test(String(raw ?? ''));
+  const remembered = explicit ? null : loadState(ctx.statePath);
+  // Preserve original no-op/refusal handling when no bind can occur.
+  if (!explicit && resumeEntryPrecondition(remembered)) return resumeAdmitted(ctx);
+  const issue = Number(String(explicit ? raw : remembered.lastActive).replace(/^#/, ''));
+  const repository = ctx.cfg?.repo;
+  const projectDir = ctx.projectDir;
+  const statePath = ctx.statePath;
+  const backend = ctx.deps?.revisionBackend;
+  const sessionId = currentSessionId();
+  const provider = aiAppName();
+  const refuse = () => {
+    throw new RevisionPolicyError({
+      status: 'blocked',
+      code: 'revision-conflict',
+      noAutomaticRemediation: { reason: 'authority-investigation-required' },
+    });
+  };
+  return withRevisionConsumer(
+    {
+      repository,
+      issue,
+      activity: 'issue-write',
+      backend,
+      projectDir,
+    },
+    () => {
+      const currentRaw = ctx.rest[0];
+      const currentExplicit = /^#?\d+$/.test(String(currentRaw ?? ''));
+      if (
+        ctx.cfg?.repo !== repository ||
+        ctx.projectDir !== projectDir ||
+        ctx.statePath !== statePath ||
+        ctx.deps?.revisionBackend !== backend ||
+        currentSessionId() !== sessionId ||
+        aiAppName() !== provider ||
+        currentExplicit !== explicit ||
+        (explicit && Number(String(currentRaw).replace(/^#/, '')) !== issue)
+      )
+        refuse();
+      if (!explicit) {
+        const current = loadState(ctx.statePath);
+        if (resumeEntryPrecondition(current, { issue })) refuse();
+      }
+      return resumeAdmitted(ctx);
+    }
+  );
 }

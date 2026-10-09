@@ -1,3 +1,4 @@
+import { withRevisionConsumer, RevisionPolicyError } from '../lib/criteria-revision/policy.mjs';
 // @story #1889
 import { isDeepStrictEqual } from 'node:util';
 import { timingActorKey } from '../lib/timing-actor.mjs';
@@ -31,7 +32,7 @@ import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
 import { claimBindingOccupancy, rollbackBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
 import { reconcileAfterSuccessfulBind } from '../lib/dependency-disposition.mjs';
 
-export async function verbSwitch(ctx, target) {
+async function switchAdmitted(ctx, target) {
   const {
     cfg,
     statePath,
@@ -313,4 +314,42 @@ export async function verbSwitch(ctx, target) {
     }
     throw error;
   }
+}
+
+export async function verbSwitch(ctx, target) {
+  if (!/^#\d+$/.test(target)) return switchAdmitted(ctx, target);
+  const repository = ctx.cfg?.repo;
+  const projectDir = ctx.projectDir;
+  const statePath = ctx.statePath;
+  const backend = ctx.deps?.revisionBackend;
+  const sessionId = currentSessionId();
+  const provider = aiAppName();
+  const refuse = () => {
+    throw new RevisionPolicyError({
+      status: 'blocked',
+      code: 'revision-conflict',
+      noAutomaticRemediation: { reason: 'authority-investigation-required' },
+    });
+  };
+  return withRevisionConsumer(
+    {
+      repository,
+      issue: Number(target.slice(1)),
+      activity: 'issue-write',
+      backend,
+      projectDir,
+    },
+    () => {
+      if (
+        ctx.cfg?.repo !== repository ||
+        ctx.projectDir !== projectDir ||
+        ctx.statePath !== statePath ||
+        ctx.deps?.revisionBackend !== backend ||
+        currentSessionId() !== sessionId ||
+        aiAppName() !== provider
+      )
+        refuse();
+      return switchAdmitted(ctx, target);
+    }
+  );
 }
