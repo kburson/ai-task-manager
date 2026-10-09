@@ -1,4 +1,5 @@
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import { normalizeStateId } from '../lifecycle-policy/index.mjs';
 // INTERNAL — library module for the state-movement boundary (#559).
 //
 // GitHub-mutation concern extracted from `scripts/gh/move-state.mjs`: the two
@@ -46,6 +47,28 @@ export const STATUS_WRITE_READBACK_EXIT = 7;
 export const STATUS_MARKER_CONSISTENCY_EXIT = 8;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Original CLI name-read DATA, distinct from the option-ID query below.
+export const STATUS_NAME_QUERY = `
+        query($owner: String!, $repo: String!, $issue: Int!) {
+          repository(owner: $owner, name: $repo) {
+            issue(number: $issue) {
+              projectItems(first: 10) {
+                nodes {
+                  project { id }
+                  fieldValueByName(name: "Status") {
+                    ... on ProjectV2ItemFieldSingleSelectValue { name }
+                  }
+                }
+              }
+            }
+          }
+        }`;
+export function statusNameFromData(data, cfg) {
+  const nodes = data?.repository?.issue?.projectItems?.nodes || [];
+  const node = nodes.find((n) => n?.project?.id === cfg.projectId);
+  return normalizeStateId(node?.fieldValueByName?.name) || '';
+}
 
 // #711 — default read-back: query the item's live Status single-select
 // `optionId` for the configured project. Mirrors `resolveLiveStateName` in the
@@ -724,15 +747,25 @@ export async function rollbackRecordedState(ctx, priorState) {
 // path this always holds (stampEntryMarkers set it); a mismatch means a
 // regression re-opened the board/marker gap and is surfaced (non-zero exit),
 // never swallowed. Returns `{ consistent, recorded, expected, exit }`.
-export async function assertBoardMarkerConsistent(ctx, expectedStage) {
-  assertRevisionStageHostEffect();
+export async function assertBoardMarkerConsistent(ctx, expectedStage, nativeInput) {
+  let native;
+  if (isMemoryStageEffectScope()) {
+    native = await import('./move-state-core.mjs');
+    native.assertNativeStageConsistencyInput(nativeInput, ctx, expectedStage);
+  } else assertRevisionStageHostEffect();
   const { issueArg, cfg, pexec } = ctx;
   const { readLastKnownState } = await import('../../gh-timing-comment.mjs');
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
+  if (native) native.assertNativeStageConsistencyInput(nativeInput, ctx, expectedStage);
+  const request = {
+    file: 'gh',
+    args: ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+    options: { timeout: GH_API_TIMEOUT_MS },
+  };
+  const response = native
+    ? await native.readNativeStageConsistencyBody(nativeInput, request)
+    : await pexec(request.file, request.args, request.options);
+  if (native) native.assertNativeStageConsistencyResponse(nativeInput, request, response);
+  const { stdout } = response;
   const body = JSON.parse(stdout).body ?? '';
   const recorded = readLastKnownState(body).state;
   const consistent = recorded === expectedStage;

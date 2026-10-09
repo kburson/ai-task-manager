@@ -12,6 +12,7 @@ import path from 'node:path';
 import { homedir } from 'node:os';
 import { resolveMutationTarget } from '../mutation-context.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import {
   withRevisionConsumer,
   readNativeRevisionStageBody,
@@ -30,6 +31,7 @@ import {
   stampEntryMarkers as defaultStampEntryMarkers,
   readNativeEntryRequest,
   STATUS_OPTION_QUERY,
+  STATUS_MARKER_CONSISTENCY_EXIT,
   readOriginalNativeBoardStatus,
   assertOriginalNativeBoardInvocation,
   assertOriginalNativeBoardRequest,
@@ -39,7 +41,10 @@ import {
   assertBoardMarkerConsistent as defaultAssertBoardMarkerConsistent,
 } from './github-mutation.mjs';
 import { emitPhasePairRows as defaultEmitPhasePairRows } from './audit-timing.mjs';
-import { runPostCommitTail as defaultRunPostCommitTail } from './post-commit-tail.mjs';
+import { runPostCommitTail as defaultRunPostCommitTail, DEFAULT_TAIL_STEPS } from './post-commit-tail.mjs';
+import * as nativeTailCache from './cache-unpark.mjs';
+import * as nativeTailAudit from './audit-timing.mjs';
+const originalTailDispatch = nativeTailCache.dispatchOnEnterActions;
 import { writeMoveCompleteMarker, readMoveCompleteMarker, isMoveComplete } from './sentinel.mjs';
 import {
   parseEntryMarkers as parseGrammarEntryMarkers,
@@ -565,6 +570,8 @@ async function continueMoveStateAfterPhases(
   if (!repairAfterStatus) {
     try {
       stampResult = await stampEntryMarkers(ctx);
+      if (isMemoryStageEffectScope())
+        await retainNativeEntryResult(ctx, stampResult, stampEntryMarkers);
     } catch (error) {
       if (
         ctx.resolvedFromState === 'plan' &&
@@ -626,6 +633,7 @@ async function continueMoveStateAfterPhases(
   // The sentinel is written only after Status verified at target; a failure
   // here means "board moved, completion not yet stamped — re-run to converge."
   const sentinel = await writeSentinel(ctx);
+  if (isMemoryStageEffectScope()) retainNativeSentinelResult(ctx, sentinel, writeSentinel);
   if (!sentinel.verified) {
     return {
       exit: sentinel.exit ?? 7,
@@ -637,11 +645,14 @@ async function continueMoveStateAfterPhases(
     };
   }
 
-  assertRevisionStageHostEffect();
-  ctx.transitionEvidence = {
-    visitMarker: stampResult?.visitMarker ?? null,
-    sentinelMarker: sentinel?.sentinelMarker ?? null,
-  };
+  if (isMemoryStageEffectScope()) assignNativeTransitionEvidence(ctx, stampResult, sentinel);
+  else {
+    assertRevisionStageHostEffect();
+    ctx.transitionEvidence = {
+      visitMarker: stampResult?.visitMarker ?? null,
+      sentinelMarker: sentinel?.sentinelMarker ?? null,
+    };
+  }
 
   // #741 — success-path post-condition: the board is confirmed at target and the
   // sentinel verified, so the authoritative `aitm-last-known-state` marker MUST
@@ -649,7 +660,10 @@ async function continueMoveStateAfterPhases(
   // re-opened the drift gap and is surfaced (non-zero), never swallowed. Gated
   // on `priorState` so the offline/DI stub paths (undefined) stay unaffected.
   if (priorState != null) {
-    const consistency = await assertBoardMarkerConsistent(ctx, ctx.stateArg);
+    const consistency = isMemoryStageEffectScope()
+      ? await runNativeStageConsistency(ctx, ctx.stateArg, assertBoardMarkerConsistent)
+      : await assertBoardMarkerConsistent(ctx, ctx.stateArg);
+    if (isMemoryStageEffectScope()) assertNativeConsistencyReturn(ctx, consistency);
     if (!consistency.consistent) {
       process.stderr.write(
         `⛔ #${ctx.issueArg} → ${ctx.stateArg}: board confirmed at target but ` +
@@ -667,17 +681,26 @@ async function continueMoveStateAfterPhases(
     }
   }
 
+  // Private scope presence routes errors only; it is never an admission result.
+  const nativeCommentScope = nativeStagePreparation.getStore();
+  if (isMemoryStageEffectScope()) assertNativeStageTransitionContext(ctx);
+  else assertRevisionStageHostEffect();
   const warnings = [];
   try {
-    ctx.transitionCommit = await writeTransitionCommit(ctx, ctx.transitionEvidence);
+    if (isMemoryStageEffectScope())
+      await runNativeStageTransitionCommit(ctx, writeTransitionCommit);
+    else ctx.transitionCommit = await writeTransitionCommit(ctx, ctx.transitionEvidence);
   } catch (error) {
+    if (nativeCommentScope) throw error;
     warnings.push({ code: 'commit-provenance-missing', message: error.message });
     process.stderr.write(
       `[move-state:warn] #${ctx.issueArg}: transition commit provenance missing: ${error.message}\n`
     );
   }
 
-  const tail = await runPostCommitTail(ctx);
+  const tail = isMemoryStageEffectScope()
+    ? await runNativeStageTail(ctx, runPostCommitTail)
+    : await runPostCommitTail(ctx);
   return {
     exit: null,
     itemId: writeResult.itemId,
@@ -934,13 +957,25 @@ function assertOriginalEntryContext(record) {
   const contextDescriptors = record.assignedBoardItemDescriptor
     ? { ...record.originalContextDescriptors, itemId: record.assignedBoardItemDescriptor }
     : record.originalContextDescriptors;
-  compare(record.sagaContext, contextDescriptors);
+  const evidenceDescriptors = record.transitionEvidenceDescriptor
+    ? { ...contextDescriptors, transitionEvidence: record.transitionEvidenceDescriptor }
+    : contextDescriptors;
+  const commitDescriptors = record.transitionCommitDescriptor
+    ? { ...evidenceDescriptors, transitionCommit: record.transitionCommitDescriptor }
+    : evidenceDescriptors;
+  compare(record.sagaContext, commitDescriptors);
+  if (record.transitionEvidenceDescriptor) {
+    if (Object.getPrototypeOf(record.transitionEvidenceDescriptor.value) !== Object.prototype)
+      throw preparationRefusal('original-transition-evidence');
+    compare(record.transitionEvidenceDescriptor.value, record.transitionEvidenceValueDescriptors);
+  }
   compare(record.originalContextDescriptors.cfg.value, record.originalConfigDescriptors);
 }
 function checkPreparation(record) {
   if (!record || nativeStagePreparations.get(record.identity) !== record || record.cancelled)
     throw preparationRefusal('original-preparation');
   assertOriginalEntryContext(record);
+  assertNativeReturnedResultsUnchanged(record);
   assertNativeRevisionStageScope({
     backend: record.backend,
     capability: record.capability,
@@ -967,6 +1002,8 @@ function checkPreparation(record) {
       ...(record.entryPrefixes ?? []),
       ...(record.boardPrefixes ?? []),
       ...(record.sentinelPrefixes ?? []),
+      ...(record.transitionCommentPrefixes ?? []),
+      ...(record.tailPrefixes ?? []),
     ].includes(canonicalRecordJson(record.backend.snapshot))
   )
     throw preparationRefusal('current-authority-drift');
@@ -1632,6 +1669,26 @@ async function beginCheckpointLeaf(invocation, operation, kind, index, ordinal, 
 export async function beginNativeStageCheckpointSession(invocation, operation) {
   return await beginCheckpointLeaf(invocation, operation, 'set-binding', 3, 4, 'activeTask');
 }
+// Returnless input gate before the original actor record construction. It
+// neither advances the state program nor acquires a resource lock.
+export function assertNativeStageActorStateInput(invocation, operation) {
+  const record = checkpointRecord(invocation),
+    checkpoint = record.checkpoint;
+  checkpoint.assertOperation(invocation, operation);
+  // Only the actual yielded operation is accepted. Close its data before any
+  // nested input access; supplied accessors cannot run even on that identity.
+  canonicalRecordJson(operation);
+  if (
+    Object.getPrototypeOf(operation) !== Object.prototype ||
+    Object.keys(operation).sort().join(',') !== 'identity,kind,projDir,state' ||
+    operation.kind !== 'write-actor' ||
+    checkpoint.index !== 4 ||
+    checkpoint.locked ||
+    operation.projDir !== record.context.executor.worktree ||
+    canonicalRecordJson(operation.identity) !== canonicalRecordJson(record.actorIdentity)
+  )
+    throw preparationRefusal('actor-checkpoint-scope');
+}
 export async function beginNativeStageCheckpointActor(invocation, operation) {
   return await beginCheckpointLeaf(invocation, operation, 'write-actor', 4, 5, 'actorTiming');
 }
@@ -2224,6 +2281,694 @@ export async function prepareNativeStageEntryBody(input, before, bytes) {
   await record.entryStore.persistMemoryNativeStageBody({ ...authority, step });
   entryRecord(input);
   assertNativeStageEntryDelta(input, before, bytes);
+}
+
+// Private custody of actual default saga returns. These helpers are never
+// exported and cannot register a caller-supplied result through a public root.
+function nativeResultDescriptors(result, keys) {
+  if (!result || Object.getPrototypeOf(result) !== Object.prototype)
+    throw preparationRefusal('original-native-result');
+  const descriptors = Object.getOwnPropertyDescriptors(result);
+  if (
+    Reflect.ownKeys(descriptors).length !== keys.length ||
+    keys.some((key) => {
+      const descriptor = descriptors[key];
+      return (
+        !descriptor ||
+        !Object.hasOwn(descriptor, 'value') ||
+        !descriptor.enumerable ||
+        !descriptor.writable ||
+        !descriptor.configurable ||
+        (!['string', 'number', 'boolean'].includes(typeof descriptor.value) &&
+          descriptor.value !== null)
+      );
+    })
+  )
+    throw preparationRefusal('original-native-result');
+  canonicalRecordJson(result);
+  return descriptors;
+}
+function compareNativeResult(result, expected, original) {
+  const descriptors = nativeResultDescriptors(result, Object.keys(expected));
+  if (
+    Object.keys(expected).some(
+      (key) =>
+        descriptors[key].value !== expected[key] ||
+        (original && descriptors[key].value !== original[key].value)
+    )
+  )
+    throw preparationRefusal('original-native-result');
+  return descriptors;
+}
+function assertNativeReturnedResultsUnchanged(record) {
+  if (record.transitionCommentReturned) {
+    const retained = record.transitionCommentReturned;
+    record.transitionCommentCode.assertOriginalNativeTransitionResult(
+      retained.input,
+      record.sagaContext,
+      retained.result
+    );
+    if (canonicalRecordJson(retained.result) !== retained.bytes)
+      throw preparationRefusal('original-transition-result');
+  }
+  for (const read of [record.transitionCreateRead, record.transitionCommentRead]) {
+    if (!read) continue;
+    assertNativeTransitionRequestUnchanged(read);
+  }
+  for (const retained of [
+    record.entryReturned,
+    record.sentinelReturned,
+    record.consistencyReturned,
+  ]) {
+    if (!retained) continue;
+    const expected = Object.fromEntries(
+      Object.entries(retained.descriptors).map(([key, descriptor]) => [key, descriptor.value])
+    );
+    compareNativeResult(retained.result, expected, retained.descriptors);
+  }
+  if (record.consistencyRead) {
+    const read = record.consistencyRead;
+    if (canonicalRecordJson(read.request) !== read.bytes)
+      throw preparationRefusal('original-consistency-request');
+    compareNativeResult(read.response, { stdout: read.descriptors.stdout.value }, read.descriptors);
+  }
+}
+// Only the lexical default consistency invocation can select this fixed read.
+function nativeConsistencyRecord(input) {
+  const record = nativeStagePreparation.getStore();
+  if (!record || !input || record.consistencyInput !== input)
+    throw preparationRefusal('original-consistency-input');
+  assertNativeStageSentinelContext(record.sagaContext);
+  if (!record.entryReturned || !record.sentinelReturned || !record.transitionEvidenceDescriptor)
+    throw preparationRefusal('original-consistency-prefix');
+  const facts = originalStageResultFacts(record, true);
+  compareNativeResult(record.entryReturned.result, facts.entry, record.entryReturned.descriptors);
+  compareNativeResult(
+    record.sentinelReturned.result,
+    facts.sentinel,
+    record.sentinelReturned.descriptors
+  );
+  return record;
+}
+export function assertNativeStageConsistencyInput(input, ctx, expectedStage) {
+  const record = nativeConsistencyRecord(input);
+  if (ctx !== record.sagaContext || expectedStage !== record.header.intent.target)
+    throw preparationRefusal('original-consistency-context');
+}
+export function readNativeStageConsistencyBody(input, request) {
+  const record = nativeConsistencyRecord(input);
+  if (record.consistencyRead) throw preparationRefusal('original-consistency-reentrant');
+  const bytes = canonicalRecordJson(request);
+  const expected = {
+    file: 'gh',
+    args: [
+      'issue',
+      'view',
+      record.originalContextDescriptors.issueArg.value,
+      '-R',
+      record.originalConfigDescriptors.repo.value,
+      '--json',
+      'body',
+    ],
+    options: { timeout: GH_API_TIMEOUT_MS },
+  };
+  if (bytes !== canonicalRecordJson(expected))
+    throw preparationRefusal('original-consistency-request');
+  // The branded backend getter clones live private observation; never reuse step15 stdout.
+  const response = { stdout: JSON.stringify({ body: record.backend.observation.body.bytes }) };
+  record.consistencyRead = {
+    request,
+    bytes,
+    response,
+    descriptors: nativeResultDescriptors(response, ['stdout']),
+  };
+  return response;
+}
+export function assertNativeStageConsistencyResponse(input, request, response) {
+  const record = nativeConsistencyRecord(input);
+  const read = record.consistencyRead;
+  if (
+    !read ||
+    request !== read.request ||
+    response !== read.response ||
+    canonicalRecordJson(request) !== read.bytes
+  )
+    throw preparationRefusal('original-consistency-response');
+  compareNativeResult(
+    response,
+    { stdout: JSON.stringify({ body: record.backend.observation.body.bytes }) },
+    read.descriptors
+  );
+}
+function nativeConsistencyFacts(record) {
+  const recorded = record.readOriginalEntryState(record.backend.observation.body.bytes).state;
+  const expected = record.header.intent.target;
+  const consistent = recorded === expected;
+  return {
+    consistent,
+    recorded,
+    expected,
+    exit: consistent ? null : STATUS_MARKER_CONSISTENCY_EXIT,
+  };
+}
+function assertNativeConsistencyReturn(ctx, result) {
+  assertNativeStageSentinelContext(ctx);
+  const record = nativeStagePreparation.getStore();
+  if (!record.consistencyReturned || record.consistencyReturned.result !== result)
+    throw preparationRefusal('original-consistency-result');
+  originalStageResultFacts(record, true);
+  compareNativeResult(
+    result,
+    nativeConsistencyFacts(record),
+    record.consistencyReturned.descriptors
+  );
+  compareNativeResult(
+    record.consistencyRead.response,
+    { stdout: JSON.stringify({ body: record.backend.observation.body.bytes }) },
+    record.consistencyRead.descriptors
+  );
+}
+async function runNativeStageConsistency(ctx, expectedStage, originalFunction) {
+  assertNativeStageSentinelContext(ctx);
+  const record = nativeStagePreparation.getStore();
+  if (
+    originalFunction !== defaultAssertBoardMarkerConsistent ||
+    record.consistencyInput ||
+    record.consistencyReturned ||
+    record.consistencyRead ||
+    expectedStage !== record.header.intent.target
+  )
+    throw preparationRefusal('original-consistency-invocation');
+  const input = Object.freeze({});
+  record.consistencyInput = input;
+  try {
+    assertNativeStageConsistencyInput(input, ctx, expectedStage);
+    const result = await originalFunction(ctx, expectedStage, input);
+    assertNativeStageConsistencyInput(input, ctx, expectedStage);
+    if (!record.consistencyRead) throw preparationRefusal('original-consistency-read');
+    assertNativeStageConsistencyResponse(
+      input,
+      record.consistencyRead.request,
+      record.consistencyRead.response
+    );
+    const descriptors = compareNativeResult(result, nativeConsistencyFacts(record));
+    record.consistencyReturned = { result, descriptors };
+    assertNativeConsistencyReturn(ctx, result);
+    return result;
+  } finally {
+    record.consistencyInput = null;
+  }
+}
+
+function originalStageResultFacts(record, includeSentinel = false) {
+  const journal = record.backend.snapshot.nativeStageRecords.at(-1);
+  if (
+    includeSentinel
+      ? journal.steps.length !== 15 || journal.steps[14].readback === null
+      : journal.steps.length !== 13
+  )
+    throw preparationRefusal('original-native-result-prefix');
+  return originalStageResultFactsFromJournal(record, journal, includeSentinel);
+}
+function originalStageResultFactsFromJournal(record, journal, includeSentinel) {
+  const entry = journal.steps[12];
+  if (!record.entryCodec || !record.readOriginalEntryState || !entry || entry.readback === null)
+    throw preparationRefusal('original-native-result-prefix');
+  const entryBody = record.entryCodec.reconstructNativeStageBodyStep({
+    repository: record.context.repository,
+    issue: record.context.issue,
+    transitionId: record.header.intent.transitionId,
+    body: record.header.original.observation.body.bytes,
+    ordinal: 13,
+    previous: hashNativeStep(journal.steps[11]),
+    step: entry,
+  });
+  if (
+    entryBody.afterBody !== record.entryAfterBody ||
+    entryBody.readbackBody !== entryBody.afterBody
+  )
+    throw preparationRefusal('original-native-result-body');
+  const entryFacts = {
+    priorState: record.readOriginalEntryState(record.header.original.observation.body.bytes).state,
+    visitMarker: serializeEntryMarker({
+      state: record.header.intent.target,
+      visit: entry.intent.visit,
+      ts: entry.intent.entryTs,
+      move: record.header.intent.transitionId,
+    }),
+    visit: entry.intent.visit,
+    ts: entry.intent.entryTs,
+    transitionId: record.header.intent.transitionId,
+  };
+  if (!includeSentinel) return { entry: entryFacts };
+  const step = journal.steps[14];
+  const sentinelBody = record.entryCodec.reconstructNativeStageBodyStep({
+    repository: record.context.repository,
+    issue: record.context.issue,
+    transitionId: record.header.intent.transitionId,
+    body: entryBody.afterBody,
+    ordinal: 15,
+    previous: hashNativeStep(journal.steps[13]),
+    step,
+  });
+  if (
+    sentinelBody.afterBody !== record.backend.observation.body.bytes ||
+    sentinelBody.readbackBody !== sentinelBody.afterBody ||
+    sentinelBody.afterBody !== record.sentinelAfterBody
+  )
+    throw preparationRefusal('original-native-result-body');
+  const marker = readMoveCompleteMarker(sentinelBody.afterBody);
+  if (
+    marker?.state !== record.header.intent.target ||
+    marker.move !== record.header.intent.transitionId ||
+    marker.ts !== step.intent.ts
+  )
+    throw preparationRefusal('original-native-result-marker');
+  return {
+    entry: entryFacts,
+    sentinel: {
+      verified: true,
+      transitionId: marker.move,
+      sentinelMarker: marker.match,
+      ts: marker.ts,
+    },
+  };
+}
+async function retainNativeEntryResult(ctx, result, originalFunction) {
+  assertNativeStageEntryContext(ctx);
+  const record = nativeStagePreparation.getStore();
+  if (originalFunction !== defaultStampEntryMarkers || record.entryReturned)
+    throw preparationRefusal('original-entry-result');
+  const descriptors = nativeResultDescriptors(result, [
+    'priorState',
+    'visitMarker',
+    'visit',
+    'ts',
+    'transitionId',
+  ]);
+  const { readLastKnownState } = await import('../../gh-timing-comment.mjs');
+  assertNativeStageEntryContext(ctx);
+  record.readOriginalEntryState = readLastKnownState;
+  const facts = originalStageResultFacts(record);
+  compareNativeResult(result, facts.entry, descriptors);
+  record.entryReturned = { result, descriptors };
+}
+function retainNativeSentinelResult(ctx, result, originalFunction) {
+  assertNativeStageSentinelContext(ctx);
+  const record = nativeStagePreparation.getStore();
+  if (originalFunction !== defaultWriteSentinel || !record.entryReturned || record.sentinelReturned)
+    throw preparationRefusal('original-sentinel-result');
+  // Preserve the actual original native unsuccessful return. This DATA path
+  // registers no successful result and cannot reach evidence assignment.
+  if (
+    result &&
+    Object.getPrototypeOf(result) === Object.prototype &&
+    Object.getOwnPropertyDescriptor(result, 'verified')?.value === false
+  ) {
+    compareNativeResult(result, { verified: false, exit: 7 });
+    return;
+  }
+  const facts = originalStageResultFacts(record, true);
+  compareNativeResult(record.entryReturned.result, facts.entry, record.entryReturned.descriptors);
+  const descriptors = compareNativeResult(result, facts.sentinel);
+  record.sentinelReturned = { result, descriptors };
+}
+function assignNativeTransitionEvidence(ctx, entry, sentinel) {
+  assertNativeStageSentinelContext(ctx);
+  const record = nativeStagePreparation.getStore();
+  if (
+    record.entryReturned?.result !== entry ||
+    record.sentinelReturned?.result !== sentinel ||
+    record.transitionEvidenceDescriptor ||
+    Object.hasOwn(record.originalContextDescriptors, 'transitionEvidence')
+  )
+    throw preparationRefusal('original-transition-evidence');
+  const facts = originalStageResultFacts(record, true);
+  compareNativeResult(entry, facts.entry, record.entryReturned.descriptors);
+  compareNativeResult(sentinel, facts.sentinel, record.sentinelReturned.descriptors);
+  const evidence = {
+    visitMarker: facts.entry.visitMarker,
+    sentinelMarker: facts.sentinel.sentinelMarker,
+  };
+  Object.defineProperty(ctx, 'transitionEvidence', {
+    value: evidence,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+  record.transitionEvidenceDescriptor = Object.freeze(
+    Object.getOwnPropertyDescriptor(ctx, 'transitionEvidence')
+  );
+  record.transitionEvidenceValueDescriptors = Object.freeze(
+    Object.getOwnPropertyDescriptors(evidence)
+  );
+  checkPreparation(record);
+  checkOriginalStageSources(record);
+}
+
+// Only the original post-consistency call below creates this opaque invocation.
+// Restored journals and the early alreadyComplete/repair branch cannot recreate it.
+function assertNativeStageTransitionContext(ctx) {
+  const record = nativeStagePreparation.getStore();
+  if (
+    !record ||
+    record.sagaContext !== ctx ||
+    !record.entryActive ||
+    !record.stageToken ||
+    nativeStageIntents.get(record.stageToken) !== record ||
+    !record.assignedBoardItemDescriptor ||
+    !record.entryReturned ||
+    !record.sentinelReturned ||
+    !record.transitionEvidenceDescriptor ||
+    !record.consistencyReturned ||
+    !record.consistencyRead
+  )
+    throw preparationRefusal('original-transition-context');
+  checkPreparation(record);
+  checkOriginalStageSources(record);
+  assertOriginalNativeBoardResult(record.boardResult, ctx);
+  const currentJournal = record.backend.snapshot.nativeStageRecords.at(-1);
+  // Tail records remain independently bound to full current snapshots; compare
+  // original body/comment custody against its unchanged complete16 prefix.
+  const journal = record.tailInput && currentJournal.steps.length === 17
+    ? { ...currentJournal, steps: currentJournal.steps.slice(0, 16) }
+    : currentJournal;
+  if (journal.steps.length === 15) {
+    if (journal.steps[14].readback === null) throw preparationRefusal('transition-sentinel-prefix');
+  } else if (journal.steps.length === 16) {
+    if (
+      !record.transitionCommentBefore ||
+      !record.transitionCommentStep ||
+      canonicalRecordJson(journal.steps.slice(0, 15)) !==
+        canonicalRecordJson(record.transitionCommentBefore.nativeStageRecords.at(-1).steps) ||
+      canonicalRecordJson(journal.steps[15].intent) !==
+        canonicalRecordJson(record.transitionCommentStep.intent) ||
+      journal.steps[15].previous !== record.transitionCommentStep.previous ||
+      journal.steps[15].kind !== 'transition-comment' ||
+      journal.steps[15].ordinal !== 16
+    )
+      throw preparationRefusal('transition-exact-prefix');
+  } else throw preparationRefusal('transition-exact-prefix');
+  if (
+    journal.steps[13].readback === null ||
+    journal.steps[13].outcome?.kind !== 'confirmed' ||
+    record.boardResult.exit !== null ||
+    record.boardResult.itemId !== record.header.intent.itemId ||
+    ctx.itemId !== record.boardResult.itemId ||
+    ctx.SKIP_NETWORK ||
+    '_mutateBody' in ctx
+  )
+    throw preparationRefusal('transition-board-prefix');
+  // Preserve exact original held body; current body is separately checked against complete15/16.
+  assertNativeStageSentinelFrame({
+    backend: record.backend,
+    capability: record.capability,
+    repository: record.context.repository,
+    issue: record.context.issue,
+    projectDir: record.context.executor.worktree,
+    originalObservation: JSON.parse(record.originalSnapshot).observation,
+  });
+  const facts = originalStageResultFactsFromJournal(
+    record,
+    { ...journal, steps: journal.steps.slice(0, 15) },
+    true
+  );
+  compareNativeResult(record.entryReturned.result, facts.entry, record.entryReturned.descriptors);
+  compareNativeResult(
+    record.sentinelReturned.result,
+    facts.sentinel,
+    record.sentinelReturned.descriptors
+  );
+  const consistency = nativeConsistencyFacts(record);
+  compareNativeResult(
+    record.consistencyReturned.result,
+    consistency,
+    record.consistencyReturned.descriptors
+  );
+  compareNativeResult(
+    record.consistencyRead.response,
+    { stdout: JSON.stringify({ body: record.backend.observation.body.bytes }) },
+    record.consistencyRead.descriptors
+  );
+  if (!consistency.consistent) throw preparationRefusal('transition-consistency-prefix');
+  return record;
+}
+function nativeTransitionCommentRecord(input) {
+  const record = nativeStagePreparation.getStore();
+  if (!record || !input || record.transitionCommentInput !== input)
+    throw preparationRefusal('original-transition-input');
+  assertNativeStageTransitionContext(record.sagaContext);
+  return record;
+}
+export function assertNativeStageTransitionInput(input, ctx, evidence) {
+  const record = nativeTransitionCommentRecord(input);
+  if (ctx !== record.sagaContext || evidence !== record.transitionEvidenceDescriptor.value)
+    throw preparationRefusal('original-transition-input');
+}
+export function readNativeStageTransitionIntent(token, backend, input, context) {
+  const record = nativeTransitionCommentRecord(input);
+  if (token !== record.stageToken || backend !== record.backend || context !== record.context)
+    throw preparationRefusal('original-transition-token');
+  return structuredClone({ header: record.header });
+}
+function transitionAuthority(record, input) {
+  return {
+    backend: record.backend,
+    capability: record.capability,
+    context: record.context,
+    token: record.stageToken,
+    invocation: input,
+  };
+}
+function retainNativeTransitionRequest(request, expected) {
+  if (
+    !request ||
+    Object.getPrototypeOf(request) !== Object.prototype ||
+    canonicalRecordJson(request) !== canonicalRecordJson(expected)
+  )
+    throw preparationRefusal('original-transition-request');
+  return {
+    request,
+    bytes: canonicalRecordJson(request),
+    descriptors: Object.getOwnPropertyDescriptors(request),
+  };
+}
+function assertNativeTransitionRequestUnchanged(retained) {
+  const descriptors = Object.getOwnPropertyDescriptors(retained.request),
+    original = retained.descriptors;
+  if (
+    Object.getPrototypeOf(retained.request) !== Object.prototype ||
+    Reflect.ownKeys(descriptors).length !== Reflect.ownKeys(original).length ||
+    Reflect.ownKeys(descriptors).some((key) => {
+      const a = descriptors[key],
+        b = original[key];
+      return (
+        !b ||
+        !Object.hasOwn(a, 'value') ||
+        a.value !== b.value ||
+        a.enumerable !== b.enumerable ||
+        a.writable !== b.writable ||
+        a.configurable !== b.configurable
+      );
+    }) ||
+    canonicalRecordJson(retained.request) !== retained.bytes
+  )
+    throw preparationRefusal('original-transition-request');
+}
+export async function createNativeStageTransitionComment(input, request) {
+  const record = nativeTransitionCommentRecord(input),
+    derived = record.transitionCommentDerived;
+  if (!derived || record.transitionCreateRead) throw preparationRefusal('transition-create-prefix');
+  const expected = {
+    file: 'gh',
+    args: [
+      'api',
+      `repos/${record.context.repository}/issues/${record.context.issue}/comments`,
+      '--method',
+      'POST',
+      '-f',
+      `body=${derived.commentBody}`,
+    ],
+    options: { timeout: 15000 },
+  };
+  record.transitionCreateRead = retainNativeTransitionRequest(request, expected);
+  const response = await record.transitionCommentStore.writeMemoryNativeStageTransition(
+    transitionAuthority(record, input)
+  );
+  nativeTransitionCommentRecord(input);
+  assertNativeStageTransitionCreateResponse(input, request, response);
+  return response;
+}
+export function assertNativeStageTransitionCreateResponse(input, request, response) {
+  const record = nativeTransitionCommentRecord(input),
+    retained = record.transitionCreateRead;
+  if (!retained || retained.request !== request)
+    throw preparationRefusal('transition-create-response');
+  assertNativeTransitionRequestUnchanged(retained);
+  record.transitionCommentStore.assertMemoryNativeStageTransitionCreateResponse(
+    transitionAuthority(record, input),
+    response
+  );
+}
+export async function readNativeStageTransitionComment(input, request) {
+  const record = nativeTransitionCommentRecord(input),
+    derived = record.transitionCommentDerived;
+  if (!derived || !record.transitionCreateRead || record.transitionCommentRead)
+    throw preparationRefusal('transition-read-prefix');
+  const expected = {
+    file: 'gh',
+    args: ['api', `repos/${record.context.repository}/issues/comments/${derived.intent.commentId}`],
+    options: { timeout: 15000 },
+  };
+  record.transitionCommentRead = retainNativeTransitionRequest(request, expected);
+  const response = await record.transitionCommentStore.readMemoryNativeStageTransition(
+    transitionAuthority(record, input)
+  );
+  nativeTransitionCommentRecord(input);
+  assertNativeStageTransitionReadResponse(input, request, response);
+  return response;
+}
+export function assertNativeStageTransitionReadResponse(input, request, response) {
+  const record = nativeTransitionCommentRecord(input),
+    retained = record.transitionCommentRead;
+  if (!retained || retained.request !== request)
+    throw preparationRefusal('transition-read-response');
+  assertNativeTransitionRequestUnchanged(retained);
+  record.transitionCommentStore.assertMemoryNativeStageTransitionReadResponse(
+    transitionAuthority(record, input),
+    response
+  );
+}
+async function runNativeStageTransitionCommit(ctx, originalFunction) {
+  const record = assertNativeStageTransitionContext(ctx);
+  if (
+    originalFunction !== defaultWriteTransitionCommit ||
+    record.transitionCommentInput ||
+    record.transitionCommentReturned ||
+    Object.hasOwn(record.originalContextDescriptors, 'transitionCommit') ||
+    Object.hasOwn(record.originalContextDescriptors, 'deps')
+  )
+    throw preparationRefusal('original-transition-invocation');
+  const input = Object.freeze({});
+  record.transitionCommentInput = input;
+  let acquired = false;
+  try {
+    const store = await import('../criteria-revision/store.mjs');
+    nativeTransitionCommentRecord(input);
+    record.transitionCommentStore = store;
+    const codec = await import('../criteria-revision/stage-execution.mjs');
+    nativeTransitionCommentRecord(input);
+    const code = await import('./transition-commit.mjs');
+    nativeTransitionCommentRecord(input);
+    record.transitionCommentCode = code;
+    await store.acquireMemoryNativeStageTransition(transitionAuthority(record, input));
+    acquired = true;
+    nativeTransitionCommentRecord(input);
+    const before = record.backend.snapshot,
+      journal = before.nativeStageRecords.at(-1);
+    if (journal.steps.length !== 15 || journal.steps[14].readback === null)
+      throw preparationRefusal('transition-before-prefix');
+    const derived = await codec.deriveRecordedNativeTransitionComment({
+      header: record.header,
+      steps: journal.steps,
+    });
+    nativeTransitionCommentRecord(input);
+    if (
+      canonicalRecordJson(before) !== canonicalRecordJson(record.backend.snapshot) ||
+      canonicalRecordJson(before.nativeStageResources) !==
+        canonicalRecordJson(derived.beforeResources) ||
+      canonicalRecordJson(before.observation.body) !== canonicalRecordJson(derived.body) ||
+      before.observation.stage !== derived.stage
+    )
+      throw preparationRefusal('transition-original-before');
+    const step = {
+      ordinal: 16,
+      kind: 'transition-comment',
+      previous: hashNativeStep(journal.steps[14]),
+      intent: structuredClone(derived.intent),
+      readback: null,
+    };
+    const intended = structuredClone(before);
+    intended.nativeStageRecords.at(-1).steps.push(structuredClone(step));
+    const effected = structuredClone(intended);
+    effected.nativeStageResources = structuredClone(derived.afterResources);
+    const completed = structuredClone(effected);
+    const response = { stdout: derived.intent.commentBytes, stderr: '', exitCode: 0 };
+    completed.nativeStageRecords.at(-1).steps[15].readback = {
+      create: {
+        request: {
+          file: 'gh',
+          args: [
+            'api',
+            `repos/${record.context.repository}/issues/${record.context.issue}/comments`,
+            '--method',
+            'POST',
+            '-f',
+            `body=${derived.commentBody}`,
+          ],
+        },
+        response: structuredClone(response),
+      },
+      read: {
+        request: {
+          file: 'gh',
+          args: [
+            'api',
+            `repos/${record.context.repository}/issues/comments/${derived.intent.commentId}`,
+          ],
+        },
+        response: structuredClone(response),
+      },
+      census: structuredClone(derived.afterResources.comments),
+    };
+    record.transitionCommentBefore = before;
+    record.transitionCommentStep = step;
+    record.transitionCommentDerived = derived;
+    record.transitionCommentPrefixes = [intended, effected, completed].map(canonicalRecordJson);
+    await store.persistMemoryNativeStageTransition({ ...transitionAuthority(record, input), step });
+    nativeTransitionCommentRecord(input);
+    const result = await originalFunction(ctx, record.transitionEvidenceDescriptor.value, input);
+    nativeTransitionCommentRecord(input);
+    code.assertOriginalNativeTransitionResult(input, ctx, result);
+    const actual = await codec.reconstructNativeStageTransitionComment({
+      header: record.header,
+      steps: record.backend.snapshot.nativeStageRecords.at(-1).steps,
+    });
+    nativeTransitionCommentRecord(input);
+    code.assertOriginalNativeTransitionResult(input, ctx, result);
+    const expected = {
+      verified: true,
+      commentId: actual.intent.commentId,
+      record: actual.intent.record,
+      body: actual.commentBody,
+    };
+    if (
+      !actual.complete ||
+      canonicalRecordJson(result) !== canonicalRecordJson(expected) ||
+      canonicalRecordJson(record.backend.snapshot) !== canonicalRecordJson(completed)
+    )
+      throw preparationRefusal('transition-completed-result');
+    record.transitionCommentReturned = { input, result, bytes: canonicalRecordJson(result) };
+    Object.defineProperty(ctx, 'transitionCommit', {
+      value: result,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+    record.transitionCommitDescriptor = Object.freeze(
+      Object.getOwnPropertyDescriptor(ctx, 'transitionCommit')
+    );
+    nativeTransitionCommentRecord(input);
+    return result;
+  } finally {
+    if (acquired)
+      record.transitionCommentStore.releaseMemoryNativeStageTransition({
+        backend: record.backend,
+        token: record.stageToken,
+        invocation: input,
+      });
+    record.transitionCommentInput = null;
+  }
 }
 
 // The only registration site is the actual default sentinel writer above.
@@ -3681,5 +4426,158 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
       if (running) await running.catch(() => {});
       nativeStagePreparations.delete(record.identity);
     }
+  }
+}
+
+// @story #1855 — private original tail invocations, never caller-minted ports.
+const originalTailInputs = new WeakMap();
+const originalTailLeaves = new WeakMap();
+function assertTailEntry(value, expected, original) {
+  if (!value || Object.getPrototypeOf(value) !== Object.prototype) throw preparationRefusal('original-tail-steps');
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (Reflect.ownKeys(descriptors).length !== 3 || ['name', 'scope', 'fn'].some(key => {
+    const a = descriptors[key], b = original?.[key];
+    return !a || !Object.hasOwn(a, 'value') || !a.enumerable || !a.writable || !a.configurable || a.value !== expected[key] || (b && (a.value !== b.value || a.enumerable !== b.enumerable || a.writable !== b.writable || a.configurable !== b.configurable));
+  })) throw preparationRefusal('original-tail-steps');
+  return descriptors;
+}
+function captureOriginalTailEntries() {
+  const expected = [
+    ['dispatchOnEnterActions', 'project', nativeTailCache.dispatchOnEnterActions],
+    ['refreshKanbanStateCache', 'project', nativeTailCache.refreshKanbanStateCache],
+    ['emitFullAutoReviewAudit', 'issue', nativeTailAudit.emitFullAutoReviewAudit],
+    ['unparkDoneDependents', 'project', nativeTailCache.unparkDoneDependents],
+    ['emitOutOfBandAudit', 'issue', nativeTailAudit.emitOutOfBandAudit],
+    ['syncTrackerState', 'session', nativeTailCache.syncTrackerState],
+    ['syncEventFields', 'issue', nativeTailCache.syncEventFields],
+    ['endTaskTracking', 'session', nativeTailCache.endTaskTracking],
+  ];
+  if (!Object.isFrozen(DEFAULT_TAIL_STEPS) || DEFAULT_TAIL_STEPS.length !== expected.length) throw preparationRefusal('original-tail-steps');
+  return expected.map(([name, scope, fn], index) => {
+    const value = DEFAULT_TAIL_STEPS[index], facts = { name, scope, fn };
+    return { value, facts, descriptors: assertTailEntry(value, facts) };
+  });
+}
+function tailCurrent(input, ctx) {
+  const record = originalTailInputs.get(input);
+  if (!record || record.tailInput !== input || record.sagaContext !== ctx || !record.tailRunning) throw preparationRefusal('original-tail-invocation');
+  assertNativeStageTransitionContext(ctx);
+  const returned = record.transitionCommentReturned;
+  if (!returned || ctx.transitionCommit !== returned.result || canonicalRecordJson(returned.result) !== returned.bytes) throw preparationRefusal('original-tail-comment');
+  record.transitionCommentCode.assertOriginalNativeTransitionResult(returned.input, ctx, returned.result);
+  if (Object.hasOwn(ctx, 'deps') || Object.hasOwn(ctx, 'transitionCommitRepairRequested') || ctx.tailProfile !== 'task-owner') throw preparationRefusal('original-tail-context');
+  for (let index = 0; index < record.tailEntries.length; index++) {
+    const original = record.tailEntries[index], value = DEFAULT_TAIL_STEPS[index];
+    if (value !== original.value) throw preparationRefusal('original-tail-steps');
+    assertTailEntry(value, original.facts, original.descriptors);
+  }
+  return record;
+}
+export function beginNativeStageTailSequence(input, ctx, steps) {
+  const record = originalTailInputs.get(input);
+  if (!record || record.sagaContext !== ctx || !record.tailCallWindow || record.tailStarted) throw preparationRefusal('original-tail-sequence-window');
+  record.tailCallWindow = false;
+  record.tailStarted = true;
+  tailCurrent(input, ctx);
+  if (steps !== DEFAULT_TAIL_STEPS) throw preparationRefusal('original-tail-sequence');
+}
+export function assertNativeStageTailSequenceCurrent(input, ctx, steps) {
+  const record = tailCurrent(input, ctx);
+  if (!record.tailStarted || steps !== DEFAULT_TAIL_STEPS) throw preparationRefusal('original-tail-sequence');
+}
+function tailLeafCurrent(input, ctx) {
+  const leaf = originalTailLeaves.get(input);
+  if (!leaf || leaf.ctx !== ctx || leaf.record.tailLeaf !== input) throw preparationRefusal('original-tail-leaf');
+  tailCurrent(leaf.sequence, ctx);
+  return leaf;
+}
+export function beginNativeStageTailDispatch(input, ctx) {
+  const leaf = originalTailLeaves.get(input);
+  if (!leaf || leaf.ctx !== ctx || leaf.phase !== 'call') throw preparationRefusal('original-tail-dispatch-window');
+  leaf.phase = 'running';
+  tailLeafCurrent(input, ctx);
+}
+export function assertNativeStageTailDispatchModule(input, ctx, module) {
+  const leaf = tailLeafCurrent(input, ctx);
+  if (leaf.phase !== 'running' || module !== leaf.record.tailStates || module.STATES !== leaf.states || module.STATES.test !== leaf.target || leaf.target.onEnter !== leaf.actions || !Object.isFrozen(leaf.actions) || leaf.actions.length !== 0) throw preparationRefusal('original-tail-dispatch-source');
+}
+export function readNativeStageTailDispatchIntent(token, backend, invocation, context) {
+  const leaf = originalTailLeaves.get(invocation);
+  if (!leaf) throw preparationRefusal('original-tail-leaf');
+  const { record } = leaf;
+  tailLeafCurrent(invocation, record.sagaContext);
+  if (token !== record.stageToken || backend !== record.backend || context !== record.context) throw preparationRefusal('original-tail-token');
+  return structuredClone({ header: record.header, returned: leaf.phase === 'returned' });
+}
+function tailAuthority(record, invocation) {
+  return { backend: record.backend, capability: record.capability, context: record.context, token: record.stageToken, invocation };
+}
+export async function runNativeStageTailStep(input, ctx, step) {
+  const record = tailCurrent(input, ctx);
+  if (!record.tailStarted || record.tailLeaf || record.tailNext !== 0 || step !== DEFAULT_TAIL_STEPS[0] || step.fn !== originalTailDispatch) {
+    // All later original leaves retain their existing fail-closed host fence.
+    assertRevisionStageHostEffect();
+    throw preparationRefusal('original-tail-order');
+  }
+  const invocation = Object.freeze({});
+  const leaf = { record, ctx, sequence: input, phase: 'new', states: record.tailStates.STATES, target: record.tailStates.STATES.test, actions: record.tailStates.STATES.test.onEnter };
+  originalTailLeaves.set(invocation, leaf);
+  record.tailLeaf = invocation;
+  let acquired = false, store;
+  try {
+    store = await import('../criteria-revision/store.mjs');
+    tailLeafCurrent(invocation, ctx);
+    await store.acquireMemoryNativeStageTailDispatch(tailAuthority(record, invocation));
+    acquired = true;
+    tailLeafCurrent(invocation, ctx);
+    const before = record.backend.snapshot, journal = before.nativeStageRecords.at(-1);
+    if (journal.steps.length !== 16 || journal.steps.some(step => step.readback === null)) throw preparationRefusal('tail-dispatch-before');
+    const stepData = { ordinal: 17, kind: 'tail-dispatch', previous: hashNativeStep(journal.steps[15]), intent: { target: 'test', actions: [] }, readback: null };
+    const intended = structuredClone(before);
+    intended.nativeStageRecords.at(-1).steps.push(structuredClone(stepData));
+    const completed = structuredClone(intended);
+    completed.nativeStageRecords.at(-1).steps[16].readback = { actions: [], resources: structuredClone(before.nativeStageResources), body: structuredClone(before.observation.body), stage: before.observation.stage };
+    record.tailPrefixes = [intended, completed].map(canonicalRecordJson);
+    await store.persistMemoryNativeStageTailDispatch({ ...tailAuthority(record, invocation), step: stepData });
+    tailLeafCurrent(invocation, ctx);
+    store.assertMemoryNativeStageTailDispatchIntent(tailAuthority(record, invocation));
+    leaf.phase = 'call';
+    const result = await originalTailDispatch(ctx, invocation);
+    tailLeafCurrent(invocation, ctx);
+    nativeTailCache.assertOriginalNativeTailDispatchReturn(invocation, ctx, result);
+    if (leaf.phase !== 'running') throw preparationRefusal('original-tail-return');
+    leaf.phase = 'returned';
+    await store.completeMemoryNativeStageTailDispatch(tailAuthority(record, invocation));
+    tailLeafCurrent(invocation, ctx);
+    if (canonicalRecordJson(record.backend.snapshot) !== canonicalRecordJson(completed)) throw preparationRefusal('tail-dispatch-completion');
+    record.tailNext = 1;
+  } finally {
+    if (acquired) store.releaseMemoryNativeStageTailDispatch({ backend: record.backend, token: record.stageToken, invocation });
+    originalTailLeaves.delete(invocation);
+    record.tailLeaf = null;
+  }
+}
+async function runNativeStageTail(ctx, originalFunction) {
+  const record = assertNativeStageTransitionContext(ctx);
+  if (originalFunction !== defaultRunPostCommitTail || record.tailInput || record.tailStarted || !record.transitionCommentReturned || record.backend.snapshot.nativeStageRecords.at(-1).steps.length !== 16) throw preparationRefusal('original-tail-entry');
+  const input = Object.freeze({});
+  record.tailInput = input;
+  record.tailRunning = true;
+  record.tailNext = 0;
+  record.tailEntries = captureOriginalTailEntries();
+  originalTailInputs.set(input, record);
+  try {
+    tailCurrent(input, ctx);
+    const states = await import('../../states/index.mjs');
+    tailCurrent(input, ctx);
+    if (!Object.isFrozen(states.STATES) || !Object.isFrozen(states.STATES.test) || !Object.isFrozen(states.STATES.test.onEnter) || states.STATES.test.onEnter.length !== 0) throw preparationRefusal('original-tail-dispatch-source');
+    record.tailStates = states;
+    record.tailCallWindow = true;
+    return await originalFunction(ctx, DEFAULT_TAIL_STEPS, input);
+  } finally {
+    record.tailRunning = false;
+    record.tailCallWindow = false;
+    originalTailInputs.delete(input);
+    record.tailInput = null;
   }
 }

@@ -25,7 +25,7 @@ import {
   buildRow as nativeBuildRow,
   postTimingEvent as nativePostTimingEvent,
 } from '../../gh-timing-comment.mjs';
-import { isMemoryStageEffectScope } from '../criteria-revision/transport-quarantine.mjs';
+import { isMemoryStageEffectScope, assertRevisionStageHostEffect } from '../criteria-revision/transport-quarantine.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
@@ -122,7 +122,7 @@ export async function emitPhasePairRows(ctx) {
           bytes: JSON.stringify(input),
           phase,
           ts,
-          offsetMin: -new Date(ts).getTimezoneOffset(),
+          offsetMin: 0 - new Date(ts).getTimezoneOffset(),
           transitionId: ctx.transitionId,
         });
       try {
@@ -252,6 +252,7 @@ export async function emitPhasePairRows(ctx) {
 // `reviewAuthority`, then the legacy reviewer-environment fallback. The
 // resulting Full-Auto comment or `aitm-human-reviewer` marker is idempotent.
 export async function emitFullAutoReviewAudit(ctx) {
+  assertRevisionStageHostEffect();
   const { issueArg, stateArg, cfg, SKIP_NETWORK, pexec, reviewAuthority } = ctx;
   if (!(stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1')) return;
   // #628 — the comment/list side-effects flow through `ctx.deps` when a test
@@ -317,6 +318,7 @@ export async function emitFullAutoReviewAudit(ctx) {
 // Out-of-band audit trail: visible comment + timing-log row. Best-effort —
 // failures do not roll back the board move.
 export async function emitOutOfBandAudit(ctx) {
+  assertRevisionStageHostEffect();
   const { issueArg, stateArg, resolvedFromState, outOfBandReason, cfg, SKIP_NETWORK, gh } = ctx;
   if (!(outOfBandReason && !SKIP_NETWORK)) return;
   const ts = new Date().toISOString();

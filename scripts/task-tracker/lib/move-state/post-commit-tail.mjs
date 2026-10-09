@@ -34,6 +34,9 @@ import {
 } from './cache-unpark.mjs';
 import { selectTailSteps } from './tail-profiles.mjs';
 import { repairTransitionCommit } from './transition-commit.mjs';
+import { assertRevisionStageHostEffect, isMemoryStageEffectScope } from '../criteria-revision/transport-quarantine.mjs';
+
+import { beginNativeStageTailSequence, runNativeStageTailStep, assertNativeStageTailSequenceCurrent } from './move-state-core.mjs';
 
 // The canonical post-commit tail, in the exact order the pre-#714 mutation
 // block invoked it. Each entry is `{ name, scope, fn }` where `fn(ctx)` is the
@@ -64,22 +67,28 @@ export const DEFAULT_TAIL_STEPS = Object.freeze([
 // report the committed move as a failure. `total` is the count of steps
 // attempted, so the §9 readout can render an honest `N/M best-effort steps ok`
 // even when a custom step list is injected (tests).
-export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS) {
+export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS, nativeInput) {
+  const nativeMemory = isMemoryStageEffectScope();
+  if (nativeMemory) beginNativeStageTailSequence(nativeInput, ctx, steps);
+  else assertRevisionStageHostEffect();
   const failures = [];
   const replayRepairStep = {
     name: 'repairTransitionCommit',
     scope: 'issue',
     fn: (stepCtx) => (stepCtx.repairTransitionCommit || repairTransitionCommit)(stepCtx),
   };
-  const eligibleSteps = ctx.transitionCommitRepairRequested ? [replayRepairStep, ...steps] : steps;
+  const eligibleSteps = nativeMemory ? steps : ctx.transitionCommitRepairRequested ? [replayRepairStep, ...steps] : steps;
   const selectedSteps = selectTailSteps(eligibleSteps, ctx.tailProfile);
   for (const step of selectedSteps) {
     try {
       // Support both async and sync step fns (syncTrackerState / endTaskTracking
       // are synchronous in the original block). `await` on a non-promise is a
       // no-op, so a single path handles both.
-      await step.fn(ctx);
+      if (nativeMemory) await runNativeStageTailStep(nativeInput, ctx, step);
+      else await step.fn(ctx);
+      if (nativeMemory) assertNativeStageTailSequenceCurrent(nativeInput, ctx, steps);
     } catch (err) {
+      if (nativeMemory) throw err;
       failures.push({ name: step.name, error: err });
       // #716 — a STRUCTURED diagnostic (step name + child exit code, benign
       // audit lines filtered out, explicit no-detail fallback) rather than an

@@ -48,3 +48,8 @@ export function assertRevisionStageHostEffect() {
 export function isMemoryStageEffectScope() {
   return stageEffects.getStore() === true;
 }
+
+// @story #1855 — raw processes cannot escape either recognized memory scope.
+export function assertRevisionMemoryHostProcess() {
+  if (quarantine.getStore() || stageEffects.getStore()) throw memoryEffectRefusal();
+}

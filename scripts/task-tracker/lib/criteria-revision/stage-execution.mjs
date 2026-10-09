@@ -1440,7 +1440,7 @@ export function validateNativeStageJournal(journal) {
     if (
       id !== hashBytes(canonicalRecordJson(unsigned)) ||
       !Array.isArray(journal.steps) ||
-      ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(journal.steps.length)
+      ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(journal.steps.length)
     )
       throw new TypeError();
     const first = journal.steps[0];
@@ -1689,7 +1689,7 @@ export function validateNativeStageJournal(journal) {
       // Full native parser/attempt/current vector semantics remain in the ONE
       // awaited history fold, not this synchronous constructor shape check.
     }
-    if (journal.steps.length === 15) {
+    if (journal.steps.length >= 15) {
       const step = journal.steps[14],
         previous = journal.steps[13],
         entry = journal.steps[12];
@@ -1718,6 +1718,31 @@ export function validateNativeStageJournal(journal) {
         previous: hashBytes(canonicalRecordJson(previous)),
         step,
       });
+    }
+    if (journal.steps.length >= 16) {
+      const step = journal.steps[15],
+        previous = journal.steps[14];
+      exactKeys(step, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
+      exactKeys(step.intent, ['record', 'commentId', 'nodeId', 'commentBytes']);
+      if (
+        previous.readback === null ||
+        step.ordinal !== 16 ||
+        step.kind !== 'transition-comment' ||
+        step.previous !== hashBytes(canonicalRecordJson(previous)) ||
+        typeof step.intent.commentId !== 'string' ||
+        typeof step.intent.nodeId !== 'string' ||
+        typeof step.intent.commentBytes !== 'string'
+      )
+        throw new TypeError();
+      if (step.readback !== null) exactKeys(step.readback, ['create', 'read', 'census']);
+      // Full allocation, original markers, actor and census are derived by the
+      // asynchronous complete-predecessor codec, never constructor authority.
+    }
+    if (journal.steps.length === 17) {
+      const step = journal.steps[16], previous = journal.steps[15];
+      exactKeys(step, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
+      if (previous.readback === null || step.ordinal !== 17 || step.kind !== 'tail-dispatch' || step.previous !== hashBytes(canonicalRecordJson(previous)) || !same(step.intent, { target: 'test', actions: [] })) throw new TypeError();
+      if (step.readback !== null) exactKeys(step.readback, ['actions', 'resources', 'body', 'stage']);
     }
     return journal;
   } catch {
@@ -2451,4 +2476,161 @@ export async function reconstructNativeStageSentinel(input) {
     stage: board.afterStage,
     readbackBody: derived.readbackBody,
   });
+}
+
+// Complete transition-comment DATA. Detach actual canonical input before any
+// import/replay await. No supplied allocation, current result or token is trusted.
+export async function deriveRecordedNativeTransitionComment(input) {
+  const detached = JSON.parse(canonicalRecordJson(input));
+  exactKeys(detached, ['header', 'steps'], 'native-stage-transition-source');
+  const { header, steps } = detached;
+  if (steps.length !== 15 || steps[14].readback === null)
+    revisionError('native-stage-transition-predecessor');
+  const sentinel = await reconstructNativeStageSentinel({ header, steps });
+  const { serializeEntryMarker } = await import('../stage-entry-grammar.mjs');
+  const { readMoveCompleteMarker } = await import('../move-state/sentinel.mjs');
+  const { deriveRecordedTransitionActor } = await import('../move-state/transition-commit.mjs');
+  const { canonicalLogin } = await import('../ownership-policy.mjs');
+  const { assertNativeLifecycleSourceData } = await import('./store.mjs');
+  assertNativeLifecycleSourceData({
+    source: header.guardCapture.lifecycleSources,
+    observation: header.original.observation,
+  });
+  const actor = deriveRecordedTransitionActor(header.original.actor.environment);
+  const marker = readMoveCompleteMarker(sentinel.afterBody.bytes);
+  const entry = steps[12].intent;
+  if (
+    actor !== header.intent.actor ||
+    marker?.state !== header.intent.target ||
+    marker.move !== header.intent.transitionId ||
+    marker.ts !== steps[14].intent.ts
+  )
+    revisionError('native-stage-transition-source');
+  const visitMarker = serializeEntryMarker({
+    state: header.intent.target,
+    visit: entry.visit,
+    ts: entry.entryTs,
+    move: header.intent.transitionId,
+  });
+  const record = deriveTransitionCommitRecord({
+    transitionId: header.intent.transitionId,
+    repository: header.scope.repository,
+    issue: header.scope.issue,
+    source: 'develop',
+    target: 'test',
+    visitMarker,
+    actor,
+    sentinelMarker: marker.match,
+  });
+  const body = renderTransitionCommitComment(record);
+  const identity = header.guardCapture.lifecycleSources.remote.identity;
+  if (identity.response.exitCode !== 0 || identity.response.stderr !== '')
+    revisionError('native-stage-transition-identity');
+  const login = identity.response.stdout.trim();
+  if (!canonicalLogin(login)) revisionError('native-stage-transition-identity');
+  const beforeResources = structuredClone(sentinel.resources);
+  nativeStageTimingPages({
+    repository: header.scope.repository,
+    issue: header.scope.issue,
+    comments: beforeResources.comments,
+  });
+  const next = Math.max(0, ...beforeResources.comments.map((value) => Number(value.id))) + 1;
+  const nodeId = `IC_memory_stage_${header.id.slice(7)}_16`;
+  if (
+    !Number.isSafeInteger(next) ||
+    next < 1 ||
+    beforeResources.comments.some((value) => value.nodeId === nodeId)
+  )
+    revisionError('native-stage-transition-allocation');
+  const commentBytes = JSON.stringify({
+    id: next,
+    node_id: nodeId,
+    issue_url: `https://api.github.com/repos/${header.scope.repository}/issues/${header.scope.issue}`,
+    body,
+    user: { login },
+  });
+  const intent = { record, commentId: String(next), nodeId, commentBytes };
+  const afterResources = structuredClone(beforeResources);
+  afterResources.comments.push({ id: String(next), nodeId, bytes: commentBytes });
+  nativeStageTimingPages({
+    repository: header.scope.repository,
+    issue: header.scope.issue,
+    comments: afterResources.comments,
+  });
+  return freezeStageData({
+    intent,
+    beforeResources,
+    afterResources,
+    body: sentinel.afterBody,
+    stage: sentinel.stage,
+    commentBody: body,
+  });
+}
+
+export async function reconstructNativeStageTransitionComment(input) {
+  const detached = JSON.parse(canonicalRecordJson(input));
+  exactKeys(detached, ['header', 'steps'], 'native-stage-transition-comment');
+  const { header, steps } = detached;
+  if (steps.length !== 16) revisionError('native-stage-transition-prefix');
+  validateNativeStageJournal({ schema: 'aitm.native-stage/v1', header, steps });
+  const derived = await deriveRecordedNativeTransitionComment({
+    header,
+    steps: steps.slice(0, 15),
+  });
+  const step = steps[15];
+  if (!same(step.intent, derived.intent)) revisionError('native-stage-transition-intent');
+  const body = reconstructNativeStageTransitionStep({
+    repository: header.scope.repository,
+    issue: header.scope.issue,
+    transitionId: header.intent.transitionId,
+    actor: header.intent.actor,
+    visitMarker: derived.intent.record.visitMarker,
+    sentinelMarker: (await import('../move-state/sentinel.mjs')).readMoveCompleteMarker(
+      derived.body.bytes
+    ).match,
+    ordinal: 16,
+    previous: hashBytes(canonicalRecordJson(steps[14])),
+    step: {
+      ordinal: 16,
+      kind: 'transition-comment',
+      previous: step.previous,
+      intent: { record: step.intent.record },
+      readback:
+        step.readback === null
+          ? null
+          : {
+              create: step.readback.create,
+              read: step.readback.read,
+            },
+    },
+  });
+  if (body.body !== derived.commentBody) revisionError('native-stage-transition-body');
+  if (
+    step.readback !== null &&
+    (step.readback.create.response.stdout !== derived.intent.commentBytes ||
+      step.readback.read.response.stdout !== derived.intent.commentBytes ||
+      body.commentId !== derived.intent.commentId ||
+      !same(step.readback.census, derived.afterResources.comments))
+  )
+    revisionError('native-stage-transition-readback');
+  return freezeStageData({
+    ...derived,
+    complete: step.readback !== null,
+    stepHash: hashBytes(canonicalRecordJson(step)),
+  });
+}
+
+// @story #1855 — original Test legacy onEnter program has no actions. This
+// historical DATA comparison does not authorize a current invocation.
+export async function reconstructNativeStageTailDispatch(input) {
+  const detached = JSON.parse(canonicalRecordJson(input));
+  exactKeys(detached, ['header', 'steps'], 'native-stage-tail-dispatch');
+  const { header, steps } = detached;
+  if (steps.length !== 17) revisionError('native-stage-tail-dispatch-prefix');
+  validateNativeStageJournal({ schema: 'aitm.native-stage/v1', header, steps });
+  const predecessor = await reconstructNativeStageTransitionComment({ header, steps: steps.slice(0, 16) });
+  if (!predecessor.complete) revisionError('native-stage-tail-dispatch-predecessor');
+  const readback = { actions: [], resources: predecessor.afterResources, body: predecessor.body, stage: predecessor.stage };
+  if (steps[16].readback !== null && !same(steps[16].readback, readback)) revisionError('native-stage-tail-dispatch-readback');
+  return freezeStageData({ ...readback, complete: steps[16].readback !== null });
 }

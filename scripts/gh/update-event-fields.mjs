@@ -2,13 +2,9 @@
 import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'update-event-fields');
 import { writeFileSync, unlinkSync } from 'node:fs';
-import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
-import {
-  ensureIssueFieldDb,
-  deriveNativeEventFieldBinding,
-} from '../task-tracker/issue-field-db.mjs';
+import { eventFieldUpdateProgram, eventFieldBodyWriteProgram } from '../task-tracker/lib/event-field-update.mjs';
 import { loadProjectFieldDefs, loadProjectFieldEvents } from '../task-tracker/project-fields.mjs';
 import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
@@ -67,70 +63,81 @@ function nowText() {
   return fmtTs(new Date());
 }
 
-function fieldTypeForKey(fieldDefs, key) {
-  return fieldDefs.find((d) => d.key === key)?.type || '';
-}
-
 async function fetchIssueBody() {
   const out = await gh(['issue', 'view', issue, '-R', cfg.repo, '--json', 'body']);
   return JSON.parse(out).body ?? '';
 }
 
 async function writeIssueBody(body) {
-  const tmp = path.join(projectTmpDir(projectDir()), `aitm-event-fields-${issue}-${Date.now()}.md`);
-  try {
-    writeFileSync(tmp, body, 'utf8');
-    await gh(['issue', 'edit', issue, '-R', cfg.repo, '--body-file', tmp]);
-  } finally {
+  const program = eventFieldBodyWriteProgram({ body, issue, cfg });
+  let next = program.next();
+  while (!next.done) {
+    const operation = next.value;
+    let value;
     try {
-      unlinkSync(tmp);
-    } catch {
-      /* best-effort: cleanup; failure is non-fatal */
+      switch (operation.kind) {
+        case 'tmp-directory':
+          value = projectTmpDir(projectDir());
+          break;
+        case 'tmp-clock':
+          value = Date.now();
+          break;
+        case 'write-file':
+          value = writeFileSync(operation.file, operation.body, operation.encoding);
+          break;
+        case 'edit-body':
+          value = await gh(operation.args);
+          break;
+        case 'unlink-file':
+          value = unlinkSync(operation.file);
+          break;
+        default:
+          throw new TypeError('event-field-body-operation');
+      }
+    } catch (error) {
+      next = program.throw(error);
+      continue;
     }
+    next = program.next(value);
   }
 }
 
 try {
   const eventName = STATE_TO_EVENT[state];
-  const bindings = loadProjectFieldEvents()[eventName] || [];
-  const fieldDefs = loadProjectFieldDefs(projectDir());
-  const issueBody = cfg.repo ? await fetchIssueBody() : '';
-  let ensured = ensureIssueFieldDb(issueBody, fieldDefs);
-  let values = { ...ensured.values };
-  let issueDbChanged = ensured.changed;
-  for (const binding of bindings) {
-    const fieldKey = binding.field;
-    const fieldId =
-      cfg.fieldIds?.[fieldKey] ||
-      cfg[`field${fieldKey[0].toUpperCase()}${fieldKey.slice(1)}`] ||
-      '';
-    const fieldType = fieldTypeForKey(fieldDefs, fieldKey);
-    let resolved;
-    if (binding.value === 'today') resolved = today();
-    else if (binding.value === 'now') resolved = nowText();
-    else continue;
-    const derived = deriveNativeEventFieldBinding({
-      fieldKey,
-      fieldType,
-      fieldId,
-      mode: binding.mode,
-      resolved,
-      values,
-    });
-    if (!derived.changed) continue;
-    values = derived.values;
-    issueDbChanged = true;
-    if (derived.fieldWrite)
-      await writeProjectFieldValue({
-        projectId: cfg.projectId,
-        itemId,
-        ...derived.fieldWrite,
-      });
-    console.log(`✓ ${fieldKey} set for #${issue}`);
-  }
-  if (issueDbChanged && issueBody) {
-    const updated = ensureIssueFieldDb(issueBody, fieldDefs, values);
-    await writeIssueBody(updated.body);
+  const program = eventFieldUpdateProgram({ cfg, issue, itemId, eventName });
+  let next = program.next();
+  while (!next.done) {
+    const operation = next.value;
+    let value;
+    switch (operation.kind) {
+      case 'read-bindings':
+        value = loadProjectFieldEvents()[operation.eventName];
+        break;
+      case 'read-definitions':
+        value = loadProjectFieldDefs(projectDir());
+        break;
+      case 'read-body':
+        value = await fetchIssueBody();
+        break;
+      case 'today':
+        value = today();
+        break;
+      case 'now':
+        value = nowText();
+        break;
+      case 'write-field':
+        value = await writeProjectFieldValue(operation.input);
+        break;
+      case 'log':
+        value = console.log(operation.message);
+        break;
+      case 'write-body':
+        value = await writeIssueBody(operation.body);
+        break;
+      default:
+        throw new TypeError('event-field-operation');
+    }
+    next = program.next(value);
   }
 } catch (err) {
   console.error(`error: event field update failed: ${err.message}`);

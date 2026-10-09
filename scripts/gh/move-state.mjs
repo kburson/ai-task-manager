@@ -22,13 +22,12 @@
 // Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]
 // States: backlog | refine | ready-for-plan | plan | develop | test | review | done
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { nativeMoveExecFile as pexec } from '../task-tracker/lib/move-state/native-command.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, projectItemForIssue } from './lib/github-projects.mjs';
-import { statusOptionFromData } from '../task-tracker/lib/move-state/github-mutation.mjs';
+import { statusOptionFromData, STATUS_NAME_QUERY, statusNameFromData } from '../task-tracker/lib/move-state/github-mutation.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { normalizeStateId } from '../task-tracker/lib/lifecycle-policy/index.mjs';
@@ -65,7 +64,6 @@ import { resolveReviewAuthority } from '../task-tracker/lib/human-reviewer-audit
 import { commitPlanExitOwnershipClaim } from '../task-tracker/lib/plan-exit-ownership-guard.mjs';
 import { createTransitionId } from '../task-tracker/lib/move-state/transition-commit.mjs';
 
-const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 // Opaque in-process authority for the authenticated Shelve transaction. A
@@ -222,26 +220,10 @@ export async function runMoveStateHost({
           const { gql, splitRepo } = await import('./lib/github-projects.mjs');
           const { owner, repoName } = splitRepo(cfg.repo);
           const data = await gql(
-            `
-        query($owner: String!, $repo: String!, $issue: Int!) {
-          repository(owner: $owner, name: $repo) {
-            issue(number: $issue) {
-              projectItems(first: 10) {
-                nodes {
-                  project { id }
-                  fieldValueByName(name: "Status") {
-                    ... on ProjectV2ItemFieldSingleSelectValue { name }
-                  }
-                }
-              }
-            }
-          }
-        }`,
+            STATUS_NAME_QUERY,
             { owner, repo: repoName, issue: Number(issueNumber) }
           );
-          const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-          const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-          return normalizeStateId(node?.fieldValueByName?.name) || '';
+          return statusNameFromData(data, cfg);
         } catch {
           return '';
         }

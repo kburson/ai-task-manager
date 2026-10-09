@@ -3,6 +3,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { createSandbox } from '../../../helpers/evidence-v2/sandbox.mjs';
 import { createHash } from 'node:crypto';
 import {
   mkdirSync,
@@ -331,7 +334,7 @@ test('recorded stage actor candidate validates original native arithmetic agains
       state,
       marker: { line: marker.line, words: marker.words, wordsFull: marker.wordsFull },
       identity: capture.identity,
-      offsetMin: -new Date(capture.ts).getTimezoneOffset(),
+      offsetMin: 0 - new Date(capture.ts).getTimezoneOffset(),
     };
     assert.equal(await stage.assertRecordedStageActorCandidate(input), undefined);
     assert.equal(
@@ -342,6 +345,12 @@ test('recorded stage actor candidate validates original native arithmetic agains
     assert.equal(capture.candidate.cursor.after.words, 13);
     assert.equal(capture.candidate.cursor.after.wordsFull, 23);
     for (const [label, change] of [
+      [
+        'noncanonical negative zero offset',
+        (x) => {
+          x.offsetMin = -0;
+        },
+      ],
       [
         'local marker',
         (x) => {
@@ -406,3 +415,30 @@ test('recorded stage actor candidate validates original native arithmetic agains
       );
     }
   }));
+
+// The original phase case exercises the actual private emitter capture and
+// durable phase intent. UTC must produce canonical +0 without weakening the
+// canonical validator's refusal of caller-supplied negative zero.
+test('native phase UTC metadata reaches its original durable intent', { timeout: 600000 }, (t) => {
+  const isolation = createSandbox();
+  try {
+    const output = execFileSync(
+      process.execPath,
+      [
+        '--test',
+        fileURLToPath(
+          new URL('./native-stage-phase-11-prefix-after-intent-write.test.mjs', import.meta.url)
+        ),
+      ],
+      {
+        cwd: isolation.context.sourceRoot,
+        env: { ...isolation.env, AITM_NATIVE_STAGE_CONTEXT: '1', TZ: 'UTC' },
+        encoding: 'utf8',
+        timeout: 590000,
+      }
+    );
+    t.diagnostic(output);
+  } finally {
+    isolation.dispose();
+  }
+});

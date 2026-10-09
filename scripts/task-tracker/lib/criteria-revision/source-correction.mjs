@@ -732,6 +732,33 @@ async function replayNativeEpoch({
         );
         expectedStageObservation.stage = sentinel.stage;
       }
+      if (j.steps.length === 16) {
+        const { reconstructNativeStageTransitionComment } = await import('./stage-execution.mjs');
+        const comment = await reconstructNativeStageTransitionComment({
+          header: j.header,
+          steps: j.steps,
+        });
+        const after = equal(resources, comment.afterResources);
+        const before = j.steps[15].readback === null && equal(resources, comment.beforeResources);
+        if (
+          (!after && !before) ||
+          !equal(observation.body, comment.body) ||
+          observation.stage !== comment.stage ||
+          !equal(resources, backend.snapshot.nativeStageResources)
+        )
+          revisionError('native-stage-transition-prefix');
+        exactPrefix = true;
+        expectedStageObservation.body = structuredClone(comment.body);
+        expectedStageObservation.stage = comment.stage;
+      }
+      if (j.steps.length === 17) {
+        const { reconstructNativeStageTailDispatch } = await import('./stage-execution.mjs');
+        const dispatch = await reconstructNativeStageTailDispatch({ header: j.header, steps: j.steps });
+        if (!equal(resources, dispatch.resources) || !equal(observation.body, dispatch.body) || observation.stage !== dispatch.stage || !equal(resources, backend.snapshot.nativeStageResources)) revisionError('native-stage-tail-dispatch-prefix');
+        exactPrefix = true;
+        expectedStageObservation.body = structuredClone(dispatch.body);
+        expectedStageObservation.stage = dispatch.stage;
+      }
       if (
         !sameRevisionObservation(projected, expectedStageObservation) ||
         !exactPrefix ||
