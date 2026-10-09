@@ -6,7 +6,7 @@
 
 **Spec:** docs/superpowers/specs/2026-09-30-1847-governed-criteria-revisions-design.md, writer-domain/interlock sections; original Task5 and current #1909 Scope.
 
-**Architecture:** Reuse existing withRevisionConsumer, authenticated interlock and public issue-lock boundaries. Add missing public-adapter boundaries without replacing their algorithms, accepting caller readiness, activating a production collector or changing lock ownership. Nested delegates reuse the actual held capability and reobserve authority.
+**Architecture:** Reuse existing withRevisionConsumer, authenticated interlock and public issue-lock boundaries. Add missing public-adapter boundaries without replacing their algorithms, accepting caller readiness, activating a production collector or changing lock ownership. Nested delegates reuse the actual held capability and read authority again.
 
 **Tech Stack:** Node.js scripts, node:test, existing real adapters and isolated filesystem fixtures. No new native binary/addon.
 
