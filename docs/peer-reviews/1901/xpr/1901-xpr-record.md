@@ -4,11 +4,11 @@ Review ID: `review-7ab4a2020215fd8c5d63b00c7253dcdb`.
 
 Codex (`gpt-6.1-sol`, medium effort) was the author. Claude Opus 5.5 (`claude-opus-5-5`, high effort) was the reviewer, using the same native Claude session across all three passes. This was a normal commit-mode XPR using the global/local ai-peer-review 0.4.1 setup. Authority assurance is `unavailable`; acceptance is reviewer consensus, not a signed human attestation or issue lifecycle approval.
 
-The input was the spec already reviewed by Astra 6 high in the [manual SAR record](https://github.com/kburson/ai-task-manager/issues/1901#issuecomment-6068898651). The XPR completed with Claude acceptance and package-owned finalization. No required changes remain. Two nonblocking round-3 suggestions are retained for implementation planning, without editing the accepted artifact after acceptance.
+The input was the spec already reviewed by Astra 6 high in the [manual SAR record](../../spec/2026-10-08-1901-astra-sar.md). The XPR completed with Claude acceptance and package-owned finalization. No required changes remain. Two nonblocking round-3 suggestions are retained for implementation planning, without editing the accepted artifact after acceptance.
 
 ## Artifact and commits
 
-- Specification: `docs/superpowers/specs/2026-10-08-1901-event-derived-timing-design.md`.
+- Specification: [Accepted design](https://github.com/kburson/ai-task-manager/blob/bb24dd7ec75c43e3cb0acfbe4803d51a58ef3cd8/docs/superpowers/specs/2026-10-08-1901-event-derived-timing-design.md).
 - Input commit: `06743dbddd6f9001d60b5674e52824230aead9f0`.
 - Revision 1: `1e6f2461a1db7b2ab07119cdc57447fd60b2eb9d`.
 - Revision 2 and accepted artifact commit: `bb24dd7ec75c43e3cb0acfbe4803d51a58ef3cd8`.
@@ -16,7 +16,7 @@ The input was the spec already reviewed by Astra 6 high in the [manual SAR recor
 - Finalization commit: `aa5bfc190213a568afc5a18e4e5a98e949f3d8b3`.
 - Manifest digest: `sha256:c0331fa53b619f5a7e5df58e610b8bb83e2ad1885eeb082d7e329ab55af42196`.
 
-The manifest names revision 2 as its final artifact commit; the later finalization commit seals the review collateral. These are distinct commits. All commits are local; publication of these comments does not imply a branch push or PR.
+The manifest names revision 2 as its final artifact commit; the later finalization commit seals the review collateral. These are distinct commits. This record originally preceded branch publication. The artifact and review collateral were subsequently pushed to origin; comment publication alone is not proof of a push or PR.
 
 ## Round record
 
@@ -26,7 +26,7 @@ The manifest names revision 2 as its final artifact commit; the later finalizati
 | 2 | Revisions requested: two required findings, two optional suggestions. | Shared-log activation authority and protected-slice append behavior resolved. Symmetric Idle evidence and availability states included; new dead-session operator command deferred to runtime scope. |
 | 3 | Accepted: no required changes, two nonblocking clarity suggestions. | Accepted artifact preserved exactly. Consolidation/precedence and the future-only activation marker carrier are carried forward to implementation planning. |
 
-Each sealed reviewer response and both author dispositions are posted separately below and retained in the committed review directory. The full notes, including declined or deferred suggestions, are the source for each pass; this table is an index.
+Each sealed reviewer response and both author dispositions are retained in the committed review directory and linked below; issue comments provide concise pointers. The full notes, including declined or deferred suggestions, are the source for each pass; this table is an index.
 
 ## Protocol timing
 
@@ -63,9 +63,9 @@ Authoritative `peer-review status` reports `accepted`, revision 9, no next actio
 
 Record directory: `docs/peer-reviews/1901/xpr/spec/2026-10-08-2026-10-08-1901-event-derived-timing-design-review-7ab4a2020215fd8c5d63b00c7253dcdb`.
 
-## Posted review evidence
+## Git-tracked review evidence
 
-- [Reviewer pass 1](https://github.com/kburson/ai-task-manager/issues/1901#issuecomment-6069268844) and [author revision 1](https://github.com/kburson/ai-task-manager/issues/1901#issuecomment-6069270729).
-- [Reviewer pass 2](https://github.com/kburson/ai-task-manager/issues/1901#issuecomment-6069884526) and [author revision 2](https://github.com/kburson/ai-task-manager/issues/1901#issuecomment-6069887888).
-- [Reviewer pass 3: accepted](https://github.com/kburson/ai-task-manager/issues/1901#issuecomment-6069889519).
-- [Final sealed review manifest](https://github.com/kburson/ai-task-manager/issues/1901#issuecomment-6069891027).
+- [Reviewer pass 1](spec/2026-10-08-2026-10-08-1901-event-derived-timing-design-review-7ab4a2020215fd8c5d63b00c7253dcdb/review-7ab4a2020215fd8c5d63b00c7253dcdb-reviewer-response-1.md) and [author revision 1](spec/2026-10-08-2026-10-08-1901-event-derived-timing-design-review-7ab4a2020215fd8c5d63b00c7253dcdb/review-7ab4a2020215fd8c5d63b00c7253dcdb-author-response-1.md).
+- [Reviewer pass 2](spec/2026-10-08-2026-10-08-1901-event-derived-timing-design-review-7ab4a2020215fd8c5d63b00c7253dcdb/review-7ab4a2020215fd8c5d63b00c7253dcdb-reviewer-response-2.md) and [author revision 2](spec/2026-10-08-2026-10-08-1901-event-derived-timing-design-review-7ab4a2020215fd8c5d63b00c7253dcdb/review-7ab4a2020215fd8c5d63b00c7253dcdb-author-response-2.md).
+- [Reviewer pass 3: accepted](spec/2026-10-08-2026-10-08-1901-event-derived-timing-design-review-7ab4a2020215fd8c5d63b00c7253dcdb/review-7ab4a2020215fd8c5d63b00c7253dcdb-reviewer-response-3.md).
+- [Final sealed review manifest](spec/2026-10-08-2026-10-08-1901-event-derived-timing-design-review-7ab4a2020215fd8c5d63b00c7253dcdb/review-7ab4a2020215fd8c5d63b00c7253dcdb-review-manifest.md).
