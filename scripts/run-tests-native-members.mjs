@@ -2,6 +2,156 @@
 // @story #1855
 // Reviewed semantic membership, never the discovery universe. Unknown native files refuse.
 export const NATIVE_SERIAL_MEMBERS = Object.freeze({
+  'scripts/tests/integration/task-tracker/lib/native-stage-tail-dispatch-reentry.test.mjs': {
+    section: 'native/tail/dispatch-reentry',
+    registration: { mode: 'tail-dispatch-reentry', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-tail-dispatch.test.mjs': {
+    section: 'native/tail/dispatch',
+    registration: { mode: 'tail-dispatch', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-recovery-from-comment.test.mjs': {
+    section: 'native/recovery/from-comment',
+    registration: { mode: 'recovery-from-comment', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-history.test.mjs': {
+    section: 'native/transition-comment/history',
+    registration: { mode: 'transition-history', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-result-custody.test.mjs': {
+    section: 'native/transition-comment/result-custody',
+    registration: { mode: 'transition-result-custody', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-comment.test.mjs': {
+    section: 'native/transition-comment',
+    registration: { mode: 'transition-comment', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-create-response.test.mjs': {
+    section: 'native/transition-comment/create-custody',
+    registration: { mode: 'transition-create-response', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-create-parsed.test.mjs': {
+    section: 'native/transition-comment/create-custody',
+    registration: { mode: 'transition-create-parsed', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-read-response.test.mjs': {
+    section: 'native/transition-comment/read-custody',
+    registration: { mode: 'transition-read-response', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-read-parsed.test.mjs': {
+    section: 'native/transition-comment/read-custody',
+    registration: { mode: 'transition-read-parsed', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-request-accessor.test.mjs': {
+    section: 'native/transition-comment/current',
+    registration: { mode: 'transition-request-accessor', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-current-config.test.mjs': {
+    section: 'native/transition-comment/current',
+    registration: { mode: 'transition-current-config', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-intent-write-failBefore.test.mjs':
+    {
+      section: 'native/transition-comment/intent',
+      registration: {
+        mode: 'transition-comment-prefix',
+        when: 'failBefore',
+        suffix: 'intent-write',
+      },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-intent-write-failAfter.test.mjs':
+    {
+      section: 'native/transition-comment/intent',
+      registration: {
+        mode: 'transition-comment-prefix',
+        when: 'failAfter',
+        suffix: 'intent-write',
+      },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-intent-readback-failBefore.test.mjs':
+    {
+      section: 'native/transition-comment/intent',
+      registration: {
+        mode: 'transition-comment-prefix',
+        when: 'failBefore',
+        suffix: 'intent-readback',
+      },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-intent-readback-failAfter.test.mjs':
+    {
+      section: 'native/transition-comment/intent',
+      registration: {
+        mode: 'transition-comment-prefix',
+        when: 'failAfter',
+        suffix: 'intent-readback',
+      },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-effect-write-failBefore.test.mjs':
+    {
+      section: 'native/transition-comment/effect',
+      registration: {
+        mode: 'transition-comment-prefix',
+        when: 'failBefore',
+        suffix: 'effect-write',
+      },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-effect-write-failAfter.test.mjs':
+    {
+      section: 'native/transition-comment/effect',
+      registration: {
+        mode: 'transition-comment-prefix',
+        when: 'failAfter',
+        suffix: 'effect-write',
+      },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-effect-readback-failBefore.test.mjs':
+    {
+      section: 'native/transition-comment/effect',
+      registration: {
+        mode: 'transition-comment-prefix',
+        when: 'failBefore',
+        suffix: 'effect-readback',
+      },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-effect-readback-failAfter.test.mjs':
+    {
+      section: 'native/transition-comment/effect',
+      registration: {
+        mode: 'transition-comment-prefix',
+        when: 'failAfter',
+        suffix: 'effect-readback',
+      },
+    },
+
+  'scripts/tests/integration/task-tracker/lib/native-stage-consistency-result-accessor.test.mjs': {
+    section: 'native/consistency-result-custody',
+    registration: { mode: 'consistency-result-accessor', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-consistency-current-config.test.mjs': {
+    section: 'native/consistency-read-continuity',
+    registration: { mode: 'consistency-current-config', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-consistency-request-value.test.mjs': {
+    section: 'native/consistency-read-continuity',
+    registration: { mode: 'consistency-request-value', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-consistency-response-accessor.test.mjs':
+    {
+      section: 'native/consistency-read-continuity',
+      registration: { mode: 'consistency-response-accessor', when: null, suffix: null },
+    },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-result-accessor.test.mjs': {
+    section: 'native/entry-return-custody',
+    registration: { mode: 'entry-result-accessor', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-result-value.test.mjs': {
+    section: 'native/entry-return-custody',
+    registration: { mode: 'entry-result-value', when: null, suffix: null },
+  },
+  'scripts/tests/integration/task-tracker/lib/native-stage-entry-result-prototype.test.mjs': {
+    section: 'native/entry-return-custody',
+    registration: { mode: 'entry-result-prototype', when: null, suffix: null },
+  },
   'scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-token-accessor.test.mjs':
     {
       section: 'native/sentinel/persist-token',

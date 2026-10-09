@@ -1,6 +1,11 @@
 // @story #1117 #1461
 
 import { createHash, randomUUID } from 'node:crypto';
+import {
+  assertRevisionStageHostEffect,
+  isMemoryStageEffectScope,
+} from '../criteria-revision/transport-quarantine.mjs';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 
 import {
   canonicalJson,
@@ -110,27 +115,133 @@ function commentBody(comment) {
   return typeof comment === 'string' ? comment : comment?.body;
 }
 
-async function defaultCreateComment(ctx, body) {
-  const { stdout } = await ctx.pexec(
-    'gh',
-    [
-      'api',
-      `repos/${ctx.cfg.repo}/issues/${ctx.issueArg}/comments`,
-      '--method',
-      'POST',
-      '-f',
-      `body=${body}`,
-    ],
-    { timeout: 15_000 }
-  );
-  return JSON.parse(stdout);
+// Original lexical calls and parsed returns only. No public registration route.
+const nativeTransitionCalls = new WeakMap();
+const nativeTransitionResults = new WeakMap();
+function captureTransitionData(value) {
+  // Canonical validation refuses nested accessors before reading values.
+  const bytes = canonicalRecordJson(value);
+  const nodes = [];
+  function capture(current) {
+    if (!current || typeof current !== 'object') return;
+    const descriptors = Object.getOwnPropertyDescriptors(current);
+    nodes.push({ value: current, prototype: Object.getPrototypeOf(current), descriptors });
+    for (const descriptor of Object.values(descriptors)) capture(descriptor.value);
+  }
+  capture(value);
+  return { value, bytes, nodes };
 }
-
-async function defaultReadComment(ctx, id) {
-  const { stdout } = await ctx.pexec('gh', ['api', `repos/${ctx.cfg.repo}/issues/comments/${id}`], {
-    timeout: 15_000,
-  });
-  return JSON.parse(stdout);
+function assertTransitionData(retained, value) {
+  if (!retained || retained.value !== value)
+    throw new TypeError('native-transition-result-custody');
+  for (const node of retained.nodes) {
+    const current = Object.getOwnPropertyDescriptors(node.value),
+      original = node.descriptors;
+    if (
+      Object.getPrototypeOf(node.value) !== node.prototype ||
+      Reflect.ownKeys(current).length !== Reflect.ownKeys(original).length ||
+      Reflect.ownKeys(current).some((key) => {
+        const a = current[key],
+          b = original[key];
+        return (
+          !b ||
+          !Object.hasOwn(a, 'value') ||
+          a.value !== b.value ||
+          a.enumerable !== b.enumerable ||
+          a.writable !== b.writable ||
+          a.configurable !== b.configurable
+        );
+      })
+    )
+      throw new TypeError('native-transition-result-custody');
+  }
+  if (canonicalRecordJson(value) !== retained.bytes)
+    throw new TypeError('native-transition-result-custody');
+}
+function transitionCall(input, ctx) {
+  const call = nativeTransitionCalls.get(input);
+  if (!call || call.ctx !== ctx) throw new TypeError('native-transition-call');
+  call.code.assertNativeStageTransitionInput(input, ctx, call.evidence);
+  for (const item of [call.created, call.found]) if (item) assertTransitionData(item, item.value);
+  return call;
+}
+export function assertOriginalNativeTransitionResult(input, ctx, result) {
+  const retained = nativeTransitionResults.get(result);
+  if (!retained || retained.input !== input || retained.ctx !== ctx)
+    throw new TypeError('native-transition-result-custody');
+  assertTransitionData(retained.created, retained.created.value);
+  assertTransitionData(retained.found, retained.found.value);
+  assertTransitionData(retained.result, result);
+}
+async function defaultCreateComment(ctx, body, nativeInput) {
+  let stdout;
+  if (nativeInput) {
+    const call = transitionCall(nativeInput, ctx);
+    const request = {
+      file: 'gh',
+      args: [
+        'api',
+        `repos/${ctx.cfg.repo}/issues/${ctx.issueArg}/comments`,
+        '--method',
+        'POST',
+        '-f',
+        `body=${body}`,
+      ],
+      options: { timeout: 15_000 },
+    };
+    const response = await call.code.createNativeStageTransitionComment(nativeInput, request);
+    transitionCall(nativeInput, ctx);
+    call.code.assertNativeStageTransitionCreateResponse(nativeInput, request, response);
+    ({ stdout } = response);
+  } else {
+    assertRevisionStageHostEffect();
+    ({ stdout } = await ctx.pexec(
+      'gh',
+      [
+        'api',
+        `repos/${ctx.cfg.repo}/issues/${ctx.issueArg}/comments`,
+        '--method',
+        'POST',
+        '-f',
+        `body=${body}`,
+      ],
+      { timeout: 15_000 }
+    ));
+  }
+  const parsed = JSON.parse(stdout);
+  if (nativeInput) {
+    const call = transitionCall(nativeInput, ctx);
+    if (call.created) throw new TypeError('native-transition-create-reentrant');
+    call.created = captureTransitionData(parsed);
+  }
+  return parsed;
+}
+async function defaultReadComment(ctx, id, nativeInput) {
+  let stdout;
+  if (nativeInput) {
+    const call = transitionCall(nativeInput, ctx);
+    const request = {
+      file: 'gh',
+      args: ['api', `repos/${ctx.cfg.repo}/issues/comments/${id}`],
+      options: { timeout: 15_000 },
+    };
+    const response = await call.code.readNativeStageTransitionComment(nativeInput, request);
+    transitionCall(nativeInput, ctx);
+    call.code.assertNativeStageTransitionReadResponse(nativeInput, request, response);
+    ({ stdout } = response);
+  } else {
+    assertRevisionStageHostEffect();
+    ({ stdout } = await ctx.pexec('gh', ['api', `repos/${ctx.cfg.repo}/issues/comments/${id}`], {
+      timeout: 15_000,
+    }));
+  }
+  const parsed = JSON.parse(stdout);
+  if (nativeInput) {
+    const call = transitionCall(nativeInput, ctx);
+    if (call.found) throw new TypeError('native-transition-read-reentrant');
+    call.found = captureTransitionData(parsed);
+  }
+  return parsed;
 }
 
 const stageCensusContexts = new WeakMap();
@@ -320,27 +431,64 @@ function transitionRecord(ctx, evidence = {}) {
   });
 }
 
-export async function writeTransitionCommit(ctx, evidence = {}) {
-  if (ctx.SKIP_NETWORK) return Object.freeze({ verified: true, skipped: true });
-  const record = transitionRecord(ctx, evidence);
-  const body = renderTransitionCommitComment(record);
-  const create = ctx.deps?.createTransitionComment || ((value) => defaultCreateComment(ctx, value));
-  const read = ctx.deps?.readTransitionComment || ((id) => defaultReadComment(ctx, id));
-  const created = await create(body, record);
-  const id = commentId(created);
-  const found = await read(id);
-  const foundBody = commentBody(found);
-  if (foundBody !== body || fingerprint(foundBody) !== fingerprint(body)) {
-    throw new Error('transition-commit:readback-mismatch');
+export async function writeTransitionCommit(ctx, evidence = {}, nativeInput) {
+  const memory = isMemoryStageEffectScope();
+  if (memory) {
+    // No supplied context/evidence property is consumed before original membership.
+    const code = await import('./move-state-core.mjs');
+    code.assertNativeStageTransitionInput(nativeInput, ctx, evidence);
+    if (nativeTransitionCalls.has(nativeInput)) throw new TypeError('native-transition-reentrant');
+    nativeTransitionCalls.set(nativeInput, { ctx, evidence, code });
+  } else assertRevisionStageHostEffect();
+  try {
+    if (ctx.SKIP_NETWORK) return Object.freeze({ verified: true, skipped: true });
+    const record = transitionRecord(ctx, evidence);
+    const body = renderTransitionCommitComment(record);
+    const create = memory
+      ? (value) => defaultCreateComment(ctx, value, nativeInput)
+      : ctx.deps?.createTransitionComment || ((value) => defaultCreateComment(ctx, value));
+    const read = memory
+      ? (id) => defaultReadComment(ctx, id, nativeInput)
+      : ctx.deps?.readTransitionComment || ((id) => defaultReadComment(ctx, id));
+    const created = await create(body, record);
+    if (memory) {
+      const call = transitionCall(nativeInput, ctx);
+      assertTransitionData(call.created, created);
+    }
+    const id = commentId(created);
+    const found = await read(id);
+    if (memory) {
+      const call = transitionCall(nativeInput, ctx);
+      assertTransitionData(call.found, found);
+    }
+    const foundBody = commentBody(found);
+    if (foundBody !== body || fingerprint(foundBody) !== fingerprint(body)) {
+      throw new Error('transition-commit:readback-mismatch');
+    }
+    const verified = parseTransitionCommitComment(foundBody);
+    if (verified.transitionId !== ctx.transitionId) {
+      throw new Error('transition-commit:readback-identity');
+    }
+    const result = Object.freeze({ verified: true, commentId: id, record: verified, body });
+    if (memory) {
+      const call = transitionCall(nativeInput, ctx);
+      nativeTransitionResults.set(result, {
+        input: nativeInput,
+        ctx,
+        created: call.created,
+        found: call.found,
+        result: captureTransitionData(result),
+      });
+    }
+    return result;
+  } finally {
+    if (memory) nativeTransitionCalls.delete(nativeInput);
   }
-  const verified = parseTransitionCommitComment(foundBody);
-  if (verified.transitionId !== ctx.transitionId) {
-    throw new Error('transition-commit:readback-identity');
-  }
-  return Object.freeze({ verified: true, commentId: id, record: verified, body });
 }
 
-export async function repairTransitionCommit(ctx) {
+// Private original repair control. Yielded operations are DATA only; the
+// public host wrapper retains its original lexical calls and assignments.
+function* transitionRepairProgram(ctx) {
   if (ctx.SKIP_NETWORK || ctx.transitionCommit?.verified) {
     return Object.freeze({ status: 'no-op' });
   }
@@ -351,8 +499,7 @@ export async function repairTransitionCommit(ctx) {
   ) {
     return Object.freeze({ status: 'unavailable' });
   }
-  const list = ctx.deps?.listTransitionComments || (() => defaultListComments(ctx));
-  const comments = await list();
+  const comments = yield { kind: 'list-comments' };
   for (const comment of comments || []) {
     try {
       const record = parseTransitionCommitComment(commentBody(comment));
@@ -363,9 +510,37 @@ export async function repairTransitionCommit(ctx) {
       // Unrelated or malformed comments are not candidates for this repair.
     }
   }
-  const written = await writeTransitionCommit(ctx, ctx.transitionEvidence);
-  ctx.transitionCommit = written;
+  const written = yield { kind: 'write-comment', evidence: ctx.transitionEvidence };
+  yield { kind: 'assign-transition', value: written };
   return Object.freeze({ status: 'repaired', ...written });
+}
+export async function repairTransitionCommit(ctx) {
+  assertRevisionStageHostEffect();
+  const program = transitionRepairProgram(ctx);
+  let next = program.next();
+  while (!next.done) {
+    const operation = next.value;
+    let value;
+    // Original list/write/assignment errors are outside the per-comment parse
+    // catch. They propagate directly instead of being fed into that catch.
+    switch (operation.kind) {
+      case 'list-comments': {
+        const list = ctx.deps?.listTransitionComments || (() => defaultListComments(ctx));
+        value = await list();
+        break;
+      }
+      case 'write-comment':
+        value = await writeTransitionCommit(ctx, operation.evidence);
+        break;
+      case 'assign-transition':
+        ctx.transitionCommit = operation.value;
+        break;
+      default:
+        throw new TypeError('transition-repair-operation');
+    }
+    next = program.next(value);
+  }
+  return next.value;
 }
 
 function ordinalRelation(current, head) {

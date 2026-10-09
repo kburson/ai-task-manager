@@ -1,6 +1,6 @@
 // @story #1851
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
@@ -8,7 +8,11 @@ import {
   makeCanonicalRevisionFixture,
 } from '../../../../fixtures/criteria-revision.mjs';
 import { deriveProposal } from '../../../../../task-tracker/lib/criteria-revision/proposal.mjs';
-import { validateRevisionRequest } from '../../../../../task-tracker/lib/criteria-revision/schema.mjs';
+import {
+  validateRevisionRequest,
+  validateRevisionProposal,
+} from '../../../../../task-tracker/lib/criteria-revision/schema.mjs';
+import { withRevisionValidation } from '../../../../../task-tracker/lib/criteria-revision/records.mjs';
 import { canonicalRecordJson } from '../../../../../task-tracker/lib/github-records/canonical-json.mjs';
 import { resolveCoordinatorAuthority } from '../../../../../task-tracker/lib/github-records/coordination-authority.mjs';
 import { COMMAND_CATALOG } from '../../../../../task-tracker/lib/command-surface/catalog.mjs';
@@ -175,5 +179,432 @@ test('closed canonical added-root request reproduces contract-resolvable declara
     p.after.definitions
       .filter((x) => x.declaration.kind === 'vc-list')
       .every((x) => x.declaration.vcIds.every((id) => ids.has(id)))
+  );
+});
+
+// @story #1855
+test('one synchronous validation scope hashes an equal-byte proposal once and expires on return', () => {
+  const f = makeLegacyRevisionFixture();
+  const first = structuredClone(f.proposal);
+  const second = structuredClone(first);
+  const rest = { ...first };
+  delete rest.proposalDigest;
+  const expectedBytes = canonicalRecordJson(rest);
+  const prototype = Object.getPrototypeOf(createHash('sha256'));
+  const original = Object.getOwnPropertyDescriptor(prototype, 'update');
+  assert.equal(typeof original.value, 'function');
+  let digestReads = 0;
+  Object.defineProperty(prototype, 'update', {
+    ...original,
+    value: function (...args) {
+      const result = Reflect.apply(original.value, this, args);
+      if (args[0] === expectedBytes && args[1] === 'utf8') digestReads++;
+      return result;
+    },
+  });
+  try {
+    withRevisionValidation(() => {
+      assert.equal(validateRevisionProposal(first), first);
+      assert.equal(validateRevisionProposal(second), second);
+    });
+    assert.equal(digestReads, 1);
+    assert.notEqual(first, second);
+    assert.deepEqual(first, second);
+    assert.equal(validateRevisionProposal(first), first);
+    assert.equal(digestReads, 2);
+  } finally {
+    Object.defineProperty(prototype, 'update', original);
+  }
+  assert.deepEqual(Object.getOwnPropertyDescriptor(prototype, 'update'), original);
+});
+
+// Proposed append after the independently retained counter RED.
+test('schema scope preserves exact cold refusal and detects changed or repaired DATA', () => {
+  const f = makeLegacyRevisionFixture();
+  const cases = [
+    [
+      'request keys',
+      (r) => {
+        r.extra = true;
+      },
+      'criteria-revision:keys',
+    ],
+    [
+      'action',
+      (r) => {
+        r.action = 'other';
+      },
+      'criteria-revision:action',
+    ],
+    [
+      'mode',
+      (r) => {
+        r.proposal.mode = 'other';
+      },
+      'criteria-revision:mode',
+    ],
+    [
+      'digest',
+      (r) => {
+        r.proposal.proposalDigest = 'sha256:' + '0'.repeat(64);
+      },
+      'criteria-revision:proposal-digest',
+    ],
+    [
+      'nested keys',
+      (r) => {
+        r.proposal.executor.extra = true;
+      },
+      'criteria-revision:keys',
+    ],
+    [
+      'authorization',
+      (r) => {
+        r.authorizationSource.messageId = 'bad.message';
+      },
+      'workflow-exception-authority:source',
+    ],
+    [
+      'non-finite',
+      (r) => {
+        r.proposal.reason = Infinity;
+      },
+      'canonical-json:invalid:number',
+    ],
+    [
+      'signed zero',
+      (r) => {
+        r.proposal.reason = -0;
+      },
+      'canonical-json:invalid:number',
+    ],
+    [
+      'unicode',
+      (r) => {
+        r.proposal.reason = String.fromCharCode(0xd800);
+      },
+      'canonical-json:invalid:unicode',
+    ],
+    [
+      'resealed body',
+      (r) => {
+        r.proposal.writeSet[0].afterBytes = 'arbitrary body';
+        r.proposal.writeSet[0].afterHash =
+          'sha256:' + createHash('sha256').update('arbitrary body').digest('hex');
+        reseal(r.proposal);
+      },
+      'criteria-revision:derived-proposal',
+    ],
+  ];
+  const failure = (input, expected) => {
+    let error;
+    try {
+      validateRevisionRequest(input);
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.equal(Object.getPrototypeOf(error), TypeError.prototype);
+    assert.equal(error.message, expected);
+    assert.equal(error.code, undefined);
+    return { message: error.message, code: error.code, prototype: Object.getPrototypeOf(error) };
+  };
+  for (const [name, mutate, expected] of cases) {
+    const cold = structuredClone(f.request);
+    mutate(cold);
+    const originalFailure = failure(cold, expected);
+    withRevisionValidation(() => {
+      const warm = structuredClone(f.request);
+      assert.equal(validateRevisionRequest(warm), warm, name);
+      mutate(warm);
+      assert.deepEqual(failure(warm, expected), originalFailure, name);
+      const repaired = structuredClone(f.request);
+      assert.equal(validateRevisionRequest(repaired), repaired, name);
+    });
+    assert.deepEqual(failure(cold, expected), originalFailure, name);
+  }
+});
+
+test('schema scope rechecks nested accessors and preserves original input identity', () => {
+  const f = makeLegacyRevisionFixture();
+  let gets = 0;
+  withRevisionValidation(() => {
+    const input = structuredClone(f.request);
+    assert.equal(validateRevisionRequest(input), input);
+    Object.defineProperty(input.proposal, 'reason', {
+      enumerable: true,
+      configurable: true,
+      get() {
+        gets++;
+        return f.proposal.reason;
+      },
+    });
+    assert.throws(() => validateRevisionRequest(input), {
+      message: 'canonical-json:invalid:property',
+    });
+    assert.equal(gets, 0);
+    const reordered = Object.fromEntries(Object.entries(f.request).reverse());
+    assert.equal(validateRevisionRequest(reordered), reordered);
+    assert.notEqual(reordered, f.request);
+  });
+});
+
+test('schema bridge retains original records callback then observation and cleanup order', async () => {
+  const f = makeLegacyRevisionFixture();
+  let thenReads = 0,
+    calls = 0;
+  const value = {
+    get then() {
+      thenReads++;
+      return undefined;
+    },
+  };
+  assert.equal(
+    withRevisionValidation(() => {
+      calls++;
+      validateRevisionRequest(f.request);
+      return withRevisionValidation(() => {
+        calls++;
+        return value;
+      });
+    }),
+    value
+  );
+  assert.equal(calls, 2);
+  assert.equal(thenReads, 1);
+  const marker = new Error('original then failure');
+  assert.throws(
+    () =>
+      withRevisionValidation(() => ({
+        get then() {
+          thenReads++;
+          throw marker;
+        },
+      })),
+    (error) => error === marker
+  );
+  assert.equal(thenReads, 2);
+  const promise = Promise.resolve('original');
+  assert.throws(() => withRevisionValidation(() => promise), {
+    message: 'criteria-revision:async-validation-scope',
+  });
+  assert.equal(await promise, 'original');
+  assert.equal(validateRevisionRequest(f.request), f.request);
+});
+test('one synchronous validation scope avoids equal-byte request derivation twice', () => {
+  const f = makeLegacyRevisionFixture();
+  const first = structuredClone(f.request),
+    second = structuredClone(first);
+  const rest = { ...first.proposal };
+  delete rest.proposalDigest;
+  const expectedBytes = canonicalRecordJson(rest);
+  const prototype = Object.getPrototypeOf(createHash('sha256'));
+  const original = Object.getOwnPropertyDescriptor(prototype, 'update');
+  let reads = 0;
+  Object.defineProperty(prototype, 'update', {
+    ...original,
+    value: function (...args) {
+      const result = Reflect.apply(original.value, this, args);
+      if (args[0] === expectedBytes && args[1] === 'utf8') reads++;
+      return result;
+    },
+  });
+  try {
+    let firstReads;
+    withRevisionValidation(() => {
+      assert.equal(validateRevisionRequest(first), first);
+      firstReads = reads;
+      assert.ok(firstReads > 0);
+      assert.equal(validateRevisionRequest(second), second);
+      assert.equal(reads, firstReads);
+    });
+    assert.notEqual(first, second);
+    const beforeFresh = reads;
+    assert.equal(validateRevisionRequest(first), first);
+    assert.ok(reads > beforeFresh);
+  } finally {
+    Object.defineProperty(prototype, 'update', original);
+  }
+  assert.deepEqual(Object.getOwnPropertyDescriptor(prototype, 'update'), original);
+});
+
+test('schema scope rejects then repairs the same actual request object', () => {
+  const f = makeLegacyRevisionFixture();
+  const request = structuredClone(f.request);
+  withRevisionValidation(() => {
+    assert.equal(validateRevisionRequest(request), request);
+    const reason = request.proposal.reason;
+    request.proposal.reason = Infinity;
+    assert.throws(() => validateRevisionRequest(request), {
+      message: 'canonical-json:invalid:number',
+    });
+    request.proposal.reason = reason;
+    assert.equal(validateRevisionRequest(request), request);
+    const messageId = request.authorizationSource.messageId;
+    request.authorizationSource.messageId = 'invalid.message';
+    assert.throws(() => validateRevisionRequest(request), {
+      message: 'workflow-exception-authority:source',
+    });
+    request.authorizationSource.messageId = messageId;
+    assert.equal(validateRevisionRequest(request), request);
+  });
+  assert.equal(validateRevisionRequest(request), request);
+});
+
+test('both native proposal forms preserve cold and warm initial and recovery input references', () => {
+  for (const make of [makeLegacyRevisionFixture, makeCanonicalRevisionFixture]) {
+    const f = make();
+    for (const input of [f.request, f.resumeRequest]) {
+      const original = canonicalRecordJson(input);
+      assert.equal(validateRevisionRequest(input), input);
+      withRevisionValidation(() => {
+        assert.equal(validateRevisionRequest(input), input);
+        const copy = structuredClone(input);
+        assert.equal(validateRevisionRequest(copy), copy);
+        assert.notEqual(copy, input);
+        assert.equal(canonicalRecordJson(copy), original);
+      });
+      assert.equal(canonicalRecordJson(input), original);
+      assert.equal(validateRevisionRequest(input), input);
+    }
+  }
+});
+test('schema-only bridge expires at return, throw and a real await without observing then', async () => {
+  const { withRevisionSchemaValidation } =
+    await import('../../../../../task-tracker/lib/criteria-revision/schema.mjs');
+  assert.equal(typeof withRevisionSchemaValidation, 'function');
+  const f = makeLegacyRevisionFixture();
+  const first = structuredClone(f.proposal),
+    copy = structuredClone(first);
+  const rest = { ...first };
+  delete rest.proposalDigest;
+  const expectedBytes = canonicalRecordJson(rest);
+  const prototype = Object.getPrototypeOf(createHash('sha256'));
+  const original = Object.getOwnPropertyDescriptor(prototype, 'update');
+  let reads = 0,
+    thenReads = 0;
+  Object.defineProperty(prototype, 'update', {
+    ...original,
+    value: function (...args) {
+      const result = Reflect.apply(original.value, this, args);
+      if (args[0] === expectedBytes && args[1] === 'utf8') reads++;
+      return result;
+    },
+  });
+  try {
+    const result = {
+      get then() {
+        thenReads++;
+        return undefined;
+      },
+    };
+    assert.equal(
+      withRevisionSchemaValidation(() => result),
+      result
+    );
+    assert.equal(thenReads, 0);
+    const promise = Promise.resolve('original result');
+    assert.equal(
+      withRevisionSchemaValidation(() => promise),
+      promise
+    );
+    assert.equal(await promise, 'original result');
+    await withRevisionSchemaValidation(async () => {
+      assert.equal(validateRevisionProposal(first), first);
+      await Promise.resolve();
+      assert.equal(validateRevisionProposal(copy), copy);
+    });
+    assert.equal(reads, 2);
+    const marker = new Error('original scope throw');
+    assert.throws(
+      () =>
+        withRevisionSchemaValidation(() => {
+          assert.equal(validateRevisionProposal(first), first);
+          throw marker;
+        }),
+      (error) => error === marker
+    );
+    assert.equal(reads, 3);
+    assert.equal(validateRevisionProposal(first), first);
+    assert.equal(reads, 4);
+    withRevisionSchemaValidation(() => {
+      assert.equal(validateRevisionProposal(first), first);
+      assert.throws(
+        () =>
+          withRevisionSchemaValidation(() => {
+            throw marker;
+          }),
+        (error) => error === marker
+      );
+      assert.equal(validateRevisionProposal(copy), copy);
+    });
+    assert.equal(reads, 5);
+    assert.equal(validateRevisionProposal(first), first);
+    assert.equal(reads, 6);
+    assert.equal(thenReads, 0);
+  } finally {
+    Object.defineProperty(prototype, 'update', original);
+  }
+  assert.deepEqual(Object.getOwnPropertyDescriptor(prototype, 'update'), original);
+});
+test('warm request validation refuses changed missing and foreign complete archived DATA', () => {
+  const f = makeLegacyRevisionFixture();
+  const cases = [
+    [
+      'changed bytes',
+      (r) => {
+        r.proposal.archive.observation.revisionRecords.records[0].bytes += ' ';
+      },
+      'criteria-revision:event-envelope',
+    ],
+    [
+      'missing record',
+      (r) => {
+        r.proposal.archive.observation.revisionRecords.records = [];
+      },
+      'criteria-revision:prior-reference',
+    ],
+    [
+      'foreign binding',
+      (r) => {
+        r.proposal.archive.observation.revisionRecords.records[0].operationId = 'foreign-operation';
+      },
+      'criteria-revision:recovery-record-binding',
+    ],
+  ];
+  const failure = (input, expected) => {
+    let error;
+    try {
+      validateRevisionRequest(input);
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.equal(Object.getPrototypeOf(error), TypeError.prototype);
+    assert.equal(error.message, expected);
+    assert.equal(error.code, undefined);
+    return error.message;
+  };
+  for (const [name, mutate, expected] of cases) {
+    const cold = structuredClone(f.resumeRequest);
+    mutate(cold);
+    reseal(cold.proposal);
+    const oldFailure = failure(cold, expected);
+    withRevisionValidation(() => {
+      const warm = structuredClone(f.resumeRequest);
+      assert.equal(validateRevisionRequest(warm), warm);
+      mutate(warm);
+      reseal(warm.proposal);
+      assert.deepEqual(failure(warm, expected), oldFailure, name);
+    });
+  }
+});
+
+const schemaHashPrototype = Object.getPrototypeOf(createHash('sha256'));
+const schemaHashDescriptor = Object.getOwnPropertyDescriptor(schemaHashPrototype, 'update');
+after(() => {
+  assert.deepEqual(
+    Object.getOwnPropertyDescriptor(schemaHashPrototype, 'update'),
+    schemaHashDescriptor
   );
 });

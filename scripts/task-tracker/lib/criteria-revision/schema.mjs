@@ -1,5 +1,5 @@
 import { validateCanonicalArchive } from './canonical.mjs';
-// @story #1851
+// @story #1851 #1855
 // Closed internal data contracts. Validation proves consistency, not remote freshness.
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -379,8 +379,29 @@ function vector(value) {
     digest(x.hash);
   });
 }
+// Private successful DATA keys live only during one synchronous validation call.
+// This scope never yields, exposes its maps, or retains current/readiness facts.
+let schemaValidationScope = null;
+export function withRevisionSchemaValidation(work) {
+  if (schemaValidationScope) return work();
+  schemaValidationScope = { proposals: new Set(), requests: new Set() };
+  try {
+    return work();
+  } finally {
+    schemaValidationScope = null;
+  }
+}
 export function validateRevisionProposal(value) {
-  canonicalRecordJson(value);
+  return withRevisionSchemaValidation(() => {
+    const bytes = canonicalRecordJson(value);
+    if (!schemaValidationScope.proposals.has(bytes)) {
+      validateProposal(value);
+      schemaValidationScope.proposals.add(bytes);
+    }
+    return value;
+  });
+}
+function validateProposal(value) {
   exactKeys(value, [
     'schema',
     'repository',
@@ -535,7 +556,16 @@ export function validateRevisionProposal(value) {
   return value;
 }
 export function validateRevisionRequest(value) {
-  canonicalRecordJson(value);
+  return withRevisionSchemaValidation(() => {
+    const bytes = canonicalRecordJson(value);
+    if (!schemaValidationScope.requests.has(bytes)) {
+      validateRequest(value);
+      schemaValidationScope.requests.add(bytes);
+    }
+    return value;
+  });
+}
+function validateRequest(value) {
   exactKeys(value, ['schema', 'action', 'proposal', 'authorizationSource']);
   if (value.schema !== REVISION_SCHEMA) revisionError('schema');
   if (!['apply', 'recover'].includes(value.action)) revisionError('action');

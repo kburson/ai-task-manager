@@ -1,3 +1,4 @@
+import { withRevisionConsumer } from '../criteria-revision/policy.mjs';
 import { isDeepStrictEqual } from 'node:util';
 
 import { renderTimingSingletonMarkdown } from '../../gh-timing-comment.mjs';
@@ -318,7 +319,7 @@ async function crash(crashAt, phase, kind) {
   if (typeof crashAt === 'function') await crashAt({ phase, kind });
 }
 
-export async function convergeSingletonProjections({ desired, deps, crashAt } = {}) {
+async function convergeAdmitted({ desired, deps, crashAt } = {}) {
   const projections = normalizeDesired(desired);
   validateDeps(deps);
   const snapshots = [];
@@ -370,3 +371,18 @@ export async function convergeSingletonProjections({ desired, deps, crashAt } = 
 }
 
 export { renderTimingSingletonMarkdown };
+
+export async function convergeSingletonProjections(input = {}) {
+  normalizeDesired(input.desired);
+  validateDeps(input.deps);
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'capsule-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => convergeAdmitted(input)
+  );
+}

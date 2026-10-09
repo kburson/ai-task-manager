@@ -1,4 +1,5 @@
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import { normalizeStateId } from '../lifecycle-policy/index.mjs';
 // INTERNAL — library module for the state-movement boundary (#559).
 //
 // GitHub-mutation concern extracted from `scripts/gh/move-state.mjs`: the two
@@ -46,6 +47,28 @@ export const STATUS_WRITE_READBACK_EXIT = 7;
 export const STATUS_MARKER_CONSISTENCY_EXIT = 8;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Original CLI name-read DATA, distinct from the option-ID query below.
+export const STATUS_NAME_QUERY = `
+        query($owner: String!, $repo: String!, $issue: Int!) {
+          repository(owner: $owner, name: $repo) {
+            issue(number: $issue) {
+              projectItems(first: 10) {
+                nodes {
+                  project { id }
+                  fieldValueByName(name: "Status") {
+                    ... on ProjectV2ItemFieldSingleSelectValue { name }
+                  }
+                }
+              }
+            }
+          }
+        }`;
+export function statusNameFromData(data, cfg) {
+  const nodes = data?.repository?.issue?.projectItems?.nodes || [];
+  const node = nodes.find((n) => n?.project?.id === cfg.projectId);
+  return normalizeStateId(node?.fieldValueByName?.name) || '';
+}
 
 // #711 — default read-back: query the item's live Status single-select
 // `optionId` for the configured project. Mirrors `resolveLiveStateName` in the
@@ -676,27 +699,104 @@ export async function postStampFailureAudit(input = {}) {
 // caller) AND consistent. Idempotent: a no-op when the marker already reads
 // `priorState`. The additive `aitm-entered-<stage>` contiguity marker is left
 // untouched (it is not the authoritative pointer and a re-run reconciles it).
+const nativeRollbackInvocations = new WeakMap();
+const nativeRollbackInputs = new WeakMap();
+const nativeRollbackResults = new WeakMap();
+export function assertOriginalNativeCompensationInvocation(invocation, ctx) {
+  const original = nativeRollbackInvocations.get(invocation);
+  if (!original || original.ctx !== ctx) throw new TypeError('native-compensation-invocation');
+  sameOwnBoardData(ctx, original.descriptors);
+}
+export function assertOriginalNativeCompensationRecordingInput(input, invocation) {
+  const original = nativeRollbackInputs.get(input),
+    owner = nativeRollbackInvocations.get(invocation);
+  if (!original || !owner || original.invocation !== invocation)
+    throw new TypeError('native-compensation-recording-input');
+  assertOriginalNativeCompensationInvocation(invocation, owner.ctx);
+  sameOwnBoardData(input, original.descriptors);
+}
+export function assertOriginalNativeCompensationReturn(ctx, invocation, result) {
+  const original = nativeRollbackResults.get(result);
+  if (!original || original.ctx !== ctx || original.invocation !== invocation)
+    throw new TypeError('native-compensation-return');
+  assertOriginalNativeCompensationInvocation(invocation, ctx);
+  if (Object.getPrototypeOf(result) !== Object.prototype)
+    throw new TypeError('native-compensation-return');
+  sameOwnBoardData(result, original.descriptors);
+}
 export async function rollbackRecordedState(ctx, priorState) {
-  assertRevisionStageHostEffect();
+  if (!isMemoryStageEffectScope()) {
+    assertRevisionStageHostEffect();
+    return rollbackRecordedStateAdmitted(ctx, priorState, null);
+  }
+  const core = await import('./move-state-core.mjs');
+  core.assertNativeStageCompensationContext(ctx, priorState);
+  const invocation = Object.freeze({});
+  nativeRollbackInvocations.set(invocation, {
+    ctx,
+    core,
+    descriptors: Object.getOwnPropertyDescriptors(ctx),
+  });
+  let begun = false;
+  try {
+    await core.beginNativeStageCompensation(ctx, invocation);
+    begun = true;
+    assertOriginalNativeCompensationInvocation(invocation, ctx);
+    const result = await rollbackRecordedStateAdmitted(ctx, priorState, invocation);
+    assertOriginalNativeCompensationInvocation(invocation, ctx);
+    core.assertNativeStageCompensationReturn(ctx, invocation, result);
+    return result;
+  } finally {
+    if (begun) core.endNativeStageCompensation(ctx, invocation);
+    nativeRollbackInvocations.delete(invocation);
+  }
+}
+async function rollbackRecordedStateAdmitted(ctx, priorState, invocation) {
   const { issueArg, cfg, gh, pexec } = ctx;
   if (priorState == null) return { rolledBack: false, reason: 'no-prior-state' };
   const [{ writeIssueBodyWithRetry }, { writeLastKnownState, readLastKnownState }] =
     await Promise.all([import('../state-recording.mjs'), import('../../gh-timing-comment.mjs')]);
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
-  const beforeBody = JSON.parse(stdout).body ?? '';
+  if (invocation) {
+    assertOriginalNativeCompensationInvocation(invocation, ctx);
+    nativeRollbackInvocations
+      .get(invocation)
+      .core.assertNativeStageCompensationContext(ctx, priorState);
+  }
+  const request = {
+    file: 'gh',
+    args: ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+  };
+  const response = invocation
+    ? await nativeRollbackInvocations
+        .get(invocation)
+        .core.readNativeStageCompensationBody(ctx, invocation, request)
+    : await pexec(request.file, request.args, { timeout: GH_API_TIMEOUT_MS });
+  if (invocation) {
+    assertOriginalNativeCompensationInvocation(invocation, ctx);
+    nativeRollbackInvocations
+      .get(invocation)
+      .core.assertNativeStageCompensationBodyReturn(invocation, response);
+  }
+  const beforeBody = JSON.parse(response.stdout).body ?? '';
   if (readLastKnownState(beforeBody).state === priorState) {
     return { rolledBack: false, reason: 'already-consistent', priorState };
   }
-  const nextBody = writeLastKnownState(beforeBody, priorState);
+  let nextBody = writeLastKnownState(beforeBody, priorState);
+  if (invocation) {
+    const versions = await import('../body-version.mjs');
+    nativeRollbackInvocations
+      .get(invocation)
+      .core.assertNativeStageCompensationContext(ctx, priorState);
+    nextBody = versions.stampBodyVersion(
+      versions.stripBodyVersion(nextBody),
+      versions.parseBodyVersion(beforeBody) + 1
+    );
+  }
   const tmp = path.join(
     projectTmpDir(getProjectDir()),
     `aitm-rollback-${issueArg}-${Date.now()}.md`
   );
-  await writeIssueBodyWithRetry({
+  const recordingInput = {
     issueNumber: issueArg,
     repo: cfg.repo,
     body: nextBody,
@@ -714,8 +814,30 @@ export async function rollbackRecordedState(ctx, priorState) {
         }
       }
     },
-  });
-  return { rolledBack: true, priorState };
+  };
+  if (invocation)
+    nativeRollbackInputs.set(recordingInput, {
+      invocation,
+      descriptors: Object.getOwnPropertyDescriptors(recordingInput),
+    });
+  const recording = await writeIssueBodyWithRetry(recordingInput, invocation);
+  if (invocation) {
+    assertOriginalNativeCompensationInvocation(invocation, ctx);
+    nativeRollbackInvocations
+      .get(invocation)
+      .core.assertNativeStageRecordingInput(recordingInput, invocation);
+  }
+  const result =
+    recording.status === 'failed'
+      ? { rolledBack: false, priorState, reason: 'state-recording-failed', recording }
+      : { rolledBack: recording.status === 'ok', priorState };
+  if (invocation)
+    nativeRollbackResults.set(result, {
+      ctx,
+      invocation,
+      descriptors: Object.getOwnPropertyDescriptors(result),
+    });
+  return result;
 }
 
 // #741 — success-path post-condition: after the board write is confirmed at
@@ -724,15 +846,25 @@ export async function rollbackRecordedState(ctx, priorState) {
 // path this always holds (stampEntryMarkers set it); a mismatch means a
 // regression re-opened the board/marker gap and is surfaced (non-zero exit),
 // never swallowed. Returns `{ consistent, recorded, expected, exit }`.
-export async function assertBoardMarkerConsistent(ctx, expectedStage) {
-  assertRevisionStageHostEffect();
+export async function assertBoardMarkerConsistent(ctx, expectedStage, nativeInput) {
+  let native;
+  if (isMemoryStageEffectScope()) {
+    native = await import('./move-state-core.mjs');
+    native.assertNativeStageConsistencyInput(nativeInput, ctx, expectedStage);
+  } else assertRevisionStageHostEffect();
   const { issueArg, cfg, pexec } = ctx;
   const { readLastKnownState } = await import('../../gh-timing-comment.mjs');
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
+  if (native) native.assertNativeStageConsistencyInput(nativeInput, ctx, expectedStage);
+  const request = {
+    file: 'gh',
+    args: ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+    options: { timeout: GH_API_TIMEOUT_MS },
+  };
+  const response = native
+    ? await native.readNativeStageConsistencyBody(nativeInput, request)
+    : await pexec(request.file, request.args, request.options);
+  if (native) native.assertNativeStageConsistencyResponse(nativeInput, request, response);
+  const { stdout } = response;
   const body = JSON.parse(stdout).body ?? '';
   const recorded = readLastKnownState(body).state;
   const consistent = recorded === expectedStage;

@@ -126,8 +126,9 @@ export function assertNativeStageActorStateWrite(invocation, intent) {
 export async function writeNativeStageActorTiming(invocation, operation) {
   // The native record construction still precedes resource acquisition. The
   // independently current existing record is reread/validated while locked.
-  const record = actorTimingStateRecord(operation?.identity, operation?.state);
   const native = await import('./move-state/move-state-core.mjs');
+  native.assertNativeStageActorStateInput(invocation, operation);
+  const record = actorTimingStateRecord(operation?.identity, operation?.state);
   const source = await native.beginNativeStageCheckpointActor(invocation, operation);
   try {
     if (source.beforeBytes !== null)

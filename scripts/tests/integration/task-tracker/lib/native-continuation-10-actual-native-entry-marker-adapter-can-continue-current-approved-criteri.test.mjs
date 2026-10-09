@@ -9,37 +9,51 @@ import {
   withRevisionConsumer,
 } from './native-continuation-fixtures.mjs';
 
-test('actual native entry marker adapter can continue current approved criteria', async () => {
+test('standalone entry marker adapter refuses without original native stage context', async () => {
   const f = await nativeFinalFixture();
   try {
     const first = await f.invoke();
     assert.equal(first.error, undefined);
     assert.equal(first.result.status, 'move-failed');
-    const before = f.backend.observation.body.bytes;
+    const before = structuredClone(f.backend.snapshot);
+    const calls = [];
     const effects = [...f.effects];
-    const result = await withRevisionConsumer(
-      {
-        repository: f.context.repository,
-        issue: f.context.issue,
-        backend: f.backend,
-        activity: 'stage-write',
-      },
-      () =>
-        stampEntryMarkers({
-          issueArg: String(f.context.issue),
-          stateArg: 'test',
-          resolvedFromState: 'develop',
-          transitionId: createTransitionId(),
-          cfg: { repo: f.context.repository },
-          SKIP_NETWORK: false,
-          _mutateBody: (input) =>
-            mutateIssueBody({ ...input, deps: { pexec: f.pexec, revisionBackend: f.backend } }),
-          postComment: async () => {},
-        })
+    await assert.rejects(
+      withRevisionConsumer(
+        {
+          repository: f.context.repository,
+          issue: f.context.issue,
+          backend: f.backend,
+          activity: 'stage-write',
+        },
+        () =>
+          stampEntryMarkers({
+            issueArg: String(f.context.issue),
+            stateArg: 'test',
+            resolvedFromState: 'develop',
+            transitionId: createTransitionId(),
+            cfg: { repo: f.context.repository },
+            SKIP_NETWORK: false,
+            _mutateBody: (input) => {
+              calls.push('mutate');
+              return mutateIssueBody({
+                ...input,
+                deps: { pexec: f.pexec, revisionBackend: f.backend },
+              });
+            },
+            postComment: async () => {
+              calls.push('comment');
+            },
+          })
+      ),
+      (error) =>
+        error.name === 'RevisionPolicyError' &&
+        error.code === 'revision-authority-unavailable' &&
+        error.preparationReason === 'original-entry-context'
     );
-    assert.equal(result.priorState, 'develop');
-    assert.notEqual(f.backend.observation.body.bytes, before);
-    assert.equal(f.effects.length, effects.length + 1);
+    assert.deepEqual(calls, []);
+    assert.deepEqual(f.backend.snapshot, before);
+    assert.deepEqual(f.effects, effects);
   } finally {
     f.dispose();
   }

@@ -1947,17 +1947,23 @@ function timingLock(m, input) {
   )
     revisionError('native-stage-timing-lock');
 }
+function acquireTimingResourceLock(m, input) {
+  if (m.nativeTimingResourceLock !== null) revisionError('native-stage-timing-lock-conflict');
+  m.nativeTimingResourceLock = { token: input.token, invocation: input.invocation };
+}
+function releaseTimingResourceLock(m, input) {
+  timingLock(m, input);
+  m.nativeTimingResourceLock = null;
+}
 export async function acquireMemoryNativeStageTiming(input) {
   const { m, current } = await stageTimingAuthority(input);
   current();
-  if (m.nativeTimingResourceLock !== null) revisionError('native-stage-timing-lock-conflict');
-  m.nativeTimingResourceLock = { token: input.token, invocation: input.invocation };
+  acquireTimingResourceLock(m, input);
 }
 export function releaseMemoryNativeStageTiming(input) {
   exactKeys(input, ['backend', 'token', 'invocation'], 'native-stage-timing-release-input');
   const m = memory(input.backend);
-  timingLock(m, input);
-  m.nativeTimingResourceLock = null;
+  releaseTimingResourceLock(m, input);
 }
 async function deriveTimingStep(journal, steps) {
   const codec = await import('./stage-execution.mjs');
@@ -3453,4 +3459,1206 @@ export async function recordMemoryNativeStageBoardFailure(input) {
       revisionError('native-stage-board-failure-outcome');
     return true;
   });
+}
+
+// Fixed original transition-comment memory protocol. The timing and provenance
+// writers share ONE actual resource lock slot; caller callbacks cannot select it.
+function assertCommentStoreKeys(input, keys) {
+  if (!input || Object.getPrototypeOf(input) !== Object.prototype)
+    revisionError('native-stage-transition-input');
+  const descriptors = Object.getOwnPropertyDescriptors(input);
+  if (
+    Reflect.ownKeys(descriptors).length !== keys.length ||
+    keys.some(
+      (key) =>
+        !descriptors[key] ||
+        !Object.hasOwn(descriptors[key], 'value') ||
+        !descriptors[key].enumerable
+    )
+  )
+    revisionError('native-stage-transition-input');
+  return descriptors;
+}
+function commentStoreContinuity(input, keys) {
+  const original = assertCommentStoreKeys(input, keys);
+  const context = original.context.value;
+  const bytes = () => {
+    try {
+      if (!context || Object.getPrototypeOf(context) !== Object.prototype) throw new TypeError();
+      return canonicalRecordJson(context);
+    } catch {
+      revisionError('native-stage-transition-context');
+    }
+  };
+  const originalBytes = bytes();
+  return () => {
+    const current = assertCommentStoreKeys(input, keys);
+    if (
+      keys.some(
+        (key) =>
+          current[key].value !== original[key].value ||
+          current[key].enumerable !== original[key].enumerable ||
+          current[key].configurable !== original[key].configurable ||
+          current[key].writable !== original[key].writable
+      )
+    )
+      revisionError('native-stage-transition-input-changed');
+    if (bytes() !== originalBytes) revisionError('native-stage-transition-context-changed');
+  };
+}
+const nativeTransitionIntentReads = new WeakSet();
+const nativeTransitionCreates = new WeakMap();
+const nativeTransitionResponses = new WeakMap();
+function retainTransitionResponse(response, input, phase, current) {
+  const descriptors = assertCommentStoreKeys(response, ['stdout', 'stderr', 'exitCode']);
+  const authority = Object.fromEntries(
+    Object.entries(Object.getOwnPropertyDescriptors(input)).map(([key, descriptor]) => [
+      key,
+      descriptor.value,
+    ])
+  );
+  nativeTransitionResponses.set(response, {
+    input,
+    phase,
+    current,
+    descriptors,
+    bytes: canonicalRecordJson(response),
+    authority,
+  });
+  return response;
+}
+function assertTransitionResponse(input, response, phase) {
+  const retained = nativeTransitionResponses.get(response);
+  if (!retained || retained.phase !== phase) revisionError('native-stage-transition-response');
+  const descriptors = assertCommentStoreKeys(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+  ]);
+  if (
+    Object.keys(retained.authority).some(
+      (key) => descriptors[key].value !== retained.authority[key]
+    )
+  )
+    revisionError('native-stage-transition-response');
+  retained.current();
+  const actual = assertCommentStoreKeys(response, ['stdout', 'stderr', 'exitCode']);
+  if (
+    Object.keys(actual).some((key) => {
+      const a = actual[key],
+        b = retained.descriptors[key];
+      return (
+        a.value !== b.value ||
+        a.enumerable !== b.enumerable ||
+        a.writable !== b.writable ||
+        a.configurable !== b.configurable
+      );
+    }) ||
+    canonicalRecordJson(response) !== retained.bytes
+  )
+    revisionError('native-stage-transition-response');
+}
+export function assertMemoryNativeStageTransitionCreateResponse(input, response) {
+  assertTransitionResponse(input, response, 'create');
+}
+export function assertMemoryNativeStageTransitionReadResponse(input, response) {
+  assertTransitionResponse(input, response, 'read');
+}
+
+async function stageTransitionAuthority(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+  ]);
+  const { backend, capability, context, token, invocation } = input;
+  assertMemoryCapability(backend, capability, context);
+  const code = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  assertMemoryCapability(backend, capability, context);
+  const intent = code.readNativeStageTransitionIntent(token, backend, invocation, context);
+  const m = memory(backend),
+    journal = m.nativeStageRecords.at(-1);
+  const current = () => {
+    unchanged();
+    assertMemoryCapability(backend, capability, context);
+    code.readNativeStageTransitionIntent(token, backend, invocation, context);
+    validateNativeOrder(m);
+    validateNativeStageJournal(journal);
+    if (
+      m.nativeStageRecords.at(-1) !== journal ||
+      canonicalRecordJson(journal.header) !== canonicalRecordJson(intent.header)
+    )
+      revisionError('native-stage-transition-authority');
+  };
+  current();
+  return { m, journal, current };
+}
+export async function acquireMemoryNativeStageTransition(input) {
+  const { m, current } = await stageTransitionAuthority(input);
+  current();
+  acquireTimingResourceLock(m, input);
+}
+export function releaseMemoryNativeStageTransition(input) {
+  assertCommentStoreKeys(input, ['backend', 'token', 'invocation']);
+  releaseTimingResourceLock(memory(input.backend), input);
+}
+export async function persistMemoryNativeStageTransition(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+    'step',
+  ]);
+  const { step: suppliedStep, ...authority } = input;
+  const step = JSON.parse(canonicalRecordJson(suppliedStep));
+  const { m, journal, current: check } = await stageTransitionAuthority(authority);
+  const current = () => {
+    unchanged();
+    check();
+    timingLock(m, input);
+  };
+  current();
+  if (journal.steps.length !== 15 || journal.steps[14].readback === null || step.readback !== null)
+    revisionError('native-stage-transition-prefix');
+  const { reconstructNativeStageTransitionComment } = await import('./stage-execution.mjs');
+  current();
+  const derived = await reconstructNativeStageTransitionComment({
+    header: journal.header,
+    steps: [...journal.steps, step],
+  });
+  current();
+  if (
+    canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+    m.observation.stage !== derived.stage ||
+    canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
+  )
+    revisionError('native-stage-transition-before');
+  operation(m, 'native-stage-transition-intent-write', () => {
+    current();
+    journal.steps.push(clone(step));
+    return true;
+  });
+  operation(m, 'native-stage-transition-intent-readback', () => {
+    current();
+    if (
+      canonicalRecordJson(journal.steps[15]) !== canonicalRecordJson(step) ||
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
+    )
+      revisionError('native-stage-transition-intent-readback');
+    nativeTransitionIntentReads.add(journal.steps[15]);
+    return true;
+  });
+}
+function assertTransitionIntentRead(journal) {
+  if (
+    journal.steps.length !== 16 ||
+    journal.steps[15].readback !== null ||
+    !nativeTransitionIntentReads.has(journal.steps[15])
+  )
+    revisionError('native-stage-transition-intent-unread');
+}
+export async function writeMemoryNativeStageTransition(input) {
+  const { m, journal, current: check } = await stageTransitionAuthority(input);
+  const current = () => {
+    check();
+    timingLock(m, input);
+    assertTransitionIntentRead(journal);
+  };
+  current();
+  const { reconstructNativeStageTransitionComment } = await import('./stage-execution.mjs');
+  current();
+  const derived = await reconstructNativeStageTransitionComment({
+    header: journal.header,
+    steps: journal.steps,
+  });
+  current();
+  const response = operation(m, 'native-stage-transition-effect-write', () => {
+    current();
+    if (
+      nativeTransitionCreates.has(journal.steps[15]) ||
+      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+      m.observation.stage !== derived.stage ||
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
+    )
+      revisionError('native-stage-transition-effect-prefix');
+    m.nativeStageResources = clone(derived.afterResources);
+    validateNativeStageResources(m.nativeStageResources, m.observation, m.comments);
+    const actual = m.nativeStageResources.comments.find(
+      (entry) => entry.nodeId === derived.intent.nodeId
+    );
+    const response = { stdout: actual.bytes, stderr: '', exitCode: 0 };
+    nativeTransitionCreates.set(journal.steps[15], clone(response));
+    return response;
+  });
+  return retainTransitionResponse(response, input, 'create', () => {
+    check();
+    timingLock(m, input);
+  });
+}
+export async function readMemoryNativeStageTransition(input) {
+  const { m, journal, current: check } = await stageTransitionAuthority(input);
+  const current = () => {
+    check();
+    timingLock(m, input);
+    assertTransitionIntentRead(journal);
+  };
+  current();
+  const step = journal.steps[15],
+    created = nativeTransitionCreates.get(step);
+  if (!created) revisionError('native-stage-transition-create-unavailable');
+  // Actual independent current raw resource and whole census reads, not intent stdout.
+  const actual = m.nativeStageResources.comments.find(
+    (entry) => entry.nodeId === step.intent.nodeId
+  );
+  if (!actual || actual.id !== step.intent.commentId) revisionError('native-stage-transition-read');
+  const repository = journal.header.scope.repository,
+    issue = journal.header.scope.issue;
+  const body = JSON.parse(actual.bytes).body;
+  const readback = {
+    create: {
+      request: {
+        file: 'gh',
+        args: [
+          'api',
+          `repos/${repository}/issues/${issue}/comments`,
+          '--method',
+          'POST',
+          '-f',
+          `body=${body}`,
+        ],
+      },
+      response: clone(created),
+    },
+    read: {
+      request: { file: 'gh', args: ['api', `repos/${repository}/issues/comments/${actual.id}`] },
+      response: { stdout: actual.bytes, stderr: '', exitCode: 0 },
+    },
+    census: clone(m.nativeStageResources.comments),
+  };
+  const { reconstructNativeStageTransitionComment } = await import('./stage-execution.mjs');
+  current();
+  const steps = [...journal.steps];
+  steps[15] = { ...step, readback };
+  const derived = await reconstructNativeStageTransitionComment({ header: journal.header, steps });
+  current();
+  const response = operation(m, 'native-stage-transition-effect-readback', () => {
+    current();
+    if (
+      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+      m.observation.stage !== derived.stage ||
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
+      canonicalRecordJson(m.nativeStageResources.comments) !== canonicalRecordJson(readback.census)
+    )
+      revisionError('native-stage-transition-readback');
+    step.readback = clone(readback);
+    validateNativeStageJournal(journal);
+    return clone(readback.read.response);
+  });
+  return retainTransitionResponse(response, input, 'read', () => {
+    check();
+    timingLock(m, input);
+  });
+}
+
+// @story #1855 — fixed original dispatch journal under the existing comment lock.
+const nativeTailDispatchIntentReads = new WeakSet();
+const nativeTailDispatchIntentChecks = new WeakMap();
+const nativeTailDispatchPersisting = new WeakSet();
+const nativeTailDispatchCompleting = new WeakSet();
+async function stageTailDispatchAuthority(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+  ]);
+  const { backend, capability, context, token, invocation } = input;
+  assertMemoryCapability(backend, capability, context);
+  const code = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  const m = memory(backend),
+    journal = m.nativeStageRecords.at(-1);
+  const current = () => {
+    unchanged();
+    assertMemoryCapability(backend, capability, context);
+    const intent = code.readNativeStageTailDispatchIntent(token, backend, invocation, context);
+    validateNativeOrder(m);
+    validateNativeStageJournal(journal);
+    if (
+      m.nativeStageRecords.at(-1) !== journal ||
+      canonicalRecordJson(journal.header) !== canonicalRecordJson(intent.header)
+    )
+      revisionError('native-stage-tail-dispatch-authority');
+    return intent;
+  };
+  current();
+  return { m, journal, current };
+}
+export async function acquireMemoryNativeStageTailDispatch(input) {
+  const { m, current } = await stageTailDispatchAuthority(input);
+  current();
+  acquireTimingResourceLock(m, input);
+}
+export function releaseMemoryNativeStageTailDispatch(input) {
+  assertCommentStoreKeys(input, ['backend', 'token', 'invocation']);
+  releaseTimingResourceLock(memory(input.backend), input);
+}
+export async function persistMemoryNativeStageTailDispatch(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+    'step',
+  ]);
+  const { step: supplied, ...authority } = input;
+  const step = JSON.parse(canonicalRecordJson(supplied));
+  const { m, journal, current: check } = await stageTailDispatchAuthority(authority);
+  const current = () => {
+    unchanged();
+    check();
+    timingLock(m, authority);
+  };
+  current();
+  if (journal.steps.length !== 16 || journal.steps[15].readback === null || step.readback !== null)
+    revisionError('native-stage-tail-dispatch-prefix');
+  if (nativeTailDispatchPersisting.has(authority.invocation))
+    revisionError('native-stage-tail-dispatch-reentry');
+  nativeTailDispatchPersisting.add(authority.invocation);
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageTailDispatch({
+    header: journal.header,
+    steps: [...journal.steps, step],
+  });
+  current();
+  const sameBefore = () => {
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.resources) ||
+      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+      m.observation.stage !== derived.stage
+    )
+      revisionError('native-stage-tail-dispatch-current');
+  };
+  sameBefore();
+  operation(m, 'native-stage-tail-dispatch-intent-write', () => {
+    current();
+    sameBefore();
+    if (journal.steps.length !== 16) revisionError('native-stage-tail-dispatch-prefix');
+    journal.steps.push(clone(step));
+    return true;
+  });
+  operation(m, 'native-stage-tail-dispatch-intent-readback', () => {
+    current();
+    sameBefore();
+    if (canonicalRecordJson(journal.steps[16]) !== canonicalRecordJson(step))
+      revisionError('native-stage-tail-dispatch-intent-readback');
+    nativeTailDispatchIntentReads.add(journal.steps[16]);
+    nativeTailDispatchIntentChecks.set(journal.steps[16], { current, authority });
+    return true;
+  });
+}
+export async function completeMemoryNativeStageTailDispatch(input) {
+  const { m, journal, current: check } = await stageTailDispatchAuthority(input);
+  const current = () => {
+    const intent = check();
+    timingLock(m, input);
+    if (
+      !intent.returned ||
+      journal.steps.length !== 17 ||
+      journal.steps[16].readback !== null ||
+      !nativeTailDispatchIntentReads.has(journal.steps[16])
+    )
+      revisionError('native-stage-tail-dispatch-return');
+  };
+  current();
+  if (nativeTailDispatchCompleting.has(input.invocation))
+    revisionError('native-stage-tail-dispatch-reentry');
+  nativeTailDispatchCompleting.add(input.invocation);
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageTailDispatch({
+    header: journal.header,
+    steps: journal.steps,
+  });
+  current();
+  const read = () => {
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.resources) ||
+      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+      m.observation.stage !== derived.stage
+    )
+      revisionError('native-stage-tail-dispatch-current');
+    return {
+      actions: [],
+      resources: clone(m.nativeStageResources),
+      body: clone(m.observation.body),
+      stage: m.observation.stage,
+    };
+  };
+  operation(m, 'native-stage-tail-dispatch-execution', () => {
+    current();
+    read();
+    return true;
+  });
+  operation(m, 'native-stage-tail-dispatch-readback', () => {
+    current();
+    const actual = read();
+    journal.steps[16].readback = actual;
+    validateNativeStageJournal(journal);
+    return true;
+  });
+}
+
+export function assertMemoryNativeStageTailDispatchIntent(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+  ]);
+  unchanged();
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  const m = memory(input.backend),
+    journal = m.nativeStageRecords.at(-1);
+  const retained = journal && nativeTailDispatchIntentChecks.get(journal.steps[16]);
+  if (
+    !retained ||
+    ['backend', 'capability', 'context', 'token', 'invocation'].some(
+      (key) => input[key] !== retained.authority[key]
+    )
+  )
+    revisionError('native-stage-tail-dispatch-intent-unread');
+  retained.current();
+  timingLock(m, input);
+  if (
+    journal.steps.length !== 17 ||
+    journal.steps[16].readback !== null ||
+    !nativeTailDispatchIntentReads.has(journal.steps[16])
+  )
+    revisionError('native-stage-tail-dispatch-intent-unread');
+}
+
+// Invocation-local custody of actual fixed compensation mutations. This is a
+// current snapshot comparison, never a cached revision admission decision.
+const nativeCompensationCurrent = new WeakMap();
+const nativeCompensationIntentReads = new WeakSet();
+function compensationInputContinuity(input) {
+  const keys = ['backend', 'capability', 'context', 'token', 'invocation'];
+  const read = () => {
+    if (!input || Object.getPrototypeOf(input) !== Object.prototype)
+      revisionError('native-stage-compensation-input');
+    const descriptors = Object.getOwnPropertyDescriptors(input);
+    if (
+      Reflect.ownKeys(descriptors).length !== keys.length ||
+      keys.some(
+        (key) =>
+          !descriptors[key] ||
+          !Object.hasOwn(descriptors[key], 'value') ||
+          !descriptors[key].enumerable
+      )
+    )
+      revisionError('native-stage-compensation-input');
+    return descriptors;
+  };
+  const original = read();
+  const context = original.context.value;
+  const contextBytes = () => {
+    try {
+      if (!context || Object.getPrototypeOf(context) !== Object.prototype) throw new TypeError();
+      return canonicalRecordJson(context);
+    } catch {
+      revisionError('native-stage-compensation-context');
+    }
+  };
+  const bytes = contextBytes();
+  return () => {
+    const actual = read();
+    if (
+      keys.some((key) =>
+        ['value', 'enumerable', 'writable', 'configurable'].some(
+          (field) => actual[key][field] !== original[key][field]
+        )
+      )
+    )
+      revisionError('native-stage-compensation-input-changed');
+    if (contextBytes() !== bytes) revisionError('native-stage-compensation-context-changed');
+  };
+}
+function compensationResourceInput(input, reason) {
+  if (!input || Object.getPrototypeOf(input) !== Object.prototype) revisionError(reason);
+  const descriptors = Object.getOwnPropertyDescriptors(input);
+  const keys = ['backend', 'token', 'invocation'];
+  if (
+    Reflect.ownKeys(descriptors).length !== keys.length ||
+    keys.some(
+      (key) =>
+        !descriptors[key] ||
+        !Object.hasOwn(descriptors[key], 'value') ||
+        !descriptors[key].enumerable
+    )
+  )
+    revisionError(reason);
+}
+export function assertMemoryNativeCompensationCurrent(input) {
+  compensationResourceInput(input, 'native-stage-compensation-current');
+  const record = nativeCompensationCurrent.get(input.invocation);
+  if (!record || record.backend !== input.backend || record.token !== input.token)
+    revisionError('native-stage-compensation-current');
+  bodyLock(memory(input.backend), input);
+  if (canonicalRecordJson(input.backend.snapshot) !== record.expected)
+    revisionError('native-stage-compensation-current-changed');
+}
+function retainCompensationCurrent(input) {
+  const record = nativeCompensationCurrent.get(input.invocation);
+  if (!record || record.backend !== input.backend || record.token !== input.token)
+    revisionError('native-stage-compensation-current');
+  record.expected = canonicalRecordJson(input.backend.snapshot);
+}
+async function compensationAuthority(input) {
+  const unchanged = compensationInputContinuity(input);
+  unchanged();
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  const core = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  const intent = core.readNativeStageCompensationIntent(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const m = memory(input.backend),
+    journal = m.nativeStageRecords.at(-1);
+  validateNativeOrder(m);
+  validateNativeStageJournal(journal);
+  if (canonicalRecordJson(journal.header) !== canonicalRecordJson(intent.header))
+    revisionError('native-stage-compensation-authority');
+  const current = () => {
+    unchanged();
+    assertMemoryCapability(input.backend, input.capability, input.context);
+    core.readNativeStageCompensationIntent(input.token, input.backend, input.invocation);
+    assertMemoryNativeCompensationCurrent({
+      backend: input.backend,
+      token: input.token,
+      invocation: input.invocation,
+    });
+  };
+  return { m, journal, core, intent, current };
+}
+export async function acquireMemoryNativeStageCompensation(input) {
+  const unchanged = compensationInputContinuity(input);
+  unchanged();
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  const core = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  core.readNativeStageCompensationIntent(input.token, input.backend, input.invocation);
+  const m = memory(input.backend);
+  if (m.nativeBodyResourceLock !== null || nativeCompensationCurrent.has(input.invocation))
+    revisionError('native-stage-compensation-lock');
+  m.nativeBodyResourceLock = { token: input.token, invocation: input.invocation };
+  nativeCompensationCurrent.set(input.invocation, {
+    backend: input.backend,
+    token: input.token,
+    expected: canonicalRecordJson(input.backend.snapshot),
+  });
+}
+export function releaseMemoryNativeStageCompensation(input) {
+  compensationResourceInput(input, 'native-stage-compensation-release');
+  const m = memory(input.backend),
+    record = nativeCompensationCurrent.get(input.invocation);
+  if (!record) return;
+  if (record.backend !== input.backend || record.token !== input.token)
+    revisionError('native-stage-compensation-release');
+  bodyLock(m, input);
+  m.nativeBodyResourceLock = null;
+  nativeCompensationCurrent.delete(input.invocation);
+}
+async function compensationDerived(journal, current, compensation = journal.compensation) {
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageCompensation({
+    header: journal.header,
+    steps: journal.steps,
+    compensation,
+  });
+  current();
+  return derived;
+}
+function compensationIntent(journal) {
+  if (!journal.compensation || !nativeCompensationIntentReads.has(journal.compensation))
+    revisionError('native-stage-compensation-intent-unread');
+  return journal.compensation;
+}
+export async function persistMemoryNativeStageCompensation(input) {
+  const { journal, intent, current } = await compensationAuthority(input);
+  current();
+  if (!intent.compensation) revisionError('native-stage-compensation-unprepared');
+  if (!journal.compensation) {
+    await compensationDerived(journal, current, intent.compensation);
+    current();
+    operation(memory(input.backend), 'native-stage-compensation-intent-write', () => {
+      current();
+      journal.compensation = clone(intent.compensation);
+      retainCompensationCurrent(input);
+    });
+  }
+  current();
+  operation(memory(input.backend), 'native-stage-compensation-intent-readback', () => {
+    current();
+    if (
+      canonicalRecordJson(journal.compensation.intent) !==
+        canonicalRecordJson(intent.compensation.intent) ||
+      journal.compensation.previous !== intent.compensation.previous
+    )
+      revisionError('native-stage-compensation-intent-readback');
+    nativeCompensationIntentReads.add(journal.compensation);
+  });
+}
+export async function beginMemoryNativeStageCompensationAttempt(input) {
+  const { m, journal, core, current } = await compensationAuthority(input);
+  current();
+  const c = compensationIntent(journal);
+  const request = core.readNativeStageCompensationOperation(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  if (request.kind !== 'write-body' || c.result !== null || c.attempts.length >= 2)
+    revisionError('native-stage-compensation-attempt');
+  const number = core.readNativeStageCompensationAttemptNumber(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  if (number !== c.attempts.length + 1) revisionError('native-stage-compensation-attempt-order');
+  const attempt = {
+    number,
+    request,
+    before: clone(m.observation.body),
+    write: null,
+    after: null,
+  };
+  const next = clone(c);
+  next.attempts.push(attempt);
+  await compensationDerived(journal, current, next);
+  current();
+  operation(m, 'native-stage-compensation-attempt-intent-write', () => {
+    current();
+    c.attempts.push(clone(attempt));
+    retainCompensationCurrent(input);
+  });
+  operation(m, 'native-stage-compensation-attempt-intent-readback', () => {
+    current();
+    if (canonicalRecordJson(c.attempts.at(-1)) !== canonicalRecordJson(attempt))
+      revisionError('native-stage-compensation-attempt-readback');
+  });
+}
+export async function writeMemoryNativeStageCompensation(input) {
+  const { m, journal, current } = await compensationAuthority(input);
+  current();
+  const c = compensationIntent(journal),
+    attempt = c.attempts.at(-1);
+  if (!attempt || attempt.write !== null) revisionError('native-stage-compensation-write');
+  const derived = await compensationDerived(journal, current);
+  current();
+  if (canonicalRecordJson(m.observation.body) === canonicalRecordJson(derived.afterBody)) return;
+  if (canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.beforeBody))
+    revisionError('native-stage-compensation-body');
+  operation(m, 'native-stage-compensation-body-effect-write', () => {
+    current();
+    m.observation.body = clone(derived.afterBody);
+    validateRevisionObservation(m.observation);
+    retainCompensationCurrent(input);
+  });
+}
+export async function completeMemoryNativeStageCompensation(input) {
+  const { m, journal, current } = await compensationAuthority(input);
+  current();
+  const c = compensationIntent(journal),
+    attempt = c.attempts.at(-1);
+  if (!attempt || attempt.write !== null) revisionError('native-stage-compensation-return');
+  const derived = await compensationDerived(journal, current);
+  current();
+  if (canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.afterBody))
+    revisionError('native-stage-compensation-readback-body');
+  const { ghFetchArgs } = await import('../versioned-issue-write.mjs');
+  current();
+  const args = ghFetchArgs(journal.header.scope.repository, journal.header.scope.issue);
+  const readback = {
+    request: { file: 'gh', args },
+    response: {
+      stdout: m.observation.body.bytes + '\n',
+      stderr: '',
+      exitCode: 0,
+    },
+    resource: {
+      request: { file: 'gh', args: args.slice(0, -2) },
+      response: {
+        stdout: JSON.stringify({ body: m.observation.body.bytes }),
+        stderr: '',
+        exitCode: 0,
+      },
+    },
+  };
+  const next = clone(c);
+  Object.assign(next.attempts.at(-1), {
+    write: { kind: 'returned' },
+    after: clone(m.observation.body),
+  });
+  next.readback = readback;
+  await compensationDerived(journal, current, next);
+  current();
+  operation(m, 'native-stage-compensation-body-effect-readback', () => {
+    current();
+    Object.assign(attempt, { write: { kind: 'returned' }, after: clone(m.observation.body) });
+    c.readback = clone(readback);
+    retainCompensationCurrent(input);
+    validateNativeStageJournal(journal);
+  });
+}
+export async function recordMemoryNativeStageCompensationFailure(input) {
+  const { m, journal, core, intent, current } = await compensationAuthority(input);
+  current();
+  const c = journal.compensation;
+  if (
+    !c ||
+    canonicalRecordJson(c.intent) !== canonicalRecordJson(intent.compensation.intent) ||
+    c.previous !== intent.compensation.previous ||
+    c.result !== null
+  )
+    revisionError('native-stage-compensation-failure');
+  const number = core.readNativeStageCompensationAttemptNumber(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const request = core.readNativeStageCompensationOperation(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const facts = core.readNativeStageCompensationFailure(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const next = clone(c);
+  if (next.attempts.length < number) {
+    if (number !== next.attempts.length + 1)
+      revisionError('native-stage-compensation-failure-order');
+    next.attempts.push({
+      number,
+      request,
+      before: clone(m.observation.body),
+      write: null,
+      after: null,
+    });
+  }
+  const attempt = next.attempts[number - 1];
+  if (!attempt || canonicalRecordJson(attempt.request) !== canonicalRecordJson(request))
+    revisionError('native-stage-compensation-failure-request');
+  Object.assign(attempt, { write: facts, after: clone(m.observation.body) });
+  await compensationDerived(journal, current, next);
+  current();
+  operation(m, 'native-stage-compensation-failure-intent-readback', () => {
+    current();
+    nativeCompensationIntentReads.add(c);
+  });
+  operation(m, 'native-stage-compensation-failure-write', () => {
+    current();
+    c.attempts = clone(next.attempts);
+    retainCompensationCurrent(input);
+    validateNativeStageJournal(journal);
+  });
+}
+export async function completeMemoryNativeStageCompensationResult(input) {
+  const { m, journal, core, current } = await compensationAuthority(input);
+  current();
+  const result = core.readNativeStageCompensationResult(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const c = compensationIntent(journal),
+    next = clone(c);
+  if (c.result !== null) revisionError('native-stage-compensation-result-prefix');
+  next.result = result;
+  await compensationDerived(journal, current, next);
+  current();
+  operation(m, 'native-stage-compensation-result-write', () => {
+    current();
+    c.result = clone(result);
+    retainCompensationCurrent(input);
+  });
+  operation(m, 'native-stage-compensation-result-readback', () => {
+    current();
+    if (canonicalRecordJson(c.result) !== canonicalRecordJson(result))
+      revisionError('native-stage-compensation-result-readback');
+    validateNativeStageJournal(journal);
+  });
+}
+
+const nativeCompensationAuditReads = new WeakSet();
+export async function writeMemoryNativeStageCompensationAudit(input) {
+  const { m, journal, core, current } = await compensationAuthority(input);
+  current();
+  const c = compensationIntent(journal);
+  const request = core.readNativeStageCompensationOperation(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  if (
+    request.kind !== 'post-comment' ||
+    c.attempts.length !== 2 ||
+    c.attempts.at(-1).write?.kind !== 'threw' ||
+    c.audit !== null ||
+    c.result !== null
+  )
+    revisionError('native-stage-compensation-audit-prefix');
+  const number = String(
+    Math.max(0, ...m.nativeStageResources.comments.map((value) => Number(value.id))) + 1
+  );
+  const nodeId = 'IC_memory_compensation_' + journal.header.id.slice(7);
+  const comment = {
+    id: Number(number),
+    node_id: nodeId,
+    issue_url: `https://api.github.com/repos/${journal.header.scope.repository}/issues/${journal.header.scope.issue}`,
+    body: request.input.body,
+    user: {
+      login: journal.header.guardCapture.lifecycleSources.remote.identity.response.stdout.trim(),
+    },
+  };
+  const intent = { id: number, nodeId, bytes: JSON.stringify(comment) };
+  const audit = { request, intent, write: null, readback: null };
+  const next = clone(c);
+  next.audit = audit;
+  const derived = await compensationDerived(journal, current, next);
+  current();
+  if (canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources))
+    revisionError('native-stage-compensation-audit-before');
+  operation(m, 'native-stage-compensation-audit-intent-write', () => {
+    current();
+    c.audit = clone(audit);
+    retainCompensationCurrent(input);
+  });
+  operation(m, 'native-stage-compensation-audit-intent-readback', () => {
+    current();
+    if (canonicalRecordJson(c.audit) !== canonicalRecordJson(audit))
+      revisionError('native-stage-compensation-audit-intent-readback');
+    nativeCompensationAuditReads.add(c.audit);
+  });
+  const admitted = () => {
+    current();
+    if (
+      !nativeCompensationAuditReads.has(c.audit) ||
+      canonicalRecordJson(c.audit.intent) !== canonicalRecordJson(intent) ||
+      canonicalRecordJson(
+        core.readNativeStageCompensationOperation(input.token, input.backend, input.invocation)
+      ) !== canonicalRecordJson(request)
+    )
+      revisionError('native-stage-compensation-audit-custody');
+  };
+  operation(m, 'native-stage-compensation-audit-effect-write', () => {
+    admitted();
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
+    )
+      revisionError('native-stage-compensation-audit-before');
+    m.nativeStageResources.comments.push(clone(intent));
+    retainCompensationCurrent(input);
+  });
+  admitted();
+  const completed = clone(c);
+  completed.audit.write = { kind: 'returned' };
+  completed.audit.readback = { resource: clone(intent) };
+  await compensationDerived(journal, current, completed);
+  admitted();
+  operation(m, 'native-stage-compensation-audit-effect-readback', () => {
+    admitted();
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
+      canonicalRecordJson(m.nativeStageResources.comments.at(-1)) !== canonicalRecordJson(intent)
+    )
+      revisionError('native-stage-compensation-audit-readback');
+    c.audit.write = { kind: 'returned' };
+    c.audit.readback = { resource: clone(intent) };
+    retainCompensationCurrent(input);
+    validateNativeStageJournal(journal);
+  });
+}
+
+// #1913 — original cache18 uses the SAME activeTask resource lock as checkpoints.
+const nativeCacheIntentReads = new WeakSet();
+const nativeCachePersisting = new WeakSet();
+const nativeCacheCompleting = new WeakSet();
+async function cacheAuthority(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+  ]);
+  const { backend, capability, context, token, invocation } = input;
+  assertMemoryCapability(backend, capability, context);
+  const core = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  const m = memory(backend),
+    journal = m.nativeStageRecords.at(-1);
+  const current = () => {
+    unchanged();
+    assertMemoryCapability(backend, capability, context);
+    const origin = core.readNativeStageTailCacheIntent(token, backend, invocation);
+    validateNativeOrder(m);
+    validateNativeStageJournal(journal);
+    if (
+      m.nativeStageRecords.at(-1) !== journal ||
+      canonicalRecordJson(journal.header) !== canonicalRecordJson(origin.header)
+    )
+      revisionError('native-stage-cache-authority');
+    return origin;
+  };
+  current();
+  return { m, journal, current, core };
+}
+function cacheLock(m, input) {
+  checkpointLock(m, input, 'activeTask');
+}
+export async function acquireMemoryNativeStageCache(input) {
+  const { m, current } = await cacheAuthority(input);
+  current();
+  if (m.nativeCheckpointResourceLocks.activeTask !== null)
+    revisionError('native-stage-cache-lock-conflict');
+  m.nativeCheckpointResourceLocks.activeTask = { token: input.token, invocation: input.invocation };
+}
+export function releaseMemoryNativeStageCache(input) {
+  assertCommentStoreKeys(input, ['backend', 'token', 'invocation']);
+  const m = memory(input.backend);
+  cacheLock(m, input);
+  m.nativeCheckpointResourceLocks.activeTask = null;
+}
+export async function readMemoryNativeStageCache(input) {
+  const { m, journal, current, core } = await cacheAuthority(input);
+  current();
+  cacheLock(m, input);
+  core.assertNativeStageTailCacheRead(input.invocation);
+  if (journal.steps.length !== 17 || journal.steps[16].readback === null)
+    revisionError('native-stage-cache-read-prefix');
+  return { beforeBytes: m.nativeStageResources.local.activeTask?.bytes ?? null };
+}
+export async function persistMemoryNativeStageCache(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+    'step',
+  ]);
+  const { step: supplied, ...authority } = input;
+  const step = JSON.parse(canonicalRecordJson(supplied));
+  const { m, journal, current: check, core } = await cacheAuthority(authority);
+  const current = () => {
+    unchanged();
+    check();
+    cacheLock(m, authority);
+    core.assertNativeStageTailCacheWrite(authority.invocation, step.intent);
+  };
+  current();
+  if (
+    journal.steps.length !== 17 ||
+    journal.steps[16].readback === null ||
+    step.readback !== null ||
+    nativeCachePersisting.has(authority.invocation)
+  )
+    revisionError('native-stage-cache-prefix');
+  nativeCachePersisting.add(authority.invocation);
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageTailCache({
+    header: journal.header,
+    steps: [...journal.steps, step],
+  });
+  current();
+  const before = () => {
+    if (
+      canonicalRecordJson(m.nativeStageResources) !==
+        canonicalRecordJson(derived.beforeResources) ||
+      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+      m.observation.stage !== derived.stage
+    )
+      revisionError('native-stage-cache-current');
+  };
+  before();
+  operation(m, 'native-stage-cache-intent-write', () => {
+    current();
+    before();
+    if (journal.steps.length !== 17) revisionError('native-stage-cache-prefix');
+    journal.steps.push(clone(step));
+  });
+  operation(m, 'native-stage-cache-intent-readback', () => {
+    current();
+    before();
+    if (canonicalRecordJson(journal.steps[17]) !== canonicalRecordJson(step))
+      revisionError('native-stage-cache-intent-readback');
+    nativeCacheIntentReads.add(journal.steps[17]);
+  });
+}
+export async function writeMemoryNativeStageCache(input) {
+  const { m, journal, current: check, core } = await cacheAuthority(input);
+  const current = () => {
+    check();
+    cacheLock(m, input);
+    core.assertNativeStageTailCacheWrite(input.invocation, journal.steps[17]?.intent);
+  };
+  current();
+  const step = journal.steps[17];
+  if (journal.steps.length !== 18 || step.readback !== null || !nativeCacheIntentReads.has(step))
+    revisionError('native-stage-cache-intent-unread');
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageTailCache({
+    header: journal.header,
+    steps: journal.steps,
+  });
+  current();
+  operation(m, 'native-stage-cache-effect-write', () => {
+    current();
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
+    )
+      revisionError('native-stage-cache-current');
+    m.nativeStageResources.local.activeTask = clone(derived.afterResources.local.activeTask);
+  });
+}
+export async function completeMemoryNativeStageCache(input) {
+  const { m, journal, current: check, core } = await cacheAuthority(input);
+  const current = () => {
+    check();
+    cacheLock(m, input);
+    core.assertNativeStageTailCacheWrite(input.invocation, journal.steps[17]?.intent);
+  };
+  current();
+  const step = journal.steps[17];
+  if (
+    journal.steps.length !== 18 ||
+    step.readback !== null ||
+    !nativeCacheIntentReads.has(step) ||
+    nativeCacheCompleting.has(input.invocation)
+  )
+    revisionError('native-stage-cache-return');
+  nativeCacheCompleting.add(input.invocation);
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageTailCache({
+    header: journal.header,
+    steps: journal.steps,
+  });
+  current();
+  operation(m, 'native-stage-cache-effect-readback', () => {
+    current();
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
+      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+      m.observation.stage !== derived.stage
+    )
+      revisionError('native-stage-cache-readback');
+    step.readback = clone(derived.readback);
+    validateNativeStageJournal(journal);
+  });
+}
+
+const nativeStagePartialResults = new WeakMap();
+// Actual returned DATA retains private snapshot provenance until its consumer
+// validates synchronously. Copies/getters never gain this membership.
+export function assertMemoryNativeStagePartialResult(input, result) {
+  const held = nativeStagePartialResults.get(result);
+  if (!held || held.input !== input) revisionError('native-stage-partial-result');
+  held.current();
+  if (canonicalRecordJson(result) !== held.bytes)
+    revisionError('native-stage-partial-result-changed');
+}
+
+// @story #1924 — only the actual cancelled/joined facade may ask for current facts.
+export async function readMemoryNativeStagePartialFacts(input) {
+  const keys = ['backend', 'capability', 'context', 'holder'];
+  const read = () => {
+    if (!input || Object.getPrototypeOf(input) !== Object.prototype)
+      revisionError('native-stage-partial-input');
+    const descriptors = Object.getOwnPropertyDescriptors(input);
+    if (
+      Reflect.ownKeys(descriptors).length !== keys.length ||
+      keys.some(
+        (key) =>
+          !descriptors[key] ||
+          !Object.hasOwn(descriptors[key], 'value') ||
+          !descriptors[key].enumerable
+      )
+    )
+      revisionError('native-stage-partial-input');
+    return descriptors;
+  };
+  const original = read();
+  const values = Object.fromEntries(keys.map((key) => [key, original[key].value]));
+  const contextBytes = () => {
+    try {
+      return canonicalRecordJson(values.context);
+    } catch {
+      revisionError('native-stage-partial-context');
+    }
+  };
+  const bytes = contextBytes();
+  const unchanged = () => {
+    const descriptors = read();
+    if (
+      keys.some((key) =>
+        ['value', 'writable', 'enumerable', 'configurable'].some(
+          (field) => descriptors[key][field] !== original[key][field]
+        )
+      ) ||
+      contextBytes() !== bytes
+    )
+      revisionError('native-stage-partial-input-changed');
+  };
+  const core = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  core.assertNativeStagePartialHolder(input);
+  const { backend, capability, context } = values;
+  assertMemoryCapability(backend, capability, context);
+  const snapshot = canonicalRecordJson(backend.snapshot);
+  const stable = () => {
+    unchanged();
+    core.assertNativeStagePartialHolder(input);
+    assertMemoryCapability(backend, capability, context);
+    readMemoryAuthority(backend, context);
+    if (canonicalRecordJson(backend.snapshot) !== snapshot)
+      revisionError('native-stage-partial-current-changed');
+  };
+  const state = await observeRevision({ context, deps: backend });
+  stable();
+  if (state.status !== 'pending-native-stage') revisionError('native-stage-partial-current');
+  const journal = backend.snapshot.nativeStageRecords.at(-1);
+  const codec = await import('./stage-execution.mjs');
+  stable();
+  const facts = await codec.deriveRecordedNativeStagePartialFacts({ journal });
+  stable();
+  const result = Object.freeze({ ...facts, progressVerified: true });
+  nativeStagePartialResults.set(result, {
+    input,
+    current: stable,
+    bytes: canonicalRecordJson(result),
+  });
+  return result;
 }

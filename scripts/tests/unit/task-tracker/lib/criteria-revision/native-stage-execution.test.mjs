@@ -427,3 +427,91 @@ for (const [name, change] of [
       /criteria-revision:native-stage-transition-step/
     );
   });
+
+test('ordinary transition default transport keeps receiver getter argument and stdout order', async () => {
+  const events = [];
+  let body;
+  const cfg = {
+    get repo() {
+      events.push('repo');
+      return 'o/r';
+    },
+  };
+  const ctx = {
+    cfg,
+    get issueArg() {
+      events.push('issue');
+      return '124';
+    },
+    resolvedFromState: 'develop',
+    stateArg: 'test',
+    actor: 'ordinary-fixture',
+    transitionId: 'move:ordinary-order',
+    get pexec() {
+      events.push('pexec');
+      return function (file, args, options) {
+        assert.equal(this, ctx);
+        assert.equal(file, 'gh');
+        assert.deepEqual(options, { timeout: 15000 });
+        const create = args.includes('POST');
+        events.push(create ? 'create' : 'read');
+        if (create) body = args.at(-1).slice(5);
+        else assert.deepEqual(args, ['api', 'repos/o/r/issues/comments/771']);
+        return Promise.resolve({
+          get stdout() {
+            events.push(create ? 'create-stdout' : 'read-stdout');
+            return JSON.stringify({ id: 771, body });
+          },
+        });
+      };
+    },
+  };
+  const result = await writeTransitionCommit(ctx, {
+    visitMarker: 'visit',
+    sentinelMarker: 'sentinel',
+  });
+  assert.equal(result.verified, true);
+  assert.equal(result.commentId, '771');
+  assert.equal(Object.isFrozen(result), true);
+  assert.equal(Object.isFrozen(result.record), true);
+  assert.deepEqual(events, [
+    'repo',
+    'issue',
+    'pexec',
+    'repo',
+    'issue',
+    'create',
+    'create-stdout',
+    'pexec',
+    'repo',
+    'read',
+    'read-stdout',
+  ]);
+});
+
+test('ordinary transition create rejection remains the exact original error and prevents read', async () => {
+  const error = new Error('ordinary original create failure'),
+    calls = [];
+  const ctx = {
+    cfg: { repo: 'o/r' },
+    issueArg: '124',
+    resolvedFromState: 'develop',
+    stateArg: 'test',
+    actor: 'fixture',
+    transitionId: 'move:ordinary-failure',
+    deps: {
+      createTransitionComment: async () => {
+        calls.push('create');
+        throw error;
+      },
+      readTransitionComment: async () => {
+        calls.push('read');
+      },
+    },
+  };
+  await assert.rejects(
+    writeTransitionCommit(ctx, { visitMarker: 'visit', sentinelMarker: 'sentinel' }),
+    (actual) => actual === error
+  );
+  assert.deepEqual(calls, ['create']);
+});

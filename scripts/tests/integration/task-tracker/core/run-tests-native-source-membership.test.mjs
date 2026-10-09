@@ -13,6 +13,26 @@ import { loadSerialSectionMetadata } from '../../../../run-tests-native-sections
 import { NATIVE_SERIAL_MEMBERS } from '../../../../run-tests-native-members.mjs';
 const root = fileURLToPath(new URL('../../../../../', import.meta.url));
 const modes = {
+  'tail-dispatch-reentry': 'tail/dispatch-reentry',
+  'tail-dispatch': 'tail/dispatch',
+  'recovery-from-comment': 'recovery/from-comment',
+  'transition-history': 'transition-comment/history',
+  'transition-result-custody': 'transition-comment/result-custody',
+  'transition-comment': 'transition-comment',
+  'transition-create-response': 'transition-comment/create-custody',
+  'transition-create-parsed': 'transition-comment/create-custody',
+  'transition-read-response': 'transition-comment/read-custody',
+  'transition-read-parsed': 'transition-comment/read-custody',
+  'transition-request-accessor': 'transition-comment/current',
+  'transition-current-config': 'transition-comment/current',
+
+  'consistency-response-accessor': 'consistency-read-continuity',
+  'consistency-request-value': 'consistency-read-continuity',
+  'consistency-current-config': 'consistency-read-continuity',
+  'consistency-result-accessor': 'consistency-result-custody',
+  'entry-result-accessor': 'entry-return-custody',
+  'entry-result-value': 'entry-return-custody',
+  'entry-result-prototype': 'entry-return-custody',
   'sentinel-late-persist-token-accessor': 'sentinel/persist-token',
   'sentinel-late-persist-token-identity': 'sentinel/persist-token',
   'sentinel-late-persist-invocation-accessor': 'sentinel/persist-invocation',
@@ -72,6 +92,7 @@ const modes = {
   'root-adapter': 'stage-current-source',
 };
 const prefixModes = new Set([
+  'transition-comment-prefix',
   'sentinel-prefix',
   'board-exception-prefix',
   'status-source-prefix',

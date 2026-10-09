@@ -11,6 +11,7 @@ import {
   hashRevisionValue,
   revisionError,
   validateRevisionRequest,
+  withRevisionSchemaValidation,
 } from './schema.mjs';
 export const EVENT_SCHEMA = 'aitm.criteria-revision-event/v1';
 const prefix = `<!-- ${EVENT_SCHEMA} -->\n\`\`\`json\n`;
@@ -21,14 +22,16 @@ const equal = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
 let validationScope = null;
 export function withRevisionValidation(work) {
   if (validationScope) return work();
-  validationScope = { parsed: new Map(), envelopes: new Map(), events: new Set() };
-  try {
-    const result = work();
-    if (result && typeof result.then === 'function') revisionError('async-validation-scope');
-    return result;
-  } finally {
-    validationScope = null;
-  }
+  return withRevisionSchemaValidation(() => {
+    validationScope = { parsed: new Map(), envelopes: new Map(), events: new Set() };
+    try {
+      const result = work();
+      if (result && typeof result.then === 'function') revisionError('async-validation-scope');
+      return result;
+    } finally {
+      validationScope = null;
+    }
+  });
 }
 function immutable(value) {
   if (value && typeof value === 'object') {

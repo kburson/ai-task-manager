@@ -1,0 +1,38 @@
+{
+  "story": 1918,
+  "originalStory": 1918,
+  "owner": "kburson",
+  "sourcePath": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager",
+  "sourceHead": "890f01719707ee206863097df9c52e9cbdbb4e97",
+  "originalIndexSha256": "a6ebd81f5f22259b1eefb9e31f245fbb84666766dd0a1b21b8a207f49247859c",
+  "sourceIndexEntries": "",
+  "purpose": "Preserve the 35 unpublished #1918 repair commits and four current original-entry admission files. Depends on #1855 / PR #1907; PR #1928 remains the separate #1919 repair.",
+  "captured": [
+    {
+      "path": "scripts/task-tracker/lib/criteria-revision/policy.mjs",
+      "blob": "4e0813e07449ac2c8c236127e93bb19c5253c717",
+      "sha256": "4135c2e56ef5769c6859ad0884d5ab7319a1a097aa96ddfdc79262b8a043eab9",
+      "bytes": 90803
+    },
+    {
+      "path": "scripts/task-tracker/lib/move-state/move-state-core.mjs",
+      "blob": "06e50d5c512ca77a43e10ec5194c0b67dddbd2fe",
+      "sha256": "9b3523efa1991c5a177631df69f81ff65a11febbab7f2a7a0c18eedd1220ead1",
+      "bytes": 223404
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs",
+      "blob": "8838e62a031191cb987cf04eb2a673644944b35b",
+      "sha256": "126305831a1c83125c66b8a5d57f6c12024e6a3ca1cd089092d703bf0a097fc3",
+      "bytes": 306977
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/criteria-revision-known-prefix-entry.test.mjs",
+      "blob": "8c546ce812ac16925bf124d4319eac346e6ad79a",
+      "sha256": "152fa67e0809cb142e02021e2005a70afd52bf214e36b034472de9c105b24664",
+      "bytes": 163
+    }
+  ],
+  "excludedRuntimeFixtures": [],
+  "validation": "Content preservation only. No current functional test, lint, peer review or merge readiness claim."
+}

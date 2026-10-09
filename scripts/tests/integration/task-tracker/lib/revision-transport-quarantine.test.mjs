@@ -429,3 +429,238 @@ for (const route of ['mutate', 'versioned'])
     refused(caught);
     assert.deepEqual(calls, []);
   });
+
+for (const route of ['write', 'repair', 'tail']) {
+  test(`stage-only post15 ${route} refuses context getters before native selection`, async () => {
+    const { writeTransitionCommit, repairTransitionCommit } =
+      await import('../../../../task-tracker/lib/move-state/transition-commit.mjs');
+    const { runPostCommitTail } =
+      await import('../../../../task-tracker/lib/move-state/post-commit-tail.mjs');
+    const gets = [];
+    const ctx = {};
+    for (const key of [
+      'SKIP_NETWORK',
+      'transitionCommit',
+      'transitionEvidence',
+      'transitionId',
+      'cfg',
+      'deps',
+      'tailProfile',
+      'transitionCommitRepairRequested',
+    ]) {
+      Object.defineProperty(ctx, key, {
+        enumerable: true,
+        get() {
+          gets.push(key);
+          throw new Error('unexpected post15 context getter');
+        },
+      });
+    }
+    const invoke = () =>
+      route === 'write'
+        ? writeTransitionCommit(ctx)
+        : route === 'repair'
+          ? repairTransitionCommit(ctx)
+          : runPostCommitTail(ctx);
+    let caught;
+    try {
+      await withMemoryStageEffectQuarantine(invoke);
+    } catch (error) {
+      caught = error;
+    }
+    assert.deepEqual(gets, []);
+    assert.ok(caught);
+    refused(caught);
+  });
+
+  test(`stage-only post15 ${route} refuses an ordinarily reachable callback route`, async () => {
+    const { writeTransitionCommit, repairTransitionCommit } =
+      await import('../../../../task-tracker/lib/move-state/transition-commit.mjs');
+    const { runPostCommitTail } =
+      await import('../../../../task-tracker/lib/move-state/post-commit-tail.mjs');
+    const calls = [];
+    let body;
+    const ctx = {
+      transitionId: 'move:post15-denial',
+      issueArg: '124',
+      cfg: { repo: 'example/criteria' },
+      resolvedFromState: 'develop',
+      stateArg: 'test',
+      actor: 'fixture',
+      transitionEvidence: { visitMarker: 'original-visit', sentinelMarker: 'original-sentinel' },
+      deps: {
+        createTransitionComment: async (value) => {
+          calls.push('create');
+          body = value;
+          return { id: 1 };
+        },
+        readTransitionComment: async () => {
+          calls.push('read');
+          return { id: 1, body };
+        },
+        listTransitionComments: async () => {
+          calls.push('list');
+          return [];
+        },
+      },
+    };
+    const steps = [
+      {
+        name: 'original-test-step',
+        scope: 'issue',
+        fn: async () => {
+          calls.push('tail');
+        },
+      },
+    ];
+    const invoke = () =>
+      route === 'write'
+        ? writeTransitionCommit(ctx)
+        : route === 'repair'
+          ? repairTransitionCommit(ctx)
+          : runPostCommitTail(ctx, steps);
+    const ordinary = await invoke();
+    if (route === 'tail') assert.deepEqual(ordinary, { failures: [], total: 1 });
+    else assert.equal(ordinary.verified, true);
+    assert.deepEqual(
+      calls,
+      route === 'write'
+        ? ['create', 'read']
+        : route === 'repair'
+          ? ['list', 'create', 'read']
+          : ['tail']
+    );
+    delete ctx.transitionCommit;
+    calls.length = 0;
+    let caught, result;
+    try {
+      result = await withMemoryStageEffectQuarantine(invoke);
+    } catch (error) {
+      caught = error;
+    }
+    assert.deepEqual(calls, []);
+    assert.equal(result, undefined);
+    assert.ok(caught);
+    refused(caught);
+  });
+}
+
+test('native consistency public inputs deny before caller access', async () => {
+  const { assertBoardMarkerConsistent } =
+    await import('../../../../task-tracker/lib/move-state/github-mutation.mjs');
+  const core = await import('../../../../task-tracker/lib/move-state/move-state-core.mjs');
+  let gets = 0;
+  const ctx = {};
+  for (const key of ['issueArg', 'cfg', 'pexec'])
+    Object.defineProperty(ctx, key, {
+      enumerable: true,
+      get() {
+        gets++;
+        throw new Error('caller getter must not run');
+      },
+    });
+  const input = Object.defineProperty({}, 'ready', {
+    enumerable: true,
+    get() {
+      gets++;
+      throw new Error('input getter must not run');
+    },
+  });
+  const denied = (error) =>
+    refused(error) && error.preparationReason === 'original-consistency-input';
+  await withMemoryStageEffectQuarantine(async () => {
+    for (const candidate of [undefined, {}, input]) {
+      await assert.rejects(assertBoardMarkerConsistent(ctx, 'test', candidate), denied);
+      assert.throws(() => core.assertNativeStageConsistencyInput(candidate, ctx, 'test'), denied);
+      assert.throws(() => core.readNativeStageConsistencyBody(candidate, ctx), denied);
+      assert.throws(() => core.assertNativeStageConsistencyResponse(candidate, ctx, ctx), denied);
+    }
+  });
+  assert.equal(gets, 0);
+});
+
+test('transition16 new public roots refuse forged input before caller descriptors are consumed', async () => {
+  const core = await import('../../../../task-tracker/lib/move-state/move-state-core.mjs');
+  const store = await import('../../../../task-tracker/lib/criteria-revision/store.mjs');
+  const native = await import('../../../../task-tracker/lib/move-state/transition-commit.mjs');
+  let gets = 0;
+  const context = {},
+    evidence = {},
+    response = {};
+  for (const value of [context, evidence, response])
+    Object.defineProperty(value, 'stdout', {
+      enumerable: true,
+      get() {
+        gets++;
+        throw new Error('public getter');
+      },
+    });
+  await withMemoryStageEffectQuarantine(async () => {
+    await assert.rejects(
+      native.writeTransitionCommit(context, evidence, Object.freeze({})),
+      refused
+    );
+    for (const invoke of [
+      () => core.assertNativeStageTransitionInput({}, context, evidence),
+      () => core.readNativeStageTransitionIntent({}, {}, {}, context),
+      () => core.assertNativeStageTransitionCreateResponse({}, context, response),
+      () => core.assertNativeStageTransitionReadResponse({}, context, response),
+    ])
+      assert.throws(invoke, refused);
+    for (const invoke of [
+      () => core.createNativeStageTransitionComment({}, context),
+      () => core.readNativeStageTransitionComment({}, context),
+    ])
+      await assert.rejects(invoke, refused);
+    assert.throws(
+      () => native.assertOriginalNativeTransitionResult({}, context, response),
+      (error) => error instanceof TypeError && error.message === 'native-transition-result-custody'
+    );
+    for (const name of [
+      'acquireMemoryNativeStageTransition',
+      'persistMemoryNativeStageTransition',
+      'writeMemoryNativeStageTransition',
+      'readMemoryNativeStageTransition',
+    ]) {
+      const input = {};
+      for (const key of [
+        'backend',
+        'capability',
+        'context',
+        'token',
+        'invocation',
+        ...(name.startsWith('persist') ? ['step'] : []),
+      ])
+        Object.defineProperty(input, key, {
+          enumerable: true,
+          get() {
+            gets++;
+            throw new Error('public authority getter');
+          },
+        });
+      await assert.rejects(
+        store[name](input),
+        (error) =>
+          error instanceof TypeError &&
+          error.message === 'criteria-revision:native-stage-transition-input'
+      );
+    }
+    assert.throws(
+      () => store.releaseMemoryNativeStageTransition(context),
+      (error) =>
+        error instanceof TypeError &&
+        error.message === 'criteria-revision:native-stage-transition-input'
+    );
+    for (const name of [
+      'assertMemoryNativeStageTransitionCreateResponse',
+      'assertMemoryNativeStageTransitionReadResponse',
+    ])
+      assert.throws(
+        () => store[name](context, response),
+        (error) =>
+          error instanceof TypeError &&
+          error.message === 'criteria-revision:native-stage-transition-response'
+      );
+  });
+  assert.equal(gets, 0);
+});

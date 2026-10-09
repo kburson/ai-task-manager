@@ -58,6 +58,7 @@ import {
   readMemoryNativeProofRecords,
   readMemoryNativeHistory,
   readMemoryPlanJournal,
+  readMemoryAuthority,
   persistMemoryNativeSource,
   publishMemorySourcePending,
 } from './store.mjs';
@@ -224,6 +225,118 @@ export async function withGovernedRevisionMutation({ context, observe }, fn) {
     return run(suppliedCapability);
   }
   return withMemoryInterlock(backend, scope, run);
+}
+
+// Only an actual live original Core entry can reach this read-only pending
+// exception. The general mutation policy remains unchanged and blocked.
+export function assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known) {
+  const current = active.getStore();
+  const held = current && observations.get(current.observation);
+  if (
+    !held?.originalStageEntry ||
+    held.originalStageEntry.ctx !== ctx ||
+    held.originalStageEntry.origin !== origin ||
+    held.originalStageEntry.known !== known ||
+    current.capability !== capability
+  )
+    throw new RevisionPolicyError(outcome('indeterminate', 'revision-authority-unavailable'));
+  held.originalStageEntry.check();
+}
+function originalStageReadState(held) {
+  if (!held.originalStageEntry) return held.state;
+  const current = active.getStore();
+  if (!current || observations.get(current.observation) !== held)
+    throw new RevisionPolicyError(outcome('indeterminate', 'revision-authority-unavailable'));
+  held.originalStageEntry.check();
+  return {
+    ...held.state,
+    observation: held.originalStageEntry.origin.observation,
+    currentContract: held.originalStageEntry.origin.currentContract,
+  };
+}
+export async function tryNativeStageOriginalEntry(ctx) {
+  const core = await import('../move-state/move-state-core.mjs');
+  core.assertOriginalNativeStageEntry(ctx);
+  const backend = ctx.revisionBackend;
+  if (!backend) return null;
+  assertRevisionMemory(backend);
+  if (!backend.snapshot.nativeStageRecords?.length) return null;
+  const context = {
+    repository: ctx.cfg.repo,
+    issue: Number(ctx.issueArg),
+    executor: backend.observation.executor,
+  };
+  return withMemoryInterlock(backend, context, async (capability) => {
+    const snapshot = canonicalRecordJson(backend.snapshot);
+    const authority = canonicalRecordJson(readMemoryAuthority(backend, context));
+    const check = () => {
+      core.assertOriginalNativeStageEntry(ctx);
+      assertMemoryCapability(backend, capability, context);
+      if (
+        snapshot !== canonicalRecordJson(backend.snapshot) ||
+        authority !== canonicalRecordJson(readMemoryAuthority(backend, context))
+      )
+        throw new RevisionPolicyError(outcome('blocked', 'revision-conflict'));
+    };
+    check();
+    if (backend.snapshot.pendingSource || readMemoryPlanJournal(backend, context))
+      throw new RevisionPolicyError(outcome('blocked', 'revision-pending'));
+    const state = await observeRevision({ context, deps: backend });
+    check();
+    if (state.status !== 'pending-native-stage')
+      throw new RevisionPolicyError(outcome('blocked', 'revision-pending'));
+    const origin = await reconstructNativeHistory({
+      history: readMemoryNativeHistory(backend),
+      chain: state.chain,
+      backend,
+      observation: backend.observation,
+    });
+    check();
+    if (origin?.status !== 'pending-native-stage')
+      throw new RevisionPolicyError(outcome('blocked', 'revision-pending'));
+    const { deriveRecordedNativeStageKnownPrefix } = await import('./stage-execution.mjs');
+    check();
+    const known = await deriveRecordedNativeStageKnownPrefix({
+      journal: origin.journal,
+      resources: backend.snapshot.nativeStageResources,
+      body: backend.observation.body,
+      stage: backend.observation.stage,
+      executor: context.executor,
+    });
+    check();
+    const observation = Object.freeze({});
+    observations.set(observation, {
+      backend,
+      context,
+      capability,
+      state,
+      approval: null,
+      raw: backend.observation,
+      originalStageEntry: { ctx, origin, known, check },
+    });
+    try {
+      return await runMemoryContext(
+        { backend, context, capability, observation, activity: 'stage-write' },
+        async () => {
+          const result = await core.evaluateOriginalNativeStageRestart(
+            ctx,
+            capability,
+            origin,
+            known
+          );
+          check();
+          const final = await observeRevision({ context, deps: backend });
+          check();
+          if (canonicalRecordJson(final) !== canonicalRecordJson(state))
+            throw new RevisionPolicyError(outcome('blocked', 'revision-conflict'));
+          core.assertOriginalNativeStageEntrySources(ctx);
+          return result;
+        }
+      );
+    } finally {
+      observations.delete(observation);
+    }
+  });
 }
 
 // This is an ordinary consumer boundary, not a transaction mutation runtime.
@@ -673,20 +786,19 @@ export function currentRevisionEvidenceBinding({ issue, body } = {}) {
     current.activity === 'native-proof-continuation' &&
     held.state.status === 'pending-native-proof' &&
     current.nativeProofJournal === held.state.nativeProofJournal;
-  if (!hasRevisedCriteria(held.state) && !nativeContinuation) return null;
-  if (body !== undefined && body !== held.state.observation.body.bytes)
+  const state = originalStageReadState(held);
+  if (!hasRevisedCriteria(state) && !nativeContinuation && !held.originalStageEntry) return null;
+  if (body !== undefined && body !== state.observation.body.bytes)
     throw new RevisionPolicyError(outcome('blocked', 'revision-conflict'));
-  const contract = held.state.observation.contract?.value;
+  const contract = state.observation.contract?.value;
   return Object.freeze(
     validateRevisionEvidenceBinding({
       schema: 'aitm.revision-evidence-binding/v1',
       repository: held.context.repository,
       issue: held.context.issue,
-      revisionId: (held.state.currentContract ?? effectiveCriteriaProposal(held.state).after)
-        .revisionId,
-      semanticContractDigest: (
-        held.state.currentContract ?? effectiveCriteriaProposal(held.state).after
-      ).semanticContractDigest,
+      revisionId: (state.currentContract ?? effectiveCriteriaProposal(state).after).revisionId,
+      semanticContractDigest: (state.currentContract ?? effectiveCriteriaProposal(state).after)
+        .semanticContractDigest,
       contractEpoch: contract?.contractEpoch ?? null,
       authorityEpoch: contract?.authorityEpoch ?? null,
     })
@@ -712,7 +824,7 @@ export function matchesCurrentRevisionEvidence(binding, { issue, structural = fa
 // an arbitrary body projection or caller-supplied definition list.
 export function currentRevisionDefinitions({ body } = {}) {
   if (!currentRevisionEvidenceBinding({ body })) return null;
-  const state = observations.get(active.getStore().observation).state;
+  const state = originalStageReadState(observations.get(active.getStore().observation));
   return structuredClone(
     (state.currentContract ?? effectiveCriteriaProposal(state).after).definitions
   );
@@ -744,13 +856,11 @@ export function acceptsIndividualRevisionProof(text, section) {
     const binding = currentRevisionEvidenceBinding();
     if (!binding) return true;
     const held = observations.get(active.getStore().observation);
-    if (
-      held.state.observation.sourceKind !== 'legacy-body' ||
-      !['ac', 'vc', 'dod'].includes(section)
-    )
+    const state = originalStageReadState(held);
+    if (state.observation.sourceKind !== 'legacy-body' || !['ac', 'vc', 'dod'].includes(section))
       return false;
-    const proposal = effectiveCriteriaProposal(held.state);
-    return (held.state.currentContract ?? proposal.after).definitions.some(
+    const proposal = effectiveCriteriaProposal(state);
+    return (state.currentContract ?? proposal.after).definitions.some(
       (d) =>
         d.section === section &&
         d.proof &&
@@ -1189,6 +1299,11 @@ export async function evaluateRevisionAdmission({ repository, issue, backend, pr
     if (parent) {
       if (parent.backend !== backend) return outcome('blocked', 'revision-conflict');
       assertMemoryCapability(backend, parent.capability, context);
+      const held = observations.get(parent.observation);
+      if (held?.originalStageEntry && parent.activity === 'stage-write') {
+        originalStageReadState(held);
+        return outcome('ready');
+      }
       return await read(parent.capability);
     }
     return await withMemoryInterlock(backend, context, read);
@@ -1754,6 +1869,7 @@ export async function evaluateNativeRevisionStageGuards(
     assertMemoryCapability(held.backend, current.capability, held.context);
     assertNativeRuntimeRootAdaptersAbsent();
     const before = held.backend.observation;
+    const readState = originalStageReadState(held);
     const { repository, issue, executor } = held.context;
     if (
       ctx.resolvedFromState !== 'develop' ||
@@ -1765,9 +1881,9 @@ export async function evaluateNativeRevisionStageGuards(
       ctx.projectDir !== executor.worktree ||
       Number(ctx.issueArg) !== issue ||
       ctx.cfg?.repo !== repository ||
-      (suppliedContext && suppliedContext.body !== held.state.observation.body.bytes.trim()) ||
+      (suppliedContext && suppliedContext.body !== readState.observation.body.bytes.trim()) ||
       (ctx.boundarySnapshot?.body?.value !== undefined &&
-        ctx.boundarySnapshot.body.value.trim() !== held.state.observation.body.bytes.trim())
+        ctx.boundarySnapshot.body.value.trim() !== readState.observation.body.bytes.trim())
     )
       refuse();
     for (const key of [
@@ -1843,7 +1959,7 @@ export async function evaluateNativeRevisionStageGuards(
       !data ||
       data.repository !== repository ||
       data.issue !== issue ||
-      data.bodyHash !== hashBytes(held.backend.observation.body.bytes)
+      data.bodyHash !== hashBytes(readState.observation.body.bytes)
     )
       refuse();
     const remote = data.remote;
@@ -1933,7 +2049,7 @@ export async function evaluateNativeRevisionStageGuards(
     if (remote.assignments.pages.length || remote.assignments.final.length) {
       const { deriveRecordedStageAssignment } = await import('../assignment-snapshot.mjs');
       assignmentReads = await deriveRecordedStageAssignment({
-        observation: before,
+        observation: readState.observation,
         lifecycleSources: data,
         projectId: cfg.projectId,
       });
@@ -2060,7 +2176,7 @@ export async function evaluateNativeRevisionStageGuards(
       repo: repository,
       fromState: 'develop',
       toState: 'test',
-      body: held.state.observation.body.bytes.trim(),
+      body: readState.observation.body.bytes.trim(),
       cfg,
       projectDir: executor.worktree,
       invokingDir: executor.worktree,
