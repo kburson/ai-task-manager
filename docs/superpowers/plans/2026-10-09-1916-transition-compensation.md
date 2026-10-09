@@ -90,7 +90,7 @@ The existing failed stage remains fourteen original steps. An optional exact `co
 - `schema:'aitm.native-compensation/v1'` and `previous` equal to the independently hashed actual board step;
 - `intent:{priorState:'develop',stateTs}` captured from the actual original rollback derivation, with canonical timestamp and no caller-selected after bytes;
 - `attempts` with at most two ordered original writes, each recording its exact original request, before body/version, returned/thrown facts and actual after body/version;
-- `readback` null or exact original body CLI and independent JSON-resource response, matching the rederived rollback bytes/version;
+- `readback` null or exact original body CLI and independent JSON-resource response, matching the rollback bytes/version derived again from the original chronology;
 - `audit` null or the exact original failure-audit request, persisted intent, actual response/readback and resource facts;
 - `result` null or the actual closed recording result. A result is DATA, not current custody or completion authority.
 

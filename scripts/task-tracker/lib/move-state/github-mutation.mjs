@@ -719,7 +719,7 @@ export async function rollbackRecordedState(ctx, priorState) {
     projectTmpDir(getProjectDir()),
     `aitm-rollback-${issueArg}-${Date.now()}.md`
   );
-  await writeIssueBodyWithRetry({
+  const recording = await writeIssueBodyWithRetry({
     issueNumber: issueArg,
     repo: cfg.repo,
     body: nextBody,
@@ -738,7 +738,9 @@ export async function rollbackRecordedState(ctx, priorState) {
       }
     },
   });
-  return { rolledBack: true, priorState };
+  if (recording.status === 'failed')
+    return { rolledBack: false, priorState, reason: 'state-recording-failed', recording };
+  return { rolledBack: recording.status === 'ok', priorState };
 }
 
 // #741 — success-path post-condition: after the board write is confirmed at
