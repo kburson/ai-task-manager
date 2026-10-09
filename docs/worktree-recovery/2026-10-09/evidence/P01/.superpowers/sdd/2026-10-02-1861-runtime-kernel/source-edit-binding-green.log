@@ -1,0 +1,38 @@
+✔ case (a): Edit refused in Backlog state (1.148875ms)
+✔ case (a) variants: refine + plan also refused (0.157583ms)
+✔ case (b): Edit refused in Develop without both deep-dive markers (0.220625ms)
+✔ case (c): Edit permitted in Develop with both markers stamped (0.086625ms)
+✔ case (c) variants #805: test/review/done REFUSE WRITE_CODE despite markers (1.046292ms)
+✔ case (d): Edit on `.tmp/**` permitted regardless of state (0.149959ms)
+✔ case (e): chore-mode active → arbitrary path Edit permitted (0.0845ms)
+✔ NotebookEdit is gated (same as Edit/Write) (0.079625ms)
+✔ non-gated tools always allowed (0.080792ms)
+✔ no bound issue + not chore-mode + non-allowlisted path → block (0.128083ms)
+✔ normalizePath converts absolute paths to project-relative POSIX (0.094375ms)
+✔ isAllowlistedPath matches every documented prefix (0.086291ms)
+✔ ALLOWLIST_PREFIXES is the documented set (0.405792ms)
+✔ runHook returns allow when project-dir cannot be found (0.453791ms)
+✔ runHook blocks in backlog state via injected signal resolver (0.33575ms)
+✔ runHook bypasses entire signal fetch when chore-mode is active (0.204292ms)
+✔ runHook tolerates signal fetch failure (falls through to decide) (0.211667ms)
+✔ runHook allowlists scratch without needing a bound issue or signals (0.115291ms)
+✔ native apply_patch envelope classifies every target with ordinary source-edit rules (0.469958ms)
+✔ malformed native apply_patch envelope fails closed before ordinary allowances (0.1535ms)
+✔ #658: fetchIssueSignals detects the ts="..." property grammar (140.575959ms)
+✔ #658: fetchIssueSignals still detects the legacy colon grammar (49.9265ms)
+✔ #658: fetchIssueSignals reads false when neither grammar is present (52.490417ms)
+✔ Plan artifact authoring is independent of ownership; scripts and source remain gated (0.281958ms)
+✔ installed guard targets refuse before chore and scratch exits (0.07825ms)
+✔ target ancestry refuses an alias through an installed guard tree (34.887709ms)
+✔ Plan source-edit hook accepts owned Markdown from observed worktree (52.820833ms)
+✔ bound backlog draft permits documents across ownership while source stays gated (0.279041ms)
+✔ bound refine draft permits documents across ownership while source stays gated (0.101583ms)
+✔ bound ready-for-plan draft permits documents across ownership while source stays gated (0.103417ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 472.0345

@@ -1,0 +1,16 @@
+✔ the activity-policy file itself classifies as WRITE_CODE (config) (0.988625ms)
+✔ codeGlobsExtra keeps every default codeGlob plus the additions (26.037083ms)
+✔ configGlobsExtra adds vite/playwright configs without restating defaults (24.024375ms)
+✔ deployGlobsExtra keeps every default deployGlob plus the additions (80.069042ms)
+✔ docGlobsExtra appends onto the default docGlobs (37.28975ms)
+✔ a base configGlobs override replaces defaults, then configGlobsExtra appends (24.207417ms)
+✔ non-array *Extra values are ignored (22.133584ms)
+✔ no policy file → DEFAULT_POLICY unchanged (21.102917ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 241.257792

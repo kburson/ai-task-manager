@@ -1,0 +1,20 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-v2/cli-contract.test.mjs",
+    "status": 0,
+    "durationMs": 6009,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-73/0000.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs",
+    "status": 1,
+    "durationMs": 4872,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-73/0001.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs",
+    "status": 1,
+    "durationMs": 1861,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-73/0002.log"
+  }
+]

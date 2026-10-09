@@ -1,0 +1,50 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs",
+    "status": 0,
+    "durationMs": 1845,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-105-repaired/0000.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+    "status": 0,
+    "durationMs": 22284,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-105-repaired/0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-parity.test.mjs",
+    "status": 0,
+    "durationMs": 19870,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-105-repaired/0002.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs",
+    "status": 0,
+    "durationMs": 12266,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-105-repaired/0003.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+    "status": 0,
+    "durationMs": 63543,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-105-repaired/0004.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs",
+    "status": 0,
+    "durationMs": 1543,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-105-repaired/0005.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs",
+    "status": 0,
+    "durationMs": 3177,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-105-repaired/0006.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs",
+    "status": 0,
+    "durationMs": 940,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-105-repaired/0007.log"
+  }
+]

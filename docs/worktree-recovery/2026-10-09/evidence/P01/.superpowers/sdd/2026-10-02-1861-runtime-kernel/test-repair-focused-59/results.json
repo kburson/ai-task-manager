@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs",
+    "status": 0,
+    "durationMs": 9284,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-59/0000.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/cli.test.mjs",
+    "status": 1,
+    "durationMs": 114233,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-59/0001.log"
+  }
+]

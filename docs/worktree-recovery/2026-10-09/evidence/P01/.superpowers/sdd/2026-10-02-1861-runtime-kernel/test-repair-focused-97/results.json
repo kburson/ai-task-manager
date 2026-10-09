@@ -1,0 +1,8 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs",
+    "status": 0,
+    "durationMs": 120808,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-97/0000.log"
+  }
+]

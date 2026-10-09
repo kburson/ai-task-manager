@@ -1,0 +1,12 @@
+✔ Markdownlint replaces every exact reviewer exception with one role-based policy (4.69175ms)
+✔ Markdownlint ignores sealed ai-peer-review responses but still governs legacy owner responses (1402.241792ms)
+✔ CSpell ignores sealed ai-peer-review responses but still governs legacy owner responses (2618.045125ms)
+✔ Markdownlint ignores reviewer bytes but still reports an equivalent owner response (397.301375ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4425.970458

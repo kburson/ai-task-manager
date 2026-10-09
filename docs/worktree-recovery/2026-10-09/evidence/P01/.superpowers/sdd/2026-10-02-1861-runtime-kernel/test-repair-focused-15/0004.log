@@ -1,0 +1,31 @@
+✔ migration planning hashes exact sources and census without creating runtime records (159.236125ms)
+✔ planning retains unknown, unsupported, aliased and untrusted input as explicit blockers (1349.120916ms)
+✔ planning refuses aliases above the legacy directory and records active writer blockers (323.206625ms)
+✔ duplicate source destinations and existing stores are never silently overwritten (199.503334ms)
+✔ classifier scope/family is closed and old shared or Claude state cannot disappear from inventory (331.390416ms)
+✔ apply requires the exact approved plan and unchanged source bytes before publication (247.164542ms)
+✔ complete publication preserves original bytes and reconciles timing once (807.910833ms)
+✔ interrupted multi-root publication resumes from durable plan after confirmed owner death (2491.171459ms)
+✔ a crash before ordinary manifest creation retains an exact durable bootstrap plan (861.521ms)
+✔ post-fence failure retains a journal and pending timing retries ignore later mutable store changes (927.11275ms)
+✔ completed transaction crash boundaries retain a recoverable exact-owner fence (3650.214875ms)
+✔ recovery refuses malformed protected journals and controls without changing evidence (1129.118541ms)
+✔ a corrupt retained fence cannot masquerade as an already released fence (968.305292ms)
+✔ protected migration timing keeps pending provenance and confirms later ordinary coverage without a second charge (815.7645ms)
+✔ real SIGKILL migration boundary after-bootstrap retains exact source and eventually completes (1141.230917ms)
+✔ real SIGKILL migration boundary after-fence retains exact source and eventually completes (1096.313ms)
+✔ real SIGKILL migration boundary after-root-stage retains exact source and eventually completes (1243.069084ms)
+✔ real SIGKILL migration boundary after-root-publish retains exact source and eventually completes (1286.113375ms)
+✔ real SIGKILL migration boundary before-activation retains exact source and eventually completes (1376.878709ms)
+✔ real SIGKILL migration boundary after-manifest-complete retains exact source and eventually completes (1090.807417ms)
+✔ real SIGKILL migration boundary after-timing-publish retains exact source and eventually completes (1127.610334ms)
+✔ real SIGKILL migration boundary before-fence-release retains exact source and eventually completes (1118.113875ms)
+✔ completed unfenced timing retry admits a genuinely activated successor without republishing its stores (1625.819917ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25584.292042

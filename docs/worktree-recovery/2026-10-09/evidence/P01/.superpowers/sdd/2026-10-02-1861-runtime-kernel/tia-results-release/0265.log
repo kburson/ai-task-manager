@@ -1,0 +1,18 @@
+✔ layer 1 intercepts seam execFile traffic without spawning (25.419ms)
+✔ layer 1 intercepts seam spawn traffic (the graphql path) (17.332542ms)
+✔ layer 2 intercepts a gh child process the seam cannot reach (204.203083ms)
+✔ the census counts both layers together (206.638125ms)
+✔ an unmatched invocation refuses rather than reaching the network (18.323666ms)
+✔ refusalFor is the shared refusal shape (0.11925ms)
+✔ the first matching response wins and a match-less entry is a catch-all (32.5555ms)
+✔ a response may declare a nonzero exit code (18.087875ms)
+✔ restore puts the seam and PATH back and removes the shim (15.116167ms)
+✔ an isolated seam object can be stubbed instead of the live one (14.577125ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 557.397417

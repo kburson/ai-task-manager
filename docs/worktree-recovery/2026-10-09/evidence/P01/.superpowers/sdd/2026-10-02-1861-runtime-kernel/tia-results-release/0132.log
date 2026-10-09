@@ -1,0 +1,22 @@
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+✔ review reproduction: legacy session cursor survives first actor flush (10514.51825ms)
+✔ explicit pause after Test handoff is idempotent (15793.252833ms)
+✔ explicit pause after Review handoff is idempotent (17179.173625ms)
+✔ production Test sandbox admits real Git identity outside artifact roots (119.969583ms)
+✔ upgrade cursor is scoped to the state-owning project, not ambient root (3131.22075ms)
+✔ upgrade refuses invalid own cursor and never imports global timing history (2501.1705ms)
+Stopped #1857: +0 active min, +0 words. Use "/task resume <N>" to return to it later.
+✔ paused binding does not publish unmatched stop (15632.36125ms)
+✔ paused binding does not publish unmatched switch-out:#1861 (13439.511833ms)
+✔ paused binding does not publish unmatched switch-out (12150.7815ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 90466.623959

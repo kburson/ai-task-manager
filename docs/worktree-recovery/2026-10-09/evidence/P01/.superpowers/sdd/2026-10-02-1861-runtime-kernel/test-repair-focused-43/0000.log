@@ -1,0 +1,32 @@
+✔ resolves one atomic worktree identity from the invoking directory (1.317125ms)
+✔ active-task state overwrites all worktree identity fields together (2192.567ms)
+✔ legacy active-task records without worktree identity remain readable (1026.112ms)
+✔ binding outside Git fails before a null identity can be persisted (14.475375ms)
+✖ explicit bind persists identity and a same-issue rebind replaces it (3228.493625ms)
+✔ bind resolution failure happens before active-task state mutation (2612.180833ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 5
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9211.64175
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs:111:1
+✖ explicit bind persists identity and a same-issue rebind replaces it (3228.493625ms)
+  Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:75:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:80:3)
+      at readCursor (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/word-counter.mjs:185:18)
+      at loadMarker (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/word-counter.mjs:191:20)
+      at bankResumeTranscriptTail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/resume.mjs:128:26)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/resume.mjs:350:18)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs:151:5)
+      at async Test.run (node:internal/test_runner/test:1409:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }

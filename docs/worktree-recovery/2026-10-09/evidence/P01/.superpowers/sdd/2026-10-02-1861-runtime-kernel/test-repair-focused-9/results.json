@@ -1,0 +1,32 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+    "status": 0,
+    "durationMs": 11089,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-9/0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs",
+    "status": 0,
+    "durationMs": 3023,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-9/0001.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs",
+    "status": 1,
+    "durationMs": 1611,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-9/0002.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/actor-queue-isolation.test.mjs",
+    "status": 1,
+    "durationMs": 389,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-9/0003.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/action-authority-cost.test.mjs",
+    "status": 0,
+    "durationMs": 341,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-9/0004.log"
+  }
+]

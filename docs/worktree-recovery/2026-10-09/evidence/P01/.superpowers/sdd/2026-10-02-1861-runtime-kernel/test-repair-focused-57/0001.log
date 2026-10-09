@@ -1,0 +1,305 @@
+fleet-registry-concurrent.test.mjs: control proved race exists — 1/8 survived without lock
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: locked workers must all complete
++ actual - expected
+
++ [
++   'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
++     '  throw new RuntimeRootError(code, message);\n' +
++     '        ^\n' +
++     '\n' +
++     'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
++     '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
++     '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
++     '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
++     '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
++     '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
++     '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
++     '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
++     '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
++     '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
++     '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
++     "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
++     '}\n' +
++     '\n' +
++     'Node.js v26.8.1\n',
++   'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
++     '  throw new RuntimeRootError(code, message);\n' +
++     '        ^\n' +
++     '\n' +
++     'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
++     '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
++     '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
++     '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
++     '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
++     '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
++     '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
++     '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
++     '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
++     '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
++     '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
++     "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
++     '}\n' +
++     '\n' +
++     'Node.js v26.8.1\n',
++   'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
++     '  throw new RuntimeRootError(code, message);\n' +
++     '        ^\n' +
++     '\n' +
++     'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
++     '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
++     '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
++     '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
++     '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
++     '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
++     '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
++     '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
++     '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
++     '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
++     '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
++     "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
++     '}\n' +
++     '\n' +
++     'Node.js v26.8.1\n',
++   'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
++     '  throw new RuntimeRootError(code, message);\n' +
++     '        ^\n' +
++     '\n' +
++     'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
++     '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
++     '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
++     '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
++     '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
++     '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
++     '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
++     '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
++     '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
++     '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
++     '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
++     "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
++     '}\n' +
++     '\n' +
++     'Node.js v26.8.1\n',
++   'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
++     '  throw new RuntimeRootError(code, message);\n' +
++     '        ^\n' +
++     '\n' +
++     'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
++     '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
++     '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
++     '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
++     '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
++     '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
++     '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
++     '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
++     '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
++     '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
++     '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
++     "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
++     '}\n' +
++     '\n' +
++     'Node.js v26.8.1\n',
++   'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
++     '  throw new RuntimeRootError(code, message);\n' +
++     '        ^\n' +
++     '\n' +
++     'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
++     '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
++     '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
++     '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
++     '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
++     '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
++     '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
++     '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
++     '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
++     '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
++     '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
++     "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
++     '}\n' +
++     '\n' +
++     'Node.js v26.8.1\n',
++   'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
++     '  throw new RuntimeRootError(code, message);\n' +
++     '        ^\n' +
++     '\n' +
++     'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
++     '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
++     '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
++     '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
++     '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
++     '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
++     '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
++     '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
++     '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
++     '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
++     '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
++     "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
++     '}\n' +
++     '\n' +
++     'Node.js v26.8.1\n'
++ ]
+- []
+
+    at runConcurrent (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs:44:12)
+    at async file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs:80:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
+      '  throw new RuntimeRootError(code, message);\n' +
+      '        ^\n' +
+      '\n' +
+      'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
+      '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
+      '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
+      '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
+      '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
+      '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
+      '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
+      '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
+      '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
+      '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
+      '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
+      "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
+      '}\n' +
+      '\n' +
+      'Node.js v26.8.1\n',
+    'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
+      '  throw new RuntimeRootError(code, message);\n' +
+      '        ^\n' +
+      '\n' +
+      'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
+      '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
+      '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
+      '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
+      '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
+      '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
+      '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
+      '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
+      '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
+      '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
+      '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
+      "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
+      '}\n' +
+      '\n' +
+      'Node.js v26.8.1\n',
+    'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
+      '  throw new RuntimeRootError(code, message);\n' +
+      '        ^\n' +
+      '\n' +
+      'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
+      '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
+      '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
+      '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
+      '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
+      '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
+      '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
+      '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
+      '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
+      '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
+      '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
+      "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
+      '}\n' +
+      '\n' +
+      'Node.js v26.8.1\n',
+    'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
+      '  throw new RuntimeRootError(code, message);\n' +
+      '        ^\n' +
+      '\n' +
+      'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
+      '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
+      '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
+      '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
+      '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
+      '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
+      '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
+      '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
+      '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
+      '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
+      '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
+      "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
+      '}\n' +
+      '\n' +
+      'Node.js v26.8.1\n',
+    'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
+      '  throw new RuntimeRootError(code, message);\n' +
+      '        ^\n' +
+      '\n' +
+      'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
+      '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
+      '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
+      '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
+      '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
+      '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
+      '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
+      '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
+      '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
+      '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
+      '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
+      "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
+      '}\n' +
+      '\n' +
+      'Node.js v26.8.1\n',
+    'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
+      '  throw new RuntimeRootError(code, message);\n' +
+      '        ^\n' +
+      '\n' +
+      'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
+      '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
+      '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
+      '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
+      '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
+      '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
+      '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
+      '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
+      '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
+      '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
+      '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
+      "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
+      '}\n' +
+      '\n' +
+      'Node.js v26.8.1\n',
+    'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32\n' +
+      '  throw new RuntimeRootError(code, message);\n' +
+      '        ^\n' +
+      '\n' +
+      'RuntimeRootError: Coordinator ownership requires explicit recovery; age is not authority\n' +
+      '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)\n' +
+      '    at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:285:7)\n' +
+      '    at acquireWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:531:3)\n' +
+      '    at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:574:16)\n' +
+      '    at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:602:17)\n' +
+      '    at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)\n' +
+      '    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)\n' +
+      '    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)\n' +
+      '    at registerTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:183:3)\n' +
+      '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/fleet-registry-concurrent-helper.mjs:9:1 {\n' +
+      "  code: 'RUNTIME_MIGRATION_BUSY'\n" +
+      '}\n' +
+      '\n' +
+      'Node.js v26.8.1\n'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs (5277.502542ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5283.140875
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs (5277.502542ms)
+  'test failed'

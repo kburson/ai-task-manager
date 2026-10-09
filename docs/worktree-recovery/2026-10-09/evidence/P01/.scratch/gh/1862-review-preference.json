@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "#1861 PR code review must use Astra 6 at High effort after CI is green.",
+  "replacement": "#1861 PR code review must use GPT-6.1 Sol at Extra High effort after CI is green (supersedes the earlier Astra 6 request)."
+}

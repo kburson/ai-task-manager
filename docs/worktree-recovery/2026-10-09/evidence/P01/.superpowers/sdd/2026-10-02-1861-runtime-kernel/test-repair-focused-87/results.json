@@ -1,0 +1,8 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+    "status": 0,
+    "durationMs": 24964,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-87/0000.log"
+  }
+]

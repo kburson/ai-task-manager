@@ -1,0 +1,70 @@
+coverage-approve.test.mjs: defined
+⚠ approve: review-notes post failed: comment boom
+✔ runApprove: throws without issueNumber (1.5515ms)
+✔ runApprove: throws without cfg (0.146417ms)
+✔ runApprove: assertBound may throw (0.108334ms)
+✔ runApprove: wrong-state when not in review (0.502084ms)
+✔ runApprove: already-approved when marker present (94.401917ms)
+✔ runApprove: human path with drivers posts Review Notes (81.082208ms)
+✔ runApprove: human path with no drivers posts nothing (83.484042ms)
+✔ runApprove: full-auto path inserts footnote and posts auto notes (78.425208ms)
+✔ runApprove: review-notes post failure does not block approval (73.198542ms)
+✔ runApprove: lifecycle-noop warns but still approves (75.483ms)
+✔ runApprove: default fetch/comment/project helpers run offline (426.024166ms)
+✔ runApprove: default promptDrivers resolves [] off a TTY (142.803042ms)
+✔ detectFullAuto: not fired when reviewer set, interactive, no CI (0.217375ms)
+✔ detectFullAuto: fired via reviewer-unset (0.061375ms)
+✔ detectFullAuto: fired via TT_FULL_AUTO (0.042125ms)
+✔ detectFullAuto: fired via tty=false (0.034833ms)
+✔ detectFullAuto: fired via CI (0.046959ms)
+✔ verbApprove: no issue number → usage, exit 1 (0.33575ms)
+✔ verbApprove: TT_SKIP_NETWORK=1 → exit 1 (0.182167ms)
+✔ verbApprove: IssueLockError → exit 7 (0.157083ms)
+✔ verbApprove: generic error → exit 1 (0.080708ms)
+✔ verbApprove: wrong-state → exit 3 (0.1205ms)
+✖ verbApprove: approved → stdout, no exit (1.513584ms)
+✖ verbApprove: already-approved → stdout, no exit (0.786958ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 22
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1263.63425
+
+✖ failing tests:
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:65:10
+✖ verbApprove: approved → stdout, no exit (1.513584ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== null
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs:405:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:65:10
+✖ verbApprove: already-approved → stdout, no exit (0.786958ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== null
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs:414:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

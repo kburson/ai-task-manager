@@ -1,0 +1,14 @@
+✔ throws BindMissingError when no active bind in state file (13.476708ms)
+✔ throws BindMissingError when state file is empty object (7.048083ms)
+✔ throws BindMismatchError when bound to a different issue (6.664042ms)
+✔ does not throw when bound to the matching issue (numeric) (6.012792ms)
+✔ does not throw when bound to the matching issue (hash-prefixed string) (5.281541ms)
+✔ BindMissingError and BindMismatchError are distinct error classes (0.200375ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 151.438209

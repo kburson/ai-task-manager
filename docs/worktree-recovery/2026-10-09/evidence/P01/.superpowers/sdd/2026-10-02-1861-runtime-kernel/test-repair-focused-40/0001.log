@@ -1,0 +1,18 @@
+✔ Incorporated review evidence is strict, exact-SHA, and resolved against current policy (5.509833ms)
+✔ Incorporated review evidence accepts typed waiver authority without a review receipt (9.531042ms)
+✔ Incorporated review evidence rejects malformed claims, red commands, and ambiguous tips (20.966292ms)
+✔ Incorporated review evidence refuses stale approval without current standing (4.817583ms)
+✔ durable review authority permits strict retry evidence after Full-Auto standing is removed (5.612334ms)
+✔ fresh Incorporated preparation uses exact human ledger approval for a carrier-only row (1.071ms)
+✔ fresh, partial, and completed preparation normalize or reuse exact review authority (2.426542ms)
+✔ close Incorporated lane authorizes before invoking its dedicated mutation runner (0.271167ms)
+✔ authorization refusal leaves the Incorporated mutation runner untouched (0.222875ms)
+✔ ordinary close treats --of as an assertion, never as authority discovery (0.282333ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 252.440541

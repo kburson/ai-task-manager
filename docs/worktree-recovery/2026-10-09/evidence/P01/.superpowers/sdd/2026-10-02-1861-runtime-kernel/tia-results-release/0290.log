@@ -1,0 +1,17 @@
+close-emission-order.test.mjs: ok
+Closed #999.
+Closed #999.
+Closed #999.
+✔ buildReviewToDoneClosePair emits review:approved then issue:wrap (14.563667ms)
+✔ verbClose emits review:approved + issue:wrap before the done board move (278.1025ms)
+✔ combined close + done-move stream is review:approved → issue:wrap → issue:closed (0.299416ms)
+✔ #692 AC2 — retried close does not re-emit an existing review:approved/issue:wrap pair (270.228542ms)
+✔ #692 AC3 — review:approved active duration derives from the timing comment (251.605375ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 818.88525

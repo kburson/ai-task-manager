@@ -1,0 +1,16 @@
+✔ formatStatus renders all fields (0.824042ms)
+✔ chore-mode on writes active=true with reason and previousIssue (4747.074042ms)
+✔ chore-mode on stays local while another worktree agent is active (5857.855958ms)
+✔ chore-mode on is idempotent when already on (2030.298458ms)
+✔ chore-mode off clears active without --resume (2103.19975ms)
+✔ chore-mode off --resume invokes verbStart with previous issue context (2480.248916ms)
+✔ chore-mode off is idempotent when already off (2052.446208ms)
+✔ chore-mode status reports off + defaults on fresh state (736.965458ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20100.31475

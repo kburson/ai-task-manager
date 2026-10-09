@@ -1,0 +1,11 @@
+✔ each shipped executable entry point has exactly one explicit classification (136.146583ms)
+✔ public classifications resolve through an existing command authority (0.19475ms)
+✔ the approved classification vocabulary is closed and deeply frozen (0.091708ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 254.407292

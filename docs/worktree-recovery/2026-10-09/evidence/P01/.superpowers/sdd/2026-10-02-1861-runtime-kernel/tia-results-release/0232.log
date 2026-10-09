@@ -1,0 +1,17 @@
+/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/discover-autosave-RRjM7k/docs/plans/.drafts/autosave-story.md
+/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/discover-autosave-RRjM7k/docs/plans/20261003-autosave-story.md
+✔ AC1: saveDraftFile writes the draft under docs/plans/.drafts/<slug>.md (5.01625ms)
+✔ AC1: autosave is incremental — repeated flushes overwrite the SAME file (3.881625ms)
+✔ AC2: docs/plans/.drafts/<slug>.md is NOT git-ignored (survives commit/push → pull) (27.88625ms)
+✔ AC3: savePlanFile still writes the date-stamped docs/plans/YYYYMMDD-<slug>.md (untouched) (3.743666ms)
+✔ AC4: clearDraftFile removes the matching draft and is a no-op when absent (2.950208ms)
+✔ AC4: resolveDraftSlug agrees across save-draft and save-plan so the right draft is cleared (0.238917ms)
+✔ AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears the draft (436.195166ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 483.8785

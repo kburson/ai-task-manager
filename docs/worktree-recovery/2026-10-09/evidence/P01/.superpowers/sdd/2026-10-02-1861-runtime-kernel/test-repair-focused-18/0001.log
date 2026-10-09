@@ -1,0 +1,21 @@
+coverage-kind.test.mjs: defined
+[task-tracker] ✓ kind on #42: set to "audit".
+[task-tracker] ✓ kind on #99: cleared (code is the default lane).
+[task-tracker] ✓ kind on #42: set to "epic".
+✔ no args → usage error, exit 1 (0.6875ms)
+✔ one arg with no active task → exit 1 (140.355958ms)
+✔ invalid kind → exit 1 (0.225916ms)
+✔ invalid issue number → exit 1 (0.145917ms)
+✔ happy path: explicit target + non-code kind → sets marker (3.787834ms)
+✔ happy path: one-arg active-bind form + code kind → clears marker (131.4995ms)
+✔ epic kind delegates all carriers to the shared metadata reconciler (0.204708ms)
+✔ epic body reconciliation appends the introduced DoD verifier with the next stable id (1.988ms)
+✔ repeating epic body reconciliation is content-idempotent and Review preflight accepts it (1.731084ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 386.04225
