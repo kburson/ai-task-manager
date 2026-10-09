@@ -1,0 +1,14 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "occupancy",
+    "help"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T15:15:15.525Z",
+  "end": "2026-10-06T15:15:16.971Z",
+  "exitCode": 0,
+  "stdout": "/task occupancy — Administratively release one authoritative local occupancy claim.\n\n  Purpose: Administratively release one authoritative local occupancy claim.\n  Usage:  /task occupancy --release #N\n\n  Arguments:\n    --release #N\n        Issue-scoped administrative release.\n    --release #N\n        release exactly one issue-scoped local claim\n\n  Preconditions:\n    An exact numeric issue and --release are required; --steal is unavailable.\n\n  Effects:\n    Releases one main-worktree-anchored local occupancy claim without changing issue lifecycle state.\n\n  Output:\n    Prints the released provider, session prefix, and worktree, or reports that no claim exists.\n\n  Exit codes:\n    0  success (or idempotent no-op)\n    1  runtime error (message on stderr)\n    2  usage error / unknown verb\n\n  Examples:\n    /task occupancy --release #1325\n\n  Related:\n    fleet\n    stop\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' occupancy help\n"
+}

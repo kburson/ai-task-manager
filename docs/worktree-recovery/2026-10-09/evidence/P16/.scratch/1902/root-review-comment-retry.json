@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "comment: created id=IC_kwDOSU6LgM8AAAABZqaxfg\n",
+    "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' comment 1902 --key code-review.root-exact-head --body-file .scratch/1902/root-independent-code-review.md\n"
+  ],
+  "pid": 32003,
+  "stdout": "comment: created id=IC_kwDOSU6LgM8AAAABZqaxfg\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' comment 1902 --key code-review.root-exact-head --body-file .scratch/1902/root-independent-code-review.md\n"
+}

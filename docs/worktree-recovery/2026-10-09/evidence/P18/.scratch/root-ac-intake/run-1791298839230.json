@@ -1,0 +1,17 @@
+{
+  "command": [
+    "npx",
+    "prettier",
+    "--write",
+    "scripts/task-tracker/lib/ac-section.mjs",
+    "scripts/task-tracker/lib/functional-dod-evidence.mjs",
+    "scripts/task-tracker/lib/body-invariants.mjs",
+    "scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T15:00:38.156Z",
+  "end": "2026-10-06T15:00:39.230Z",
+  "exitCode": 0,
+  "stdout": "scripts/task-tracker/lib/ac-section.mjs 43ms\nscripts/task-tracker/lib/functional-dod-evidence.mjs 42ms (unchanged)\nscripts/task-tracker/lib/body-invariants.mjs 52ms (unchanged)\nscripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs 8ms\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'prettier' --write scripts/task-tracker/lib/ac-section.mjs scripts/task-tracker/lib/functional-dod-evidence.mjs scripts/task-tracker/lib/body-invariants.mjs scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs\n"
+}

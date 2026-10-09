@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "worktree: codex/root-ac-derivation@/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation\nActive: #1904 [kburson/ai-task-manager]. Elapsed: Unknown active min (wall 1), 1 words since last marker.\n",
+    ""
+  ],
+  "pid": 46754,
+  "stdout": "worktree: codex/root-ac-derivation@/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation\nActive: #1904 [kburson/ai-task-manager]. Elapsed: Unknown active min (wall 1), 1 words since last marker.\n",
+  "stderr": ""
+}

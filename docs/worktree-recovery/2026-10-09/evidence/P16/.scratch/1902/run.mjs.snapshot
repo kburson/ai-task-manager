@@ -1,0 +1,16 @@
+import {spawnSync} from 'node:child_process';
+import {readFileSync,writeFileSync,appendFileSync,readdirSync} from 'node:fs';
+const cwd=process.cwd(),sid=process.env.CODEX_THREAD_ID;
+if(sid!=='01a10a24-0dc2-7e31-86bc-0f63380e50d6')throw Error('wrong actual actor');
+const dir='.tmp/aitm/sessions/'+sid;
+const binding=JSON.parse(readFileSync(dir+'/active-task.json'));
+const timers=readdirSync(dir+'/timing').filter(p=>p.endsWith('.json')).map(p=>JSON.parse(readFileSync(dir+'/timing/'+p)));
+if(binding.issue!=='#1902'||!timers.some(t=>t.state.active==='#1902'&&!t.state.paused))throw Error('expected genuine active #1902');
+if(spawnSync('git',['branch','--show-current'],{cwd,encoding:'utf8'}).stdout.trim()!=='codex/1902-preserve-merge-history')throw Error('wrong branch');
+const[label,command,...args]=process.argv.slice(2).filter(x=>x!=='--allow-foreign-worktree');
+if(!/^[a-z0-9-]+$/.test(label))throw Error('label');
+const startedAt=new Date().toISOString(),r=spawnSync(command,args,{cwd,encoding:'utf8',maxBuffer:32*1024*1024});
+writeFileSync('.scratch/1902/'+label+'.stdout.txt',r.stdout??'');
+writeFileSync('.scratch/1902/'+label+'.stderr.txt',r.stderr??'');
+appendFileSync('.scratch/1902/author-commands.jsonl',JSON.stringify({command:[command,...args],cwd,actualActor:sid,startedAt,endedAt:new Date().toISOString(),exitCode:r.status,exception:'Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.'})+'\n');
+console.log(r.stdout??'');console.error(r.stderr??'');process.exit(r.status??1);
