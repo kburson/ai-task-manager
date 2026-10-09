@@ -1,0 +1,6 @@
+The review directory `docs/peer-reviews/spec/2026-09-22-2026-09-22-1755-delivery-attribution-exception-design-review-cc015b243c3fe236325ac37f5899783f/` contains `review-cc015b243c3fe236325ac37f5899783f-reviewer-response-3.md`, and that file records a terminal `accepted` disposition.
+The committed reviewer-response-3 document is byte-for-byte identical to the reviewer-authored source: its SHA-256 is `3a7e022fa7c1bc11c61e894d04b68658b78b287dfd917ea12a9736cfbebe9993`.
+The document names the exact reviewed specification path, commit `0fc890a98ba79497df5b6beb9436fd8389d6f13c`, blob `9e841e404b2cd45ce417b051e723c02442bd40c7`, and review ID `review-cc015b243c3fe236325ac37f5899783f`.
+The document discloses that acceptance was recorded after implementation and delivery and does not claim the acceptance existed before delivery.
+The branch diff against trunk adds exactly one file and modifies or deletes none, so the specification, earlier review documents, code, tests, package manifest, and dependencies are untouched.
+The added file introduces no whitespace errors.

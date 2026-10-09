@@ -1,0 +1,290 @@
+﻿2026-10-09T00:38:50.5231430Z Current runner version: '2.337.0'
+2026-10-09T00:38:50.5252262Z ##[group]Runner Image Provisioner
+2026-10-09T00:38:50.5253040Z Hosted Compute Agent
+2026-10-09T00:38:50.5253520Z Version: 20261002.596
+2026-10-09T00:38:50.5254160Z Commit: c3d12f3313a95f25162a1503be624f3b0617f8c0
+2026-10-09T00:38:50.5254828Z Build Date: 2026-10-02T22:28:27Z
+2026-10-09T00:38:50.5255421Z Worker ID: {cf96a34f-9279-4df4-a7be-7203f71ba7f9}
+2026-10-09T00:38:50.5256014Z Region: westus3
+2026-10-09T00:38:50.5256469Z Cloud: Azure
+2026-10-09T00:38:50.5256905Z ##[endgroup]
+2026-10-09T00:38:50.5258090Z ##[group]Operating System
+2026-10-09T00:38:50.5258619Z Ubuntu
+2026-10-09T00:38:50.5259124Z 24.04.5
+2026-10-09T00:38:50.5259560Z LTS
+2026-10-09T00:38:50.5260178Z ##[endgroup]
+2026-10-09T00:38:50.5260706Z ##[group]Runner Image
+2026-10-09T00:38:50.5261238Z Image: ubuntu-24.04
+2026-10-09T00:38:50.5261690Z Version: 20261004.327.1
+2026-10-09T00:38:50.5262770Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261004.327/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-09T00:38:50.5264051Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261004.327
+2026-10-09T00:38:50.5264852Z ##[endgroup]
+2026-10-09T00:38:50.5265813Z ##[group]GITHUB_TOKEN Permissions
+2026-10-09T00:38:50.5267279Z Contents: read
+2026-10-09T00:38:50.5267755Z Metadata: read
+2026-10-09T00:38:50.5268297Z ##[endgroup]
+2026-10-09T00:38:50.5270111Z Secret source: Actions
+2026-10-09T00:38:50.5271036Z Cache mode: write
+2026-10-09T00:38:50.5271587Z Prepare workflow directory
+2026-10-09T00:38:50.5825146Z Prepare all required actions
+2026-10-09T00:38:50.5863144Z Getting action download info
+2026-10-09T00:38:50.8707711Z Download action repository 'actions/checkout@v5' (SHA:fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09)
+2026-10-09T00:38:51.0300544Z Download action repository 'actions/setup-node@v5' (SHA:a0853c24544627f65ddf259abe73b1d18a591444)
+2026-10-09T00:38:51.2118477Z Complete job name: npm 12.0.2 / Node 26 pack compatibility
+2026-10-09T00:38:51.2655310Z ##[group]Run actions/checkout@v5
+2026-10-09T00:38:51.2655960Z with:
+2026-10-09T00:38:51.2656324Z   repository: kburson/ai-task-manager
+2026-10-09T00:38:51.2659460Z   token: ***
+2026-10-09T00:38:51.2659805Z   ssh-strict: true
+2026-10-09T00:38:51.2660309Z   ssh-user: git
+2026-10-09T00:38:51.2660659Z   persist-credentials: true
+2026-10-09T00:38:51.2661039Z   clean: true
+2026-10-09T00:38:51.2661385Z   sparse-checkout-cone-mode: true
+2026-10-09T00:38:51.2661787Z   fetch-depth: 1
+2026-10-09T00:38:51.2662125Z   fetch-tags: false
+2026-10-09T00:38:51.2662475Z   show-progress: true
+2026-10-09T00:38:51.2662828Z   lfs: false
+2026-10-09T00:38:51.2663162Z   submodules: false
+2026-10-09T00:38:51.2663515Z   set-safe-directory: true
+2026-10-09T00:38:51.2663911Z   allow-unsafe-pr-checkout: false
+2026-10-09T00:38:51.2664459Z env:
+2026-10-09T00:38:51.2664858Z   AITM_SOURCE_HEAD: d843b191cb845a0a493f9c9d133202b8b293c9e5
+2026-10-09T00:38:51.2665371Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-09T00:38:51.2665820Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-09T00:38:51.2666255Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-09T00:38:51.2666678Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-09T00:38:51.2667081Z ##[endgroup]
+2026-10-09T00:38:51.3483255Z Syncing repository: kburson/ai-task-manager
+2026-10-09T00:38:51.3485248Z ##[group]Getting Git version info
+2026-10-09T00:38:51.3486183Z Working directory is '/home/runner/work/ai-task-manager/ai-task-manager'
+2026-10-09T00:38:51.3487570Z [command]/usr/bin/git version
+2026-10-09T00:38:51.3543804Z git version 2.55.0
+2026-10-09T00:38:51.3560450Z ##[endgroup]
+2026-10-09T00:38:51.3572110Z Temporarily overriding HOME='/home/runner/work/_temp/bc42d968-58fa-4345-8a12-bd27ecd51e8c' before making global git config changes
+2026-10-09T00:38:51.3573869Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-09T00:38:51.3576711Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-09T00:38:51.3619014Z Deleting the contents of '/home/runner/work/ai-task-manager/ai-task-manager'
+2026-10-09T00:38:51.3622391Z ##[group]Initializing the repository
+2026-10-09T00:38:51.3625480Z [command]/usr/bin/git init /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-09T00:38:51.4005735Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-09T00:38:51.4007124Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-09T00:38:51.4008261Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-09T00:38:51.4009179Z hint: call:
+2026-10-09T00:38:51.4009653Z hint:
+2026-10-09T00:38:51.4010431Z hint: 	git config --global init.defaultBranch <name>
+2026-10-09T00:38:51.4011182Z hint:
+2026-10-09T00:38:51.4011876Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-09T00:38:51.4013042Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-09T00:38:51.4014012Z hint:
+2026-10-09T00:38:51.4014537Z hint: 	git branch -m <name>
+2026-10-09T00:38:51.4015104Z hint:
+2026-10-09T00:38:51.4015859Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-09T00:38:51.4017341Z Initialized empty Git repository in /home/runner/work/ai-task-manager/ai-task-manager/.git/
+2026-10-09T00:38:51.4025368Z [command]/usr/bin/git remote add origin https://github.com/kburson/ai-task-manager
+2026-10-09T00:38:51.4074750Z ##[endgroup]
+2026-10-09T00:38:51.4075827Z ##[group]Disabling automatic garbage collection
+2026-10-09T00:38:51.4077371Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-09T00:38:51.4107803Z ##[endgroup]
+2026-10-09T00:38:51.4108740Z ##[group]Setting up auth
+2026-10-09T00:38:51.4113199Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-09T00:38:51.4146057Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-09T00:38:51.4447849Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-09T00:38:51.4479187Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-09T00:38:51.4667846Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-09T00:38:51.4700505Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-09T00:38:51.4886314Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-09T00:38:51.4923296Z ##[endgroup]
+2026-10-09T00:38:51.4930944Z ##[group]Fetching the repository
+2026-10-09T00:38:51.4932871Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3a6b08b802a2a3fa5fa5ebda127ac0a749eea2ce:refs/remotes/pull/1927/merge
+2026-10-09T00:38:53.9305053Z From https://github.com/kburson/ai-task-manager
+2026-10-09T00:38:53.9306646Z  * [new ref]         3a6b08b802a2a3fa5fa5ebda127ac0a749eea2ce -> pull/1927/merge
+2026-10-09T00:38:53.9311053Z ##[endgroup]
+2026-10-09T00:38:53.9312033Z ##[group]Determining the checkout info
+2026-10-09T00:38:53.9313376Z ##[endgroup]
+2026-10-09T00:38:53.9317891Z [command]/usr/bin/git sparse-checkout disable
+2026-10-09T00:38:53.9391647Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-09T00:38:53.9425582Z ##[group]Checking out the ref
+2026-10-09T00:38:53.9426263Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1927/merge
+2026-10-09T00:38:54.2077056Z Note: switching to 'refs/remotes/pull/1927/merge'.
+2026-10-09T00:38:54.2077672Z 
+2026-10-09T00:38:54.2078135Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-09T00:38:54.2079123Z changes and commit them, and you can discard any commits you make in this
+2026-10-09T00:38:54.2080615Z state without impacting any branches by switching back to a branch.
+2026-10-09T00:38:54.2081254Z 
+2026-10-09T00:38:54.2081680Z If you want to create a new branch to retain commits you create, you may
+2026-10-09T00:38:54.2082667Z do so (now or later) by using -c with the switch command. Example:
+2026-10-09T00:38:54.2083245Z 
+2026-10-09T00:38:54.2083561Z   git switch -c <new-branch-name>
+2026-10-09T00:38:54.2084001Z 
+2026-10-09T00:38:54.2084289Z Or undo this operation with:
+2026-10-09T00:38:54.2084668Z 
+2026-10-09T00:38:54.2084917Z   git switch -
+2026-10-09T00:38:54.2085236Z 
+2026-10-09T00:38:54.2085763Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-09T00:38:54.2086515Z 
+2026-10-09T00:38:54.2087313Z HEAD is now at 3a6b08b Merge d843b191cb845a0a493f9c9d133202b8b293c9e5 into e49543f2e93c6d5ce768322b8cb36bad8639bc61
+2026-10-09T00:38:54.2091070Z ##[endgroup]
+2026-10-09T00:38:54.2132040Z [command]/usr/bin/git log -1 --format=%H
+2026-10-09T00:38:54.2154453Z 3a6b08b802a2a3fa5fa5ebda127ac0a749eea2ce
+2026-10-09T00:38:54.2508405Z ##[group]Run actions/setup-node@v5
+2026-10-09T00:38:54.2509281Z with:
+2026-10-09T00:38:54.2510196Z   node-version: 26
+2026-10-09T00:38:54.2510975Z   cache: npm
+2026-10-09T00:38:54.2511670Z   always-auth: false
+2026-10-09T00:38:54.2512423Z   check-latest: false
+2026-10-09T00:38:54.2518777Z   token: ***
+2026-10-09T00:38:54.2519553Z   package-manager-cache: true
+2026-10-09T00:38:54.2520554Z env:
+2026-10-09T00:38:54.2521376Z   AITM_SOURCE_HEAD: d843b191cb845a0a493f9c9d133202b8b293c9e5
+2026-10-09T00:38:54.2522423Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-09T00:38:54.2523316Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-09T00:38:54.2524206Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-09T00:38:54.2525101Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-09T00:38:54.2525946Z ##[endgroup]
+2026-10-09T00:38:54.3740382Z Attempting to download 26...
+2026-10-09T00:38:54.3823576Z (node:2096) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-09T00:38:54.3826482Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-09T00:38:55.4112488Z Acquiring 26.11.1 - x64 from https://github.com/actions/node-versions/releases/download/26.11.1-37718106145/node-26.11.1-linux-x64.tar.gz
+2026-10-09T00:38:55.9537706Z Extracting ...
+2026-10-09T00:38:55.9631582Z [command]/usr/bin/tar xz --strip 1 --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/1475d647-fcc3-490e-9734-c75fa4d4a481 -f /home/runner/work/_temp/90fb7a68-8993-4357-82d1-868fc5e381d0
+2026-10-09T00:38:57.1399813Z Adding to the cache ...
+2026-10-09T00:38:59.3605174Z ##[group]Environment details
+2026-10-09T00:38:59.5325052Z node: v26.11.1
+2026-10-09T00:38:59.5325365Z npm: 11.20.0
+2026-10-09T00:38:59.5325788Z yarn: 1.22.22
+2026-10-09T00:38:59.5326355Z ##[endgroup]
+2026-10-09T00:38:59.5345562Z [command]/opt/hostedtoolcache/node/26.11.1/x64/bin/npm config get cache
+2026-10-09T00:38:59.6104264Z /home/runner/.npm
+2026-10-09T00:38:59.8677533Z Cache hit for: node-cache-Linux-x64-npm-cc486ca1b1418d5126392d04f46db0de0a3accc61a7c1efe42448bcc19b5f0c0
+2026-10-09T00:38:59.8761690Z (node:2096) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-10-09T00:39:00.9871574Z Received 33767279 of 33767279 (100.0%), 35.5 MBs/sec
+2026-10-09T00:39:00.9872110Z Cache Size: ~32 MB (33767279 B)
+2026-10-09T00:39:00.9963675Z [command]/usr/bin/tar -xf /home/runner/work/_temp/022a2c8b-6a7f-440a-b6b5-e852666e23b4/cache.tzst -P -C /home/runner/work/ai-task-manager/ai-task-manager --use-compress-program unzstd
+2026-10-09T00:39:01.1064497Z Cache restored successfully
+2026-10-09T00:39:01.1085660Z Cache restored from key: node-cache-Linux-x64-npm-cc486ca1b1418d5126392d04f46db0de0a3accc61a7c1efe42448bcc19b5f0c0
+2026-10-09T00:39:01.1254621Z ##[group]Run npm install --global "npm@12.0.2"
+2026-10-09T00:39:01.1254997Z [36;1mnpm install --global "npm@12.0.2"[0m
+2026-10-09T00:39:01.1466881Z shell: /usr/bin/bash -e {0}
+2026-10-09T00:39:01.1467125Z env:
+2026-10-09T00:39:01.1467368Z   AITM_SOURCE_HEAD: d843b191cb845a0a493f9c9d133202b8b293c9e5
+2026-10-09T00:39:01.1467664Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-09T00:39:01.1467884Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-09T00:39:01.1468102Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-09T00:39:01.1468342Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-09T00:39:01.1468550Z ##[endgroup]
+2026-10-09T00:39:02.9626766Z 
+2026-10-09T00:39:02.9633435Z removed 8 packages, and changed 76 packages in 2s
+2026-10-09T00:39:03.0015771Z ##[group]Run test "$(npm --version)" = "12.0.2"
+2026-10-09T00:39:03.0016126Z [36;1mtest "$(npm --version)" = "12.0.2"[0m
+2026-10-09T00:39:03.0076617Z shell: /usr/bin/bash -e {0}
+2026-10-09T00:39:03.0076845Z env:
+2026-10-09T00:39:03.0077082Z   AITM_SOURCE_HEAD: d843b191cb845a0a493f9c9d133202b8b293c9e5
+2026-10-09T00:39:03.0077381Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-09T00:39:03.0077612Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-09T00:39:03.0077835Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-09T00:39:03.0078098Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-09T00:39:03.0078306Z ##[endgroup]
+2026-10-09T00:39:03.0884798Z ##[group]Run npm ci
+2026-10-09T00:39:03.0885071Z [36;1mnpm ci[0m
+2026-10-09T00:39:03.0945640Z shell: /usr/bin/bash -e {0}
+2026-10-09T00:39:03.0945888Z env:
+2026-10-09T00:39:03.0946122Z   AITM_SOURCE_HEAD: d843b191cb845a0a493f9c9d133202b8b293c9e5
+2026-10-09T00:39:03.0946415Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-09T00:39:03.0946641Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-09T00:39:03.0946858Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-09T00:39:03.0947087Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-09T00:39:03.0947304Z ##[endgroup]
+2026-10-09T00:39:05.0196353Z 
+2026-10-09T00:39:05.0197193Z added 319 packages, and audited 320 packages in 2s
+2026-10-09T00:39:05.0197576Z 
+2026-10-09T00:39:05.0200563Z 102 packages are looking for funding
+2026-10-09T00:39:05.0201006Z   run `npm fund` for details
+2026-10-09T00:39:05.0237029Z 
+2026-10-09T00:39:05.0237550Z 9 vulnerabilities (3 low, 1 moderate, 5 high)
+2026-10-09T00:39:05.0237865Z 
+2026-10-09T00:39:05.0238302Z To address all issues (including breaking changes), run:
+2026-10-09T00:39:05.0238765Z   npm audit fix --force
+2026-10-09T00:39:05.0238954Z 
+2026-10-09T00:39:05.0239109Z Run `npm audit` for details.
+2026-10-09T00:39:05.0261155Z npm warn install-scripts 1 package had install scripts blocked because they are not covered by allowScripts:
+2026-10-09T00:39:05.0262258Z npm warn install-scripts   puppeteer@25.11.0 (postinstall: node install.mjs)
+2026-10-09T00:39:05.0262825Z npm warn install-scripts
+2026-10-09T00:39:05.0263716Z npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+2026-10-09T00:39:05.0541616Z ##[group]Run node --test scripts/tests/unit/task-tracker/core/npm-pack-report.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/unit/task-tracker/core/memory-seed-packaged.test.mjs scripts/tests/unit/task-tracker/core/scope-pack.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs
+2026-10-09T00:39:05.0544261Z [36;1mnode --test scripts/tests/unit/task-tracker/core/npm-pack-report.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/unit/task-tracker/core/memory-seed-packaged.test.mjs scripts/tests/unit/task-tracker/core/scope-pack.test.mjs scripts/tests/integration/meta/package-test-corpus.test.mjs scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs[0m
+2026-10-09T00:39:05.0601858Z shell: /usr/bin/bash -e {0}
+2026-10-09T00:39:05.0602254Z env:
+2026-10-09T00:39:05.0602474Z   AITM_SOURCE_HEAD: d843b191cb845a0a493f9c9d133202b8b293c9e5
+2026-10-09T00:39:05.0602759Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-09T00:39:05.0602991Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-09T00:39:05.0603208Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-09T00:39:05.0603431Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-09T00:39:05.0603652Z ##[endgroup]
+2026-10-09T00:39:15.6402053Z ✔ package files explicitly exclude the canonical test support root (2.207657ms)
+2026-10-09T00:39:15.6403542Z ✔ npm pack excludes the test corpus while retaining required runtime files and assets (10489.047353ms)
+2026-10-09T00:39:22.0845914Z ✔ packed consumer verifies committed bootstrap after npm ci and reports drift read-only (16927.680262ms)
+2026-10-09T00:39:22.0931027Z ✔ packed consumer can select and execute effect-scoped move tails (14208.60428ms)
+2026-10-09T00:39:24.8937909Z ✔ package.json files[] ships docs/ai-memory but excludes archive/ (4.386944ms)
+2026-10-09T00:39:24.8971623Z ✔ npm pack tarball contains the seed index + durable facts, no archive (9206.993716ms)
+2026-10-09T00:39:24.9036322Z ✔ normalizes the observed npm 11 single-package array report (2.824474ms)
+2026-10-09T00:39:24.9037482Z ✔ normalizes the observed npm 12 package-keyed report (0.222891ms)
+2026-10-09T00:39:24.9038542Z ✔ requires callers to bind the expected package identity (0.469076ms)
+2026-10-09T00:39:24.9039528Z ✔ rejects malformed JSON and unsupported outer values (0.394626ms)
+2026-10-09T00:39:24.9040675Z ✔ rejects zero or multiple reports (0.472141ms)
+2026-10-09T00:39:24.9041441Z ✔ rejects an unexpected npm 12 package key or inner report identity (0.273907ms)
+2026-10-09T00:39:24.9042334Z ✔ requires a files array and optionally a non-empty filename (0.315058ms)
+2026-10-09T00:39:24.9043132Z ✔ all pack consumers import the shared normalizer (0.984653ms)
+2026-10-09T00:39:28.3532130Z ✔ package-boundary: no test files are packed (8838.94117ms)
+2026-10-09T00:39:28.3533558Z ✔ package-boundary: excluded directories do not reappear (0.998517ms)
+2026-10-09T00:39:28.3534640Z ✔ package-boundary: ships the exact docs/introduction/ set (0.404492ms)
+2026-10-09T00:39:28.3535741Z ✔ package-boundary: shipped README has no dead docs/introduction link (0.328199ms)
+2026-10-09T00:39:28.3548892Z ✖ package-boundary: total entry count stays under the ceiling (0.721284ms)
+2026-10-09T00:39:28.3557960Z ✔ package-boundary: development-only context calibration is not shipped (0.386516ms)
+2026-10-09T00:39:28.3566935Z ✔ package-boundary: runtime entry points are still shipped (0.190043ms)
+2026-10-09T00:39:28.3568223Z ✔ package-boundary: production parser and guidance release guard are declared (0.401798ms)
+2026-10-09T00:39:28.3569578Z ✔ package-boundary: tag and explicit release CI retain the B2 consumer gate (0.337873ms)
+2026-10-09T00:39:30.1089406Z ✔ npm pack --dry-run resolves the scoped @kburson/ai-task-manager name (7975.809643ms)
+2026-10-09T00:39:30.1151014Z ℹ tests 24
+2026-10-09T00:39:30.1151307Z ℹ suites 0
+2026-10-09T00:39:30.1151565Z ℹ pass 23
+2026-10-09T00:39:30.1151836Z ℹ fail 1
+2026-10-09T00:39:30.1152077Z ℹ cancelled 0
+2026-10-09T00:39:30.1152345Z ℹ skipped 0
+2026-10-09T00:39:30.1152597Z ℹ todo 0
+2026-10-09T00:39:30.1152872Z ℹ duration_ms 25022.213368
+2026-10-09T00:39:30.1161236Z 
+2026-10-09T00:39:30.1162038Z ✖ failing tests:
+2026-10-09T00:39:30.1162327Z 
+2026-10-09T00:39:30.1162889Z test at scripts/tests/unit/task-tracker/core/package-boundary.test.mjs:220:1
+2026-10-09T00:39:30.1163834Z ✖ package-boundary: total entry count stays under the ceiling (0.721284ms)
+2026-10-09T00:39:30.1165139Z   AssertionError [ERR_ASSERTION]: packed entry count 916 exceeds ceiling 915; the package surface grew — confirm intentional and raise the ceiling, or prune.
+2026-10-09T00:39:30.1166730Z       at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/unit/task-tracker/core/package-boundary.test.mjs:421:10)
+2026-10-09T00:39:30.1167788Z       at Test.runInAsyncScope (node:async_hooks:226:14)
+2026-10-09T00:39:30.1168656Z       at Test.run (node:internal/test_runner/test:1402:25)
+2026-10-09T00:39:30.1169305Z       at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+2026-10-09T00:39:30.1170128Z       at Test.postRun (node:internal/test_runner/test:1542:19)
+2026-10-09T00:39:30.1170684Z       at Test.run (node:internal/test_runner/test:1467:12)
+2026-10-09T00:39:30.1171340Z       at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+2026-10-09T00:39:30.1171929Z     generatedMessage: false,
+2026-10-09T00:39:30.1172281Z     code: 'ERR_ASSERTION',
+2026-10-09T00:39:30.1172589Z     actual: false,
+2026-10-09T00:39:30.1172870Z     expected: true,
+2026-10-09T00:39:30.1173291Z     operator: '==',
+2026-10-09T00:39:30.1173608Z     diff: 'simple'
+2026-10-09T00:39:30.1173893Z   }
+2026-10-09T00:39:30.1216248Z ##[error]Process completed with exit code 1.
+2026-10-09T00:39:30.1353814Z Post job cleanup.
+2026-10-09T00:39:30.2016201Z [command]/usr/bin/git version
+2026-10-09T00:39:30.2052615Z git version 2.55.0
+2026-10-09T00:39:30.2084886Z Temporarily overriding HOME='/home/runner/work/_temp/22b6154f-4913-4795-ac3e-db0d9806b7bb' before making global git config changes
+2026-10-09T00:39:30.2086008Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-09T00:39:30.2090334Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-09T00:39:30.2122128Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-09T00:39:30.2152069Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-09T00:39:30.2374304Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-09T00:39:30.2400476Z http.https://github.com/.extraheader
+2026-10-09T00:39:30.2410265Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-09T00:39:30.2440187Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-09T00:39:30.2661387Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-09T00:39:30.2695019Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-09T00:39:30.3047591Z Cleaning up orphan processes

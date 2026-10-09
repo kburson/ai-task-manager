@@ -1,0 +1,18 @@
+{
+  "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+  "sourcePaths": [
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+      "sha256": "c5f2f82752efe828c9eb1bea76cbcafed0f2267aecc41b2abde7770392f165d7"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+      "sha256": "cc4c8a7eb4fb39c696f22d59ca4836946c90c13f480a32d764d9936fd565fcc5"
+    }
+  ],
+  "tests": [
+    "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+  ]
+}

@@ -1,0 +1,15 @@
+[#1562] fix(fixtures): commit the post-merge emitter line numbers
+
+The merge commit cf5aa095 shipped trunk's stale close.mjs emitter line numbers
+(2480, 2678, 2823, 3057) instead of the corrected post-merge positions. The
+correction was made and verified in the working tree but never reached the
+index, so the pushed branch failed the characterization test it was reported
+as passing.
+
+Corrects to the actual merged positions: 2477, 2675, 2820, 3054 — trunk's
+values minus the three lines this branch removes by collapsing the inline
+delivery-gate refusal into a single call.
+
+Verified against HEAD after committing this time, not against the working tree.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

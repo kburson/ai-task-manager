@@ -1,0 +1,5 @@
+- Changing the ai-peer-review protocol or adding new review features.
+- Converting, rewriting, or deleting historical accepted and abandoned archives.
+- Weakening #1591's evidence requirements or bypassing unresolved active legacy reviews.
+- Adding an `npx aitm peer-review` compatibility wrapper.
+- Reopening epic #1531 solely to hold this bounded cleanup work.

@@ -1,0 +1,23 @@
+✔ preflight permits unassigned team work through Plan without Full-Auto claiming (34.008125ms)
+✔ preflight blocks foreign multiple and lost in-flight ownership (41.428ms)
+✔ reconcile ownership-only preflight blocks foreign ownership but permits drift repair (15.88375ms)
+✔ Plan exit Full-Auto defers notice and assignment until the post-guard commit boundary (0.993542ms)
+✔ Plan exit always schedules under-lock revalidation for an existing local owner (0.193084ms)
+✔ Plan exit refuses stale non-Plan snapshots before and under the issue lock (0.3045ms)
+✔ Plan exit under-lock revalidation refuses ownership changed after guard aggregation (0.128708ms)
+✔ Plan exit interactive mode prompts with zero assignment mutation (0.119375ms)
+✔ interactive Plan revalidation never turns a lost owner into a Full-Auto claim (0.134042ms)
+✔ Plan revalidation refreshes authenticated identity under lock (0.154958ms)
+✔ Plan exit refuses a foreign or multiple owner before notice or mutation (0.137833ms)
+✔ Plan exit commit treats thrown assignment transport as ambiguous despite matching read-back (0.131625ms)
+✔ source edits in Develop require the exact singleton local owner (0.569708ms)
+✔ foreign-owner source-edit recovery renders an executable issue argument (0.0765ms)
+✔ raw gh assignee edits are refused in favor of governed ownership verbs (2.80025ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 101.30925

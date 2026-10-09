@@ -1,0 +1,1166 @@
+{
+  "scope": [
+    "D02",
+    "D03",
+    "D04",
+    "D05",
+    "D07"
+  ],
+  "originRefs": [
+    {
+      "sha": "00a4ec75374ddb5b5fa3c623d8cb3e0791c1d195",
+      "ref": "refs/heads/1356-review-receipt-reuse"
+    },
+    {
+      "sha": "185a0e56e605749fd9eeb597a0d32ee9cca9ee75",
+      "ref": "refs/heads/ai-memory"
+    },
+    {
+      "sha": "7c9ac2d083a049420edb4035dbeaba5c247b63df",
+      "ref": "refs/heads/aipr-setup"
+    },
+    {
+      "sha": "8acc023b25be38f57abf418bdda54a8248e6e7a9",
+      "ref": "refs/heads/archive/XPR-SPR-SAR-experiment"
+    },
+    {
+      "sha": "ad0daac0c2c86d791f190e27d2caa58045976ed4",
+      "ref": "refs/heads/back-set-package-version"
+    },
+    {
+      "sha": "2f14aa85a10265c3c2d3db4d5acf472dd1966bac",
+      "ref": "refs/heads/chore/db-ignore-and-codex-token-burn-guide"
+    },
+    {
+      "sha": "af041413b89c879d1af286af37e9c96130fdb2fa",
+      "ref": "refs/heads/claude/1187-heal-departure-at"
+    },
+    {
+      "sha": "f0a11c21261a846a9f424fd15f66aedb0f89ed88",
+      "ref": "refs/heads/claude/1562-merge-method-reconcile"
+    },
+    {
+      "sha": "edaa8e402f340af3ca15b5b36ec845b038040d58",
+      "ref": "refs/heads/claude/1755-final-acceptance-ad486a"
+    },
+    {
+      "sha": "9787ead92557e0767f7747e49447ba5e27822abe",
+      "ref": "refs/heads/claude/aad-yml-config-exploration-6d0cf6"
+    },
+    {
+      "sha": "31cc05a453096f298e911e017e66ad4bb6bdae97",
+      "ref": "refs/heads/claude/articles-book-publication-6a7dfe"
+    },
+    {
+      "sha": "03ac57cc5081eea15c518f7f2416c30f69de47e4",
+      "ref": "refs/heads/claude/pull-branch-trunk-origin-c647e3"
+    },
+    {
+      "sha": "52f4666b4c27f20381968a94a8c94ee5f282689e",
+      "ref": "refs/heads/claude/readme-update-current-state-5d1f2c"
+    },
+    {
+      "sha": "d3bfced2a75fceba1cac227adcd9125ebf624ff5",
+      "ref": "refs/heads/claude/resume-session-837-bf8599"
+    },
+    {
+      "sha": "c329fb7a966d89f87265075caf2f0927eb285e4f",
+      "ref": "refs/heads/claude/task-912-13506a"
+    },
+    {
+      "sha": "5e393f5b4900022eded36aae046942f8b39a3989",
+      "ref": "refs/heads/claude/task-923-bb70a6"
+    },
+    {
+      "sha": "4d4a372ea16a3180c16434544089edf3e7d4e591",
+      "ref": "refs/heads/claude/task-935-demote-guard"
+    },
+    {
+      "sha": "d969c97295bd46e90b9ca470562d60333e101732",
+      "ref": "refs/heads/claude/task-978-e174fb"
+    },
+    {
+      "sha": "d7a73789640346030fa9a87cb5b3831792925517",
+      "ref": "refs/heads/claude/task-979-17fbdf"
+    },
+    {
+      "sha": "7c5cdd92bc9f5eeb5967cbcfdb18454b93ef9b49",
+      "ref": "refs/heads/claude/trunk-drift-reverify-3ff5d2"
+    },
+    {
+      "sha": "ab46f5e6ba54c19e6a6f062b7c94b6fe858daecd",
+      "ref": "refs/heads/cleanup-memory"
+    },
+    {
+      "sha": "d4d5d31e08826ba73a27f28dff5a5252d1588871",
+      "ref": "refs/heads/codex/1117-state-components"
+    },
+    {
+      "sha": "f6b37fe92cb0e6007f0b89708f9fc08996d52c93",
+      "ref": "refs/heads/codex/1208-weighted-test-pool"
+    },
+    {
+      "sha": "f921936a3dc2334842be45576792ad12db302ca0",
+      "ref": "refs/heads/codex/1219-tiered-test-spec"
+    },
+    {
+      "sha": "fb47d4bdf4b7cdd7e055d46f67e7ec4e14dc8c98",
+      "ref": "refs/heads/codex/1254-test-receipt-reuse"
+    },
+    {
+      "sha": "53c9142cc2bc6d526f8e118e0523261f74dcb395",
+      "ref": "refs/heads/codex/1260-pull-next-guidance"
+    },
+    {
+      "sha": "de643493fa15cccb9724585d9d1d9827179972ae",
+      "ref": "refs/heads/codex/1262-reference-mode-repin"
+    },
+    {
+      "sha": "56a7df8fa51248c0978610dde5f17115dbd29728",
+      "ref": "refs/heads/codex/1262-tia-design-plan"
+    },
+    {
+      "sha": "153672237a4cd71d885f7402566f14f1b62e0612",
+      "ref": "refs/heads/codex/1263-test-corpus-registry"
+    },
+    {
+      "sha": "f02806c297a768bc0e5ccbf654a7b64bfbe19d0c",
+      "ref": "refs/heads/codex/1268-implementation-plan"
+    },
+    {
+      "sha": "6f3e7b663e7c3b6ca850be1337909260fefe8af7",
+      "ref": "refs/heads/codex/1269-guided-co-review-start-spec"
+    },
+    {
+      "sha": "8301df7fa20c2fc5df2c27e4c74349f0f024b34f",
+      "ref": "refs/heads/codex/1272-spec-plan-archive"
+    },
+    {
+      "sha": "c11eca18dedd136a27dd259e43e2553e85dfdd39",
+      "ref": "refs/heads/codex/1273-active-budget-control"
+    },
+    {
+      "sha": "9f07a8cc17e5d2b2d70141bcde65b989742b2da6",
+      "ref": "refs/heads/codex/1279-post-split-wbs-admission"
+    },
+    {
+      "sha": "24ffe0d1a7f54decd9169d7cdf719e4273baa2b9",
+      "ref": "refs/heads/codex/1281-child-decomposition-scope"
+    },
+    {
+      "sha": "38303d3c5c5ee4059f9766638634dd11a4dc267c",
+      "ref": "refs/heads/codex/1284-legacy-epic-branch-resolution"
+    },
+    {
+      "sha": "9ec524192dfdc71af754ceb248d9c8ae007bad63",
+      "ref": "refs/heads/codex/1287-wbs-readiness"
+    },
+    {
+      "sha": "b81e6230022362c38c9e92cf9eb199965cf5a7d7",
+      "ref": "refs/heads/codex/1292-co-review-fixture-cost"
+    },
+    {
+      "sha": "0ae9d0131032c2ec763b671b5f3f3567f0888598",
+      "ref": "refs/heads/codex/1293-test-import-wave"
+    },
+    {
+      "sha": "6a1fd576c8d6d9dd65227892e1300b478af1a7bd",
+      "ref": "refs/heads/codex/1294-serial-classification"
+    },
+    {
+      "sha": "83db839b1995286ea2a1365412d55862e692c7bc",
+      "ref": "refs/heads/codex/1295-github-action-capture"
+    },
+    {
+      "sha": "0e55fd6335e02e68dfd8ab2057013a798b99f464",
+      "ref": "refs/heads/codex/1296-packaging-canary"
+    },
+    {
+      "sha": "c23196ad3edb1c04d50bc66829066fe177cd9726",
+      "ref": "refs/heads/codex/1297-release-closed-binding"
+    },
+    {
+      "sha": "bf0074fe1a27a2ea4d573ae12e66e9dad05d871d",
+      "ref": "refs/heads/codex/1304-slow-lane-partition"
+    },
+    {
+      "sha": "3f0b287fcbc7d2041c99b93e162f70016ccfb0c8",
+      "ref": "refs/heads/codex/1314-co-review-reference-archive"
+    },
+    {
+      "sha": "37324b20d863f62d7c6cbf5b68f90b1c6d4eb632",
+      "ref": "refs/heads/codex/1317-docs-only-lane-skip"
+    },
+    {
+      "sha": "316ff66a8a3834db534f93b3ed09ad1180f33b5b",
+      "ref": "refs/heads/codex/1319-derived-checkbox"
+    },
+    {
+      "sha": "e8f5ee6c2068d919d699d3bb65266e84afc315f0",
+      "ref": "refs/heads/codex/1322-co-review-consistent-snapshot"
+    },
+    {
+      "sha": "c80712acbb7002f33ec7f4c3cfb96cc152949a7b",
+      "ref": "refs/heads/codex/1331-coreview-wave"
+    },
+    {
+      "sha": "4983b778f8724a58a3847309e5ef54050c681b78",
+      "ref": "refs/heads/codex/1356-receipt-reuse-hardening"
+    },
+    {
+      "sha": "9c1d48ae1cef5ffe0b7c24f4fa9b65958f980303",
+      "ref": "refs/heads/codex/1359-co-review-session-fixture"
+    },
+    {
+      "sha": "2e91896a3fc7b4c9ac35cc1eaa6553d74b24f7ed",
+      "ref": "refs/heads/codex/1365-reviewer-bash-guard"
+    },
+    {
+      "sha": "54fe9ebb88b00579518b0f4c2ed55600be0e0de3",
+      "ref": "refs/heads/codex/1367-reviewer-handoff-prose"
+    },
+    {
+      "sha": "4db54fde7842dba2eb83cde0115cd6fc458a2a21",
+      "ref": "refs/heads/codex/1369-co-review-claude-handoff"
+    },
+    {
+      "sha": "d5220dd1f4e5a8dfc86355d33988c812285f0921",
+      "ref": "refs/heads/codex/1372-stale-review-grant"
+    },
+    {
+      "sha": "8ba5b3d730938e460f410a1b68520d0bd25df07e",
+      "ref": "refs/heads/codex/1374-co-review-archive-recovery"
+    },
+    {
+      "sha": "9c59627088ea44bcd3835915daae535e72bb0a0d",
+      "ref": "refs/heads/codex/1381-governed-delivery-convergence-spec"
+    },
+    {
+      "sha": "0f8fc696fe1766956710f23b94bf96adb61bfdca",
+      "ref": "refs/heads/codex/1406-reviewer-full-permissions"
+    },
+    {
+      "sha": "873fd5bea0c20230ce384e499206cf01f2370323",
+      "ref": "refs/heads/codex/1408-offline-gh-reconciliation"
+    },
+    {
+      "sha": "7913d0320bacdf8ad37e9de5539ab00d81516719",
+      "ref": "refs/heads/codex/1411-residue-audit-reconciliation"
+    },
+    {
+      "sha": "a0858eac0a19945c95653a167eb2a2c689363fef",
+      "ref": "refs/heads/codex/1412-stale-sandbox-reaper"
+    },
+    {
+      "sha": "d970eddacd51ee152565c7e9ed05d85d2d0bcc42",
+      "ref": "refs/heads/codex/1421-resume-review-timer"
+    },
+    {
+      "sha": "061ddf2a7d6826e202acb604cc9ddcefb7bce2c3",
+      "ref": "refs/heads/codex/1442-same-second-timing-repair"
+    },
+    {
+      "sha": "ff5b5f3b85dc42e75ebb347823a38f945a546ce7",
+      "ref": "refs/heads/codex/1464-close-lineage"
+    },
+    {
+      "sha": "0fa3f52fcc33e12a95bc0fc10de441e2445f6fcf",
+      "ref": "refs/heads/codex/1468-delivery-recovery"
+    },
+    {
+      "sha": "a2f5dca20de4107d2f3976876a55ea7aaaf3a069",
+      "ref": "refs/heads/codex/1470-legacy-attribution"
+    },
+    {
+      "sha": "99588ebbe299567496554d034bff04e2b0063309",
+      "ref": "refs/heads/codex/1558-ask-the-script-spec"
+    },
+    {
+      "sha": "d3c7c27e4199a24f06949d525402ae9b190449ff",
+      "ref": "refs/heads/codex/1558-guidance-replacement-plan"
+    },
+    {
+      "sha": "ee0c24b193c8fad784788965921791668720ca78",
+      "ref": "refs/heads/codex/1558-guidance-review"
+    },
+    {
+      "sha": "30aab4bdb31e24ecab55a436c01fe3da70231a22",
+      "ref": "refs/heads/codex/1558-guidance-spec-review"
+    },
+    {
+      "sha": "d8ad397b41e22a7b3ec43536af6a574c1dbb9864",
+      "ref": "refs/heads/codex/1558-hydration-wbs-review"
+    },
+    {
+      "sha": "b8ecc9a1054bdfd198260552cd060f16734ef535",
+      "ref": "refs/heads/codex/1558-waived-close-repair"
+    },
+    {
+      "sha": "8793a2d91a130ebb4da90a3f7f7f6b1d4c055c76",
+      "ref": "refs/heads/codex/1615-node24-npm-pack-reports"
+    },
+    {
+      "sha": "e0f32c067718fd6a83a9073e41b90313cff2c439",
+      "ref": "refs/heads/codex/1618-detect-incompatible-workflows"
+    },
+    {
+      "sha": "bd609ed96f5410c2e5c64ac1d9dc9308dcdedb04",
+      "ref": "refs/heads/codex/1619-receipt-attribution-recovery"
+    },
+    {
+      "sha": "bd51c9684559e9fa90d3614b081712c40442d2bc",
+      "ref": "refs/heads/codex/1631-package-boundary"
+    },
+    {
+      "sha": "b125d453b1c69c768afa5b09c9fb09cb505ffe25",
+      "ref": "refs/heads/codex/1683-review-waiver-delivery"
+    },
+    {
+      "sha": "394caaf53ce8a9bee21694d9fd3c89475ecc2937",
+      "ref": "refs/heads/codex/1685-ci-stacked-pr"
+    },
+    {
+      "sha": "a6c1a70ddc48836b771da4043f3009e0d717b323",
+      "ref": "refs/heads/codex/1690-review-waiver-authority"
+    },
+    {
+      "sha": "762fa68ec5fbc64cb1220064154e04232a2b24fb",
+      "ref": "refs/heads/codex/1691-lifecycle-authority-research"
+    },
+    {
+      "sha": "6754a276ff7ccaefbddb70343afc90b099f0fcbe",
+      "ref": "refs/heads/codex/1692-install-contract-manifest"
+    },
+    {
+      "sha": "a529a5e2877ff14ad0899b584e78b80467c9d7c9",
+      "ref": "refs/heads/codex/1693-doctor-engine-cli"
+    },
+    {
+      "sha": "d667351edc243c5127dff4f4fbd8177470038680",
+      "ref": "refs/heads/codex/1696-full-auto-default"
+    },
+    {
+      "sha": "b05189efb28aeb761d3b77991728fa3811d328e0",
+      "ref": "refs/heads/codex/1702-workflow-waiver-canonical-instant"
+    },
+    {
+      "sha": "a01c8b8d5adbf0df7d7bd673353c9135f3e52c53",
+      "ref": "refs/heads/codex/1703-user-story-value-quality"
+    },
+    {
+      "sha": "cbd39fd3bc36e8d2937c7a0785c12086e043c443",
+      "ref": "refs/heads/codex/1706-remove-extracted-review-coupling"
+    },
+    {
+      "sha": "eb871922ec4914c99918e516161276aceb1f41f0",
+      "ref": "refs/heads/codex/1716-plan-approval-evidence-repair"
+    },
+    {
+      "sha": "a443baf7c9b7db8d04db31f63a10dd2211dc1a30",
+      "ref": "refs/heads/codex/1719-story-cost-plan"
+    },
+    {
+      "sha": "0756da2e1a560c3b6e23876505b633806bf3b416",
+      "ref": "refs/heads/codex/1719-story-cost-spec-review"
+    },
+    {
+      "sha": "5cf4b57ad23c850641ccccb8b5a5b601cea5ef13",
+      "ref": "refs/heads/codex/1719-story-intent-amendment"
+    },
+    {
+      "sha": "dafb599e7da3028fd76f4090fda5cf09d4e71a0f",
+      "ref": "refs/heads/codex/1720-plan-transition-authority"
+    },
+    {
+      "sha": "94c0a9b6c94f19b6153604f3402a07eecead036b",
+      "ref": "refs/heads/codex/1725-mcp-plan-xpr"
+    },
+    {
+      "sha": "858b81c6400186ce0f0bea8c4773ed69e8c15de2",
+      "ref": "refs/heads/codex/1764-approval-triad-spec"
+    },
+    {
+      "sha": "79b08c1129c3133030b83f8ce4930a3356c91749",
+      "ref": "refs/heads/codex/1768-review-lifecycle-spec"
+    },
+    {
+      "sha": "f5e52de18f4ae5e34dffaa575d8ce2d71707f2b0",
+      "ref": "refs/heads/codex/1779-project-provider-receipts"
+    },
+    {
+      "sha": "3fbe4c8f1aa2bfe1b67faad60410a2868c451f0a",
+      "ref": "refs/heads/codex/1781-actionable-refusal-explain"
+    },
+    {
+      "sha": "b6056eac097f2c047c4900248e38d8141d9c18df",
+      "ref": "refs/heads/codex/1782-project-npm-ci-args"
+    },
+    {
+      "sha": "9d8e7432f362f3fe85445ba63fcf5f147d508ed8",
+      "ref": "refs/heads/codex/1783-one-issue-local-trunk-close"
+    },
+    {
+      "sha": "5385ebd02b7e950d84dae9ec85f8be0db73a054e",
+      "ref": "refs/heads/codex/1787-delivery-waiver-design"
+    },
+    {
+      "sha": "4fb80c4fa06bed69e2de798b2c47732bafe2591e",
+      "ref": "refs/heads/codex/1806-hook-launcher-spec"
+    },
+    {
+      "sha": "b4eec78ba406bdc4184e6960ef24353371c5a081",
+      "ref": "refs/heads/codex/1809-method-neutral-delivery"
+    },
+    {
+      "sha": "121ab3b7d0b4dbde7e7e353ab4009f7a63cc7f62",
+      "ref": "refs/heads/codex/1818-graphql-usage-plan"
+    },
+    {
+      "sha": "a3053d67d59516bd153ab3c4629e04721beb08c3",
+      "ref": "refs/heads/codex/1830-mutation-guard-context"
+    },
+    {
+      "sha": "e711c4b7144aa9c4f90870e8fd9f95a3cc2e2968",
+      "ref": "refs/heads/codex/1831-codex-skills-read-scope"
+    },
+    {
+      "sha": "5894a6d340d96b43c79a7da5465c2d1b70d9bc7d",
+      "ref": "refs/heads/codex/1838-1839-graphql-usage"
+    },
+    {
+      "sha": "4ef2cdfa97497d698484c3dd3e79912a2daca94c",
+      "ref": "refs/heads/codex/1841-draft"
+    },
+    {
+      "sha": "fdb0b6fbc9b06d535a60e7c0df7403fc72707eac",
+      "ref": "refs/heads/codex/1841-guard-audit"
+    },
+    {
+      "sha": "b1cf667dc72265bac34f3c8c854679866f2ea235",
+      "ref": "refs/heads/codex/1847-1851-proposals"
+    },
+    {
+      "sha": "0a0a02f3ad18c3dce42bfda669d877f493f8a6b9",
+      "ref": "refs/heads/codex/1847-1852-interlock"
+    },
+    {
+      "sha": "b1cf667dc72265bac34f3c8c854679866f2ea235",
+      "ref": "refs/heads/codex/1847-governed-criteria-revisions"
+    },
+    {
+      "sha": "70dd5e2dd6f5d9f89302ddabbdccddc57026112e",
+      "ref": "refs/heads/codex/1848-backlog-design-drafts"
+    },
+    {
+      "sha": "aaeaedfc11246a25828ffe0cf506ff35fdca8486",
+      "ref": "refs/heads/codex/1857-continuation"
+    },
+    {
+      "sha": "5076a2abba4918f65e2c761a01d0069b083c3b2a",
+      "ref": "refs/heads/codex/1859-consolidated-safety-5076a2ab"
+    },
+    {
+      "sha": "d3a9217257c7a9f992c03303d0afae6e8314ab42",
+      "ref": "refs/heads/codex/1859-delivery-history-d3a92172"
+    },
+    {
+      "sha": "c14cd78c4b0f16f40d37c079ceaa2f568fcc18a2",
+      "ref": "refs/heads/codex/1901-draft"
+    },
+    {
+      "sha": "10237f2711dcfefc3c94ce5fa3a9de43b15f8dd6",
+      "ref": "refs/heads/codex/1939-artifact-records"
+    },
+    {
+      "sha": "b2b16012ead65d57c7e3071984d5676a9a76feca",
+      "ref": "refs/heads/codex/1939-draft"
+    },
+    {
+      "sha": "ba88a2a9c30bac44f1f371d7c12f3f59f2b050d3",
+      "ref": "refs/heads/codex/1939-preserved-hook-disable"
+    },
+    {
+      "sha": "44e8567009758061aa1385b4cbaa54ffb3314147",
+      "ref": "refs/heads/codex/876-centralize-test-corpus"
+    },
+    {
+      "sha": "375f03728913a59f5c088d77022478e72882193d",
+      "ref": "refs/heads/codex/937-promote-test-parity"
+    },
+    {
+      "sha": "1e8b6ce70f909523bbfc3c06438da211d00397ad",
+      "ref": "refs/heads/codex/939-full-auto-merge"
+    },
+    {
+      "sha": "917a2fcb1699bd65bec4bfa2350bfe18f6590f1e",
+      "ref": "refs/heads/codex/977-duration-field-labels"
+    },
+    {
+      "sha": "133a52a51afe2f83f2445d169468a628311d4108",
+      "ref": "refs/heads/codex/agentic-diagram-gallery"
+    },
+    {
+      "sha": "3a1be5f0b9d016fac9ecf2ad656145e839cf6fa4",
+      "ref": "refs/heads/codex/ai-peer-review-design"
+    },
+    {
+      "sha": "6e0c466193e19b25d4dd8e2e196d13cd922aca2a",
+      "ref": "refs/heads/codex/aitm-mcp-adapter-architecture"
+    },
+    {
+      "sha": "c71eec20e9465ac21f4e8246a7746699bc7d8bd9",
+      "ref": "refs/heads/codex/archive-1053-pre-github-native-pivot"
+    },
+    {
+      "sha": "51780578f0ee0bdeaae7fb099ea287a00f553eda",
+      "ref": "refs/heads/codex/archive-1054-pre-github-native-pivot"
+    },
+    {
+      "sha": "c5d712c2adddbf6411408454e0c6493d004952df",
+      "ref": "refs/heads/codex/audit-1633-done-delivery-survey"
+    },
+    {
+      "sha": "0a534ec156cf308e5f6126f9d85c63679c3714e2",
+      "ref": "refs/heads/codex/audit-1635-1624-delivery-recovery"
+    },
+    {
+      "sha": "f6a8cfb9dcdcfdaefc8e3ba35c4a2861b8616280",
+      "ref": "refs/heads/codex/backlog-history-epic"
+    },
+    {
+      "sha": "99bec143fd3c6401076da84ab78fefe65d054d60",
+      "ref": "refs/heads/codex/chore-1512-full-auto-default"
+    },
+    {
+      "sha": "a5bab3e7abc82a282bcb1eb7d6e35d41bc8e4745",
+      "ref": "refs/heads/codex/chore-github-native-records"
+    },
+    {
+      "sha": "3f22fb3e0098d221fe0f3cbe341e0edc706fb47c",
+      "ref": "refs/heads/codex/chore-latest-dependencies"
+    },
+    {
+      "sha": "817cd6ebde9acccd4fa9f8e5b481e5005c81b598",
+      "ref": "refs/heads/codex/claude-hook-cleanup"
+    },
+    {
+      "sha": "76f58cd2335c8cd5005df47159e972d0fc9eb22b",
+      "ref": "refs/heads/codex/defect-1481-receipt-integrity"
+    },
+    {
+      "sha": "94575a4a009383c8749343c5c8023241c84ebd5c",
+      "ref": "refs/heads/codex/defect-1485-merge-back-authority"
+    },
+    {
+      "sha": "82eba885bac295a57c236c611c84e0fd6f69d7e3",
+      "ref": "refs/heads/codex/defect-1488-review-bind-timer"
+    },
+    {
+      "sha": "8fafa6681a54c349bd2a02a69e944c07c7df6468",
+      "ref": "refs/heads/codex/defect-1490-squash-delivery-proof"
+    },
+    {
+      "sha": "b9fce8501a4d1ec3583c949475a69d95ea8c5d1f",
+      "ref": "refs/heads/codex/defect-1574-historical-intent"
+    },
+    {
+      "sha": "ddcafc07b45989a136467028b64027ade0515e40",
+      "ref": "refs/heads/codex/defect-1583-secondary-squash-recovery"
+    },
+    {
+      "sha": "4881ecd6ba56ec2cf9850cfe19b503703aa14b43",
+      "ref": "refs/heads/codex/defect-1595-vc-citation"
+    },
+    {
+      "sha": "9c06054d9d7b9345a76a51c0679493c1b3aeab4e",
+      "ref": "refs/heads/codex/defect-1597-tombstone-recovery"
+    },
+    {
+      "sha": "665e53dd9a1424c02007fece047d3bd22805383f",
+      "ref": "refs/heads/codex/defect-1599-test-receipt-ac-tick"
+    },
+    {
+      "sha": "b0c7480873e7f305ef4ff8729f309fc5f9abc6e1",
+      "ref": "refs/heads/codex/defect-1601-merge-back-child-authority"
+    },
+    {
+      "sha": "0c3e50b6e481f8e55c7a18981d255d881c8b2b91",
+      "ref": "refs/heads/codex/defect-1603-epic-test-deferral"
+    },
+    {
+      "sha": "2e41eece3b92f886c4d173a422de386cfcae793e",
+      "ref": "refs/heads/codex/defect-1632-trunk-delivery-gate"
+    },
+    {
+      "sha": "c0f114435ab5b7cc5a4a32676c35bf59322685c7",
+      "ref": "refs/heads/codex/defect-1755-delivery-attribution-exception"
+    },
+    {
+      "sha": "f697a56e7bb4920ac851563d6c2d95f56ba8de00",
+      "ref": "refs/heads/codex/defect-1802-close-readiness-trunk-default"
+    },
+    {
+      "sha": "d03b6526ea604bd03a9e33755075b26d942c7366",
+      "ref": "refs/heads/codex/estimation-rubric-spec"
+    },
+    {
+      "sha": "477a0bf30756dee0e93008e76c7e9a85245b261c",
+      "ref": "refs/heads/codex/feature-1514-externalize-forecast-comparables"
+    },
+    {
+      "sha": "698d712240b4f1eb4d1b18cda1faa6c977f7c060",
+      "ref": "refs/heads/codex/feature-1557-blocked-disposition-dependencies"
+    },
+    {
+      "sha": "d3a71161a279ec7e83013f7df6440d74f0cc281e",
+      "ref": "refs/heads/codex/graphql-usage-and-backlog-specs"
+    },
+    {
+      "sha": "4b8352bffe4a3de05901085121ca73d304589f0c",
+      "ref": "refs/heads/codex/graphql-usage-spike-story"
+    },
+    {
+      "sha": "5565718a479ece4bf445f4f1862a9f682637d6db",
+      "ref": "refs/heads/codex/issue-1486-graph-node-authority"
+    },
+    {
+      "sha": "094a10bddba9102b4bf9f2483e3b7ba6583bd16c",
+      "ref": "refs/heads/codex/issue-1516-author-finalization-contract"
+    },
+    {
+      "sha": "15632970a34a8ed2deb26e4594570756baa1d492",
+      "ref": "refs/heads/codex/issue-1573-merge-method-help"
+    },
+    {
+      "sha": "190c03c6d3ed139743326ca282e54f9f6d19e1da",
+      "ref": "refs/heads/codex/issue-1579-governed-plan-policy"
+    },
+    {
+      "sha": "3dce8ffe22d909a92d561ac8bb335395848c8cf6",
+      "ref": "refs/heads/codex/issue-1581-reviewer-lint-policy"
+    },
+    {
+      "sha": "65ca762ff0c72c34ef925e0a6752054e1b60834a",
+      "ref": "refs/heads/codex/issue-1591-legacy-index-reconciliation"
+    },
+    {
+      "sha": "8dd7b298b1168fdf3ec50ff6cd072f2944db8e78",
+      "ref": "refs/heads/codex/issue-1592-remove-co-review-runtime"
+    },
+    {
+      "sha": "e999d16e2b5bf8d9bed82f834633eebf5034f6c8",
+      "ref": "refs/heads/codex/issue-1609-finalize-cli-result"
+    },
+    {
+      "sha": "c68ed63b2ed4168537677fe9fcf01d747e24d59d",
+      "ref": "refs/heads/codex/node-24-runtime-floor"
+    },
+    {
+      "sha": "dd8dd20e697292804a03f5e732ebd0d314e6896d",
+      "ref": "refs/heads/codex/pages-evidence-diagrams"
+    },
+    {
+      "sha": "199d2dae9ab26211ac90c46ce96627523e66a270",
+      "ref": "refs/heads/codex/parallel-chore-mode"
+    },
+    {
+      "sha": "b4f278d92b2c27fd7ed381e56bb2a047f7936cc9",
+      "ref": "refs/heads/codex/stabilization-authority-design"
+    },
+    {
+      "sha": "e75be2b9cce5cf87b9a38914904461a58d91b5b9",
+      "ref": "refs/heads/codex/uninstall-cleanup"
+    },
+    {
+      "sha": "625608f9226c20da62c78a4947d998267fd71422",
+      "ref": "refs/heads/delivered-plans"
+    },
+    {
+      "sha": "2897f50cdca06ec3ca4a8ca85a8b4d6e6c88d4bc",
+      "ref": "refs/heads/docs/article-series-updates"
+    },
+    {
+      "sha": "b12ffdde47bcd67cab47ec47e17bdbfe46b33a2e",
+      "ref": "refs/heads/docs/linkedin-articles"
+    },
+    {
+      "sha": "2baef10ec3eae8d500b100c6cd915dde42934ed3",
+      "ref": "refs/heads/feature/1099-publish-articles"
+    },
+    {
+      "sha": "a6f3339e9825c9b6bb97133fd1ce1d538b2dd9ba",
+      "ref": "refs/heads/feature/1101-bibliography-links"
+    },
+    {
+      "sha": "241f5bb79ea791730cb95552fabdcab0f128fd83",
+      "ref": "refs/heads/feature/1102-diagram-drift"
+    },
+    {
+      "sha": "470bb0a4b73ecd204ef47a4f0efd498563c78bd9",
+      "ref": "refs/heads/feature/1158-kind-aware-test-lanes"
+    },
+    {
+      "sha": "4908893c0351157fec1c6e9516f1f44907f307cb",
+      "ref": "refs/heads/feature/1218-verification-plugins"
+    },
+    {
+      "sha": "626db61511e6b5d977f0ccfed1e6127808892406",
+      "ref": "refs/heads/feature/1250-declarable-verify"
+    },
+    {
+      "sha": "3544da79b7c97fefb03396b64d1ac18b4c9ad104",
+      "ref": "refs/heads/feature/1869"
+    },
+    {
+      "sha": "03ef8e5e99181c7202396ce8e081b2e0a5ae8817",
+      "ref": "refs/heads/feature/854-assert-file-excludes"
+    },
+    {
+      "sha": "7cf07586270208263becdbca0181c6455c42ee2e",
+      "ref": "refs/heads/feature/922-sandbox-flake"
+    },
+    {
+      "sha": "171c0d3ded1cc3e7bcc71848d2be4602a14e17e1",
+      "ref": "refs/heads/feature/952-testall-lane-migration"
+    },
+    {
+      "sha": "faf80286894d2c3b70ab8231e7a1b3c43944ea09",
+      "ref": "refs/heads/feature/964-strict-argv-manifest"
+    },
+    {
+      "sha": "9579777fa58f27f859a640dbb64f31702c5d55ac",
+      "ref": "refs/heads/feature/968-movestate-trunkref"
+    },
+    {
+      "sha": "7923054d9c6b9ebd7a87cfe1c1e3325d629fe133",
+      "ref": "refs/heads/feature/child/1006"
+    },
+    {
+      "sha": "975a51f761f086354fc388d455b71a715baa0f82",
+      "ref": "refs/heads/feature/child/1006-finalize"
+    },
+    {
+      "sha": "b4a86e4f19367138426d108b269bf0407ca27c49",
+      "ref": "refs/heads/feature/child/1037"
+    },
+    {
+      "sha": "44ab11443c9ff786961596f2f9cfee284d3f4c57",
+      "ref": "refs/heads/feature/child/1038"
+    },
+    {
+      "sha": "400ac0352767b673cd7c35edacfc60d702493a52",
+      "ref": "refs/heads/feature/child/1039"
+    },
+    {
+      "sha": "c8e140b35df3e3de9e996318c98fae3d7a94af7c",
+      "ref": "refs/heads/feature/child/1040"
+    },
+    {
+      "sha": "f152bb17b7c2ac6a880b3182f31473edd57521e9",
+      "ref": "refs/heads/feature/child/1274"
+    },
+    {
+      "sha": "b4736bcd0f4535047b5993d202698761d354523a",
+      "ref": "refs/heads/feature/child/1275"
+    },
+    {
+      "sha": "ffe5e52e38ec9e78b83db18b8bcd0a2c3788e75c",
+      "ref": "refs/heads/feature/child/1276"
+    },
+    {
+      "sha": "024bd0e405bceb7055b7c9fee4d24115c318afb1",
+      "ref": "refs/heads/feature/child/1277"
+    },
+    {
+      "sha": "ead5cb301b4a389a0a6e26cb4fd4cda7592577e7",
+      "ref": "refs/heads/feature/child/1278"
+    },
+    {
+      "sha": "35836fd0f7080b0f83fc8c2a1df8f16db8e173a4",
+      "ref": "refs/heads/feature/child/1324"
+    },
+    {
+      "sha": "0e4bd5ea1337389e03c196e821a955a8e6d3be6e",
+      "ref": "refs/heads/feature/child/1325"
+    },
+    {
+      "sha": "3579a72100642e42e3268e3dcf7de63aa691a3ac",
+      "ref": "refs/heads/feature/child/1658"
+    },
+    {
+      "sha": "9ef4dec80438ed1f0851d33d7d5fb05ed51ee6aa",
+      "ref": "refs/heads/feature/child/1659"
+    },
+    {
+      "sha": "bbd8a5daa23b614b0bb51fbf219ee517f919306b",
+      "ref": "refs/heads/feature/child/1660"
+    },
+    {
+      "sha": "9b6f8b7803cc2e1b2420c27baeb4246d4725846b",
+      "ref": "refs/heads/feature/child/1661"
+    },
+    {
+      "sha": "d358a512e755f89e63db5d53dc6e3e8b181302de",
+      "ref": "refs/heads/feature/child/1674"
+    },
+    {
+      "sha": "e3ae66d29ab14b9ac7465b5ee3f3d6d629263f1e",
+      "ref": "refs/heads/feature/child/1678"
+    },
+    {
+      "sha": "f57c2de9197e5ac8d1ee9612a1a36e0910720b1b",
+      "ref": "refs/heads/feature/child/1837"
+    },
+    {
+      "sha": "9954be65a42fff0c84e2aa7dc07c49b1ee590572",
+      "ref": "refs/heads/feature/epic/1005"
+    },
+    {
+      "sha": "8d0391e6cf0b57fdfa5ab0b9c79d77b8dcfd78fc",
+      "ref": "refs/heads/feature/epic/1006"
+    },
+    {
+      "sha": "df764b44f5feba9654ccc6992dd1dced9f1160f0",
+      "ref": "refs/heads/feature/epic/1048"
+    },
+    {
+      "sha": "79fd61bc47a6b6df1798c40511a4f42fc8d99c36",
+      "ref": "refs/heads/feature/epic/1067"
+    },
+    {
+      "sha": "c0281ed91c61840ddcd10e11232b32b0b7b9937d",
+      "ref": "refs/heads/feature/epic/1118"
+    },
+    {
+      "sha": "d6c5daf5e9d3a24d69984657e67d7ef60e27e8b9",
+      "ref": "refs/heads/feature/epic/1122"
+    },
+    {
+      "sha": "fbafb718d76a6fc42efa3baeca414f00522298bc",
+      "ref": "refs/heads/feature/epic/1178"
+    },
+    {
+      "sha": "ee5803e4ae031210c269cf1e655167e7bdd305ab",
+      "ref": "refs/heads/feature/epic/1558"
+    },
+    {
+      "sha": "f84f29429eb4587edb5d9f4ff0ed1bda9a5e888f",
+      "ref": "refs/heads/feature/epic/1624"
+    },
+    {
+      "sha": "021f163bba752cd6ee2eee15035418ebaefb098d",
+      "ref": "refs/heads/feature/epic/1847/child/1852"
+    },
+    {
+      "sha": "77cbcd1b15969c8a8ff5545016ed5fba72f8f64a",
+      "ref": "refs/heads/feature/epic/1847/child/1853"
+    },
+    {
+      "sha": "fda96c767cd08254ba460ef69dfa65819ed8e2fe",
+      "ref": "refs/heads/feature/epic/1847/child/1854"
+    },
+    {
+      "sha": "14f6c5589724e9d2a33c2353c19f0c793bfe6033",
+      "ref": "refs/heads/feature/epic/1847/child/1855"
+    },
+    {
+      "sha": "b1cf667dc72265bac34f3c8c854679866f2ea235",
+      "ref": "refs/heads/feature/epic/1847/parent"
+    },
+    {
+      "sha": "171c7d93866f67b58effa635be5ae737f54ef9eb",
+      "ref": "refs/heads/feature/epic/1857/parent"
+    },
+    {
+      "sha": "a5e6bb9ee2f79613e62477dc7256ad2826908d19",
+      "ref": "refs/heads/feature/epic/1918/child/1919"
+    },
+    {
+      "sha": "22315b6a1dae616b6f55a4533b5cb202d7fc2f9c",
+      "ref": "refs/heads/feature/epic/1918/parent"
+    },
+    {
+      "sha": "d8c022835d19e0a80c62e416bc66f065187c7022",
+      "ref": "refs/heads/feature/epic/859"
+    },
+    {
+      "sha": "985f1ac895e7030a201410956e81efa4e8dcb5c9",
+      "ref": "refs/heads/feature/epic/987"
+    },
+    {
+      "sha": "a03b676be505d379d08b1f64bfb7335f61bd6daf",
+      "ref": "refs/heads/fix-old-hooks"
+    },
+    {
+      "sha": "2452486611c821e51e83b9341dafffc09306512d",
+      "ref": "refs/heads/fix/1104-timezone-timing-row"
+    },
+    {
+      "sha": "5ee9d50fd350b8c184eda4d3f49ddcfb39c28cda",
+      "ref": "refs/heads/fix/947-closed-child-gate"
+    },
+    {
+      "sha": "18765eea3e15bcbb02fc90013c760d19ee8a9fce",
+      "ref": "refs/heads/fix/949-ci-shallow-provenance"
+    },
+    {
+      "sha": "06e767c14a7594179d320c12eba240c9dc313d3b",
+      "ref": "refs/heads/ignore-vscode"
+    },
+    {
+      "sha": "b89233ae911aa6fc5ddd041ee28f93d7b6c647a3",
+      "ref": "refs/heads/scheduled-archive-trimmer"
+    },
+    {
+      "sha": "fa573cc46ef2416200eaf4fcaf747bfc4eeb5ae3",
+      "ref": "refs/heads/setup-aipr"
+    },
+    {
+      "sha": "1b495236e9b9651c5ffd5ad67d4c7f43238ed44f",
+      "ref": "refs/heads/setup/config"
+    },
+    {
+      "sha": "8b647690c23fdacb204f46f7c0474a1c2faa0bf0",
+      "ref": "refs/heads/spec/grok-provider-adapter"
+    },
+    {
+      "sha": "e8207f42d12aafc5bf653beaa750987e2ad77096",
+      "ref": "refs/heads/tarball-management"
+    },
+    {
+      "sha": "5d11bc4e41507dc7ee298e334c8d432549ef7c9b",
+      "ref": "refs/heads/trunk"
+    },
+    {
+      "sha": "65d28fa3897854d7f66fe795063d4027327fa126",
+      "ref": "refs/heads/update-aipr-setup"
+    },
+    {
+      "sha": "776a308696bddf8b967f56f8ab67fbdb12ce2a25",
+      "ref": "refs/heads/worktree-agent-a0c46a2ad403e0420"
+    },
+    {
+      "sha": "feabb2d877514e4e7c6752fbb7cab0ac09cc4fb8",
+      "ref": "refs/heads/worktree-agent-a3404f6127ec70d95"
+    },
+    {
+      "sha": "08f14dd613571b1faa557c8bdab3d98533cf767d",
+      "ref": "refs/heads/worktree-agent-a5f5f4656cd9e586d"
+    },
+    {
+      "sha": "fb3758045f4636313d023029d7973aa35f4f77e9",
+      "ref": "refs/heads/worktree-agent-a6584b7cdfde5a3cb"
+    },
+    {
+      "sha": "a07091a9fe891c3ad30598bd2493410a7b6dacca",
+      "ref": "refs/heads/worktree-agent-a9fbb044d83216a08"
+    },
+    {
+      "sha": "9541098943bb4b632955b5e186a233d15b8138a0",
+      "ref": "refs/heads/worktree-agent-abe694a686a870374"
+    }
+  ],
+  "before": [
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager",
+      "head": "e49543f2e93c6d5ce768322b8cb36bad8639bc61",
+      "branch": "refs/heads/trunk",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/123e/ai-task-manager/.worktrees/1836-graphql-storage",
+      "head": "b3c2974fb01a7dc49f61b987ef2544fa15c0e34f",
+      "branch": "refs/heads/feature/child/1836",
+      "prunable": "prunable gitdir file points to non-existent location"
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/123e/ai-task-manager/.worktrees/1837-graphql-collection/.scratch/.task-test-1837-3c2d9614-32515-1103bd35",
+      "head": "3c2d961467729ba36c1eb452c38ebe09cabc37b8",
+      "prunable": "prunable gitdir file points to non-existent location"
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/123e/ai-task-manager/.worktrees/1837-graphql-collection/.scratch/.task-test-1837-792624e4-63787-5a05fd9e",
+      "head": "792624e4f408e335fffecec8987ac5f0ed0f47c1",
+      "prunable": "prunable gitdir file points to non-existent location"
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/1799/ai-task-manager/.scratch/.task-test-1799-762607b8-47315-d5e2848d",
+      "head": "762607b84efe4df1ef2e7bdc54c145a16b13ef49",
+      "prunable": "prunable gitdir file points to non-existent location"
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/655b/ai-task-manager/.scratch/.task-test-1848-edbfabd6-73172-f796a10f",
+      "head": "edbfabd65774e2db4da05f42bf127e7b19180586",
+      "prunable": "prunable gitdir file points to non-existent location"
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager",
+      "head": "aaeaedfc11246a25828ffe0cf506ff35fdca8486",
+      "branch": "refs/heads/codex/1857-continuation",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager",
+      "head": "890f01719707ee206863097df9c52e9cbdbb4e97",
+      "branch": "refs/heads/feature/epic/1918/parent",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/aitm-xpr-first-fresh/ai-task-manager",
+      "head": "6e0c466193e19b25d4dd8e2e196d13cd922aca2a",
+      "branch": "refs/heads/codex/aitm-mcp-adapter-architecture",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/b957/ai-task-manager",
+      "head": "43e8d35d53952ef2a23615d98cf901fa4c74121b",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/.task-test-1859-14154c2e-87607-167a1806",
+      "head": "14154c2e264b5cdb7d4f8145baead7fd5b4f715e",
+      "prunable": "prunable gitdir file points to non-existent location"
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/.task-test-1859-dfed5558-61350-1dfda4ca",
+      "head": "dfed55581366ce3c03b83f78d09b8f0243689b50",
+      "prunable": "prunable gitdir file points to non-existent location"
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/planning/ai-task-manager",
+      "head": "46952470a4f89a61bf7f689ea7937397ed8314d2",
+      "branch": "refs/heads/codex/aitm-mcp-adapter-xpr-first",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.claude/worktrees/articles-book-publication-6a7dfe",
+      "head": "e5b3060cb27caf92239f05ca5552f364d500eec7",
+      "branch": "refs/heads/claude/1485-1220-epic-delivery-6616c5",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1207-assignee-state",
+      "head": "c0697158c880be8ca60b46839a38aa82d6886cbb",
+      "branch": "refs/heads/codex/issue-1207-assignee-state",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1514-externalize-forecast-comparables",
+      "head": "477a0bf30756dee0e93008e76c7e9a85245b261c",
+      "branch": "refs/heads/codex/feature-1514-externalize-forecast-comparables",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1558-ask-the-script-review-r1",
+      "head": "a650be5a090f28325e03f47a22b7495674cf5011",
+      "branch": "refs/heads/codex/1558-ask-the-script-review-r1",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1728-authority-observations",
+      "head": "309f6fe5ea3206a6159893e76b8c4be01f8433f7",
+      "branch": "refs/heads/feature/child/1728",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+      "head": "d6c9091e1a568a6b5316e7975c1ff070bcdcbfd1",
+      "branch": "refs/heads/codex/1926-timing-continuity",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1889-binding-generation",
+      "head": "9bb4a2806b47ef53d30c15cc1f0dc4e05d9efc30",
+      "branch": "refs/heads/codex/1889-binding-generation",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+      "head": "344a6abb3dbf6d0a3f5ab4037b1bd78b0cabd86e",
+      "branch": "refs/heads/codex/1897-canonical-ac",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/.scratch/1897/interrupted-native-test-sandbox-a7ad2b45",
+      "head": "a7ad2b4583deda01a4fcc8dd8b4e65d13957779a",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage",
+      "head": "c254618a6e756697f395c42bf40a60583e7276bc",
+      "branch": "refs/heads/codex/1899-cloud-coverage",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "head": "2d36e1a6c9c57039299c332ef208e09e34d1e003",
+      "branch": "refs/heads/codex/1902-preserve-merge-history",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/chore-hybrid-insights-specs",
+      "head": "4f70500b60c78a090aefd9eea052122c04467480",
+      "branch": "refs/heads/codex/chore-hybrid-insights-specs",
+      "prunable": null
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+      "head": "d0bbf8c62c5c34b86158054b4c80d3548f8d13b1",
+      "branch": "refs/heads/codex/root-ac-derivation",
+      "prunable": null
+    }
+  ],
+  "filesystemScan": "{\"id\":\"D01\",\"path\":\"/Users/kpburson/projects/Vibe-Coding/ai-task-manager\",\"exists\":true,\"files\":[{\"path\":\".DS_Store\",\"size\":8196},{\"path\":\".agents\",\"type\":\"directory\"},{\"path\":\".ai-peer-review.json\",\"size\":1136},{\"path\":\".ai-task-manager\",\"type\":\"directory\"},{\"path\":\".c8rc.json\",\"size\":386},{\"path\":\".claude\",\"type\":\"directory\"},{\"path\":\".codex\",\"type\":\"directory\"},{\"path\":\".db\",\"type\":\"directory\"},{\"path\":\".git\",\"type\":\"directory\"},{\"path\":\".github\",\"type\":\"directory\"},{\"path\":\".gitignore\",\"size\":2508},{\"path\":\".markdownlint-cli2.jsonc\",\"size\":2594},{\"path\":\".markdownlintignore\",\"size\":102},{\"path\":\".prettierignore\",\"size\":2041},{\"path\":\".prettierrc.json\",\"size\":272}],\"fileCount\":43}\n{\"id\":\"D02\",\"path\":\"/Users/kpburson/.codex/worktrees/123e/ai-task-manager/.worktrees/1836-graphql-storage\",\"exists\":true,\"files\":[],\"fileCount\":0}\n{\"id\":\"D03\",\"path\":\"/Users/kpburson/.codex/worktrees/123e/ai-task-manager/.worktrees/1837-graphql-collection/.scratch/.task-test-1837-3c2d9614-32515-1103bd35\",\"exists\":true,\"files\":[],\"fileCount\":0}\n{\"id\":\"D04\",\"path\":\"/Users/kpburson/.codex/worktrees/123e/ai-task-manager/.worktrees/1837-graphql-collection/.scratch/.task-test-1837-792624e4-63787-5a05fd9e\",\"exists\":true,\"files\":[],\"fileCount\":0}\n{\"id\":\"D05\",\"path\":\"/Users/kpburson/.codex/worktrees/1799/ai-task-manager/.scratch/.task-test-1799-762607b8-47315-d5e2848d\",\"exists\":true,\"files\":[],\"fileCount\":0}\n{\"id\":\"D06\",\"path\":\"/Users/kpburson/.codex/worktrees/1939-planning-recovery/ai-task-manager\",\"exists\":false,\"files\":[],\"fileCount\":0}\n{\"id\":\"D07\",\"path\":\"/Users/kpburson/.codex/worktrees/655b/ai-task-manager/.scratch/.task-test-1848-edbfabd6-73172-f796a10f\",\"exists\":true,\"files\":[],\"fileCount\":0}\n{\"id\":\"D08\",\"path\":\"/Users/kpburson/.codex/worktrees/aitm-xpr-first-fresh/ai-task-manager\",\"exists\":true,\"files\":[{\"path\":\".agents/skills/task/SKILL.md\",\"size\":2352},{\"path\":\".ai-peer-review.json\",\"size\":1187},{\"path\":\".ai-task-manager/activity-policy.json\",\"size\":817},{\"path\":\".ai-task-manager/memory/.seed-state.json\",\"size\":8215},{\"path\":\".ai-task-manager/memory/MEMORY.md\",\"size\":17923},{\"path\":\".ai-task-manager/memory/feedback_aggregate_test_execution_pattern.md\",\"size\":3037},{\"path\":\".ai-task-manager/memory/feedback_best_close_not_fastest.md\",\"size\":1270},{\"path\":\".ai-task-manager/memory/feedback_deep_dive_placement.md\",\"size\":2365},{\"path\":\".ai-task-manager/memory/feedback_dod_stamp_vs_ac_stamp.md\",\"size\":2392},{\"path\":\".ai-task-manager/memory/feedback_drive_to_review.md\",\"size\":1859},{\"path\":\".ai-task-manager/memory/feedback_end_of_task_worktree_cleanup.md\",\"size\":1184},{\"path\":\".ai-task-manager/memory/feedback_enumerate_epic_children_before_fanout.md\",\"size\":2070},{\"path\":\".ai-task-manager/memory/feedback_epic_lifecycle_choreography.md\",\"size\":1388},{\"path\":\".ai-task-manager/memory/feedback_full_auto_gate_beyond_review.md\",\"size\":2049},{\"path\":\".ai-task-manager/memory/feedback_full_auto_review_audit.md\",\"size\":1194}],\"fileCount\":3484}\n",
+  "checks": [
+    {
+      "id": "D02",
+      "result": {
+        "chunk_id": "48f891",
+        "wall_time_seconds": 0.024542917,
+        "exit_code": 0,
+        "original_token_count": 0,
+        "output": ""
+      }
+    },
+    {
+      "id": "D03",
+      "result": {
+        "chunk_id": "ce5ed7",
+        "wall_time_seconds": 0.000007791,
+        "exit_code": 0,
+        "original_token_count": 0,
+        "output": ""
+      }
+    },
+    {
+      "id": "D04",
+      "result": {
+        "chunk_id": "8da664",
+        "wall_time_seconds": 0.000007917,
+        "exit_code": 0,
+        "original_token_count": 0,
+        "output": ""
+      }
+    },
+    {
+      "id": "D05",
+      "result": {
+        "chunk_id": "a6bd9b",
+        "wall_time_seconds": 0.00000775,
+        "exit_code": 0,
+        "original_token_count": 0,
+        "output": ""
+      }
+    },
+    {
+      "id": "D07",
+      "result": {
+        "chunk_id": "602a84",
+        "wall_time_seconds": 0.000011292,
+        "exit_code": 0,
+        "original_token_count": 0,
+        "output": ""
+      }
+    }
+  ]
+}

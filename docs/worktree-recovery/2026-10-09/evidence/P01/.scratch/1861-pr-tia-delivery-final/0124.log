@@ -1,0 +1,13 @@
+✔ coordination and evidence projections are deterministic over accepted record order (13.06025ms)
+✔ timing projection preserves the existing timing table and emits normalized totals (2.144125ms)
+✔ projection convergence is ordered, read-back validated, idempotent, and never writes the issue body (0.31175ms)
+✔ interruption leaves a stale projection that replay repairs without duplicate writes (0.361209ms)
+✔ local fleet and cache observations cannot alter projection authority (3.928541ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23.329792

@@ -1,0 +1,12 @@
+✔ shared pexec resolves the injectable client at invocation time (0.807292ms)
+✔ all 29 scoped modules resolve through the shared client (8.461625ms)
+✔ unpark defaults resolve the shared client without changing the gh call (0.572417ms)
+✔ ready-only derive-and-rescan reads body and execution HEAD through the shared client (0.883791ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19.435084

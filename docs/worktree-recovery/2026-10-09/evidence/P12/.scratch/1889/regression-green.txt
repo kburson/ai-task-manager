@@ -1,0 +1,39 @@
+✔ real native bind satisfies production rank-wave parent check and tampering remains refused (4429.8035ms)
+✔ own generation survives state round trip and never enters shared state (582.241625ms)
+✔ explicit absent claim clears a prior same-issue generation (554.371083ms)
+✔ another actor cannot inherit generation from shared state or a foreign binding (2193.516458ms)
+Started #107.
+already active: #107
+Started #107.
+Paused #107: +0 active min, +0 words. Use "/task resume" to resume.
+Resumed #107.
+Started #107.
+Paused #107: +0 active min, +0 words. Use "/task resume" to resume.
+[resume] #107: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+Started #107.
+Started #107.
+Resumed #107.
+Started #107.
+✔ native start persists real claim and active rebind preserves generation and live timer (3550.459458ms)
+✔ paused native resume [] retains occupancy generation (640.755292ms)
+✔ paused native resume ["#107"] retains occupancy generation (593.068167ms)
+✔ explicit same-issue timer reopening transports the existing claim (416.83775ms)
+✔ failed fresh bind rolls back the real claim and leaves no active authority (136.655375ms)
+✔ failed reopening restores prior generation and closed timer on unchanged claim (233.466542ms)
+✔ foreign occupancy collision prevents bind without importing its generation (52.835ms)
+Started #107.
+Active: #144. Previous: #107 ended (+0 min, +0 words).
+Started #107.
+Active: #107 (already bound; no-op).
+Started #107.
+✔ real native issue switch replaces the old claim generation with the target claim (3799.414209ms)
+✔ native self switch preserves actual generation and does not post duplicate timing (482.714166ms)
+✔ failed cross-issue bind restores the prior generation and occupancy (637.714625ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6235.619292

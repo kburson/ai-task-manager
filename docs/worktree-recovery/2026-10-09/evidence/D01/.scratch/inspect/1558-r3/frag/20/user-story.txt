@@ -1,0 +1,3 @@
+As a maintainer adopting guidance,
+I want to have explicit source trust and usable recovery with a joint-release guard,
+So that invalid sources cannot be silently replaced or shipped alone.

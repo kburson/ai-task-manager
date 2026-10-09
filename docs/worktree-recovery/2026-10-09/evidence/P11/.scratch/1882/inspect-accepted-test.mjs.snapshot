@@ -1,0 +1,11 @@
+import {execFileSync} from 'node:child_process';
+import {writeFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const issue=JSON.parse(execFileSync('gh',['issue','view','1882','--repo','kburson/ai-task-manager','--json','body,state'],{encoding:'utf8'}));
+const head=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+const matches=[...issue.body.matchAll(/<!-- aitm-verification-receipt stage="test" data="([^"]+)" -->/g)];
+assert.equal(matches.length,1);const receipt=JSON.parse(Buffer.from(matches[0][1],'base64').toString());
+assert.equal(receipt.stage,'test');assert.equal(receipt.issue,1882);assert.equal(receipt.commitSha,head);assert.ok(receipt.commands.every(c=>c.exitCode===0));assert.equal(new Set(receipt.commands.map(c=>c.classification)).size,receipt.commands.length);
+assert.ok(receipt.commands.some(c=>c.classification==='test-cloud-complete'&&c.command==='node'&&c.args[0]==='scripts/maintenance/verify-ci-receipts.mjs'));
+const result={issue:1882,sourceHead:head,receiptId:receipt.receiptId,stage:receipt.stage,completedAt:receipt.completedAt,executionContext:receipt.executionContext,commands:receipt.commands.map(({classification,command,args,exitCode,reusedFrom})=>({classification,command,args,exitCode,reusedFrom}))};
+writeFileSync('.scratch/1882/accepted-test-inspection.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));

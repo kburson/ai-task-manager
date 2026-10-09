@@ -1,0 +1,144 @@
+✔ audit reports each executable edge to a discovered entrypoint with stable diagnostics (775.76125ms)
+✔ audit ignores source-like strings and comments and permits non-discovered helpers (68.555875ms)
+✔ audit resolves relative specifiers with Node ESM file-URL semantics (26.372875ms)
+✔ audit CLI fails with stable importer, target, and source-line diagnostics (333.514708ms)
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/doctor-cli-9MqqAT/consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/doctor-cli-9MqqAT/stale-consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+✔ doctor CLI reports a committed install identically without writes or task state (7446.940542ms)
+✔ doctor CLI reserves exit 2 for usage errors and reports missing Git context as health (2009.677083ms)
+✔ doctor inspects artifacts declared by a stale manifest rather than mismatched current IDs (563.015708ms)
+✔ doctor refuses an install manifest reached through an escaping parent symlink (46.780375ms)
+✔ observer is read-only and distinguishes modified, untracked, and unsafe artifacts (1031.584541ms)
+✔ observer classifies a cyclic parent symlink as unsafe instead of missing (47.183625ms)
+✔ observer accepts a healthy relative symlink to the declared in-project package target (164.777458ms)
+
+> Operational-lessons memory seed
+  ---------------------------------------------------------
+  OK Memory seed (skipped — none)
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/install-manifest-integration-y6v9N8/consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+
+> Operational-lessons memory seed
+  ---------------------------------------------------------
+  OK Memory seed (skipped — none)
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/install-manifest-integration-y6v9N8/consumer/.agents/skills/task/SKILL.md (unchanged)
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md (unchanged)
+  OK Template .ai-task-manager/templates/definition-of-done.md (unchanged)
+  OK Template .ai-task-manager/templates/epic-body.md (unchanged)
+  OK Template .ai-task-manager/templates/sub-issue-body.md (unchanged)
+  OK Template .ai-task-manager/templates/solo-issue-body.md (unchanged)
+  OK Template .ai-task-manager/templates/defect-body.md (unchanged)
+  OK Template .ai-task-manager/templates/plan-file.md (unchanged)
+  OK Template .ai-task-manager/templates/session-boot.md (unchanged)
+  OK Template .ai-task-manager/templates/session-state-template.md (unchanged)
+  OK Template .ai-task-manager/templates/worker-report.md (unchanged)
+  OK Config .ai-task-manager/project-fields.json (unchanged)
+  OK Config .ai-task-manager/project-field-events.json (unchanged)
+  OK Config .ai-task-manager/activity-policy.json (unchanged)
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md (unchanged)
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md (unchanged)
+  OK Reference .ai-task-manager/templates/references/status-reporting.md (unchanged)
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences (unchanged)
+  OK Skill .scratch/test/install-manifest-integration-y6v9N8/contained/.agents/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/codex
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/install-manifest-integration-y6v9N8/contained-install/.agents/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/codex
+  OK Hooks .codex/hooks.json
+✔ runInstall publishes the manifest after every selected effect (13.575083ms)
+✔ runInstall never publishes after an earlier effect fails (0.318542ms)
+✔ runInstall rejects invalid feature combinations before any install effect (0.139208ms)
+✔ runInstall rejects an external symlink source before memory installation (0.174ms)
+✔ real stub install publishes a deterministic selected-provider manifest last (163.518584ms)
+✔ contained symlink uses a relative target and resolves to its package source (2.25325ms)
+✔ contained symlink install publishes a manifest matching the directory symlink (3.304041ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11619.00575

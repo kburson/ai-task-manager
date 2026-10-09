@@ -1,0 +1,27 @@
+{
+  "schema": "ai-peer-review.config/v1",
+  "hosts": {
+    "codex": {
+      "resume": {
+        "command": ["codex", "resume"]
+      },
+      "automatic": {
+        "adapter_version": "2.0.0",
+        "capability": "live-wait",
+        "server_command": ["peer-review-mcp"],
+        "tool_timeout_ms": 28800000,
+        "heartbeat_interval_ms": 15000,
+        "lease_ttl_ms": 60000
+      }
+    }
+  },
+  "setup": {
+    "owner": "ai-peer-review",
+    "version": 2,
+    "agents": ["codex"],
+    "config_created": true,
+    "scratch_exclude_added": true,
+    "resume_commands_added": ["codex"],
+    "automatic_adapters_added": ["codex"]
+  }
+}

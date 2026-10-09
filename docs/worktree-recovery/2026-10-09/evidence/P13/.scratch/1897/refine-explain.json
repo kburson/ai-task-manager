@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-05T20:45:27.673Z",
+  "status": 0,
+  "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1897,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\",\"args\":{\"reason\":\"unknown\"},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1897,\"actionId\":null},\"args\":{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\"}}]}},\"guidance\":[{\"id\":\"navigation.unresolved\",\"digest\":\"sha256:bca397f2045984fddb1e619fb13b3a23df645591855b983739617aaa2a860437\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"navigation\":\"unresolved\"},{\"recommendation\":null},{\"never\":\"bypass_guard\"}]}}]}\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1897 --action refine --json\n"
+}

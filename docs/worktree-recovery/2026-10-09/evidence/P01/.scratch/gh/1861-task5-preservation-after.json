@@ -1,0 +1,53 @@
+{
+  "head": "20334bf5162d8851c42df0a84ad7c4ad389f9bec",
+  "preexistingPaths": 349,
+  "indexPreserved": true,
+  "refsPreserved": true,
+  "backups": [
+    {
+      "file": "scripts/task-tracker/lib/runtime-batch.mjs",
+      "save": ".scratch/gh/1861-task5-native-before/scripts/task-tracker/lib/runtime-batch.mjs",
+      "mode": 33188
+    },
+    {
+      "file": "scripts/task-tracker/lib/runtime-authority-census.mjs",
+      "save": ".scratch/gh/1861-task5-native-before/scripts/task-tracker/lib/runtime-authority-census.mjs",
+      "mode": 33188
+    },
+    {
+      "file": "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+      "save": ".scratch/gh/1861-task5-native-before/scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+      "mode": 33188
+    },
+    {
+      "file": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+      "save": ".scratch/gh/1861-task5-native-before/scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+      "mode": 33188
+    },
+    {
+      "file": "scripts/task-tracker/lib/runtime-storage.mjs",
+      "save": ".scratch/gh/1861-task5-native-before/scripts/task-tracker/lib/runtime-storage.mjs",
+      "mode": 33188
+    },
+    {
+      "file": "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+      "save": ".scratch/gh/1861-task5-native-before/scripts/task-tracker/lib/runtime-activation-admission.mjs",
+      "mode": 33188
+    },
+    {
+      "file": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+      "save": ".scratch/gh/1861-task5-native-before/scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+      "mode": 33188
+    },
+    {
+      "file": "scripts/tests/fixtures/1558/admission-surface.json",
+      "save": ".scratch/gh/1861-task5-native-before/scripts/tests/fixtures/1558/admission-surface.json",
+      "mode": 33188
+    },
+    {
+      "file": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+      "save": ".scratch/gh/1861-task5-native-before/scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+      "mode": 33188
+    }
+  ]
+}

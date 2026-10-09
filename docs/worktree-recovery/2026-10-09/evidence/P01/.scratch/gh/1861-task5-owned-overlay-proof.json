@@ -1,0 +1,60 @@
+{
+  "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+  "trackedCount": 3741,
+  "unownedDrift": [],
+  "archiveSha256": "d3edd6c1a2c5cab89062bd207643cf6a4ac5e3b72db9a97125f2c7075c50f5e2",
+  "admitted": [
+    {
+      "path": "scripts/task-tracker/lib/runtime-batch.mjs",
+      "sha256": "daf0aa09d1bfb454b47c352593a1543bc6f3cc5f1ff3adffd17bf7abf64d6b7e"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-authority-census.mjs",
+      "sha256": "5e3932e9955504e4a226fe247b91d18e76a75652d94364e881320896e0bd7167"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+      "sha256": "84d2a8f4f723d5703e7910028a489890a975e5621750202296c4311d3b7a24ca"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+      "sha256": "2ae14b55d347b91251b875f62aaf8ac074f1935e8eadef7e7eea97d167a6e6e5"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+      "sha256": "a63d5a7b870061f993916b643b925525cccfaabac56ac89ccb802998668e5cdd"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-storage.mjs",
+      "sha256": "806319c6dbdded23df3cbb9a1668694f41c77f9ca9a963f74f9d20020c06db92"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+      "sha256": "46b1e7ad06a08a7d8c8c656d7b02918c0e6061f7176f10149f9f57e0cf6e8998"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+      "sha256": "4bba980216abc8f39aa1fe684d066d183ba3d9af7c38a8adddd1123ba28b2b79"
+    },
+    {
+      "path": "scripts/tests/fixtures/1558/admission-surface.json",
+      "sha256": "f5be3b141d1c7724bfe9a949e2cddef512f682929cc6517f03f4d198590bc728"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+      "sha256": "ba5a9dc173001cc8fe5534e1cd7d7ccfc2907c97a997de86a3ae8de0f2167cfc"
+    },
+    {
+      "path": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-task2-local-tia-findings.json",
+      "sha256": "676c9a16d648daeb374a5a9916f39e900a3858580c1aaef8d35ba22897a0a0a8"
+    },
+    {
+      "path": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+      "sha256": "07e6452114e324d5770329ffe22cd6668cca79d588b21e8a6787fdefa282aef0"
+    },
+    {
+      "path": "docs/reviews/1857-remaining-work/2026-10-03-1861-ac-contract-handoff.md",
+      "sha256": "3223213010a928be260424cc3f89a744b13d6fda6228338c694a1de4c6bbcaca"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+✔ known-prefix DATA rejects journal getter before reading any selected value (0.787625ms)
+✔ known-prefix DATA rejects resources getter before reading any selected value (0.083542ms)
+✔ known-prefix DATA rejects body getter before reading any selected value (0.07175ms)
+✔ known-prefix DATA rejects stage getter before reading any selected value (0.068875ms)
+✔ known-prefix DATA rejects executor getter before reading any selected value (0.069542ms)
+✔ known-prefix DATA refuses prototype shape without recognition (0.103333ms)
+✔ known-prefix DATA refuses hidden shape without recognition (0.074667ms)
+✔ known-prefix DATA refuses symbol shape without recognition (0.056458ms)
+✔ known-prefix DATA refuses extra shape without recognition (0.070208ms)
+✔ known-prefix DATA refuses missing shape without recognition (0.112708ms)
+✔ known-prefix DATA refuses null, scalar and incomplete roots (0.644375ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 108.309625

@@ -1,0 +1,15 @@
+{
+  "bin": "git",
+  "args": [
+    "ls-files",
+    "--others",
+    "--exclude-standard",
+    "-z"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+  "startedAt": "2026-10-05T21:54:08.948Z",
+  "endedAt": "2026-10-05T21:54:08.980Z",
+  "status": 0,
+  "stdout": "",
+  "stderr": ""
+}

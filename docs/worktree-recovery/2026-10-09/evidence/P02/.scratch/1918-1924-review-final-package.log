@@ -1,0 +1,26 @@
+✔ audit reports each executable edge to a discovered entrypoint with stable diagnostics (86.587667ms)
+✔ audit ignores source-like strings and comments and permits non-discovered helpers (8.521667ms)
+✔ audit resolves relative specifiers with Node ESM file-URL semantics (8.889125ms)
+✔ audit CLI fails with stable importer, target, and source-line diagnostics (61.887125ms)
+✔ observer is read-only and distinguishes modified, untracked, and unsafe artifacts (134.810542ms)
+✔ observer classifies a cyclic parent symlink as unsafe instead of missing (15.190584ms)
+✔ observer accepts a healthy relative symlink to the declared in-project package target (33.290333ms)
+✔ packed consumer verifies committed bootstrap after npm ci and reports drift read-only (13829.230125ms)
+✔ packed consumer can select and execute effect-scoped move tails (9032.575208ms)
+✔ package-boundary: no test files are packed (7864.631375ms)
+✔ package-boundary: excluded directories do not reappear (0.249666ms)
+✔ package-boundary: ships the exact docs/introduction/ set (0.192833ms)
+✔ package-boundary: shipped README has no dead docs/introduction link (0.335667ms)
+✔ package-boundary: total entry count stays under the ceiling (0.278958ms)
+✔ package-boundary: development-only context calibration is not shipped (0.272292ms)
+✔ package-boundary: runtime entry points are still shipped (0.131375ms)
+✔ package-boundary: production parser and guidance release guard are declared (0.273875ms)
+✔ package-boundary: tag and explicit release CI retain the B2 consumer gate (0.626208ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31446.8465

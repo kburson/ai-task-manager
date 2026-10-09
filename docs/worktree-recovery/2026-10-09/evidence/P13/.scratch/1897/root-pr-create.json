@@ -1,0 +1,7 @@
+{
+  "startedAt": "2026-10-05T21:52:42.756Z",
+  "status": 0,
+  "stdout": "https://github.com/kburson/ai-task-manager/pull/1898\n",
+  "stderr": "",
+  "body": "Embedded source-plan Acceptance Criteria headings can hide the canonical issue criteria, causing native AC stamping to refuse before running the declared verifier. Prefer the canonical level-two section at the shared lookup seam, retaining the existing legacy fallback and evidence gates.\n\nValidation: genuine regression RED/GREEN, 60 affected tests passing, lint and format checks passing, and all three ACs stamped and checked through native commands at 0f92be933dcdd867d6fd12469db86744053f6784. Full suites run in hosted CI; no full host suite.\n\nRefs #1897\n"
+}

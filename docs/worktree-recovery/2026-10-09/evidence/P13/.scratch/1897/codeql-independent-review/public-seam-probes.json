@@ -1,0 +1,90 @@
+{
+  "base": "b0911ff3af3c813492e94724da548805684c6942",
+  "head": "344a6abb3dbf6d0a3f5ab4037b1bd78b0cabd86e",
+  "probes": [
+    {
+      "name": "same-line-alternate",
+      "body": "## Scope\n#### Acceptance Criteria\n- [ ] Embedded <!-- aitm-verified cmd=\"`node source.mjs`\" -->\n<!-- note --!>\n## Acceptance Criteria\n- [ ] Canonical <!-- aitm-verified vc-list=\"vc:1\" -->\n## Verification Commands\n- [ ] `node canonical.mjs` <!-- id=1 -->",
+      "baseLabels": [
+        "Embedded"
+      ],
+      "headLabels": [
+        "Canonical"
+      ],
+      "commands": [
+        "node canonical.mjs"
+      ],
+      "nonTargetLinesPreserved": true
+    },
+    {
+      "name": "multiline-alternate",
+      "body": "## Scope\n#### Acceptance Criteria\n- [ ] Embedded <!-- aitm-verified cmd=\"`node source.mjs`\" -->\n<!-- note\n--!>\n## Acceptance Criteria\n- [ ] Canonical <!-- aitm-verified vc-list=\"vc:1\" -->\n## Verification Commands\n- [ ] `node canonical.mjs` <!-- id=1 -->",
+      "baseLabels": [
+        "Embedded"
+      ],
+      "headLabels": [
+        "Canonical"
+      ],
+      "commands": [
+        "node canonical.mjs"
+      ],
+      "nonTargetLinesPreserved": true
+    },
+    {
+      "name": "same-line-standard",
+      "body": "## Scope\n#### Acceptance Criteria\n- [ ] Embedded <!-- aitm-verified cmd=\"`node source.mjs`\" -->\n<!-- note -->\n## Acceptance Criteria\n- [ ] Canonical <!-- aitm-verified vc-list=\"vc:1\" -->\n## Verification Commands\n- [ ] `node canonical.mjs` <!-- id=1 -->",
+      "baseLabels": [
+        "Canonical"
+      ],
+      "headLabels": [
+        "Canonical"
+      ],
+      "commands": [
+        "node canonical.mjs"
+      ],
+      "nonTargetLinesPreserved": true
+    },
+    {
+      "name": "multiline-standard",
+      "body": "## Scope\n#### Acceptance Criteria\n- [ ] Embedded <!-- aitm-verified cmd=\"`node source.mjs`\" -->\n<!-- note\n-->\n## Acceptance Criteria\n- [ ] Canonical <!-- aitm-verified vc-list=\"vc:1\" -->\n## Verification Commands\n- [ ] `node canonical.mjs` <!-- id=1 -->",
+      "baseLabels": [
+        "Canonical"
+      ],
+      "headLabels": [
+        "Canonical"
+      ],
+      "commands": [
+        "node canonical.mjs"
+      ],
+      "nonTargetLinesPreserved": true
+    },
+    {
+      "name": "literal-until-alternate-close",
+      "body": "## Scope\n#### Acceptance Criteria\n- [ ] Embedded <!-- aitm-verified cmd=\"`node source.mjs`\" -->\n<!-- note\n## Acceptance Criteria\nliteral text\n--!>\n## Acceptance Criteria\n- [ ] Canonical <!-- aitm-verified vc-list=\"vc:1\" -->\n## Verification Commands\n- [ ] `node canonical.mjs` <!-- id=1 -->",
+      "baseLabels": [
+        "Embedded"
+      ],
+      "headLabels": [
+        "Canonical"
+      ],
+      "commands": [
+        "node canonical.mjs"
+      ],
+      "nonTargetLinesPreserved": true
+    },
+    {
+      "name": "reopened-after-alternate-close",
+      "body": "## Scope\n#### Acceptance Criteria\n- [ ] Embedded <!-- aitm-verified cmd=\"`node source.mjs`\" -->\n<!-- note --!> <!-- second\n## Acceptance Criteria\nliteral text\n-->\n## Acceptance Criteria\n- [ ] Canonical <!-- aitm-verified vc-list=\"vc:1\" -->\n## Verification Commands\n- [ ] `node canonical.mjs` <!-- id=1 -->",
+      "baseLabels": [
+        "Canonical"
+      ],
+      "headLabels": [
+        "Canonical"
+      ],
+      "commands": [
+        "node canonical.mjs"
+      ],
+      "nonTargetLinesPreserved": true
+    }
+  ]
+}

@@ -1,0 +1,621 @@
+docs/guides/workflow.md [no-verification-impact] path has no source, test, fixture, runner, dependency, or verification impact
+scripts/lib/self-doc.mjs -> scripts/tests/integration/package/doctor-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/package/install-manifest.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/review/peer-review-decommission.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/core/templates.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/action-capture.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/action-test.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/coverage-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/verification-provider.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/help.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/shelve.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/core/verify-develop.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs [import-direct] test statically imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/gh/create-issue.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/package/doctor.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/providers/parity.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/aitm-ismain-symlink.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-disposition.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-plan-metadata.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-story-origin.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-timing-logs.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-vc-sections-help.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-vc-sections-strict-argv.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-vc-sections.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/command-manifest.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-backfill-plan-metadata.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-backfill-timing-logs.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-backfill-vc-sections.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-backlog.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-entry-markers.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-functional-dod.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-refine-entry-marker.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-migrate-fields-encoding.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-migrate-plan-approved.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-backlog-core.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-backlog-entry-marker.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-backlog-fields.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-backlog-schema-drift.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-entry-markers-backlog-fallback.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-entry-markers-monotonize.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-entry-markers-visit-aware.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-entry-markers-zero-marker-backlog.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-functional-dod.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-refine-entry-marker.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-timing-starts-command.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/lane-split-seed.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/measure-context.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/migrate-fields-encoding.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/migrate-plan-approved.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/mutate-issue-body-scripts-help-audit.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/skill-stub-seed-directive.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/timing-unknown-projection.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/verify-delivery-incident-reconciliation.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/cut-child-worktree.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/cut-epic-branch.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/coverage-dispatch-prep.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/coverage-init-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/coverage-set-priority.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/coverage-verify-open-issue-bodies.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/create-issue-kind-prefix.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/create-issue-resolve-assignee.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/dispatch-prep-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/disposition-install-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/entry-marker-scaffold.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/log-issue-time-labels.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/status-config-projections.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/verify-open-issue-bodies.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/aitm-path-guard.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/close-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/command-catalog-parser-policy.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/current-schema-issue-authoring.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/executable-entrypoint-classification.test.mjs [import-direct] test statically imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-actor-opener-replays.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-entry-markers-delegates.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-lifecycle-dod.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-timing-departure-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-vc-refs.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/memory-index-hook.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/settings-hook-bootstrap.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/sync-templates.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-sha-drift-gate.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/user-story-author.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/verification-stage-ownership.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/writer-consolidated-declaration.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/maintenance/heal-timing-departure-cli.test.mjs [import-direct] test statically imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/maintenance/heal-timing-interval-cli.test.mjs [import-direct] test statically imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/maintenance/rename-estimation-headers.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/merge-back-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/merge-back-verification.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/sync-epic.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/epic-wave.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/help.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/incident-ledger.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/next-alias.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/plan-estimate.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/sandbox-env-isolation.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-project-provider-npm-ci-args.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-kind-aware-lanes.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/verb-discover-help.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/verb-test-sandbox-env.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/tools/compare-test-fixtures.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-cli.mjs -> scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-cli.mjs -> scripts/tests/unit/task-tracker/merge-back-cli.test.mjs [basename] conventional basename compatibility mapping
+scripts/task-tracker/lib/merge-back-cli.mjs -> scripts/tests/unit/task-tracker/merge-back-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-cli.mjs -> scripts/tests/unit/task-tracker/merge-back-verification.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-cli.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-verification.mjs -> scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-verification.mjs -> scripts/tests/unit/task-tracker/merge-back-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-verification.mjs -> scripts/tests/unit/task-tracker/merge-back-verification.test.mjs [basename] conventional basename compatibility mapping
+scripts/task-tracker/lib/merge-back-verification.mjs -> scripts/tests/unit/task-tracker/merge-back-verification.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-verification.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/merge-back.mjs -> scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/merge-back.mjs -> scripts/tests/unit/task-tracker/merge-back-cli.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/merge-back.mjs -> scripts/tests/unit/task-tracker/merge-back-verification.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/merge-back.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [basename] conventional basename compatibility mapping
+scripts/task-tracker/merge-back.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [import-direct] test statically imports changed path
+scripts/tests/unit/task-tracker/merge-back-cli.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/unit/task-tracker/merge-back-cli.test.mjs -> scripts/tests/unit/task-tracker/merge-back-cli.test.mjs [changed-test] changed or newly discovered test
+scripts/tests/unit/task-tracker/merge-back-verification.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/unit/task-tracker/merge-back-verification.test.mjs -> scripts/tests/unit/task-tracker/merge-back-verification.test.mjs [changed-test] changed or newly discovered test
+scripts/tests/unit/task-tracker/merge-back.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/unit/task-tracker/merge-back.test.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [changed-test] changed or newly discovered test
+✔ layout audit rejects a discovered test outside the canonical lane tree (106.943791ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (46.068ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (49.77025ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (189.0995ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (2.812708ms)
+✔ current test-tree baseline is well formed (1.415042ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.344542ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.38475ms)
+✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (4.364791ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (10.407541ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 500.807292
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/doctor-cli-QKM73E/consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/doctor-cli-QKM73E/stale-consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+✔ doctor CLI reports a committed install identically without writes or task state (2864.235417ms)
+✔ doctor CLI reserves exit 2 for usage errors and reports missing Git context as health (1332.469791ms)
+✔ doctor inspects artifacts declared by a stale manifest rather than mismatched current IDs (303.330125ms)
+✔ doctor refuses an install manifest reached through an escaping parent symlink (23.547708ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4794.681833
+
+> Operational-lessons memory seed
+  ---------------------------------------------------------
+  OK Memory seed (skipped — none)
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/install-manifest-integration-rNQd0B/consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+
+> Operational-lessons memory seed
+  ---------------------------------------------------------
+  OK Memory seed (skipped — none)
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/install-manifest-integration-rNQd0B/consumer/.agents/skills/task/SKILL.md (unchanged)
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md (unchanged)
+  OK Template .ai-task-manager/templates/definition-of-done.md (unchanged)
+  OK Template .ai-task-manager/templates/epic-body.md (unchanged)
+  OK Template .ai-task-manager/templates/sub-issue-body.md (unchanged)
+  OK Template .ai-task-manager/templates/solo-issue-body.md (unchanged)
+  OK Template .ai-task-manager/templates/defect-body.md (unchanged)
+  OK Template .ai-task-manager/templates/plan-file.md (unchanged)
+  OK Template .ai-task-manager/templates/session-boot.md (unchanged)
+  OK Template .ai-task-manager/templates/session-state-template.md (unchanged)
+  OK Template .ai-task-manager/templates/worker-report.md (unchanged)
+  OK Config .ai-task-manager/project-fields.json (unchanged)
+  OK Config .ai-task-manager/project-field-events.json (unchanged)
+  OK Config .ai-task-manager/activity-policy.json (unchanged)
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md (unchanged)
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md (unchanged)
+  OK Reference .ai-task-manager/templates/references/status-reporting.md (unchanged)
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences (unchanged)
+  OK Skill .scratch/test/install-manifest-integration-rNQd0B/contained/.agents/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/codex
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/install-manifest-integration-rNQd0B/contained-install/.agents/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/codex
+  OK Hooks .codex/hooks.json
+✔ runInstall publishes the manifest after every selected effect (11.175125ms)
+✔ runInstall never publishes after an earlier effect fails (0.31275ms)
+✔ runInstall rejects invalid feature combinations before any install effect (0.134333ms)
+✔ runInstall rejects an external symlink source before memory installation (0.170167ms)
+✔ real stub install publishes a deterministic selected-provider manifest last (13.143666ms)
+✔ contained symlink uses a relative target and resolves to its package source (0.82625ms)
+✔ contained symlink install publishes a manifest matching the directory symlink (1.46725ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 319.266458
+✔ legacy runtime and superseded AITM test assets are physically absent (19.375667ms)
+✔ AITM exposes neither legacy review command nor a package wrapper (145.433083ms)
+✔ task CLI starts when the extracted review package cannot be imported (141.085375ms)
+✔ published dependency graph and production sources are independent of the extracted package (58.395125ms)
+✔ production source contains no legacy runtime path or owned protocol schema (52.579666ms)
+✔ current operator documentation leaves artifact review independent of AITM (3.623917ms)
+✔ every pre-migration review archive remains byte-identical (23.493417ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 529.931583
+
+> Operational-lessons memory seed
+  ---------------------------------------------------------
+  OK Memory seed (skipped — none)
+
+> Claude Code files
+  ---------------------------------------------------------
+  OK Skill .ai-task-manager/runtime/test-fixtures/test/provider-story-install-OHbY7Y/.claude/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/claude
+  OK Command .ai-task-manager/runtime/test-fixtures/test/provider-story-install-OHbY7Y/.claude/commands/task.md
+  OK Settings .claude/settings.json
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .ai-task-manager/runtime/test-fixtures/test/provider-story-install-OHbY7Y/.agents/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/codex
+  OK Hooks .codex/hooks.json
+
+> Grok files
+  ---------------------------------------------------------
+  OK Skill .ai-task-manager/runtime/test-fixtures/test/provider-story-install-OHbY7Y/.grok/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/grok
+  OK Hooks .grok/hooks/aitm.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+templates.test.mjs: all passed
+✔ scripts/tests/integration/task-tracker/core/templates.test.mjs (398.281542ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 403.396292
+✔ action capture exposes one stable schema identifier (0.515417ms)
+✔ classifies governed issue mutation families (0.512958ms)
+✔ classifies project, GraphQL, and REST mutations (0.226916ms)
+✔ classifies GitHub reads without inventing a mutation kind (0.123625ms)
+✔ enablement and issue storage are anchored in the main worktree (27.152417ms)
+✔ writes an ordered intent before a separate outcome without changing exact safe bytes (16.63ms)
+✔ stores exact request files alongside argv and stdin metadata (16.290959ms)
+✔ keeps hashes and sizes but omits credential-bearing request and response bytes (15.712ms)
+✔ isolates issues and repositories while allocating stable unique sequences (16.915167ms)
+✔ prepares a shim environment only for an enabled active issue (48.439584ms)
+✔ operator control enables, reports, summarizes, and disables the active issue corpus (50.52025ms)
+✔ summarizes complete and incomplete actions, serialized bytes, payload bytes, and largest action (24.958917ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 353.436125
+▶ direct Test and Develop Promote explain the same ready entry without effects
+  ✔ direct Test from Develop (6.1865ms)
+  ✔ direct Test self-rerun from Test (1.06075ms)
+  ✔ Promote from Develop (0.80375ms)
+✔ direct Test and Develop Promote explain the same ready entry without effects (8.685ms)
+✔ accepted directory-backed Test evidence does not require legacy VCs or sandbox (1.554458ms)
+✔ Review-state Test request is not advertised as runnable (0.811ms)
+✔ Test entry needs an explicit project directory for command and provider authority (0.780417ms)
+✔ Test entry resolves the bound project directory when the caller omits it (0.57125ms)
+✔ Test explanation reports missing Verification Commands without effects (1.677625ms)
+✔ Test entry preserves simultaneous declaration and Develop-exit refusals (0.821583ms)
+✔ Test entry aggregates independent binding and declaration blockers (0.554333ms)
+▶ Test explanation reports mismatched HEAD, binding, and malformed receipt authority
+  ✔ worktree HEAD (0.489292ms)
+  ✔ session binding (0.485875ms)
+  ✔ claimed receipt (0.678625ms)
+✔ Test explanation reports mismatched HEAD, binding, and malformed receipt authority (1.925625ms)
+✔ Test explanation names an unavailable required authority read and makes no effects (0.601334ms)
+✔ network-skipped Test entry is indeterminate without an empty observation attempt (0.318416ms)
+✔ malformed observed HEAD is indeterminate, not blocked or ready (0.495292ms)
+✔ a required workflow-policy read failure remains indeterminate for Test entry (0.714917ms)
+✔ a configured provider rejected by execution is blocked in Test explanation (0.549917ms)
+✔ real Develop-exit guards explain the affected AC and repair on Test and Promote (3515.011459ms)
+✔ Test entry retains registered guard warnings while remaining blocked (0.919042ms)
+✔ a missing Develop-final receipt is runnable resident work, not completed proof (0.832958ms)
+✔ a ready Test explanation does not predetermine a later red locked execution (3.252375ms)
+✔ production Test read adapter rechecks live body and board at a fresh boundary (0.717125ms)
+✔ production adapter rejects directory evidence whose accepted record epoch is stale (0.737167ms)
+✔ the locked Test wrapper supplies the production preflight by default (0.086875ms)
+✔ locked Test execution refuses a freshly blocked entry before any sandbox effect (0.127417ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3687.671417
+Started #1857.
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+Resumed #1857.
+✔ question hooks close only their own actor interval and resume without charging the wait (321.467417ms)
+✔ question reply ambiguity retains the original row and replays before resuming (285.658541ms)
+✔ question marker cannot substitute another event for the frozen resume (260.108208ms)
+✔ question hook respects its own manual pause without creating a resume marker (141.960584ms)
+✔ flush preserves genuine own wall interval and unknown estimate despite another actor tail (189.530666ms)
+✔ first attributed interruption retains observed cursor delta without a fabricated opener (201.884583ms)
+✔ update preserves cumulative actor cursor and unknown total after an unavailable estimate (300.293541ms)
+✔ real start pause and resume retain one actor identity and explicit current boundaries (374.512458ms)
+✔ phase boundary flushes own actor interval and shared lifecycle rows do not duplicate actor work (174.115709ms)
+✔ Test interlock records actual verification engagement from a paused own binding (194.764ms)
+✔ status distinguishes missing activity observation from zero work (146.658917ms)
+✔ failed Test execution retains both its failure and actual actor work (247.675917ms)
+✔ session tracking initializes a versioned own cursor and refuses corrupt existing authority (190.62475ms)
+✔ failed publication retains original row and cursor, then exact replay precedes new work (393.375542ms)
+✔ publication cannot overwrite a concurrently changed own timing boundary (139.039459ms)
+✔ Review human handoff flushes actual actor work before pausing its own binding (697.998916ms)
+✔ compaction hooks use the same actor journal and never resume a paused binding (613.900959ms)
+✔ session restart records unknown prior work without synthesizing historical active or idle time (300.678792ms)
+✔ actual hook entrypoint refuses a foreign payload actor before mutating timing state (338.106042ms)
+✔ actual idle SessionStart preserves cumulative actor word evidence (678.0655ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6360.833916
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/cli-prefs-empty-EpXJmM
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/cli-prefs-yes-tBm6vw
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/cli-prefs-merge-kUOAhy
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/cli-prefs-bad-eYFbK1
+                                                            
+
+✔ color helpers return the wrapped content regardless of TTY (0.826292ms)
+✔ patchSettingsJson creates settings and is idempotent (3.465541ms)
+✔ patchSettingsJson migrates legacy hook commands and broad Bash allow (1.115375ms)
+✔ patchSettingsJson tolerates a malformed existing file (1.03475ms)
+✔ patchCodexHooksJson creates hooks, is idempotent, tolerates garbage (2.952208ms)
+✔ patchCodexHooksJson registers memory index hooks only when requested (2.606417ms)
+✔ version subcommand and aliases print the package version (457.9755ms)
+✔ no-args prints help while an unknown verb returns a usage error (329.970375ms)
+✔ configure with a bad or missing subcommand exits 1 (352.808625ms)
+✔ install rejects bad --agent and --link-mode (389.668542ms)
+✔ install --link-mode stub writes skill, settings, templates and is idempotent (376.060375ms)
+✔ install --link-mode symlink refuses a package source outside the target project (182.319625ms)
+✔ uninstall removes Codex integrations while preserving user hooks and durable data (580.771208ms)
+✔ uninstall defaults to all providers and removes the generated Claude command (382.359ms)
+✔ uninstall --dry-run reports cleanup without changing the project (458.849ms)
+✔ uninstall --purge refuses non-interactive deletion without --yes (179.794417ms)
+✔ uninstall --purge --yes removes durable AITM data but preserves unrelated issue templates (173.849ms)
+✔ uninstall validates every managed file before removing any provider integration (398.768459ms)
+✔ uninstall refuses to recursively remove a managed skill directory with user files (355.28ms)
+✔ uninstall refuses to remove a foreign symlink at a managed skill path (170.125666ms)
+✔ uninstall recognizes exact generated artifacts from the previous package layout (440.583167ms)
+✔ uninstall removes only the marked project-local AITM bootstrap block (194.653625ms)
+✔ uninstall refuses a modified or ambiguously embedded AITM bootstrap block (377.065209ms)
+✔ uninstall --agent scopes provider files and Codex bootstrap cleanup (370.230041ms)
+✔ uninstall removes only exact managed hook commands (355.514791ms)
+✔ uninstall removes Claude permissions without hooks and never strips other providers (347.051916ms)
+✔ uninstall rejects malformed hook schemas before changing any files (365.090792ms)
+✔ uninstall rejects unknown, missing, duplicate, and conflicting options without cleanup (2828.718ms)
+✔ uninstall --help documents cleanup ordering and destructive options (130.025375ms)
+✔ statusline installs under an overridden HOME (176.211375ms)
+✔ configurePreferences with all-empty answers writes defaults (2.260208ms)
+✔ configurePreferences with "y" answers parses every bool branch truthy (0.682042ms)
+✔ configurePreferences merges over an existing config and a custom scratchDir (0.875417ms)
+✔ configurePreferences tolerates a malformed existing config (0.671125ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10557.4335
+preflight-issue: --user-story-file story-shape-invalid: Use exactly three lines without bullets: As a/an, I want to, So that
+✔ defect shape applies bug taxonomy exactly once and leaves legacy shapes unchanged (1.574667ms)
+✔ defect shape forwards the governed solo inputs plus defect-specific renderer inputs (0.530333ms)
+✔ defect dry-run renders a real User Story, diagnostic sections, and governed lifecycle tail (413.658458ms)
+✔ creator and preflight public help advertise the defect shape (253.834834ms)
+✔ generated bug form and label workflow use the canonical prefix authority (1.406334ms)
+✔ label workflow normalizes internal bug forms through the defect intake adapter (0.245ms)
+✔ web form parser returns normalized named sections (0.329125ms)
+✔ web defect normalization maps form fields through the same renderer and stamps Backlog (1.233084ms)
+✔ web defect normalization refuses default ACs without honest verifier evidence (160.900834ms)
+✔ web normalization is a fixed point and excludes non-bug and beta-report issues (0.180792ms)
+✔ shared creation rule maps conversational defect intent to the defect shape (0.225416ms)
+✔ full-auto local defects are created before the parent blocker protocol (0.213083ms)
+✔ all sanctioned-shape instruction and guard surfaces include defect (1.862709ms)
+✔ workflow guide documents defect as a sanctioned local shape (0.415792ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 992.744917
+✔ tracked invalid override refuses a read-only operational route before normal dispatch (422.166375ms)
+✔ invalid catalog refuses before GitHub, lock, or session effects without network skip (13766.560167ms)
+✔ dynamic issue-bind route cannot bypass admission (515.527041ms)
+✔ direct verb hub refuses invalid guidance before context construction (367.833542ms)
+✔ direct verb executables refuse invalid guidance before their own main paths (2258.94625ms)
+✔ direct verb help-shaped arguments cannot bypass admission (2147.600709ms)
+✔ unsupported direct-hub recovery words are admitted as operational (569.343167ms)
+✔ session annotation requires a durable issue write, not a zero-exit or local change (0.510334ms)
+✔ timing-post observation distinguishes durable issue writes from queued rows (0.210333ms)
+✔ package installer refuses invalid guidance before init writes (335.324625ms)
+✔ direct support-script path refuses invalid guidance before its own parser (394.37675ms)
+✔ guidance validation remains a routed recovery command (430.06775ms)
+✔ top-level help remains available while the selected catalog is invalid (307.068583ms)
+✔ command help, guidance source, and package version remain effect-free recovery routes (813.158958ms)
+✖ admission inventory accounts for every canonical command, alias, and classified executable (97.96675ms)
+✔ every registered operational token refuses an invalid catalog (22963.7745ms)
+✔ every supported direct operational entrypoint refuses an invalid catalog (15189.949667ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 16
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60766.998833
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs:316:1
+✖ admission inventory accounts for every canonical command, alias, and classified executable (97.96675ms)
+  AssertionError [ERR_ASSERTION]: scripts/task-tracker/merge-back.mjs
+  + actual - expected
+  
+    [
+      './lib/direct-guidance-admission.mjs',
+  -   'node:child_process',
+      'node:path',
+      './lib/graph-node-authority.mjs',
+      './lib/resolve-epic-lineage.mjs',
+      '../lib/self-doc.mjs',
+  +   './lib/merge-back-verification.mjs',
+  +   './lib/merge-back-cli.mjs'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs:342:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ './lib/direct-guidance-admission.mjs', 'node:path', './lib/graph-node-authority.mjs', './lib/resolve-epic-lineage.mjs', '../lib/self-doc.mjs', './lib/merge-back-verification.mjs', './lib/merge-back-cli.mjs' ],
+    expected: [ './lib/direct-guidance-admission.mjs', 'node:child_process', 'node:path', './lib/graph-node-authority.mjs', './lib/resolve-epic-lineage.mjs', '../lib/self-doc.mjs' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

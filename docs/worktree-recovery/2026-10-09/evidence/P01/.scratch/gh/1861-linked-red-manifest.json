@@ -1,0 +1,22 @@
+{
+  "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+  "sourcePaths": [
+    {
+      "path": "scripts/tests/fixtures/runtime-empty/linked-publisher.mjs",
+      "sha256": "c193788d42f414d33b82afe87cec5e37d8126956c6cb41911d45901d6ebaab13"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+      "sha256": "2cb8344b73b44191638814ade665ae3bfad3b973a67f2da99cea477f30d1c3b1"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+      "sha256": "163f7a17724e294b3b31b9df38a95fc14260bdd1ea88ef51f181fdfe38108d76"
+    }
+  ],
+  "tests": [
+    "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs"
+  ]
+}

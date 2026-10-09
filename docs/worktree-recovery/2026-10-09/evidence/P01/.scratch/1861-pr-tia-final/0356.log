@@ -1,0 +1,13 @@
+✔ #805: WRITE_CODE edit in test state is refused with remediation-loop message (2.245042ms)
+✔ #805: same WRITE_CODE edit is allowed in develop (the honest demote target) (0.152333ms)
+✔ #805: WRITE_CODE edits in review and done are refused (0.616542ms)
+✔ #805: WRITE_DOCS edit in review is allowed (matrix permits it) (0.082ms)
+✔ #805: unresolvable state fails closed (refused) (0.074584ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.253792

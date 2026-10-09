@@ -1,0 +1,17 @@
+{
+  "status": "lossless",
+  "sourceBytes": 1562105,
+  "indexBytes": 22542,
+  "sourceSha256": "676c9a16d648daeb374a5a9916f39e900a3858580c1aaef8d35ba22897a0a0a8",
+  "canonicalJSONSha256": "9abc22c13e2d3ef8e2ab3b81af1082326ba55b674a8fa44fa34cebe5fc6d762c",
+  "runs": 15,
+  "locatedFindings": 4450,
+  "supplementalRecords": 7,
+  "focusedSubsets": 39,
+  "maxSubsetBytes": 81099,
+  "limitBytes": 98304,
+  "completeObjectEqual": true,
+  "allSubsetHashesMatch": true,
+  "allSubsetLengthsMatch": true,
+  "allREADMEReferencesExist": true
+}

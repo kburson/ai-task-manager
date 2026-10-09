@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- **Pending:** The exact accepted #1624 head is published without history rewrite and is the source head of one governed pull request targeting `trunk`. <!-- aitm-ac-waived by=\"audit\" reason=\"remote recovery authority\" -->",
+  "replacement": "- **Pending:** The historical accepted #1624 head is preserved without rewrite as the first parent of one exact current-trunk integration head, which is the source head of governed PR #1638 targeting `trunk`. <!-- aitm-ac-waived by=\"audit\" reason=\"remote recovery authority\" -->"
+}

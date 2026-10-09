@@ -1,0 +1,16 @@
+✔ stale backlog body recovers from one fresh read before the first Refine walk (1.596375ms)
+✔ historical Assigned alias is not treated as a canonical pre-Refine arc (0.085875ms)
+✔ genuine marker absence remains fail-closed after exactly one fresh read (0.110083ms)
+✔ fresh-read failure preserves the original refusal (0.139666ms)
+✔ non-pre-Refine arcs do not perform the fresh read (0.072625ms)
+✔ successful contiguity refresh preserves unrelated refusals (0.464042ms)
+✔ shared refresh reruns every affected guard on the replacement body (0.114416ms)
+✔ shared refresh classifies failed fresh authority as indeterminate (0.265791ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.203208

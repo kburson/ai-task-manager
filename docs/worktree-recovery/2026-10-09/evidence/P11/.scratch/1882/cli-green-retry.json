@@ -1,0 +1,36 @@
+{
+  "schema": "issue1882.execution/v1",
+  "runId": "b183135d-7dfd-41dd-b190-655c858d4dbe",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1882,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "node",
+    "--test",
+    "scripts/tests/unit/task-tracker/merge-back-cli.test.mjs",
+    "scripts/tests/unit/task-tracker/merge-back-verification.test.mjs",
+    "scripts/tests/unit/task-tracker/merge-back.test.mjs"
+  ],
+  "sourceCommit": "24f8b2ab322a59a4caed027f93170ea699e5478f",
+  "dirtyPaths": [
+    "M scripts/task-tracker/merge-back.mjs",
+    " M scripts/tests/unit/task-tracker/merge-back.test.mjs",
+    "?? scripts/task-tracker/lib/merge-back-cli.mjs",
+    "?? scripts/task-tracker/lib/merge-back-verification.mjs",
+    "?? scripts/tests/unit/task-tracker/merge-back-cli.test.mjs",
+    "?? scripts/tests/unit/task-tracker/merge-back-verification.test.mjs"
+  ],
+  "dirtyDiffSHA256": "e833c5d04a0def64715a955c91253bbc112444adc5adf8be946bce0465f5a3e5",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T00:23:12.354Z",
+  "stdout": ".scratch/1882/cli-green-retry.log",
+  "finishedAt": "2026-10-05T00:23:16.117Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "b2651359398455867223e4baec7c0fc2c7f7898f60c0a9ec58a536e74777e14a"
+}

@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- `explicitly-local-only`: a valid issue-resident delivery record exists for an\n  allowed non-epic no-commit kind and there is no code delivery claim to trunk.\n\nChild stories can be verified",
+  "replacement": "- `explicitly-local-only`: a valid issue-resident delivery record exists for an\n  allowed non-epic no-commit kind and there is no code delivery claim to trunk.\n- `terminal-disposition-exception`: an explicit superseded/not-planned workflow\n  entered Done without claiming delivery; the replacement issue is recorded.\n\nChild stories can be verified"
+}

@@ -1,0 +1,13 @@
+{
+  "bin": "node",
+  "args": [
+    "--test",
+    "scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+  "startedAt": "2026-10-05T21:55:47.023Z",
+  "endedAt": "2026-10-05T21:55:47.165Z",
+  "status": 0,
+  "stdout": "✔ canonical H2 precedes embedded H1 for parser and checkbox lookup (3.197208ms)\n✔ canonical unstamped AC remains gated after embedded H1 (0.260958ms)\n✔ canonical stamp after embedded H1 preserves every other line and citations (0.948959ms)\n✔ canonical H2 precedes embedded H3 for parser and checkbox lookup (0.140459ms)\n✔ canonical unstamped AC remains gated after embedded H3 (0.085542ms)\n✔ canonical stamp after embedded H3 preserves every other line and citations (0.354209ms)\n✔ canonical H2 precedes embedded H4 for parser and checkbox lookup (0.131709ms)\n✔ canonical unstamped AC remains gated after embedded H4 (0.076833ms)\n✔ canonical stamp after embedded H4 preserves every other line and citations (0.520083ms)\n✔ supported H1 with literal declaration is preserved without another canonical H2 (0.431708ms)\n✔ supported H1 with by-id declaration is preserved without another canonical H2 (0.321625ms)\n✔ supported H2 with literal declaration is preserved without another canonical H2 (0.2195ms)\n✔ supported H2 with by-id declaration is preserved without another canonical H2 (0.1195ms)\n✔ supported H3 with literal declaration is preserved without another canonical H2 (0.121125ms)\n✔ supported H3 with by-id declaration is preserved without another canonical H2 (0.105416ms)\n✔ supported H4 with literal declaration is preserved without another canonical H2 (0.097042ms)\n✔ supported H4 with by-id declaration is preserved without another canonical H2 (0.092166ms)\n✔ retired ordinal declaration remains unresolved under H1 (0.264708ms)\n✔ retired ordinal declaration remains unresolved under H2 (0.069291ms)\n✔ retired ordinal declaration remains unresolved under H3 (0.046917ms)\n✔ retired ordinal declaration remains unresolved under H4 (0.055583ms)\n✔ canonical heading retains existing case-insensitive suffix behavior (1.231459ms)\n✔ missing AC heading keeps empty lookup and stamping refusal (0.076709ms)\nℹ tests 23\nℹ suites 0\nℹ pass 23\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 99.807875\n",
+  "stderr": ""
+}

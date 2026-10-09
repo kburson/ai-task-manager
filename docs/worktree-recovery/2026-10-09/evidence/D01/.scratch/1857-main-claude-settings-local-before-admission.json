@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(shasum -a 256 docs/superpowers/specs/2026-09-18-1703-user-story-value-quality-design.md)",
+      "Bash(git ls-remote *)",
+      "Bash(shasum -a 256 .codex/skills/peer-review/SKILL.md .agents/skills/peer-review/SKILL.md)",
+      "Bash(command -v peer-review peer-review-mcp)",
+      "Bash(shasum -a 256 docs/superpowers/plans/2026-09-18-1703-user-story-value-quality.md docs/peer-reviews/plan/2026-09-18-1703-user-story-value-quality-plan-review/reviewer-response-1.md)",
+      "Bash(node .scratch/inspect/verify-plan-review.mjs)",
+      "Bash(node -e ' *)",
+      "Bash(sed -n '1,80p' docs/peer-reviews/plan/2026-09-22-1755-delivery-attribution-exception-plan-review/*reviewer-response-1.md 2>/dev/null | head -80)",
+      "Bash(peer-review help *)",
+      "Bash(peer-review submit *)",
+      "Bash(perl -0pi -e 's/^#### R1-F/### R1-F/gm; s/^### Optional findings in detail\\\\n\\\\n//m; s/^### Verification performed/### R1-F007 — Verification performed \\\\\\(informational\\\\\\)/m' docs/peer-reviews/plan/2026-09-24-2026-09-21-1719-story-token-cost-review-b1dae1956ef2500be0281d489862b34f/review-b1dae1956ef2500be0281d489862b34f-reviewer-response-1.md)",
+      "Bash(peer-review status *)",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(npx prettier *)",
+      "Bash(npx cspell *)",
+      "Bash(echo \"mdrt exit=$?\")",
+      "Bash(node .scratch/gh/validate-vc.mjs)",
+      "Bash(gh pr *)",
+      "Bash(peer-review doctor *)",
+      "Bash(peer-review join *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node node_modules/ai-task-manager/scripts/task-tracker/agent-guard.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

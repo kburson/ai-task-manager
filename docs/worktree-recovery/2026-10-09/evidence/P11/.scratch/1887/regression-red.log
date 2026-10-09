@@ -1,0 +1,108 @@
+▶ direct Test and Develop Promote explain the same ready entry without effects
+  ✔ direct Test from Develop (7.81ms)
+  ✔ direct Test self-rerun from Test (1.289875ms)
+  ✔ Promote from Develop (0.873792ms)
+✔ direct Test and Develop Promote explain the same ready entry without effects (10.70575ms)
+✔ accepted directory-backed Test evidence does not require legacy VCs or sandbox (1.438916ms)
+✔ Review-state Test request is not advertised as runnable (0.746791ms)
+✔ Test entry needs an explicit project directory for command and provider authority (0.824292ms)
+✔ Test entry resolves the bound project directory when the caller omits it (0.709875ms)
+✔ Test explanation reports missing Verification Commands without effects (1.905ms)
+✔ Test entry preserves simultaneous declaration and Develop-exit refusals (0.949416ms)
+✔ Test entry aggregates independent binding and declaration blockers (1.180209ms)
+▶ Test explanation reports mismatched HEAD, binding, and malformed receipt authority
+  ✔ worktree HEAD (0.977292ms)
+  ✔ session binding (0.576792ms)
+  ✔ claimed receipt (0.701ms)
+✔ Test explanation reports mismatched HEAD, binding, and malformed receipt authority (2.7655ms)
+✔ Test explanation names an unavailable required authority read and makes no effects (0.805417ms)
+✔ network-skipped Test entry is indeterminate without an empty observation attempt (0.404917ms)
+✔ malformed observed HEAD is indeterminate, not blocked or ready (0.618208ms)
+✔ a required workflow-policy read failure remains indeterminate for Test entry (0.784958ms)
+✔ a configured provider rejected by execution is blocked in Test explanation (0.916041ms)
+✔ real Develop-exit guards explain the affected AC and repair on Test and Promote (3147.464708ms)
+✔ Test entry retains registered guard warnings while remaining blocked (0.936833ms)
+✔ a missing Develop-final receipt is runnable resident work, not completed proof (0.713125ms)
+✔ a ready Test explanation does not predetermine a later red locked execution (4.014125ms)
+✔ production Test read adapter rechecks live body and board at a fresh boundary (0.884667ms)
+✔ production adapter rejects directory evidence whose accepted record epoch is stale (0.909792ms)
+✔ the locked Test wrapper supplies the production preflight by default (0.105292ms)
+✔ locked Test execution refuses a freshly blocked entry before any sandbox effect (0.13275ms)
+✖ rebased Test readiness audits the projected body without changing observed authority (2.683375ms)
+✔ current wrong-tree Test provenance remains a readiness refusal (0.850125ms)
+✔ retires stale claimed Test evidence before finalization or worktree creation (34.060083ms)
+✔ retires stale claimed Test evidence from Develop before replacement verification (13.451584ms)
+✔ stops all execution when receipt retirement fails (1.066917ms)
+✔ refuses malformed claimed Test evidence before execution (0.26625ms)
+✔ refuses malformed generic receipt claims before execution (0.803625ms)
+✔ refuses live command drift introduced by the fresh evidence mutation (12.588917ms)
+✔ reports invalid fresh-base command authority without throwing (9.948208ms)
+✔ refuses command drift reported by the persisted write response (9.796458ms)
+✖ fresh entry is rechecked after stale retirement before finalization (11.062125ms)
+✖ a new entry blocker after retirement prevents finalization and sandbox effects (11.371834ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 37
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3365.943708
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/action-test.test.mjs:629:1
+✖ rebased Test readiness audits the projected body without changing observed authority (2.683375ms)
+  AssertionError [ERR_ASSERTION]: {"schema":"aitm.action-decision/v2","issue":1666,"actionId":"test","status":"blocked","snapshot":{"state":"develop","head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","digest":"sha256:15d6f1c9a66995ae7c0b0c2d80d8e2b76518a15f13661157600767e8fc30b6dd","startedAt":"2026-09-21T16:00:00.000Z","completedAt":"2026-09-21T16:00:00.000Z","observations":[{"source":"issue-body","identity":"issue:1666:1","observedAt":"2026-09-21T16:00:00.000Z","digest":"sha256:6e7d0556d10746a7ceb8abf5fa2b8d15aefbcffcbfffd9041985aeab1779d4d0"},{"source":"project-board","identity":"issue:1666:2","observedAt":"2026-09-21T16:00:00.000Z","digest":"sha256:d51d05fe8ba60aacb6cb5f9db2fd5c8ec93418d4869357c07dbcd44a7119e379"},{"source":"worktree","identity":"worktree:1666","observedAt":"2026-09-21T16:00:00.000Z","digest":"sha256:809546921f1e5c843f801d265fc1d2d58d5d2c7f3a0ae817df86d1f2e829a13a"},{"source":"session-state","identity":"session-state:1666","observedAt":"2026-09-21T16:00:00.000Z","digest":"sha256:159b15a8cd5b9b7121287c54ab81dbc0dc11d82aa17e474e8734d0cdd5739d3a"}]},"blockers":[{"guardId":"develop-exit-code-complete","code":"unclassified-refusal","args":{},"noAutomaticRemediation":{"reason":"legacy-guard-requires-human-investigation"}}],"normalizations":[],"warnings":[],"humanDecision":{"requests":[{"kind":"manual-investigation","actor":"human-operator","subject":{"issue":1666,"actionId":"test"},"args":{"guardId":"develop-exit-code-complete","code":"unclassified-refusal"}}]},"guidanceIds":["action.test"]}
+  
+  'blocked' !== 'ready'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/integration/task-tracker/lib/action-test.test.mjs:632:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'ready',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs:361:1
+✖ fresh entry is rechecked after stale retirement before finalization (11.062125ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs:374:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs:378:1
+✖ a new entry blocker after retirement prevents finalization and sandbox effects (11.371834ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'passed'
+  - 'entry-preflight-refused'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs:385:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'passed',
+    expected: 'entry-preflight-refused',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

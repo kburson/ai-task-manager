@@ -1,0 +1,13 @@
+✔ buildAgentReviewEvidenceMarker carries gate/ts/sha/validators/result (0.700458ms)
+✔ stampAgentReviewPassed ticks the box and appends the marker (1.034459ms)
+✔ re-stamp replaces the prior agent-review marker instead of stacking (0.759208ms)
+✔ stamped body survives the body-proof stack (proof present + structurally complete) (1.025458ms)
+✔ missing box → noop (old-template bodies stamp to unchanged) (0.166375ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.839042

@@ -1,0 +1,12 @@
+{
+  "status": 20,
+  "signal": null,
+  "output": [
+    null,
+    "AITM_PROVIDER_ACTION_REQUIRED: {\"action\":\"github.merge-pull-request\",\"baseRef\":\"trunk\",\"commitMessage\":\"PR #1903\\nSource: 2d36e1a6c9c57039299c332ef208e09e34d1e003\\n\\nAttribution: [#1902]\",\"commitTitle\":\"[#1902] Governed PR delivery\",\"expectedHeadSha\":\"2d36e1a6c9c57039299c332ef208e09e34d1e003\",\"headRef\":\"codex/1902-preserve-merge-history\",\"intentId\":\"01M48P4S81KAYV7ZGZRP1D7B27\",\"issueNumber\":1902,\"mergeMethod\":\"squash\",\"prNumber\":1903,\"repository\":\"kburson/ai-task-manager\",\"schema\":1}\n",
+    "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' deliver 1902\n"
+  ],
+  "pid": 40529,
+  "stdout": "AITM_PROVIDER_ACTION_REQUIRED: {\"action\":\"github.merge-pull-request\",\"baseRef\":\"trunk\",\"commitMessage\":\"PR #1903\\nSource: 2d36e1a6c9c57039299c332ef208e09e34d1e003\\n\\nAttribution: [#1902]\",\"commitTitle\":\"[#1902] Governed PR delivery\",\"expectedHeadSha\":\"2d36e1a6c9c57039299c332ef208e09e34d1e003\",\"headRef\":\"codex/1902-preserve-merge-history\",\"intentId\":\"01M48P4S81KAYV7ZGZRP1D7B27\",\"issueNumber\":1902,\"mergeMethod\":\"squash\",\"prNumber\":1903,\"repository\":\"kburson/ai-task-manager\",\"schema\":1}\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' deliver 1902\n"
+}

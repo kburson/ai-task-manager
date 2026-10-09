@@ -1,0 +1,47 @@
+{
+  "base": "7beeb4d38c726d773e7f9224175b6da701deb035",
+  "changedPaths": [
+    "docs/reviews/1857-remaining-work/1861-final-code-review/reviewer-response-r1.md",
+    "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md",
+    "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/review-report-links.json"
+  ],
+  "selection": {
+    "tests": [],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/review-report-links.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-final-code-review/reviewer-response-r1.md",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      }
+    ],
+    "escalated": false
+  }
+}

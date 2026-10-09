@@ -1,0 +1,1 @@
+Own `scripts/tests/fixtures/1558/action-observation-inventory.json`, `behavioral-flags.json`, and `authority-baseline.json`; create `guidance-legacy-inventory.test.mjs` in the unit test directory above. Apply baseline Task 1a Step 1 in full, including transitive, indexed, aliased and destructured environment reads. No process harness, fixture execution or runtime edits.

@@ -1,0 +1,93 @@
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+✔ confirmed short active phase tail suppresses a duplicate bind event (1.311042ms)
+✔ fresh, unreadable, paused, and long-gap tails retain their existing bind behavior (0.750459ms)
+✔ malformed and future-dated tails are not treated as confirmed recent (0.162792ms)
+✔ pause, switch-out, and stop are recorded departures that still need resumed (0.840667ms)
+[dependency-disposition] #1018: binding remains active; retry dependency projection (dependency-disposition:config)
+Bound #1018 (live timing span already active; no duplicate reengagement row).
+✔ fresh worktree binds locally but posts no row over an already-active live span (375.526ms)
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[dependency-disposition] #453: binding remains active; retry dependency projection (dependency-disposition:config)
+Started #453.
+[dependency-disposition] #453: binding remains active; retry dependency projection (dependency-disposition:config)
+Started #453.
+[dependency-disposition] #453: binding remains active; retry dependency projection (dependency-disposition:config)
+Resumed #453.
+[dependency-disposition] #400: binding remains active; retry dependency projection (dependency-disposition:config)
+Started #400.
+[dependency-disposition] #453: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #453: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #453: binding remains active; retry dependency projection (dependency-disposition:config)
+Started #453.
+verb-start-resume-stop.test.mjs: all passed
+✔ scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs (1277.634459ms)
+✔ terminal ledger persists atomically at the main fleet authority path (92.17825ms)
+✔ malformed terminal entries fail closed instead of reviving a binding (20.021125ms)
+✔ terminal authority refuses a fallback linked-worktree anchor (0.367417ms)
+✔ terminal timestamp closes only records that were bound before it (0.20725ms)
+✔ terminal release observation accepts the ledger unless a newer binding exists (0.322791ms)
+✔ terminal release resume reuses original ledger authority and clears only stale residue (0.335209ms)
+✔ closed candidate loses to a live binding even when the closed record is newer (0.33425ms)
+✔ a closed-only candidate set resolves to null (0.110333ms)
+✔ release marks terminal authority then clears every matching worktree only (0.2875ms)
+✔ release CAS preserves a concurrent rebind to another issue or a reopened issue (0.149375ms)
+✔ clearing live B cannot resurrect terminal A (0.267375ms)
+Started #107.
+already active: #107
+Started #107.
+Paused #107: +0 active min, +0 words. Use "/task resume" to resume.
+Resumed #107.
+Started #107.
+Paused #107: +0 active min, +0 words. Use "/task resume" to resume.
+[resume] #107: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+Started #107.
+Started #107.
+Resumed #107.
+Started #107.
+✔ native start persists real claim and active rebind preserves generation and live timer (316.713708ms)
+✔ paused native resume [] retains occupancy generation (189.086125ms)
+✔ paused native resume ["#107"] retains occupancy generation (193.512709ms)
+✔ explicit same-issue timer reopening transports the existing claim (174.9655ms)
+✔ failed fresh bind rolls back the real claim and leaves no active authority (109.245459ms)
+✔ failed reopening restores prior generation and closed timer on unchanged claim (178.596584ms)
+✔ foreign occupancy collision prevents bind without importing its generation (53.951417ms)
+✔ throws BindMissingError when no active bind in state file (2.921292ms)
+✔ throws BindMissingError when state file is empty object (1.727833ms)
+✔ throws BindMismatchError when bound to a different issue (1.095834ms)
+✔ does not throw when bound to the matching issue (numeric) (1.244583ms)
+✔ does not throw when bound to the matching issue (hash-prefixed string) (1.239083ms)
+✔ BindMissingError and BindMismatchError are distinct error classes (0.155833ms)
+✔ resolveBindEvent: fresh bind (no history, not paused) → start (1.919541ms)
+✔ resolveBindEvent: rebind with existing timing history → resumed (0.099584ms)
+✔ resolveBindEvent: no-arg resume after pause → resumed (even with no history) (0.057958ms)
+✔ resolveBindEvent: paused dominates history flag → resumed (0.073542ms)
+✔ resolveBindEvent: defaults (no args) → start (0.06025ms)
+✔ timingCommentHasRows: empty / missing body → false (0.068ms)
+✔ timingCommentHasRows: header + separator only → false (0.462625ms)
+✔ timingCommentHasRows: a real data row → true (0.268625ms)
+✔ timingCommentHasRows: tolerates a T-delimited ISO timestamp cell (0.204208ms)
+✔ resolveBindEvent: re-engagement over an open switch-out:#7 → resumed (never switch-in) (0.351208ms)
+✔ resolveBindEvent: re-engagement over an open pause:meeting → resumed (never resume:reason) (0.165166ms)
+✔ resolveBindEvent: history with no open interruption → resumed (0.14825ms)
+✔ resolveBindEvent: empty log (positive confirmation) still → start (0.070166ms)
+✔ a resumed closer clears an open switch-out interruption (0.103333ms)
+✔ a resumed closer clears an open pause interruption (0.097958ms)
+✔ resolveBindEvent: read error mid-lifetime → resumed, NEVER a second start (0.060292ms)
+✔ resolveBindEvent: read error dominates even the empty-history defaults (0.039916ms)
+✔ resolveBindEvent: positive-empty read (absent) → start (0.042875ms)
+✔ detectUnmarkedDepartureGap: long gap with no departure row → detected (1.703625ms)
+✔ detectUnmarkedDepartureGap: same-issue activity inside the gap suppresses idle synthesis (0.2305ms)
+✔ detectUnmarkedDepartureGap: boundary, outside, and malformed activity do not suppress recovery (0.195334ms)
+✔ detectUnmarkedDepartureGap: gap below threshold → null (0.201625ms)
+✔ detectUnmarkedDepartureGap: already bracketed by an open departure → null (0.102291ms)
+✔ detectUnmarkedDepartureGap: last row itself a departure event → null (0.06725ms)
+✔ detectUnmarkedDepartureGap: empty/missing body → null (0.034833ms)
+✔ detectUnmarkedDepartureGap: no data rows (header only) → null (0.052292ms)
+ℹ tests 56
+ℹ suites 0
+ℹ pass 56
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1436.314209

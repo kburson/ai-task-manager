@@ -1,0 +1,5 @@
+- Weakening or removing the exact-head evidence contract.
+- Accepting a delivery receipt for content that was never verified.
+- Auto-closing an issue that has no receipt at all.
+- Treating plain ancestry as sufficient, without proving the approved content is still included in the advanced head.
+- Changing the #1488 bind-timer repair or #1485's merge-back branch-authority repair.

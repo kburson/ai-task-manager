@@ -1,0 +1,8 @@
+17:// the planned column when the board read is empty so `appendPlannedEstimate`'s
+21:import { readFileSync } from 'node:fs';
+117:  const planInput = parsePlanEstimationInput(readFileSync(evidenceFile, 'utf8'));
+125:async function readBoardCurrent({ cfg, issueNumber, deps }) {
+191:  // Source the "current" (Refine) column: explicit flags win; else read the
+196:    const board = await readBoardCurrent({ cfg, issueNumber: target, deps });
+270:          `[task-tracker] ✓ #${target} Planned Estimate appendix already present — no change`
+275:          `[task-tracker] ✓ #${target} Plan estimate authority converged; forecast ${res.forecastRecordId}`

@@ -1,0 +1,12 @@
+✔ AC1: strips AITM_ISSUE_LOCK_HELD from the inherited env (0.503666ms)
+✔ AC1: every var in SANDBOX_STRIPPED_ENV_VARS is removed (0.108458ms)
+✔ AC1: overrides are applied after the scrub and win (0.079875ms)
+✔ AC1: does not mutate the input env object (0.063333ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.691541

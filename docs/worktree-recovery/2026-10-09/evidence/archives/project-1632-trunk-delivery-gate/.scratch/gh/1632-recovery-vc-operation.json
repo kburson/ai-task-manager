@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `git merge-base --is-ancestor 2158a289a63b27b9b4d08b8701a16f0b9d3e805d origin/trunk` <!-- id=3 -->",
+  "replacement": "- [ ] `gh issue view 1633 -R kburson/ai-task-manager --json body --jq '.body | contains(\"Every false-Done or indeterminate story has a governed recovery issue\")'` <!-- id=3 -->"
+}

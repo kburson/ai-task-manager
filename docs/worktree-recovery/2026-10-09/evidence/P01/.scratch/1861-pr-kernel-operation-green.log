@@ -1,0 +1,27 @@
+✖ kernel operation critical section retains its writer lease through awaited work (860.4005ms)
+✔ kernel operation locks preserve unknown old ownership rather than treating age as recovery authority (807.649ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1673.047833
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs:10:1
+✖ kernel operation critical section retains its writer lease through awaited work (860.4005ms)
+  RuntimeRootError: A genuine process and provider session are required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)
+      at identity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:56:5)
+      at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:579:17)
+      at withRuntimeWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:608:17)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-writer.mjs:199:10)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-writer.mjs:191:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs:14:11)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    code: 'RUNTIME_MIGRATION_IDENTITY_REQUIRED'
+  }

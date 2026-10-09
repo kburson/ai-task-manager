@@ -1,0 +1,7 @@
+{
+  "startedAt": "2026-10-05T20:44:43.722Z",
+  "finishedAt": "2026-10-05T20:44:55.401Z",
+  "status": 0,
+  "stdout": "\n🚧 PICKUP DIRECTIVE DEFERRED — #1897 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #1897`.\nStarted #1897.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 1897 --role orchestrator\naitm: action capture unavailable; continuing without capture: ENOENT: no such file or directory, open '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/.tmp/aitm/state/task-tracker-state.json'\n⚠ #1897 move-invariants indeterminate\n  board       : backlog\n  recorded    : (none)\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"none\"). Cannot auto-reconcile without fabricating provenance — reporting only.\n"
+}

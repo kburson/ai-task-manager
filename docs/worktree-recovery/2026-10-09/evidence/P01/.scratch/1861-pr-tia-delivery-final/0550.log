@@ -1,0 +1,27 @@
+✔ AC1: epic with a `not planned` child and an unstruck AC is refused (1.149834ms)
+✔ AC1: the refusal is keyed on the disposition, not on the child being closed at all (0.14275ms)
+✔ AC2: the same epic passes once the AC is explicitly struck (1.233ms)
+✔ AC2: an AC that was delivered anyway also clears it (tick satisfies, no strike needed) (0.202708ms)
+✔ AC3: an epic whose children all closed `completed` is unaffected (0.146333ms)
+✔ AC3: a non-epic issue is never gated, even with a wontfixed child and a dangling AC (0.089625ms)
+✔ AC3: an epic with no children at all passes (0.079ms)
+✔ AC4: merely unchecking an AC does not satisfy the gate (0.213ms)
+✔ AC4: a strike is recognized on an UNCHECKED box (a struck AC is not "done") (0.098875ms)
+✔ AC4: parseAcStrike reads child/reason/ts, and tolerates a bare child form (0.456542ms)
+✔ AC5: the refusal names the wontfixed child and every dangling AC (0.194333ms)
+✔ normalizeCloseReason maps GitHub enum casing, and only for CLOSED issues (0.08525ms)
+✔ the fetcher query selects stateReason and body, and carries recovery additively (1.201208ms)
+✔ aitm-ac-struck is registered as an append-only invariant marker (2.209958ms)
+✔ aitm-ac-struck is mirrored into the gh-edit-guard registry (0.215541ms)
+✔ the guard is scoped to review→done and fails open on absent context (0.130709ms)
+✔ the guard surfaces the gate refusal verbatim (0.139875ms)
+✔ a children fetch failure is a refusal, not a silent pass (0.101875ms)
+✔ the guard is registered on the review state exit chain, after the done-check (10.979625ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23.915542

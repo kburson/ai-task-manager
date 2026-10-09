@@ -1,0 +1,26 @@
+✔ guard exposes the expected id (0.545291ms)
+✔ short-circuits when fromState !== "backlog" (0.871375ms)
+✔ short-circuits when toState !== "refine" (0.091334ms)
+✔ short-circuits when ctx missing cfg (0.073625ms)
+✔ short-circuits when ctx missing issueNumber (0.06925ms)
+✔ passes when issue has no parent (leaf / top-level epic) (0.09025ms)
+✔ passes when parent state is "refine" (0.090666ms)
+✔ passes when parent state is "plan" (0.061583ms)
+✔ passes when parent state is "develop" (mid-develop discovery work) (0.075417ms)
+✔ refuses when parent state is "backlog" (0.191041ms)
+✔ refuses when parent state is "test" (0.067834ms)
+✔ refuses when parent state is "review" (0.050583ms)
+✔ refuses when parent state is "done" (0.056833ms)
+✔ passes when parent state is null (parent not on board / transient read failure) (0.073917ms)
+✔ fail-closed when fetchParentIssue throws (#565) (0.09325ms)
+✔ fail-closed when readParentStatus throws (#565) (0.067875ms)
+✔ mixed-case parent state still matches (normalized) (0.096541ms)
+✔ legacy call site without fromState/toState still invokes deps (0.069875ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.633083

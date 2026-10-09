@@ -1,0 +1,11 @@
+✔ archived recertification binds every obligation and refuses current replay identity drift (15798.31875ms)
+✔ recertification refuses a relabeled or altered lifecycle capture (15242.585125ms)
+✔ historical foundation stays immutable while current commands refuse obsolete replay (45542.233708ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 76651.101084

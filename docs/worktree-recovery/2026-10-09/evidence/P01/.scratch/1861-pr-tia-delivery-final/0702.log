@@ -1,0 +1,20 @@
+✔ SessionIdRequiredError is exported for fail-closed providers (0.532125ms)
+✔ Grok uses an explicit orchestrator override (0.123042ms)
+✔ Grok uses GROK_SESSION_ID when present (0.388334ms)
+✔ Grok refuses before scanning legacy provider keys or transcripts (0.242209ms)
+✔ orchestrator env var wins over everything (0.10225ms)
+✔ provider env var beats mtime fallback (198.681542ms)
+✔ #1092: Codex Desktop thread id wins over legacy Codex session id (0.698458ms)
+✔ mtime fallback picks newest .jsonl when no env var is set (61.563834ms)
+✔ falls back to default-session when no env + no transcripts (58.388208ms)
+✔ never returns null — fallback is always a non-empty string (0.211917ms)
+✔ env key list includes orchestrator first then provider keys (0.073917ms)
+✔ writer and reader resolve identically — the #273 wedge cannot recur (54.592417ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 381.380458

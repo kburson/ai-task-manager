@@ -1,0 +1,11 @@
+✔ Delta Words is derived from adjacent comma-formatted Word Markers (16.346709ms)
+✔ Delta Words renders numeric zero for a flat marker (0.572667ms)
+✔ backdated review approval normalizes its own and the following adjacent deltas (1.18475ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21.481208

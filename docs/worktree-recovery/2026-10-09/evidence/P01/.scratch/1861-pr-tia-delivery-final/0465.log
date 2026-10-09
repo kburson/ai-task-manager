@@ -1,0 +1,12 @@
+✔ reader rejects every pending non-completed state reason (1.362042ms)
+✔ writer rejects every pending non-completed state reason (0.361ms)
+✔ legacy complete recovery may retain an unknown state reason (0.476083ms)
+✔ executor rejects pending non-completed recovery before every effect (0.660125ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.527625

@@ -1,0 +1,37 @@
+All refine-estimate-comment tests defined.
+✔ hasPlannedAppendix detects header (1.267875ms)
+✔ buildPlannedAppendix records delta=0 explicitly (0.281375ms)
+✔ buildPlannedAppendix records non-zero delta with sign (0.132875ms)
+✔ buildPlannedAppendix normalizes Refine and Plan estimates before calculating delta (0.101584ms)
+✔ v1 upsert replaces the Plan projection while preserving immutable Refine values (1.21275ms)
+✔ buildPlannedAppendix uses placeholder rationale when blank (0.110625ms)
+✔ findRefineEstimateComment matches the issue-number marker (0.262708ms)
+✔ findRefineEstimateComment returns null when no comment matches (0.206083ms)
+✔ ensureRefineEstimateComment is the same as findRefineEstimateComment (0.157666ms)
+✔ appendPlannedEstimate PATCHes the comment when no appendix is present (0.307917ms)
+✔ appendPlannedEstimate is idempotent — duplicate when appendix already present (0.19525ms)
+✔ appendPlannedEstimate returns no-refine-comment when missing (0.303792ms)
+✔ appendPlannedEstimate captures PATCH failure (0.172667ms)
+✔ planPlannedEstimateGate refuses when comment missing (0.4075ms)
+✔ planPlannedEstimateGate refuses when appendix missing (0.127792ms)
+✔ planPlannedEstimateGate accepts when comment + appendix present (0.179208ms)
+✔ buildPlannedAppendix rejects scalar planned/current (0.269334ms)
+✔ buildPlannedAppendix rejects null and arrays (0.076917ms)
+✔ buildPlannedAppendix rejects empty object with no size or estimate (0.049666ms)
+✔ appendPlannedEstimate rejects scalar planned/current before any I/O (0.150167ms)
+✔ appendPlannedEstimate rejects null planned (0.066542ms)
+✔ appendPlannedEstimate still works with valid { size, estimate } objects (0.10825ms)
+✔ planPlannedEstimateGate refuses an all-em-dash data row (0.208375ms)
+✔ planPlannedEstimateGate captures listComments failure (0.064791ms)
+✔ repopulateEmptyPlannedAppendix rebuilds an all-em-dash appendix in place (0.19875ms)
+✔ repopulateEmptyPlannedAppendix leaves a non-empty appendix untouched (0.059666ms)
+✔ repopulateEmptyPlannedAppendix reports no-appendix when none present (0.048709ms)
+✔ repopulateEmptyPlannedAppendix reports no-refine-comment when missing (0.058042ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.468083

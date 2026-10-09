@@ -1,0 +1,74 @@
+{
+  "head": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "run": 37177610211,
+  "url": "https://github.com/kburson/ai-task-manager/actions/runs/37177610211",
+  "status": "completed",
+  "conclusion": "success",
+  "pr": {
+    "headRefOid": "bdb21d38f038583686bb1589d39f406bf11e2745",
+    "isDraft": false,
+    "number": 1871,
+    "state": "OPEN",
+    "url": "https://github.com/kburson/ai-task-manager/pull/1871"
+  },
+  "originHead": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "logs": [
+    {
+      "name": "Fast lane (format, lint, unit + integration)",
+      "job": 111363418429,
+      "path": ".scratch/gh/1861-bdb-cloud-fast.log",
+      "bytes": 240448,
+      "sha256": "d41be8e82d6feb10ee740ef0284ef6534699eb1883730da1f4f1bd5de7cc8d51",
+      "census": [
+        "2026-10-04T04:40:09.0199404Z audit-line-cap: review 710-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+        "2026-10-04T04:40:09.0199959Z audit-line-cap: review 421-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+        "2026-10-04T04:40:10.1163822Z scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+        "2026-10-04T04:40:10.1165546Z scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+        "2026-10-04T04:40:10.1167796Z scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+        "2026-10-04T04:40:10.1170849Z scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+        "2026-10-04T04:41:12.1809521Z All 941 test files passed.",
+        "2026-10-04T04:46:32.7306775Z ▶ scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs ... ok (12.8s)",
+        "2026-10-04T04:46:32.7309325Z ▶ scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs ... ok (6.9s)",
+        "2026-10-04T04:46:32.7312091Z ▶ scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs ... ok (7.7s)",
+        "2026-10-04T04:46:32.7315763Z ▶ scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs ... ok (1.7s)",
+        "2026-10-04T04:46:32.7380795Z All 253 test files passed."
+      ]
+    },
+    {
+      "name": "Slow lane (slow tests only)",
+      "job": 111363418340,
+      "path": ".scratch/gh/1861-bdb-cloud-slow.log",
+      "bytes": 23864,
+      "sha256": "6b6087e0c8b203b59c218006ba94f4cc0e354fcdbdde2d3ac9f8143d8e1c231f",
+      "census": [
+        "2026-10-04T04:45:35.0133148Z All 55 test files passed."
+      ]
+    }
+  ],
+  "jobConclusions": [
+    {
+      "name": "Slow lane (slow tests only)",
+      "conclusion": "success"
+    },
+    {
+      "name": "Guidance cache runtime budget",
+      "conclusion": "success"
+    },
+    {
+      "name": "Fast lane (format, lint, unit + integration)",
+      "conclusion": "success"
+    },
+    {
+      "name": "npm 12.0.2 / Node 26 pack compatibility",
+      "conclusion": "success"
+    },
+    {
+      "name": "npm 11.8.0 / Node 24 pack compatibility",
+      "conclusion": "success"
+    },
+    {
+      "name": "Guidance publication gate",
+      "conclusion": "skipped"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+already active: #1128
+✔ same-issue resume refreshes a stale fleet workspace without timing side effects (76.832ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 88.120167
+[dependency-disposition] #1128: binding remains active; retry dependency projection (dependency-disposition:config)

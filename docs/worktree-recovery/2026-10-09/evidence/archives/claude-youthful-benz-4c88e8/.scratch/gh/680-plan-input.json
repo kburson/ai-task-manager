@@ -1,0 +1,67 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "baseline-architecture",
+      "description": "Document the current closed-chain architecture: state-factory, guard-registry, state-bootstrap walk, and the installed-guard-path interlock.",
+      "baseHumanHours": 1,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/lib/state-factory.mjs",
+          "scripts/task-tracker/lib/guard-registry.mjs",
+          "scripts/task-tracker/states/index.mjs"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "coupling-survey",
+      "description": "Survey stage-name coupling across lib modules and classify literals as role, edge-scope-deletable, or false positive.",
+      "baseHumanHours": 1,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/lib/stage-entry-markers.mjs",
+          "scripts/task-tracker/lib/close-gates.mjs",
+          "scripts/task-tracker/lib/lifecycle-policy/states.mjs"
+        ],
+        "dependencies": ["baseline-architecture"]
+      }
+    },
+    {
+      "id": "migration-and-threat-model",
+      "description": "Resolve the migration story against existing precedents and produce the external-gate threat model with its controls.",
+      "baseHumanHours": 1,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/lib/timing-slug-rename.mjs",
+          "scripts/task-tracker/lib/trunk-ref.mjs"
+        ],
+        "dependencies": ["coupling-survey"]
+      }
+    },
+    {
+      "id": "recommendation-and-epics",
+      "description": "Produce the proceed/defer/reshape recommendation with the follow-on epic outline and record divergences from the spike body.",
+      "baseHumanHours": 1,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": ["docs/guides/workflow.md"],
+        "dependencies": ["migration-and-threat-model"]
+      }
+    }
+  ],
+  "testImpact": {
+    "lanes": ["none"],
+    "isolation": "discovery spike; no code changes, no test lanes exercised",
+    "expectedMinutes": 0
+  },
+  "risks": [
+    "Role-extraction sweep is wide (~50 sites) and risks corrupting false-positive stage literals if mechanized.",
+    "GitHub Projects option-id stability across label rename is unverified and reshapes the compiler design.",
+    "The gate-development escape hatch is the weak point of the external-gate security model."
+  ],
+  "comparableIssueIds": [259, 292, 520]
+}

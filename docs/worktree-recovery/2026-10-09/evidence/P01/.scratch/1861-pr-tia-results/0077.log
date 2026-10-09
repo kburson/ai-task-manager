@@ -1,0 +1,34 @@
+✖ issue-attributed diff excludes epic, similarly numbered, and later sibling commits (20.921875ms)
+✔ estimation timing freezes at the first terminal issue wrap (0.883042ms)
+✔ close accepts the persisted exact-SHA Test receipt after its worktree is removed (2.871625ms)
+✔ outcome writer resolves the active leaf of a linear immutable correction chain (0.631833ms)
+✔ outcome writer fails closed on forked and dangling correction chains (0.387291ms)
+✔ estimation samples exclude superseded outcomes from the learning cohort (0.173292ms)
+✔ outcome repair changes only issue-scoped landscape evidence (0.172209ms)
+✔ outcome repair appends a validated immutable correction linked to the active record (1.598208ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 7
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31.483542
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs:40:1
+✖ issue-attributed diff excludes epic, similarly numbered, and later sibling commits (20.921875ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs:41:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }

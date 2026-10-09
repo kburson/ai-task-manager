@@ -1,0 +1,5 @@
+- [ ] AC1: Capture refuses moving or dirty sources and records immutable source/target provenance without changing the original worktrees or production records. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] AC2: The full frozen-worktree matrix including all close fault boundaries passes through real command wiring and real sandbox Git operations. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] AC3: Before/after protection reports detect production changes or inconclusive concurrent activity; rehearsal output is explicitly ineligible as production evidence. <!-- aitm-verified vc-list="vc:2" -->
+- [ ] AC4: Disposal preserves a verified report and cannot delete anything outside manifest-owned sandbox artifacts or any unique unreported work. <!-- aitm-verified vc-list="vc:2" -->
+- [ ] AC5: The rollout handoff contains actual pinned runtime, current source refs, per-issue preview digests, retry/rollback instructions and a separate human go gate. <!-- aitm-verified vc-list="vc:2" -->

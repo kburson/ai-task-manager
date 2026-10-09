@@ -1,0 +1,44 @@
+[
+  {
+    "file": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 849,
+    "log": "0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 15266,
+    "log": "0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2646,
+    "log": "0002.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 41817,
+    "log": "0003.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 2929,
+    "log": "0004.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 11915,
+    "log": "0005.log"
+  }
+]

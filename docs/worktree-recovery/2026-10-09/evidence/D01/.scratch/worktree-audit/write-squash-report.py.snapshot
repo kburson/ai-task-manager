@@ -1,0 +1,57 @@
+import json,os,csv,collections,subprocess,difflib
+D=os.getcwd()+'/.scratch/worktree-audit/'
+x=json.load(open(D+'squash-investigation.json'));root=x['repoStats']['ai-task-manager']['root']
+def git(args):return subprocess.run(['git','-C',root]+args,capture_output=True,text=True,check=True).stdout
+adapted={'ac88b8c078':'cee1b01d2f9968766811c96c7beb558488fbaba4','2544d1eca5':'cee1b01d2f9968766811c96c7beb558488fbaba4','7d7e524657':'57adeadf5ceb70f5d21a5b8ff0c1296880b319bc'}
+notes={'ac88b8c078':'Same authored additions except package-budget addition attaches after the newer deliveryAttributionCommandAllowance instead of planTransitionAuthorityAllowance. Final trunk retains actionDecisionContractAllowance and includes it in the package budget.','2544d1eca5':'Same authored additions except package-budget addition attaches after the newer deliveryAttributionCommandAllowance instead of planTransitionAuthorityAllowance. Final trunk retains actionDecisionContractAllowance and includes it in the package budget.','7d7e524657':'Delivered rebased version has the same authored additions/removals except the authorizedIntentBytes export change was already present in its parent. Final trunk exports authorizedIntentBytes.'}
+pr=next(p for p in json.load(open(D+'squash-prs.json')) if p['number']==1775);source=set(git(['rev-list',pr['headRefOid']]).splitlines())
+for c in x['uniqueCommits']:
+ for short,target in adapted.items():
+  if c['repo']=='ai-task-manager' and c['sha'].startswith(short):
+   assert target in source
+   assert git(['show','-s','--format=%s',target]).strip()==c['subject']
+   def authored(s):
+    z=git(['show','--format=','--unified=0','--no-renames',s]);return '\n'.join(l for l in z.splitlines() if l.startswith(('+','-')) and not l.startswith(('+++','---')))
+   c['adaptedRebaseEvidence']={'sourceSha':target,'pr':1775,'url':pr['url'],'trunkSha':pr['mergeCommit']['oid'],'explanation':notes[short],'authoredDeltaDifference':'\n'.join(difflib.unified_diff(authored(c['sha']).splitlines(),authored(target).splitlines(),fromfile=c['sha'],tofile=target))}
+   c['classification']='REBASE-ADAPTED-DELIVERED-VERSION'
+lookup={(c['repo'],c['sha']):c for c in x['uniqueCommits']}
+for w in x['worktrees']:
+ w['commitDetails']=[lookup[w['repo'],s] for s in w['localCommits']];w['commitClasses']=dict(collections.Counter(c['classification'] for c in w['commitDetails']))
+ if 'PARTIAL' in w['squashAssessment'] and all(c['classification'].startswith('VERIFIED-') or c['classification'] in ['MATCHED-CONTEXT-FREE-DELTA-REVIEW','REBASE-ADAPTED-DELIVERED-VERSION','UNVERIFIED-MERGE-COMMIT'] for c in w['commitDetails']):w['squashAssessment']='TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW'
+for repo,s in x['repoStats'].items():s['commitClasses']=dict(collections.Counter(c['classification'] for c in x['uniqueCommits'] if c['repo']==repo))
+assert len(x['worktrees'])==69 and len(x['uniqueCommits'])==693
+json.dump(x,open(D+'squash-investigation.json','w'),indent=2)
+def prs(c):
+ z=c.get('sourcePRs',[])+c.get('equivalentSourceCommits',[])+c.get('contextFreePatchMatches',[])
+ if c.get('adaptedRebaseEvidence'):z.append(c['adaptedRebaseEvidence'])
+ return sorted({p['url'] for p in z if p.get('url')})
+fields=['repository','worktree','branch','head','commits_not_on_origin_trunk','assessment','complete_branch_patch_proof_pr','has_uncommitted_files','prior_hold_reason','commit_classes','delivery_pr_urls']
+with open(D+'squash-worktrees.csv','w',newline='') as f:
+ writer=csv.DictWriter(f,fieldnames=fields);writer.writeheader()
+ for w in x['worktrees']:writer.writerow(dict(zip(fields,[w['repo'],w['worktree'],w['branchNow'],w['currentHead'],len(w['localCommits']),w['squashAssessment'],(w.get('aggregatePatchProof') or {}).get('pr',''),bool(w['statusNow']),w.get('priorReason',''),json.dumps(w['commitClasses']),'; '.join(sorted({u for c in w['commitDetails'] for u in prs(c)}))])))
+fields=['repository','commit','subject','classification','patch_id','delivery_pr_urls','trunk_commits','message_matches','context_free_matches','adapted_rebase_explanation','worktrees']
+with open(D+'squash-commits.csv','w',newline='') as f:
+ writer=csv.DictWriter(f,fieldnames=fields);writer.writeheader()
+ for c in x['uniqueCommits']:
+  evidence=c.get('sourcePRs',[])+c.get('equivalentSourceCommits',[])+c.get('contextFreePatchMatches',[])
+  if c.get('adaptedRebaseEvidence'):evidence.append(c['adaptedRebaseEvidence'])
+  ts=set(c['trunkPatchMatches'])|{p['trunkSha'] for p in evidence}
+  writer.writerow(dict(zip(fields,[c['repo'],c['sha'],c['subject'],c['classification'],c.get('patchId',''),'; '.join(prs(c)),'; '.join(sorted(ts)),json.dumps(c['trunkMessageMatches']),json.dumps(c.get('contextFreePatchMatches',[])),c.get('adaptedRebaseEvidence',{}).get('explanation',''),'; '.join(w['worktree'] for w in x['worktrees'] if w['repo']==c['repo'] and c['sha'] in w['localCommits'])])))
+counts=collections.Counter(w['squashAssessment'] for w in x['worktrees']);cc=collections.Counter(c['classification'] for c in x['uniqueCommits'])
+lines=['WORKTREE SQUASH INVESTIGATION','Scope: the 69 previously held worktrees. origin/trunk fetched in all three repositories.','No worktrees, branches, or commits deleted. No pushes or PR writes.','', 'SUMMARY']
+lines += [f'{n}: {a}' for a,n in counts.items()]
+lines += ['',f'693 unique repository-qualified commits outside origin/trunk; {sum(c["classification"].startswith("VERIFIED-") for c in x["uniqueCommits"])} trace to merged PR source ancestry or stable patch equivalence.',f'{sum(bool(w["aggregatePatchProof"]) for w in x["worktrees"])} complete branch diffs equal their single-parent PR integration commit using stable patch IDs.','Stable patch IDs ignore whitespace. A merged source ancestor proves delivery lineage, not that every intermediate edit survived later edits or reverts.','Context-free matching proves identical file additions/removals while omitting surrounding context; keep separate from strict patch matching.','Three nonidentical rebased variants are explained below. No cleanup recommendation is implied by any classification.','Fresh status detects tracked/untracked WIP; prior ignored runtime archives and live-session holds still require preservation checks before removal.','', 'PINNED REMOTE TRUNK COMMITS']
+lines += [f'{r}: {s["trunk"]}' for r,s in x['repoStats'].items()]
+lines += ['', 'UNIQUE COMMIT CLASSIFICATIONS']+[f'{n}: {a}' for a,n in cc.items()]
+lines += ['', 'REBASE ADAPTATIONS IN PR 1775']
+for c in x['uniqueCommits']:
+ if c.get('adaptedRebaseEvidence'):
+  e=c['adaptedRebaseEvidence'];lines.extend([c['sha']+' '+c['subject'],'Delivered source: '+e['sourceSha']+' '+e['url'],e['explanation'],e['authoredDeltaDifference'],''])
+lines+=['The remaining local merge 0d89d887c9 has no combined diff (git show --cc); that does not establish exact ancestry on trunk.','Two generic "Peer review revision 1" messages in #1821 match unrelated #1830 squash messages. They are coincidences, not delivery proof.','','ALL 69 WORKTREES']
+for i,w in enumerate(x['worktrees'],1):
+ lines.extend(['',f'{i}. {w["worktree"]}',f'Branch: {w["branchNow"] or "detached"}; current HEAD: {w["currentHead"]}',f'Assessment: {w["squashAssessment"]}',f'Outside origin/trunk: {len(w["localCommits"])}; classes: {json.dumps(w["commitClasses"])}',f'Current tracked/untracked WIP: {bool(w["statusNow"])}; earlier hold: {w.get("priorReason", "")}', 'PRs: '+'; '.join(sorted({u for c in w['commitDetails'] for u in prs(c)}))])
+ if w.get('aggregatePatchProof'):lines.append('Complete branch patch equals integration commit: '+json.dumps(w['aggregatePatchProof']))
+ for c in w['commitDetails']:
+  if not c['classification'].startswith('VERIFIED-'):lines.append('  '+c['sha']+' '+c['classification']+' '+c['subject'])
+open(D+'squash-investigation.txt','w').write('\n'.join(lines)+'\n')
+print('ASSESSMENTS',dict(counts));print('COMMIT CLASSES',dict(cc));print('REPORT',D+'squash-investigation.txt')

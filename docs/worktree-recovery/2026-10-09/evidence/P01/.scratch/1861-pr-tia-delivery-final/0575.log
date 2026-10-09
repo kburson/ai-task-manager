@@ -1,0 +1,5 @@
+PASS: all-green ticks VC + Functional + AC command-backed items
+PASS: failed exit leaves command-backed Functional item unticked
+PASS: empty results is a no-op
+PASS: idempotent over green body
+functional-dod-exec.test.mjs: all passed

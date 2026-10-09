@@ -1,0 +1,32 @@
+{
+  "args": [
+    "scripts/gh/create-issue.mjs",
+    "--shape",
+    "defect",
+    "--title",
+    "Preserve declared suite coverage through explicit project-provider CI mappings",
+    "--scope-file",
+    ".scratch/project-provider-cloud-coverage/scope.md",
+    "--ac-file",
+    ".scratch/project-provider-cloud-coverage/acs.md",
+    "--story-origin-file",
+    ".scratch/project-provider-cloud-coverage/story-origin.md",
+    "--user-story-file",
+    ".scratch/project-provider-cloud-coverage/user-story.md",
+    "--verification-commands-file",
+    ".scratch/project-provider-cloud-coverage/verification.md",
+    "--reproduction-file",
+    ".scratch/project-provider-cloud-coverage/reproduction.md",
+    "--root-cause-file",
+    ".scratch/project-provider-cloud-coverage/root-cause.md",
+    "--out-of-scope-file",
+    ".scratch/project-provider-cloud-coverage/out-of-scope.md",
+    "--assignee",
+    "kburson",
+    "--priority",
+    "p0"
+  ],
+  "status": 2,
+  "stdout": "",
+  "stderr": "preflight-issue: ac-verifier-contract\n  line 43: test-all-verifier: Explicit valid coverage maps declared full-suite commands to derived results while retaining affected local checks and genuine executed cloud commands.\n  line 44: test-all-verifier: Invalid, empty, duplicate, unknown or non-Test references fail before provider execution; failed prerequisite results cannot satisfy derived commands.\n  line 45: test-all-verifier: Without coverage configuration, project and Node provider behavior is unchanged and uncovered commands still execute.\npreflight-issue: ac-verifier-contract\n  line 43: test-all-verifier: Explicit valid coverage maps declared full-suite commands to derived results while retaining affected local checks and genuine executed cloud commands.\n  line 44: test-all-verifier: Invalid, empty, duplicate, unknown or non-Test references fail before provider execution; failed prerequisite results cannot satisfy derived commands.\n  line 45: test-all-verifier: Without coverage configuration, project and Node provider behavior is unchanged and uncovered commands still execute.\ncreate-issue: preflight-issue --shape failed (exit 2)\n"
+}

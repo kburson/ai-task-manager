@@ -1,0 +1,38 @@
+✖ obsolete catalog input refuses before launching public CLI replay (17226.941833ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17329.756375
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs:25:1
+✖ obsolete catalog input refuses before launching public CLI replay (17226.941833ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml/. Input:
+  
+  'Error: guidance-feasibility:capture-replay-identity:initialFixtureSha256'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs:49:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: guidance-feasibility:capture-replay-identity:initialFixtureSha256
+        at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/maintenance/measure-guidance-candidate.mjs:54:9)
+        at verifyCaptureReplay (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/maintenance/measure-guidance-candidate.mjs:586:57)
+        at validateRecheckCapture (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/maintenance/measure-guidance-candidate.mjs:656:18)
+        at buildCurrentRecertificationDecision (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/maintenance/measure-guidance-candidate.mjs:671:27)
+        at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs:50:11
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs:49:10)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3),
+    expected: /guidance-feasibility:capture-replay-input:instructions\/aitm-guidance\.yml/,
+    operator: 'throws',
+    diff: 'simple'
+  }

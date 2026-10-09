@@ -1,0 +1,91 @@
+✔ manual XPR registers without asking a recovery-only broker worker to launch (629.042167ms)
+✔ manual declared join ignores an inherited official resume command (877.099875ms)
+✖ CLI captures stream evidence before join (malformed=false) (566.707ms)
+✖ CLI captures stream evidence before join (malformed=true) (532.685083ms)
+✖ CLI effective manual startup ignores inherited resume (configured=false) (88.929625ms)
+✖ CLI effective manual startup ignores inherited resume (configured=true) (560.796917ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 2
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3353.869709
+
+✖ failing tests:
+
+test at test/integration/manual-xpr-startup.test.mjs:106:3
+✖ CLI captures stream evidence before join (malformed=false) (566.707ms)
+  AssertionError [ERR_ASSERTION]: CLAUDE_CODE_MESSAGING_SOCKET
+  + actual - expected
+  
+  + 'parent-socket'
+  - undefined
+  
+      at Immediate._onImmediate (file:///Users/kpburson/.codex/worktrees/106-manual-xpr-startup/ai-peer-review/test/integration/manual-xpr-startup.test.mjs:135:207)
+      at process.processImmediate (node:internal/timers:574:21) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'parent-socket',
+    expected: undefined,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/integration/manual-xpr-startup.test.mjs:106:3
+✖ CLI captures stream evidence before join (malformed=true) (532.685083ms)
+  AssertionError [ERR_ASSERTION]: CLAUDE_CODE_MESSAGING_SOCKET
+  + actual - expected
+  
+  + 'parent-socket'
+  - undefined
+  
+      at Immediate._onImmediate (file:///Users/kpburson/.codex/worktrees/106-manual-xpr-startup/ai-peer-review/test/integration/manual-xpr-startup.test.mjs:135:207)
+      at process.processImmediate (node:internal/timers:574:21) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'parent-socket',
+    expected: undefined,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/integration/manual-xpr-startup.test.mjs:218:3
+✖ CLI effective manual startup ignores inherited resume (configured=false) (88.929625ms)
+  AssertionError [ERR_ASSERTION]: {"schema":"ai-peer-review.error/v1","code":"APR_TRANSPORT_UNAVAILABLE","message":"No observed transport satisfies reviewer startup policy.","recovery":"Use a declared available transport or restore a conformant exact-session native or broker adapter.","details":{"reason":"invalid-policy"}}
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/106-manual-xpr-startup/ai-peer-review/test/integration/manual-xpr-startup.test.mjs:230:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/integration/manual-xpr-startup.test.mjs:218:3
+✖ CLI effective manual startup ignores inherited resume (configured=true) (560.796917ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'resume-only'
+  - 'manual'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/106-manual-xpr-startup/ai-peer-review/test/integration/manual-xpr-startup.test.mjs:233:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'resume-only',
+    expected: 'manual',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

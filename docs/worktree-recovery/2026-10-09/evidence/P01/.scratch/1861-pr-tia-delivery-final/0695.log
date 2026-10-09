@@ -1,0 +1,20 @@
+✔ Scope scanner ignores fenced and HTML-comment examples and keeps nested narrative headings (2.980875ms)
+✔ duplicate Scope and duplicate live labels fail closed (0.258375ms)
+✔ policy adoption is explicit and fenced policy examples stay legacy (0.1245ms)
+✔ every recognized verifier form stays on its existing execution-proof route (0.083208ms)
+✔ target digest survives glyph and reviewed pointer changes but stales on other markers (0.244041ms)
+✔ a duplicate unsupported checkbox cannot make an eligible label unique (0.118542ms)
+✔ policy-name prose does not adopt legacy Scope (0.061542ms)
+✔ content identity keeps original trailing bytes while removing only pointer separator (0.12125ms)
+✔ narrative eligibility excludes phase-owned and special command labels (0.256917ms)
+✔ recording target resolution refuses duplicate reviewed lineage or comment IDs (0.319042ms)
+✔ bare verifier names remain narrative rather than execution declarations (0.11625ms)
+✔ fence syntax inside a terminated multiline HTML comment remains inert (0.125541ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.351625

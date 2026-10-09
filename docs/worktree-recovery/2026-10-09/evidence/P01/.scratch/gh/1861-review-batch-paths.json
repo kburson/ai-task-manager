@@ -1,0 +1,4 @@
+[
+  "scripts/task-tracker/lib/runtime-batch.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+]

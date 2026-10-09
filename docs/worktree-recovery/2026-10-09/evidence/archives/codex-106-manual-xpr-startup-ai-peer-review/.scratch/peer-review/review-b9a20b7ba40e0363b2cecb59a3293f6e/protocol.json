@@ -1,0 +1,127 @@
+{
+  "artifact": {
+    "blob": "21ddfe7f73cbaccf80d6b7dc4ca35ac94ca066e1",
+    "digest": "sha256:ece3b291ac908fd44d25a82248e50ea8ff94323930aa9aeb087fe70bbc8557ff",
+    "head": "21c4bdb90e77b653bbf9c5d8892eae901cc4b612",
+    "path": "docs/superpowers/specs/2026-09-26-106-manual-xpr-startup-design.md"
+  },
+  "authority": {
+    "authority_policy": "unavailable",
+    "challenge_ttl_ms": 900000,
+    "verifier": null
+  },
+  "challenges": [],
+  "claim_ttl_ms": 28800000,
+  "claims": {
+    "author": {
+      "claim_id": "claim-252745d4-b70a-4b7c-bf27-1e25c5fdd616",
+      "claimed_at": "2026-09-27T00:05:52.972Z",
+      "expires_at": "2026-09-27T08:05:52.972Z",
+      "host": "codex",
+      "last_activity_at": "2026-09-27T00:05:52.972Z",
+      "pid": 8474,
+      "role": "author",
+      "session_fingerprint": "sha256:2eee61767a59da6185e59f5c9d1baf212ae9e7303465ebd2075aeabb4642c427"
+    },
+    "reviewer": {
+      "claim_id": "claim-cd9ea96c-af9e-4731-a6f1-cdffecb17b02",
+      "claimed_at": "2026-09-26T23:53:38.889Z",
+      "expires_at": "2026-09-27T07:53:38.889Z",
+      "host": "claude-code",
+      "last_activity_at": "2026-09-26T23:53:38.889Z",
+      "pid": 95843,
+      "role": "reviewer",
+      "session_fingerprint": "sha256:90eea9d89a947209c001ee7a09bda0560fdf35194b34d988ab207010d59d72c8"
+    }
+  },
+  "commit_mode": "normal",
+  "compatibility": {
+    "accepted_event_schemas": [
+      "ai-peer-review.event/v1",
+      "ai-peer-review.event/v2"
+    ],
+    "minimum_reader_version": "0.3.0",
+    "minimum_writer_version": "0.3.0"
+  },
+  "current_actor": null,
+  "deliveries": [
+    {
+      "delivery_id": "reviewer-turn-1-to-author",
+      "digest": "sha256:63911537a0b6c22e1f2d4b46c2b2b19906ec47b38382a588353789877773020e",
+      "recipient": "author"
+    },
+    {
+      "delivery_id": "author-turn-1-to-reviewer",
+      "digest": "sha256:25247f21381fd84d959fbe846c8617e372e36b0e84a71d68544e54e759db895f",
+      "recipient": "reviewer"
+    },
+    {
+      "delivery_id": "reviewer-turn-2-to-author",
+      "digest": "sha256:7ab3950b0282856ece658951a5338e32b1b3fb12478aa8a7d6a6eed6f9aa5a11",
+      "recipient": "author"
+    }
+  ],
+  "intervention": null,
+  "max_turns": 10,
+  "next_action": null,
+  "review_id": "review-b9a20b7ba40e0363b2cecb59a3293f6e",
+  "reviewer_boundary": {
+    "branch": "codex/106-manual-xpr-startup",
+    "head": "21c4bdb90e77b653bbf9c5d8892eae901cc4b612",
+    "index_digest": "sha256:d7261ff81e81a93d5f3cc7d9fad4bcb53f3677b231029e3821d2177a654e2c95",
+    "refs_digest": "sha256:5abd150ed9ec46eaa57764f01b0b4426c4ef4bf3d5fc3024864454555c07e824",
+    "worktree_digest": "sha256:77af797349187523b9cb9af98c884151726a4f972c59532793f36004f837219f"
+  },
+  "revision": 7,
+  "schema": "ai-peer-review.protocol/v2",
+  "sequence": 14,
+  "startup": {
+    "author_startup_digest": "sha256:afa2e84798d667bbb5e7154fd9c406d8d74542e4eb9a50ef9008dd0f7b67536d",
+    "author_transport_capability": "manual",
+    "bootstrap": null,
+    "context": {
+      "artifact_kind": "spec",
+      "artifact_name": "2026-09-26-106-manual-xpr-startup-design",
+      "issue": 106,
+      "record_id": "review-b9a20b7ba40e0363b2cecb59a3293f6e",
+      "repository_root": "/Users/kpburson/.codex/worktrees/106-manual-xpr-startup/ai-peer-review",
+      "review_date": "2026-09-26",
+      "review_id": "review-b9a20b7ba40e0363b2cecb59a3293f6e",
+      "review_path_template": "<kind>/<date>-<name>-<record-id>",
+      "reviews_root": "docs/superpowers/peer-reviews",
+      "schema": "ai-peer-review.context/v1"
+    },
+    "context_digest": "sha256:c940457c9506589c1b786294c7b194f6f15b6304e8775d2d296268d55f66e5e8",
+    "destination": "docs/superpowers/peer-reviews/spec/2026-09-26-2026-09-26-106-manual-xpr-startup-design-review-b9a20b7ba40e0363b2cecb59a3293f6e",
+    "no_commit_baseline": null,
+    "reviewer_invitation_digest": "sha256:90523f483ea9c92aab137791de1518a9ba728702f63e0ea2a663781652bc97f3",
+    "runtime": {
+      "adapter_version": "1.0.0",
+      "classification": "XPR",
+      "ownership": "broker",
+      "project_root_digest": "3202e9ccdb118ca52363495f14c2335f2e77bad33c9468d1c89897a1114499bf",
+      "reviewer": {
+        "effort": "medium",
+        "host": "claude-code",
+        "model_display": "Claude Opus 5",
+        "model_id": "claude-opus-5",
+        "provider": "anthropic",
+        "selector": "claude"
+      },
+      "schema": "ai-peer-review.runtime/v1",
+      "transport_mode": "manual"
+    },
+    "transport_mode": "manual"
+  },
+  "state": "accepted",
+  "supplements": [],
+  "terminal_evidence": {
+    "commit": "5449ce4e8e928ce5e7d8c2a9f4c07c8b173782f8",
+    "manifest_digest": "sha256:0c221136f9f39fb026585cc43c760a3f029d768c32ce351f6dae392f685a96c2"
+  },
+  "transports": {
+    "author": "manual",
+    "reviewer": "manual"
+  },
+  "turns_used": 2
+}

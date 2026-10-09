@@ -1,0 +1,26 @@
+import json,os,subprocess,collections
+R=os.getcwd();D=R+'/.scratch/worktree-audit/';A=R+'/.db/aitm/worktree-archives/2026-09-30/delivered-cull';mf=A+'/manifest.json';ms=json.load(open(mf));x=json.load(open(D+'squash-investigation.json'))
+def git(root,args):return subprocess.run(['git','-C',root]+args,capture_output=True,text=True,check=True,timeout=60).stdout.strip()
+registrations={r:set(l[9:] for l in git(s['root'],['worktree','list','--porcelain']).splitlines() if l.startswith('worktree ')) for r,s in x['repoStats'].items()}
+removed={m['path'] for m in ms};assert len(removed)==40
+for m in ms:
+ assert not os.path.lexists(m['path']),m['path']+' still exists'
+ repo=next(w['repo'] for w in x['worktrees'] if w['worktree']==m['path']);assert m['path'] not in registrations[repo]
+ assert os.path.isfile(m['archive']) and os.path.getsize(m['archive'])==m['archiveBytes']
+ assert len(json.load(open(m['archive']+'.sha256.json')))==m['files']
+ if m['branch']:assert git(m['main'],['rev-parse','refs/heads/'+m['branch']])==m['head'],m['branch']+' changed'
+ assert git(m['main'],['cat-file','-t',m['head']])=='commit'
+ m['status']='removed';m['verification']='Path absent; Git registration removed; branch ref and HEAD object retained; verified archive and file hash manifest present.'
+kept=[w for w in x['worktrees'] if w['worktree'] not in removed];assert len(kept)==29
+for w in kept:assert os.path.isdir(w['worktree']) and w['worktree'] in registrations[w['repo']],w['worktree']+' missing'
+status=git(R,['status','--porcelain=v1','-uall']);assert not status,status
+json.dump(ms,open(mf,'w'),indent=2)
+result={'removedCount':40,'projectRootWorktreesRemoved':35,'codexWorktreesRemoved':5,'preservedCount':29,'chatAssociatedPreserved':7,'incompleteDeliveryProofPreserved':22,'removed':ms,'preserved':[{'path':w['worktree'],'assessment':w['squashAssessment']} for w in kept],'mainStatus':'clean','branchRefsDeleted':0,'archiveBytes':sum(m['archiveBytes'] for m in ms)}
+json.dump(result,open(D+'delivered-cull-result.json','w'),indent=2)
+lines=['DELIVERED WORKTREE CULL RESULT','Removed: 40 (35 project-root, 5 Codex-root).','Preserved: 29 of the 69 investigated (7 unarchived-chat associations; 22 incomplete delivery proof).','All branch refs and original HEAD objects retained. No branches deleted, no pushes, no chats archived.','Recovery archives and per-file SHA256 manifests: '+A,'Main checkout status: clean.','','REMOVED']+[m['path'] for m in ms]+['','PRESERVED']+[w['worktree']+' | '+w['squashAssessment'] for w in kept]
+open(D+'delivered-cull-result.txt','w').write('\n'.join(lines)+'\n')
+print('Verified all 40 paths and Git registrations removed; all 40 original HEAD commit objects and named branch refs retained.')
+print('Verified all 29 preserved worktrees remain registered, including the 7 chat-associated worktrees.')
+print('Verified recovery archives and hash manifests present; main checkout clean.')
+print('Recovery archive bytes:',result['archiveBytes'])
+print('Manifest:',mf)

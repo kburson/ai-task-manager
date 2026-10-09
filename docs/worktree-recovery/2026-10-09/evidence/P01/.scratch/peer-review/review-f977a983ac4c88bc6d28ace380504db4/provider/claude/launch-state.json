@@ -1,0 +1,11 @@
+{
+  "schema": "ai-peer-review.claude-launch-state/v1",
+  "review_id": "review-f977a983ac4c88bc6d28ace380504db4",
+  "invitation": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/docs/superpowers/reviews/1861-empty-runtime-amendment-xpr/spec/2026-10-03-2026-10-02-1861-explicit-empty-runtime-design-review-f977a983ac4c88bc6d28ace380504db4/review-f977a983ac4c88bc6d28ace380504db4-reviewer-invitation.md",
+  "response": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/docs/superpowers/reviews/1861-empty-runtime-amendment-xpr/spec/2026-10-03-2026-10-02-1861-explicit-empty-runtime-design-review-f977a983ac4c88bc6d28ace380504db4/review-f977a983ac4c88bc6d28ace380504db4-reviewer-response-1.md",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "session_handle": "4e65eec5-e7d7-4bb1-92b7-213c4631d179",
+  "session_fingerprint": "sha256:2d72d8d905e3f9e5eb746748bcde3a4c0834582ca521b2e6d9a76e57a32d0ac5",
+  "protocol_revision": 1
+}

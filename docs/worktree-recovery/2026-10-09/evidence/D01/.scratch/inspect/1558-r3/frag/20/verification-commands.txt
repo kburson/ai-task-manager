@@ -1,0 +1,1 @@
+node --test scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs

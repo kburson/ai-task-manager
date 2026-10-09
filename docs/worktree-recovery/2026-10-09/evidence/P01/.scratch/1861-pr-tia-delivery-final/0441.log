@@ -1,0 +1,19 @@
+✔ collectLevel2Headings enumerates only level-2 headings (0.856666ms)
+✔ heading-loss: dropping a pre-existing ## section is a loss (0.1685ms)
+✔ heading-loss: no loss when nothing is removed (0.084084ms)
+✔ allowlist: a declared removed heading is permitted (0.080291ms)
+✔ allowlist: accepts both "## Foo" and "Foo" forms (0.069542ms)
+✔ large-shrink: >40% byte drop is a loss unless allowed (0.093417ms)
+✔ #724 synthetic repro: boundary walk-past deletion fires the guard (0.089375ms)
+✔ UnexpectedSectionLossError carries the removed headings (0.135458ms)
+✔ mutateIssueBody throws UnexpectedSectionLossError on silent section drop (1.664417ms)
+✔ mutateIssueBody: allowMarkerLoss blanket-override also bypasses the section-loss guard (0.879917ms)
+✔ mutateIssueBody permits the drop when the heading is declared (0.447833ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.423125

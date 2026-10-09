@@ -1,0 +1,24 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "residue-allowlist",
+      "description": "Add and verify one exact immutable review-artifact compatibility entry",
+      "baseHumanHours": 0.5,
+      "signals": {
+        "modules": ["assigned-state-residue", "integration-test"],
+        "dependencies": ["immutable-review-artifact", "closed-allowlist"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["integration", "full-suite"],
+    "isolation": "AITM governed worktree and Test sandbox",
+    "expectedMinutes": 10
+  },
+  "risks": [
+    "An imprecise exception could mask future live vocabulary residue"
+  ],
+  "comparableIssueIds": []
+}

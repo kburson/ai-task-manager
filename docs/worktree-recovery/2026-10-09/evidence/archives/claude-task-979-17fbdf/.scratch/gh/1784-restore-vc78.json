@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [x] `npm run lint` <!-- id=9 -->",
+  "replacement": "- [ ] `npm test` <!-- id=7 -->\n- [ ] `npm run test:slow` <!-- id=8 -->\n- [x] `npm run lint` <!-- id=9 -->"
+}

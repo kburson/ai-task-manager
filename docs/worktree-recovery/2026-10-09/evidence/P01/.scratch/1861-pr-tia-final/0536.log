@@ -1,0 +1,52 @@
+▶ AC1: docs-only is a commit-bearing valid kind
+  ✔ docs-only ∈ VALID_KINDS (0.333917ms)
+  ✔ docs-only ∉ NO_COMMIT_KINDS (0.091417ms)
+  ✔ the four no-commit kinds are unchanged (0.38575ms)
+✔ AC1: docs-only is a commit-bearing valid kind (1.339542ms)
+▶ AC2: docs-only kind marker round-trips
+  ✔ normalizeKind accepts docs-only (case/space insensitive) (0.107ms)
+  ✔ setIssueKindMarker → parseIssueKind round-trips docs-only (0.439375ms)
+  ✔ code (default) still writes no marker (0.17575ms)
+✔ AC2: docs-only kind marker round-trips (0.8715ms)
+▶ diff classifier: isDocPath / diffIsDocsOnly / docsKindDropsTests
+  ✔ isDocPath: .md, .markdown, and docs/ dirs are docs; code is not (0.195584ms)
+  ✔ diffIsDocsOnly: empty set is NOT docs-only (default-deny) (0.101292ms)
+  ✔ diffIsDocsOnly: all-doc → true; any non-doc → false (0.082917ms)
+  ✔ docsKindDropsTests: only docs-only kind + provably docs-only diff (0.113292ms)
+✔ diff classifier: isDocPath / diffIsDocsOnly / docsKindDropsTests (0.647792ms)
+▶ AC3: docs-only diff drops the functional tests item
+  ✔ filterDodForKindAndDiff drops dod:functional:tests for docs-only diff (0.313125ms)
+  ✔ preflight --kind docs-only with a docs-only changed-paths-file omits tests + suite VCs (325.864166ms)
+✔ AC3: docs-only diff drops the functional tests item (326.345167ms)
+▶ AC4: a mixed (non-doc) diff keeps the tests item for docs-only kind
+  ✔ filterDodForKindAndDiff keeps tests when a code path is present (0.148459ms)
+  ✔ preflight --kind docs-only with a functional path keeps tests + suite VCs (244.714417ms)
+  ✔ docs-only kind WITHOUT a changed-paths-file keeps tests (safe default) (392.705666ms)
+✔ AC4: a mixed (non-doc) diff keeps the tests item for docs-only kind (637.917208ms)
+▶ AC5: an unknown extension counts as functional (default-deny)
+  ✔ filterDodForKindAndDiff keeps tests for an unknown extension (0.23125ms)
+  ✔ preflight --kind docs-only with only an unknown-extension path keeps tests (313.759834ms)
+✔ AC5: an unknown extension counts as functional (default-deny) (314.2105ms)
+▶ AC6: lint/format items survive for docs-only kind
+  ✔ the lint+format line survives even when tests is dropped (0.180667ms)
+  ✔ preflight docs-only render still emits the lint item (212.469875ms)
+✔ AC6: lint/format items survive for docs-only kind (212.818083ms)
+▶ AC7: docs-only is commit-bearing (attributed like code)
+  ✔ isNoCommitKind is false for a docs-only-marked body (0.1545ms)
+  ✔ isNoCommitKind stays true for the no-commit kinds (0.1055ms)
+✔ AC7: docs-only is commit-bearing (attributed like code) (0.377417ms)
+▶ AC8: workflow.md documents docs-only kind + diff-decides rule
+  ✔ names the docs-only kind, the #865 story, and the decide-by-diff principle (0.501583ms)
+✔ AC8: workflow.md documents docs-only kind + diff-decides rule (0.573458ms)
+▶ back-compat: no conditional drop off the docs-only path
+  ✔ code render is identical to filterDodForKind (0.099458ms)
+  ✔ docs-only kind with a null/empty diff equals filterDodForKind (keeps tests) (0.091208ms)
+✔ back-compat: no conditional drop off the docs-only path (0.290875ms)
+ℹ tests 24
+ℹ suites 10
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1499.059041

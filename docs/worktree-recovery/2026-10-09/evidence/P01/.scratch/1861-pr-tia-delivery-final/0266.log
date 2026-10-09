@@ -1,0 +1,13 @@
+✔ promote does not write aitm-last-known-state on successful refine→R4P (274.274584ms)
+✔ promote does not write aitm-last-known-state on successful develop→test (alias verb) (81.8445ms)
+✔ bootstrap path still writes aitm-last-known-state (no prior marker) (56.685209ms)
+✔ move-state composite stamp: entry-marker and last-known-state in single body (0.372333ms)
+✔ move-state composite stamp is idempotent for last-known-state (0.16325ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 416.530834

@@ -1,0 +1,190 @@
+{
+  "schema": 5,
+  "generatedAt": "2026-10-09T01:00:50.053Z",
+  "lane": "slow",
+  "command": "node scripts/run-tests.mjs --lane slow --shard 2/3",
+  "commit": "cda27d936b55933312b09191f48cceb148c0c11d",
+  "runnerProfile": {
+    "label": "GitHub Actions 1000148476",
+    "platform": "linux",
+    "arch": "x64",
+    "nodeVersion": "24.21.0",
+    "logicalCpuCount": 4
+  },
+  "discoveryInventory": [
+    "scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs",
+    "scripts/tests/slow/task-tracker/graphql-usage-disposable.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/cli.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/create-issue.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/issue-authoring.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/move-state.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs",
+    "scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs",
+    "scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs",
+    "scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs"
+  ],
+  "count": 19,
+  "elapsed": {
+    "runnerMs": 105039.8,
+    "poolMs": 0.1,
+    "subprocessPoolMs": 0,
+    "slowPoolMs": 0,
+    "serialMs": 105039.4
+  },
+  "sums": {
+    "fileWallMs": 105039.1,
+    "inProcessMs": 37711.1,
+    "estimatedSpawnIoMs": 67328
+  },
+  "pareto": {
+    "p50": 3,
+    "p80": 7
+  },
+  "slowBucket": {
+    "thresholdMs": 2000,
+    "overThreshold": 12,
+    "slowBucketFiles": 19,
+    "slowBucketStillSlow": 12,
+    "slowBucketNowFast": 7,
+    "fastLaneOverThreshold": 0,
+    "demotionCandidates": [
+      "scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs",
+      "scripts/tests/slow/task-tracker/graphql-usage-disposable.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs",
+      "scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs",
+      "scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs"
+    ],
+    "promotionCandidates": []
+  },
+  "files": {
+    "scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs",
+      "wallMs": 116.6,
+      "inProcMs": 8.2,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/graphql-usage-disposable.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/graphql-usage-disposable.test.mjs",
+      "wallMs": 54.3,
+      "inProcMs": 8.6,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs",
+      "wallMs": 16901.1,
+      "inProcMs": 16839.9,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs",
+      "wallMs": 7813.5,
+      "inProcMs": 7625.9,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/cli.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/cli.test.mjs",
+      "wallMs": 13816.3,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/create-issue.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/create-issue.test.mjs",
+      "wallMs": 3090.2,
+      "inProcMs": 3045.3,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs",
+      "wallMs": 334,
+      "inProcMs": 277.2,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs",
+      "wallMs": 215.3,
+      "inProcMs": 106.6,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/issue-authoring.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/issue-authoring.test.mjs",
+      "wallMs": 2609.7,
+      "inProcMs": 2554.8,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs",
+      "wallMs": 7518.9,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs",
+      "wallMs": 5303.4,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/move-state.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/move-state.test.mjs",
+      "wallMs": 3833.3,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs",
+      "wallMs": 2903.7,
+      "inProcMs": 2814.2,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs",
+      "wallMs": 32201.6,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs",
+      "wallMs": 3305.3,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs",
+      "wallMs": 933.4,
+      "inProcMs": 874.9,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs",
+      "wallMs": 3603.3,
+      "inProcMs": 3368.7,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs",
+      "wallMs": 378.4,
+      "inProcMs": 155.3,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs",
+      "wallMs": 106.9,
+      "inProcMs": 31.6,
+      "status": 0
+    }
+  },
+  "shard": {
+    "index": 2,
+    "total": 3
+  }
+}

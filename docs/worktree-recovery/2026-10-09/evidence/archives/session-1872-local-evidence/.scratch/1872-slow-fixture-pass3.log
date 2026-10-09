@@ -1,0 +1,150 @@
+✔ close: interactive dirty close on review→done exits 5 and still prints PROMPT_REQUIRED (#710) (3630.941584ms)
+✔ promote: exit-0 close that leaves board at review yields transition-failed, no promoted line (#710) (69.798833ms)
+✔ promote: exit-0 close that moves board to done still reports promoted (#710) (38.274875ms)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 0, got 1. stderr:
+move-state-cli.mjs: RuntimeRootError: Ambiguous Git root observation
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at observeGitIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:78:32)
+    at readPhysicalRuntimeIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:140:23)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:182:20)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at runMoveStateHost (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/gh/move-state.mjs:92:16)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs:19:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+stdout:
+
+
+1 !== 0
+
+    at runNode (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:98:10)
+    at async file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:275:15 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs (19408.533125ms)
+test 1 passed: missing approval refuses before prompt
+test 2 passed: --answer cannot manufacture approval
+test 3 passed: gate toggle cannot bypass immutable authorization
+test 4 passed: exact-SHA human approval passes authorization
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /review-authorization-missing/. Input:
+
+'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+  '  throw new RuntimeRootError(code, message);\n' +
+  '        ^\n' +
+  '\n' +
+  'RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+  '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+  '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+  '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+  '    at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)\n' +
+  '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {\n' +
+  "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+  '}\n' +
+  '\n' +
+  'Node.js v26.8.1\n'
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/gates.test.mjs:330:12 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {\n' +
+    "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n',
+  expected: /review-authorization-missing/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/gates.test.mjs (16577.510458ms)
+lifecycle.test.mjs: all passed
+✔ scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs (6810.163625ms)
+move-state.test.mjs: all passed
+✔ scripts/tests/slow/task-tracker/lib/move-state.test.mjs (6417.319083ms)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 0; stderr:
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {
+  code: 'ROOT_IDENTITY_MISMATCH'
+}
+
+Node.js v26.8.1
+
+
+1 !== 0
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs:363:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs (2688.034667ms)
+verb-preflight-wiring.test.mjs: ok
+✔ scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs (5950.4085ms)
+worktree-isolation.test.mjs: ok
+✔ scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs (6506.968667ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 7
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19421.710084
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs (19408.533125ms)
+  'test failed'
+
+test at scripts/tests/slow/task-tracker/lib/gates.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/gates.test.mjs (16577.510458ms)
+  'test failed'
+
+test at scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs (2688.034667ms)
+  'test failed'

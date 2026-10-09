@@ -1,0 +1,3 @@
+- **kind**: code
+- **discovered-during**: #1755
+- **source-plan-section**: ### Task 3: Immutable record schema, proposal digest, and append-only chain

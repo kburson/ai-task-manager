@@ -1,0 +1,153 @@
+25:export function resolveInvocationDirectory(payload, processCwd = process.cwd()) {
+26-  const input = payload?.tool_input;
+27-  const base =
+28-    payload && Object.hasOwn(payload, 'cwd')
+29-      ? supplied(payload.cwd, 'payload cwd', processCwd)
+30-      : path.resolve(processCwd);
+31-  let selected = base;
+32-  if (input && typeof input === 'object' && Object.hasOwn(input, 'workdir')) {
+33-    selected = supplied(input.workdir, 'tool workdir', base);
+34-  } else if (input && typeof input === 'object' && Object.hasOwn(input, 'cwd')) {
+35-    selected = supplied(input.cwd, 'tool cwd', base);
+36-  }
+37-  if (!statSync(selected).isDirectory()) throw new MutationContextError('not a directory');
+38-  return realpathSync(selected);
+39-}
+40-
+41-export function resolveObservedIdentity(payload, processCwd = process.cwd()) {
+42-  const invocationDir = resolveInvocationDirectory(payload, processCwd);
+43-  return { invocationDir, identity: readWorktreeIdentity({ projectDir: invocationDir }) };
+44-}
+45-
+46-export function resolveMutationTarget(target, invocationDir, expectedRoot) {
+47-  if (typeof target !== 'string' || !target || target.includes('\0') || target.includes('\\')) {
+48-    throw new MutationContextError('invalid mutation target');
+49-  }
+50-  const pieces = target.split(path.sep);
+51-  if (pieces.includes('..') || pieces.includes('.'))
+52-    throw new MutationContextError('unsafe target');
+53-  const lexical = path.resolve(invocationDir, target);
+54-  const root = realpathSync(expectedRoot);
+55-  if (lexical !== root && !lexical.startsWith(root + path.sep)) {
+56-    throw new MutationContextError('target outside bound worktree');
+57-  }
+58-  if (isInstalledGuardPath(lexical)) throw new MutationContextError('installed guard target');
+59-  const segments = lexical.slice(path.parse(lexical).root.length).split(path.sep);
+60-  let prefix = path.parse(lexical).root;
+61-  for (let index = 0; index < segments.length; index++) {
+62-    prefix = path.join(prefix, segments[index]);
+63-    let entry;
+64-    try {
+65-      entry = lstatSync(prefix);
+66-    } catch (error) {
+67-      if (error.code === 'ENOENT') break;
+68-      throw new MutationContextError('target ancestry unavailable');
+69-    }
+70-    if (entry.isSymbolicLink()) {
+71-      try {
+72-        realpathSync(prefix);
+73-      } catch {
+74-        throw new MutationContextError('broken target symlink');
+75-      }
+76-      const expanded = path.resolve(
+77-        path.dirname(prefix),
+78-        readlinkSync(prefix),
+79-        ...segments.slice(index + 1)
+80-      );
+81-      if (isInstalledGuardPath(expanded)) throw new MutationContextError('installed guard target');
+82-    }
+83-  }
+84-  const missing = [];
+85-  let cursor = lexical;
+86-  for (;;) {
+87-    try {
+88-      cursor = realpathSync(cursor);
+89-      break;
+90-    } catch (error) {
+91-      if (error.code !== 'ENOENT') throw new MutationContextError('target ancestry unavailable');
+92-      const parent = path.dirname(cursor);
+93-      if (parent === cursor) throw new MutationContextError('target ancestry unavailable');
+94-      missing.unshift(path.basename(cursor));
+95-      cursor = parent;
+96-    }
+97-  }
+98-  if (missing.length && !statSync(cursor).isDirectory())
+99-    throw new MutationContextError('parent is not a directory');
+100-  const physical = path.join(cursor, ...missing);
+--
+160:export function parseDirectGit(command, invocationDir) {
+161-  const source = String(command || '').trim();
+162-  let words;
+163-  try {
+164-    words = shellTokens(source);
+165-  } catch {
+166-    return { kind: 'unsupported', docEligible: false };
+167-  }
+168-  let i = 0;
+169-  let unsafe = META.test(source);
+170-  while (i < words.length && words[i].match(/^[A-Za-z_][A-Za-z0-9_]*=/)) {
+171-    if (SELECTOR_ENV.test(words[i])) unsafe = true;
+172-    i++;
+173-  }
+174-  if (words[i] === 'command') i++;
+175-  if (words[i] === 'env') {
+176-    i++;
+177-    while (words[i]?.startsWith('-')) {
+178-      if (words[i] !== '-i') unsafe = true;
+179-      i++;
+180-    }
+181-    while (i < words.length && words[i].match(/^[A-Za-z_][A-Za-z0-9_]*=/)) {
+182-      if (SELECTOR_ENV.test(words[i])) unsafe = true;
+183-      i++;
+184-    }
+185-  }
+186-  if (path.basename(words[i] || '') !== 'git') return { kind: 'other', docEligible: false };
+187-  i++;
+188-  let cwd = path.resolve(invocationDir);
+189-  const configs = [];
+190-  while (i < words.length && words[i].startsWith('-')) {
+191-    const arg = words[i++];
+192-    if (arg === '-C') {
+193-      if (!words[i]) return { kind: 'unsupported', docEligible: false };
+194-      cwd = path.resolve(cwd, words[i++]);
+195-    } else if (arg.startsWith('-C') && arg.length > 2) cwd = path.resolve(cwd, arg.slice(2));
+196-    else if (arg === '-c' || arg.startsWith('-c')) {
+197-      const value = arg === '-c' ? words[i++] : arg.slice(2);
+198-      const key = value?.split('=', 1)[0];
+199-      if (!key || !value.includes('=') || !SAFE_CONFIG.has(key)) unsafe = true;
+200-      configs.push(value);
+201-    } else if (arg === '--no-pager') continue;
+202-    else {
+203-      unsafe = true;
+204-      if (['--git-dir', '--work-tree', '--namespace', '--config-env'].includes(arg)) i++;
+205-    }
+206-  }
+207-  const kind = words[i++] || 'unsupported';
+208-  const args = words.slice(i);
+209-  if (kind !== 'commit')
+210-    return { kind, args, cwd, configs, contextSafe: !unsafe, docEligible: false };
+211-  let hasMessage = false;
+212-  for (let j = 0; j < args.length; j++) {
+213-    const arg = args[j];
+214-    if (['-m', '--message', '-F', '--file'].includes(arg)) hasMessage = !!args[++j];
+215-    else if (arg.match(/^(?:-m.+|-F.+|--message=.+|--file=.+)$/)) hasMessage = true;
+216-    else if (arg !== '-q' && arg !== '--quiet') unsafe = true;
+217-  }
+218-  return { kind, args, cwd, configs, docEligible: hasMessage && !unsafe };
+219-}
+220-
+221-const DOCUMENT_PATH = new RegExp('^(?:docs|\\.claude/plans)/(?:[^/]+/)*[^/]+\\.md$');
+222-export function isEligibleDocumentPath(file) {
+223-  return typeof file === 'string' && DOCUMENT_PATH.test(file) && !file.includes('..');
+224-}
+225-export function classifyStagedRecords(records) {
+226-  if (!Array.isArray(records) || records.length === 0)
+227-    throw new MutationContextError('empty staged inventory');
+228-  let docsOnly = true;
+229-  for (const record of records) {
+230-    if (
+231-      !String(record?.status || '').match(/^[AMDRC]$/) ||
+232-      !Array.isArray(record.paths) ||
+233-      !record.paths.length
+234-    ) {
+235-      throw new MutationContextError('unresolved staged inventory');

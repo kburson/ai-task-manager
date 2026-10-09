@@ -1,0 +1,18 @@
+{
+  "schema": "operator-inspection/v1",
+  "issue": 1897,
+  "reviewedAt": "2026-10-05T21:26:38.416Z",
+  "planPath": "docs/superpowers/plans/2026-10-05-1897-canonical-ac-heading.md",
+  "planSha256": "21f44ac48ca8bdea143df3f8af3be344373e2f346fab0241fde9cff997fe5fef",
+  "scope": "canonical AC heading precedence only; hosted full suites; original downstream authority unchanged",
+  "semanticReview": {
+    "stakeholder": "AITM delivery operator is the beneficiary, rather than the coding agent.",
+    "capability": "Canonical acceptance criteria remain discoverable, stampable and evidence-gated after embedded headings.",
+    "need": "Observed native ai-peer-review144 ac-stamp refuses before declared verifiers because the shared locator selects an embedded H4.",
+    "counterfactualValue": "The operator can complete verified delivery without rewriting accepted Scope or bypassing evidence gates.",
+    "sourceGrounding": "Fresh1897 Scope/AC/deep-dive, bounded implementation plan and actual downstream refusal agree.",
+    "siblingDistinctness": "Upstream AC precedence is separate from downstream144 document-scope contract and145 shared profile.",
+    "standaloneReadability": "The live story and issue describe operator, failure, bounded remedy and exact affected command."
+  },
+  "assessment": "Bounded plan reviewed and accepted by root as machine review; not human or independent review. Forecast authority and native approval/promotion remain pending."
+}

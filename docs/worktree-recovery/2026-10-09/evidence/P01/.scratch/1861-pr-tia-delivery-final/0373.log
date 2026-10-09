@@ -1,0 +1,32 @@
+verify-epic-trail: epic #883 trail verified for 1 child(ren); every delivery-requiring child has a [#N] commit reachable from HEAD
+verify-epic-trail: epic #999 trail verified for 1 child(ren); every delivery-requiring child has a [#N] commit reachable from HEAD
+verify-epic-trail: epic #883 trail verified for 1 child(ren); every delivery-requiring child has a [#N] commit reachable from HEAD
+▶ #900 AC3: verify-epic-trail resolves the epic from the active session
+  ▶ resolveEpicNumber
+    ✔ a bare invocation resolves the active bound issue (39.736708ms)
+    ✔ a bare sandbox invocation resolves the issue injected by the Test owner (16.89375ms)
+    ✔ an explicit positional wins even when the state read throws (0.104958ms)
+    ✔ returns null when neither an explicit arg nor an active issue is a positive integer (35.563167ms)
+  ✔ resolveEpicNumber (92.872666ms)
+  ▶ main
+    ✔ a bare invocation self-targets the active epic and exits 0 (1.3975ms)
+    ✔ an explicit positional overrides the active session (0.212208ms)
+    ✔ exits 1 when a child has no reachable [#N] commit (0.187417ms)
+    ✔ exits 0 when a non-delivery child has no reachable commit (0.134666ms)
+    ✔ exits 2 when the epic cannot be resolved from args or session (0.094542ms)
+  ✔ main (2.358291ms)
+  ▶ epic-kind preflight render
+    ✔ renders the epic-trail DoD line + a VC entry whose command has no forbidden < / > token (249.751833ms)
+  ✔ epic-kind preflight render (249.998167ms)
+✔ #900 AC3: verify-epic-trail resolves the epic from the active session (345.548292ms)
+ℹ tests 10
+ℹ suites 4
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 347.966042
+epic #883: no [#N] commit reachable from the epic HEAD for 1 child(ren): #890 (unreachable)
+Usage: node scripts/task-tracker/verify-epic-trail.mjs [<epic#>] [<epic-ref>]
+  With no <epic#>, resolves the epic from the active bound session.

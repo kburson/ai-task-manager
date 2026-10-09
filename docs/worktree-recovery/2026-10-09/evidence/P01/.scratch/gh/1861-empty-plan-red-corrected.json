@@ -1,0 +1,36 @@
+{
+  "base": "df0a8d61aae471f5dced11501586a3dbf0c2f157",
+  "selection": {
+    "tests": [
+      "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs"
+    ],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "scripts/tests/helpers/runtime-empty-contract-fixture.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "signal": "manifest",
+        "reason": "current test tree authority change"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "changed-test",
+        "reason": "changed or newly discovered test"
+      }
+    ],
+    "escalated": false
+  },
+  "status": 1,
+  "signal": null,
+  "stdout": "✔ layout audit rejects a discovered test outside the canonical lane tree (237.250583ms)\n✔ layout audit rejects a test placed directly in a canonical lane root (99.222459ms)\n✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (103.3745ms)\n✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (248.256541ms)\n✔ feature-oriented files keep semantic ownership after their lane correction (2.683292ms)\n✔ current test-tree baseline is well formed (1.46425ms)\n✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.327291ms)\n✔ AC1: no *.test.mjs file remains directly in a lane root (0.289208ms)\n✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (4.568583ms)\n✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (9.843542ms)\nnode:internal/modules/esm/resolve:272\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-empty-initialize.mjs' imported from /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs\n    at finalizeResolution (node:internal/modules/esm/resolve:272:11)\n    at moduleResolve (node:internal/modules/esm/resolve:879:10)\n    at defaultResolve (node:internal/modules/esm/resolve:1006:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)\n    at #resolve (node:internal/modules/esm/loader:690:17)\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)\n    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)\n    at ModuleJob.link (node:internal/modules/esm/module_job:389:17) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-empty-initialize.mjs'\n}\n\nNode.js v26.8.1\n✖ scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs (59.689041ms)\nℹ tests 11\nℹ suites 0\nℹ pass 10\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 836.08\n\n✖ failing tests:\n\ntest at scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs:1:1\n✖ scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs (59.689041ms)\n  'test failed'\n",
+  "stderr": "",
+  "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e"
+}

@@ -1,0 +1,6 @@
+- **kind**: code
+- **parent**: #1558
+- **split from**: #1676 Step 4a after catalog/documentation delivery
+- **depends on**: #1676 and #1765; native dependency edges will be recorded after creation
+- **blocks**: #1677 and later migration through the accepted dependency chain
+- **reason**: the post-catalog recheck requires a corrected upstream CLI capture, while #1676's catalog and documentation can be delivered independently

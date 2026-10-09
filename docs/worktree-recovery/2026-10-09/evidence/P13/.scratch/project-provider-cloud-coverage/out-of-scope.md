@@ -1,0 +1,1 @@
+No blanket skip of declared tests, inferred universal cloud coverage, invented execution receipts, weakened allowlist, workflow bypass, edits to approved #144 Scope or private accepted artifacts, or node_modules patches. No changes to default Node lanes.

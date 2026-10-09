@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Plan Metadata\n\n## Pickup Directive — MANDATORY, DO NOT SKIP",
+  "replacement": "## Plan Metadata\n\n- **Source issue**: `kburson/ai-task-manager#1377`\n- **Implementation and issue repository**: `kburson/ai-peer-review`\n- **Repository baseline at migration**: `origin/trunk@27739da257a991c6eca23285df0885370f6d1788`\n- **Historical design input**: AITM commit `ad944209e2b719e9b0ecadbd1d3d710ceacfb498` (unmerged, draft, and unreviewed)\n- **Delivered prerequisites**: author-owned finalization (#1516) and `ai-peer-review@0.2.1` protocol/transport foundations\n- **Separated dependency**: durable coordinator wakeups are tracked by the transferred #1517 story in `kburson/ai-peer-review`\n- **Migration action**: transfer this issue natively to `kburson/ai-peer-review`; implement and deliver through an isolated standalone worktree and PR\n\n## Pickup Directive — MANDATORY, DO NOT SKIP",
+  "expectedVersion": 4
+}

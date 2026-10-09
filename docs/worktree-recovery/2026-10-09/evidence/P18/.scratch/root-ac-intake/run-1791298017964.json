@@ -1,0 +1,14 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "plan",
+    "1904"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T14:46:27.411Z",
+  "end": "2026-10-06T14:46:57.964Z",
+  "exitCode": 0,
+  "stdout": "✓ Issue #1904 moved to: plan\n✓ move #1904 ready-for-plan→plan complete\n  exit flush  : ready-for-plan row closed (verified)\n  entry stamp : aitm-entered-plan present (verified)\n  entry row   : plan row opened (verified)\n  status      : Status == Plan (verified)\n  sentinel    : aitm-move-complete state=plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #1904 promoted: ready-for-plan → plan (direct)\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' plan 1904\n"
+}

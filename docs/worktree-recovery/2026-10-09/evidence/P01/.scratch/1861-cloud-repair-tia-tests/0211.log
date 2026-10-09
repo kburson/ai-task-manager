@@ -1,0 +1,11 @@
+✔ buildNpmCiArgv keeps the default Test setup command unchanged (0.84925ms)
+✔ buildNpmCiArgv appends validated project-provider npm-ci args (0.087958ms)
+✔ verification receipt preserves project-provider setup policy (2.679375ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.440792

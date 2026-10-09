@@ -1,0 +1,18 @@
+✔ planStageHeal: refine stamped at createdAt → fallback stamps backlog at createdAt+1s (2.737125ms)
+✔ backlog fallback bumps refine when refine === createdAt (collision) (0.194791ms)
+✔ planStageHeal: refine 5s after createdAt → normal path succeeds, fallback skipped (0.095792ms)
+✔ backlogCreatedAtFallback: refine missing → backlog at createdAt+1s, no bump (0.063167ms)
+✔ backlogCreatedAtFallback: refine after backlog → no bump (0.069167ms)
+✔ backlogCreatedAtFallback: refine === backlogTs (boundary) → cascade refine (0.063334ms)
+✔ backlogCreatedAtFallback: refine before createdAt (skewed-clock) → cascade refine (0.065875ms)
+✔ backlogCreatedAtFallback: bad createdAt throws (0.116417ms)
+✔ planStageHeal: body already has backlog marker → no fallback needed (0.236542ms)
+✔ apply: writes backlog entry+audit and cascades refine when needed (1.107792ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.412875

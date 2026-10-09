@@ -1,0 +1,5 @@
+- **kind**: code
+- **source**: user-authorized defect discovered during governed Full-Auto delivery
+- **discovered-during**: delivery of kburson/ai-peer-review issue #60 on 2026-09-17
+- **evidence**: Review emitted `review:waived`; delivery then refused with `delivery-preflight:agent-review-evidence` at exact source commit `99d6a3033cedc595fa2349130e36ff78fdd86e19`
+- **intent**: make delivery honor the same explicit semantic-review exception that Review already validated without weakening unrelated delivery gates

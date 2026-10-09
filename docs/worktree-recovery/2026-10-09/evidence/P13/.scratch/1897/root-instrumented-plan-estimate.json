@@ -1,0 +1,18 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "plan-estimate",
+    "1897",
+    "--evidence-file",
+    ".scratch/1897/plan-estimation-input.json"
+  ],
+  "startedAt": "2026-10-05T21:25:11.017Z",
+  "finishedAt": "2026-10-05T21:28:27.584Z",
+  "status": 0,
+  "signal": null,
+  "error": null,
+  "stdout": "[task-tracker] ✓ #1897 Plan estimate authority converged; forecast 01M46XVGEBQF8B194JGCNZC4GG\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' plan-estimate 1897 --evidence-file .scratch/1897/plan-estimation-input.json\n",
+  "diagnostic": "transparent-ghClient.spawn-observer; no query/input/timeout/output substitution"
+}

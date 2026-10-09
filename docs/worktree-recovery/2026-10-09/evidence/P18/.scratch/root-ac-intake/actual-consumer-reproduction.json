@@ -1,0 +1,16 @@
+{
+  "head": "e802e425d1d4efbc058c154d0f09b7b90116446c",
+  "status": {
+    "total": 0,
+    "ticked": 0,
+    "allTicked": false,
+    "sectionPresent": true
+  },
+  "bodySha256": "06d2dde64807f40eb7be52049cf367e63da401f7c4add817d212fd6dd58c06aa",
+  "bodyVersion": "102",
+  "formalRootCheckboxes": [
+    "- [x] Deliver \"### Task 5: Reconcile Accepted Contract Owners\" exactly as specified in the pinned source plan. <!-- aitm-verified exit=\"0\" sha=\"b2e4222\" ts=\"2026-10-06T14:28:39.053Z\" key=\"a428cbae\" vc-list=\"vc:1 vc:2\" worktree=\"/Users/kpburson/.codex/worktrees/story-144-contracts/ai-peer-review\" branch=\"codex/144-contracts\" bound-issue=\"144\" -->"
+  ],
+  "embeddedHeadingPresent": true,
+  "mode": "Actual restored public body DATA, exact delivered owned source consumer; no operational mutation"
+}

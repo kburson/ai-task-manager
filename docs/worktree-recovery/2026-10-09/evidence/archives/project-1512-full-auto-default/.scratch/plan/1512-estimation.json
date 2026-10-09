@@ -1,0 +1,47 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "gate-policy",
+      "description": "Extend default and session policy with three independent review controls",
+      "baseHumanHours": 4,
+      "signals": {
+        "modules": ["config", "session-store", "gate-resolve", "auto-verb"],
+        "dependencies": ["legacy-session-hydration", "project-precedence"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "pr-review-authority",
+      "description": "Enforce exact-head human pull request approval after green required CI",
+      "baseHumanHours": 6,
+      "signals": {
+        "modules": ["delivery-preflight", "deliver-verb", "github-review-evidence"],
+        "dependencies": ["accepted-review-sha", "required-checks", "provider-action"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "workflow-docs",
+      "description": "Document natural-language manual review choices across agent adapters and guides",
+      "baseHumanHours": 2,
+      "signals": {
+        "modules": ["task-skill", "help", "workflow-docs"],
+        "dependencies": ["command-surface"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "AITM Test sandbox plus focused pure delivery-policy tests",
+    "expectedMinutes": 45
+  },
+  "risks": [
+    "Stale PR approvals after head changes",
+    "Configured reviewer may equal PR author",
+    "Legacy two-gate session and project compatibility",
+    "Reviewer request must not precede required CI"
+  ],
+  "comparableIssueIds": []
+}

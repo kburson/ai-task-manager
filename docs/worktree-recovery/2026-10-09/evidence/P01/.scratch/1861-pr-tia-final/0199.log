@@ -1,0 +1,21 @@
+✔ reviewNeedsAgentReview is true only for review + no pass evidence (0.783291ms)
+✔ reviewNeedsAgentReview is false for a complete review (0.07175ms)
+✔ reviewNeedsAgentReview is false for any non-review state (0.067916ms)
+✔ formatReviewRemediationHint names /task review and warns against demote (0.224417ms)
+✔ formatReviewRemediationHint distinguishes the review-failed cause (1.45925ms)
+✔ reviewRemediationHint returns null when the hint does not apply (0.5325ms)
+▶ verbResume review-remediation hints
+  ✔ verbResume prints the review-remediation hint when the seed attaches one (287.352792ms)
+  ✔ verbResume stays silent when the seed attaches no hint (176.538167ms)
+✔ verbResume review-remediation hints (469.495042ms)
+ℹ tests 8
+ℹ suites 1
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 575.5995
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[dependency-disposition] #935: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #936: binding remains active; retry dependency projection (dependency-disposition:config)

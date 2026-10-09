@@ -1,0 +1,30 @@
+✔ manual XPR registers without asking a recovery-only broker worker to launch (539.909291ms)
+✔ manual declared join ignores an inherited official resume command (671.225917ms)
+✖ CLI captures stream evidence before join (malformed=false) (504.192875ms)
+✔ CLI captures stream evidence before join (malformed=true) (523.611333ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2330.461875
+
+✖ failing tests:
+
+test at test/integration/manual-xpr-startup.test.mjs:81:3
+✖ CLI captures stream evidence before join (malformed=false) (504.192875ms)
+  AssertionError [ERR_ASSERTION]: {"schema":"ai-peer-review.error/v1","code":"APR_IDENTITY_REQUIRED","message":"Complete runtime or declared identity is required.","recovery":"Set hosts.claude.identity.model_id and hosts.claude.identity.model_display in .ai-peer-review.json, then retry.","details":{"adapter":"claude"}}
+  
+  
+  1 !== 0
+  
+      at Immediate.<anonymous> (file:///Users/kpburson/.codex/worktrees/106-manual-xpr-startup/ai-peer-review/test/integration/manual-xpr-startup.test.mjs:112:20) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

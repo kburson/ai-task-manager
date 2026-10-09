@@ -1,0 +1,26 @@
+Issue #1562: 26 timing rows
+  Engaged            : 97 min  (active 97 + review 0)
+  Session            : 97 min
+  Review             : 0 min  (threshold 5 min)
+  Plan               : 1403 min
+  Stage Time (per visit):
+    backlog#1: 6m 17s
+    refine#1: 27s
+    ready-for-plan#1: 20s
+    plan#1: 23h 22m 48s
+    develop#1: 1m 16s
+    test#1: 6m 16s
+    develop#2: 6m 08s
+    test#2: 56m 14s
+    develop#3: 1m 16s
+    test#3: 6m 31s
+    review#1: open
+  Stage Time (totals):
+    backlog: 6m 17s
+    refine: 27s
+    ready-for-plan: 20s
+    plan: 23h 22m 48s
+    develop: 8m 40s
+    test: 1h 09m 01s
+Fields updated on GitHub Projects board.
+Closed #1562.
