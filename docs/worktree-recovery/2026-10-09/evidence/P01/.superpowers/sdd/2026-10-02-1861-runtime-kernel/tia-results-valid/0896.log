@@ -1,0 +1,43 @@
+✔ Review installs the agent-validation resident action by direct reference (0.988375ms)
+✔ fresh Agent Review Passed evidence completes the current Review visit (1.356209ms)
+✔ an objection persists failed evidence and returns failed without a board move (1.226958ms)
+✔ resident semantic review reloads policy only for missing waivable planning sections (0.626875ms)
+✔ a current semantic-review waiver returns waived without running validators or mutations (0.269125ms)
+✔ waived semantic review emits a truthful durable timeline row (1.069042ms)
+✔ waived semantic review retires the active failure carrier without stamping pass evidence (0.458042ms)
+✔ verify revalidates a durable waiver and treats revocation as incomplete (0.317ms)
+✔ verify re-runs a durable waiver whose terminal row lacks exact-head authority (0.215542ms)
+✔ verify pauses when Review comments are unreadable or no reader exists (0.220209ms)
+✔ waived semantic review refuses unusable authority before clearing a failure carrier (0.263792ms)
+✔ waived semantic review requires the failure-retirement capability before posting (0.097958ms)
+✔ waived semantic review preserves the failure carrier when the terminal row is only queued (0.089ms)
+✔ waived semantic review preserves the failure carrier when posted evidence fails readback (0.103167ms)
+✔ verify re-runs a durable waiver when a stale failure carrier still needs retirement (0.080916ms)
+✔ Review entry is forward while an in-Review retry is actions-only (0.116666ms)
+✔ an in-Review retry executes only the Cursor actions-only trigger (0.069584ms)
+✔ Review classifies resident and boundary Cursor outcomes without swallowing failures (0.075167ms)
+✔ Review reports waived semantic work without claiming verification passed (0.073667ms)
+✔ resume, switch, and the dispatcher carry the Review resident wake (0.0625ms)
+✔ #1488: verbStart delegates to verbResume and does not re-issue the Review wake (0.031959ms)
+✔ #1488: the wake decision exempts the start verb and no other (0.061ms)
+✔ #1488: resume and rebind still wake Review residents (0.085542ms)
+✔ a passing Review probe continues into actions-only resident execution (0.071041ms)
+✔ a gate objection performs NO board move — the issue stays in Review (0.148708ms)
+✔ the failure timeline is exactly: stamp the marker, then post review:failed (0.069917ms)
+✔ the review:failed row says the issue stays in Review, not that it reverted (0.065708ms)
+✔ the marker stamp is best-effort — a mutate throw does not lose the row (0.10175ms)
+✔ the failure path never passes --demote to anything (0.063667ms)
+✔ verbReview delegates the authoritative Test → Review move and gate to the Cursor (0.118ms)
+✔ there is exactly ONE authoritative move-to-review call site (0.050625ms)
+✔ emitReviewGateFailureTimeline no longer destructures runMoveState (0.081791ms)
+✔ the operator is told to fix in place and re-run, not to fix in Develop (0.066042ms)
+✔ the resident action consumes the Cursor-hydrated body and comments snapshot (0.116834ms)
+✔ both gate outcome paths derive their write from the post-move body (0.084125ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.18175

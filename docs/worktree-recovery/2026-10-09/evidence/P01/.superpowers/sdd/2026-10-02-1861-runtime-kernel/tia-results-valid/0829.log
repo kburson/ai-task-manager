@@ -1,0 +1,131 @@
+coverage-dod-stamp.test.mjs: defined
+✖ no active task → exit 1 (0.599208ms)
+✖ empty key → exit 1 (0.094834ms)
+✖ unknown key → exit 1 (0.098583ms)
+✖ derived key (acs) → refuse, exit 1 (0.082709ms)
+✖ keyed line absent → exit 1 (0.092125ms)
+✖ keyed line has no verifier command → exit 1 (0.0785ms)
+✖ verifier non-zero exit → refuse, exit 1 (0.0835ms)
+✖ happy path: verifier passes → stamps marker, no exit (0.299625ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 0
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 33.904709
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:154:1
+✖ no active task → exit 1 (0.599208ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:91:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:156:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:161:1
+✖ empty key → exit 1 (0.094834ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:91:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:163:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:168:1
+✖ unknown key → exit 1 (0.098583ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:91:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:170:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:175:1
+✖ derived key (acs) → refuse, exit 1 (0.082709ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:91:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:177:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:182:1
+✖ keyed line absent → exit 1 (0.092125ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:91:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:185:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:193:1
+✖ keyed line has no verifier command → exit 1 (0.0785ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:91:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:196:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:204:1
+✖ verifier non-zero exit → refuse, exit 1 (0.0835ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:91:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:207:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:215:1
+✖ happy path: verifier passes → stamps marker, no exit (0.299625ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:91:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs:221:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }

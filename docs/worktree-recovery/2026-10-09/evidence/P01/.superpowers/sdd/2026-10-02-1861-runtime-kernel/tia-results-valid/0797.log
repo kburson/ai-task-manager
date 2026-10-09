@@ -1,0 +1,22 @@
+✔ prefix-collision: toggling the shorter label does not touch the longer line (1.19875ms)
+✔ round-trip: toggling an exact-match unchecked line flips to [x] then back to [ ] (0.121584ms)
+✔ regex metacharacters in the label are matched literally (0.105667ms)
+✔ missing label returns not-found and does not throw (0.134709ms)
+✔ batch: multi-label toggle accumulates in one body (0.494584ms)
+✔ batch: mixed found / already-checked / not-found reported independently; not-found does not drop the batch (0.132125ms)
+✔ batch: single label behaves like the legacy single-label toggle (0.096167ms)
+✔ batch: empty label list is a no-op returning the body unchanged (0.069667ms)
+✔ #411 bare visible label ticks a marker-bearing line (0.116417ms)
+✔ #411 full-line argument (label + markers) still ticks the line (backward compat) (0.172584ms)
+✔ #411 marker-bearing line retains its trailing markers after toggle (0.090875ms)
+✔ #411 ambiguous: two lines sharing a stripped label yield ambiguous and tick neither (0.053958ms)
+✔ #411 batch reports ambiguous independently without dropping other labels (0.092583ms)
+✔ reviewed option mixtures refuse before state, batch, or directory I/O (0.53525ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.371334

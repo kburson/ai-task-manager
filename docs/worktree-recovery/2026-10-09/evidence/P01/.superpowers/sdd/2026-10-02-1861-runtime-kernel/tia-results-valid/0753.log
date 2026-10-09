@@ -1,0 +1,17 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Explicit runtime migration or initialization required
+    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+    at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+    at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+    at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+    at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+    at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+    at runPreflight (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/verb-preflight.mjs:136:7)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/verb-preflight.test.mjs:141:19 {
+  code: 'RUNTIME_MIGRATION_REQUIRED'
+}
+
+Node.js v26.8.1

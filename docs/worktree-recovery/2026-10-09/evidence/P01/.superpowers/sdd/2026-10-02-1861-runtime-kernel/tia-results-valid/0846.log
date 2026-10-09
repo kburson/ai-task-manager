@@ -1,0 +1,11 @@
+✔ current semantic-review waiver reaches provider delivery without pass evidence (9.5655ms)
+✔ semantic-review waiver fails closed before delivery mutation when live authority is invalid (1.150583ms)
+✔ semantic-review waiver refuses an ambiguous Timing Log authority source (0.252916ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.899834

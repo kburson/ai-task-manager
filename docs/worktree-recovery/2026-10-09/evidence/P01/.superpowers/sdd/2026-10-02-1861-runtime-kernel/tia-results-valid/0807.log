@@ -1,0 +1,17 @@
+✔ valid exact-head delivery receipt authorizes close (3.365959ms)
+✔ close freshly verifies receipt reachability and authorized attribution bytes (1.606792ms)
+✔ close fresh verification refuses unreachable trunk or altered attribution bytes (0.907167ms)
+✔ #1395 close selects the unique accepted-head PR regardless of branch history order (1.256042ms)
+✔ #1395 close refuses zero or multiple accepted-head PR matches (0.659834ms)
+✔ #1401 matching Test and Review determine the accepted head after local HEAD advances (0.219916ms)
+✔ missing, malformed, duplicate, conflicting, and mismatched receipt evidence fails closed (3.378834ms)
+✔ child merge-back and explicit no-PR local trunk lane skip the PR receipt gate (0.471792ms)
+✔ close contains no PR mutation or provider-action wait/retry path (1.213083ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.32625

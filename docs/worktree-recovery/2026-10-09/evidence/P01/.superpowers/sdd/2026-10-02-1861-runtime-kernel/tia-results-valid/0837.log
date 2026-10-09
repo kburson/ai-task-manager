@@ -1,0 +1,26 @@
+✔ deliver source has no terminal lifecycle dependency (1.800958ms)
+✔ #1512 default adapter resolves @me to an eligible human reviewer (0.948625ms)
+✔ #1512 default adapter normalizes exact-head PR review evidence (0.281958ms)
+✔ default live PR snapshot records a server-confirmed deleted source branch (1.928417ms)
+✔ #1635 merged PR attribution uses the full commit subject when GitHub truncates messageHeadline (0.972083ms)
+✔ default PR adapter proves a complete paginated commit inventory (0.782833ms)
+✔ default PR adapter rejects initial head mismatch (0.477459ms)
+✔ default PR adapter rejects head drift between pages (0.182833ms)
+✔ #1390 default PR adapter canonicalizes live GitHub second-precision mergedAt (0.263ms)
+✔ #1390 default PR adapter rejects missing or malformed mergedAt (0.358917ms)
+✔ default merge-history inspector returns exact parents and authorized commit bytes (0.387041ms)
+✔ #1389 default comment adapter canonicalizes live GitHub second-precision timestamps (0.35975ms)
+✔ #1389 default comment adapter rejects malformed GitHub timestamps (0.153125ms)
+✔ #1413 default delivery adapter excludes optional and historical PR checks (0.40525ms)
+✔ #1413 default delivery adapter preserves pending required checks as non-green (0.335041ms)
+✔ #1504 default delivery adapter reads an explicit absent required-check policy (0.29375ms)
+✔ #1504 absent required checks remain unreadable after pull-request head drift (0.168542ms)
+✔ #1504 default delivery adapter propagates unrelated exit-one check failures (0.120375ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.705541

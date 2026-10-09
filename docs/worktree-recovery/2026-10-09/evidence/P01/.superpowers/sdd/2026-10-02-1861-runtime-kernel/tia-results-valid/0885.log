@@ -1,0 +1,11 @@
+✔ reconcile.defaultRunMoveState calls the in-process host with the revert argv/env (no spawn) (1.056916ms)
+✔ reconcile.defaultRunMoveState relays the host exit code verbatim (0.185333ms)
+✔ reconcile.mjs no longer spawns a move-state child (0.273625ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.12575
