@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `npm test` <!-- id=3 --> <!-- aitm-verified cmd=\"npm test\" -->",
+  "replacement": "- [ ] `node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave-runtime.test.mjs scripts/tests/integration/task-tracker/lib/epic-rank-wave-runtime.test.mjs` <!-- id=8 -->\n- [ ] `npm test` <!-- id=3 --> <!-- aitm-verified cmd=\"npm test\" -->"
+}

@@ -1,0 +1,13 @@
+✔ obsolete catalog input refuses before launching public CLI replay (236.642834ms)
+✔ matching catalog inputs still launch actual replay and refuse fabricated current provenance (16126.002417ms)
+✔ archived recertification binds every obligation and refuses current replay identity drift (73.338292ms)
+✔ recertification refuses a relabeled or altered lifecycle capture (167.937708ms)
+✔ historical foundation stays immutable while current commands refuse obsolete replay (637.583208ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17358.904333

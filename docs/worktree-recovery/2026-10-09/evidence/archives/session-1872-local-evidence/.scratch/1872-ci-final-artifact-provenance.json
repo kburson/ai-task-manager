@@ -1,0 +1,199 @@
+{
+  "run": 37185582187,
+  "attempt": 1,
+  "sourceHead": "61e20361c5ae533609f18491df5eeb44e938348f",
+  "testedCommit": "3d94ebe3eab9f6bb83a6771e3deb1d84db372c45",
+  "verifiedAt": "2026-10-04T07:30:19.571Z",
+  "status": "cloud lane results validated; not a canonical local Test receipt",
+  "archiveDigestVerification": "not independently performed for gh extraction",
+  "validation": [
+    {
+      "lane": "integration",
+      "commit": "3d94ebe3eab9f6bb83a6771e3deb1d84db372c45",
+      "shards": 3,
+      "count": 234,
+      "runnerMs": [
+        82387.2,
+        211518.4,
+        53131.5
+      ]
+    },
+    {
+      "lane": "unit",
+      "commit": "3d94ebe3eab9f6bb83a6771e3deb1d84db372c45",
+      "shards": 1,
+      "count": 944,
+      "runnerMs": [
+        66673.6
+      ]
+    },
+    {
+      "lane": "slow",
+      "commit": "3d94ebe3eab9f6bb83a6771e3deb1d84db372c45",
+      "shards": 3,
+      "count": 55,
+      "runnerMs": [
+        91979.9,
+        46133.6,
+        230405.8
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-fast-receipts-1/integration/lane-receipt.json",
+      "bytes": 95304,
+      "sha256": "92a55e759f5557afa8b5945360297c66c7f908782ce5c519f1fcfd3489a8b335"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-fast-receipts-1/unit/lane-receipt.json",
+      "bytes": 335004,
+      "sha256": "bb3add63da8b029284c712af101dc04a2c796329bc10b5118b28154a8cc1e039"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-1-1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-1-1/shard-plan.json",
+      "bytes": 39513,
+      "sha256": "32c9c0b250d3ff1656787842523f8d8831f13329a3587274f56f19ffa4ce8975"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-1-1/test-output.log",
+      "bytes": 7633,
+      "sha256": "5b2ba0e245a8c09916db0bc1dc8de9079955c9fd121d68c0c4cb8a5d622978b4"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-1-1/test-timing.json",
+      "bytes": 27647,
+      "sha256": "c9b4fbb1140832fddcf56c448b743b4c9c2ef676eeaff82102bd1aaa09750f6b"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-2-1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-2-1/shard-plan.json",
+      "bytes": 39513,
+      "sha256": "32c9c0b250d3ff1656787842523f8d8831f13329a3587274f56f19ffa4ce8975"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-2-1/test-output.log",
+      "bytes": 7639,
+      "sha256": "977fd10f9fdc57c060005a69bbac014602c3af49db81054541aa444a031d8ddb"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-2-1/test-timing.json",
+      "bytes": 28244,
+      "sha256": "d4a8f3021d1ebe44a3b0e47af8722382057c145c0fa7400b5ed921949405c9ab"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-3-1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-3-1/shard-plan.json",
+      "bytes": 39513,
+      "sha256": "32c9c0b250d3ff1656787842523f8d8831f13329a3587274f56f19ffa4ce8975"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-3-1/test-output.log",
+      "bytes": 7744,
+      "sha256": "75feeb64ed65f334656f0b546ed0917aecf03f963c02f341f194ec0e20dbde60"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-integration-3-1/test-timing.json",
+      "bytes": 28099,
+      "sha256": "677816cbb3840bdb7309c0e6ac5ddeec3c0372c2244309128476dc16cd9f8d60"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-1-1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-1-1/shard-plan.json",
+      "bytes": 8308,
+      "sha256": "72f5f2de04577c43e9b765389c106a2427f61328e7a02cc883719ae7543c43ec"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-1-1/test-output.log",
+      "bytes": 1828,
+      "sha256": "59c7cf4d06aa4caecefe40a9fbff077f90f3504cb4696abeca9414dca7a682d5"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-1-1/test-timing.json",
+      "bytes": 7391,
+      "sha256": "808b86e53bed9b2a15711d6eb372d21b965816c7b2fcdd2cb8a7263e52ca1819"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-2-1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-2-1/shard-plan.json",
+      "bytes": 8308,
+      "sha256": "72f5f2de04577c43e9b765389c106a2427f61328e7a02cc883719ae7543c43ec"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-2-1/test-output.log",
+      "bytes": 1727,
+      "sha256": "657d72f727ea78883b14deab68bbb09705b434dc10b689d6051e59de45a09e53"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-2-1/test-timing.json",
+      "bytes": 7170,
+      "sha256": "c29dbbda7f549f006cdd10066c7c62762a04f07d11e9116fc6ddafa55318df56"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-3-1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-3-1/shard-plan.json",
+      "bytes": 8308,
+      "sha256": "72f5f2de04577c43e9b765389c106a2427f61328e7a02cc883719ae7543c43ec"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-3-1/test-output.log",
+      "bytes": 2124,
+      "sha256": "de72415be2a0db9e247f30860c0135c6231d75dcc85c28e07b5d39e17a5b110c"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-group-3-1/test-timing.json",
+      "bytes": 7615,
+      "sha256": "e02ccfbd3b15b98865bff65100e506dc0b5f210064d27984ca063cb004fc61f7"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-slow-receipt-1/lane-receipt.json",
+      "bytes": 25964,
+      "sha256": "a9b3b4199ab1701717a11abd32ba4be73028e9b7788b58442b73d2ec4d94347a"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-unit-1-1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-unit-1-1/shard-plan.json",
+      "bytes": 144392,
+      "sha256": "2f38fc57abefed4b5b0855397a8c9fa3b3f4cf2bd89e653f3cbc04ed60fc1c8a"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-unit-1-1/test-output.log",
+      "bytes": 82590,
+      "sha256": "9a3e14625d4a73cf37f46846e6b00403d003519b4af08a6362ba74cae46bebbc"
+    },
+    {
+      "path": ".scratch/1872-ci-final-artifacts/ci-unit-1-1/test-timing.json",
+      "bytes": 294691,
+      "sha256": "93acb5ff0f55a60fd89bd29bbed59f45f7eaf2a6c9fbf34edecbbc1c49ad6104"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+- **kind**: code
+- **discovered-during**: #1755
+- **source-plan-section**: ### Task 7: Operator guide, package smoke, and release gates

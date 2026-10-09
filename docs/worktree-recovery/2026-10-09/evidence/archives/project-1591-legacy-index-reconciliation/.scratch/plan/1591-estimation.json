@@ -1,0 +1,57 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "inventory-classifier",
+      "description": "Implement deterministic index inventory and conjunctive evidence classification",
+      "baseHumanHours": 3,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": ["scripts/review/lib/reconciliation.mjs"],
+        "dependencies": ["legacy index", "archive inspector", "Git repository boundary"]
+      }
+    },
+    {
+      "id": "journaled-apply",
+      "description": "Implement lock-scoped journal preparation, atomic apply, and interrupted replay",
+      "baseHumanHours": 3,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": ["scripts/review/lib/reconciliation.mjs"],
+        "dependencies": ["fleet registry lock", "main co-review index"]
+      }
+    },
+    {
+      "id": "cli-verification",
+      "description": "Add inspect, apply, and verify CLI modes plus migration guard integration",
+      "baseHumanHours": 2,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": ["scripts/review/reconcile-legacy-index.mjs", "scripts/task-tracker/lib/peer-review-adapter.mjs"],
+        "dependencies": ["reconciliation library", "migration guard"]
+      }
+    },
+    {
+      "id": "full-verification",
+      "description": "Apply reconciliation to main authority and run focused and repository verification",
+      "baseHumanHours": 2,
+      "independentlyReviewable": false,
+      "signals": {
+        "modules": ["scripts/tests/integration/review", "scripts/task-tracker/test-impact-manifest.json"],
+        "dependencies": ["main runtime index", "fast and slow test lanes"]
+      }
+    }
+  ],
+  "testImpact": {
+    "lanes": ["focused integration", "fast", "slow", "lint", "format"],
+    "isolation": "Issue worktree plus isolated fixture repositories and the governed main-index apply",
+    "expectedMinutes": 18
+  },
+  "risks": [
+    "Loose stale-path matching could retire a real review",
+    "Interrupted multi-file mutation could leave journal and index out of sync",
+    "Repository tests can create new residue after an earlier apply",
+    "Archive validation must prove Git provenance without changing archive bytes"
+  ],
+  "comparableIssueIds": [1372, 1374, 1546]
+}

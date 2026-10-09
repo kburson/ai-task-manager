@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Plan Metadata\n\n## Pickup Directive",
+  "replacement": "## Plan Metadata\n\n- **Implementation-plan**: docs/superpowers/plans/2026-09-17-1685-stacked-pr-ci-merge-base.md\n- **Plan-commit**: 29515e0ac7769c9ae3f6b8fce1b0f22b7cba4711\n\n## Pickup Directive"
+}

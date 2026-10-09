@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Plan Metadata\n\n## Pickup Directive — MANDATORY, DO NOT SKIP",
+  "replacement": "## Plan Metadata\n\n- **Governing-spec**: docs/superpowers/specs/2026-09-15-1633-done-delivery-audit-design.md\n- **Implementation-plan**: docs/superpowers/plans/2026-09-15-1633-done-delivery-audit.md\n- **Plan-commit**: 867b086c376ae589dd0f15b087d38353d49b0826\n\n## Pickup Directive — MANDATORY, DO NOT SKIP"
+}
