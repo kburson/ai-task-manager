@@ -769,6 +769,10 @@ export function assertNativeStagePartialHolder(input) {
   const journal = record.backend.snapshot.nativeStageRecords.at(-1);
   if (!journal || canonicalRecordJson(journal.header) !== canonicalRecordJson(record.header))
     throw preparationRefusal('original-partial-report-header');
+  assertOriginalEntryContext(record);
+  checkOriginalStageSources(record);
+  checkOriginalFieldSources(record);
+  checkOriginalLocalSources(record);
 }
 
 function preparationRefusal(reason) {

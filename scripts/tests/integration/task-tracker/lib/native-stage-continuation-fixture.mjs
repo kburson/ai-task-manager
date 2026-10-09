@@ -47,6 +47,10 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
     'partial-reporting-15',
     'partial-reporting-16',
     'partial-reporting-unknown',
+    'partial-reporting-cancel',
+    'partial-reporting-late-source',
+    'partial-reporting-late-input',
+    'partial-reporting-late-authority',
   ].includes(mode);
   const cacheMode = ['tail-cache', 'tail-cache-late-read', 'tail-cache-late-config'].includes(mode);
   const compensationMode = [
@@ -2523,7 +2527,11 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             f.backend.failBefore = 'native-stage-transition-intent-write';
           else if (faultMode === 'partial-reporting-16')
             f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
-          else f.backend.failAfter = 'native-stage-transition-effect-write';
+          else if (faultMode === 'partial-reporting-unknown')
+            f.backend.failAfter = 'native-stage-transition-effect-write';
+          else if (faultMode === 'partial-reporting-cancel')
+            f.backend.failAfter = 'native-stage-journal-readback';
+          else f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
         }
         const filesystem = (await import('node:fs')).default;
         const { syncBuiltinESMExports } = await import('node:module');
@@ -2670,8 +2678,52 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             }
             return value;
           };
+        let partialInput = null,
+          partialCaptures = 0,
+          partialGets = 0,
+          partialCopyError = null,
+          partialCopyPromise = null,
+          partialInjectedSnapshot = null,
+          partialInjectedEffects = null;
+        const partialConfigFile = path.join(f.projectDir, '.ai-task-manager/task-tracker.json');
+        const partialConfigBytes = readFileSync(partialConfigFile, 'utf8');
         Object.getOwnPropertyDescriptors = function (...args) {
           const descriptors = Reflect.apply(originalDescriptors, this, args);
+          if (
+            partialReporting &&
+            !partialCaptures &&
+            Reflect.ownKeys(descriptors).sort().join(',') === 'backend,capability,context,holder' &&
+            descriptors.backend?.value === f.backend &&
+            new Error().stack.includes('readMemoryNativeStagePartialFacts')
+          ) {
+            partialCaptures++;
+            partialInput = args[0];
+            queueMicrotask(() => {
+              partialCopyPromise = store
+                .readMemoryNativeStagePartialFacts({ ...partialInput })
+                .catch((error) => {
+                  partialCopyError = error;
+                });
+              if (faultMode === 'partial-reporting-late-source')
+                writeFileSync(
+                  partialConfigFile,
+                  JSON.stringify({ ...cfg, kanbanOptionTest: 'OPTION_foreign' })
+                );
+              if (faultMode === 'partial-reporting-late-input')
+                Object.defineProperty(partialInput, 'backend', {
+                  enumerable: true,
+                  configurable: true,
+                  get() {
+                    partialGets++;
+                    throw Error('late report backend');
+                  },
+                });
+              if (faultMode === 'partial-reporting-late-authority')
+                f.backend.lifecycleTransition = true;
+              partialInjectedSnapshot = f.backend.snapshot;
+              partialInjectedEffects = f.backend.effects;
+            });
+          }
           const candidate =
             !fault &&
             !lockCaptures &&
@@ -2881,7 +2933,12 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           if (reentryPromise) await reentryPromise;
           if (cacheReentryPromise) await cacheReentryPromise;
           if (cacheLockPromise) await cacheLockPromise;
+          if (partialCopyPromise) await partialCopyPromise;
         } finally {
+          if (partialReporting) {
+            writeFileSync(partialConfigFile, partialConfigBytes);
+            f.backend.lifecycleTransition = false;
+          }
           filesystem.readFileSync = originalRead;
           Object.getOwnPropertyDescriptors = originalDescriptors;
           if (cacheMode) process.stderr.write = originalStderr;
@@ -2920,20 +2977,29 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           })
         );
         if (partialReporting) {
-          const completed = {
-            'partial-reporting-14': 14,
-            'partial-reporting-15': 15,
-            'partial-reporting-16': 16,
-            'partial-reporting-unknown': 15,
-          }[faultMode];
+          const late = faultMode.startsWith('partial-reporting-late-');
+          const cancelled = faultMode === 'partial-reporting-cancel';
+          const completed =
+            {
+              'partial-reporting-14': 14,
+              'partial-reporting-15': 15,
+              'partial-reporting-16': 16,
+              'partial-reporting-unknown': 15,
+              'partial-reporting-cancel': 0,
+            }[faultMode] ?? 16;
           assert.equal(
             journal.steps.length,
-            faultMode === 'partial-reporting-unknown' ? 16 : completed
+            cancelled ? 1 : faultMode === 'partial-reporting-unknown' ? 16 : completed
           );
           assert.ok(journal.steps.slice(0, completed).every((step) => step.readback !== null));
-          assert.equal(journal.steps[13].outcome.kind, 'confirmed');
+          if (!cancelled) assert.equal(journal.steps[13].outcome.kind, 'confirmed');
           if (faultMode === 'partial-reporting-unknown')
             assert.equal(journal.steps[15].readback, null);
+          if (cancelled) {
+            assert.equal(journal.steps[0].readback, null);
+            assert.deepEqual(snapshot.nativeStageResources, journal.header.original.resources);
+            assert.equal(f.backend.effects.includes('native-stage-actor-effect-write'), false);
+          }
           assert.deepEqual(captureFiles(), files);
           assert.equal(
             (await observeRevision({ context: f.context, deps: createRevisionMemory(snapshot) }))
@@ -2941,15 +3007,37 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             'pending-native-stage'
           );
           assert.equal(result.exit, 4);
-          assert.equal(result.itemId, 'PVTI_subject', 'verified board item must survive failure');
-          assert.equal(result.boardMoved, true);
-          assert.equal(result.sentinelPresent, completed >= 15);
-          assert.equal(result.transitionCommitPresent, completed === 16);
+          assert.equal(result.itemId, !late && !cancelled ? 'PVTI_subject' : '');
+          assert.equal(result.boardMoved, !late && !cancelled);
+          assert.equal(result.sentinelPresent, !late && completed >= 15);
+          assert.equal(result.transitionCommitPresent, !late && completed === 16);
           assert.equal(
             result.transitionCommitId,
-            completed === 16 ? journal.steps[15].intent.commentId : null
+            !late && completed === 16 ? journal.steps[15].intent.commentId : null
           );
-          assert.equal(result.progressVerified, true);
+          assert.equal(result.progressVerified, !late);
+          assert.equal(partialCaptures, 1);
+          assert.equal(partialGets, 0);
+          assert.equal(partialCopyError?.preparationReason, 'original-partial-report-input');
+          if (late) {
+            assert.deepEqual(snapshot, partialInjectedSnapshot);
+            assert.deepEqual(
+              f.backend.effects.filter((op) => op.includes('effect-write')),
+              partialInjectedEffects.filter((op) => op.includes('effect-write'))
+            );
+          }
+          if (faultMode === 'partial-reporting-late-input') {
+            Object.defineProperty(partialInput, 'backend', {
+              enumerable: true,
+              configurable: true,
+              writable: true,
+              value: f.backend,
+            });
+          }
+          await assert.rejects(
+            store.readMemoryNativeStagePartialFacts(partialInput),
+            (error) => error.preparationReason === 'original-partial-report-input'
+          );
           const effects = f.backend.effects;
           await Promise.resolve();
           assert.deepEqual(
@@ -2958,6 +3046,65 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             'joined original work cannot change returned facts'
           );
           assert.deepEqual(f.backend.effects, effects);
+          const calls = [];
+          await assert.rejects(
+            withRevisionConsumer(
+              {
+                repository: f.context.repository,
+                issue: f.context.issue,
+                activity: 'stage-write',
+                backend: createRevisionMemory(snapshot),
+                projectDir: f.projectDir,
+              },
+              () => calls.push('stage')
+            ),
+            (error) => error.code === 'revision-pending'
+          );
+          assert.deepEqual(calls, []);
+          if (!late && !cancelled) {
+            const partialCodec =
+              await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+            const input = { journal: structuredClone(journal) };
+            const projected = partialCodec.deriveRecordedNativeStagePartialFacts(input);
+            const selected = input.journal;
+            let gets = 0;
+            queueMicrotask(() =>
+              Object.defineProperty(input, 'journal', {
+                enumerable: true,
+                get() {
+                  gets++;
+                  return selected;
+                },
+              })
+            );
+            const facts = await projected;
+            assert.equal(gets, 0);
+            assert.equal(
+              Object.hasOwn(facts, 'progressVerified'),
+              false,
+              'DATA never asserts current verification'
+            );
+            assert.equal(facts.boardMoved, true);
+            assert.equal(facts.sentinelPresent, completed >= 15);
+            assert.equal(facts.transitionCommitPresent, completed === 16);
+            const lost = structuredClone(snapshot);
+            if (completed === 16) lost.nativeStageResources.comments.pop();
+            else if (completed === 15)
+              lost.observation.body = structuredClone(journal.header.original.observation.body);
+            else
+              lost.nativeStageResources.membership = structuredClone(
+                journal.header.original.resources.membership
+              );
+            const rejected = await observeRevision({
+              context: f.context,
+              deps: createRevisionMemory(lost),
+            });
+            assert.equal(
+              rejected.status,
+              'indeterminate',
+              'completed resource facts cannot disappear'
+            );
+          }
           return;
         }
         assert.ok(beforeComment, 'capture after actual completed15');

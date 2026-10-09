@@ -70,3 +70,11 @@ test('a public copied holder tuple cannot create private report membership', asy
     (error) => error.preparationReason === 'original-partial-report-input'
   );
 });
+
+test('partial report refuses null and primitive roots without selecting state', async () => {
+  for (const input of [null, undefined, true, 3, 'claimed', []])
+    await assert.rejects(
+      async () => store.readMemoryNativeStagePartialFacts(input),
+      /criteria-revision:native-stage-partial/
+    );
+});
