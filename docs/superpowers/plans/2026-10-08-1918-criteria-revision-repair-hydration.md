@@ -1,16 +1,20 @@
 # #1918 criteria-revision repair hydration plan
 
-Status: all sixteen children and sibling epic #1918 are hydrated and independently verified in Ready for Planning. Each has current scope, acceptance criteria, declared verifiers, dependencies, priority, rank, size, estimate and a genuine refinement snapshot. This is not child implementation-plan approval or completed delivery verification. Parent rollups were recalculated and published: #1918 = 144h; #1847 = 250.5h, counting each direct child once.
+Status: all sixteen children and repair epic #1918 are hydrated and independently verified in Ready for Planning. Each has current scope, acceptance criteria, declared verifiers, dependencies, priority, rank, size, estimate and a genuine refinement snapshot. This is not child implementation-plan approval or completed delivery verification. Parent rollups were recalculated and published: #1918 = 144h; #1847 = 250.5h, counting each direct child once.
 
 **Goal:** Complete the remaining original1855/1847 Task5 protection contract through bounded repairs, preserving existing code, history and failing/passing evidence.
 
-**Architecture:** Children work on an ordered sibling integration branch over the preserved committed1855 checkpoint. Each repair reuses its existing code, completes only its assigned gaps, passes declared checks and any mandatory provider checks, and records inherited failures truthfully. Original1855/PR1907 wait for final combined green integration. No child requires1855Done.
+**Architecture:** Children work on an ordered repair integration branch over the preserved committed1855 checkpoint. Each repair reuses its existing code, completes only its assigned gaps, passes declared checks and any mandatory provider checks, and records inherited failures truthfully. Original1855/PR1907 wait for final combined green integration. No child requires1855Done.
 
 **Tech stack:** Node.js scripts and Markdown. No compiled native binaries/addons.
 
 **Governing specification:** docs/superpowers/specs/2026-09-30-1847-governed-criteria-revisions-design.md; original accepted implementation plan docs/superpowers/plans/2026-09-30-1847-governed-criteria-revisions.md, Task5.
 
 **Original implementation checkpoint:**14f6c5589724e9d2a33c2353c19f0c793bfe6033. The portable feature/epic/1918/parent branch also preserves the subsequent 58-path implementation checkpoint in Git history. Use the source and commit history in that branch; no prior machine-specific donor checkout is required. Old local receipts do not prove a new HEAD or published CI.
+
+## Current hierarchy
+
+The user confirmed #1847 → #1855 → #1918 → repair children on October 8, 2026. GitHub was corrected accordingly. The original hydration estimates and history remain recorded below; #1918 executes as a child of the still-active #1855 rather than as its sibling. See docs/superpowers/plans/2026-10-08-1918-delivery-execution.md.
 
 ## Global constraints
 
@@ -20,41 +24,41 @@ Preserve original algorithms/body invariants/authority/current-source and common
 
 Nonoverlapping remaining repair forecast144h; retains prior implementation and tests and includes incremental authoring/diagnosis/review, not passive CI time. Retained1855 accounting56h comprises52 historical human-equivalent implemented-work estimate plus4 future administration. These are forecasts, not reconstructed productive-time measurements. The prior80h whole-scope forecast is historical, not a current ceiling. The proposed24h tail/unknown recovery row was split into8+16 before hydration.
 
-| Rank in #1918 | Child | Scope | Remaining h | Native blockers |
-|---:|---|---|---:|---|
-| 1 | [#1919](https://github.com/kburson/ai-task-manager/issues/1919) | Repair UTC timestamp and validation-budget regressions | 6 | #1854 |
-| 2 | [#1909](https://github.com/kburson/ai-task-manager/issues/1909) | Protect ordinary writers with revision admission and ordered locks | 8 | #1919 |
-| 3 | [#1910](https://github.com/kburson/ai-task-manager/issues/1910) | Bind evidence and lifecycle decisions to the current revision | 8 | #1909 |
-| 3 | [#1911](https://github.com/kburson/ai-task-manager/issues/1911) | Stop stale code work across hooks and bound sessions | 8 | #1909 |
-| 4 | [#1912](https://github.com/kburson/ai-task-manager/issues/1912) | Complete actor, board and sentinel prefix conformance | 6 | #1911, #1910 |
-| 5 | [#1916](https://github.com/kburson/ai-task-manager/issues/1916) | Complete original rollback and audit compensation | 12 | #1912 |
-| 5 | [#1920](https://github.com/kburson/ai-task-manager/issues/1920) | Complete consistency checks and transition-comment custody | 4 | #1912 |
-| 6 | [#1913](https://github.com/kburson/ai-task-manager/issues/1913) | Complete dispatcher and cache continuation | 8 | #1920 |
-| 6 | [#1915](https://github.com/kburson/ai-task-manager/issues/1915) | Resume known early transition prefixes through genuine reentry | 14 | #1920 |
-| 6 | [#1924](https://github.com/kburson/ai-task-manager/issues/1924) | Report committed transition facts accurately on failure and cancellation | 6 | #1920 |
-| 7 | [#1921](https://github.com/kburson/ai-task-manager/issues/1921) | Complete conditional follow-up actions and tracker persistence | 10 | #1913 |
-| 8 | [#1914](https://github.com/kburson/ai-task-manager/issues/1914) | Complete event-field source, resource and temporary-file protocol | 12 | #1921 |
-| 9 | [#1922](https://github.com/kburson/ai-task-manager/issues/1922) | Authorize exact event-body admission and compose terminal completion | 10 | #1914 |
-| 10 | [#1923](https://github.com/kburson/ai-task-manager/issues/1923) | Resume known transition tail prefixes without duplicate effects | 8 | #1922, #1915 |
-| 11 | [#1925](https://github.com/kburson/ai-task-manager/issues/1925) | Reconcile unknown transition outcomes through idempotent repair | 16 | #1923 |
-| 12 | [#1917](https://github.com/kburson/ai-task-manager/issues/1917) | Verify the complete consumer boundary and passing integration CI | 8 | #1925, #1924, #1916 |
+| Rank in #1918 | Child                                                           | Scope                                                                    | Remaining h | Native blockers     |
+| ------------: | --------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------: | ------------------- |
+|             1 | [#1919](https://github.com/kburson/ai-task-manager/issues/1919) | Repair UTC timestamp and validation-budget regressions                   |           6 | #1854               |
+|             2 | [#1909](https://github.com/kburson/ai-task-manager/issues/1909) | Protect ordinary writers with revision admission and ordered locks       |           8 | #1919               |
+|             3 | [#1910](https://github.com/kburson/ai-task-manager/issues/1910) | Bind evidence and lifecycle decisions to the current revision            |           8 | #1909               |
+|             3 | [#1911](https://github.com/kburson/ai-task-manager/issues/1911) | Stop stale code work across hooks and bound sessions                     |           8 | #1909               |
+|             4 | [#1912](https://github.com/kburson/ai-task-manager/issues/1912) | Complete actor, board and sentinel prefix conformance                    |           6 | #1911, #1910        |
+|             5 | [#1916](https://github.com/kburson/ai-task-manager/issues/1916) | Complete original rollback and audit compensation                        |          12 | #1912               |
+|             5 | [#1920](https://github.com/kburson/ai-task-manager/issues/1920) | Complete consistency checks and transition-comment custody               |           4 | #1912               |
+|             6 | [#1913](https://github.com/kburson/ai-task-manager/issues/1913) | Complete dispatcher and cache continuation                               |           8 | #1920               |
+|             6 | [#1915](https://github.com/kburson/ai-task-manager/issues/1915) | Resume known early transition prefixes through genuine reentry           |          14 | #1920               |
+|             6 | [#1924](https://github.com/kburson/ai-task-manager/issues/1924) | Report committed transition facts accurately on failure and cancellation |           6 | #1920               |
+|             7 | [#1921](https://github.com/kburson/ai-task-manager/issues/1921) | Complete conditional follow-up actions and tracker persistence           |          10 | #1913               |
+|             8 | [#1914](https://github.com/kburson/ai-task-manager/issues/1914) | Complete event-field source, resource and temporary-file protocol        |          12 | #1921               |
+|             9 | [#1922](https://github.com/kburson/ai-task-manager/issues/1922) | Authorize exact event-body admission and compose terminal completion     |          10 | #1914               |
+|            10 | [#1923](https://github.com/kburson/ai-task-manager/issues/1923) | Resume known transition tail prefixes without duplicate effects          |           8 | #1922, #1915        |
+|            11 | [#1925](https://github.com/kburson/ai-task-manager/issues/1925) | Reconcile unknown transition outcomes through idempotent repair          |          16 | #1923               |
+|            12 | [#1917](https://github.com/kburson/ai-task-manager/issues/1917) | Verify the complete consumer boundary and passing integration CI         |           8 | #1925, #1924, #1916 |
 
 ## Relative execution ranks
 
-| Rank in #1918 | Pick up | Mode |
-|---:|---|---|
-| 1 | #1919 | Single story |
-| 2 | #1909 | Single story |
-| 3 | #1910, #1911 | Parallel wave |
-| 4 | #1912 | Single story |
-| 5 | #1916, #1920 | Parallel wave |
-| 6 | #1913, #1915, #1924 | Parallel wave |
-| 7 | #1921 | Single story |
-| 8 | #1914 | Single story |
-| 9 | #1922 | Single story |
-| 10 | #1923 | Single story |
-| 11 | #1925 | Single story |
-| 12 | #1917 | Single story |
+| Rank in #1918 | Pick up             | Mode          |
+| ------------: | ------------------- | ------------- |
+|             1 | #1919               | Single story  |
+|             2 | #1909               | Single story  |
+|             3 | #1910, #1911        | Parallel wave |
+|             4 | #1912               | Single story  |
+|             5 | #1916, #1920        | Parallel wave |
+|             6 | #1913, #1915, #1924 | Parallel wave |
+|             7 | #1921               | Single story  |
+|             8 | #1914               | Single story  |
+|             9 | #1922               | Single story  |
+|            10 | #1923               | Single story  |
+|            11 | #1925               | Single story  |
+|            12 | #1917               | Single story  |
 
 Ranks are relative to immediate epic #1918, starting at1. Parallel groups are3,5,6. All sixteen ranks/snapshots and actual Project fields/Status were independently verified, with all children and parent R4P. Before parallel dispatch, approved Plans must resolve exclusive function/file ownership, shared contracts and integration order; equal rank does not grant Plan approval. Native blocker edges and all scopes/verifiers/estimates remain unchanged. This twelve-wave table supersedes the old conservative1–15 schedule.
 

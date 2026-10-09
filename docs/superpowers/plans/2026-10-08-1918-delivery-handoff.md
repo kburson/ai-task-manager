@@ -4,28 +4,30 @@ Status: approved wave-rank cleanup completed. All sixteen child ranks and curren
 
 ## Start here
 
+The user confirmed the current hierarchy on October 8, 2026: #1847 → #1855 → #1918 → #1919. The ancestor epics stay active while their descendant repairs execute. Current orchestration plan: docs/superpowers/plans/2026-10-08-1918-delivery-execution.md.
+
 The next session should orchestrate #1918 and pick up **#1919 first**, then #1909. Follow current AITM guidance, bind with the correct role, query fresh Explain, and use the normal parent and child Plan/approval/state progression before code. Parent1918 has not been admitted to Develop; do not skip its gates just to start a child. Do not reopen completed #1851–#1854.
 
 Current authoritative schedule: https://github.com/kburson/ai-task-manager/issues/1918#issuecomment-6069978884
 
 ## Pickup waves
 
-| Rank in #1918 | Pick up | Mode |
-|---:|---|---|
-| 1 | #1919 | Single story |
-| 2 | #1909 | Single story |
-| 3 | #1910, #1911 | Parallel wave |
-| 4 | #1912 | Single story |
-| 5 | #1916, #1920 | Parallel wave |
-| 6 | #1913, #1915, #1924 | Parallel wave |
-| 7 | #1921 | Single story |
-| 8 | #1914 | Single story |
-| 9 | #1922 | Single story |
-| 10 | #1923 | Single story |
-| 11 | #1925 | Single story |
-| 12 | #1917 | Single story |
+| Rank in #1918 | Pick up             | Mode          |
+| ------------: | ------------------- | ------------- |
+|             1 | #1919               | Single story  |
+|             2 | #1909               | Single story  |
+|             3 | #1910, #1911        | Parallel wave |
+|             4 | #1912               | Single story  |
+|             5 | #1916, #1920        | Parallel wave |
+|             6 | #1913, #1915, #1924 | Parallel wave |
+|             7 | #1921               | Single story  |
+|             8 | #1914               | Single story  |
+|             9 | #1922               | Single story  |
+|            10 | #1923               | Single story  |
+|            11 | #1925               | Single story  |
+|            12 | #1917               | Single story  |
 
-Ranks are relative to immediate epic #1918. Its own rank8 under #1847 is independent of these child ranks. Finish the current wave through the governed verification/review/integration/close workflow before pulling the next rank. Same-rank stories are permitted parallel candidates, with no implied dependency on one another.
+Ranks are relative to immediate epic #1918. The current native hierarchy is #1847 → #1855 → #1918 → these children; #1918 is no longer a sibling of #1855. Its own scheduling rank is independent of these child ranks. Finish the current wave through the governed verification/review/integration/close workflow before pulling the next rank. Same-rank stories are permitted parallel candidates, with no implied dependency on one another.
 
 Native blocker edges remain precise: #1916 and #1920 both require #1912; #1913, #1915 and #1924 require #1920; #1921 directly requires #1913; #1923 requires #1915 and #1922; #1917 requires #1916, #1924 and #1925. Rank-wave barriers are scheduling policy, not new native blocker edges.
 
