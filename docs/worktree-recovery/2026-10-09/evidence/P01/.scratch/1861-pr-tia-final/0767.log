@@ -1,0 +1,15 @@
+✔ ordinary and two delivery histories coexist without ordinary policy drift (9.561209ms)
+✔ duplicate delivery exception identities and cross-partition links refuse (2.206166ms)
+✔ delivery roots, heads, gaps, and unknown schemas fail closed (2.467875ms)
+✔ store records, retries, and revokes one delivery partition without touching others (11.792083ms)
+✔ re-scoping within one delivery operation requires a fresh approval reference (3.205042ms)
+✔ store refuses an operation digest already used by another partition (1.012375ms)
+✔ lost write and wrong-partition readback remain indeterminate (2.990541ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37.4155

@@ -1,0 +1,24 @@
+✖ ordinary scratch root selection never reads binding or runtime control (18.216958ms)
+✔ registered recovery grammar requires exact observation or plan and refuses unrelated capabilities (0.513542ms)
+✔ registered runtime planner remains reachable without binding or valid control and publishes no authority (2767.921125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2790.087333
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs:13:1
+✖ ordinary scratch root selection never reads binding or runtime control (18.216958ms)
+  Error: artifact attempted a binding read
+      at resolveProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs:17:40)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:57:12)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs:16:22)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)

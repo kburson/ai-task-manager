@@ -1,0 +1,18 @@
+{
+  "head": "d8f885592c6dc24a3418861802768fc2efbf742b",
+  "preexistingPaths": 349,
+  "indexPreserved": true,
+  "refsPreserved": true,
+  "backups": [
+    {
+      "file": "scripts/task-tracker/lib/runtime-process-census.mjs",
+      "save": ".scratch/gh/1861-node-label-native-before/scripts/task-tracker/lib/runtime-process-census.mjs",
+      "mode": 33188
+    },
+    {
+      "file": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+      "save": ".scratch/gh/1861-node-label-native-before/scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+      "mode": 33188
+    }
+  ]
+}

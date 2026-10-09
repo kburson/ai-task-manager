@@ -1,0 +1,21 @@
+
+/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-2KCQWx/scripts/gh/shebang-late.test.mjs
+  3:2  error  Parsing error: Unexpected character '!'
+
+/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-9TIEdX/scripts/gh/shebang-late.test.mjs
+  3:2  error  Parsing error: Unexpected character '!'
+
+/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-PR0Twb/scripts/gh/shebang-late.test.mjs
+  3:2  error  Parsing error: Unexpected character '!'
+
+/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-mfnObz/scripts/gh/shebang-late.test.mjs
+  3:2  error  Parsing error: Unexpected character '!'
+
+/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-qrW9Vd/scripts/gh/shebang-late.test.mjs
+  3:2  error  Parsing error: Unexpected character '!'
+
+/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-wXlp74/scripts/gh/shebang-late.test.mjs
+  3:2  error  Parsing error: Unexpected character '!'
+
+✖ 6 problems (6 errors, 0 warnings)
+

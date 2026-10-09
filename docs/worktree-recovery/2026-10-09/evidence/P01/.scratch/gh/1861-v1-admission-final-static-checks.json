@@ -1,0 +1,12 @@
+[
+  {
+    "name": "lint",
+    "status": 0,
+    "stdout": ""
+  },
+  {
+    "name": "format",
+    "status": 0,
+    "stdout": "Checking formatting...\nAll matched files use Prettier code style!\n"
+  }
+]

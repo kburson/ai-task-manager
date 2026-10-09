@@ -1,0 +1,54 @@
+✔ layout audit rejects a discovered test outside the canonical lane tree (213.698042ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (134.424542ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (105.637042ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (197.588ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (1.378ms)
+✔ current test-tree baseline is well formed (1.17625ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.274917ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.282625ms)
+✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (4.309208ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (9.118792ms)
+✔ batched cwd observations keep missing and duplicate process evidence unavailable (21.842333ms)
+✔ process observation preserves executable paths containing spaces without parsing argv as executable identity (0.644ms)
+✔ process census separates actual current/registered router ancestry from uncooperative or unknown writers (0.630459ms)
+✔ process census observes an unleased writer with label node (0.175792ms)
+✖ process census observes an unleased writer with label node-MainThread (1.121458ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 14
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 763.305917
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs:116:3
+✖ process census observes an unleased writer with label node-MainThread (1.121458ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      complete: true,
+  +   processes: [],
+  -   processes: [
+  -     {
+  -       observed: 'live',
+  -       pid: 18610,
+  -       projectRoot: '/repo'
+  -     }
+  -   ],
+      unknown: []
+    }
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs:120:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { complete: true, processes: [], unknown: [] },
+    expected: { complete: true, processes: [ [Object] ], unknown: [] },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

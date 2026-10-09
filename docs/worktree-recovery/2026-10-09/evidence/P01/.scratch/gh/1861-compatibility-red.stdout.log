@@ -1,0 +1,167 @@
+✔ layout audit rejects a discovered test outside the canonical lane tree (193.10475ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (93.354666ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (163.845ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (179.839208ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (1.752916ms)
+✔ current test-tree baseline is well formed (1.303834ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.352958ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.359709ms)
+✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (4.670208ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (13.115958ms)
+✖ empty main and linked activation support real ordinary batches with exact control identities (2338.069167ms)
+✖ completed empty retry refuses an unfinished ordinary batch without rewriting any member (1787.216917ms)
+✖ completed empty retry preserves ordinary writes and separately initialized new linked roots (737.755417ms)
+✖ empty planning refuses unknown despite complete with typed blockers and no writes (90.380291ms)
+✖ empty planning refuses missing unknown census with typed blockers and no writes (92.282833ms)
+✖ empty planning refuses partial self claim with typed blockers and no writes (90.796041ms)
+✖ empty planning refuses foreign host writer with typed blockers and no writes (111.037833ms)
+✖ empty planning refuses unknown writer shape with typed blockers and no writes (95.833459ms)
+✔ empty planning refuses uncooperative old writer with typed blockers and no writes (96.079042ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 11
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5518.848875
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:21:1
+✖ empty main and linked activation support real ordinary batches with exact control identities (2338.069167ms)
+  Error [RuntimeRootError]: Refusing an unsupported batch journal before publication
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-batch.mjs:38:9)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-batch.mjs:244:7
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at coordinated.retainOnAsync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:698:67)
+      at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:314:20)
+      at withRuntimeStoreLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:698:10)
+      at leased (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-batch.mjs:118:38)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-batch.mjs:120:5
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:619:32) {
+    code: 'RUNTIME_BATCH_INVALID'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:34:1
+✖ completed empty retry refuses an unfinished ordinary batch without rewriting any member (1787.216917ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /held batch/. Input:
+  
+  'RuntimeRootError: Refusing an unsupported batch journal before publication'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:35:33)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: RuntimeRootError: Refusing an unsupported batch journal before publication
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-batch.mjs:38:9)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-batch.mjs:244:7
+        at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+        at coordinated.retainOnAsync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:698:67)
+        at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:314:20)
+        at withRuntimeStoreLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:698:10)
+        at leased (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-batch.mjs:118:38)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-batch.mjs:120:5
+        at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+        at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:619:32),
+    expected: /held batch/,
+    operator: 'throws',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:40:1
+✖ completed empty retry preserves ordinary writes and separately initialized new linked roots (737.755417ms)
+  Error [RuntimeRootError]: A genuine process and provider session are required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:32:9)
+      at identity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:56:5)
+      at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:579:17)
+      at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-migration-lock.mjs:617:17)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-writer.mjs:145:10)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-writer.mjs:167:10)
+      at writeRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-writer.mjs:131:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:42:2)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_MIGRATION_IDENTITY_REQUIRED'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3
+✖ empty planning refuses unknown despite complete with typed blockers and no writes (90.380291ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:234)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3
+✖ empty planning refuses missing unknown census with typed blockers and no writes (92.282833ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:234)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3
+✖ empty planning refuses partial self claim with typed blockers and no writes (90.796041ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:234)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3
+✖ empty planning refuses foreign host writer with typed blockers and no writes (111.037833ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:234)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:3
+✖ empty planning refuses unknown writer shape with typed blockers and no writes (95.833459ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  TypeError: Cannot read properties of null (reading 'provider')
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:234)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: Cannot read properties of null (reading 'provider')
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-authority-census.mjs:248:38
+        at Array.every (<anonymous>)
+        at same (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-authority-census.mjs:247:50)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-authority-census.mjs:251:51
+        at Array.some (<anonymous>)
+        at observeRuntimeAuthorityCensus (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-authority-census.mjs:251:33)
+        at async planEmptyRuntimeInitialization (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-empty-initialize.mjs:44:23)
+        at async waitForActual (node:assert:615:5)
+        at async strict.rejects (node:assert:738:25)
+        at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs:56:234),
+    operator: 'rejects',
+    diff: 'simple'
+  }

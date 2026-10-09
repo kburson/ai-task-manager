@@ -1,0 +1,56 @@
+{
+  "base": "df0a8d61aae471f5dced11501586a3dbf0c2f157",
+  "changedPaths": [
+    "scripts/tests/helpers/runtime-empty-contract-fixture.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+    "scripts/task-tracker/lib/runtime-empty-record.mjs",
+    "scripts/task-tracker/lib/runtime-authority-census.mjs",
+    "scripts/task-tracker/lib/runtime-empty-initialize.mjs"
+  ],
+  "selection": {
+    "tests": [
+      "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs"
+    ],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-authority-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/tests/helpers/runtime-empty-contract-fixture.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "signal": "manifest",
+        "reason": "current test tree authority change"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "changed-test",
+        "reason": "changed or newly discovered test"
+      }
+    ],
+    "escalated": false
+  }
+}

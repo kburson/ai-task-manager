@@ -1,0 +1,12 @@
+✔ two runner fixtures coexist with immutable setup and isolated mutable observations (178.259125ms)
+✔ runner subprocess environments are fresh and never mutate process.env (0.269625ms)
+✔ two chore-mode fixtures isolate repositories, state, environments, and reset (57.834792ms)
+✔ feature fixture teardown is idempotent and removes only owned roots (54.792166ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 294.3425
