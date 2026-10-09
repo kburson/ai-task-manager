@@ -1,0 +1,5 @@
+- **kind**: code
+- **discovered-during**: #1872 registered Review at source 87f3e5e9eab41ff100367eb7a2eb71de444671bd
+- **authority**: Maintainer authorized sole task ownership and delivery of #1872 to Done, including necessary completion blocker repair; no orchestrator or sub-agent.
+- **evidence**: Canonical Test receipt 01M43SV1TBD7C64G81PNQT2F1V is green; cloud run 37212706089 is green; authorized focused PR diff reviewer returned READY. Review failed on historical duplicate actor starts; registered delivery refused delivery-preflight:agent-review-evidence.
+- **related**: #1862 broader runtime writer/timing adoption and compatibility; adoption scope remains intact.

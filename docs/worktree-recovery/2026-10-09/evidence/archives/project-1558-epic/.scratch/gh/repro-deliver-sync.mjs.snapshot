@@ -1,0 +1,25 @@
+import { evaluateDeliveryReadiness } from '../../scripts/task-tracker/lib/action-decision/deliver.mjs';
+import { cfg, deliver, makeHarness, trackerState } from '../../scripts/tests/unit/task-tracker/verbs/deliver-test-harness.mjs';
+import { parseDeliveryCommentForPullRequest, projectDeliveryRecords } from '../../scripts/task-tracker/lib/delivery-records.mjs';
+
+const harness = makeHarness();
+console.log('first', (await deliver(harness)).status);
+harness.data.prState = 'MERGED';
+console.log('merged', (await deliver(harness)).status);
+harness.data.prState = 'OPEN';
+try {
+  const parsed = harness.data.comments.map(comment => parseDeliveryCommentForPullRequest(comment, {repository: cfg().repo, issueNumber:939, prNumber:1400})).filter(Boolean);
+  console.log('parsed', parsed.map(x=>x.record?.schema));
+  console.log('projection', projectDeliveryRecords(parsed));
+} catch(error) { console.log('PROJECTION THREW', error.stack); }
+const fetchIssue = harness.deps.fetchIssue;
+const deps = { ...harness.deps, fetchIssue: async (...args) => ({ ...(await fetchIssue(...args)), body: '## User Story\nA\n## Scope\nB\n## Acceptance Criteria\n- [x] C' }), providerActionAvailable: true };
+for (const [key, fn] of Object.entries(deps)) {
+  if (typeof fn !== 'function') continue;
+  deps[key] = async (...args) => {
+    try { return await fn(...args); }
+    catch (error) { console.log('THREW', key, error.message); throw error; }
+  };
+}
+const decision = await evaluateDeliveryReadiness({ issue: 939, cfg: cfg(), projectDir: process.cwd(), state: trackerState(), deps });
+console.log('decision', decision.status, decision.blockers);

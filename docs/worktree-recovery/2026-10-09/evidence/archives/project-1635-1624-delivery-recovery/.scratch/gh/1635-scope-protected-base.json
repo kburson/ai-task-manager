@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "Recover the single preserved `feature/epic/1624` history accepted at\n`2158a289a63b27b9b4d08b8701a16f0b9d3e805d`. Publish that exact history without\nrewrite, open and merge a governed pull request to `trunk`, verify the landed\nmerge/squash against current remote trunk, and use AITM's supported reopened-close\nrecovery path to correct #1624's terminal delivery authority.",
+  "replacement": "Recover the single preserved `feature/epic/1624` history accepted at\n`2158a289a63b27b9b4d08b8701a16f0b9d3e805d`. Preserve that historical commit\nwithout rewrite, add one exact two-parent merge of current `origin/trunk`, deliver\nthe integration head through the governed pull request, and use AITM's audited\nfalse-delivery recovery path to correct #1624 at the SHA actually delivered."
+}

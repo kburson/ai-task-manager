@@ -1,0 +1,2 @@
+npm notice run @kburson/ai-task-manager@0.1.0 lint:js
+npm notice run eslint .

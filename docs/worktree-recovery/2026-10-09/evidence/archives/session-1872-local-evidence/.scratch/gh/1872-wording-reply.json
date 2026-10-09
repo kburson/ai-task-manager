@@ -1,0 +1,1 @@
+{"body": "Applied your exact wording in 87f3e5e9: \u201cRun all rank 2 children [140,144,145] of epic #107 in parallel.\u201d It is also a direct positive authorization test, so the prose and parser agree. All 45 source tests pass, exact-head cloud CI is green, and the independent focused diff reviewer returned READY."}

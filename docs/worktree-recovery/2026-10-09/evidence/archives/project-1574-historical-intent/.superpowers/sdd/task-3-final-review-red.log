@@ -1,0 +1,246 @@
+▶ historical reconstruction and every retry enforce manual approval of the accepted historical SHA
+  ✖ 0 records: missing approval (2.099958ms)
+  ✖ 0 records: stale local-head approval (0.9675ms)
+  ✖ 0 records: exact accepted-head approval (1.675167ms)
+  ✖ 1 records: missing approval (1.269375ms)
+  ✖ 1 records: stale local-head approval (1.086542ms)
+  ✖ 1 records: exact accepted-head approval (1.416167ms)
+  ✖ 2 records: missing approval (0.733125ms)
+  ✖ 2 records: stale local-head approval (0.650375ms)
+  ✖ 2 records: exact accepted-head approval (0.726083ms)
+  ✖ 3 records: missing approval (0.53525ms)
+  ✖ 3 records: stale local-head approval (0.42725ms)
+  ✖ 3 records: exact accepted-head approval (0.459334ms)
+✖ historical reconstruction and every retry enforce manual approval of the accepted historical SHA (19.693583ms)
+✔ ordinary prior-intent historical recovery retains its existing manual-review behavior (1.585708ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 1
+ℹ fail 13
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.798541
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 0 records: missing approval (2.099958ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:606:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /delivery-preflight:manual-code-review-approval-missing/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 0 records: stale local-head approval (0.9675ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:606:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /delivery-preflight:manual-code-review-approval-missing/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 0 records: exact accepted-head approval (1.675167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  - ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:611:16)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 1 records: missing approval (1.269375ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:606:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /delivery-preflight:manual-code-review-approval-missing/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 1 records: stale local-head approval (1.086542ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:606:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /delivery-preflight:manual-code-review-approval-missing/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 1 records: exact accepted-head approval (1.416167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  - ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:611:16)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 2 records: missing approval (0.733125ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:606:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /delivery-preflight:manual-code-review-approval-missing/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 2 records: stale local-head approval (0.650375ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:606:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /delivery-preflight:manual-code-review-approval-missing/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 2 records: exact accepted-head approval (0.726083ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  - ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:611:16)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 3 records: missing approval (0.53525ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:606:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /delivery-preflight:manual-code-review-approval-missing/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 3 records: stale local-head approval (0.42725ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:606:11)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /delivery-preflight:manual-code-review-approval-missing/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:15
+✖ 3 records: exact accepted-head approval (0.459334ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  - ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:611:16)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs:580:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
