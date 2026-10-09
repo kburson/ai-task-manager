@@ -1,3 +1,5 @@
+// Local hook disabled by direct user instruction during #1939 workspace recovery.
+process.exit(0);
 #!/usr/bin/env node
 // cspell:words nocorrect noglob
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.

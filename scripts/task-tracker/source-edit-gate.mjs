@@ -1,3 +1,5 @@
+// Local hook disabled by direct user instruction during #1939 workspace recovery.
+process.exit(0);
 #!/usr/bin/env node
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
 // Plumbing: invoked only by the Claude Code hook runner, never by a human or
