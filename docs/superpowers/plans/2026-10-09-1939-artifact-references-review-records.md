@@ -81,7 +81,7 @@ All unqualified paths are in AITM. Existing lib paths below are relative to `scr
 | 1    |    10 | none           |    1 | marker codec, protection, artifact writer and consumer inventory            |
 | 2    |    12 | 1              |    2 | immutable resolver and legacy observation adapter                           |
 | 3    |    12 | 2              |    3 | all operational reader and split-plan migrations                            |
-| 4    |     8 | 3              |    4 | metadata projection and validated enrollment writer                         |
+| 4    |     8 | 3, 7           |    4 | metadata projection and validated enrollment writer                         |
 | 5    |    12 | 1              |    2 | standalone producer deliverable and AITM compatibility bridge               |
 | 6    |    10 | 2, 5           |    3 | manual-record validation and summary generation                             |
 | 7    |    12 | 1              |    2 | production authority, lock safety and durable effect store                  |
@@ -456,7 +456,7 @@ The root's actor, capability, need and counterfactual value are copied from the 
 | --------------------------------------- | ------------------------ |
 | 1: versioned reference contract         | 1, 2, 4                  |
 | 2: human metadata groups                | 4, 12                    |
-| 3: operational consumer parity          | 2, 3                     |
+| 3: operational consumer parity          | 2, 3, 8                  |
 | 4: accurate consolidated records        | 5, 6, 8                  |
 | 5: idempotent authoritative publication | 7, 8                     |
 | 6: backheal/resume/no-op                | 9, 10, 11                |
