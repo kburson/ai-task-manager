@@ -1,0 +1,12 @@
+{
+  "args": [
+    "aitm",
+    "ensureChecked",
+    "Existing supported legacy heading and declaration forms retain their behavior."
+  ],
+  "status": 0,
+  "stdout": "[task-tracker] ✓ Checked \"Existing supported legacy heading and declaration forms retain their behavior.\" on #1897\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ensureChecked Existing supported legacy heading and declaration forms retain their behavior.\n",
+  "capturedAt": "2026-10-05T23:57:55.802Z",
+  "metadataNote": "Wrapper capture time after command return; actual native verifier timestamps remain unchanged in stdout/live marker."
+}

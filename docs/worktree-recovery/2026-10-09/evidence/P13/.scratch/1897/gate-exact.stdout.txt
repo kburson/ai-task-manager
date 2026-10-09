@@ -1,0 +1,74 @@
+// `aitm-verified-by` marker cannot be ticked unless a matching
+// `aitm-ac-evidence:<key>` stamp (from `/task ac-stamp`) already exists.
+//
+// Returns the Functional DoD gate's verdict when it is non-pass, else one of:
+//   { kind: 'pass' }
+//   { kind: 'refuse-ac-evidence', key, label, commands } — AC needs a stamp
+export function gateEvidenceTick(body, requestedLabel) {
+  const dod = gateFunctionalDodTick(body, requestedLabel);
+  if (dod.kind !== 'pass') return dod;
+  const ac = findEvidenceAc(body, requestedLabel);
+  if (!ac) return { kind: 'pass' };
+  if (ac.checked) return { kind: 'pass' }; // unticking is fine
+  if (!ac.evidenceMarker) {
+    return {
+      kind: 'refuse-ac-evidence',
+      key: ac.key,
+      label: ac.label,
+      commands: ac.evidenceCommands,
+    };
+  }
+  return { kind: 'pass' };
+}
+
+function formatGateRefusal(gate, issueRef) {
+  if (gate.kind === 'refuse-ac-evidence') {
+    const cmd = gate.commands?.[0] || '<verifier>';
+    return [
+      `EVIDENCE_REQUIRED: [task-tracker] ✗ Refusing to tick AC "${gate.label}" on ${issueRef}.`,
+      `  This acceptance criterion declares a verifier (aitm-verified cmd="…") but carries`,
+      `  no aitm-ac-evidence:${gate.key} marker. Run \`/task ac-stamp "${gate.label}"\` to`,
+      `  execute \`${cmd}\` in a sandbox; the evidence marker it stamps unlocks this tick.`,
+    ].join('\n');
+  }
+  if (gate.kind === 'refuse-derived') {
+    return [
+      `[task-tracker] ✗ Refusing to tick Functional DoD "${gate.label}" on ${issueRef}.`,
+      `  Key dod:functional:${gate.key} is DERIVED — its truth is computed from the body at`,
+      `  close time. Do not tick manually; \`/task close\` will derive and stamp it.`,
+    ].join('\n');
+  }
+  if (gate.kind === 'refuse-missing-evidence') {
+    return [
+      `[task-tracker] ✗ Refusing to tick Functional DoD "${gate.label}" on ${issueRef}.`,
+      `  Key dod:functional:${gate.key} has no aitm-dod-evidence marker. Run`,
+      `  \`/task dod-stamp ${gate.key}\` to execute the verifier in a sandbox; the`,
+      `  evidence marker it stamps unlocks this tick.`,
+    ].join('\n');
+  }
+  return null;
+}
+
+// #281 — stage-bound gate for `ensureChecked "Deep dive complete"`. Reads bound state
+// from the per-session active-task.json mirror (same source as the activity
+// hooks). Returns a refusal message string when blocked, null otherwise.
+// Grandfather: an `aitm-stage-bound-grandfather` marker on the live body
+// bypasses the gate (scoped to AC1/AC2 per spec).
+function stageBoundDeepDiveRefusal({ projectDir, body, issueNumber }) {
+  let bound;
+  try {
+    bound = readBoundState(projectDir);
+  } catch {
+    return null; // fail-open on state-read errors — hooks still gate body push
+  }
+  if (bound?.state !== 'refine') return null;
+  if (hasStageBoundGrandfather(body)) return null;
+  return formatStageBoundRefusal({
+    state: 'refine',
+    action: 'marking deep-dive complete via `/task ensureChecked "Deep dive complete"`',
+    nextVerb: '/task promote',
+    nextState: 'plan',
+    issueNumber,
+  });
+}
+

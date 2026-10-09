@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1902,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"unknown-vocabulary\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"action-not-explain-ready\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"navigation.unknown\",\"digest\":\"sha256:7f6c3dda5e69e6f032476ab40cf1e28b896cb14128b615cc6a3589a8db2738a9\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"recommendation\":null},{\"never\":\"execute_free_text\"},{\"never\":\"invoke_internal_mutator\"}]}}]}\n",
+    "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1902 --action approve --json\n"
+  ],
+  "pid": 33209,
+  "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1902,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"unknown-vocabulary\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"action-not-explain-ready\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"navigation.unknown\",\"digest\":\"sha256:7f6c3dda5e69e6f032476ab40cf1e28b896cb14128b615cc6a3589a8db2738a9\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"recommendation\":null},{\"never\":\"execute_free_text\"},{\"never\":\"invoke_internal_mutator\"}]}}]}\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1902 --action approve --json\n"
+}

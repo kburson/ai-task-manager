@@ -1,0 +1,44 @@
+✔ continuous nine-hour session is repaired without changing original rows or actor accounting (10.189125ms)
+✔ continuity recovery refuses wrong session before writing (0.980125ms)
+✔ continuity recovery refuses duplicate metadata before writing (0.768125ms)
+✔ continuity recovery refuses unexplained gap before writing (0.871ms)
+✔ continuity recovery refuses real terminal before writing (0.780958ms)
+✔ continuity recovery refuses user interruption before writing (0.594167ms)
+✔ continuity recovery refuses non-monotonic before writing (0.461292ms)
+✔ continuity recovery refuses malformed timestamp before writing (0.606833ms)
+✔ continuity recovery refuses truncated evidence before writing (0.598ms)
+✔ apply requires dry-run source, comment and transcript identities (1.381292ms)
+✔ canonical source or completed transcript drift refuses before mutation (2.03225ms)
+✔ unexplained gaps and general backdating remain forbidden (0.272042ms)
+✔ concurrent canonical or transcript change is refused under the apply boundary (4.671292ms)
+✔ append-only events beyond the completed window preserve the accepted evidence (2.849791ms)
+✔ remote readback failure cannot report a healed log (4.2285ms)
+✔ ambiguous timing actor windows refuse rather than inventing observations (0.545542ms)
+✔ late insertion of historical transcript records cannot escape the pinned prefix (0.5135ms)
+✔ duplicate tool observation identity refuses an ambiguous evidence window (0.466459ms)
+✔ conflicting repair modes refuse before reading or writing (0.295625ms)
+✖ canonical source is checked after the last transcript await before publishing (3.003083ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 19
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 233.7845
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs:322:1
+✖ canonical source is checked after the last transcript await before publishing (3.003083ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs:326:3)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /timing-continuity:source-drift/,
+    operator: 'rejects',
+    diff: 'simple'
+  }

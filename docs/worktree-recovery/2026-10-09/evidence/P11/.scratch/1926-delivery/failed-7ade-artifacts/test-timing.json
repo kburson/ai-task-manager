@@ -1,0 +1,640 @@
+{
+  "schema": 5,
+  "generatedAt": "2026-10-09T00:53:09.401Z",
+  "lane": "integration",
+  "command": "node scripts/run-tests.mjs --lane integration --shard 2/3",
+  "commit": "957148801e81576b1c2a1a406bc6e73ee0811ce9",
+  "runnerProfile": {
+    "label": "GitHub Actions 1000148426",
+    "platform": "linux",
+    "arch": "x64",
+    "nodeVersion": "24.21.0",
+    "logicalCpuCount": 4
+  },
+  "discoveryInventory": [
+    "scripts/tests/integration/gh/gh-call-census.test.mjs",
+    "scripts/tests/integration/meta/captured-commit-bytes.test.mjs",
+    "scripts/tests/integration/providers/transcript-resolver.test.mjs",
+    "scripts/tests/integration/review/peer-review-decommission.test.mjs",
+    "scripts/tests/integration/review/peer-review-migration-guard.test.mjs",
+    "scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs",
+    "scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs",
+    "scripts/tests/integration/task-tracker/delivery-content-comparison.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/graphql-usage-baseline.test.mjs",
+    "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs",
+    "scripts/tests/integration/task-tracker/graphql-usage-dispatch.test.mjs",
+    "scripts/tests/integration/task-tracker/graphql-usage-report.test.mjs",
+    "scripts/tests/integration/task-tracker/graphql-usage-storage.test.mjs",
+    "scripts/tests/integration/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/active-time-provider.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/captured-commit-bytes.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/duplicate-child-guard.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/codec.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/rehearsal-cli.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/governed-issue-record-writes.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-actual-traffic.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/lint-doc-anchors.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/process-timeouts.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-repair-target.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/scratch-dir-prototype.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs",
+    "scripts/tests/integration/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/close-trunk-delivery-gate.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-receipt.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/delivery-waiver-authority.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/local-trunk-close-authority.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/resume-binding-generation.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs"
+  ],
+  "count": 82,
+  "elapsed": {
+    "runnerMs": 192348.9,
+    "poolMs": 0.1,
+    "subprocessPoolMs": 0,
+    "slowPoolMs": 0,
+    "serialMs": 192348.7
+  },
+  "sums": {
+    "fileWallMs": 192347.6,
+    "inProcessMs": 182078.7,
+    "estimatedSpawnIoMs": 10269
+  },
+  "pareto": {
+    "p50": 4,
+    "p80": 12
+  },
+  "slowBucket": {
+    "thresholdMs": 2000,
+    "overThreshold": 16,
+    "slowBucketFiles": 0,
+    "slowBucketStillSlow": 0,
+    "slowBucketNowFast": 0,
+    "fastLaneOverThreshold": 16,
+    "demotionCandidates": [],
+    "promotionCandidates": [
+      "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/evidence-v2/rehearsal-cli.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs"
+    ]
+  },
+  "files": {
+    "scripts/tests/integration/gh/gh-call-census.test.mjs": {
+      "label": "scripts/tests/integration/gh/gh-call-census.test.mjs",
+      "wallMs": 380.3,
+      "inProcMs": 325.6,
+      "status": 0
+    },
+    "scripts/tests/integration/meta/captured-commit-bytes.test.mjs": {
+      "label": "scripts/tests/integration/meta/captured-commit-bytes.test.mjs",
+      "wallMs": 212.4,
+      "inProcMs": 159.6,
+      "status": 0
+    },
+    "scripts/tests/integration/providers/transcript-resolver.test.mjs": {
+      "label": "scripts/tests/integration/providers/transcript-resolver.test.mjs",
+      "wallMs": 203.1,
+      "inProcMs": 147.3,
+      "status": 0
+    },
+    "scripts/tests/integration/review/peer-review-decommission.test.mjs": {
+      "label": "scripts/tests/integration/review/peer-review-decommission.test.mjs",
+      "wallMs": 564.9,
+      "inProcMs": 499.5,
+      "status": 0
+    },
+    "scripts/tests/integration/review/peer-review-migration-guard.test.mjs": {
+      "label": "scripts/tests/integration/review/peer-review-migration-guard.test.mjs",
+      "wallMs": 302.5,
+      "inProcMs": 257.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs",
+      "wallMs": 119.2,
+      "inProcMs": 67.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs",
+      "wallMs": 66.7,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/delivery-content-comparison.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/delivery-content-comparison.integration.test.mjs",
+      "wallMs": 1000.2,
+      "inProcMs": 883.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs",
+      "wallMs": 183.8,
+      "inProcMs": 68,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs",
+      "wallMs": 780.2,
+      "inProcMs": 576.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/graphql-usage-baseline.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/graphql-usage-baseline.test.mjs",
+      "wallMs": 404.2,
+      "inProcMs": 346.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs",
+      "wallMs": 6386.7,
+      "inProcMs": 6316.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/graphql-usage-dispatch.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/graphql-usage-dispatch.test.mjs",
+      "wallMs": 69.7,
+      "inProcMs": 32.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/graphql-usage-report.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/graphql-usage-report.test.mjs",
+      "wallMs": 521.3,
+      "inProcMs": 466.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/graphql-usage-storage.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/graphql-usage-storage.test.mjs",
+      "wallMs": 545.8,
+      "inProcMs": 492.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs",
+      "wallMs": 107.6,
+      "inProcMs": 70.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/active-time-provider.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/active-time-provider.test.mjs",
+      "wallMs": 59.6,
+      "inProcMs": 10.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs",
+      "wallMs": 843.2,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/captured-commit-bytes.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/captured-commit-bytes.test.mjs",
+      "wallMs": 120.6,
+      "inProcMs": 67,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+      "wallMs": 4079.1,
+      "inProcMs": 4027,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs",
+      "wallMs": 1077.2,
+      "inProcMs": 896.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+      "wallMs": 170.8,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs",
+      "wallMs": 101.3,
+      "inProcMs": 62.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/duplicate-child-guard.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/duplicate-child-guard.test.mjs",
+      "wallMs": 1038,
+      "inProcMs": 979,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs",
+      "wallMs": 81.2,
+      "inProcMs": 28.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/codec.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/codec.test.mjs",
+      "wallMs": 190.1,
+      "inProcMs": 83.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs",
+      "wallMs": 1980.5,
+      "inProcMs": 1876.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/rehearsal-cli.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/rehearsal-cli.test.mjs",
+      "wallMs": 2601.6,
+      "inProcMs": 2549,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs",
+      "wallMs": 117.4,
+      "inProcMs": 40.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs",
+      "wallMs": 103.5,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs",
+      "wallMs": 100,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/governed-issue-record-writes.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/governed-issue-record-writes.test.mjs",
+      "wallMs": 93.1,
+      "inProcMs": 9.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-actual-traffic.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-actual-traffic.test.mjs",
+      "wallMs": 108,
+      "inProcMs": 64.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+      "wallMs": 48074.5,
+      "inProcMs": 47839.3,
+      "status": 1
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs",
+      "wallMs": 428,
+      "inProcMs": 217,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs",
+      "wallMs": 5109.3,
+      "inProcMs": 4952.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+      "wallMs": 9276.8,
+      "inProcMs": 9209,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+      "wallMs": 3194.6,
+      "inProcMs": 3068,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs",
+      "wallMs": 127.2,
+      "inProcMs": 75.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs",
+      "wallMs": 210.1,
+      "inProcMs": 24.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs",
+      "wallMs": 313.8,
+      "inProcMs": 268,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+      "wallMs": 5302.9,
+      "inProcMs": 5029.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs",
+      "wallMs": 20149.1,
+      "inProcMs": 19959,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs",
+      "wallMs": 468.8,
+      "inProcMs": 399.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs",
+      "wallMs": 26673.6,
+      "inProcMs": 26609.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "wallMs": 19256,
+      "inProcMs": 18978.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs",
+      "wallMs": 1293,
+      "inProcMs": 1131.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs",
+      "wallMs": 418.4,
+      "inProcMs": 313.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/lint-doc-anchors.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/lint-doc-anchors.test.mjs",
+      "wallMs": 140.7,
+      "inProcMs": 88.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs",
+      "wallMs": 47.9,
+      "inProcMs": 11.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
+      "wallMs": 1028.1,
+      "inProcMs": 975.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs",
+      "wallMs": 2419.4,
+      "inProcMs": 2380.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs",
+      "wallMs": 147.7,
+      "inProcMs": 45.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+      "wallMs": 3778.5,
+      "inProcMs": 3722.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+      "wallMs": 3973.8,
+      "inProcMs": 3886.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+      "wallMs": 3795.8,
+      "inProcMs": 3743.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/process-timeouts.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/process-timeouts.test.mjs",
+      "wallMs": 443.3,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs",
+      "wallMs": 275.4,
+      "inProcMs": 74.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs",
+      "wallMs": 2947.8,
+      "inProcMs": 2909.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs",
+      "wallMs": 324.1,
+      "inProcMs": 278.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-repair-target.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/runtime-repair-target.test.mjs",
+      "wallMs": 490.8,
+      "inProcMs": 447,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+      "wallMs": 518,
+      "inProcMs": 471,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/scratch-dir-prototype.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/scratch-dir-prototype.test.mjs",
+      "wallMs": 266,
+      "inProcMs": 210.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs",
+      "wallMs": 282.7,
+      "inProcMs": 165.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs",
+      "wallMs": 247.1,
+      "inProcMs": 152.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs",
+      "wallMs": 295.3,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs",
+      "wallMs": 428.1,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs",
+      "wallMs": 270.5,
+      "inProcMs": 216.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs",
+      "wallMs": 291.3,
+      "inProcMs": 204.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+      "wallMs": 570.9,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/close-trunk-delivery-gate.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/close-trunk-delivery-gate.test.mjs",
+      "wallMs": 81.2,
+      "inProcMs": 7.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs",
+      "wallMs": 926.1,
+      "inProcMs": 801.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-receipt.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-receipt.test.mjs",
+      "wallMs": 339.4,
+      "inProcMs": 220.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs",
+      "wallMs": 763.3,
+      "inProcMs": 551,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/delivery-waiver-authority.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/delivery-waiver-authority.test.mjs",
+      "wallMs": 276.9,
+      "inProcMs": 213.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs",
+      "wallMs": 421.5,
+      "inProcMs": 199,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs",
+      "wallMs": 203.2,
+      "inProcMs": 41.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs",
+      "wallMs": 223.3,
+      "inProcMs": 24.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/local-trunk-close-authority.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/local-trunk-close-authority.test.mjs",
+      "wallMs": 160.9,
+      "inProcMs": 42.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/resume-binding-generation.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/resume-binding-generation.test.mjs",
+      "wallMs": 460.9,
+      "inProcMs": 340.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs",
+      "wallMs": 233.8,
+      "inProcMs": 120.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs",
+      "wallMs": 263.9,
+      "inProcMs": 51.8,
+      "status": 0
+    }
+  },
+  "shard": {
+    "index": 2,
+    "total": 3
+  }
+}

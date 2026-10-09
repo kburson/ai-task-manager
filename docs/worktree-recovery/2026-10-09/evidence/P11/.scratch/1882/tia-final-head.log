@@ -1,0 +1,2776 @@
+docs/guides/workflow.md [no-verification-impact] path has no source, test, fixture, runner, dependency, or verification impact
+scripts/lib/self-doc.mjs -> scripts/tests/integration/package/doctor-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/package/install-manifest.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/review/peer-review-decommission.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/core/templates.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/action-capture.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/action-test.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/coverage-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/lib/verification-provider.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/merge-back-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/merge-back-verification.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/help.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/shelve.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/core/verify-develop.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs [import-direct] test statically imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/gh/create-issue.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/package/doctor.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/providers/parity.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/aitm-ismain-symlink.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-disposition.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-plan-metadata.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-story-origin.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-timing-logs.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-vc-sections-help.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-vc-sections-strict-argv.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/backfill-vc-sections.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/command-manifest.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-backfill-plan-metadata.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-backfill-timing-logs.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-backfill-vc-sections.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-backlog.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-entry-markers.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-functional-dod.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-refine-entry-marker.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-migrate-fields-encoding.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/coverage-migrate-plan-approved.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-backlog-core.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-backlog-entry-marker.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-backlog-fields.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-backlog-schema-drift.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-entry-markers-backlog-fallback.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-entry-markers-monotonize.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-entry-markers-visit-aware.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-entry-markers-zero-marker-backlog.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-functional-dod.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-refine-entry-marker.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/heal-timing-starts-command.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/lane-split-seed.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/measure-context.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/migrate-fields-encoding.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/migrate-plan-approved.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/mutate-issue-body-scripts-help-audit.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/skill-stub-seed-directive.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/timing-unknown-projection.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/core/verify-delivery-incident-reconciliation.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/cut-child-worktree.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/cut-epic-branch.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/coverage-dispatch-prep.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/coverage-init-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/coverage-set-priority.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/coverage-verify-open-issue-bodies.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/create-issue-kind-prefix.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/create-issue-resolve-assignee.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/dispatch-prep-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/disposition-install-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/entry-marker-scaffold.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/log-issue-time-labels.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/status-config-projections.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/gh/verify-open-issue-bodies.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/aitm-path-guard.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/close-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/command-catalog-parser-policy.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/current-schema-issue-authoring.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/executable-entrypoint-classification.test.mjs [import-direct] test statically imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-actor-opener-replays.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-entry-markers-delegates.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-lifecycle-dod.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-timing-departure-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/heal-vc-refs.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/memory-index-hook.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/settings-hook-bootstrap.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/sync-templates.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-sha-drift-gate.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/user-story-author.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/verification-stage-ownership.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/lib/writer-consolidated-declaration.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/maintenance/heal-timing-departure-cli.test.mjs [import-direct] test statically imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/maintenance/heal-timing-interval-cli.test.mjs [import-direct] test statically imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/maintenance/rename-estimation-headers.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/sync-epic.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/epic-wave.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/help.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/incident-ledger.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/next-alias.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/plan-estimate.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/sandbox-env-isolation.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-project-provider-npm-ci-args.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-kind-aware-lanes.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/verb-discover-help.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/task-tracker/verbs/verb-test-sandbox-env.test.mjs [import-transitive] test transitively imports changed path
+scripts/lib/self-doc.mjs -> scripts/tests/unit/tools/compare-test-fixtures.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-cli.mjs -> scripts/tests/integration/task-tracker/merge-back-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-cli.mjs -> scripts/tests/integration/task-tracker/merge-back-verification.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-cli.mjs -> scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-cli.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-verification.mjs -> scripts/tests/integration/task-tracker/merge-back-cli.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-verification.mjs -> scripts/tests/integration/task-tracker/merge-back-verification.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-verification.mjs -> scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/merge-back-verification.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/merge-back.mjs -> scripts/tests/integration/task-tracker/merge-back-cli.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/merge-back.mjs -> scripts/tests/integration/task-tracker/merge-back-verification.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/merge-back.mjs -> scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/merge-back.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [basename] conventional basename compatibility mapping
+scripts/task-tracker/merge-back.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [import-direct] test statically imports changed path
+scripts/tests/fixtures/1558/admission-surface.json [no-verification-impact] path has no source, test, fixture, runner, dependency, or verification impact
+scripts/tests/integration/task-tracker/merge-back-cli.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/integration/task-tracker/merge-back-cli.test.mjs -> scripts/tests/integration/task-tracker/merge-back-cli.test.mjs [changed-test] changed or newly discovered test
+scripts/tests/integration/task-tracker/merge-back-verification.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/integration/task-tracker/merge-back-verification.test.mjs -> scripts/tests/integration/task-tracker/merge-back-verification.test.mjs [changed-test] changed or newly discovered test
+scripts/tests/unit/task-tracker/core/package-boundary.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/unit/task-tracker/core/package-boundary.test.mjs -> scripts/tests/unit/task-tracker/core/package-boundary.test.mjs [changed-test] changed or newly discovered test
+scripts/tests/unit/task-tracker/merge-back.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/unit/task-tracker/merge-back.test.mjs -> scripts/tests/unit/task-tracker/merge-back.test.mjs [changed-test] changed or newly discovered test
+✔ layout audit rejects a discovered test outside the canonical lane tree (157.127917ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (49.061333ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (54.281333ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (166.20675ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (2.67625ms)
+✔ current test-tree baseline is well formed (1.839458ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.520709ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.378292ms)
+✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (4.412833ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (12.675ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 564.70475
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/doctor-cli-xGALSj/consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/doctor-cli-xGALSj/stale-consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+✔ doctor CLI reports a committed install identically without writes or task state (5004.561083ms)
+✔ doctor CLI reserves exit 2 for usage errors and reports missing Git context as health (1029.7585ms)
+✔ doctor inspects artifacts declared by a stale manifest rather than mismatched current IDs (249.994375ms)
+✔ doctor refuses an install manifest reached through an escaping parent symlink (20.06425ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6503.280667
+
+> Operational-lessons memory seed
+  ---------------------------------------------------------
+  OK Memory seed (skipped — none)
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/install-manifest-integration-fDrPpZ/consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+
+> Operational-lessons memory seed
+  ---------------------------------------------------------
+  OK Memory seed (skipped — none)
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/install-manifest-integration-fDrPpZ/consumer/.agents/skills/task/SKILL.md (unchanged)
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md (unchanged)
+  OK Template .ai-task-manager/templates/definition-of-done.md (unchanged)
+  OK Template .ai-task-manager/templates/epic-body.md (unchanged)
+  OK Template .ai-task-manager/templates/sub-issue-body.md (unchanged)
+  OK Template .ai-task-manager/templates/solo-issue-body.md (unchanged)
+  OK Template .ai-task-manager/templates/defect-body.md (unchanged)
+  OK Template .ai-task-manager/templates/plan-file.md (unchanged)
+  OK Template .ai-task-manager/templates/session-boot.md (unchanged)
+  OK Template .ai-task-manager/templates/session-state-template.md (unchanged)
+  OK Template .ai-task-manager/templates/worker-report.md (unchanged)
+  OK Config .ai-task-manager/project-fields.json (unchanged)
+  OK Config .ai-task-manager/project-field-events.json (unchanged)
+  OK Config .ai-task-manager/activity-policy.json (unchanged)
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md (unchanged)
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md (unchanged)
+  OK Reference .ai-task-manager/templates/references/status-reporting.md (unchanged)
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences (unchanged)
+  OK Skill .scratch/test/install-manifest-integration-fDrPpZ/contained/.agents/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/codex
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/install-manifest-integration-fDrPpZ/contained-install/.agents/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/codex
+  OK Hooks .codex/hooks.json
+✔ runInstall publishes the manifest after every selected effect (9.575041ms)
+✔ runInstall never publishes after an earlier effect fails (0.29775ms)
+✔ runInstall rejects invalid feature combinations before any install effect (0.132167ms)
+✔ runInstall rejects an external symlink source before memory installation (0.168125ms)
+✔ real stub install publishes a deterministic selected-provider manifest last (13.838208ms)
+✔ contained symlink uses a relative target and resolves to its package source (1.10875ms)
+✔ contained symlink install publishes a manifest matching the directory symlink (1.731125ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 172.339083
+✔ legacy runtime and superseded AITM test assets are physically absent (18.97375ms)
+✔ AITM exposes neither legacy review command nor a package wrapper (137.161209ms)
+✔ task CLI starts when the extracted review package cannot be imported (138.518625ms)
+✔ published dependency graph and production sources are independent of the extracted package (50.179709ms)
+✔ production source contains no legacy runtime path or owned protocol schema (29.569334ms)
+✔ current operator documentation leaves artifact review independent of AITM (1.703292ms)
+✔ every pre-migration review archive remains byte-identical (15.741ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 466.11125
+
+> Operational-lessons memory seed
+  ---------------------------------------------------------
+  OK Memory seed (skipped — none)
+
+> Claude Code files
+  ---------------------------------------------------------
+  OK Skill .ai-task-manager/runtime/test-fixtures/test/provider-story-install-gvQVkZ/.claude/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/claude
+  OK Command .ai-task-manager/runtime/test-fixtures/test/provider-story-install-gvQVkZ/.claude/commands/task.md
+  OK Settings .claude/settings.json
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .ai-task-manager/runtime/test-fixtures/test/provider-story-install-gvQVkZ/.agents/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/codex
+  OK Hooks .codex/hooks.json
+
+> Grok files
+  ---------------------------------------------------------
+  OK Skill .ai-task-manager/runtime/test-fixtures/test/provider-story-install-gvQVkZ/.grok/skills/task -> ../../node_modules/@kburson/ai-task-manager/skill/adapters/grok
+  OK Hooks .grok/hooks/aitm.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+templates.test.mjs: all passed
+✔ scripts/tests/integration/task-tracker/core/templates.test.mjs (370.823ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 375.961625
+✔ action capture exposes one stable schema identifier (0.486208ms)
+✔ classifies governed issue mutation families (0.510583ms)
+✔ classifies project, GraphQL, and REST mutations (0.221916ms)
+✔ classifies GitHub reads without inventing a mutation kind (0.125875ms)
+✔ enablement and issue storage are anchored in the main worktree (30.355667ms)
+✔ writes an ordered intent before a separate outcome without changing exact safe bytes (17.317875ms)
+✔ stores exact request files alongside argv and stdin metadata (16.31175ms)
+✔ keeps hashes and sizes but omits credential-bearing request and response bytes (18.284084ms)
+✔ isolates issues and repositories while allocating stable unique sequences (22.419333ms)
+✔ prepares a shim environment only for an enabled active issue (48.712709ms)
+✔ operator control enables, reports, summarizes, and disables the active issue corpus (55.099959ms)
+✔ summarizes complete and incomplete actions, serialized bytes, payload bytes, and largest action (25.588167ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 381.252583
+▶ direct Test and Develop Promote explain the same ready entry without effects
+  ✔ direct Test from Develop (6.439875ms)
+  ✔ direct Test self-rerun from Test (1.712458ms)
+  ✔ Promote from Develop (1.160458ms)
+✔ direct Test and Develop Promote explain the same ready entry without effects (9.952625ms)
+✔ accepted directory-backed Test evidence does not require legacy VCs or sandbox (1.73875ms)
+✔ Review-state Test request is not advertised as runnable (0.731542ms)
+✔ Test entry needs an explicit project directory for command and provider authority (1.184584ms)
+✔ Test entry resolves the bound project directory when the caller omits it (0.817208ms)
+✔ Test explanation reports missing Verification Commands without effects (1.848375ms)
+✔ Test entry preserves simultaneous declaration and Develop-exit refusals (0.832083ms)
+✔ Test entry aggregates independent binding and declaration blockers (0.695917ms)
+▶ Test explanation reports mismatched HEAD, binding, and malformed receipt authority
+  ✔ worktree HEAD (0.693042ms)
+  ✔ session binding (0.487333ms)
+  ✔ claimed receipt (1.004209ms)
+✔ Test explanation reports mismatched HEAD, binding, and malformed receipt authority (2.537375ms)
+✔ Test explanation names an unavailable required authority read and makes no effects (0.747125ms)
+✔ network-skipped Test entry is indeterminate without an empty observation attempt (0.317792ms)
+✔ malformed observed HEAD is indeterminate, not blocked or ready (0.558333ms)
+✔ a required workflow-policy read failure remains indeterminate for Test entry (0.839ms)
+✔ a configured provider rejected by execution is blocked in Test explanation (0.881875ms)
+✔ real Develop-exit guards explain the affected AC and repair on Test and Promote (3669.105625ms)
+✔ Test entry retains registered guard warnings while remaining blocked (1.229875ms)
+✔ a missing Develop-final receipt is runnable resident work, not completed proof (0.597459ms)
+✔ a ready Test explanation does not predetermine a later red locked execution (3.363125ms)
+✔ production Test read adapter rechecks live body and board at a fresh boundary (0.933417ms)
+✔ production adapter rejects directory evidence whose accepted record epoch is stale (0.923208ms)
+✔ the locked Test wrapper supplies the production preflight by default (0.092833ms)
+✔ locked Test execution refuses a freshly blocked entry before any sandbox effect (0.140166ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3847.465041
+Started #1857.
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+Resumed #1857.
+✔ question hooks close only their own actor interval and resume without charging the wait (430.359041ms)
+✔ question reply ambiguity retains the original row and replays before resuming (390.322959ms)
+✔ question marker cannot substitute another event for the frozen resume (341.838375ms)
+✔ question hook respects its own manual pause without creating a resume marker (211.8495ms)
+✔ flush preserves genuine own wall interval and unknown estimate despite another actor tail (181.00175ms)
+✔ first attributed interruption retains observed cursor delta without a fabricated opener (190.810583ms)
+✔ update preserves cumulative actor cursor and unknown total after an unavailable estimate (208.209708ms)
+✔ real start pause and resume retain one actor identity and explicit current boundaries (402.136167ms)
+✔ phase boundary flushes own actor interval and shared lifecycle rows do not duplicate actor work (190.295583ms)
+✔ Test interlock records actual verification engagement from a paused own binding (205.205125ms)
+✔ status distinguishes missing activity observation from zero work (136.852708ms)
+✔ failed Test execution retains both its failure and actual actor work (202.667458ms)
+✔ session tracking initializes a versioned own cursor and refuses corrupt existing authority (228.425166ms)
+✔ failed publication retains original row and cursor, then exact replay precedes new work (364.3875ms)
+✔ publication cannot overwrite a concurrently changed own timing boundary (116.195209ms)
+✔ Review human handoff flushes actual actor work before pausing its own binding (193.325791ms)
+✔ compaction hooks use the same actor journal and never resume a paused binding (301.346958ms)
+✔ session restart records unknown prior work without synthesizing historical active or idle time (339.282208ms)
+✔ actual hook entrypoint refuses a foreign payload actor before mutating timing state (244.37625ms)
+✔ actual idle SessionStart preserves cumulative actor word evidence (493.223875ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5544.630083
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/cli-prefs-empty-AmO7DY
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/cli-prefs-yes-vw235A
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/cli-prefs-merge-760Oav
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/cli-prefs-bad-0fCcPs
+                                                            
+
+✔ color helpers return the wrapped content regardless of TTY (0.689708ms)
+✔ patchSettingsJson creates settings and is idempotent (3.323875ms)
+✔ patchSettingsJson migrates legacy hook commands and broad Bash allow (1.252375ms)
+✔ patchSettingsJson tolerates a malformed existing file (0.870916ms)
+✔ patchCodexHooksJson creates hooks, is idempotent, tolerates garbage (1.658541ms)
+✔ patchCodexHooksJson registers memory index hooks only when requested (1.259208ms)
+✔ version subcommand and aliases print the package version (378.35925ms)
+✔ no-args prints help while an unknown verb returns a usage error (285.810709ms)
+✔ configure with a bad or missing subcommand exits 1 (329.893292ms)
+✔ install rejects bad --agent and --link-mode (355.971916ms)
+✔ install --link-mode stub writes skill, settings, templates and is idempotent (400.472958ms)
+✔ install --link-mode symlink refuses a package source outside the target project (193.270958ms)
+✔ uninstall removes Codex integrations while preserving user hooks and durable data (897.508792ms)
+✔ uninstall defaults to all providers and removes the generated Claude command (475.369417ms)
+✔ uninstall --dry-run reports cleanup without changing the project (358.771ms)
+✔ uninstall --purge refuses non-interactive deletion without --yes (162.623708ms)
+✔ uninstall --purge --yes removes durable AITM data but preserves unrelated issue templates (162.556042ms)
+✔ uninstall validates every managed file before removing any provider integration (348.982667ms)
+✔ uninstall refuses to recursively remove a managed skill directory with user files (340.770708ms)
+✔ uninstall refuses to remove a foreign symlink at a managed skill path (171.016125ms)
+✔ uninstall recognizes exact generated artifacts from the previous package layout (348.68375ms)
+✔ uninstall removes only the marked project-local AITM bootstrap block (187.374958ms)
+✔ uninstall refuses a modified or ambiguously embedded AITM bootstrap block (348.072667ms)
+✔ uninstall --agent scopes provider files and Codex bootstrap cleanup (360.376042ms)
+✔ uninstall removes only exact managed hook commands (385.128917ms)
+✔ uninstall removes Claude permissions without hooks and never strips other providers (377.414333ms)
+✔ uninstall rejects malformed hook schemas before changing any files (353.119791ms)
+✔ uninstall rejects unknown, missing, duplicate, and conflicting options without cleanup (1333.353375ms)
+✔ uninstall --help documents cleanup ordering and destructive options (137.945084ms)
+✔ statusline installs under an overridden HOME (185.782375ms)
+✔ configurePreferences with all-empty answers writes defaults (2.986916ms)
+✔ configurePreferences with "y" answers parses every bool branch truthy (0.735959ms)
+✔ configurePreferences merges over an existing config and a custom scratchDir (0.644666ms)
+✔ configurePreferences tolerates a malformed existing config (0.735583ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9042.20425
+preflight-issue: --user-story-file story-shape-invalid: Use exactly three lines without bullets: As a/an, I want to, So that
+✔ defect shape applies bug taxonomy exactly once and leaves legacy shapes unchanged (1.473417ms)
+✔ defect shape forwards the governed solo inputs plus defect-specific renderer inputs (0.450375ms)
+✔ defect dry-run renders a real User Story, diagnostic sections, and governed lifecycle tail (480.262959ms)
+✔ creator and preflight public help advertise the defect shape (228.308417ms)
+✔ generated bug form and label workflow use the canonical prefix authority (0.279ms)
+✔ label workflow normalizes internal bug forms through the defect intake adapter (0.120916ms)
+✔ web form parser returns normalized named sections (0.285167ms)
+✔ web defect normalization maps form fields through the same renderer and stamps Backlog (1.10125ms)
+✔ web defect normalization refuses default ACs without honest verifier evidence (168.516917ms)
+✔ web normalization is a fixed point and excludes non-bug and beta-report issues (0.168334ms)
+✔ shared creation rule maps conversational defect intent to the defect shape (0.212458ms)
+✔ full-auto local defects are created before the parent blocker protocol (0.210542ms)
+✔ all sanctioned-shape instruction and guard surfaces include defect (0.610917ms)
+✔ workflow guide documents defect as a sanctioned local shape (0.324667ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1021.886667
+✔ tracked invalid override refuses a read-only operational route before normal dispatch (452.761042ms)
+✔ invalid catalog refuses before GitHub, lock, or session effects without network skip (13433.991958ms)
+✔ dynamic issue-bind route cannot bypass admission (378.036834ms)
+✔ direct verb hub refuses invalid guidance before context construction (392.427375ms)
+✔ direct verb executables refuse invalid guidance before their own main paths (2126.736416ms)
+✔ direct verb help-shaped arguments cannot bypass admission (2212.918041ms)
+✔ unsupported direct-hub recovery words are admitted as operational (777.39425ms)
+✔ session annotation requires a durable issue write, not a zero-exit or local change (0.539959ms)
+✔ timing-post observation distinguishes durable issue writes from queued rows (0.219084ms)
+✔ package installer refuses invalid guidance before init writes (329.775083ms)
+✔ direct support-script path refuses invalid guidance before its own parser (333.938083ms)
+✔ guidance validation remains a routed recovery command (463.464542ms)
+✔ top-level help remains available while the selected catalog is invalid (295.5355ms)
+✔ command help, guidance source, and package version remain effect-free recovery routes (832.19675ms)
+✔ admission inventory accounts for every canonical command, alias, and classified executable (107.646458ms)
+✔ every registered operational token refuses an invalid catalog (27415.804709ms)
+✔ every supported direct operational entrypoint refuses an invalid catalog (14530.599417ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 64269.887167
+From /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration
+ * branch              e6b3fc3693df16a8baf3b1d9d469159234320a0d -> FETCH_HEAD
+✔ claude static pickup and captured lifecycle use the same router-plus-pickup budget (8.962042ms)
+✔ claude static lifecycle and captured lifecycle use the same full-lifecycle budget (6.101666ms)
+✔ codex static pickup and captured lifecycle use the same router-plus-pickup budget (4.8655ms)
+✔ codex static lifecycle and captured lifecycle use the same full-lifecycle budget (4.903334ms)
+✔ pre-slim public CLI capture cannot certify the final installed adapter release (763.734209ms)
+✔ final release requires a complete installed-byte and public-CLI capture (1171.149083ms)
+✔ final package and public-CLI capture regenerate byte for byte (29750.510583ms)
+✔ fixed release measurement refuses a missing required instruction file (0.422292ms)
+✔ claude aggregate CLI labels fixed release scenarios and exits on any breach (242.986708ms)
+✔ codex aggregate CLI labels fixed release scenarios and exits on any breach (324.265875ms)
+✔ accepted final archive stays intact and cannot certify changed current sources (5.90275ms)
+✔ internally consistent dirty installed guidance cannot inherit a committed source identity (4817.476ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37310.41575
+✔ module-relative package source ignores project node_modules and ignored root catalog (91.714125ms)
+✔ human explanation exposes closed guidance fields and fingerprints (127.612584ms)
+✔ tracked project catalog wholly shadows package, including modified and invalid content (338.251208ms)
+✔ untracked project source and tampered package fail without fallback (171.769916ms)
+✔ recovery classification is closed and admission does not call effects (108.665958ms)
+✔ missing package identity is a named indeterminate failure (18.418334ms)
+✔ offline recovery source and validate inspect selected, candidate, and published profiles (830.347625ms)
+✔ missing release manifest and non-regular override are named failures (23.709333ms)
+✔ symlinked package and unsupported virtual or missing source resolve by name (19.817125ms)
+✔ a project file outside the asserted Git root is indeterminate, never published (28.667792ms)
+✔ actual recovery CLI finds a tracked override from a nested Git directory (317.864084ms)
+✔ failed Git-root discovery from a nested directory is indeterminate, not package fallback (186.090583ms)
+✔ candidate validation reports untracked activation without rejecting valid content (139.989833ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2553.506166
+install-hooks.test.mjs: all passed
+✔ scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs (1503.549917ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1510.091333
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+Paused #1857: +0 active min, +0 words. Use "/task resume" to resume.
+nothing to pause
+✔ review reproduction: legacy session cursor survives first actor flush (279.226167ms)
+✔ explicit pause after Test handoff is idempotent (203.545375ms)
+✔ explicit pause after Review handoff is idempotent (219.749083ms)
+✔ production Test sandbox admits real Git identity outside artifact roots (112.03375ms)
+✔ upgrade cursor is scoped to the state-owning project, not ambient root (130.749167ms)
+✔ upgrade refuses invalid own cursor and never imports global timing history (103.679916ms)
+Stopped #1857: +0 active min, +0 words. Use "/task resume <N>" to return to it later.
+✔ paused binding does not publish unmatched stop (594.336583ms)
+✔ paused binding does not publish unmatched switch-out:#1861 (283.697667ms)
+✔ paused binding does not publish unmatched switch-out (278.837666ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2382.705042
+✔ unchanged lifecycle owns each standard command once and invalidates on a new SHA (52.29375ms)
+✔ project provider drives Test plans, deduplicates targeted commands, and records kinds (#1218) (16.814041ms)
+✔ declared Develop steps spawn in order for a non-JavaScript fixture (#1250) (363.649375ms)
+✔ declared Develop steps propagate the first real child-process failure (#1250) (154.008834ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 796.390875
+✔ project provider owns Develop and Test plans with typed exact-SHA evidence (30.01075ms)
+✔ Develop-to-Test guard accepts project-provider Develop-final classifications (0.463208ms)
+✔ Develop-to-Test guard does not let Node receipts override lint and format requirements (0.234042ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 182.528625
+
+up to date in 371ms
+Already on 'codex/fixture-parent'
+
+up to date in 194ms
+merge-back: verification refused: Command failed: node verify.mjs
+
+up to date in 734ms
+Switched to branch 'other-parent'
+✔ #1882: registered CLI integrates from child into its already checked-out parent and retains checkout (1023.082125ms)
+✔ #1882: failed configured evidence leaves parent tip and child checkout intact (696.629167ms)
+✔ #1882: invalid CLI options refuse before any Git change (174.147333ms)
+✔ #1882: wrong recorded parent checkout refuses without switching it (230.361541ms)
+✔ #1882: a parent checkout changed during verification is retained and refused (1460.35175ms)
+✔ #1882: malformed child config refuses without falling back to host suites (207.357791ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3927.647291
+
+up to date in 219ms
+
+up to date in 205ms
+
+up to date in 288ms
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/merge-back-provider-zJbE8Y/verify.mjs:1
+import {execFileSync} from 'node:child_process'; import {readFileSync} from 'node:fs'; const actual=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(); if(readFileSync('receipt-head.txt','utf8')!==actual) throw new Error('stale evidence');
+                                                                                                                                                                                                                                  ^
+
+Error: stale evidence
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/merge-back-provider-zJbE8Y/verify.mjs:1:227
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v26.8.1
+merge-back: verification refused: Command failed: node verify.mjs
+
+up to date in 193ms
+merge-back: verification refused: merge-back: verifier changed source or HEAD
+npm notice run merge-back-fixture@1.0.0 test:unit
+npm notice run node section.mjs unit
+npm notice run merge-back-fixture@1.0.0 test:integration
+npm notice run node section.mjs integration
+npm notice run merge-back-fixture@1.0.0 test:slow
+npm notice run node section.mjs slow
+✔ #1882: project verification executes configured and declared commands without default suites (518.337083ms)
+✔ #1882: stale-head evidence is a failed verification, never a suite fallback (1069.112625ms)
+✔ #1882: rejected issue commands refuse plan construction before execution (148.833667ms)
+✔ #1882: invalid provider configuration cannot silently select Node full suites (109.697375ms)
+✔ #1882: a passing verifier that changes source cannot authorize integration (503.885166ms)
+✔ #1882: Node default verifies each existing suite section (900.184083ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3382.268542
+✔ prepare has a read-only first pass and a digest-bound filled pass without writes (67.201083ms)
+✔ filled prepare refuses a mapping whose complete receipt would exceed the comment limit (29.229583ms)
+✔ filled prepare refuses absent ids, invalid issue and expiry, bad mapping, and changed inventory (21.853875ms)
+✔ unsupported host refuses prepare and record even with a session name (13.746291ms)
+✔ record requires the exact filtered Codex user statement, readback, and is idempotent (39.15375ms)
+✔ agent, injection-only, wrong hash, and ordinary comment cannot authorize a record (23.081167ms)
+✔ show stays read-only on an unsupported host (15.593916ms)
+✔ edited grant blocks show and exact retry readback (27.843458ms)
+✔ argument parser requires one explicit positive issue (0.43275ms)
+✔ command help exposes the complete two-pass and revision workflow (0.319417ms)
+✔ revise and revoke require fresh user messages and append linked records (54.148708ms)
+✔ runtime writes to the parsed issue when the input file name is numeric (162.655042ms)
+✔ GraphQL second-precision comment timestamps survive grant readback (117.802583ms)
+✔ revoke readback refuses a competing valid revision appended at the same predecessor (23.715084ms)
+✔ transport ambiguity needs an exact appended comment on readback (23.759834ms)
+✔ an exact retry refuses a competing recorded chain instead of claiming activation (25.752083ms)
+✔ revision refuses a reused exception id before writing a poisoned chain (25.05075ms)
+✔ filled prepare refuses a candidate whose escaped rendered comment exceeds the bound (13.18ms)
+✔ prepare refuses to open a waiver when every source commit is canonically attributed (13.192334ms)
+✔ prepare refuses a PR branch bound to another issue (10.012583ms)
+✔ prepare accepts an opaque branch when it exactly matches durable issue authority (10.43775ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 892.291125
+✔ Test accepts current accepted directory evidence without reading or rewriting body proof (2.686291ms)
+✔ shared Test and Review transition guards consume accepted directory evidence (0.719583ms)
+✔ Test fails closed before mutation when directory evidence is absent or invalid (0.931625ms)
+✔ Review preserves the legacy lane and requires accepted Test evidence for directory issues (0.484958ms)
+✔ typed waiver heads require exact receipt or accepted directory evidence (0.118958ms)
+✔ Review preflight reads directory lifecycle authority and retains legacy AC auditing (1.872875ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 421.297458
+✔ (a) every dispatched verb has a VERB_REFERENCE entry (1.256125ms)
+✔ standalone commands never resolve as /task verbs (0.101459ms)
+✔ (b) every entry has a non-empty usage and >=1 example (0.25675ms)
+✔ (c) declared flags are well-formed (0.205208ms)
+✔ (d) top-level help contains the state-transition map and gate/evidence headers (0.617417ms)
+✔ (e) per-verb help names the requested verb and shows exit codes (1.142708ms)
+✔ Shelve help documents the narrow schema-1 stale-blocker migration (0.273667ms)
+✔ Park help omits the Shelve-only stale-blocker migration flag (0.117ms)
+✔ Deliver help documents the re-entrant Review-only provider handoff (0.255291ms)
+✔ (f) the aitm wrapper routes every user-facing help form to verbHelp (1496.322ms)
+✔ resolveVerb follows aliases to canonical keys (0.157917ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1576.329042
+✔ Shelve exports the Backlog target and Refine/R4P source boundary (0.833833ms)
+✔ strict Shelve argv accepts one explicit stale-blocker refresh flag (0.286333ms)
+✔ strict Shelve argv refuses a duplicate stale-blocker refresh flag (0.213166ms)
+✔ runShelve preserves ordinary transaction intent when no migration flag is supplied (0.199541ms)
+✔ runShelve threads explicit stale-blocker migration intent into the transaction (0.092458ms)
+✔ Shelve reports the explicit stale-blocker migration in its success audit output (22.196917ms)
+✔ strict Shelve argv retains deterministic unknown-argument refusal (0.173042ms)
+✔ runShelve refuses blank reasons before binding, network, or writes (0.166084ms)
+✔ park is only a compatibility alias for the same Shelve transaction (0.236208ms)
+✔ Park retains alias-aware usage, success, and refusal diagnostics (48.969625ms)
+✔ direct Shelve and Park executable entrypoints are inert and require the hub (563.556458ms)
+✔ Shelve is canonical across routing, catalog, and executable entrypoints (0.30025ms)
+✔ Shelve uses target preflight and one issue lock before entering the transaction (0.232875ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 819.575916
+✔ preflight shows delivery revisions but evaluates only ordinary policy (18.445625ms)
+✔ preflight discloses expired delivery grants as blocked without writes (1.52875ms)
+✔ arguments require one explicit issue and explicit supported target (0.336458ms)
+✔ public command routing stays explicit and bypasses binding preflight (0.12825ms)
+✔ preflight aggregates current blockers, future evidence, external unknowns, and authority provenance (1.053958ms)
+✔ external uncertainty is indeterminate while complete evidence is conditionally compatible (0.515292ms)
+✔ authority revision reporting derives superseded disposition from the validated chain (1.668917ms)
+✔ snapshot read failures retain the complete indeterminate report schema in both views (0.236917ms)
+✔ an empty dependency snapshot satisfies the current dependency invariant (0.256542ms)
+✔ preflight treats documented automatic plan authorization as satisfied, not waived (0.286791ms)
+✔ production runtime derives ownership, binding, and state-contiguity evidence read-only (0.347708ms)
+✔ workflow exception show remains read-only and does not resolve or append authority (0.592041ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.962708
+▶ parseTestFiles
+  ✔ returns empty array for empty diff output (0.616583ms)
+  ✔ returns empty array for whitespace-only output (0.065334ms)
+  ✔ parses a single test file (0.09975ms)
+  ✔ parses multiple test files and strips surrounding whitespace (0.059875ms)
+  ✔ ignores blank lines in the middle of output (0.06075ms)
+✔ parseTestFiles (1.479125ms)
+▶ buildTestCommands
+  ✔ maps each file to a node --test invocation (0.079667ms)
+  ✔ returns empty array for empty file list (0.061084ms)
+✔ buildTestCommands (0.227958ms)
+▶ mergeTestFiles (C2 — source-to-unit-test merge)
+  ✔ returns direct list when no discovered tests (0.11075ms)
+  ✔ appends discovered tests after direct changes (0.061ms)
+  ✔ deduplicates when a discovered test is already in direct list (0.07925ms)
+  ✔ direct list order is preserved; discovered appended (0.048916ms)
+  ✔ returns empty when both lists are empty (0.051042ms)
+✔ mergeTestFiles (C2 — source-to-unit-test merge) (0.491792ms)
+▶ collectTestFiles (#855 — untracked test files must not be skipped)
+  ✔ discovers a brand-new, never-`git add`-ed *.test.mjs file (82.013708ms)
+  ✔ excludes an untracked *.test.mjs file under a .gitignore-d path (79.360417ms)
+  ✔ runs a tracked, modified test file exactly once (no duplicate from the untracked union) (87.769041ms)
+  ✔ unions a tracked-modified file with a new untracked file, deduplicated (83.281584ms)
+  ✔ a discovered untracked test file that fails makes `node --test` exit non-zero (220.577625ms)
+  ✔ returns empty array in a repo with no test files at all (81.760625ms)
+✔ collectTestFiles (#855 — untracked test files must not be skipped) (635.086958ms)
+▶ collectChangedPaths (#1089 — deleted and renamed paths stay visible)
+  ✔ includes a deleted tracked source path (95.279ms)
+  ✔ includes both the old and new sides of a tracked rename (111.0895ms)
+✔ collectChangedPaths (#1089 — deleted and renamed paths stay visible) (206.511458ms)
+▶ empty-change semantics
+  ✔ empty diff produces no-op — exit early without running node --test (0.149084ms)
+✔ empty-change semantics (0.206583ms)
+▶ main-module guard (#867 — import has no side effects)
+  ✔ importing the module in a child process runs no gate step and exits fast (146.469208ms)
+  ✔ isMainModule() returns false when the module is imported (0.176375ms)
+✔ main-module guard (#867 — import has no side effects) (146.73ms)
+▶ stage-aware command plans (#1089)
+  ✔ iteration scopes autofix and format to changed paths (0.232542ms)
+  ✔ iteration never plans full lint or complete test lanes (0.083584ms)
+  ✔ finalization owns full lint and format-check exactly once (0.07775ms)
+✔ stage-aware command plans (#1089) (0.466708ms)
+▶ runDevelopVerification (#1089)
+  ✔ iteration runs scoped checks plus selected tests without any complete lane (0.744375ms)
+  ✔ iteration excludes deleted and rename-old paths from fixers but keeps impact inputs (0.169875ms)
+  ✔ fails closed when a non-empty non-JavaScript change plans no command (#1250) (0.098417ms)
+  ✔ treats an empty changeset as the only green zero-command outcome (#1250) (0.06575ms)
+  ✔ runs declared steps in order and preserves their audit metadata (#1250) (0.546542ms)
+  ✔ validates the whole declaration before spawning and stops at first red (#1250) (0.235041ms)
+  ✔ runs explicit project-provider iteration steps with stable kinds (#1218) (0.297ms)
+  ✔ runs the project provider final floor and records provider identity (#1218) (0.392334ms)
+  ✔ refuses an invalid project provider before spawning any Develop step (#1218) (0.083708ms)
+  ✔ reports the declared kind on first red and aborts later project steps (#1218) (0.116625ms)
+  ✔ finalization requires clean committed state and returns a receipt (0.119417ms)
+  ✔ finalization refuses a dirty starting tree before spawning commands (0.066458ms)
+  ✔ finalization refuses when a command changes tracked files (0.078542ms)
+✔ runDevelopVerification (#1089) (3.217834ms)
+▶ full lint covers spell/markdown gates (#529 multiset regression)
+  ✔ package.json `lint` chains `lint:spell` (0.070458ms)
+  ✔ package.json `lint` chains `lint:md` (0.042666ms)
+  ✔ `lint:spell` invokes cspell over source + markdown (0.03375ms)
+  ✔ Develop finalization runs the same full `npm run lint` that includes lint:spell (0.075666ms)
+✔ full lint covers spell/markdown gates (#529 multiset regression) (0.284709ms)
+ℹ tests 43
+ℹ suites 10
+ℹ pass 43
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1146.067791
+✔ every public direct entry point exits safely for --help and -h (15890.1695ms)
+✔ every package bin emits detailed help through an install-style symlink (587.701333ms)
+✔ every package lifecycle subcommand help exits before mutation (960.312542ms)
+✔ help probes do not consume option values and run before subprocess work (986.971791ms)
+✔ every routed verb supports help, ?, --help, and -h (128543.143208ms)
+✔ equivalent direct, routed, and package-bin forms render the same contract (1541.178125ms)
+✔ direct task help forms exit before project configuration is read (319.445041ms)
+✔ routed task wrappers propagate command return codes (2990.596291ms)
+✔ unknown commands return usage error with compact ANSI-free aggregate help (436.150833ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 152336.882458
+✔ AC1: `aitm` and `aitm help` print a grouped, names-only registry (613.136458ms)
+✔ AC2: verb delegation passes the child exit code through unchanged (1355.709375ms)
+✔ AC3: `aitm <script-name>` routes to the exposed standalone script (394.842167ms)
+✔ doctor is a standalone script and never a task-tracker verb (274.632708ms)
+✔ dispatcher delegates with the action-capture environment for the selected command (0.77075ms)
+✔ AC4: help/? forward to the target which self-documents (577.452416ms)
+✔ AC5: move-state is excluded with a documented rationale (0.220208ms)
+✔ AC6: plumbing scripts are excluded and carry a do-not-invoke header (0.995792ms)
+✔ AC7: every exposed script self-documents on help (4316.154875ms)
+✔ AC8: docs do not instruct direct node_modules script invocation (11.837417ms)
+✔ AC9: package.json registers the aitm bin at bin/aitm.mjs (1.185167ms)
+✔ registry REPO_ROOT matches the test-derived root (11.537917ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7703.177833
+Preparing worktree (new branch 'feature/child/910')
+Switched to branch 'feature/epic/905'
+Preparing worktree (new branch 'feature/child/911')
+Already on 'feature/epic/905'
+Preparing worktree (new branch 'feature/child/910')
+Preparing worktree (new branch 'feature/child/910')
+Switched to branch 'feature/epic/905'
+Preparing worktree (new branch 'feature/child/911')
+Preparing worktree (new branch 'feature/child/920')
+Preparing worktree (checking out 'codex/1268-implementation-plan')
+Preparing worktree (new branch 'feature/child/910')
+Preparing worktree (new branch 'feature/child/910')
+Already on 'cloud-test-automation'
+Preparing worktree (new branch 'codex/custom-child')
+Already on 'cloud-test-automation'
+✔ end-to-end: cut epic, cut two children, merge both back linearly (596.605ms)
+✔ end-to-end: merge-back refuses when the child tests fail (no merge, no cleanup) (242.676875ms)
+✔ end-to-end guard: correct child passes, #859 wrong-base child is refused (826.076042ms)
+✔ #1284: a custom-named epic cuts and validates a child at its exact head (197.001917ms)
+✔ #1485: merge-back delivers a child into its parent epic recorded custom branch (297.508375ms)
+✔ #1601: merge-back delivers a recorded custom child branch into a custom epic (419.682459ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2800.983875
+✔ assigned-to-ready-for-plan migration CLI exposes dry-run and explicit apply contracts (175.61725ms)
+✔ migration command rejects unknown arguments before any GitHub access (176.967792ms)
+✔ production GraphQL and filesystem adapters resume a landed response and verify the full cutover (66.447458ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 491.77075
+✔ AC5: doctor is standalone and never a task-tracker verb (0.769666ms)
+✔ AC5: reconcile rejects a missing/unknown mode without touching the network (0.574583ms)
+[task-tracker] ✓ #701 removed native blockers #702
+✔ AC5: reconcile accept-live resolves board/body drift via DI (no hand-edit) (279.812458ms)
+✔ AC5: entanglement clears via unblock alone (no board/state-file edit) (1.001542ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 476.151125
+verb-test-remove-worktree.test.mjs: ok
+✔ scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs (311.487167ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 318.167375
+✔ epic omits an absent story argument and preserves a supplied file (139.673125ms)
+✔ solo omits an absent story argument and preserves a supplied file (0.307333ms)
+✔ sub-issue omits an absent story argument and preserves a supplied file (122.661292ms)
+✔ defect omits an absent story argument and preserves a supplied file (1.882792ms)
+✔ buildShapeFlags forwards --kind when args.kind is a non-empty string (3.434792ms)
+✔ buildShapeFlags omits --kind entirely when kind is absent (AC3) (3.284667ms)
+✔ buildShapeFlags omits --kind when kind is an empty string (0.75525ms)
+✔ buildShapeFlags omits --kind when kind is a non-string (0.572417ms)
+✔ created-issue recovery token is stable and machine-readable (9.050708ms)
+✔ buildShapeFlags still forwards --shape and seed fields alongside --kind (1.571792ms)
+✔ buildShapeFlags forwards section files for non-stub shapes without --kind by default (2.730209ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1676.01575
+✔ doctor accepts only the empty and single JSON argument forms (1.071792ms)
+✔ JSON mode emits one document and maps unhealthy to exit 1 (0.294833ms)
+✔ healthy report exits 0 and renderers preserve row identity and status (0.218667ms)
+✔ usage failures exit 2 without a health document and help exits 0 (0.195833ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 200.413583
+  ok  parity: claude.installTarget matches expected baseline
+  ok  parity: claude.stateDir matches expected baseline
+  ok  parity: claude.transcriptLocator matches expected baseline
+  ok  parity: claude.transcriptHomeEnv matches expected baseline
+  ok  parity: claude.transcriptHomeDefault matches expected baseline
+  ok  parity: claude.transcriptLayout matches expected baseline
+  ok  parity: claude.transcriptSchema matches expected baseline
+  ok  parity: claude.sessionIdEnvKeys matches expected baseline
+  ok  parity: claude.detectionEnvKeys matches expected baseline
+  ok  parity: claude.sessionIdFallback matches expected baseline
+  ok  parity: claude.hookCapability matches expected baseline
+  ok  parity: claude.skillAdapterPath matches expected baseline
+  ok  parity: claude.installRecipe matches expected baseline
+  ok  parity: claude.externalActions matches expected baseline
+  ok  parity: codex.installTarget matches expected baseline
+  ok  parity: codex.stateDir matches expected baseline
+  ok  parity: codex.transcriptLocator matches expected baseline
+  ok  parity: codex.transcriptHomeEnv matches expected baseline
+  ok  parity: codex.transcriptHomeDefault matches expected baseline
+  ok  parity: codex.transcriptLayout matches expected baseline
+  ok  parity: codex.transcriptSchema matches expected baseline
+  ok  parity: codex.sessionIdEnvKeys matches expected baseline
+  ok  parity: codex.detectionEnvKeys matches expected baseline
+  ok  parity: codex.sessionIdFallback matches expected baseline
+  ok  parity: codex.hookCapability matches expected baseline
+  ok  parity: codex.skillAdapterPath matches expected baseline
+  ok  parity: codex.installRecipe matches expected baseline
+  ok  parity: codex.externalActions matches expected baseline
+  ok  parity: full claude adapter object matches expected baseline
+  ok  parity: full codex adapter object matches expected baseline
+  ok  #939: shared router discovers the deliver JIT rule and installed stubs reach it
+  ok  #1381: shared router discovers the provider-neutral incident-ledger rule
+  ok  #1713: provider adapters route one shared story-quality contract without stale mandates
+  ok  #1713: active-mandate detector rejects both historical forms even beside optional prose
+  ok  #1703: active-instruction scanning cannot recreate an HTML comment opener
+  ok  #1713: shared and CLI authoring guidance treats intake story prose as optional
+  ok  #1631: generated consumer stubs use scoped package paths
+  ok  #939: provider adapters own sanctioned integration wording
+  ok  #939: delivery rule is an exact, fail-closed host contract
+
+All 39 parity tests passed.
+✔ scripts/tests/unit/providers/parity.test.mjs (156.579958ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 162.581584
+✔ returns true when the .bin symlink realpath-resolves to the module file (0.449916ms)
+✔ returns true for direct invocation of the real file (0.079542ms)
+✔ returns false when argv points at an unrelated script (0.070333ms)
+✔ returns false when there is no argv path (0.062875ms)
+✔ returns false (fail-closed) when realpath throws (0.070166ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 197.0695
+✔ deriveDisposition gives superseded marker precedence over NOT_PLANNED (0.864833ms)
+✔ deriveDisposition maps delivered, duplicate, and discarded terminal evidence (0.25425ms)
+✔ parseArgs supports dry-run default, apply, and explicit issue scope (0.765583ms)
+✔ dry-run reports classifications without reading or writing the board (0.235833ms)
+✔ apply skips unchanged values and writes only real classification deltas (0.177833ms)
+✔ apply records an isolated write failure and continues the sweep (0.176667ms)
+✔ main refuses a declined multi-issue apply before the backfill runner (0.184584ms)
+✔ main passes --yes to confirmation and preserves audit-by-default (0.178584ms)
+✔ main distinguishes isolated item failures from orchestration failures (0.171ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 162.283667
+▶ buildPlanMetadataBackfill (#488)
+  ✔ skips a body with no Plan Metadata section (0.963584ms)
+  ✔ skips a body whose section is already fully bold (0.512208ms)
+  ✔ heals an unbold section and reports the changed labels (0.961083ms)
+  ✔ is idempotent — healing the healed body is a skip (0.261625ms)
+✔ buildPlanMetadataBackfill (#488) (3.503208ms)
+ℹ tests 4
+ℹ suites 1
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 140.6615
+▶ buildPlanMetadataBackfill Story Origin migration (#892)
+  ✔ moves legacy provenance into Story Origin and preserves planning fields and markers (3.155916ms)
+  ✔ merges missing provenance into an existing Story Origin without overriding it (0.265833ms)
+  ✔ replaces empty Story Origin placeholders with populated legacy values (0.511875ms)
+  ✔ replaces comment-only Story Origin placeholders with populated legacy values (0.168917ms)
+  ✔ removes an entire multiline Story Origin placeholder when restoring a legacy value (0.123208ms)
+  ✔ removes an entire multiline legacy provenance placeholder from Plan Metadata (0.238458ms)
+  ✔ skips a clean split body byte-for-byte (0.098916ms)
+  ✔ skips a body without Plan Metadata (0.290375ms)
+  ✔ is idempotent after relocating legacy provenance (0.19775ms)
+  ✔ preserves values from legacy colon-inside-bold provenance labels (0.135708ms)
+  ✔ inserts a populated Story Origin when legacy Plan Metadata has no provenance (0.145542ms)
+  ✔ derives a missing Story Origin kind from the authoritative issue-kind marker (0.102083ms)
+  ✔ relocates an existing Story Origin immediately before Plan Metadata (0.153875ms)
+  ✔ migrates the legacy canonical Parent epic relationship as parent (0.116084ms)
+✔ buildPlanMetadataBackfill Story Origin migration (#892) (6.657917ms)
+ℹ tests 14
+ℹ suites 1
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 179.15625
+✔ backfills recoverable rows and tags the cross-session row unrecoverable (2.490542ms)
+✔ preserves all other comment content (0.167875ms)
+✔ idempotent: a second pass makes no further changes (0.181083ms)
+✔ a row with no prior bracket is unrecoverable (0.079417ms)
+✔ --cap-hours override widens what counts as recoverable (0.715792ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.062292
+backfill-vc-sections-help.test.mjs: all assertions passed
+✔ --help prints usage, never calls listOpenIssues or mutateIssueBody (0.691917ms)
+✔ -h is a recognized alias for --help (0.104625ms)
+✔ no flags defaults to audit-only — no writes without --apply (1.095083ms)
+✔ an unrecognized flag is refused outright, not degraded to audit-only (0.333916ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 222.822375
+✔ (a) --scope alongside --apply performs a filtered write (1.682333ms)
+✔ (b) --scope without --apply performs a filtered audit with no write (0.228458ms)
+✔ (c) an unmatched scope number hard-errors with zero writes (0.108125ms)
+✔ (d) a scope number matching an already-healed issue writes nothing but warns (0.198667ms)
+✔ buildVcBackfill is unaffected by --scope (pure-core sanity) (0.127792ms)
+✔ the thrown error carries the usage text for the direct-invocation footer (0.317292ms)
+✔ --help still short-circuits before any enumeration (0.07425ms)
+✔ declared flags still work — audit default enumerates but never writes (0.081375ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.062333
+PASS: prose-quoted heading text does not fool the anchor
+backfill-vc-sections.test.mjs: ok
+✔ scripts/tests/unit/task-tracker/core/backfill-vc-sections.test.mjs (145.621208ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.7015
+✔ routing identities contain only canonical verb and dispatch metadata (1.100958ms)
+✔ catalog owns alias resolution and resolves each route identity (0.17175ms)
+✔ registry and grouped help consume the catalog verb-name query (15.524083ms)
+✔ catalog verb names equal the dispatch switch case labels (0.623834ms)
+✔ deliver is a directly routed target-required verb (0.122625ms)
+✔ incident-ledger is a directly routed target-required evidence verb (0.063959ms)
+✔ migrate-dependencies is globally routed without issue preflight (0.064125ms)
+✔ workflow-exception prepare is public and has no binding preflight (0.063875ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 431.952833
+coverage-backfill-plan-metadata.test.mjs: ok
+✔ buildPlanMetadataBackfill: no section → skip (4.326292ms)
+✔ buildPlanMetadataBackfill: already-bold section → skip (0.531709ms)
+✔ buildPlanMetadataBackfill: unbold labels → healed w/ bolded body + changed list (3.971334ms)
+✔ buildPlanMetadataBackfill: default empty arg → skip (12.1335ms)
+✔ listOpenIssues: parses gh json via injected pexec (0.394084ms)
+✔ main: audit dry-run logs would-heal + skips clean issues, no writes (0.513958ms)
+✔ main: --apply writes healed issues through mutateIssueBody (1.998625ms)
+✔ main: --apply mutate throw is tallied as failed on err channel (0.440667ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 215.878
+coverage-backfill-timing-logs.test.mjs: ok
+✔ parseArgs: --issue N / --apply / --cap-hours (0.788417ms)
+✔ parseArgs: --issue=N / --cap-hours=H equals forms (0.112333ms)
+✔ parseArgs: --all-open and --help (0.062042ms)
+✔ printUsage: writes usage banner to injected sink (0.117834ms)
+✔ fetchOpenIssueNumbers: maps gh json to numbers (0.509792ms)
+✔ fetchOpenIssueNumbers: bad json → [] (0.092167ms)
+✔ printDiff: emits - / + only for differing lines (0.146625ms)
+✔ processIssue: no timing comment → skipped line (0.141958ms)
+✔ processIssue: no change (already clean body) → no-change line (0.238875ms)
+✔ processIssue: dry-run backfill → summary + diff, no write (1.631833ms)
+✔ processIssue: --apply → backup written + comment updated (0.679ms)
+✔ main: --help prints usage and exits 0 (5.431875ms)
+✔ main: no issue selector → usage + exit 2 (0.121125ms)
+✔ main: missing repo → err + exit 2 (0.110958ms)
+✔ main: --all-open loops issues + captures per-issue errors + dry-run footer (0.345459ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 194.687416
+coverage-backfill-vc-sections.test.mjs: ok
+✔ buildVcBackfill: no section + no markers → healed-default (1.332542ms)
+✔ buildVcBackfill: AC evidence command → healed-derived, placed before Pickup (1.231875ms)
+✔ buildVcBackfill: healed body is idempotent → skip on re-run (0.8225ms)
+✔ buildVcBackfill: default empty arg → healed-default (0.099333ms)
+✔ listOpenIssues: parses gh json via injected pexec (0.135333ms)
+✔ main: --dry-run logs healed lines + skips clean, no writes (0.474041ms)
+✔ main: default (no flags) audits only, no writes (0.109708ms)
+✔ main: --help prints usage and never lists or writes (0.121666ms)
+✔ main: live run writes healed issues through mutateIssueBody (0.565625ms)
+✔ main: mutate throw is tallied as failed on err channel (0.385375ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 183.28275
+coverage-heal-backlog.test.mjs: ok
+✔ scripts/tests/unit/task-tracker/core/coverage-heal-backlog.test.mjs (138.329084ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 146.24375
+coverage-heal-entry-markers.test.mjs: ok
+✔ checkOnlyExitCode: error precedence, plan, clean (0.626625ms)
+✔ stripStageMarkers removes entry + legacy/new audit markers (0.800833ms)
+✔ #1206: stripStageMarkers does not rewrite historical second-stage audit bytes (0.337875ms)
+✔ detectIllegalArcs: <2 markers empty; legal chain empty; illegal flagged (0.778208ms)
+✔ outOfOrderHealableStages flags a stage newer than a later stage (0.148458ms)
+✔ backlogCreatedAtFallback: bumps refine when it collides; throws on bad createdAt (1.679541ms)
+✔ planStageHeal: backfill for missing entry with a later marker (0.321708ms)
+✔ planStageHeal: restamp for out-of-order entry (0.145417ms)
+✔ planStageHeal: audit-only for present-but-unaudited entry (0.217708ms)
+✔ planStageHeal: skip when unparseable entry ts (property-grammar form) (0.192208ms)
+✔ planStageHeal: backlog createdAt fallback when refine sits at createdAt (0.13575ms)
+✔ planStageHeal: non-backlog with no feasible interval rethrows (0.093917ms)
+✔ planStageHeal: skip when nothing to heal (0.075334ms)
+✔ fetchOpenIssues maps numbers to strings via stub gh (0.316875ms)
+✔ fetchIssue returns parsed JSON via stub gh (0.118416ms)
+✔ writeBody writes a temp file, edits, and unlinks (unlink error swallowed) (0.149208ms)
+✔ postComment shells gh issue comment (0.074583ms)
+✔ healOne: skip when body is a clean audited chain (0.532417ms)
+✔ healOne: dry-run returns plan without writing (0.228291ms)
+✔ #1206: apply preserves an out-of-order historical second-stage marker byte-for-byte (0.1305ms)
+✔ healOne: apply writes body + posts comment (1.413583ms)
+✔ healOne: apply restamp path (out-of-order) rewrites body (0.84225ms)
+✔ healOne: illegal-arcs only (no heals) reported (0.388583ms)
+✔ main: --apply and --check-only are mutually exclusive → exit 2 (0.486333ms)
+✔ main: dry-run over explicit issues prints all result branches (0.226083ms)
+✔ main: apply prints applied, and healOne throw becomes error (0.144959ms)
+✔ main: no explicit issues scans open issues via fetchOpenIssues (0.078209ms)
+✔ main: --check-only exits with checkOnlyExitCode (0.078459ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 174.8995
+coverage-heal-functional-dod.test.mjs: ok
+✔ scripts/tests/unit/task-tracker/core/coverage-heal-functional-dod.test.mjs (151.805792ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 163.370125
+coverage-heal-refine-entry-marker.test.mjs: ok
+✔ needsBackfill: later marker present but refine-entry missing → true (2.314875ms)
+✔ needsBackfill: refine-entry + later but no audit → true (audit-only) (0.217125ms)
+✔ needsBackfill: refine-entry + later + audit → false (clean) (0.075625ms)
+✔ needsBackfill: refine-entry only, no later stage → false (0.06075ms)
+✔ needsBackfill: empty body → false (0.061959ms)
+✔ needsBackfill: new-grammar audit marker satisfies the audit check (0.077709ms)
+✔ fetchOpenIssues: maps gh json to string numbers (0.517833ms)
+✔ fetchIssue: parses gh view json (0.098458ms)
+✔ writeBody: writes tmp, invokes gh edit --body-file, unlinks (0.192333ms)
+✔ writeBody: unlink failure is swallowed (best-effort cleanup) (0.153ms)
+✔ postComment: shells gh issue comment --body (0.095667ms)
+✔ healOne: skip when body clean (entry+later+audit) (0.138292ms)
+✔ healOne: plan (dry-run) entry+audit mode uses createdAt (0.176792ms)
+✔ healOne: plan (dry-run) audit-only mode reuses existing entry ts (0.100291ms)
+✔ healOne: apply entry+audit writes body + posts comment (0.849583ms)
+✔ healOne: apply audit-only posts the audit-marker comment (0.250875ms)
+✔ main: single-issue dry-run prints "would backfill" plan line (0.317542ms)
+✔ main: apply prints backfilled + skip lines, no dry-run footer (0.157417ms)
+✔ main: healOne throw is captured as an error line on stderr (0.108209ms)
+✔ main: no issue args → scans open issues via fetchOpenIssues (0.084792ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 165.730542
+coverage-heal-timing-starts.test.mjs: ok
+✔ scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts.test.mjs (150.206334ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 155.379875
+coverage-migrate-fields-encoding.test.mjs: ok
+✔ transformBody: legacy fence → migrated to single-line aitm-fields (1.080833ms)
+✔ transformBody: single new-encoding block → no-op (0.079458ms)
+✔ transformBody: legacy block with invalid fence → unchanged w/ reason (0.088792ms)
+✔ fetchBody: returns gh stdout body (0.090875ms)
+✔ writeBody: mkdtemp + write + gh edit + rm cleanup (0.175667ms)
+✔ scanOpenIssues: parses gh search json → numbers (0.45725ms)
+✔ scanOpenIssues: gh failure → [] with err note (0.255917ms)
+✔ migrateOne: no change → reports, no write (0.220584ms)
+✔ migrateOne: dry-run → would-migrate, no write (0.165209ms)
+✔ migrateOne: live → writes migrated body (0.167042ms)
+✔ main: missing repo → err + exit 2 (0.188833ms)
+✔ main: no targets → usage + exit 2 (0.106917ms)
+✔ main: explicit numbers + --scan union, migrateOne per target, error captured (0.248458ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 177.445625
+coverage-migrate-plan-approved.test.mjs: ok
+✔ migrate: no legacy line + no marker → noop-no-trace (0.812416ms)
+✔ migrate: no legacy line but marker already present → noop-marker-present (0.413375ms)
+✔ migrate: unchecked legacy line → stripped-unchecked, no marker added (0.425541ms)
+✔ migrate: checked legacy line + no marker → stripped-and-marker-added (0.493625ms)
+✔ migrate: checked legacy line but marker already present → stripped-marker-already-present (0.25825ms)
+✔ migrate: checked legacy line as the only content → marker-only body (0.242417ms)
+✔ runMigrate: changed body → writeIssueBody invoked with new body (1.212459ms)
+✔ runMigrate: unchanged body → no write (0.102875ms)
+✔ runMigrate: missing issueNumber → throws (0.309875ms)
+✔ runMigrate: missing cfg → throws (0.1295ms)
+✔ fetchBody: normalizes CRLF from gh stdout (0.108917ms)
+✔ writeBody: stages temp file, calls gh edit, cleans up (0.550458ms)
+✔ writeBody: unlink failure is swallowed (best-effort cleanup) (0.108625ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 167.000541
+✔ scripts/tests/unit/task-tracker/core/heal-backlog-core.test.mjs (175.255042ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 180.08
+✔ planStageHeal: backlog absent + refine present → backfill candidate (3.246792ms)
+✔ backlog backfill ts is a conservative lower bound (createdAt <= ts < refineTs) (0.244667ms)
+✔ safeBackfillTs handles stageIdx 0: no earlier stage → floor is createdAt (0.070125ms)
+✔ backfillEntryMarker writes aitm-entered-backlog and aitm-backfill:backlog audit marker (0.572292ms)
+✔ planStageHeal: clean backlog-only issue (no later marker) → skip (0.088166ms)
+✔ planStageHeal: empty body / no markers → backfill from createdAt fallback (#784) (0.102375ms)
+✔ planStageHeal: backlog present + refine absent + plan present → refine still backfills (0.272958ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 151.070833
+ok: heal-backlog.test.mjs
+✔ scripts/tests/unit/task-tracker/core/heal-backlog-fields.test.mjs (150.143917ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 155.766292
+✔ CANONICAL_STATUS_OPTIONS derives from the move-state state list and includes R4P (0.84925ms)
+✔ current 8-column board with Created/Updated/Closed reports no drift (0.241333ms)
+✔ legacy 7-column board reports status-option drift missing R4P (0.1185ms)
+✔ genuinely unknown fields and status options still report drift (regression) (0.100792ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 179.1595
+✔ planStageHeal: refine stamped at createdAt → fallback stamps backlog at createdAt+1s (2.49ms)
+✔ backlog fallback bumps refine when refine === createdAt (collision) (0.192709ms)
+✔ planStageHeal: refine 5s after createdAt → normal path succeeds, fallback skipped (0.093ms)
+✔ backlogCreatedAtFallback: refine missing → backlog at createdAt+1s, no bump (0.062084ms)
+✔ backlogCreatedAtFallback: refine after backlog → no bump (0.069584ms)
+✔ backlogCreatedAtFallback: refine === backlogTs (boundary) → cascade refine (0.057334ms)
+✔ backlogCreatedAtFallback: refine before createdAt (skewed-clock) → cascade refine (0.065709ms)
+✔ backlogCreatedAtFallback: bad createdAt throws (0.116667ms)
+✔ planStageHeal: body already has backlog marker → no fallback needed (0.241375ms)
+✔ apply: writes backlog entry+audit and cascades refine when needed (1.228333ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 201.205041
+✔ outOfOrderHealableStages flags develop when develop ts > test ts (1.795417ms)
+✔ outOfOrderHealableStages flags test when test ts > review ts (the #170 inversion) (0.298459ms)
+✔ outOfOrderHealableStages: monotonic chain across all five stages flags nothing (0.308917ms)
+✔ planStageHeal restamps out-of-order test with safe lower-bound ts (2.459292ms)
+✔ planStageHeal backfills missing develop when test is present (0.298583ms)
+✔ planStageHeal audit-only on review entry with no audit marker and later marker present (0.326167ms)
+✔ planStageHeal skip on monotonic chain (no regression for any stage) (0.413625ms)
+✔ safeBackfillTs for test stays strictly below review ts (0.222667ms)
+✔ refine/plan regression: previous heal behavior unchanged for early stages (0.181125ms)
+✔ checkOnlyExitCode: 0 when all results are skip (clean backlog) (0.151458ms)
+✔ checkOnlyExitCode: 1 when any result is plan (anomaly present) (0.067291ms)
+✔ checkOnlyExitCode: 2 when any result is error (precedence over plan) (0.051792ms)
+✔ verifyChainIntegrity passes after restamping out-of-order test (full round-trip) (1.167917ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 209.224958
+✔ pure-forward chain: no illegal arcs (1.971208ms)
+✔ one-loop case (review→develop re-entry): not flagged (0.17075ms)
+✔ multi-loop case: not flagged (0.114208ms)
+✔ illegal arc detection: backlog→develop direct (0.104709ms)
+✔ illegal arc detection: done→backlog without intermediate (0.085042ms)
+✔ legacy single-visit chain (no visit suffixes): no illegal arcs (0.060958ms)
+✔ empty body returns empty (0.054791ms)
+✔ checkOnlyExitCode: illegal-arcs result exits 1 (0.08125ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 138.654667
+✔ planStageHeal: zero-marker backlog → backfill via createdAt fallback (3.397875ms)
+✔ planStageHeal: zero-marker body for a non-backlog stage → no-heal-needed (0.454042ms)
+✔ apply: zero-marker backlog gets a well-formed marker with ts > createdAt (1.016833ms)
+✔ planStageHeal: zero-marker backlog with bad createdAt → no-heal-needed (no throw) (0.097916ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 148.53675
+heal-functional-dod.test.mjs: all assertions passed
+✔ scripts/tests/unit/task-tracker/core/heal-functional-dod.test.mjs (137.36225ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 142.029125
+✔ needsBackfill: true when later-stage marker present and refine-entry absent (1.388875ms)
+✔ needsBackfill: false when refine-entry and audit marker both present (0.177416ms)
+✔ needsBackfill: true when refine-entry present but audit marker missing (unaudited fabrication) (0.0665ms)
+✔ needsBackfill: false when refine-entry present and no later-stage markers (still in refine) (0.056125ms)
+✔ needsBackfill: false when no later-stage markers (issue still in backlog/assigned/refine) (0.06ms)
+✔ needsBackfill: triggers on entered-develop alone too (0.052666ms)
+✔ backfillEntryMarker integration: writes both entry and audit markers (0.578ms)
+✔ backfillEntryMarker is idempotent on already-backfilled bodies (0.276125ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 141.592792
+heal-timing-log-command.test.mjs: ok
+✔ scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs (201.55175ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 206.322625
+heal-timing-starts-command.test.mjs: ok
+✔ scripts/tests/unit/task-tracker/core/heal-timing-starts-command.test.mjs (226.060291ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 232.482167
+✔ DoD template seeds the two-lane tests command (1.871875ms)
+✔ VC back-fill default seeds both lanes, not test:all (0.092666ms)
+✔ heal-functional-dod rebuilds the tests line to the two-lane form (2.757292ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 183.164
+measure-context.test.mjs OK
+✔ scripts/tests/unit/task-tracker/core/measure-context.test.mjs (1373.295375ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1378.03775
+migrate-fields-encoding.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/core/migrate-fields-encoding.test.mjs (119.646666ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 124.919709
+migrate-plan-approved.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/core/migrate-plan-approved.test.mjs (146.108416ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 151.478833
+mutate-issue-body-scripts-help-audit.test.mjs: all assertions passed
+✔ backfill-plan-metadata: --help prints usage, never lists or writes (0.767208ms)
+✔ backfill-plan-metadata: -h is a recognized alias for --help (0.115792ms)
+✔ backfill-plan-metadata: default (no flags) audits only, no writes (0.409334ms)
+✔ heal-functional-dod: --help exits without writing (via parseArgs exit hook) (0.517417ms)
+✔ heal-functional-dod: default parse has apply=false (audit-only) (0.390042ms)
+✔ heal-vc-refs: --help exits without writing (via parseArgs exit hook) (0.227791ms)
+✔ heal-vc-refs: default parse has apply=false (audit-only) (0.303833ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 218.744417
+✔ package-boundary: no test files are packed (7006.348833ms)
+✔ package-boundary: excluded directories do not reappear (0.260291ms)
+✔ package-boundary: ships the exact docs/introduction/ set (0.241833ms)
+✔ package-boundary: shipped README has no dead docs/introduction link (0.42425ms)
+✔ package-boundary: total entry count stays under the ceiling (0.230375ms)
+✔ package-boundary: development-only context calibration is not shipped (0.251125ms)
+✔ package-boundary: runtime entry points are still shipped (0.114709ms)
+✔ package-boundary: production parser and guidance release guard are declared (0.28375ms)
+✔ package-boundary: tag and explicit release CI retain the B2 consumer gate (0.673125ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7091.945458
+✔ consumer skill stubs omit dogfood worktree seeding instructions (0.5035ms)
+✔ repository Codex skill retains its Step 0 dogfood bootstrap (1.328042ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 143.745584
+✔ timing singleton renders Unknown totals and the known lower bound (0.5575ms)
+✔ operator timing summary never renders unavailable values as null or zero (0.146208ms)
+✔ board projection keeps null authoritative totals and explicit Unknown display (0.453334ms)
+✔ complete actor engagement does not make unavailable review or idle estimates zero (0.078ms)
+✔ board publication resolves fallback field IDs and writes Unknown once without clearing (0.254459ms)
+✔ board publication preserves transport failures instead of claiming telemetry success (0.286958ms)
+✔ canonical singleton visible projection preserves Unknown and lower-bound provenance (3.743208ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 172.207042
+✔ live project board options use canonical incident-ledger state slugs (0.756875ms)
+✔ read-only verifier accepts only convergence issue 1381 and known phases (0.584916ms)
+✔ sub-issue pagination is bounded, correlated, and fail-closed (0.4835ms)
+✔ production pre-close orchestration preserves every record and performs reads only (2.59975ms)
+✔ production terminal orchestration preserves every record and performs reads only (0.851666ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 203.112792
+✔ child worktree is based on its epic head, not trunk (0.955083ms)
+✔ child of a nested epic is based on the nested epic head (0.104917ms)
+✔ refuses a non-child issue (0.257333ms)
+✔ requires issue, path, and injected git (0.111542ms)
+✔ #1284: child worktree uses the parent epic's recorded custom branch authority (0.106084ms)
+✔ #1284: invalid parent branch authority makes zero mutating Git calls (0.088916ms)
+✔ #1486: production graph loading delegates authority to the shared adapter (0.262125ms)
+✔ #1486: production graph loading maps injected parent authority and fallback (0.465625ms)
+✔ #1486: production graph loading propagates parent authority parse failures (0.887333ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 168.23675
+✔ root epic forks from trunk (1.088709ms)
+✔ nested sub-epic forks from its parent epic head, not trunk (0.653833ms)
+✔ refuses to cut an epic branch for a non-epic issue (1.642958ms)
+✔ requires an issue and injected git (0.504875ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 221.194917
+✔ help route emits self-doc and exits 0 (1.464875ms)
+✔ missing issue → usage, exit 2 (0.187084ms)
+✔ non-numeric issue → invalid, exit 2 (0.120125ms)
+✔ no repo configured → config-not-found, exit 2 (0.128625ms)
+✔ skipNetwork happy path: flips board, posts no timing row (0.12725ms)
+✔ network happy path: flips board and posts a start timing row (1.393375ms)
+✔ non-zero move exit: reports and exits with the move code, posts no row (0.132167ms)
+✔ parseArgs strips leading # and reads --description (0.089042ms)
+✔ parseArgs defaults description and marks help (0.130709ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 194.109291
+✔ missing config file → err + exit 1 (1.467458ms)
+✔ config missing projectId/kanbanFieldId → err + exit 1 (0.209041ms)
+✔ all kanbanOption* already populated → early return, no write (0.240458ms)
+✔ network path: fetches options, fills every empty key, writes config (0.238458ms)
+✔ skipNetwork with fakeOptions: partial match logs Already set + Unmatched (0.185458ms)
+✔ skipNetwork with no options → nothing filled, no write (0.106375ms)
+✔ fetchStatusOptions matches by field id, else by name "status" (0.151167ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 258.379709
+set-priority — Set the Priority field on an issue (optionally cascading to sub-issues).
+
+  Purpose:       Set the Priority field on an issue (optionally cascading to sub-issues).
+  Group:         GitHub
+  Usage:         aitm set-priority <issue#> <p0|p1|p2|p3> [--cascade]
+  Audience:      AI/operator setting priority. Priorities: p0|p1|p2|p3.
+  Arguments:     <issue#>, <p0|p1|p2|p3>, --cascade
+  Preconditions: AI/operator setting priority. Priorities: p0|p1|p2|p3.
+  Effects:       Set the Priority field on an issue (optionally cascading to sub-issues).
+  Output:        Prints each issue whose project Priority field was updated.
+  Exit codes:    0=priority update completed; 1=usage, configuration, or GitHub update failed
+  Examples:      npx aitm set-priority 1023 p1; npx aitm set-priority 1005 p2 --cascade
+  Related:       set-rank, project-tether
+
+Invoke via the package or orchestrator command name:
+  npx aitm set-priority <issue#> <p0|p1|p2|p3> [--cascade]
+✔ help route emits self-doc and exits 0 (2.001333ms)
+✔ missing args → usage, exit 1 (0.155834ms)
+✔ non-numeric issue → usage, exit 1 (0.0955ms)
+✔ unknown priority → exit 1 (0.10225ms)
+✔ missing projectId/priorityFieldId (network on) → exit 1 (0.0835ms)
+✔ missing option id for the priority (network on) → exit 1 (0.083625ms)
+✔ TT_SKIP_NETWORK short-circuit logs the check mark, no gh call (0.150459ms)
+✔ network happy path resolves item and issues item-edit (0.200833ms)
+✔ network item not found → skip, no gh call (0.112958ms)
+✔ cascade with two sub-issues sets priority on parent + each child (0.208125ms)
+✔ cascade with no sub-issues logs "No sub-issues found" (0.12225ms)
+✔ cascade sub-issue query throwing is swallowed → No sub-issues found (0.1315ms)
+✔ getProjectItemId returns the matching project item id (0.071292ms)
+✔ getProjectItemId returns "" when no node matches / nodes missing (0.069625ms)
+✔ setPriority skipNetwork branch just logs (0.080042ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 191.588875
+✔ hasStrictDiscussMarker: bare line true; prose/backtick/null false (0.556584ms)
+✔ buildSweepReport: {discuss} skipped, broken body fails (0.610125ms)
+✔ buildSweepReport: missing title defaults to empty string (0.078125ms)
+✔ formatSweepReport: fail branch lists issue + missing + skip note (0.188125ms)
+✔ formatSweepReport: all-canonical branch (all skipped → 0 scored) (0.0725ms)
+✔ listOpenIssues: pages until a short/empty batch ends the loop (0.859417ms)
+✔ listOpenIssues: empty first batch ends immediately (0.136125ms)
+✔ main: no repo configured → err + exit 1 (0.613959ms)
+✔ main: text output, all canonical → exit 0 (0.244333ms)
+✔ main: --json output, a failing body → exit 5 (0.387ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 212.939167
+✔ buildIssueTitle stamps each kind prefix from --label (AC2) (0.596625ms)
+✔ buildIssueTitle leaves a non-kind title untouched (AC2) (0.103625ms)
+✔ buildIssueTitle is idempotent on the create path (AC2) (0.072875ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 172.668958
+✔ resolveAssignee: explicit --assignee returns the login (0.478542ms)
+✔ resolveAssignee: no/empty --assignee returns null (unassigned) (0.074375ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 178.330292
+✔ dispatch-prep.defaultRunMoveState calls the in-process host with the develop argv/env (no spawn) (0.950583ms)
+✔ dispatch-prep.defaultRunMoveState relays the host exit code verbatim (0.162083ms)
+✔ dispatch-prep.mjs no longer spawns a move-state child (0.284125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 191.118292
+✔ canonical project definitions add BLOCKED and stop provisioning Blocked By (3.606791ms)
+✔ repair reuses an existing complete Disposition field without mutation (0.594333ms)
+✔ repair creates a missing Disposition field with the canonical options (0.160458ms)
+✔ repair appends missing canonical options while preserving existing option ids (0.163875ms)
+✔ repair appends only BLOCKED when all terminal options are exact (0.181125ms)
+✔ repair refuses ambiguous fields and malformed canonical options without writing (0.593458ms)
+✔ persistDispositionField writes both compatibility and generic projections idempotently (0.112916ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 152.410208
+✔ needsBacklogScaffold: true for a web-authored body with no entry markers (0.918917ms)
+✔ needsBacklogScaffold: false once aitm-entered-backlog is present (0.788417ms)
+✔ scaffoldBody: stamps aitm-entered-backlog at the issue createdAt (0.278042ms)
+✔ scaffoldBody: no-op when aitm-entered-backlog already present (create-issue.mjs-authored) (0.110167ms)
+✔ scaffoldBody: falls back to now() when createdAt is not supplied (1.415417ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 217.907458
+✔ log-issue-time exposes current Project duration labels for operator output (1.0005ms)
+✔ log-issue-time prefers renamed fields while retaining legacy aliases (0.103667ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 161.299708
+✔ GitHub status projections derive every state and config key from lifecycle policy (0.884625ms)
+✔ GitHub utilities do not retain literal complete state/config tables (0.503125ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 145.034458
+✔ buildSweepReport: flags non-canonical bodies and counts failures (4.596583ms)
+✔ buildSweepReport: all-canonical corpus reports zero failures (0.86325ms)
+✔ buildSweepReport: tolerates missing body field (0.146208ms)
+✔ formatSweepReport: success summary names the corpus size (0.338041ms)
+✔ formatSweepReport: failure summary lists offending issue and ratio (0.108625ms)
+✔ hasStrictDiscussMarker: matches only a bare-token line, not prose/backtick mentions (0.079959ms)
+✔ buildSweepReport: {discuss} stub is skipped, not failed (0.536833ms)
+✔ formatSweepReport: skipped stubs are listed distinctly and noted in the summary (0.172208ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 153.056
+✔ AC1: refuses a direct exposed-script path, names npx aitm <name> (0.848208ms)
+✔ AC1: refuses a direct verb-hub path, names the concrete verb (0.279ms)
+✔ AC1: refuses an absolute-path-prefixed direct invocation (0.103917ms)
+✔ AC6: allows the npx aitm form (0.074625ms)
+✔ AC2: allows hook-runner wiring direct path (hook-handler.mjs) (0.079667ms)
+✔ AC3: allows a non-aitm / unregistered script path (0.068291ms)
+✔ AC3: ignores a wholly unrelated command (0.063209ms)
+✔ findOffendingDocLines flags direct paths but not hook wiring (0.204792ms)
+✔ AC4: skill docs (router.md + rules/*.md) carry no residual direct paths (2.123708ms)
+✔ AC1 (#572): no raw runtime-path literal survives outside paths.mjs + allowlist (66.175791ms)
+✔ AC1 (#572): allowlist is tight — every entry still carries a real occurrence (1.566917ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 159.081833
+close-repair.test.mjs: all passed
+✔ #708 AC2 (baseline): board=Done + issue=CLOSED without --repair → noop short-circuit (no timing flush) (193.683709ms)
+✔ #708 AC2: same state WITH --repair → bypasses noop and replays the full atomic close (168.665292ms)
+✔ #708 AC4: `--repair` is documented in the close verb help output (0.301917ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 589.933792
+✔ task metadata matches high-risk verb parser surfaces (4.658542ms)
+✔ documented examples use parser-valid aliases and enumerated issue kinds (0.327333ms)
+✔ pull-next documents every reachable R4P-to-Plan delegated refusal (0.139875ms)
+✔ task metadata exposes parser-accurate exit statuses (0.300709ms)
+✔ maintenance and package metadata reject retired routes and expose parser defaults (0.48425ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 102.72975
+✔ every catalog record satisfies the normalized public help schema (3.014459ms)
+✔ Story Origin creation contract is consistent across help and sanctioned rules (#892) (0.599709ms)
+✔ normalization never fabricates required command semantics (0.217792ms)
+✔ normalization preserves malformed nested values for validation to reject (0.233917ms)
+✔ schema rejects misspelled command-surface taxonomy values (0.133875ms)
+✔ duplicate canonical source records fail before catalog construction (0.281792ms)
+✔ catalog names and aliases are globally unique and resolve canonically (0.177042ms)
+✔ every help-required shipped entry point resolves to a catalog record (0.413833ms)
+✔ every routed standalone record maps back to a shipped standalone entry point (0.125083ms)
+✔ every package bin identity resolves to its classified target (0.37725ms)
+✔ representative maintenance metadata matches real parser contracts (0.277542ms)
+✔ high-risk routed metadata enumerates parser arguments and special exits (0.166709ms)
+✔ retired review commands and wrappers are absent from the AITM catalog (0.042833ms)
+✔ every task verb has an explicit positional contract (0.18625ms)
+✔ every task verb has explicit parser-accurate semantics and exit metadata (0.573291ms)
+✔ every routed verb is represented in the aggregate agent catalog (0.081ms)
+✔ every agent-callable task record has a real router identity (0.098125ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 98.450167
+About to write 1 issue(s): #1
+#1: refine:start -> refine:started
+Report written: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/aitm-heal-backlog-b5UcPU/.scratch/timing-slug-rename-2026-10-05T00-53-25-307Z.md
+APPLIED: scanned=1 rewritten=1 rewrites=1 no-log=0 errors=0
+Report written: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/aitm-heal-backlog-Koua6Z/.scratch/timing-slug-rename-2026-10-05T00-53-25-308Z.md
+DRY-RUN: scanned=0 rewritten=0 rewrites=0 no-log=0 errors=0
+Report written: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/.scratch/test/aitm-heal-backlog-Koua6Z/.scratch/timing-slug-rename-2026-10-05T00-53-25-308Z.md
+DRY-RUN: scanned=2 rewritten=0 rewrites=0 no-log=1 errors=1
+coverage-heal-backlog-cli.test.mjs: ok
+✔ scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs (202.734833ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 207.74925
+▶ current-schema User Story authoring
+  ✔ epic omission renders an empty leading User Story section (222.631083ms)
+  ✔ epic renders the supplied Connextra story without placeholders (188.411375ms)
+  ✔ sub-issue omission renders an empty leading User Story section (582.247042ms)
+  ✔ sub-issue renders the supplied Connextra story without placeholders (188.737625ms)
+  ✔ solo omission renders an empty leading User Story section (205.623209ms)
+  ✔ solo renders the supplied Connextra story without placeholders (198.626208ms)
+  ✔ defect omission renders an empty leading User Story section (221.051292ms)
+  ✔ defect renders the supplied Connextra story without placeholders (202.43825ms)
+  ✔ stub preserves its intentionally sparse body without a User Story section (205.110667ms)
+  ✔ exact canonical template survives intake unchanged (241.976625ms)
+  ✔ malformed and partially filled story fragments fail before rendering (2440.455791ms)
+✔ current-schema User Story authoring (4898.886792ms)
+▶ current-schema Acceptance Criterion verifier authoring
+  ✔ creation rejects legacy, empty, missing, and dangling verifier declarations (2293.209042ms)
+  ✔ creation accepts resolvable vc-list citations and non-demonstrable ACs (410.977792ms)
+✔ current-schema Acceptance Criterion verifier authoring (2704.446417ms)
+▶ current-schema public authoring contract
+  ✔ create-issue --body-file --dry-run rejects missing stories and legacy AC verifiers (2660.37475ms)
+  ✔ create-issue and preflight help advertise --user-story-file (518.736958ms)
+  ✔ shared and provider guidance makes story input optional and retains vc-list AC citations (1.21875ms)
+  ✔ pickup, review, and workflow guidance expose only the current AC citation contract (54.979583ms)
+✔ current-schema public authoring contract (3236.636375ms)
+✔ create-issue forwards --user-story-file before the remaining non-stub fragments (4.669291ms)
+ℹ tests 18
+ℹ suites 3
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11016.914666
+✔ each shipped executable entry point has exactly one explicit classification (219.124333ms)
+✔ public classifications resolve through an existing command authority (0.213125ms)
+✔ the approved classification vocabulary is closed and deeply frozen (0.261833ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 527.668333
+✔ actor replay dry-run identifies the original source and preserves all remote evidence (3.765625ms)
+✔ apply archives exact before evidence and retains original intervals and cursors (3.202708ms)
+✔ conflicting opener refuses without remote writes: word cursor (1.232709ms)
+✔ conflicting opener refuses without remote writes: full word cursor (1.294167ms)
+✔ conflicting opener refuses without remote writes: description (0.562958ms)
+✔ conflicting opener refuses without remote writes: duration (0.850458ms)
+✔ conflicting opener refuses without remote writes: row marker (0.94425ms)
+✔ conflicting opener refuses without remote writes: contributing delta (2.068333ms)
+✔ apply requires the dry-run source hash and canonical comment identity (2.31175ms)
+✔ source drift refuses before mutation and unobserved publication cannot report healed (10.840292ms)
+✔ actor replay CLI accepts dry-run mode and forbids a sweep before configuration reads (0.588083ms)
+✔ recovery keeps later resumed intervals and all unremoved bytes (5.15625ms)
+✔ ambiguous or mismatched canonical source refuses without a write (1.473042ms)
+✔ a genuine opener with explicit interval evidence refuses recovery (1.363875ms)
+✔ the per-issue CLI executes the real recovery under its timing lock (0.824375ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 500.040542
+✔ heal-entry-markers.planStageHeal and lib safeBackfillTs agree on the hole ts (2.08025ms)
+✔ reconcile backfill stamps the same ts heal-entry-markers would compute for the hole (2.006625ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 281.778625
+heal-lifecycle-dod.test.mjs: all assertions passed
+✔ scripts/tests/unit/task-tracker/lib/heal-lifecycle-dod.test.mjs (157.839708ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 163.249125
+heal-timing-departure-repair.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/heal-timing-departure-repair.test.mjs (163.108792ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 168.556208
+heal-vc-refs.test.mjs: all assertions passed
+✔ scripts/tests/unit/task-tracker/lib/heal-vc-refs.test.mjs (134.045625ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 142.620459
+✔ buildMemoryIndexContext prefixes the recall instruction over the index body (1.419208ms)
+✔ buildMemoryIndexContext returns null when the index is missing or empty (0.6135ms)
+✔ runMemoryIndexHook emits additionalContext on SessionStart, only the index (1.141541ms)
+✔ runMemoryIndexHook is silent for non-SessionStart/PostCompact events (0.744375ms)
+✔ patchSettingsJson registers the index hook only when memoryIndexHook=true (3.750542ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 168.395167
+## Definition of Done
+<!--
+Each item below MUST be individually verified by running the declared
+verifier. Do not bulk-check. Do not preemptively check. The visible checkbox
+is the sign-off; the hidden `aitm-dod-evidence:<key>` marker is the evidence
+trail. `/task check` refuses to tick a stampable Functional DoD item without
+its marker; run `/task dod-stamp <key>` to produce one. The two derived keys
+(`acs`, `checkboxes`) are auto-stamped by `/task close` from the body itself.
+See `skill/shared/rules/functional-dod.md` for the full contract.
+
+Lifecycle items are verified during Review. Housekeeping items are finalized
+during Close; their separate headings make the owning workflow phase explicit.
+
+Kind-aware items (#681): append a `dod:kinds` HTML-comment annotation to scope
+an item to a set of issue kinds. `exclude="spike,research"` renders the item for
+every kind EXCEPT those listed; `include="code"` renders it only for the listed
+kinds; an item with no annotation applies to every kind (the default). The
+`tests` item is excluded for the no-code kinds `spike` and `research`, which ship
+findings rather than code and would otherwise carry a test-suite DoD item and a
+`npm run test:all` verification command they can never satisfy. Filtering happens
+at render time in `preflight-issue.mjs`; a filtered-out item is simply absent, so
+no phantom evidence marker is ever required for it.
+
+Diff-decides for `docs-only` (#865): the `tests` item deliberately does NOT
+static-exclude `docs-only`. A `docs-only` issue can quietly touch code, so the
+kind alone must not launder it out of the suite. Instead the `tests` item is
+dropped only when the render is `--kind docs-only` AND a supplied
+`--changed-paths-file` proves the `trunk...HEAD` diff is documentation-only
+(default-deny: any unclassified/empty/mixed diff keeps the item). "The kind
+declares, the diff decides."
+-->
+
+### Functional (verified at Test)
+
+- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" -->
+- [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->
+- [ ] All changes committed; commit messages follow project convention <!-- aitm-verified cmd="`git log --oneline -1`" --> <!-- dod:functional:commits --> <!-- dod:kinds exclude="epic" -->
+- [ ] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->
+- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->
+
+### Lifecycle (verified at Review)
+
+- [ ] Agent Review Passed
+- [ ] Final Review Passed
+
+### Housekeeping (verified at Close)
+
+- [ ] Story closed and moved to Done
+- [ ] Timing data flushed to issue
+
+---
+
+## Pickup Directive — MANDATORY, DO NOT SKIP
+> Follow: `.ai-task-manager/templates/pickup-directive.md`
+<!-- aitm-body-version version="1" -->
+✔ epic preflight handles omitted story intake (194.09925ms)
+✔ epic preflight handles blank story intake (189.882959ms)
+✔ epic preflight handles template story intake (251.1245ms)
+✔ epic preflight handles valid story intake (594.001208ms)
+✔ epic preflight handles malformed story intake (273.459166ms)
+✔ epic preflight handles administrative story intake (231.480334ms)
+✔ solo preflight handles omitted story intake (226.757584ms)
+✔ solo preflight handles blank story intake (237.431125ms)
+✔ solo preflight handles template story intake (223.334666ms)
+✔ solo preflight handles valid story intake (194.8785ms)
+✔ solo preflight handles malformed story intake (179.402042ms)
+✔ solo preflight handles administrative story intake (173.4835ms)
+✔ sub-issue preflight handles omitted story intake (250.103458ms)
+✔ sub-issue preflight handles blank story intake (212.05225ms)
+✔ sub-issue preflight handles template story intake (232.546791ms)
+✔ sub-issue preflight handles valid story intake (216.420625ms)
+✔ sub-issue preflight handles malformed story intake (182.946209ms)
+✔ sub-issue preflight handles administrative story intake (518.785875ms)
+✔ defect preflight handles omitted story intake (193.784334ms)
+✔ defect preflight handles blank story intake (233.173833ms)
+✔ defect preflight handles template story intake (186.338542ms)
+✔ defect preflight handles valid story intake (180.701042ms)
+✔ defect preflight handles malformed story intake (182.292542ms)
+✔ defect preflight handles administrative story intake (170.049625ms)
+▶ preflight-issue --shape lint wiring
+  ✔ rejects && in an AC aitm-verified cmd marker with exit 12 (183.946333ms)
+  ✔ accepts a clean AC with a current vc-list citation (255.625417ms)
+✔ preflight-issue --shape lint wiring (439.997ms)
+▶ preflight-issue --shape Story Origin flat-section validation (#892)
+  ✔ rejects a Story Origin fragment containing an embedded heading (188.913917ms)
+  ✔ still accepts a single leading Story Origin heading for compatibility (197.670875ms)
+  ✔ rejects a stale project template override that drops Story Origin (239.179542ms)
+✔ preflight-issue --shape Story Origin flat-section validation (#892) (626.12325ms)
+▶ preflight-issue --shape Plan Metadata flat-section validation (#892)
+  ✔ rejects a Plan Metadata fragment containing an embedded heading (1685.816042ms)
+  ✔ accepts one compatible leading Plan Metadata heading (969.764083ms)
+✔ preflight-issue --shape Plan Metadata flat-section validation (#892) (2655.803333ms)
+▶ preflight-issue --shape stub (#426)
+  ✔ renders without scope/ac/plan-metadata files, using placeholders (297.854292ms)
+  ✔ seeds the Scope section from --idea-file (330.366167ms)
+✔ preflight-issue --shape stub (#426) (629.540167ms)
+▶ preflight-issue --shape Verification Commands seeding (#410)
+  ✔ seeds a ## Verification Commands section that makes the body a fixed point of the evidence audit (199.563625ms)
+✔ preflight-issue --shape Verification Commands seeding (#410) (199.8265ms)
+▶ preflight-issue --kind docs-only render (#865 diff-decides / #923)
+  ✔ default-deny: docs-only with NO --changed-paths-file KEEPS the tests DoD item (182.888917ms)
+  ✔ docs-only + provably documentation-only diff DROPS the tests item + its VC seeds (198.851208ms)
+  ✔ docs-only + a diff that touches code KEEPS the tests item (default-deny) (190.982667ms)
+✔ preflight-issue --kind docs-only render (#865 diff-decides / #923) (573.050625ms)
+▶ normalizePlanMetadata (#416)
+  ✔ bolds a simple word label (0.374208ms)
+  ✔ bolds a hyphenated label (0.115833ms)
+  ✔ is idempotent on already-bold labels (0.045542ms)
+  ✔ leaves non-label lines unchanged (0.034416ms)
+  ✔ handles multi-line input, bolding only label lines (0.045708ms)
+  ✔ bolds a bulleted word label, preserving the bullet (#488) (0.077208ms)
+  ✔ bolds a bulleted hyphenated label, colon outside the span (#488) (0.073958ms)
+  ✔ is idempotent on an already-bold bulleted label (#488) (0.032125ms)
+  ✔ bolds a realistic bulleted metadata block, leaving prose untouched (#488) (0.042042ms)
+✔ normalizePlanMetadata (#416) (1.018958ms)
+ℹ tests 46
+ℹ suites 7
+ℹ pass 46
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11028.640833
+✔ patchSettingsJson emits scoped-first managed hook commands (6.218334ms)
+✔ patchSettingsJson leaves worktree seed checks to repository hooks (3.2335ms)
+✔ Claude allowlist permits scoped installed operational scripts (0.136667ms)
+✔ memory-hook migration retains malformed event repair for Claude and Codex (3.056917ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 267.2055
+▶ preflight Story Origin authoring (#892)
+  ✔ renders a solo shape without plan metadata input (198.89075ms)
+  ✔ preserves optional early planning input (202.53725ms)
+  ✔ rejects empty and prose-only Story Origin fragments (356.398833ms)
+  ✔ renders a populated stub origin and an empty plan section (190.820458ms)
+  ✔ uses the resolved issue kind in a stub origin (194.705333ms)
+  ✔ derives a non-stub render kind from Story Origin (454.118459ms)
+  ✔ rejects an explicit kind that conflicts with Story Origin (452.672125ms)
+  ✔ records a sub-issue parent inside Story Origin (253.996375ms)
+✔ preflight Story Origin authoring (#892) (2305.258334ms)
+▶ create-issue shaped flag forwarding (#892)
+  ✔ forwards Story Origin and omits absent Plan Metadata (0.541583ms)
+  ✔ still forwards optional early Plan Metadata (0.097542ms)
+  ✔ forwards optional exact verification commands (0.051875ms)
+✔ create-issue shaped flag forwarding (#892) (0.817833ms)
+ℹ tests 11
+ℹ suites 2
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2458.224542
+✔ default manifest creates and refreshes defect and plan templates (9.466167ms)
+✔ syncTemplates: a deliberately stale mirror is made byte-identical to its template (1.88775ms)
+✔ syncTemplates: an already-identical mirror reports unchanged (idempotent) (1.12875ms)
+✔ syncTemplates: creates the mirror file when absent (1.067333ms)
+✔ syncTemplates: stamps the pickup directive when a package version is supplied (1.075ms)
+✔ syncTemplates: throws when required dirs are missing (0.280958ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 89.0745
+test-sha-drift-gate: PASS
+✔ scripts/tests/unit/task-tracker/lib/test-sha-drift-gate.test.mjs (195.884917ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 200.992958
+✔ /task test audits a stale Develop-final receipt before one replacement finalization (31.4725ms)
+✔ /task test audits every Develop-final reuse refusal family before one new finalization (1.92175ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 193.138166
+✔ retires stale claimed Test evidence before finalization or worktree creation (37.887667ms)
+✔ retires stale claimed Test evidence from Develop before replacement verification (23.927125ms)
+✔ stops all execution when receipt retirement fails (1.929041ms)
+✔ refuses malformed claimed Test evidence before execution (3.198917ms)
+✔ refuses malformed generic receipt claims before execution (0.42675ms)
+✔ refuses live command drift introduced by the fresh evidence mutation (43.300667ms)
+✔ reports invalid fresh-base command authority without throwing (15.025625ms)
+✔ refuses command drift reported by the persisted write response (17.719709ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 309.05725
+✔ partitionVerificationCommands reuses lint/format and plans all complete lanes once (0.898959ms)
+✔ /task test finalizes Develop, reads back evidence, reuses it, and emits Test receipt (30.117041ms)
+✔ /task test reuses a valid Develop-final receipt when retrying unchanged SHA (24.340125ms)
+✔ /task test records invalid finalization and never creates a sandbox (44.666833ms)
+✔ /task test does not rerun a valid exact-SHA Test receipt without --force (0.900875ms)
+✔ /task test reruns when live Verification Commands add a command (1.15675ms)
+✔ /task test does not rerun a valid docs-only lane-skip receipt without --force (2.212833ms)
+✔ /task test audits --force before rerunning a valid exact-SHA Test receipt (31.730958ms)
+✔ /task test refuses when the completed sandbox fingerprint is dirty (0.681417ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 308.471166
+✔ verbTest: no-vc body returns no-vc status (does not create worktree) (3.798458ms)
+✔ verbTest: detects lifecycle pretick → un-ticks, writes body, posts regression comment (#139) (5.78125ms)
+✔ verbTest: no pretick → no regression comment posted (#139) (15.139209ms)
+✔ verbTest #937: Test becomes current before sandbox proof is stamped (1.379583ms)
+✔ verbTest #406: sandbox green but moveState refuses → status move-failed, no passed banner (6.964667ms)
+✔ verbTest #444: benign test→test self-loop → status reverified (in-place re-verify) (2.567042ms)
+✔ verbTest #406: structured ok:true move → status passed (2.718917ms)
+✔ verbTest #406: legacy stub moveState returning undefined still reports passed (3.055041ms)
+✔ #1015 successful Test entry posts the New Automated Tests report (5.7535ms)
+✔ #1015 Test self-loop runs the idempotent New Automated Tests poster (1.022042ms)
+✔ #1015 New Automated Tests post failure does not reverse a successful Test entry (0.79225ms)
+✔ #1015 refused Test move does not post New Automated Tests (0.398875ms)
+✔ #1015 successful move attempts New Automated Tests before a result-comment failure (1.147041ms)
+✔ #1015 successful move attempts New Automated Tests before a timing-log failure (0.884125ms)
+✔ verbTest: sandbox isolation — locally-passing env-dependent command fails in sandbox (0.644709ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 312.792875
+test-verb-retry.test.mjs: all tests registered
+✔ retry-then-succeed: transient npm ci failure is retried, run reaches Test (22.505ms)
+✔ real-red first occurrence: a genuine verification red rolls back without retry (4.52875ms)
+✔ durable diagnostics: exhausted setup retries record step + exit + stderr tail and re-throw (3.565625ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.606542
+✔ buildPassedMessage: develop→test promotion success message names "Test", not "Review" (0.604625ms)
+✔ buildReverifiedMessage #444: in-place re-verify banner is loud and does not claim a move (0.079708ms)
+✔ verbTest #1218: invalid provider refuses before sandbox setup or state movement (2.181375ms)
+✔ parseVerificationCommands: extracts VC checkboxes only, in order (0.31625ms)
+✔ verbTest #1412: crash recovery runs before the current sandbox is created (13.9985ms)
+✔ verbTest: green path stamps marker, posts success comment, moves develop→test, logs time (1.477709ms)
+✔ verbTest #937: red source result enters Test then explicitly demotes without a DoD marker (0.913625ms)
+✔ verbTest: worktree cleanup runs even when sandbox exec throws (0.902583ms)
+✔ verbTest #937: sandbox-setup crash stays in Test and posts test-aborted audit (0.748875ms)
+✔ verbTest #937: sandbox-exec crash stays in Test without demotion (0.645084ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.877958
+✔ draft validation accepts only unfinished drafts or quality substantive prose (1.95175ms)
+✔ substantive authoring rejects administrative prose without erasing stories (0.626708ms)
+✔ AC1: buildUserStoryLines composes three prefixed, non-placeholder lines (0.928833ms)
+✔ AC1: existing Connextra lead-in is kept verbatim, not double-prefixed (0.105167ms)
+✔ AC1: empty or placeholder input is rejected (0.095708ms)
+✔ AC2: inserts `## User Story` ahead of an existing leading section (0.377125ms)
+✔ AC2: markers above the first heading are preserved (0.177333ms)
+✔ AC2: empty body produces a valid, leading User Story section (0.116167ms)
+✔ AC3: replaces a placeholder User Story in place without duplicating the heading (0.316041ms)
+✔ AC3: re-running with identical input reproduces the same bytes (1.52925ms)
+✔ AC3: markers inside the section are preserved on replace (0.200208ms)
+✔ AC4: catalog registers `user-story` with the `story` alias (0.097584ms)
+✔ AC4: dispatch switch has matching `user-story` and `story` case labels (0.270458ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104.525875
+▶ #1089 verification stage ownership
+  ✔ pins the shared command-classification vocabulary and owning stages (1.59025ms)
+  ✔ Develop separates affected iteration checks from exact-SHA finalization (0.2975ms)
+  ✔ Test reuses finalization evidence and executes complete lanes plus targeted commands (0.632667ms)
+  ✔ Review validates exact-SHA Test evidence and does not run standard commands (0.185708ms)
+✔ #1089 verification stage ownership (3.54675ms)
+ℹ tests 4
+ℹ suites 1
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 197.58425
+writer-consolidated-declaration.test.mjs: OK
+✔ scripts/tests/unit/task-tracker/lib/writer-consolidated-declaration.test.mjs (177.654459ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 182.64375
+heal-timing-departure-cli.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/maintenance/heal-timing-departure-cli.test.mjs (178.727666ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 184.936
+✔ dry-run reports authoritative before and after totals without writing (1.359208ms)
+✔ apply writes once and requires exact fresh read-back (0.896792ms)
+✔ ambiguous update is reconciled only when the intended body landed (2.779625ms)
+✔ an exact prior repair is a no-write idempotent success (0.293125ms)
+✔ strict argv requires one issue and complete unique interval options (0.538542ms)
+✔ main serializes the full operation under the issue timing lock (0.431833ms)
+✔ main obtains blast-radius authority before an apply operation (0.144208ms)
+✔ the installed command is classified and self-documents its authority boundary (0.231ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 246.584208
+rename-estimation-headers.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/maintenance/rename-estimation-headers.test.mjs (106.49025ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 115.966125
+✔ clean fast-forward path: sync-skip, rebase child, test, ff, cleanup (0.946667ms)
+✔ #1611: cleanup detaches a configured upstream before safe child deletion (0.165875ms)
+✔ nested epic follows the same recursive merge-back path into its immediate epic parent (0.615334ms)
+✔ grandparent advanced: epic is rebased onto trunk before the child merge (0.125583ms)
+✔ rebase conflict on the child refuses before any merge (0.304666ms)
+✔ post-rebase test failure refuses the merge and skips cleanup (0.11675ms)
+✔ #864: the test-runner runs bounded sections, not the retired test:all (0.276792ms)
+✔ refuses a non-child issue (0.106334ms)
+✔ requires child, git, and a test runner (0.147208ms)
+✔ #1485: graph mapping preserves a valid parent custom branch (0.55225ms)
+✔ #1601: graph mapping preserves the current issue custom branch and worktree (0.16525ms)
+✔ #1601: malformed and ambiguous current issue authority map to authorityError (0.361625ms)
+✔ #1485: a parent body with no authority marker preserves canonical fallback (0.08275ms)
+✔ #1485: a root node with no parent carries no authority fields (0.104084ms)
+✔ #1485: malformed and ambiguous parent authority map to parentAuthorityError (0.250042ms)
+✔ #1485: a non-null parent with an unavailable body refuses (0.092917ms)
+✔ #1485: graph loader prefetches child and immediate epic by issue number (0.252834ms)
+✔ #1601: production graph loading reads own and parent worktree authority separately (0.198291ms)
+✔ #1485: a node outside the prefetched set fails closed rather than being fabricated (0.083458ms)
+✔ #1486: merge-back delegates authority and parent fetching to the shared adapter (0.233625ms)
+✔ #1601: a recorded custom child branch drives rebase, merge, and cleanup (0.111875ms)
+✔ #1601: recorded child path and checked-out branch mismatches refuse before mutation (0.149667ms)
+✔ #1485: a recorded custom epic branch drives rebase, checkout, and fast-forward (0.090667ms)
+✔ #1485: parent authority failure refuses before any git or test-runner call (0.235708ms)
+✔ #1485: the CLI wires the prefetched keyed graph, not a constant single node (0.3555ms)
+✔ #1882: preservation retains the child checkout, branch and upstream after integration (0.084708ms)
+✔ #1882: non-boolean verification cannot silently authorize a merge (0.1245ms)
+✔ #1882: invalid preservation values refuse before any Git mutation (0.055875ms)
+✔ #1882: verification head drift refuses before parent integration (0.103833ms)
+✔ #1882: parent integration uses the verified commit rather than a movable child ref (0.063334ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 291.462125
+✔ syncEpic rebases the epic onto origin/trunk (default) then force-with-lease pushes (0.965125ms)
+✔ syncEpic skips the push when noPushToOrigin is set (rebase-only) (0.089875ms)
+✔ #927 — syncEpic rebases onto the injected resolved ref, and it equals the ancestor-check ref (0.104791ms)
+✔ syncEpic surfaces a rebase conflict rather than pushing a bad state (0.237042ms)
+✔ syncEpic refuses a non-epic issue (0.099875ms)
+✔ epicNeedsSync: true when origin/trunk is NOT yet an ancestor of the epic (0.062083ms)
+✔ epicNeedsSync: false when the epic already contains origin/trunk (0.057708ms)
+✔ requires an issue and injected git (0.091333ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 162.237833
+✔ closed command arguments accept every registered operation and reject unknown or duplicate inputs (1.435ms)
+✔ show is read-only, all mutations require parent authority and common admission locking (5.0975ms)
+✔ operator catalog exposes scoped authority, recovery and no lifecycle mutation (0.432ms)
+✔ registered lock inspection is read-only and release requires parent authority and exact observation (0.935209ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 127.695917
+✔ deliver help and catalog describe current-head and historical recovery modes exactly (1.227ms)
+✔ #1573: deliver help exposes merge-method reconciliation without overstating it (0.365959ms)
+✔ close help distinguishes Incorporated owner assertion from duplicate and incident-epic use (0.374083ms)
+✔ close help exposes the audited stale pre-terminal transaction restart contract (0.347417ms)
+✔ #1490: close help exposes the reopened completed-transaction recovery contract (0.576791ms)
+✔ #1635: close help exposes the audited protected-base false-delivery recovery contract (0.304708ms)
+✔ incident-ledger help requires executable Incorporated carrier authority (0.28675ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 95.051916
+✔ incident-ledger keeps record and approval as mutually exclusive explicit modes (0.96ms)
+✔ incident-ledger help and provider rule publish exact verifier phase syntax (0.249333ms)
+✔ production runtime fetches and pins one fresh origin/trunk snapshot (0.290125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 121.081417
+
+⛔ Refusing to move #1711 to develop:
+   BLOCKED: #1711 is in plan; shared guard evaluator threw
+
+Use `/task unblock` (or close the blockers) before retrying this move.
+
+[task-tracker] Could not move 42 to test: move-state exited 1
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test
+[task-tracker] Could not move 42 to test: move-state exited 2
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test
+[task-tracker] Could not move 42 to test: move-state exited 3
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test
+[task-tracker] Could not move 42 to test: move-state exited 5
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test
+[task-tracker] Could not move 42 to test: move-state exited 7
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test
+✔ both promotion paths provide the production intent adapter and Develop target (130.158417ms)
+✔ every lifecycle command maps to one explicit Cursor trigger and target contract (1.220084ms)
+✔ command Cursor requests reject inferred or extra targets (0.375959ms)
+✔ every caller seam produces the canonical argv shape + verb context (1.275708ms)
+✔ every caller seam relays the host exit code verbatim (4.923958ms)
+✔ runtime(→close) seam: canonical argv + runtime context + status parity (159.832ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 522.467
+✔ case fall-through: promote and next share verbPromote handler (0.967541ms)
+✔ ISSUE_ARG_VERBS includes next (0.217042ms)
+✔ help text documents next as alias of promote (0.377ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 134.767375
+✔ parseArgs extracts planned/current/rationale and strips trailing h (2.472292ms)
+✔ parseArgs omits absent current keys and falls back to active issue (0.170667ms)
+✔ parseArgs selects v1 evidence or explicit legacy compatibility mode (0.089459ms)
+✔ runPlanEstimate delegates evidence-file execution to adaptive authority (0.164375ms)
+✔ legacy planned flags require explicit compatibility mode (0.450125ms)
+✔ resolveTargetIssue prefers explicit positional over active (0.098375ms)
+✔ runPlanEstimate rejects missing target (0.097458ms)
+✔ runPlanEstimate rejects missing cfg.repo (0.108292ms)
+✔ runPlanEstimate rejects empty planned column (0.285625ms)
+✔ runPlanEstimate appends with explicit current (no board read) (0.567792ms)
+✔ compatibility Plan normalizes explicit Refine and Plan projections (0.452292ms)
+✔ compatibility Plan normalizes a board-derived Refine projection (0.215083ms)
+✔ compatibility Plan treats a null current projection as board-derived (0.163ms)
+✔ runPlanEstimate sources current from the board when --current-* omitted (0.136125ms)
+✔ runPlanEstimate mirrors planned when board read is empty (0.537ms)
+✔ runPlanEstimate mirrors planned when board read throws (0.238083ms)
+✔ runPlanEstimate skips board read when projectId is absent (0.165042ms)
+✔ runPlanEstimate heals an empty appendix via repopulate on duplicate (0.139208ms)
+✔ runPlanEstimate surfaces no-refine-comment from append (0.096875ms)
+✔ plan-estimate is registered in the command catalog (0.197417ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1157.844916
+✔ the test delegate runs inside promote-held lock instead of deadlocking (4.416125ms)
+✔ the test delegate still acquires for real when promote is not holding (0.939584ms)
+✔ a promote frame on a different issue does not wave the delegate through (1.311167ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 305.427292
+✔ AC1: strips AITM_ISSUE_LOCK_HELD from the inherited env (0.519917ms)
+✔ AC1: every var in SANDBOX_STRIPPED_ENV_VARS is removed (0.098333ms)
+✔ AC1: overrides are applied after the scrub and win (0.079291ms)
+✔ AC1: does not mutate the input env object (0.087125ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 330.018334
+✔ buildNpmCiArgv keeps the default Test setup command unchanged (0.783042ms)
+✔ buildNpmCiArgv appends validated project-provider npm-ci args (0.076792ms)
+✔ verification receipt preserves project-provider setup policy (2.727417ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 313.720334
+✔ runVerbTest: an allowlist-rejected VC alongside a passing VC yields status "passed", not "failed" (16.106417ms)
+✔ runVerbTest: an allowlist-rejected VC alone (no other commands) yields status "passed" (1.11ms)
+✔ runVerbTest: a genuine nonzero-exit failure alongside a rejected VC still yields status "failed" (0.610625ms)
+✔ runVerbTest: a metacharacter/injection-vector rejection is NOT excluded from the gate — status stays "failed" (0.522167ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 229.514208
+✔ a docs-only kind with a provably docs-only diff skips the complete lanes (20.02375ms)
+✔ a code kind runs every lane even when its diff is all documentation (2.172833ms)
+✔ a docs-only kind whose diff touches code still runs every lane (1.425583ms)
+✔ an unresolvable (empty) diff is default-deny: the lanes run (1.601416ms)
+✔ skipping lanes while a legacy aggregate is declared refuses the transition (0.885875ms)
+✔ a declared aggregate is still derived normally when the lanes DO run (2.639459ms)
+✔ the receipt records the skip and fabricates no lane pass entries (1.614959ms)
+✔ a receipt from a run that DID execute the lanes carries no skip record (1.675875ms)
+✔ the green summary comment names the skipped lanes (2.51675ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 283.536834
+✔ #952: pre-#864 body — sandbox never sees npm run test:all, both lanes run (20.035416ms)
+✔ #1557: Test entry repairs an unchecked provenance-only declaration before moving (2.062875ms)
+✔ #952: already-migrated body — idempotent, no extra migration write (1.452709ms)
+✔ #1597: pre-existing aggregate tombstone rewrites dangling citations (0.819209ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.564792
+✔ AC1: two auto-token calls with identical inputs yield different paths (0.928083ms)
+✔ AC2: explicit token is deterministic; distinct tokens never alias (0.151542ms)
+✔ AC3 regression: run B reclaim target never names run A live worktree (0.133ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 181.368042
+PASS: help text distinguishes /task discover (backlog gen) from /task plan (Sprint-Planning)
+✔ scripts/tests/unit/task-tracker/verbs/verb-discover-help.test.mjs (103.558875ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 108.570667
+✔ defaultExecInSandbox: binds AI_TASK_MANAGER_PROJECT_DIR to the sandbox path (127.67525ms)
+✔ defaultExecInSandbox: child inherits parent env alongside AI_TASK_MANAGER_PROJECT_DIR (105.12725ms)
+✔ defaultExecInSandbox: binds the governed Test issue for bare issue-aware verifiers (45.383583ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 628.340667
+✔ parseBenchmarkArgs accepts refs, repeated files, samples, and output verbatim (3.225209ms)
+✔ parseBenchmarkArgs supports different old and new cluster compositions (0.227833ms)
+✔ buildSampleSchedule alternates ref order and pairs cold then warm samples (0.506666ms)
+✔ summaries and comparison enforce median and P80 threshold (0.299084ms)
+✔ failed samples are rejected instead of discarded (0.234791ms)
+✔ runBenchmark owns explicit worktrees, alternates samples, and cleans both refs (3.792333ms)
+✔ runBenchmark retains partial samples, failure detail, and cleanup in JSON shape (0.733334ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 121.396083

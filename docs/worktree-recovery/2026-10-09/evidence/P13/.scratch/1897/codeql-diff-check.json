@@ -1,0 +1,10 @@
+{
+  "cmd": "git",
+  "args": [
+    "diff",
+    "--check"
+  ],
+  "status": 0,
+  "stdout": "",
+  "stderr": ""
+}

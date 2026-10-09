@@ -1,0 +1,171 @@
+<!-- aitm-last-known-state state="plan" ts="2026-10-05T21:05:38.762Z" -->
+<!-- aitm-refine-complete ts="2026-10-05T20:55:14.154Z" -->
+
+## User Story
+
+As a an AITM delivery operator
+I want to stamp the canonical acceptance criteria because embedded source-plan headings currently hide their declared verifiers
+So that verified delivery can finish without changing approved issue content or bypassing evidence gates
+
+## Scope
+
+Repair scripts/task-tracker/lib/ac-evidence.mjs so the canonical level-two Acceptance Criteria section takes precedence over embedded lower-level Acceptance Criteria headings in other sections. Preserve supported legacy heading levels when no canonical section exists, verifier citation resolution, marker provenance and evidence-gated checking. Add affected regression tests for parseEvidenceAcs, findEvidenceAc, findAcSectionCheckbox, stampAcEvidenceMarker and gateEvidenceTick. No changes to downstream approved Scope or evidence are required.
+
+## Reproduction
+
+An issue body contains ## Scope, an embedded #### Acceptance Criteria prose subsection, later ## Acceptance Criteria with a verifier-bearing checkbox, and root ## Verification Commands with the cited command IDs. parseEvidenceAcs returns no canonical AC and native ac-stamp refuses before running its verifiers. Actual ai-peer-review#144 body version 54 reproduces the failure.
+
+## Root Cause
+
+locateAcSection uses the first heading matching /^#{1,4}\s+Acceptance Criteria/, irrespective of its section or heading level. The embedded level-four Scope heading is selected before the formal level-two AC section.
+
+## Fix Direction
+
+At the existing AC-section lookup seam, prefer the canonical level-two heading before the existing legacy fallback. Keep evidence lookup, stamp and gate consumers on one locator. Test the actual downstream-shaped body before editing production code. Host runs affected/TIA tests only; authentic hosted CI receipts provide the full-suite completion evidence.
+
+## Out of Scope
+
+No edits to downstream #144 Scope, its accepted contract, native evidence records or approval; no fabricated stamps, workflow exceptions or node_modules source patches. General Markdown parser replacement and unrelated VC/DoD scanners are separate work.
+
+## Story Origin
+
+- **kind**: code
+- **provenance**: Discovered during user-authorized delivery of kburson/ai-peer-review#107, specifically #144 / PR #160. Native ac-stamp refused the canonical Task 5 AC because an embedded #### Acceptance Criteria heading inside the approved Scope appeared first. Actual refusal receipt is retained in the story-144 worktree at .scratch/144/144-root-ac-stamp.json. Installed AITM and current trunk blob 26e41fb117b6a3b971b6f6cc156e603ddfd93067 share the first-match locator. This is a separate upstream defect, not a modification of #144 approved content.
+- **relationships**: Blocks kburson/ai-peer-review#144 and epic #107 delivery.
+
+## Plan Metadata
+
+- **Implementation plan**: docs/superpowers/plans/2026-10-05-1897-canonical-ac-heading.md
+- **Verification boundary**: affected AC lookup, stamping and gate tests on host; full exact-head suites through configured hosted CI
+
+## Pickup Directive — MANDATORY, DO NOT SKIP
+
+> Follow: `.ai-task-manager/templates/pickup-directive.md`
+
+<details>
+<summary>Deep-Dive Analysis (collapsed on plan approval — expand if revisiting scope)</summary>
+
+## Deep-Dive Analysis (2026-10-05)
+
+> Mirrored from comment #issuecomment-6002726040 (https://github.com/kburson/ai-task-manager/issues/1897#issuecomment-6002726040). Comment is the diff-history canonical; this body copy is the gate-canonical source.
+
+### Story Intent
+- **Beneficiary:** AITM delivery operator.
+- **Capability:** Locate, stamp, and evidence-check canonical acceptance criteria even when approved Scope contains source-plan AC headings.
+- **Need:** The current first-match locator selects an embedded lower-level heading before the issue's canonical level-two section, hiding declared verifier citations.
+- **Value or failure prevented:** Verified delivery can finish without rewriting approved Scope or bypassing evidence gates.
+
+### Root Cause and Bounded Design
+The shared locateAcSection in scripts/task-tracker/lib/ac-evidence.mjs selects the first level-one-through-four Acceptance Criteria heading. An embedded #### Acceptance Criteria inside Scope precedes the actual ## Acceptance Criteria. parseEvidenceAcs, findEvidenceAc, findAcSectionCheckbox, stamping, and gateEvidenceTick consequently target the wrong section.
+
+Prefer an exact level-two Acceptance Criteria heading using the existing case/suffix conventions, then fall back to the existing level-one-through-four pattern only when there is no canonical heading. Keep section termination, verifier citation resolution, marker provenance and all existing callers unchanged. Do not import the reviewed-scope scanner: it already imports ac-evidence and would introduce a circular seam. General Markdown replacement and unrelated VC/DoD scanners are outside scope.
+
+### Implementation Plan
+1. Add scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs with @story #1897. Cover embedded level-one/three/four headings preceding canonical criteria, exact vc-list resolution, checkbox lookup, unstamped gate refusal, successful fixture stamping/gating, unchanged Scope/citation bytes, and legacy heading/declaration forms without canonical H2.
+2. Run the new tests before production edits and retain genuine RED.
+3. Add the canonical heading pattern and choose its match before the existing fallback in locateAcSection. No public signatures change.
+4. Run the exact VC1 affected group, lint, format and diff checks; retain actual receipts. Full suites run only in hosted CI.
+5. Commit with [#1897], publish the branch, open a draft PR with Refs #1897, and hand off native lifecycle/CI state to root.
+
+### Semantic Seven-Question Review
+Stakeholder: the delivery operator is explicit. Capability: canonical AC lookup, stamping and checking is concrete. Need: an observed embedded-heading failure blocks native evidence. Counterfactual value: absent this change, delivery needs prohibited approved-content rewrites or bypasses. Source grounding: the current shared locator and actual downstream #144 refusal support the story. Sibling distinctness: this is AC precedence only, distinct from #144's document Scope compatibility. Standalone readability: the issue supplies reproduction, affected APIs, legacy boundary and exact verifier command.
+
+### Scope and Verification Limits
+Fixture stamps demonstrate grammar and gate behavior; they are not native verification receipts. Actual AC stamping will run the issue-declared command through the public native verb. No #144 source or accepted artifacts are changed. Root owns native Test serialization, Review, integration and Close.
+
+<!-- aitm-owned-comment key="deep-dive.analysis-v1" -->
+
+</details>
+
+## Acceptance Criteria
+
+- [ ] A canonical Acceptance Criteria section after embedded lower-level source headings is found and its exact vc-list commands resolve. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Stamping and evidence-gated checking target the canonical AC while preserving source Scope and citation bytes. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Existing supported legacy heading and declaration forms retain their behavior. <!-- aitm-verified vc-list="vc:1" -->
+
+## Verification Commands
+
+- [ ] `node --test scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-vc-list-774.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-non-demonstrable-marker.test.mjs` <!-- id=1 -->
+- [ ] `npm test` <!-- id=2 -->
+- [ ] `npm run test:slow` <!-- id=3 -->
+- [ ] `npm run lint` <!-- id=4 -->
+- [ ] `npm run format:check` <!-- id=5 -->
+- [ ] `git log --oneline -1` <!-- id=6 -->
+
+## Definition of Done
+<!--
+Each item below MUST be individually verified by running the declared
+verifier. Do not bulk-check. Do not preemptively check. The visible checkbox
+is the sign-off; the hidden `aitm-dod-evidence:<key>` marker is the evidence
+trail. `/task check` refuses to tick a stampable Functional DoD item without
+its marker; run `/task dod-stamp <key>` to produce one. The two derived keys
+(`acs`, `checkboxes`) are auto-stamped by `/task close` from the body itself.
+See `skill/shared/rules/functional-dod.md` for the full contract.
+
+Lifecycle items are verified during Review. Housekeeping items are finalized
+during Close; their separate headings make the owning workflow phase explicit.
+
+Kind-aware items (#681): append a `dod:kinds` HTML-comment annotation to scope
+an item to a set of issue kinds. `exclude="spike,research"` renders the item for
+every kind EXCEPT those listed; `include="code"` renders it only for the listed
+kinds; an item with no annotation applies to every kind (the default). The
+`tests` item is excluded for the no-code kinds `spike` and `research`, which ship
+findings rather than code and would otherwise carry a test-suite DoD item and a
+`npm run test:all` verification command they can never satisfy. Filtering happens
+at render time in `preflight-issue.mjs`; a filtered-out item is simply absent, so
+no phantom evidence marker is ever required for it.
+
+Diff-decides for `docs-only` (#865): the `tests` item deliberately does NOT
+static-exclude `docs-only`. A `docs-only` issue can quietly touch code, so the
+kind alone must not launder it out of the suite. Instead the `tests` item is
+dropped only when the render is `--kind docs-only` AND a supplied
+`--changed-paths-file` proves the `trunk...HEAD` diff is documentation-only
+(default-deny: any unclassified/empty/mixed diff keeps the item). "The kind
+declares, the diff decides."
+-->
+
+### Functional (verified at Test)
+
+- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" -->
+- [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->
+- [ ] All changes committed; commit messages follow project convention <!-- aitm-verified cmd="`git log --oneline -1`" --> <!-- dod:functional:commits --> <!-- dod:kinds exclude="epic" -->
+- [ ] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->
+- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->
+
+### Lifecycle (verified at Review)
+
+- [ ] Agent Review Passed
+- [ ] Final Review Passed
+
+### Housekeeping (verified at Close)
+
+- [ ] Story closed and moved to Done
+- [ ] Timing data flushed to issue
+
+## AITM Progress Markers
+
+<!-- aitm-entered-backlog ts="2026-10-05T20:43:46.683Z" -->
+
+<!-- aitm-worktree-location worktree="/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac" branch="codex/1897-canonical-ac" sid="01a1045d-6c19-7102-a39e-c92ebfe45cce" ts="2026-10-05T20:44:46.200Z" -->
+
+<!-- aitm-entered-backlog-2 ts="2026-10-05T20:45:54.917Z" -->
+<!-- aitm-reconciled ts="2026-10-05T20:45:54.917Z" detail="accept-live: recorded &quot;∅&quot; → live &quot;backlog&quot; (external-mutation)" -->
+<!-- aitm-entered-refine ts="2026-10-05T20:53:02.457Z" move="move:a172a88d-ff06-40e3-97ee-ef30aae13bb8" -->
+
+<!-- aitm-refinement-snapshot schema="3" digest="bec5daa16e4a271083a48e8a26ed0e4f99dda1447326dbb570449c8e599371a4" provenance="0edce4bc6e6a41141b15d8debce5c2a70f1bbd64aab18a5819510cc7117435d7" priority="P0" size="XS" estimate="2" rank="1" ts="2026-10-05T20:55:14.188Z" -->
+<!-- aitm-entered-ready-for-plan ts="2026-10-05T20:55:31.596Z" move="move:35b1336b-5f6e-45eb-b874-5e3159bd9629" -->
+
+<!-- aitm-entered-plan ts="2026-10-05T20:56:21.153Z" move="move:8246aabe-d9e2-411e-9fc5-d712408b909d" -->
+
+<!-- aitm-plan-cancelled ts="2026-10-05T21:04:23.842Z" reason="Correct approval provenance: session auto both did not propagate TT_FULL_AUTO to public plan-approve, which emitted human despite AI author review. Preserve receipt and re-enter with explicit authorized machine approval." -->
+<!-- aitm-entered-ready-for-plan-2 ts="2026-10-05T21:04:40.112Z" move="move:33652aec-948c-442d-a62c-64d53f8c90a9" -->
+
+<!-- aitm-entered-plan-2 ts="2026-10-05T21:05:37.962Z" move="move:76f2a7c4-55eb-44c1-8adb-ffc93e7aea22" -->
+
+<!-- aitm-move-complete state=plan ts=2026-10-05T21:05:44.245Z move=move:76f2a7c4-55eb-44c1-8adb-ffc93e7aea22 -->
+<!-- aitm-deep-dive-complete ts="2026-10-05T21:05:57.428Z" -->
+
+<!-- aitm-fields: {"schema":1,"values":{"priority":"P0","size":"XS","disposition":null,"estimate":2,"engagedTime":null,"sessionTime":null,"reviewTime":null,"planTime":null,"rank":1,"startTime":null}} -->
+
+<!-- aitm-body-version version="27" -->
+

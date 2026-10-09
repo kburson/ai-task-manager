@@ -1,0 +1,2 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' mirror-deep-dive --from-comment https://github.com/kburson/ai-task-manager/issues/1902#issuecomment-6016385847 1902

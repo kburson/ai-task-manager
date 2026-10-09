@@ -1,0 +1,32 @@
+{
+  "schema": "issue1887.execution/v1",
+  "runId": "40490156-28b1-45c8-9659-26608d21cb90",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1887,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "node",
+    "--test",
+    "scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-test.test.mjs"
+  ],
+  "sourceCommit": "469593566084c14e821f1493299ca0763ad2d0c8",
+  "dirtyPaths": [
+    "M scripts/task-tracker/lib/verification-receipt-retirement.mjs"
+  ],
+  "dirtyDiffSHA256": "6145c60d68e14183575b3bec3845abda9151483b945a1bbb55838fea9f217dc7",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T02:20:44.426Z",
+  "stdout": ".scratch/1887/ci-regression-green.log",
+  "finishedAt": "2026-10-05T02:20:48.544Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "ced880946086c47bff605962c45976f5bdafd829de69da84422f20a12c98317d"
+}

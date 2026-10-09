@@ -1,0 +1,60 @@
+4:import { renderLocalTrunkCloseReceipt } from '../local-trunk-close-receipt.mjs';
+44:} from '../github-records/github-comment-store.mjs';
+46:import { buildEstimationForecast } from './forecast-model.mjs';
+277:  const forecasts = records.filter(
+278:    (record) => record.envelope.recordType === 'estimation-forecast'
+281:  for (const record of forecasts) {
+286:  return forecasts.map((record) => ({
+298:  const forecastsById = new Map(
+300:      .filter((record) => record.envelope.recordType === 'estimation-forecast')
+309:      const forecast = forecastsById.get(record.envelope.payload.forecastRecordId);
+310:      if (!forecast || forecast.issue !== record.envelope.issue) {
+311:        fail('rubric-outcome-forecast');
+317:        forecastPayload: forecast.payload,
+368:function forecastGenerationHash(payload) {
+430:  const forecasts = recordsForProjection(records);
+431:  const activeForecastRecordIds = forecasts
+436:      /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i
+440:    forecast: forecasts.find((record) => record.recordId === readyForecastRecordId) ?? null,
+638:      forecasts: recordsForProjection(records),
+641:          /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i
+647:              /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i
+682:      const active = projection.forecasts.filter((forecast) => forecast.supersededBy == null);
+683:      if (active.length > 1) fail('forecast-lineage');
+745:        forecastGenerationHash(activeForecast.payload) === forecastGenerationHash(payload)
+754:        recordType: 'estimation-forecast',
+763:    applyAuthority: ({ issueNumber, refine, forecastEnvelope }) =>
+767:        forecastEnvelope,
+1117:        right.envelope.createdAt.localeCompare(left.envelope.createdAt)
+1120:        // A child with no adaptive forecast belongs to the pre-rollout legacy
+1122:        // a v1 outcome record. A forecasted child without an outcome is instead
+1124:        if (childRecords.some((record) => record.envelope.recordType === 'estimation-forecast'))
+1134:    async ensure({ issueNumber, forecastRecordId, body, supersedeExisting = false }) {
+1145:      const forecasts = recordsForProjection(records);
+1146:      const activeForecasts = forecasts.filter((record) => record.supersededBy === null);
+1147:      const legacyNone = !isEpic && forecasts.length === 0 && forecastRecordId === null;
+1154:              new RegExp('^\\s*<!--\\s*aitm-estimation-forecast-ready\\b', 'i').test(line) ||
+1156:                line.includes('forecast-record-id'))
+1159:        fail('forecast-claim-without-record');
+1163:        (activeForecasts.length !== 1 || activeForecasts[0].recordId !== forecastRecordId)
+1165:        fail('forecast-lineage');
+1167:      const forecastRecord = records.find(
+1169:          record.envelope.recordType === 'estimation-forecast' &&
+1170:          record.envelope.recordId === forecastRecordId
+1172:      if (!isEpic && !legacyNone && !forecastRecord) fail('forecast');
+1173:      const outcomeForecast = isEpic || legacyNone ? null : forecastRecord.envelope;
+1187:      if (legacyNone && !requiresCanonical) return { status: 'legacy-no-forecast' };
+1266:        if (diff.verificationSha !== acceptedVerificationSha) fail('outcome-delivery-local-head');
+1297:        const localTrunk = delivery?.receipt?.mode === 'local-trunk';
+1308:          (!localTrunk && !delivery.receipt?.verification)
+1311:        if (localTrunk) {
+1322:            mode: 'local-trunk-delivery',
+1455:      if (legacyNone && !timing.source) return { status: 'legacy-no-forecast' };
+1458:        forecast: outcomeForecast,
+1479:        forecastRecordId: outcomeForecast?.recordId ?? null,
+1525:        forecast: outcomeForecast,
+1565:            freshRecords.some((record) => record.envelope.recordType === 'estimation-forecast')
+1567:            fail('forecast-appeared-after-outcome');
+1594:                  line.trim().startsWith('<!-- aitm-estimation-forecast-ready') ||
+1596:                    line.includes('forecast-record-id'))
+1599:            fail('forecast-claim-after-outcome');

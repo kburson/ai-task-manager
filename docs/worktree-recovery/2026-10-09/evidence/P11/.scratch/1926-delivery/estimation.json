@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [{"id":"continuity-recovery","description":"Recover bounded transcript-backed neutral timing observations through the existing guarded timing healer","baseHumanHours":4,"independentlyReviewable":true,"signals":{"modules":["scripts/task-tracker/lib/heal-timing-continuity.mjs","scripts/task-tracker/heal-timing-log.mjs","scripts/lib/self-doc.mjs","scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs","scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs"],"dependencies":["scripts/providers/transcript-resolver.mjs","scripts/task-tracker/lib/timing-engagement.mjs","scripts/task-tracker/gh-timing-comment.mjs"]}}],
+  "testImpact":{"expectedMinutes":20,"isolation":"Affected timing tests on host; full and slow suites from exact-head hosted CI receipts","lanes":["affected-unit","hosted-unit","hosted-slow","lint","format"]},
+  "risks":["Completed transcript prefix must remain immutable while later session events append","Neutral observations must preserve all engagement and word accounting","Concurrent canonical timing edits must refuse before write"],
+  "comparableIssueIds":[1876]
+}
