@@ -1434,7 +1434,12 @@ function freezeStageData(value) {
 export function validateNativeStageJournal(journal) {
   try {
     canonicalRecordJson(journal);
-    exactKeys(journal, ['schema', 'header', 'steps']);
+    exactKeys(journal, [
+      'schema',
+      'header',
+      'steps',
+      ...(Object.hasOwn(journal, 'compensation') ? ['compensation'] : []),
+    ]);
     if (journal.schema !== 'aitm.native-stage/v1') throw new TypeError();
     const { id, ...unsigned } = journal.header;
     if (
@@ -1443,6 +1448,11 @@ export function validateNativeStageJournal(journal) {
       ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(journal.steps.length)
     )
       throw new TypeError();
+    if (Object.hasOwn(journal, 'compensation')) {
+      if (journal.steps.length !== 14 || journal.steps[13]?.outcome?.kind !== 'unconfirmed')
+        throw new TypeError();
+      validateNativeCompensationData(journal.compensation, journal.header, journal.steps);
+    }
     const first = journal.steps[0];
     exactKeys(first, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
     exactKeys(first.intent, ['journalBytes']);
@@ -2651,4 +2661,230 @@ export async function reconstructNativeStageTailDispatch(input) {
   if (steps[16].readback !== null && !same(steps[16].readback, readback))
     revisionError('native-stage-tail-dispatch-readback');
   return freezeStageData({ ...readback, complete: steps[16].readback !== null });
+}
+
+// Closed compensation DATA; neither this parser nor a copied journal grants
+// invocation, lock or intent-read membership. The ordered fold proves origin.
+function validateNativeCompensationData(value, header, steps) {
+  canonicalRecordJson(value);
+  exactKeys(value, ['schema', 'previous', 'intent', 'attempts', 'readback', 'audit', 'result']);
+  if (
+    value.schema !== 'aitm.native-compensation/v1' ||
+    steps.length !== 14 ||
+    steps[13].outcome?.kind !== 'unconfirmed' ||
+    steps[13].readback !== null ||
+    value.previous !== hashBytes(canonicalRecordJson(steps[13]))
+  )
+    revisionError('native-stage-compensation-data');
+  exactKeys(value.intent, ['priorState', 'stateTs']);
+  if (
+    value.intent.priorState !== header.intent.source ||
+    value.intent.priorState !== 'develop' ||
+    typeof value.intent.stateTs !== 'string' ||
+    !Number.isFinite(Date.parse(value.intent.stateTs)) ||
+    new Date(value.intent.stateTs).toISOString() !== value.intent.stateTs ||
+    Date.parse(value.intent.stateTs) < Date.parse(steps[12].intent.stateTs) ||
+    !Array.isArray(value.attempts) ||
+    value.attempts.length > 2
+  )
+    revisionError('native-stage-compensation-data');
+  const body = (v) => {
+    exactKeys(v, ['bytes', 'version']);
+    if (typeof v.bytes !== 'string' || v.version !== parseBodyVersion(v.bytes))
+      revisionError('native-stage-compensation-data');
+  };
+  const returned = (v) => {
+    if (v.kind === 'returned') exactKeys(v, ['kind']);
+    else {
+      exactKeys(v, ['kind', 'name', 'message', 'code']);
+      if (
+        v.kind !== 'threw' ||
+        typeof v.name !== 'string' ||
+        typeof v.message !== 'string' ||
+        !(v.code === null || typeof v.code === 'string' || Number.isSafeInteger(v.code))
+      )
+        revisionError('native-stage-compensation-data');
+    }
+  };
+  for (const [index, attempt] of value.attempts.entries()) {
+    exactKeys(attempt, ['number', 'request', 'before', 'write', 'after']);
+    if (attempt.number !== index + 1) revisionError('native-stage-compensation-data');
+    exactKeys(attempt.request, ['kind', 'input']);
+    exactKeys(attempt.request.input, ['issueNumber', 'repo', 'body']);
+    body(attempt.before);
+    if (attempt.write !== null) returned(attempt.write);
+    if (attempt.after !== null) body(attempt.after);
+    if (attempt.write === null && attempt.after !== null)
+      revisionError('native-stage-compensation-data');
+  }
+  if (value.audit !== null) {
+    exactKeys(value.audit, ['request', 'intent', 'write', 'readback']);
+    exactKeys(value.audit.request, ['kind', 'input']);
+    exactKeys(value.audit.request.input, ['issueNumber', 'repo', 'body']);
+    exactKeys(value.audit.intent, ['id', 'nodeId', 'bytes']);
+    if (value.audit.write !== null) returned(value.audit.write);
+    if (value.audit.readback !== null) exactKeys(value.audit.readback, ['resource']);
+  }
+  if (value.result !== null) {
+    const result = value.result;
+    exactKeys(
+      result,
+      result.status === 'failed'
+        ? ['status', 'attempts', 'error', 'auditPosted']
+        : ['status', 'attempts']
+    );
+    if (
+      !['ok', 'failed'].includes(result.status) ||
+      result.attempts !== value.attempts.length ||
+      result.attempts < 1 ||
+      result.attempts > 2 ||
+      (result.status === 'failed' &&
+        (typeof result.error !== 'string' || typeof result.auditPosted !== 'boolean'))
+    )
+      revisionError('native-stage-compensation-data');
+  }
+}
+
+export async function reconstructNativeStageCompensation(input) {
+  try {
+    canonicalRecordJson(input);
+    exactKeys(input, ['header', 'steps', 'compensation']);
+    const { header, steps, compensation: c } = input;
+    validateNativeStageJournal({ schema: 'aitm.native-stage/v1', header, steps, compensation: c });
+    const board = await reconstructNativeStageBoard({ header, steps });
+    if (!board.beforeRecognized && !board.afterRecognized) throw new TypeError();
+    const beforeBody = board.body;
+    const afterBytes = deriveRecordedStageBody({
+      body: beforeBody.bytes,
+      transitionId: header.intent.transitionId,
+      intent: { kind: 'rollback-state', ...c.intent },
+    });
+    const afterBody = { bytes: afterBytes, version: parseBodyVersion(afterBytes) };
+    const writeRequest = {
+      kind: 'write-body',
+      input: {
+        issueNumber: String(header.scope.issue),
+        repo: header.scope.repository,
+        body: afterBytes,
+      },
+    };
+    let current = beforeBody;
+    for (const [index, attempt] of c.attempts.entries()) {
+      if (
+        !same(attempt.request, writeRequest) ||
+        !same(attempt.before, current) ||
+        (index > 0 && c.attempts[index - 1].write?.kind !== 'threw')
+      )
+        throw new TypeError();
+      if (attempt.write === null) {
+        if (index !== c.attempts.length - 1) throw new TypeError();
+      } else {
+        if (
+          attempt.after === null ||
+          (!same(attempt.after, beforeBody) && !same(attempt.after, afterBody)) ||
+          (attempt.write.kind === 'returned' && !same(attempt.after, afterBody))
+        )
+          throw new TypeError();
+        current = attempt.after;
+      }
+    }
+    const last = c.attempts.at(-1);
+    if (c.readback !== null) {
+      const step = {
+        ordinal: 15,
+        kind: 'rollback-state',
+        previous: c.previous,
+        intent: c.intent,
+        readback: c.readback,
+      };
+      const actual = reconstructNativeStageBodyStep({
+        repository: header.scope.repository,
+        issue: header.scope.issue,
+        transitionId: header.intent.transitionId,
+        body: beforeBody.bytes,
+        ordinal: 15,
+        previous: c.previous,
+        step,
+      });
+      if (
+        actual.readbackBody !== afterBytes ||
+        !last ||
+        !c.attempts.some(
+          (attempt) =>
+            ['returned', 'threw'].includes(attempt.write?.kind) && same(attempt.after, afterBody)
+        ) ||
+        !same(current, afterBody)
+      )
+        throw new TypeError();
+    }
+    const resources = structuredClone(
+      board.afterRecognized ? board.afterResources : board.beforeResources
+    );
+    const afterResources = structuredClone(resources);
+    if (c.audit !== null) {
+      if (c.attempts.length !== 2 || last?.write?.kind !== 'threw') throw new TypeError();
+      const a = c.audit;
+      const expectedBody = [
+        '> ⚠ state-recording-failed',
+        '',
+        `Marker rollback to \`${c.intent.priorState}\` failed after 2 attempts. Board Status was not confirmed; the actual board and marker resources remain pending recovery.`,
+        '',
+        `Error: \`${last.write.message}\``,
+        '',
+        '<!-- aitm-state-recording-failed -->',
+      ].join('\n');
+      if (
+        !same(a.request, {
+          kind: 'post-comment',
+          input: {
+            issueNumber: String(header.scope.issue),
+            repo: header.scope.repository,
+            body: expectedBody,
+          },
+        })
+      )
+        throw new TypeError();
+      const next = String(Math.max(0, ...resources.comments.map((v) => Number(v.id))) + 1);
+      const nodeId = 'IC_memory_compensation_' + header.id.slice(7);
+      const comment = {
+        id: Number(next),
+        node_id: nodeId,
+        issue_url: `https://api.github.com/repos/${header.scope.repository}/issues/${header.scope.issue}`,
+        body: expectedBody,
+        user: {
+          login: header.guardCapture.lifecycleSources.remote.identity.response.stdout.trim(),
+        },
+      };
+      const intended = { id: next, nodeId, bytes: JSON.stringify(comment) };
+      if (!same(a.intent, intended)) throw new TypeError();
+      afterResources.comments.push(structuredClone(intended));
+      if (
+        a.readback !== null &&
+        (a.write?.kind !== 'returned' || !same(a.readback.resource, intended))
+      )
+        throw new TypeError();
+    }
+    if (c.result !== null) {
+      if (c.result.status === 'ok') {
+        if (c.readback === null || last?.write?.kind !== 'returned' || c.audit !== null)
+          throw new TypeError();
+      } else if (
+        c.attempts.length !== 2 ||
+        last?.write?.kind !== 'threw' ||
+        c.result.error !== last.write.message ||
+        (c.result.auditPosted && (c.audit === null || c.audit.readback === null))
+      )
+        throw new TypeError();
+    }
+    return {
+      beforeBody,
+      afterBody,
+      bodyPrefixes: last?.write === null ? [current, afterBody] : [current],
+      beforeResources: resources,
+      afterResources,
+      stage: board.afterRecognized ? board.afterStage : board.beforeStage,
+    };
+  } catch {
+    revisionError('native-stage-compensation');
+  }
 }

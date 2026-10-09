@@ -674,7 +674,7 @@ async function replayNativeEpoch({
           revisionError('native-stage-current-resources');
       }
       const expectedStageObservation = structuredClone(original.observation);
-      if (j.steps.length >= 13 && j.steps.length <= 14) {
+      if (j.steps.length >= 13 && j.steps.length <= 14 && j.compensation === undefined) {
         const { reconstructNativeStageEntryBody } = await import('./stage-execution.mjs');
         const entry = await reconstructNativeStageEntryBody({
           header: j.header,
@@ -690,7 +690,7 @@ async function replayNativeEpoch({
           revisionError('native-stage-entry-prefix');
         if (after) expectedStageObservation.body = structuredClone(entry.afterBody);
       }
-      if (j.steps.length === 14) {
+      if (j.steps.length === 14 && j.compensation === undefined) {
         const { reconstructNativeStageBoard } = await import('./stage-execution.mjs');
         const board = await reconstructNativeStageBoard({ header: j.header, steps: j.steps });
         const after =
@@ -709,6 +709,28 @@ async function replayNativeEpoch({
           revisionError('native-stage-board-prefix');
         exactPrefix = after || before;
         if (after) expectedStageObservation.stage = board.afterStage;
+      }
+      if (j.compensation !== undefined) {
+        const { reconstructNativeStageCompensation } = await import('./stage-execution.mjs');
+        const comp = await reconstructNativeStageCompensation({
+          header: j.header,
+          steps: j.steps,
+          compensation: j.compensation,
+        });
+        const body = comp.bodyPrefixes.find((candidate) => equal(observation.body, candidate));
+        const allowedResources =
+          equal(resources, comp.beforeResources) ||
+          (j.compensation.audit !== null && equal(resources, comp.afterResources));
+        if (
+          !body ||
+          !allowedResources ||
+          observation.stage !== comp.stage ||
+          !equal(resources, backend.snapshot.nativeStageResources)
+        )
+          revisionError('native-stage-compensation-prefix');
+        exactPrefix = true;
+        expectedStageObservation.body = structuredClone(body);
+        expectedStageObservation.stage = comp.stage;
       }
       if (j.steps.length === 15) {
         // The same reconstruction function validates the complete first fourteen steps

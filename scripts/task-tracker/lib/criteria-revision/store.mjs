@@ -3948,3 +3948,453 @@ export function assertMemoryNativeStageTailDispatchIntent(input) {
   )
     revisionError('native-stage-tail-dispatch-intent-unread');
 }
+
+// Invocation-local custody of actual fixed compensation mutations. This is a
+// current snapshot comparison, never a cached revision admission decision.
+const nativeCompensationCurrent = new WeakMap();
+const nativeCompensationIntentReads = new WeakSet();
+function compensationInputContinuity(input) {
+  const keys = ['backend', 'capability', 'context', 'token', 'invocation'];
+  const read = () => {
+    if (!input || Object.getPrototypeOf(input) !== Object.prototype)
+      revisionError('native-stage-compensation-input');
+    const descriptors = Object.getOwnPropertyDescriptors(input);
+    if (
+      Reflect.ownKeys(descriptors).length !== keys.length ||
+      keys.some(
+        (key) =>
+          !descriptors[key] ||
+          !Object.hasOwn(descriptors[key], 'value') ||
+          !descriptors[key].enumerable
+      )
+    )
+      revisionError('native-stage-compensation-input');
+    return descriptors;
+  };
+  const original = read();
+  const context = original.context.value;
+  const contextBytes = () => {
+    try {
+      if (!context || Object.getPrototypeOf(context) !== Object.prototype) throw new TypeError();
+      return canonicalRecordJson(context);
+    } catch {
+      revisionError('native-stage-compensation-context');
+    }
+  };
+  const bytes = contextBytes();
+  return () => {
+    const actual = read();
+    if (
+      keys.some((key) =>
+        ['value', 'enumerable', 'writable', 'configurable'].some(
+          (field) => actual[key][field] !== original[key][field]
+        )
+      )
+    )
+      revisionError('native-stage-compensation-input-changed');
+    if (contextBytes() !== bytes) revisionError('native-stage-compensation-context-changed');
+  };
+}
+function compensationResourceInput(input, reason) {
+  if (!input || Object.getPrototypeOf(input) !== Object.prototype) revisionError(reason);
+  const descriptors = Object.getOwnPropertyDescriptors(input);
+  const keys = ['backend', 'token', 'invocation'];
+  if (
+    Reflect.ownKeys(descriptors).length !== keys.length ||
+    keys.some(
+      (key) =>
+        !descriptors[key] ||
+        !Object.hasOwn(descriptors[key], 'value') ||
+        !descriptors[key].enumerable
+    )
+  )
+    revisionError(reason);
+}
+export function assertMemoryNativeCompensationCurrent(input) {
+  compensationResourceInput(input, 'native-stage-compensation-current');
+  const record = nativeCompensationCurrent.get(input.invocation);
+  if (!record || record.backend !== input.backend || record.token !== input.token)
+    revisionError('native-stage-compensation-current');
+  bodyLock(memory(input.backend), input);
+  if (canonicalRecordJson(input.backend.snapshot) !== record.expected)
+    revisionError('native-stage-compensation-current-changed');
+}
+function retainCompensationCurrent(input) {
+  const record = nativeCompensationCurrent.get(input.invocation);
+  if (!record || record.backend !== input.backend || record.token !== input.token)
+    revisionError('native-stage-compensation-current');
+  record.expected = canonicalRecordJson(input.backend.snapshot);
+}
+async function compensationAuthority(input) {
+  const unchanged = compensationInputContinuity(input);
+  unchanged();
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  const core = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  const intent = core.readNativeStageCompensationIntent(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const m = memory(input.backend),
+    journal = m.nativeStageRecords.at(-1);
+  validateNativeOrder(m);
+  validateNativeStageJournal(journal);
+  if (canonicalRecordJson(journal.header) !== canonicalRecordJson(intent.header))
+    revisionError('native-stage-compensation-authority');
+  const current = () => {
+    unchanged();
+    assertMemoryCapability(input.backend, input.capability, input.context);
+    core.readNativeStageCompensationIntent(input.token, input.backend, input.invocation);
+    assertMemoryNativeCompensationCurrent({
+      backend: input.backend,
+      token: input.token,
+      invocation: input.invocation,
+    });
+  };
+  return { m, journal, core, intent, current };
+}
+export async function acquireMemoryNativeStageCompensation(input) {
+  const unchanged = compensationInputContinuity(input);
+  unchanged();
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  const core = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  core.readNativeStageCompensationIntent(input.token, input.backend, input.invocation);
+  const m = memory(input.backend);
+  if (m.nativeBodyResourceLock !== null || nativeCompensationCurrent.has(input.invocation))
+    revisionError('native-stage-compensation-lock');
+  m.nativeBodyResourceLock = { token: input.token, invocation: input.invocation };
+  nativeCompensationCurrent.set(input.invocation, {
+    backend: input.backend,
+    token: input.token,
+    expected: canonicalRecordJson(input.backend.snapshot),
+  });
+}
+export function releaseMemoryNativeStageCompensation(input) {
+  compensationResourceInput(input, 'native-stage-compensation-release');
+  const m = memory(input.backend),
+    record = nativeCompensationCurrent.get(input.invocation);
+  if (!record) return;
+  if (record.backend !== input.backend || record.token !== input.token)
+    revisionError('native-stage-compensation-release');
+  bodyLock(m, input);
+  m.nativeBodyResourceLock = null;
+  nativeCompensationCurrent.delete(input.invocation);
+}
+async function compensationDerived(journal, current, compensation = journal.compensation) {
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageCompensation({
+    header: journal.header,
+    steps: journal.steps,
+    compensation,
+  });
+  current();
+  return derived;
+}
+function compensationIntent(journal) {
+  if (!journal.compensation || !nativeCompensationIntentReads.has(journal.compensation))
+    revisionError('native-stage-compensation-intent-unread');
+  return journal.compensation;
+}
+export async function persistMemoryNativeStageCompensation(input) {
+  const { journal, intent, current } = await compensationAuthority(input);
+  current();
+  if (!intent.compensation) revisionError('native-stage-compensation-unprepared');
+  if (!journal.compensation) {
+    await compensationDerived(journal, current, intent.compensation);
+    current();
+    operation(memory(input.backend), 'native-stage-compensation-intent-write', () => {
+      current();
+      journal.compensation = clone(intent.compensation);
+      retainCompensationCurrent(input);
+    });
+  }
+  current();
+  operation(memory(input.backend), 'native-stage-compensation-intent-readback', () => {
+    current();
+    if (
+      canonicalRecordJson(journal.compensation.intent) !==
+        canonicalRecordJson(intent.compensation.intent) ||
+      journal.compensation.previous !== intent.compensation.previous
+    )
+      revisionError('native-stage-compensation-intent-readback');
+    nativeCompensationIntentReads.add(journal.compensation);
+  });
+}
+export async function beginMemoryNativeStageCompensationAttempt(input) {
+  const { m, journal, core, current } = await compensationAuthority(input);
+  current();
+  const c = compensationIntent(journal);
+  const request = core.readNativeStageCompensationOperation(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  if (request.kind !== 'write-body' || c.result !== null || c.attempts.length >= 2)
+    revisionError('native-stage-compensation-attempt');
+  const number = core.readNativeStageCompensationAttemptNumber(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  if (number !== c.attempts.length + 1) revisionError('native-stage-compensation-attempt-order');
+  const attempt = {
+    number,
+    request,
+    before: clone(m.observation.body),
+    write: null,
+    after: null,
+  };
+  const next = clone(c);
+  next.attempts.push(attempt);
+  await compensationDerived(journal, current, next);
+  current();
+  operation(m, 'native-stage-compensation-attempt-intent-write', () => {
+    current();
+    c.attempts.push(clone(attempt));
+    retainCompensationCurrent(input);
+  });
+  operation(m, 'native-stage-compensation-attempt-intent-readback', () => {
+    current();
+    if (canonicalRecordJson(c.attempts.at(-1)) !== canonicalRecordJson(attempt))
+      revisionError('native-stage-compensation-attempt-readback');
+  });
+}
+export async function writeMemoryNativeStageCompensation(input) {
+  const { m, journal, current } = await compensationAuthority(input);
+  current();
+  const c = compensationIntent(journal),
+    attempt = c.attempts.at(-1);
+  if (!attempt || attempt.write !== null) revisionError('native-stage-compensation-write');
+  const derived = await compensationDerived(journal, current);
+  current();
+  if (canonicalRecordJson(m.observation.body) === canonicalRecordJson(derived.afterBody)) return;
+  if (canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.beforeBody))
+    revisionError('native-stage-compensation-body');
+  operation(m, 'native-stage-compensation-body-effect-write', () => {
+    current();
+    m.observation.body = clone(derived.afterBody);
+    validateRevisionObservation(m.observation);
+    retainCompensationCurrent(input);
+  });
+}
+export async function completeMemoryNativeStageCompensation(input) {
+  const { m, journal, current } = await compensationAuthority(input);
+  current();
+  const c = compensationIntent(journal),
+    attempt = c.attempts.at(-1);
+  if (!attempt || attempt.write !== null) revisionError('native-stage-compensation-return');
+  const derived = await compensationDerived(journal, current);
+  current();
+  if (canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.afterBody))
+    revisionError('native-stage-compensation-readback-body');
+  const { ghFetchArgs } = await import('../versioned-issue-write.mjs');
+  current();
+  const args = ghFetchArgs(journal.header.scope.repository, journal.header.scope.issue);
+  const readback = {
+    request: { file: 'gh', args },
+    response: {
+      stdout: m.observation.body.bytes + '\n',
+      stderr: '',
+      exitCode: 0,
+    },
+    resource: {
+      request: { file: 'gh', args: args.slice(0, -2) },
+      response: {
+        stdout: JSON.stringify({ body: m.observation.body.bytes }),
+        stderr: '',
+        exitCode: 0,
+      },
+    },
+  };
+  const next = clone(c);
+  Object.assign(next.attempts.at(-1), {
+    write: { kind: 'returned' },
+    after: clone(m.observation.body),
+  });
+  next.readback = readback;
+  await compensationDerived(journal, current, next);
+  current();
+  operation(m, 'native-stage-compensation-body-effect-readback', () => {
+    current();
+    Object.assign(attempt, { write: { kind: 'returned' }, after: clone(m.observation.body) });
+    c.readback = clone(readback);
+    retainCompensationCurrent(input);
+    validateNativeStageJournal(journal);
+  });
+}
+export async function recordMemoryNativeStageCompensationFailure(input) {
+  const { m, journal, core, intent, current } = await compensationAuthority(input);
+  current();
+  const c = journal.compensation;
+  if (
+    !c ||
+    canonicalRecordJson(c.intent) !== canonicalRecordJson(intent.compensation.intent) ||
+    c.previous !== intent.compensation.previous ||
+    c.result !== null
+  )
+    revisionError('native-stage-compensation-failure');
+  const number = core.readNativeStageCompensationAttemptNumber(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const request = core.readNativeStageCompensationOperation(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const facts = core.readNativeStageCompensationFailure(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const next = clone(c);
+  if (next.attempts.length < number) {
+    if (number !== next.attempts.length + 1)
+      revisionError('native-stage-compensation-failure-order');
+    next.attempts.push({
+      number,
+      request,
+      before: clone(m.observation.body),
+      write: null,
+      after: null,
+    });
+  }
+  const attempt = next.attempts[number - 1];
+  if (!attempt || canonicalRecordJson(attempt.request) !== canonicalRecordJson(request))
+    revisionError('native-stage-compensation-failure-request');
+  Object.assign(attempt, { write: facts, after: clone(m.observation.body) });
+  await compensationDerived(journal, current, next);
+  current();
+  operation(m, 'native-stage-compensation-failure-intent-readback', () => {
+    current();
+    nativeCompensationIntentReads.add(c);
+  });
+  operation(m, 'native-stage-compensation-failure-write', () => {
+    current();
+    c.attempts = clone(next.attempts);
+    retainCompensationCurrent(input);
+    validateNativeStageJournal(journal);
+  });
+}
+export async function completeMemoryNativeStageCompensationResult(input) {
+  const { m, journal, core, current } = await compensationAuthority(input);
+  current();
+  const result = core.readNativeStageCompensationResult(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  const c = compensationIntent(journal),
+    next = clone(c);
+  if (c.result !== null) revisionError('native-stage-compensation-result-prefix');
+  next.result = result;
+  await compensationDerived(journal, current, next);
+  current();
+  operation(m, 'native-stage-compensation-result-write', () => {
+    current();
+    c.result = clone(result);
+    retainCompensationCurrent(input);
+  });
+  operation(m, 'native-stage-compensation-result-readback', () => {
+    current();
+    if (canonicalRecordJson(c.result) !== canonicalRecordJson(result))
+      revisionError('native-stage-compensation-result-readback');
+    validateNativeStageJournal(journal);
+  });
+}
+
+const nativeCompensationAuditReads = new WeakSet();
+export async function writeMemoryNativeStageCompensationAudit(input) {
+  const { m, journal, core, current } = await compensationAuthority(input);
+  current();
+  const c = compensationIntent(journal);
+  const request = core.readNativeStageCompensationOperation(
+    input.token,
+    input.backend,
+    input.invocation
+  );
+  if (
+    request.kind !== 'post-comment' ||
+    c.attempts.length !== 2 ||
+    c.attempts.at(-1).write?.kind !== 'threw' ||
+    c.audit !== null ||
+    c.result !== null
+  )
+    revisionError('native-stage-compensation-audit-prefix');
+  const number = String(
+    Math.max(0, ...m.nativeStageResources.comments.map((value) => Number(value.id))) + 1
+  );
+  const nodeId = 'IC_memory_compensation_' + journal.header.id.slice(7);
+  const comment = {
+    id: Number(number),
+    node_id: nodeId,
+    issue_url: `https://api.github.com/repos/${journal.header.scope.repository}/issues/${journal.header.scope.issue}`,
+    body: request.input.body,
+    user: {
+      login: journal.header.guardCapture.lifecycleSources.remote.identity.response.stdout.trim(),
+    },
+  };
+  const intent = { id: number, nodeId, bytes: JSON.stringify(comment) };
+  const audit = { request, intent, write: null, readback: null };
+  const next = clone(c);
+  next.audit = audit;
+  const derived = await compensationDerived(journal, current, next);
+  current();
+  if (canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources))
+    revisionError('native-stage-compensation-audit-before');
+  operation(m, 'native-stage-compensation-audit-intent-write', () => {
+    current();
+    c.audit = clone(audit);
+    retainCompensationCurrent(input);
+  });
+  operation(m, 'native-stage-compensation-audit-intent-readback', () => {
+    current();
+    if (canonicalRecordJson(c.audit) !== canonicalRecordJson(audit))
+      revisionError('native-stage-compensation-audit-intent-readback');
+    nativeCompensationAuditReads.add(c.audit);
+  });
+  const admitted = () => {
+    current();
+    if (
+      !nativeCompensationAuditReads.has(c.audit) ||
+      canonicalRecordJson(c.audit.intent) !== canonicalRecordJson(intent) ||
+      canonicalRecordJson(
+        core.readNativeStageCompensationOperation(input.token, input.backend, input.invocation)
+      ) !== canonicalRecordJson(request)
+    )
+      revisionError('native-stage-compensation-audit-custody');
+  };
+  operation(m, 'native-stage-compensation-audit-effect-write', () => {
+    admitted();
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
+    )
+      revisionError('native-stage-compensation-audit-before');
+    m.nativeStageResources.comments.push(clone(intent));
+    retainCompensationCurrent(input);
+  });
+  admitted();
+  const completed = clone(c);
+  completed.audit.write = { kind: 'returned' };
+  completed.audit.readback = { resource: clone(intent) };
+  await compensationDerived(journal, current, completed);
+  admitted();
+  operation(m, 'native-stage-compensation-audit-effect-readback', () => {
+    admitted();
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
+      canonicalRecordJson(m.nativeStageResources.comments.at(-1)) !== canonicalRecordJson(intent)
+    )
+      revisionError('native-stage-compensation-audit-readback');
+    c.audit.write = { kind: 'returned' };
+    c.audit.readback = { resource: clone(intent) };
+    retainCompensationCurrent(input);
+    validateNativeStageJournal(journal);
+  });
+}

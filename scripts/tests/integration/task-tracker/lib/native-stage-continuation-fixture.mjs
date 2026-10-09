@@ -42,6 +42,13 @@ import {
 
 export function registerNativeStageCase(mode, entrypoint, fault = null) {
   const faultMode = mode;
+  const compensationMode = [
+    'compensation',
+    'compensation-audit',
+    'compensation-late-read',
+    'compensation-late-config',
+    'compensation-return-custody',
+  ].includes(mode);
   const transitionCustody = {
     'transition-create-response': ['create', 'response'],
     'transition-read-response': ['read', 'response'],
@@ -102,8 +109,9 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
     'status-source-custody-output',
     'status-source-custody-error',
   ];
-  const expectStage =
-    entryResultCustody || consistencyCustody || transitionMode
+  const expectStage = compensationMode
+    ? 'status-source-exhausted'
+    : entryResultCustody || consistencyCustody || transitionMode
       ? 'entry-body'
       : sentinelLate
         ? 'entry-body'
@@ -1549,7 +1557,178 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       }
       if (statusModes.includes(expectStage) && expectStage !== 'status-source-unreleased') {
         const files = captureFiles();
-        const result = await moveState(ctx);
+        const originalDescriptors = Object.getOwnPropertyDescriptors;
+        let auditFaultInjected = false,
+          lateInjected = false,
+          lateGets = 0;
+        let heldCompensationInvocation = null,
+          returnProbeRan = false,
+          actualReturnProbeRan = false,
+          returnGets = 0;
+        const compensationCore = compensationMode
+          ? await import('../../../../task-tracker/lib/move-state/move-state-core.mjs')
+          : null;
+        const originalRepoDescriptor = Object.getOwnPropertyDescriptor(cfg, 'repo');
+        let lateSnapshot = null,
+          lateEffects = null;
+        if (compensationMode && mode !== 'compensation') {
+          Object.getOwnPropertyDescriptors = function (value) {
+            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
+            const keys = Reflect.ownKeys(descriptors);
+            const shape = keys.every((key) => typeof key === 'string') ? keys.sort().join(',') : '';
+            const authorityShape = shape === 'backend,capability,context,invocation,token';
+            const candidate =
+              (mode === 'compensation-audit' && authorityShape) ||
+              (mode === 'compensation-late-read' && shape === 'stdout') ||
+              (mode === 'compensation-late-config' && value === ctx) ||
+              (mode === 'compensation-return-custody' &&
+                (authorityShape || value === ctx || shape === 'priorState,rolledBack'));
+            if (!candidate) return descriptors;
+            const stack = new Error().stack;
+            if (
+              mode === 'compensation-return-custody' &&
+              stack.includes('at compensationInputContinuity') &&
+              Reflect.ownKeys(descriptors).sort().join(',') ===
+                'backend,capability,context,invocation,token'
+            )
+              heldCompensationInvocation = descriptors.invocation.value;
+            if (
+              mode === 'compensation-return-custody' &&
+              !returnProbeRan &&
+              heldCompensationInvocation &&
+              value === ctx &&
+              stack.includes('at assertOriginalNativeCompensationInvocation') &&
+              f.backend.snapshot.nativeStageRecords[0].compensation?.result
+            ) {
+              returnProbeRan = true;
+              const effects = f.backend.effects,
+                snapshot = f.backend.snapshot;
+              const result = { priorState: 'develop' };
+              Object.defineProperty(result, 'rolledBack', {
+                enumerable: true,
+                get() {
+                  returnGets++;
+                  throw new Error('forged return getter must not run');
+                },
+              });
+              let caught;
+              try {
+                compensationCore.assertNativeStageCompensationReturn(
+                  ctx,
+                  heldCompensationInvocation,
+                  result
+                );
+              } catch (error) {
+                caught = error;
+              }
+              assert.equal(returnGets, 0, 'public return comparison refuses before getter');
+              assert.ok(caught instanceof TypeError);
+              for (const copy of [
+                { rolledBack: true, priorState: 'develop' },
+                Object.assign(Object.create(null), { rolledBack: true, priorState: 'develop' }),
+                Object.create({ rolledBack: true, priorState: 'develop' }),
+              ])
+                assert.throws(
+                  () =>
+                    compensationCore.assertNativeStageCompensationReturn(
+                      ctx,
+                      heldCompensationInvocation,
+                      copy
+                    ),
+                  TypeError
+                );
+              assert.deepEqual(f.backend.effects, effects);
+              assert.deepEqual(f.backend.snapshot, snapshot);
+            }
+            if (
+              mode === 'compensation-return-custody' &&
+              !actualReturnProbeRan &&
+              stack.includes('at assertOriginalNativeCompensationReturn') &&
+              Reflect.ownKeys(descriptors).sort().join(',') === 'priorState,rolledBack'
+            ) {
+              actualReturnProbeRan = true;
+              const effects = f.backend.effects,
+                snapshot = f.backend.snapshot;
+              const compare = () =>
+                compensationCore.assertNativeStageCompensationReturn(
+                  ctx,
+                  heldCompensationInvocation,
+                  value
+                );
+              // Actual birth identity alone cannot admit a changed return.
+              Object.defineProperty(value, 'rolledBack', {
+                configurable: true,
+                enumerable: true,
+                get() {
+                  returnGets++;
+                  throw new Error('mutated original return getter must not run');
+                },
+              });
+              assert.throws(compare, TypeError);
+              assert.equal(returnGets, 0);
+              Object.defineProperty(value, 'rolledBack', descriptors.rolledBack);
+              Object.setPrototypeOf(value, null);
+              assert.throws(compare, TypeError);
+              Object.setPrototypeOf(value, Object.prototype);
+              value.extra = true;
+              assert.throws(compare, TypeError);
+              delete value.extra;
+              assert.equal(compare(), undefined, 'unchanged actual return remains admitted');
+              assert.deepEqual(f.backend.effects, effects);
+              assert.deepEqual(f.backend.snapshot, snapshot);
+            }
+            const lateRead =
+              mode === 'compensation-late-read' &&
+              stack.includes('at Module.readNativeStageCompensationBody') &&
+              Reflect.ownKeys(descriptors).join(',') === 'stdout';
+            const lateConfig =
+              mode === 'compensation-late-config' &&
+              value === ctx &&
+              stack.includes('at assertOriginalNativeCompensationInvocation');
+            if (!lateInjected && (lateRead || lateConfig)) {
+              lateInjected = true;
+              queueMicrotask(() => {
+                Object.defineProperty(lateRead ? value : cfg, lateRead ? 'stdout' : 'repo', {
+                  enumerable: true,
+                  configurable: true,
+                  get() {
+                    lateGets++;
+                    throw new Error('late compensation getter must not run');
+                  },
+                });
+                lateSnapshot = f.backend.snapshot;
+                lateEffects = f.backend.effects;
+              });
+            }
+            if (
+              mode === 'compensation-audit' &&
+              stack.includes('at compensationInputContinuity') &&
+              stack.includes('at Module.writeMemoryNativeStageCompensation (')
+            )
+              f.backend.failBefore = 'native-stage-compensation-body-effect-write';
+            if (
+              mode === 'compensation-audit' &&
+              fault &&
+              !auditFaultInjected &&
+              stack.includes('at Module.writeMemoryNativeStageCompensationAudit')
+            ) {
+              auditFaultInjected = true;
+              f.backend[fault.when] = 'native-stage-compensation-' + fault.suffix;
+            }
+            return descriptors;
+          };
+        }
+        if (compensationMode && mode !== 'compensation-audit' && fault) {
+          f.backend[fault.when] = 'native-stage-compensation-' + fault.suffix;
+        }
+        let result;
+        try {
+          result = await moveState(ctx);
+        } finally {
+          Object.getOwnPropertyDescriptors = originalDescriptors;
+          if (mode === 'compensation-late-config')
+            Object.defineProperty(cfg, 'repo', originalRepoDescriptor);
+        }
         t.diagnostic(
           JSON.stringify({
             result,
@@ -1626,6 +1805,180 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             .length,
           expectedCount
         );
+        if (compensationMode) {
+          if (mode.startsWith('compensation-late-')) {
+            assert.equal(lateInjected, true, 'actual late boundary selected');
+            assert.equal(lateGets, 0, 'late getter never executes');
+            assert.equal(result.exit, 7);
+            assert.equal(result.rolledBack, false);
+            assert.deepEqual(f.backend.snapshot, lateSnapshot);
+            assert.deepEqual(f.backend.effects, lateEffects);
+            assert.equal(journal.compensation, undefined, 'no intent/effect after late refusal');
+            return;
+          }
+          assert.equal(result.exit, 7, 'original unconfirmed board exit remains loud');
+          assert.equal(
+            result.rolledBack,
+            mode !== 'compensation-audit',
+            'actual original compensation outcome'
+          );
+          const { readLastKnownState } =
+            await import('../../../../task-tracker/gh-timing-comment.mjs');
+          const { parseBodyVersion } =
+            await import('../../../../task-tracker/lib/body-version.mjs');
+          assert.equal(
+            readLastKnownState(f.backend.observation.body.bytes).state,
+            mode === 'compensation-audit' ? 'test' : 'develop'
+          );
+          assert.equal(
+            parseBodyVersion(f.backend.observation.body.bytes),
+            parseBodyVersion(journal.header.original.observation.body.bytes) +
+              (mode === 'compensation-audit' ? 1 : 2),
+            'one entry delta and one rollback delta, not duplicate retry effects'
+          );
+          assert.equal(journal.compensation.schema, 'aitm.native-compensation/v1');
+          if (mode === 'compensation-return-custody') {
+            assert.equal(returnProbeRan, true);
+            assert.equal(actualReturnProbeRan, true);
+          }
+          if (mode === 'compensation-audit') {
+            const compensationCodec =
+              await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+            const boardPrefix = await compensationCodec.reconstructNativeStageBoard({
+              header: journal.header,
+              steps: journal.steps,
+            });
+            assert.equal(journal.compensation.attempts.length, 2);
+            assert.ok(journal.compensation.attempts.every((value) => value.write.kind === 'threw'));
+            assert.equal(journal.compensation.readback, null);
+            assert.equal(journal.compensation.result.status, 'failed');
+            assert.equal(journal.compensation.result.auditPosted, !fault);
+            const auditOperations = [
+              'audit-intent-write',
+              'audit-intent-readback',
+              'audit-effect-write',
+              'audit-effect-readback',
+            ];
+            const end = fault
+              ? auditOperations.indexOf(fault.suffix) + (fault.when === 'failAfter' ? 1 : 0)
+              : 4;
+            assert.ok(end >= 0, 'owned audit fault classified');
+            assert.equal(journal.compensation.audit !== null, end > 0);
+            if (end > 0) assert.equal(journal.compensation.audit.readback !== null, end === 4);
+            assert.deepEqual(
+              f.backend.effects.filter((op) => op.startsWith('native-stage-compensation-audit-')),
+              auditOperations.slice(0, end).map((suffix) => 'native-stage-compensation-' + suffix)
+            );
+            assert.equal(
+              f.backend.snapshot.nativeStageResources.comments.length,
+              boardPrefix.afterResources.comments.length + (end >= 3 ? 1 : 0)
+            );
+            if (fault) assert.equal(auditFaultInjected, true);
+          } else {
+            assert.ok(journal.compensation.readback, 'actual original rollback readback');
+            assert.deepEqual(journal.compensation.result, {
+              status: 'ok',
+              attempts: fault ? 2 : 1,
+            });
+            assert.equal(
+              f.backend.effects.filter((op) => op === 'native-stage-compensation-body-effect-write')
+                .length,
+              1,
+              'landed first write is freshly read, never duplicated'
+            );
+          }
+          const compensationCodec =
+            await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+          const beforeDataChecks = f.backend.snapshot;
+          for (const [label, change] of [
+            [
+              'foreign predecessor',
+              (value) => {
+                value.compensation.previous = 'sha256:' + '0'.repeat(64);
+              },
+            ],
+            [
+              'retired target',
+              (value) => {
+                value.compensation.intent.priorState = 'done';
+              },
+            ],
+            [
+              'invalid clock',
+              (value) => {
+                value.compensation.intent.stateTs = 'bad';
+              },
+            ],
+            [
+              'extra admission',
+              (value) => {
+                value.compensation.ready = true;
+              },
+            ],
+            [
+              'third callback',
+              (value) => {
+                value.compensation.attempts.push({
+                  ...structuredClone(value.compensation.attempts[0]),
+                  number: 3,
+                });
+              },
+            ],
+            [
+              'foreign subject',
+              (value) => {
+                value.compensation.attempts[0].request.input.issueNumber = '125';
+              },
+            ],
+            [
+              'substituted bytes',
+              (value) => {
+                value.compensation.attempts[0].request.input.body = 'forged';
+              },
+            ],
+            [
+              'false success',
+              (value) => {
+                value.compensation.result = { status: 'ok', attempts: 0 };
+              },
+            ],
+          ]) {
+            const input = structuredClone({
+              header: journal.header,
+              steps: journal.steps,
+              compensation: journal.compensation,
+            });
+            change(input);
+            await assert.rejects(
+              compensationCodec.reconstructNativeStageCompensation(input),
+              /criteria-revision:native-stage-compensation/,
+              label + ' DATA only'
+            );
+            assert.deepEqual(f.backend.snapshot, beforeDataChecks, label + ' no execution');
+          }
+          if (journal.compensation.readback) {
+            const input = structuredClone({
+              header: journal.header,
+              steps: journal.steps,
+              compensation: journal.compensation,
+            });
+            input.compensation.readback.response.stderr = 'partial';
+            await assert.rejects(
+              compensationCodec.reconstructNativeStageCompensation(input),
+              /criteria-revision:native-stage-compensation/
+            );
+            assert.deepEqual(f.backend.snapshot, beforeDataChecks);
+          }
+          const restarted = createRevisionMemory(JSON.parse(JSON.stringify(f.backend.snapshot)));
+          const observed = await observeRevision({ context: f.context, deps: restarted });
+          assert.equal(observed.status, 'pending-native-stage');
+          assert.equal(
+            observed.nativeHistoryApproved,
+            false,
+            'body compensation cannot authorize full transition completion'
+          );
+          return;
+        }
         const recovered = createRevisionMemory(JSON.parse(JSON.stringify(f.backend.snapshot)));
         assert.equal(
           (await observeRevision({ context: f.context, deps: recovered })).status,

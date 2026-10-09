@@ -9,10 +9,14 @@
 // rather than masquerading as external mutation. Board moves cannot be
 // rolled back, so the goal is surfacing — not preventing — the divergence.
 
-import { assertRevisionStageHostEffect } from './criteria-revision/transport-quarantine.mjs';
+import {
+  assertRevisionStageHostEffect,
+  isMemoryStageEffectScope,
+} from './criteria-revision/transport-quarantine.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
+import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import { writeLastKnownState } from '../gh-timing-comment.mjs';
@@ -56,7 +60,14 @@ async function defaultPostComment({ repo, issueNumber, body }) {
 //   { status: 'failed', attempts, error, auditPosted }
 // One private legacy retry program. Its yields are operation DATA, not
 // authorization or a claim that an effect occurred. Ordinary I/O stays lexical.
-function* legacyRecordingProgram({ issueNumber, repo, body, bodyBefore, target }) {
+function* legacyRecordingProgram({
+  issueNumber,
+  repo,
+  body,
+  bodyBefore,
+  target,
+  compensation = false,
+}) {
   if (bodyBefore !== undefined && body === bodyBefore) {
     return { status: 'noop' };
   }
@@ -83,7 +94,9 @@ function* legacyRecordingProgram({ issueNumber, repo, body, bodyBefore, target }
       const auditBody = [
         '> ⚠ state-recording-failed',
         '',
-        `Marker write to \`${target}\` failed after 2 attempts. Board state is committed; body marker may be stale until the next reconcile.`,
+        compensation
+          ? `Marker rollback to \`${target}\` failed after 2 attempts. Board Status was not confirmed; the actual board and marker resources remain pending recovery.`
+          : `Marker write to \`${target}\` failed after 2 attempts. Board state is committed; body marker may be stale until the next reconcile.`,
         '',
         `Error: \`${err.message}\``,
         '',
@@ -98,8 +111,38 @@ function* legacyRecordingProgram({ issueNumber, repo, body, bodyBefore, target }
   }
 }
 
-export async function writeIssueBodyWithRetry(input = {}) {
-  assertRevisionStageHostEffect();
+const nativeRecordingFrames = new WeakMap();
+const nativeRecordingResults = new WeakMap();
+export function assertOriginalNativeRecordingOperation(input, invocation, operation) {
+  const frame = nativeRecordingFrames.get(invocation);
+  if (
+    !frame ||
+    frame.input !== input ||
+    frame.operation !== operation ||
+    canonicalRecordJson(operation) !== frame.bytes
+  )
+    throw new TypeError('native-recording-operation');
+}
+export function assertOriginalNativeRecordingResult(input, invocation, result) {
+  const original = nativeRecordingResults.get(result);
+  if (
+    !original ||
+    original.input !== input ||
+    original.invocation !== invocation ||
+    canonicalRecordJson(result) !== original.bytes
+  )
+    throw new TypeError('native-recording-result');
+}
+export async function writeIssueBodyWithRetry(input = {}, invocation = null) {
+  if (!isMemoryStageEffectScope()) {
+    assertRevisionStageHostEffect();
+    return writeIssueBodyWithRetryAdmitted(input, null, null);
+  }
+  const core = await import('./move-state/move-state-core.mjs');
+  core.assertNativeStageRecordingInput(input, invocation);
+  return writeIssueBodyWithRetryAdmitted(input, invocation, core);
+}
+async function writeIssueBodyWithRetryAdmitted(input, invocation, core) {
   const {
     issueNumber,
     repo,
@@ -125,33 +168,61 @@ export async function writeIssueBodyWithRetry(input = {}) {
   // path #168 shipped and is structurally vulnerable to the snapshot-clobber
   // race that #295 fixes — verbs that take this branch should migrate.
   if (typeof writeIssueBody === 'function' && body !== undefined && !mutateFn) {
-    const program = legacyRecordingProgram({ issueNumber, repo, body, bodyBefore, target });
+    const program = legacyRecordingProgram({
+      issueNumber,
+      repo,
+      body,
+      bodyBefore,
+      target,
+      compensation: invocation !== null,
+    });
     let next = program.next();
-    while (!next.done) {
-      const operation = next.value;
-      let value;
-      try {
-        switch (operation.kind) {
-          case 'write-body':
-            value = await writeIssueBody(operation.input);
-            break;
-          case 'warn':
-            value = warn(operation.message);
-            break;
-          case 'post-comment':
-            value = await post(operation.input);
-            break;
-          default:
-            throw new TypeError('legacy-state-recording-operation');
+    try {
+      while (!next.done) {
+        const operation = next.value;
+        let value;
+        try {
+          if (invocation) {
+            nativeRecordingFrames.set(invocation, {
+              input,
+              operation,
+              bytes: canonicalRecordJson(operation),
+            });
+            value = await core.executeNativeStateRecordingOperation(input, invocation, operation);
+          } else
+            switch (operation.kind) {
+              case 'write-body':
+                value = await writeIssueBody(operation.input);
+                break;
+              case 'warn':
+                value = warn(operation.message);
+                break;
+              case 'post-comment':
+                value = await post(operation.input);
+                break;
+              default:
+                throw new TypeError('legacy-state-recording-operation');
+            }
+        } catch (error) {
+          next = program.throw(error);
+          continue;
         }
-      } catch (error) {
-        next = program.throw(error);
-        continue;
+        next = program.next(value);
       }
-      next = program.next(value);
+      if (invocation) {
+        nativeRecordingResults.set(next.value, {
+          input,
+          invocation,
+          bytes: canonicalRecordJson(next.value),
+        });
+        await core.completeNativeStateRecording(input, invocation, next.value);
+      }
+      return next.value;
+    } finally {
+      if (invocation) nativeRecordingFrames.delete(invocation);
     }
-    return next.value;
   }
+  if (invocation) throw new TypeError('native-recording-legacy-route');
 
   const mutate = mutateFn || ((base) => writeLastKnownState(base, target));
   // NOTE: post-#295 the prior `noop` short-circuit (caller passing

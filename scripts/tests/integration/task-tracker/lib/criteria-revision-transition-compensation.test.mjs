@@ -7,7 +7,12 @@ import path from 'node:path';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { rollbackRecordedState } from '../../../../task-tracker/lib/move-state/github-mutation.mjs';
 import { readLastKnownState } from '../../../../task-tracker/gh-timing-comment.mjs';
-import { budget, qualify } from '../../../helpers/criteria-revision-transition-profiles.mjs';
+import {
+  budget,
+  qualify,
+  discoverOriginalCases,
+  qualifyOriginalCases,
+} from '../../../helpers/criteria-revision-transition-profiles.mjs';
 
 for (const auditSucceeded of [true, false]) {
   test(`exhausted actual rollback reports failure when audit ${auditSucceeded ? 'succeeds' : 'fails'}`, async () => {
@@ -92,4 +97,42 @@ test(
       31,
       t
     )
+);
+
+const related = discoverOriginalCases().filter(({ mode }) => mode.startsWith('compensation'));
+const transport = related.filter(({ mode }) =>
+  ['compensation', 'compensation-return-custody'].includes(mode)
+);
+test('independent compensation descriptors retain positive and all eight intent/body fault points', (t) => {
+  assert.equal(related.length, 22);
+  assert.equal(transport.length, 10);
+  assert.equal(transport.filter(({ mode }) => mode === 'compensation-return-custody').length, 1);
+  const faults = transport.filter(({ fault }) => fault !== null);
+  assert.deepEqual(
+    faults.map(({ fault }) => `${fault.when}:${fault.suffix}`).sort(),
+    ['failBefore', 'failAfter']
+      .flatMap((when) =>
+        ['intent-write', 'intent-readback', 'body-effect-write', 'body-effect-readback'].map(
+          (suffix) => `${when}:${suffix}`
+        )
+      )
+      .sort()
+  );
+  assert.equal(related.filter(({ mode }) => mode === 'compensation-audit').length, 10);
+  assert.deepEqual(
+    related
+      .filter(
+        ({ mode }) =>
+          !['compensation', 'compensation-return-custody', 'compensation-audit'].includes(mode)
+      )
+      .map(({ mode }) => mode)
+      .sort(),
+    ['compensation-late-config', 'compensation-late-read']
+  );
+  t.diagnostic(JSON.stringify(transport));
+});
+test(
+  'actual original exhausted board and complete bounded compensation fault matrix',
+  { timeout: budget, concurrency: true },
+  (t) => qualifyOriginalCases(transport, t)
 );

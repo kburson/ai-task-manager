@@ -113,7 +113,7 @@ The existing failed stage remains fourteen original steps. An optional exact `co
 
 ## Task 3: Qualification and one fresh review
 
-Run: `node --test scripts/tests/integration/task-tracker/lib/criteria-revision-transition-compensation.test.mjs`.
+Run: `node --test --test-concurrency=1 scripts/tests/integration/task-tracker/lib/criteria-revision-transition-compensation.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-custody.test.mjs`.
 
 Expected: real original exhausted-board and bounded compensation/audit, all owned current-source/public/fault controls, exact body/version/resource/readback and truthful failed result. Qualify complete originals in isolated profiles if necessary, with all cases, counts, zero skips/cancellations and unchanged limits.
 
@@ -122,3 +122,13 @@ Run: original recording/marker-retry/board-readback/atomicity profiles; `npm run
 Expected: complete current-source ordinary regression and quality passes. Request one fresh reviewer with exact range/spec/ledger and this Review Focus. Fix Important/Critical once via meaningful RED→GREEN; record all declines/rulings/costs and deferred Minors. No re-review loop.
 
 Retain source provenance and pending obligations. Required full/slow/Linux verification, normal child lifecycle, true restart/retry, facade/join and full transition completion remain due; no AC/DoD/closure is inherited from a scoped pass.
+
+## Actual interface and qualification rulings
+
+The original program counts every callback attempt, including a failure before durable intent. Keep the actual first failed callback DATA in the invocation; the retry must freshly persist and read its sealed intent before a fixed effect. Do not equate the callback count with only successfully persisted writes.
+
+Node26 Error.stack is a lazy accessor. Follow the retained original board-error rule: never read stack, and require message/name/code to be own DATA when present. Actual error identity and selected fields remain protected.
+
+Audit callback acknowledgment and persisted readback are separate facts. An interruption after verified audit readback can leave auditPosted false while the actual readback/resource survives. True acknowledgment requires verified readback; a false callback cannot erase an already committed resource.
+
+Use two semantic qualification files: original body/retry/return transport (ten cases) and audit/current input custody (twelve cases), with four isolated workers per sequential file. Each keeps600000ms and the combined verifier keeps1200s. The body group includes the genuine return getter/copy/mutation comparison; the audit group includes all eight fault points, its positive, the retained earlier single interrupted probe and two actual late getter/config cases. Original files/fixtures/assertions are preserved. The older single-file issue declaration must be reconciled through governed metadata at normal child lifecycle reconciliation; do not stamp it as all-scope evidence now.

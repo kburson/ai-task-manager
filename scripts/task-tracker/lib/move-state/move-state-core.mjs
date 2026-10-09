@@ -37,6 +37,9 @@ import {
   assertOriginalNativeBoardRequest,
   assertOriginalNativeBoardResult,
   readOriginalNativeBoardFailure,
+  assertOriginalNativeCompensationInvocation,
+  assertOriginalNativeCompensationRecordingInput,
+  assertOriginalNativeCompensationReturn,
   rollbackRecordedState as defaultRollbackRecordedState,
   assertBoardMarkerConsistent as defaultAssertBoardMarkerConsistent,
 } from './github-mutation.mjs';
@@ -988,26 +991,35 @@ function checkPreparation(record) {
   });
   record.assertMemoryCapability(record.backend, record.capability, record.context);
   const body = record.backend.observation.body.bytes;
+  const compensationCurrent = record.compInvocation && record.compCustodyReady;
+  if (compensationCurrent)
+    record.compStore.assertMemoryNativeCompensationCurrent({
+      backend: record.backend,
+      token: record.stageToken,
+      invocation: record.compInvocation,
+    });
   if (
     ![
       record.originalBody,
       ...(record.entryAfterBody ? [record.entryAfterBody] : []),
       ...(record.sentinelAfterBody ? [record.sentinelAfterBody] : []),
+      ...(record.compAfterBody ? [record.compAfterBody] : []),
     ].includes(body) ||
-    ![
-      record.originalSnapshot,
-      record.firstIntentSnapshot,
-      ...(record.actorPrefixes ?? []),
-      ...(record.timingPrefixes ?? []),
-      ...(record.cursorPrefixes ?? []),
-      ...(record.checkpointPrefixes ?? []),
-      ...(record.removalPrefixes ?? []),
-      ...(record.entryPrefixes ?? []),
-      ...(record.boardPrefixes ?? []),
-      ...(record.sentinelPrefixes ?? []),
-      ...(record.transitionCommentPrefixes ?? []),
-      ...(record.tailPrefixes ?? []),
-    ].includes(canonicalRecordJson(record.backend.snapshot))
+    (!compensationCurrent &&
+      ![
+        record.originalSnapshot,
+        record.firstIntentSnapshot,
+        ...(record.actorPrefixes ?? []),
+        ...(record.timingPrefixes ?? []),
+        ...(record.cursorPrefixes ?? []),
+        ...(record.checkpointPrefixes ?? []),
+        ...(record.removalPrefixes ?? []),
+        ...(record.entryPrefixes ?? []),
+        ...(record.boardPrefixes ?? []),
+        ...(record.sentinelPrefixes ?? []),
+        ...(record.transitionCommentPrefixes ?? []),
+        ...(record.tailPrefixes ?? []),
+      ].includes(canonicalRecordJson(record.backend.snapshot)))
   )
     throw preparationRefusal('current-authority-drift');
   assertNativeTransitionContext(record.sagaContext, true);
@@ -3662,6 +3674,7 @@ export async function completeNativeStageBoard(ctx, invocation, result) {
   boardRecord(invocation);
   assertOriginalNativeBoardResult(result, ctx);
   if (result.exit === null) record.boardResult = result;
+  else record.compBoardResult = result;
 }
 
 export function readNativeStageBoardFailure(token, backend, invocation) {
@@ -4690,4 +4703,335 @@ async function runNativeStageTail(ctx, originalFunction) {
     originalTailInputs.delete(input);
     record.tailInput = null;
   }
+}
+
+// Compensation retains the actual failed board return and lexical recording
+// program. Public DATA can neither register an invocation nor select a sink.
+export function assertNativeStageCompensationContext(ctx, priorState) {
+  const record = nativeStagePreparation.getStore();
+  if (!record || record.sagaContext !== ctx || priorState !== 'develop')
+    throw preparationRefusal('original-compensation-context');
+  checkPreparation(record);
+  checkOriginalStageSources(record);
+  assertOriginalNativeBoardResult(record.compBoardResult, ctx);
+  const journal = record.backend.snapshot.nativeStageRecords.at(-1);
+  if (
+    record.compBoardResult.exit !== 7 ||
+    journal.steps.length !== 14 ||
+    journal.steps[13].outcome?.kind !== 'unconfirmed' ||
+    journal.steps[13].readback !== null
+  )
+    throw preparationRefusal('original-compensation-prefix');
+}
+function compensationRecord(invocation) {
+  const record = nativeStagePreparation.getStore();
+  if (!record || record.compInvocation !== invocation)
+    throw preparationRefusal('original-compensation-invocation');
+  assertOriginalNativeCompensationInvocation(invocation, record.sagaContext);
+  assertNativeStageCompensationContext(record.sagaContext, 'develop');
+  return record;
+}
+export async function beginNativeStageCompensation(ctx, invocation) {
+  const record = nativeStagePreparation.getStore();
+  assertNativeStageCompensationContext(ctx, 'develop');
+  assertOriginalNativeCompensationInvocation(invocation, ctx);
+  if (record.compInvocation || record.backend.snapshot.nativeStageRecords.at(-1).compensation)
+    throw preparationRefusal('compensation-reentrant');
+  record.compInvocation = invocation;
+  try {
+    const store = await import('../criteria-revision/store.mjs');
+    compensationRecord(invocation);
+    const codec = await import('../criteria-revision/stage-execution.mjs');
+    compensationRecord(invocation);
+    const recording = await import('../state-recording.mjs');
+    compensationRecord(invocation);
+    record.compStore = store;
+    record.compCodec = codec;
+    record.compRecordingModule = recording;
+    await store.acquireMemoryNativeStageCompensation(compensationAuthority(record));
+    record.compCustodyReady = true;
+    compensationRecord(invocation);
+  } catch (error) {
+    if (record.compStore)
+      record.compStore.releaseMemoryNativeStageCompensation({
+        backend: record.backend,
+        token: record.stageToken,
+        invocation,
+      });
+    record.compCustodyReady = false;
+    record.compInvocation = null;
+    throw error;
+  }
+}
+function compensationAuthority(record) {
+  return {
+    backend: record.backend,
+    capability: record.capability,
+    context: record.context,
+    token: record.stageToken,
+    invocation: record.compInvocation,
+  };
+}
+export function endNativeStageCompensation(ctx, invocation) {
+  const record = nativeStagePreparation.getStore();
+  if (!record || record.sagaContext !== ctx || record.compInvocation !== invocation)
+    throw preparationRefusal('original-compensation-release');
+  record.compStore.releaseMemoryNativeStageCompensation({
+    backend: record.backend,
+    token: record.stageToken,
+    invocation,
+  });
+  record.compCustodyReady = false;
+  record.compInvocation = null;
+  record.compOperation = null;
+}
+export async function readNativeStageCompensationBody(ctx, invocation, request) {
+  const record = compensationRecord(invocation);
+  if (
+    record.sagaContext !== ctx ||
+    canonicalRecordJson(request) !==
+      canonicalRecordJson({
+        file: 'gh',
+        args: [
+          'issue',
+          'view',
+          String(record.context.issue),
+          '-R',
+          record.context.repository,
+          '--json',
+          'body',
+        ],
+      })
+  )
+    throw preparationRefusal('original-compensation-read');
+  const result = { stdout: JSON.stringify({ body: record.backend.observation.body.bytes }) };
+  record.compBodyRead = { result, descriptors: Object.getOwnPropertyDescriptors(result) };
+  return result;
+}
+export function assertNativeStageRecordingInput(input, invocation) {
+  const record = compensationRecord(invocation);
+  assertOriginalNativeCompensationRecordingInput(input, invocation);
+  if (
+    input.issueNumber !== String(record.context.issue) ||
+    input.repo !== record.context.repository ||
+    input.target !== 'develop' ||
+    typeof input.body !== 'string' ||
+    typeof input.bodyBefore !== 'string'
+  )
+    throw preparationRefusal('original-compensation-recording');
+  return record;
+}
+export function readNativeStageCompensationIntent(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (record.stageToken !== token || record.backend !== backend)
+    throw preparationRefusal('original-compensation-token');
+  return {
+    header: structuredClone(record.header),
+    compensation: record.compTemplate ? structuredClone(record.compTemplate) : null,
+  };
+}
+export function readNativeStageCompensationOperation(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (record.stageToken !== token || record.backend !== backend || !record.compOperation)
+    throw preparationRefusal('original-compensation-operation');
+  record.compRecordingModule.assertOriginalNativeRecordingOperation(
+    record.compInput,
+    invocation,
+    record.compOperation
+  );
+  return structuredClone(record.compOperation);
+}
+export function readNativeStageCompensationFailure(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (record.stageToken !== token || record.backend !== backend || !record.compFailure)
+    throw preparationRefusal('original-compensation-failure');
+  const { error, bytes } = record.compFailure;
+  const facts = nativeCompensationError(error);
+  if (canonicalRecordJson(facts) !== bytes)
+    throw preparationRefusal('original-compensation-failure-changed');
+  return facts;
+}
+function nativeCompensationError(error) {
+  if (!error || Object.getPrototypeOf(error) !== Error.prototype)
+    throw preparationRefusal('original-compensation-error');
+  const d = Object.getOwnPropertyDescriptors(error);
+  if (
+    Reflect.ownKeys(d).some((key) => !['stack', 'message', 'name', 'code'].includes(key)) ||
+    ['message', 'name', 'code'].some((key) => d[key] && !Object.hasOwn(d[key], 'value')) ||
+    typeof d.message?.value !== 'string'
+  )
+    throw preparationRefusal('original-compensation-error');
+  const facts = {
+    kind: 'threw',
+    name: d.name?.value ?? 'Error',
+    message: d.message.value,
+    code: d.code?.value ?? null,
+  };
+  canonicalRecordJson(facts);
+  return facts;
+}
+export async function executeNativeStateRecordingOperation(input, invocation, operation) {
+  const record = assertNativeStageRecordingInput(input, invocation);
+  record.compRecordingModule.assertOriginalNativeRecordingOperation(input, invocation, operation);
+  if (record.compOperation) throw preparationRefusal('compensation-operation-reentrant');
+  record.compInput = input;
+  record.compOperation = operation;
+  try {
+    if (operation.kind === 'warn') {
+      compensationRecord(invocation);
+      process.stderr.write(operation.message + '\n');
+      return;
+    }
+    if (!record.compTemplate) {
+      const { readLastKnownState } = await import('../../gh-timing-comment.mjs');
+      assertNativeStageRecordingInput(input, invocation);
+      const journal = record.backend.snapshot.nativeStageRecords.at(-1);
+      record.compTemplate = {
+        schema: 'aitm.native-compensation/v1',
+        previous: hashNativeStep(journal.steps[13]),
+        intent: { priorState: 'develop', stateTs: readLastKnownState(input.body).ts },
+        attempts: [],
+        readback: null,
+        audit: null,
+        result: null,
+      };
+      const derived = await record.compCodec.reconstructNativeStageCompensation({
+        header: record.header,
+        steps: journal.steps,
+        compensation: record.compTemplate,
+      });
+      assertNativeStageRecordingInput(input, invocation);
+      if (derived.beforeBody.bytes !== input.bodyBefore || derived.afterBody.bytes !== input.body)
+        throw preparationRefusal('compensation-original-delta');
+      record.compAfterBody = derived.afterBody.bytes;
+    }
+    if (operation.kind === 'write-body') {
+      record.compAttemptNumber = (record.compAttemptNumber ?? 0) + 1;
+      try {
+        await record.compStore.persistMemoryNativeStageCompensation(compensationAuthority(record));
+        assertNativeStageRecordingInput(input, invocation);
+        await record.compStore.beginMemoryNativeStageCompensationAttempt(
+          compensationAuthority(record)
+        );
+        assertNativeStageRecordingInput(input, invocation);
+        await record.compStore.writeMemoryNativeStageCompensation(compensationAuthority(record));
+        assertNativeStageRecordingInput(input, invocation);
+        await record.compStore.completeMemoryNativeStageCompensation(compensationAuthority(record));
+        assertNativeStageRecordingInput(input, invocation);
+      } catch (error) {
+        compensationRecord(invocation);
+        const facts = nativeCompensationError(error);
+        record.compFailure = { error, bytes: canonicalRecordJson(facts) };
+        try {
+          if (record.backend.snapshot.nativeStageRecords.at(-1).compensation) {
+            await record.compStore.recordMemoryNativeStageCompensationFailure(
+              compensationAuthority(record)
+            );
+            compensationRecord(invocation);
+          } else {
+            // A failed original callback before durable intent still happened.
+            // Retain its actual failure DATA only; retry must freshly persist/read
+            // the unchanged sealed intent before any fixed effect can occur.
+            const body = record.backend.observation.body;
+            record.compTemplate.attempts.push({
+              number: record.compAttemptNumber,
+              request: structuredClone(operation),
+              before: structuredClone(body),
+              write: facts,
+              after: structuredClone(body),
+            });
+          }
+        } finally {
+          record.compFailure = null;
+        }
+        throw error;
+      }
+      return;
+    }
+    await record.compStore.persistMemoryNativeStageCompensation(compensationAuthority(record));
+    assertNativeStageRecordingInput(input, invocation);
+    if (operation.kind === 'post-comment') {
+      await record.compStore.writeMemoryNativeStageCompensationAudit(compensationAuthority(record));
+      assertNativeStageRecordingInput(input, invocation);
+      return;
+    }
+    throw preparationRefusal('compensation-operation-kind');
+  } finally {
+    record.compOperation = null;
+  }
+}
+export async function completeNativeStateRecording(input, invocation, result) {
+  const record = assertNativeStageRecordingInput(input, invocation);
+  record.compRecordingModule.assertOriginalNativeRecordingResult(input, invocation, result);
+  record.compRecordingResult = result;
+  await record.compStore.completeMemoryNativeStageCompensationResult(compensationAuthority(record));
+  assertNativeStageRecordingInput(input, invocation);
+  record.compRecordingModule.assertOriginalNativeRecordingResult(input, invocation, result);
+}
+export function readNativeStageCompensationResult(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (record.stageToken !== token || record.backend !== backend || !record.compRecordingResult)
+    throw preparationRefusal('original-compensation-result');
+  record.compRecordingModule.assertOriginalNativeRecordingResult(
+    record.compInput,
+    invocation,
+    record.compRecordingResult
+  );
+  return structuredClone(record.compRecordingResult);
+}
+export function assertNativeStageCompensationReturn(ctx, invocation, result) {
+  assertOriginalNativeCompensationReturn(ctx, invocation, result);
+  const record = compensationRecord(invocation);
+  record.compRecordingModule.assertOriginalNativeRecordingResult(
+    record.compInput,
+    invocation,
+    record.compRecordingResult
+  );
+  if (
+    record.sagaContext !== ctx ||
+    !record.compRecordingResult ||
+    result.rolledBack !== (record.compRecordingResult.status === 'ok') ||
+    result.priorState !== 'develop' ||
+    (record.compRecordingResult.status === 'failed' &&
+      result.recording !== record.compRecordingResult)
+  )
+    throw preparationRefusal('original-compensation-return');
+  record.compStore.assertMemoryNativeCompensationCurrent({
+    backend: record.backend,
+    token: record.stageToken,
+    invocation,
+  });
+}
+
+export function assertNativeStageCompensationBodyReturn(invocation, result) {
+  const record = compensationRecord(invocation),
+    original = record.compBodyRead;
+  if (!original || original.result !== result || Object.getPrototypeOf(result) !== Object.prototype)
+    throw preparationRefusal('original-compensation-body-return');
+  const descriptors = Object.getOwnPropertyDescriptors(result);
+  if (
+    Reflect.ownKeys(descriptors).length !== 1 ||
+    !Object.hasOwn(descriptors.stdout ?? {}, 'value') ||
+    ['value', 'enumerable', 'writable', 'configurable'].some(
+      (key) => descriptors.stdout[key] !== original.descriptors.stdout[key]
+    )
+  )
+    throw preparationRefusal('original-compensation-body-return');
+}
+
+export function readNativeStageCompensationAttemptNumber(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (
+    record.stageToken !== token ||
+    record.backend !== backend ||
+    ![1, 2].includes(record.compAttemptNumber) ||
+    record.compOperation?.kind !== 'write-body'
+  )
+    throw preparationRefusal('original-compensation-attempt');
+  record.compRecordingModule.assertOriginalNativeRecordingOperation(
+    record.compInput,
+    invocation,
+    record.compOperation
+  );
+  return record.compAttemptNumber;
 }

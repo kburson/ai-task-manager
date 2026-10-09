@@ -1,0 +1,3 @@
+// @story #1916
+import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
+registerNativeStageCase('compensation-return-custody', import.meta.url);
