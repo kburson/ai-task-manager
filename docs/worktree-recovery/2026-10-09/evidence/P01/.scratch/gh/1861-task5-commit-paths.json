@@ -1,0 +1,15 @@
+[
+  "scripts/task-tracker/lib/runtime-batch.mjs",
+  "scripts/task-tracker/lib/runtime-authority-census.mjs",
+  "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+  "scripts/task-tracker/lib/runtime-storage.mjs",
+  "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+  "scripts/tests/fixtures/1558/admission-surface.json",
+  "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+  "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-task2-local-tia-findings.json",
+  "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+  "docs/reviews/1857-remaining-work/2026-10-03-1861-ac-contract-handoff.md"
+]

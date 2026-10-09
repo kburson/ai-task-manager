@@ -1,0 +1,4 @@
+[
+  "scripts/task-tracker/lib/runtime-process-census.mjs",
+  "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs"
+]

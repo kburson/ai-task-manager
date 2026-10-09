@@ -1,0 +1,29 @@
+import fs from 'node:fs';import path from 'node:path';import {execFileSync} from 'node:child_process';import {createHash} from 'node:crypto';
+const cfg=JSON.parse(fs.readFileSync('.scratch/gh/1861-empty-candidate-root.json'));
+const [pathsFile,label,subject]=process.argv.slice(2);if(!/^[a-z0-9-]+$/.test(label))throw Error('invalid label');
+const paths=JSON.parse(fs.readFileSync(pathsFile));const root=process.cwd();if(root!==cfg.nativeRoot)throw Error('wrong actual workspace');
+const git=(...args)=>execFileSync(cfg.git,args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']});
+if(git('branch','--show-current').trim()!=='codex/1857-continuation')throw Error('wrong branch');
+const baseline=JSON.parse(fs.readFileSync('.scratch/gh/1861-user-plan-confirmation-preservation.json'));
+const hash=x=>createHash('sha256').update(x).digest('hex');
+function snap(file){const s=fs.lstatSync(file);return s.isSymbolicLink()?{mode:s.mode,kind:'link',target:fs.readlinkSync(file)}:s.isDirectory()?{mode:s.mode,kind:'directory'}:{mode:s.mode,kind:'file',sha256:hash(fs.readFileSync(file))};}
+function verify(){const drift=Object.entries(baseline.paths).filter(([f,w])=>JSON.stringify(snap(f))!==JSON.stringify(w));if(drift.length)throw Error('preservation drift: '+drift.map(x=>x[0]));if(git('diff','--cached')!==baseline.index)throw Error('staged rename changed');for(const [ref,sha]of Object.entries(baseline.refs))if(git('rev-parse',ref).trim()!==sha)throw Error('protected ref changed');return Object.keys(baseline.paths).length;}
+verify();const backups=[],prepared=[];
+// Preflight every blob before changing a native byte; evidence may exceed 1 MiB.
+for(const f of paths){
+ if(path.isAbsolute(f)||f.split('/').includes('..'))throw Error('escaping commit path');
+ const desired=fs.readFileSync(path.join(cfg.root,f)),current=fs.existsSync(f)?fs.readFileSync(f):null;let head=null;
+ try{head=Buffer.from(execFileSync(cfg.git,['show','HEAD:'+f],{cwd:root,maxBuffer:32*1024*1024,stdio:['ignore','pipe','pipe']}));}
+ catch(error){if(error.status!==128||!String(error.stderr).includes('does not exist'))throw error;}
+ if(current&&!head)throw Error('untracked native collision: '+f);
+ prepared.push({file:f,desired,current,head,mode:current?fs.statSync(f).mode:null});
+}
+let commit;
+try{
+ for(const item of prepared){const {file:f,desired,current,head,mode}=item;
+  if(current&&!current.equals(head)){const save=path.join('.scratch/gh/1861-'+label+'-native-before',f);fs.mkdirSync(path.dirname(save),{recursive:true});fs.writeFileSync(save,current);backups.push({file:f,save,mode});}
+  fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,desired);
+ }
+ git('add','--',...paths);console.log(git('commit','--only','-m',subject,'--',...paths));commit=git('rev-parse','HEAD').trim();
+}finally{for(const b of backups){fs.writeFileSync(b.file,fs.readFileSync(b.save));fs.chmodSync(b.file,b.mode&0o7777);}}
+const count=verify();fs.writeFileSync('.scratch/gh/1861-'+label+'-preservation-after.json',JSON.stringify({head:commit,preexistingPaths:count,indexPreserved:true,refsPreserved:true,backups},null,2)+'\n');cfg.nativeHead=commit;fs.writeFileSync('.scratch/gh/1861-empty-candidate-root.json',JSON.stringify(cfg,null,2)+'\n');console.log({head:commit,preexistingPaths:count,restoredMixedFiles:backups.map(x=>x.file)});

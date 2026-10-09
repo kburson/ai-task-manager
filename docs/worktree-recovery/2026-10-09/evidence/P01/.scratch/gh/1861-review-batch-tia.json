@@ -1,0 +1,49 @@
+{
+  "tests": [
+    "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs"
+  ],
+  "lanes": [],
+  "reasons": [
+    {
+      "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+      "signal": "import-direct",
+      "reason": "test statically imports changed path"
+    },
+    {
+      "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+      "signal": "import-transitive",
+      "reason": "test transitively imports changed path"
+    },
+    {
+      "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+      "signal": "import-transitive",
+      "reason": "test transitively imports changed path"
+    },
+    {
+      "changedPath": "scripts/task-tracker/lib/runtime-batch.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+      "signal": "import-transitive",
+      "reason": "test transitively imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+      "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "signal": "manifest",
+      "reason": "current test tree authority change"
+    },
+    {
+      "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+      "signal": "changed-test",
+      "reason": "changed or newly discovered test"
+    }
+  ],
+  "escalated": false
+}

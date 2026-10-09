@@ -1,0 +1,160 @@
+diff --git a/.scratch/gh/1861-v1-diff-base/scripts/task-tracker/lib/runtime-activation-admission.mjs b/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs
+index 26b79d52..7fce1999 100644
+--- a/.scratch/gh/1861-v1-diff-base/scripts/task-tracker/lib/runtime-activation-admission.mjs
++++ b/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs
+@@ -10,6 +10,7 @@ import {
+   emptyRuntimeKeys,
+   validEmptyRuntimeOwner,
+   validEmptyOperationId,
++  validEmptyDigest,
+   validEmptyRuntimeJournal,
+   validEmptyRuntimeControl,
+   emptyRuntimeDigest,
+@@ -306,3 +307,67 @@ export function inspectLinkedInitializationRecoveries(layout, journal, primitive
+     fail('RUNTIME_CONTROL_INVALID', 'Completed recovery disagrees with linked journal');
+   return { active: latest.phase !== 'complete', ownerHistory };
+ }
++
++// Preserve v1 receipt bytes and approval-only recovery while fencing unfinished claims.
++export function inspectMigrationInitializationRecoveries(layout, journal, primitives) {
++  const { assertPath, fail } = primitives;
++  const directory = assertPath(
++    path.join(layout.sharedRuntimeRoot, 'initialization-recoveries', journal.plan.id),
++    layout.sharedRuntimeRoot,
++    'RUNTIME_CONTROL_INVALID'
++  );
++  const stat = exists(directory);
++  if (!stat) {
++    if (journal.recoveryReceipt !== undefined)
++      fail('RUNTIME_CONTROL_INVALID', 'Legacy initialization recovery proof is missing');
++    return { active: false };
++  }
++  if (!stat.isDirectory())
++    fail('RUNTIME_CONTROL_INVALID', 'Invalid legacy initialization recovery directory');
++  const names = readdirSync(directory).sort();
++  if (!names.length || names.length > 10000)
++    fail('RUNTIME_CONTROL_INVALID', 'Unbound legacy initialization recovery ancestors');
++  let previousReceipt = null,
++    latest;
++  for (const [index, name] of names.entries()) {
++    if (name !== String(index).padStart(6, '0') + '.json')
++      fail('RUNTIME_CONTROL_INVALID', 'Unknown legacy initialization recovery artifact');
++    const file = path.join(directory, name),
++      record = read(file, layout.sharedRuntimeRoot, primitives);
++    const keys = [
++      'schema',
++      'phase',
++      'owner',
++      'planDigest',
++      'previousReceipt',
++      'previousJournalDigest',
++    ];
++    if (record?.phase !== 'active') keys.push('endedAt');
++    if (
++      !emptyRuntimeKeys(record, keys) ||
++      record.schema !== 'aitm.runtime-initialization-recovery/v1' ||
++      !['active', 'released', 'complete'].includes(record.phase) ||
++      !validEmptyRuntimeOwner(record.owner) ||
++      record.planDigest !== journal.plan.digest ||
++      record.previousReceipt !== previousReceipt ||
++      !validEmptyDigest(record.previousJournalDigest) ||
++      (record.phase !== 'active' &&
++        (typeof record.endedAt !== 'string' || !Number.isFinite(Date.parse(record.endedAt)))) ||
++      latest?.phase === 'complete'
++    )
++      fail('RUNTIME_CONTROL_INVALID', 'Invalid legacy initialization recovery chain');
++    previousReceipt = file;
++    latest = record;
++  }
++  const published =
++    journal.recoveryReceipt === previousReceipt &&
++    emptyRuntimeDigest(journal.owner) === emptyRuntimeDigest(latest.owner);
++  const unclaimed =
++    latest.phase === 'active' &&
++    runtimeInitializationDigest(journal) === latest.previousJournalDigest;
++  if (!published && !unclaimed)
++    fail('RUNTIME_CONTROL_INVALID', 'Legacy initialization journal disagrees with recovery claim');
++  if (latest.phase === 'complete' && journal.status !== 'complete')
++    fail('RUNTIME_CONTROL_INVALID', 'Completed legacy recovery disagrees with initialization');
++  return { active: latest.phase !== 'complete' };
++}
+diff --git a/.scratch/gh/1861-v1-diff-base/scripts/task-tracker/lib/runtime-storage.mjs b/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs
+index f1220112..b32335f6 100644
+--- a/.scratch/gh/1861-v1-diff-base/scripts/task-tracker/lib/runtime-storage.mjs
++++ b/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-storage.mjs
+@@ -3,6 +3,7 @@ import {
+   assertRuntimeEmptyAdmission,
+   readRuntimeMainActivation,
+   inspectLinkedInitializationRecoveries,
++  inspectMigrationInitializationRecoveries,
+ } from './runtime-activation-admission.mjs';
+ import { assertRuntimeBatchAdmission } from './runtime-batch-admission.mjs';
+ // @story #1857
+@@ -430,6 +431,7 @@ export function assertRuntimeReadable(roots) {
+     assertRuntimeStoreRecords(layout);
+     return { ...candidateControl, layout };
+   }
++  readRuntimeActivationRoot(roots);
+   const local = readControl(
+     layout.controlPath,
+     layout.projectRoot,
+@@ -476,6 +478,13 @@ export function assertRuntimeReadable(roots) {
+       journal.plan.commonDir !== identity.commonDir
+     )
+       fail('RUNTIME_CONTROL_INVALID', 'New-worktree initialization proof is invalid');
++    if (
++      inspectMigrationInitializationRecoveries(layout, journal, {
++        assertPath: assertStoragePath,
++        fail,
++      }).active
++    )
++      fail('RUNTIME_TRANSACTION_INCOMPLETE', 'Legacy linked recovery claim requires exact resume');
+   } else if (local.initializationId !== undefined || local.initializationDigest !== undefined) {
+     fail('RUNTIME_CONTROL_INVALID', 'Original migrated root cannot claim separate initialization');
+   }
+diff --git a/.scratch/gh/1861-v1-diff-base/scripts/task-tracker/lib/runtime-initialize.mjs b/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-initialize.mjs
+index 602c0952..9e6841f9 100644
+--- a/.scratch/gh/1861-v1-diff-base/scripts/task-tracker/lib/runtime-initialize.mjs
++++ b/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-initialize.mjs
+@@ -273,8 +273,7 @@ async function publish(journal, layout, adapters) {
+   await adapters.fault?.('after-initialization-journal');
+   writeMigrationRecord(layout.controlPath, { ...control, status: 'active' });
+   await adapters.fault?.('after-initialization-control');
+-  if (journal.schema !== 'aitm.runtime-initialization/v2' || !journal.recoveryReceipt)
+-    assertRuntimeReadable(plan);
++  if (!journal.recoveryReceipt) assertRuntimeReadable(plan);
+   return { status: 'complete', initializationId: plan.id, journal: file };
+ }
+ export async function applyRuntimeInitialization({ plan, approvedPlanDigest, adapters = {} }) {
+@@ -364,17 +363,21 @@ export async function resumeRuntimeInitialization({
+       assertRuntimeReadable({ projectRoot, mainRoot });
+       return { status: 'complete', initializationId: journal.plan.id };
+     }
+-    return withRuntimeInitializationRecovery({ layout, journal, adapters }, async (owned) => {
+-      if (
+-        journal.status === 'complete' &&
+-        exists(layout.controlPath) &&
+-        readMigrationRecord(layout.controlPath).status === 'active'
+-      ) {
+-        assertRuntimeReadable({ projectRoot, mainRoot });
+-        return { status: 'complete', initializationId: journal.plan.id };
++    const result = await withRuntimeInitializationRecovery(
++      { layout, journal, adapters },
++      async (owned) => {
++        if (
++          journal.status === 'complete' &&
++          exists(layout.controlPath) &&
++          readMigrationRecord(layout.controlPath).status === 'active'
++        ) {
++          return { status: 'complete', initializationId: journal.plan.id };
++        }
++        return publish(owned, layout, adapters);
+       }
+-      return publish(owned, layout, adapters);
+-    });
++    );
++    assertRuntimeReadable({ projectRoot, mainRoot });
++    return result;
+   });
+ }
+ 
