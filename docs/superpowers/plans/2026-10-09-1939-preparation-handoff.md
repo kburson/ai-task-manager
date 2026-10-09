@@ -1,6 +1,6 @@
 # Issue 1939 planning preparation handoff
 
-Preparation status: reviewed plan committed and published; all twelve native children are Ready for Planning. Parent #1939 remains in Plan because its approval provenance needs a supported repair. No implementation or historical apply has begun.
+Preparation status: reviewed specification and plan committed and published; all twelve native children are Ready for Planning. Parent #1939 remains in Plan while the user-requested planning-collateral merge to trunk is completed before development starts. No implementation or historical apply has begun.
 
 ## Accepted artifacts and review lineage
 
@@ -66,6 +66,12 @@ At 2026-10-09T19:47:11Z, the author ran `npx aitm plan-approve 1939` without `TT
 
 The supported `cancel-plan` operation was attempted with a reason explicitly retracting the misattribution and requesting truthful JIT reapproval. It exited 4 with `snapshot-refused`; no cancellation or promotion occurred. Read-only verification established `stale refinement snapshot`: the original snapshot binds the enhancement label, while the later canonical `kind 1939 epic` added the epic label. The original Scope, AC and projected refinement fields still validate against the original enhancement-only input, but the current live labels do not. No label was removed to circumvent this refusal and no protected marker was edited.
 
-Fresh Explain reported promotion ready because it accepts the persisted complete marker. That result is insufficient to establish truthful human provenance. Parent #1939 therefore remains Plan. A supported provenance-repair and stale-snapshot recovery path is required before explicit Full-Auto reapproval and guarded Plan → Develop promotion. Preserve audit history, accepted subject bytes, children, estimates and substantive deep dive during that repair; do not fabricate approval or weaken the guards.
+Fresh Explain reported promotion ready because it accepts the persisted complete marker. The stored human mode does not establish human review. The author initially treated the provenance discrepancy as an implementation blocker; the user subsequently clarified that Full-Auto approval is the intended authority and additional human review is not required. The ordinary promotion query remains ready with no blockers. Preserve this historical discrepancy without claiming a human reviewed the plan; use explicit Full-Auto invocation for subsequent approvals. The user's latest boundary is to merge the specification, plan and all collateral to trunk before starting development.
+
+## Planning-collateral integration
+
+The original chat checkout's hook-disable snapshot is preserved on `origin/codex/1939-preserved-hook-disable`; the complete original planning branch is preserved on `origin/codex/1939-draft`. Both are published before integration. The dedicated `codex/1939-planning-to-trunk` branch restores inherited tool configuration to trunk bytes, so its final diff contains only #1939 documents and planning records. Accepted specification/plan bytes and original review-commit ancestry are retained.
+
+This merge includes the substantive deep-dive analysis, the canonical forecast record and a compact archived hydration observation alongside existing review notes, manifests, snapshots, estimate inputs and the handoff. The hydration observation is historical evidence, not a current execution receipt. AITM issue completion and feature delivery are separate from this planning-only merge; no feature AC/VC/DoD boxes are signed off.
 
 Preparation verification checked accepted raw hashes, twelve live child records and the canonical children gate. Formatting and Markdown checks cover this collateral. Future implementation tests, acceptance boxes, closure and historical pilot authorization remain outstanding.

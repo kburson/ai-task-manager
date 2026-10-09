@@ -1,0 +1,226 @@
+{
+  "description": "Archived read-only observation, not continuing lifecycle authority. Re-query GitHub and AITM before execution.",
+  "observedAt": "2026-10-09T19:55:50.101Z",
+  "parent": 1939,
+  "parentStatusAtObservation": "Plan",
+  "sourcePlan": "docs/superpowers/plans/2026-10-09-1939-artifact-references-review-records.md",
+  "sourceCommit": "245d6f28dd9e596075955f42cd5a22b45cfd2f9b",
+  "children": [
+    {
+      "task": 1,
+      "issue": 1940,
+      "title": "Protect the versioned artifact contract and inventory its readers",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 10,
+        "rank": 2
+      },
+      "blockedBy": [],
+      "refinementSnapshotDigest": "84aa253f0f9b2bd48fc3139366f12df4849d4827939cacfbf53190d6ace22a71",
+      "sourceHeading": "### Task 1: Protect the versioned artifact contract and inventory its readers"
+    },
+    {
+      "task": 2,
+      "issue": 1941,
+      "title": "Resolve immutable artifact roles and explicit legacy conflicts",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 12,
+        "rank": 3
+      },
+      "blockedBy": [1940],
+      "refinementSnapshotDigest": "74885882e201fd7d9c21e6cbd2586c5c1c34b7d494cfe4bcc482e4edf034f111",
+      "sourceHeading": "### Task 2: Resolve immutable artifact roles and explicit legacy conflicts"
+    },
+    {
+      "task": 3,
+      "issue": 1942,
+      "title": "Migrate operational consumers and bounded split-plan provenance",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 12,
+        "rank": 4
+      },
+      "blockedBy": [1941],
+      "refinementSnapshotDigest": "d4ac5af4d70f734001b0d44b6989f429600b14673aed25f3abe70342d8896cec",
+      "sourceHeading": "### Task 3: Migrate operational consumers and bounded split-plan provenance"
+    },
+    {
+      "task": 4,
+      "issue": 1943,
+      "title": "Render grouped metadata and enroll only compatible issues",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "M",
+        "estimate": 8,
+        "rank": 5
+      },
+      "blockedBy": [1942, 1946],
+      "refinementSnapshotDigest": "99eb436f33f112f4f5d38170d394f5383001f696b2645c4a78ac1777ae346692",
+      "sourceHeading": "### Task 4: Render grouped metadata and enroll only compatible issues"
+    },
+    {
+      "task": 5,
+      "issue": 1944,
+      "title": "Deliver the standalone producer contract and verify its AITM bridge",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 12,
+        "rank": 3
+      },
+      "blockedBy": [1940],
+      "refinementSnapshotDigest": "dc6060fa175747e22c508c1dcffddef7865f1913802c685b2b133254712df64f",
+      "sourceHeading": "### Task 5: Deliver the standalone producer contract and verify its AITM bridge"
+    },
+    {
+      "task": 6,
+      "issue": 1945,
+      "title": "Validate manual evidence and render complete bounded review summaries",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 10,
+        "rank": 4
+      },
+      "blockedBy": [1941, 1944],
+      "refinementSnapshotDigest": "87aef7175152a7324657a7deb86a8362406e239b3d87058c02160270694d6534",
+      "sourceHeading": "### Task 6: Validate manual evidence and render complete bounded review summaries"
+    },
+    {
+      "task": 7,
+      "issue": 1946,
+      "title": "Establish production publication authority and durable effect fencing",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 12,
+        "rank": 3
+      },
+      "blockedBy": [1940],
+      "refinementSnapshotDigest": "bfba4c43075baa25e4b97fe847fd6a7b9d9d18cafd9f3593b5f3a8268c8615c1",
+      "sourceHeading": "### Task 7: Establish production publication authority and durable effect fencing"
+    },
+    {
+      "task": 8,
+      "issue": 1947,
+      "title": "Publish one ordered summary and immutable body discovery record",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 10,
+        "rank": 6
+      },
+      "blockedBy": [1943, 1945, 1946],
+      "refinementSnapshotDigest": "f02510ef5c0ad8980b5abb988935474072ecd65b82198c1e2ee54f125cea6baa",
+      "sourceHeading": "### Task 8: Publish one ordered summary and immutable body discovery record"
+    },
+    {
+      "task": 9,
+      "issue": 1948,
+      "title": "Preview explicit historical scope and publish exact originals",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 10,
+        "rank": 7
+      },
+      "blockedBy": [1946, 1947],
+      "refinementSnapshotDigest": "ef7fdba7cbc65bb194b677b702be8100b43a9e524a1eb0f4b34cfafce4532e05",
+      "sourceHeading": "### Task 9: Preview explicit historical scope and publish exact originals"
+    },
+    {
+      "task": 10,
+      "issue": 1949,
+      "title": "Admit authenticated historical effects and preserved exact-ID retirement",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 10,
+        "rank": 8
+      },
+      "blockedBy": [1948],
+      "refinementSnapshotDigest": "dba3cb7dcee3c5a2f5644056e56e93014a20fceee65c058e3e9eb9f82b5fbe1d",
+      "sourceHeading": "### Task 10: Admit authenticated historical effects and preserved exact-ID retirement"
+    },
+    {
+      "task": 11,
+      "issue": 1950,
+      "title": "Execute resumable backheal and separately authorized rollback",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "L",
+        "estimate": 12,
+        "rank": 9
+      },
+      "blockedBy": [1949],
+      "refinementSnapshotDigest": "e4ae64c5a4d91826a7d5f971a40afe545d247f66a1cc8f5a7872a02fa4e58e6a",
+      "sourceHeading": "### Task 11: Execute resumable backheal and separately authorized rollback"
+    },
+    {
+      "task": 12,
+      "issue": 1951,
+      "title": "Prove reference parity and roll out canonical future workflows",
+      "status": "Ready for Planning",
+      "owner": "kburson",
+      "fields": {
+        "priority": "P2",
+        "size": "M",
+        "estimate": 6,
+        "rank": 10
+      },
+      "blockedBy": [1942, 1943, 1944, 1947, 1950],
+      "refinementSnapshotDigest": "49ce3264ee00a5916e1f3f9aa31d1d511b97f9281a4cc9c8441428e98f2d7881",
+      "sourceHeading": "### Task 12: Prove reference parity and roll out canonical future workflows"
+    }
+  ],
+  "canonicalChildrenGate": {
+    "ok": true
+  },
+  "externalProducer": {
+    "assignees": [
+      {
+        "id": "MDQ6VXNlcjEwODI0Njc=",
+        "login": "kburson",
+        "name": "Kendrick Burson",
+        "databaseId": 1082467
+      }
+    ],
+    "projectItems": [
+      {
+        "status": {
+          "optionId": "f75ad846",
+          "name": "Backlog"
+        },
+        "title": "ai-peer-review kanban"
+      }
+    ],
+    "title": "Export exact-subject review publication envelope and read-only verifier for AITM integration",
+    "url": "https://github.com/kburson/ai-peer-review/issues/197"
+  }
+}
