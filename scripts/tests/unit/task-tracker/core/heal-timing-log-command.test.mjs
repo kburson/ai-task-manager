@@ -233,3 +233,89 @@ for (const scope of [
 }
 
 console.log('heal-timing-log-command.test.mjs: ok');
+
+// @story #1926 — missing continuity routing must fail before a normal heal.
+{
+  const out = sink();
+  const err = sink();
+  let seen;
+  let code;
+  await main(['1926', '--continuity-session', 'original-session'], {
+    loadConfig: async () => ({ repo: 'o/r' }),
+    getProjectDir: () => '/project',
+    withLock: async (_lock, callback) => callback(),
+    runHeal: async (options) => {
+      seen = options;
+      return { status: 'dry-run', inserted: 1, transcriptSha: 'a'.repeat(64) };
+    },
+    out,
+    err,
+    exit: (value) => {
+      code = value;
+    },
+  });
+  assert.equal(code, undefined);
+  assert.equal(seen?.continuitySession, 'original-session');
+  assert.equal(JSON.parse(out.text()).inserted, 1);
+}
+{
+  for (const args of [
+    ['1926', '--continuity-session', 'original-session', '--actor-opener-replays'],
+    ['--sweep', '--continuity-session', 'original-session'],
+    ['1926', '--continuity-session', 'original-session', '--apply'],
+    ['1926', '--expected-transcript-sha', 'a'.repeat(64)],
+  ]) {
+    const out = sink();
+    const err = sink();
+    let code;
+    let reads = 0;
+    await main(args, {
+      loadConfig: async () => {
+        reads++;
+        return { repo: 'o/r' };
+      },
+      out,
+      err,
+      exit: (value) => {
+        code = value;
+      },
+    });
+    assert.equal(code, 2);
+    assert.equal(reads, 0);
+  }
+}
+
+// @story #1926 — an empty requested mode must never fall back to legacy writes.
+{
+  for (const args of [
+    ['1926', '--continuity-session', '', '--apply'],
+    ['1926', '--continuity-session=', '--apply'],
+    ['1926', '--expected-transcript-sha=', '--apply'],
+  ]) {
+    const out = sink();
+    const err = sink();
+    let code;
+    let reads = 0;
+    let heals = 0;
+    await main(args, {
+      loadConfig: async () => {
+        reads++;
+        return { repo: 'o/r' };
+      },
+      getProjectDir: () => '/project',
+      withLock: async (_lock, callback) => callback(),
+      runHeal: async () => {
+        heals++;
+        return { status: 'no-comment' };
+      },
+      out,
+      err,
+      exit: (value) => {
+        code = value;
+      },
+    });
+    assert.equal(code, 2);
+    assert.equal(reads, 0);
+    assert.equal(heals, 0);
+  }
+}
