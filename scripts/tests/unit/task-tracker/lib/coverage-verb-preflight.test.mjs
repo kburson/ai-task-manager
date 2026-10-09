@@ -9,12 +9,20 @@ import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
 
 import {
-  runPreflight,
-  preflightVerb,
+  runPreflight as productionRunPreflight,
+  preflightVerb as productionPreflightVerb,
   EXIT_BIND_MISMATCH,
   EXIT_HUMAN_MOVE,
   EXIT_ASSIGNEE_MISMATCH,
 } from '../../../../task-tracker/lib/verb-preflight.mjs';
+
+// This pure fixture has no migration fence unless a case supplies one.
+const fixtureOptions = (options = {}) => ({
+  ...options,
+  deps: { migrationFreezeActive: () => false, ...options.deps },
+});
+const runPreflight = (options) => productionRunPreflight(fixtureOptions(options));
+const preflightVerb = (options) => productionPreflightVerb(fixtureOptions(options));
 
 const cfg = { repo: 'kburson/ai-task-manager', projectId: 'P_1' };
 const noGateCfg = { ...cfg, preferences: { gateAssigneeMatch: false } };

@@ -2,12 +2,11 @@
 // Shared harness for the close-convergence-wiring test pair (kept out of
 // *.test.mjs so it is exempt from the line-cap and story-tag test-file
 // audits, which only scan `*.test.mjs`; see lib/discover-test-files.mjs).
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { saveState } from '../../task-tracker/state.mjs';
-import { withUnitRuntimeRoot } from './unit-runtime-root.mjs';
+import { withUnitRuntimeRoot, createActivatedUnitRuntimeRoot } from './unit-runtime-root.mjs';
 
-import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
 import { readDeliveredCloseTransactions } from '../../task-tracker/lib/close-convergence.mjs';
 import { tickLifecycleOnClose, verbClose } from '../../task-tracker/verbs/close.mjs';
 
@@ -104,9 +103,8 @@ export async function runClose({
   trackEstimationOutcomes = false,
   contextOverrides = {},
 } = {}) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), `aitm-${issueNumber}-close-wiring-`));
-  const statePath = join(dir, '.tmp', 'aitm', 'state', 'state.json');
-  mkdirSync(join(dir, '.tmp', 'aitm', 'state'), { recursive: true });
+  const dir = createActivatedUnitRuntimeRoot(`aitm-${issueNumber}-close-wiring-`);
+  const statePath = join(dir, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json');
   writeFileSync(statePath, JSON.stringify(initialState));
 
   let liveBody = body;

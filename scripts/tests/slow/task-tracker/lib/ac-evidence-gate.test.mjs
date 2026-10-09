@@ -18,7 +18,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
-import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 initializeFixtureActor(import.meta.url);
@@ -68,7 +68,7 @@ function writeState(sandbox, issueNum) {
       entryStartTs: null,
       wordsAtEntryStart: 0,
     },
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+    path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json')
   );
 }
 
@@ -129,7 +129,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 1: tick AC with no stamp → refusal, EVIDENCE_REQUIRED, names key ───
 {
-  const sandbox = await createLegacyRootFixture('tt-ac-gate-1-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ac-gate-1-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 345);
@@ -152,7 +152,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Test 2: with the aitm-ac-evidence stamp present → tick allowed (exit 0) ──
 {
-  const sandbox = await createLegacyRootFixture('tt-ac-gate-2-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ac-gate-2-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 345);

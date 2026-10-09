@@ -63,6 +63,9 @@ import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs
 import { describeSandboxFailure } from '../lib/sandbox-exit-render.mjs';
 import { reapStaleTestSandboxes as defaultReapStaleTestSandboxes } from '../lib/test-sandbox-reaper.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
+import { resolveRuntimeRoot, assertRuntimeReadable, assertRuntimeStoragePath, RuntimeRootError } from '../lib/runtime-storage.mjs';
+import { withRuntimeWriterLease } from '../lib/runtime-migration-lock.mjs';
+import { planRuntimeInitialization, applyRuntimeInitialization } from '../lib/runtime-initialize.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
 import { withIssueLock } from '../issue-mutator-lock.mjs';
@@ -170,9 +173,23 @@ async function defaultGetHeadSha({ projectDir }) {
 }
 
 async function defaultCreateWorktree({ projectDir, path: wtPath }) {
-  await pexec('git', ['worktree', 'add', '--detach', wtPath, 'HEAD'], {
-    cwd: projectDir,
-    timeout: 60_000,
+  const identity = resolveRuntimeRoot({ cwd: projectDir, env: {} });
+  const roots = { projectRoot: identity.projectRoot, mainRoot: identity.mainRoot };
+  const parent = testSandboxDirectory(identity.projectRoot);
+  assertRuntimeReadable(roots);
+  assertRuntimeStoragePath(wtPath, parent);
+  if (path.dirname(path.resolve(wtPath)) !== parent ||
+      !/^\.task-test-[1-9][0-9]*-[a-f0-9]{8}-[1-9][0-9]*-[a-f0-9]{8}$/.test(path.basename(wtPath)))
+    throw new RuntimeRootError('RUNTIME_OVERRIDE_UNSAFE', 'Test worktree must use its protected per-run namespace');
+  return withRuntimeWriterLease(roots, async () => {
+    await pexec('git', ['worktree', 'add', '--detach', wtPath, 'HEAD'], {
+      cwd: projectDir,
+      timeout: 60_000,
+    });
+    const plan = planRuntimeInitialization({
+      projectRoot: wtPath, mainRoot: identity.mainRoot,
+    });
+    await applyRuntimeInitialization({ plan, approvedPlanDigest: plan.digest });
   });
 }
 

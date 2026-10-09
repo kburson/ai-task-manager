@@ -55,7 +55,7 @@ import {
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
 import { readBoundState } from './lib/bound-state.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
-import { artifactPathPolicy, resolveArtifactShell } from './lib/artifact-write-policy.mjs';
+import { artifactPathPolicy, resolveArtifactShell, isProtectedRuntimePath } from './lib/artifact-write-policy.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 import { extractApplyPatchTargets, extractApplyPatchText } from './lib/apply-patch-targets.mjs';
 
@@ -110,9 +110,10 @@ if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
       : [toolInput.file_path ?? toolInput.notebook_path ?? toolInput.path ?? ''];
   if (paths.length && paths.every((target) => typeof target === 'string' && target)) {
     try {
-      const policies = paths.map((target) =>
-        artifactPathPolicy(resolveMutationTarget(target, invocationDir, projectRoot).relative)
-      );
+      const resolved = paths.map((target) => resolveMutationTarget(target, invocationDir, projectRoot));
+      if (resolved.some((target) => isProtectedRuntimePath(target.relative)))
+        block('Runtime authority requires a registered runtime operation.');
+      const policies = resolved.map((target) => artifactPathPolicy(target.relative));
       if (policies.includes('block'))
         block('Script formats are not permitted under docs/; use .scratch/ or .tmp/.');
       if (policies.every((policy) => policy === 'allow')) process.exit(0);
@@ -131,9 +132,18 @@ if (
   (typeof input.session_id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(input.session_id))
 )
   block('[task-tracker] invalid native hook session identity.');
-const { activeIssue, state: recordedState } = readBoundState(projectRoot, {
-  sessionId: input.session_id,
-});
+let activeIssue;
+let recordedState;
+try {
+  ({ activeIssue, state: recordedState } = readBoundState(projectRoot, {
+    sessionId: input.session_id,
+  }));
+} catch (error) {
+  block(
+    '[task-tracker] Runtime authority unavailable (' + (error.code || 'read-failed') +
+      '): ' + error.message + '; inspect registered migrate-runtime status.'
+  );
+}
 // When no task is bound (paused or never started), ignore the residual
 // `state` field from the last active task. Otherwise editing infra/meta
 // files between tasks would be permanently blocked: WRITE_OTHER is excluded

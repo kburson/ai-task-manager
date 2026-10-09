@@ -1,9 +1,12 @@
 // @story #1857
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { createUnitRootFixture } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 import {
   loadMarker,
   saveMarker,
@@ -12,8 +15,18 @@ import {
 const a = { provider: 'codex', sid: 'fixture-cursor-a' };
 const b = { provider: 'codex', sid: 'fixture-cursor-b' };
 test('versioned cursor binds exact actor and refuses corrupt or foreign evidence without rewriting it', () => {
-  const root = createUnitRootFixture('actor-cursor-');
-  const file = path.join(root, 'cursor.json');
+  const root = createActivatedUnitRuntimeRoot('actor-cursor-');
+  const file = path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'codex',
+    'session-tracking',
+    `${a.sid}.json`
+  );
+  mkdirSync(path.dirname(file), { recursive: true });
   try {
     saveMarker(file, 5, 20, '#1857', 30, { identity: a });
     const original = readFileSync(file, 'utf8');
@@ -27,9 +40,9 @@ test('versioned cursor binds exact actor and refuses corrupt or foreign evidence
     assert.equal(loadMarker(file, { identity: a }).wordsFull, 30);
     for (const bytes of ['{broken', JSON.stringify({ schema: 'future', wordCount: {} })]) {
       writeFileSync(file, bytes);
-      assert.throws(() => loadMarker(file, { identity: a }), { code: 'WORD_CURSOR_INVALID' });
+      assert.throws(() => loadMarker(file, { identity: a }), { code: 'RUNTIME_STATE_CORRUPT' });
       assert.throws(() => saveMarker(file, 0, 0, null, 0, { identity: a }), {
-        code: 'WORD_CURSOR_INVALID',
+        code: 'RUNTIME_STATE_CORRUPT',
       });
       assert.equal(readFileSync(file, 'utf8'), bytes);
     }
@@ -38,8 +51,18 @@ test('versioned cursor binds exact actor and refuses corrupt or foreign evidence
   }
 });
 test('legacy cursor remains readable without inventing actor attribution and unknown fields survive conversion', () => {
-  const root = createUnitRootFixture('actor-cursor-legacy-');
-  const file = path.join(root, 'cursor.json');
+  const root = createActivatedUnitRuntimeRoot('actor-cursor-legacy-');
+  const file = path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'codex',
+    'session-tracking',
+    `${a.sid}.json`
+  );
+  mkdirSync(path.dirname(file), { recursive: true });
   try {
     writeFileSync(
       file,

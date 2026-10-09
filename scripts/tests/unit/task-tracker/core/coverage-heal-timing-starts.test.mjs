@@ -115,7 +115,7 @@ assert.deepEqual(parseArgs(['5', '--yes']), {
 
 // ---- timingLockPath sanitizes the issue token ------------------------------
 {
-  const p = timingLockPath('4/2 x', '/proj');
+  const p = timingLockPath('4/2 x', process.cwd());
   assert.match(p, /4_2_x/);
 }
 
@@ -151,7 +151,7 @@ assert.deepEqual(parseArgs(['5', '--yes']), {
   const seen = { lock: null, ran: null };
   await main(['#5', '--apply'], {
     loadConfig: async () => ({ repo: 'o/r' }),
-    getProjectDir: () => '/proj',
+    getProjectDir: () => process.cwd(),
     withLock: async (lockPath, fn) => {
       seen.lock = lockPath;
       return fn();
@@ -173,7 +173,7 @@ assert.deepEqual(parseArgs(['5', '--yes']), {
   const out = sink();
   await main(['5'], {
     loadConfig: async () => ({ repo: 'o/r' }),
-    getProjectDir: () => '/proj',
+    getProjectDir: () => process.cwd(),
     withLock: async (lockPath, fn) => fn(),
     runHeal: async () => ({
       status: 'dry-run',
@@ -192,7 +192,7 @@ assert.deepEqual(parseArgs(['5', '--yes']), {
   const out = sink();
   await main(['5'], {
     loadConfig: async () => ({ repo: 'o/r' }),
-    getProjectDir: () => '/proj',
+    getProjectDir: () => process.cwd(),
     withLock: async (lockPath, fn) => fn(),
     runHeal: async () => ({
       status: 'no-comment',

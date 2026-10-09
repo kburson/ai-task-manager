@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import {
+  createRuntimeRootFixture,
+  createActivatedRuntimeRootFixture,
+} from '../../../helpers/runtime-root-fixture.mjs';
 import { buildContext } from '../../../../task-tracker/runtime.mjs';
 import { saveState, loadState, pauseTimingKeepBinding } from '../../../../task-tracker/state.mjs';
 import { saveMarker, markerPathFor, loadMarker } from '../../../../task-tracker/word-counter.mjs';
@@ -17,7 +20,7 @@ import { deriveActorEngagement } from '../../../../task-tracker/lib/timing-engag
 import { sandboxWorktreePath } from '../../../../task-tracker/verbs/test.mjs';
 import { getProjectDir } from '../../../../task-tracker/paths.mjs';
 async function fixture(operation) {
-  const root = createRuntimeRootFixture('actor-flush-');
+  const root = await createActivatedRuntimeRootFixture('actor-flush-');
   const keys = [
     'AI_TASK_MANAGER_PROJECT_DIR',
     'CLAUDE_PROJECT_DIR',
@@ -35,11 +38,19 @@ async function fixture(operation) {
     process.env.AI_TASK_MANAGER_PROJECT_DIR = root;
     process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-flush-a';
     process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
-    process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(root, 'transcripts');
+    process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+      root,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'app',
+      'claude',
+      'session-transcripts'
+    );
     process.env.TT_SKIP_NETWORK = '1';
     process.env.TT_SKIP_FIELD_SELF_CHECK = '1';
     mkdirSync(path.join(root, '.ai-task-manager'), { recursive: true });
-    mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR);
+    mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
     writeFileSync(
       path.join(root, '.ai-task-manager', 'task-tracker.json'),
       JSON.stringify({ repo: 'fixture/repository' })
@@ -80,7 +91,16 @@ test('review reproduction: legacy session cursor survives first actor flush', as
     setActiveTask(sid, { issue: '#1857', entryStartTs: start, wordsAtStart: 100 }, root);
     saveMarker(markerPathFor(sid), 1, 100, '#1857', 100);
     writeFileSync(
-      path.join(root, 'transcripts', sid + '.jsonl'),
+      path.join(
+        root,
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'app',
+        'claude',
+        'session-transcripts',
+        sid + '.jsonl'
+      ),
       JSON.stringify({ type: 'assistant', message: { content: 'old words' } }) +
         '\n' +
         JSON.stringify({ type: 'assistant', message: { content: 'one two three' } }) +
@@ -153,9 +173,16 @@ test('upgrade cursor is scoped to the state-owning project, not ambient root', a
   fixture(async ({ ctx, root }) => {
     const sid = process.env.AI_TASK_MANAGER_SESSION_ID;
     saveMarker(markerPathFor(sid), 1, 100, '#1857', 120);
-    const otherRoot = createRuntimeRootFixture('cursor-other-project-');
+    const otherRoot = await createActivatedRuntimeRootFixture('cursor-other-project-');
     try {
-      const statePath = path.join(otherRoot, '.tmp', 'aitm', 'state', 'state.json');
+      const statePath = path.join(
+        otherRoot,
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'state',
+        'task-tracker-state.json'
+      );
       const state = loadState(statePath);
       assert.equal(state.lastWordMarker, 0);
       assert.equal(state.lastFullWordMarker, 0);
@@ -182,7 +209,7 @@ test('upgrade refuses invalid own cursor and never imports global timing history
       marker,
       JSON.stringify({ sessionId: 'fixture-foreign', wordCount: { line: 1, words: 99 } })
     );
-    assert.throws(() => loadState(ctx.statePath), { code: 'WORD_CURSOR_INVALID' });
+    assert.throws(() => loadState(ctx.statePath), { code: 'RUNTIME_STATE_CORRUPT' });
   }));
 
 for (const departure of ['stop', 'switch-out:#1861', 'switch-out']) {

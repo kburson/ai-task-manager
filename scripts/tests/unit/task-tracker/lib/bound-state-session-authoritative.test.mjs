@@ -19,12 +19,15 @@
 //         back to the global pointer + cross-session scan (legacy behavior).
 
 import { strict as assert } from 'node:assert';
-import { test, beforeEach, afterEach } from 'node:test';
+import { beforeEach, afterEach } from 'node:test';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 import { readBoundState } from '../../../../task-tracker/lib/bound-state.mjs';
-import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const CURRENT_SID = 'current-session-666';
 const GHOST_SID = 'ghost-session-628';
@@ -33,10 +36,10 @@ let root;
 let savedSid;
 
 function statePath(r) {
-  return path.join(r, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  return path.join(r, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json');
 }
 function sessionActiveTaskPath(r, sid) {
-  return path.join(r, '.tmp', 'aitm', 'sessions', sid, 'active-task.json');
+  return path.join(r, '.ai-task-manager', 'runtime', 'store', 'sessions', sid, 'active-task.json');
 }
 
 function writeJson(p, obj) {
@@ -45,7 +48,7 @@ function writeJson(p, obj) {
 }
 
 beforeEach(() => {
-  root = mkdtempOutsideRepo('aitm-bound-state-');
+  root = createActivatedUnitRuntimeRoot('aitm-bound-state-');
   savedSid = process.env.AI_TASK_MANAGER_SESSION_ID;
   process.env.AI_TASK_MANAGER_SESSION_ID = CURRENT_SID;
 });

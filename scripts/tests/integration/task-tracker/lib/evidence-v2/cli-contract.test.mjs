@@ -1,12 +1,13 @@
 // @story #1500
 import test from 'node:test';
+import { createActivatedRuntimeRootFixture } from '../../../../helpers/runtime-root-fixture.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
+
 import { sessionDir, setActiveTask } from '../../../../../task-tracker/session-state.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../../..');
@@ -14,7 +15,7 @@ const CLI = path.join(ROOT, 'scripts/task-tracker/task-tracker.mjs');
 
 function run(args, env) {
   const result = spawnSync(process.execPath, [CLI, ...args], {
-    cwd: ROOT,
+    cwd: env.AI_TASK_MANAGER_PROJECT_DIR,
     encoding: 'utf8',
     env: { ...process.env, TT_SKIP_NETWORK: '1', TT_SKIP_FIELD_SELF_CHECK: '1', ...env },
   });
@@ -22,8 +23,8 @@ function run(args, env) {
   return JSON.parse(result.stdout.trim().split('\n').at(-1));
 }
 
-test('real dispatcher exposes write-free inspect, digest-bound enroll and guarded reopen', () => {
-  const dir = path.join(projectScratchDir('test'), `evidence-cli-${randomUUID()}`);
+test('real dispatcher exposes write-free inspect, digest-bound enroll and guarded reopen', async () => {
+  const dir = await createActivatedRuntimeRootFixture('evidence-cli-');
   const toolRoot = path.join(dir, 'tool');
   const authorityRoot = path.join(dir, 'authority');
   mkdirSync(toolRoot, { recursive: true });
@@ -40,7 +41,7 @@ test('real dispatcher exposes write-free inspect, digest-bound enroll and guarde
       repositoryId,
       issueNumber: 1500,
       toolRoot,
-      sourceRoot: ROOT,
+      sourceRoot: dir,
       authorityRoot,
       authorityHostId,
     })
@@ -65,13 +66,19 @@ test('real dispatcher exposes write-free inspect, digest-bound enroll and guarde
       writes: [],
     })
   );
+  writeFileSync(
+    path.join(dir, '.ai-task-manager', 'task-tracker.json'),
+    JSON.stringify({ repo: 'fixture/repo' })
+  );
   const sessionId = randomUUID();
   const env = {
     AI_TASK_MANAGER_SESSION_ID: sessionId,
+    AI_TASK_MANAGER_APP_NAME: 'claude',
+    AI_TASK_MANAGER_PROJECT_DIR: dir,
     AITM_EVIDENCE_CONTEXT: contextFile,
     AITM_EVIDENCE_RECORDED_FIXTURE: fixtureFile,
   };
-  setActiveTask(sessionId, { issue: '#1500' }, ROOT);
+  setActiveTask(sessionId, { issue: '#1500' }, dir);
   try {
     const preview = run(['evidence', 'inspect', '1500', '--json'], env);
     assert.deepEqual(JSON.parse(readFileSync(fixtureFile, 'utf8')).writes, []);
@@ -94,7 +101,7 @@ test('real dispatcher exposes write-free inspect, digest-bound enroll and guarde
     );
     assert.equal(reopened.status, 'reopened');
   } finally {
+    rmSync(sessionDir(sessionId, dir), { recursive: true, force: true });
     rmSync(dir, { recursive: true, force: true });
-    rmSync(sessionDir(sessionId, ROOT), { recursive: true, force: true });
   }
 });

@@ -12,8 +12,12 @@
 
 import { strict as assert } from 'node:assert';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const policyRuntimeFixture = await createCommittedRuntimeRootFixture('tt-gh-policy-');
+process.on('exit', () => rmSync(policyRuntimeFixture, { recursive: true, force: true }));
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,7 +27,7 @@ const GUARD = path.resolve(__dir, '../../../task-tracker/bash-guard.mjs');
 function runGuard(command) {
   const payload = JSON.stringify({ tool_input: { command } });
   // Run in a temp git repo so project-root resolution works.
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-gh-policy-'));
+  const dir = policyRuntimeFixture;
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(path.join(dir, '.ai-task-manager', 'task-tracker.json'), JSON.stringify({}));
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
@@ -32,7 +36,7 @@ function runGuard(command) {
     input: payload,
     cwd: dir,
     encoding: 'utf8',
-    env: { ...process.env, HOME: process.env.HOME },
+    env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: dir },
     timeout: 10000,
   });
   let parsed = {};

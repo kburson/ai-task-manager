@@ -2,6 +2,9 @@
 // @story #1163
 
 import test from 'node:test';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -17,10 +20,7 @@ import {
   setActiveTask,
 } from '../../../../task-tracker/session-state.mjs';
 import { verbResume } from '../../../../task-tracker/verbs/resume.mjs';
-import {
-  mkdtempOutsideRepo,
-  mkdtempProjectIsolated,
-} from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 test('resolves one atomic worktree identity from the invoking directory', () => {
   const calls = [];
@@ -43,8 +43,8 @@ test('resolves one atomic worktree identity from the invoking directory', () => 
   assert.ok(calls.every((call) => call.options.cwd === '/repo/worktrees/child/nested'));
 });
 
-test('active-task state overwrites all worktree identity fields together', () => {
-  const root = mkdtempProjectIsolated('aitm-bound-state-');
+test('active-task state overwrites all worktree identity fields together', async () => {
+  const root = await createCommittedRuntimeRootFixture('aitm-bound-state-');
   try {
     setActiveTask(
       'sid-1163',
@@ -76,8 +76,8 @@ test('active-task state overwrites all worktree identity fields together', () =>
   }
 });
 
-test('legacy active-task records without worktree identity remain readable', () => {
-  const root = mkdtempProjectIsolated('aitm-bound-legacy-');
+test('legacy active-task records without worktree identity remain readable', async () => {
+  const root = await createCommittedRuntimeRootFixture('aitm-bound-legacy-');
   try {
     const file = activeTaskPath('sid-legacy', root);
     mkdirSync(path.dirname(file), { recursive: true });
@@ -109,10 +109,21 @@ test('binding outside Git fails before a null identity can be persisted', () => 
 });
 
 test('explicit bind persists identity and a same-issue rebind replaces it', async () => {
-  const root = mkdtempProjectIsolated('aitm-bind-verb-');
+  const root = await createCommittedRuntimeRootFixture('aitm-bind-verb-');
   const priorSid = process.env.AI_TASK_MANAGER_SESSION_ID;
+  const priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  const priorCwd = process.cwd();
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = root;
+  process.chdir(root);
   process.env.AI_TASK_MANAGER_SESSION_ID = 'sid-bind-verb-1163';
-  const statePath = path.join(root, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  const statePath = path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   mkdirSync(path.dirname(statePath), { recursive: true });
   writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }));
   const identities = [
@@ -161,6 +172,9 @@ test('explicit bind persists identity and a same-issue rebind replaces it', asyn
       identities[1]
     );
   } finally {
+    process.chdir(priorCwd);
+    if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
     if (priorSid == null) delete process.env.AI_TASK_MANAGER_SESSION_ID;
     else process.env.AI_TASK_MANAGER_SESSION_ID = priorSid;
     rmSync(root, { recursive: true, force: true });
@@ -168,10 +182,21 @@ test('explicit bind persists identity and a same-issue rebind replaces it', asyn
 });
 
 test('bind resolution failure happens before active-task state mutation', async () => {
-  const root = mkdtempProjectIsolated('aitm-bind-fail-');
+  const root = await createCommittedRuntimeRootFixture('aitm-bind-fail-');
   const priorSid = process.env.AI_TASK_MANAGER_SESSION_ID;
+  const priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  const priorCwd = process.cwd();
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = root;
+  process.chdir(root);
   process.env.AI_TASK_MANAGER_SESSION_ID = 'sid-bind-fail-1163';
-  const statePath = path.join(root, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  const statePath = path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   mkdirSync(path.dirname(statePath), { recursive: true });
   writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }));
 
@@ -193,6 +218,9 @@ test('bind resolution failure happens before active-task state mutation', async 
     );
     assert.equal(getActiveTask('sid-bind-fail-1163', root), null);
   } finally {
+    process.chdir(priorCwd);
+    if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
     if (priorSid == null) delete process.env.AI_TASK_MANAGER_SESSION_ID;
     else process.env.AI_TASK_MANAGER_SESSION_ID = priorSid;
     rmSync(root, { recursive: true, force: true });

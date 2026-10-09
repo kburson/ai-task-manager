@@ -1,8 +1,9 @@
 // @story #1166
 
 import { strict as assert } from 'node:assert';
+import { activateRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { execFileSync, spawn } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { rmSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -40,8 +41,8 @@ function git(cwd, ...args) {
   }).trim();
 }
 
-function makeRepo() {
-  const root = mkdtempOutsideRepo('aitm-bash-binding-');
+async function makeRepo() {
+  const root = realpathSync(mkdtempOutsideRepo('aitm-bash-binding-'));
   git(root, 'init', '-q', '-b', 'trunk');
   git(root, 'config', 'user.name', 'aitm-test');
   git(root, 'config', 'user.email', 'aitm-test@example.com');
@@ -50,6 +51,7 @@ function makeRepo() {
   git(root, 'commit', '-q', '-m', 'seed');
   const child = path.join(root, '.worktrees', '1166');
   git(root, 'worktree', 'add', '-q', '-b', 'feature/child/1166', child, 'trunk');
+  await activateRuntimeRootFixture(root, [child]);
   return { root, child };
 }
 
@@ -58,7 +60,11 @@ async function runGuard({ cwd, payloadCwd = cwd, command, sessionId }) {
   return await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [GUARD], {
       cwd,
-      env: { ...process.env, AI_TASK_MANAGER_SESSION_ID: sessionId },
+      env: {
+        ...process.env,
+        AI_TASK_MANAGER_SESSION_ID: sessionId,
+        AI_TASK_MANAGER_APP_NAME: 'claude',
+      },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -159,7 +165,7 @@ test('absence, matching worktree, and explicit override pass unchanged', () => {
 });
 
 test('real PreToolUse hook refuses a guarded command from a foreign worktree', async (t) => {
-  const { root, child } = makeRepo();
+  const { root, child } = await makeRepo();
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const sessionId = 'bash-guard-binding-1166';
   setActiveTask(
@@ -210,7 +216,7 @@ test('existing gh-edit evaluator outcomes are unchanged', () => {
 });
 
 test('hook process in main checkout honors linked payload directory and recorded branch', async (t) => {
-  const { root, child } = makeRepo();
+  const { root, child } = await makeRepo();
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const sessionId = 'binding-payload-1830';
   setActiveTask(

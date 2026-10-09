@@ -4,16 +4,16 @@
 // the CLI `verbPromote` via a process.exit/stdout trap (one prod change:
 // `verbPromote(rest, cfg, deps = {})` forwards `deps` so every arm runs offline).
 import { strict as assert } from 'node:assert';
-import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import '../../../fixtures/offline-gh-auto.mjs';
-import { mkdtempSync } from 'node:fs';
-import { join } from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { runPromote, verbPromote } from '../../../../task-tracker/verbs/promote.mjs';
 import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 // Isolate the verb's withIssueLock dir from the live project tree.
-process.env.AI_TASK_MANAGER_PROJECT_DIR = mkdtempSync(join(projectScratchDir('test'), 'promote-'));
+process.env.AI_TASK_MANAGER_PROJECT_DIR = createActivatedUnitRuntimeRoot('promote-');
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 function makeDeps({
   body = '',
@@ -30,6 +30,7 @@ function makeDeps({
   return {
     calls,
     deps: {
+      migrationFreezeActive: () => false,
       pexec: async (bin, args) => {
         if (bin === 'git' && args[0] === 'rev-parse') return { stdout: `${'a'.repeat(40)}\n` };
         if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view') {

@@ -19,17 +19,20 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test, before, after } from 'node:test';
+import { before, after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync } from 'node:fs';
 
 import {
   setChecklistLine,
   setChecklistLines,
   verbEnsureUnchecked,
 } from '../../../../task-tracker/verbs/check.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { pexecGithubBodyStore } from '../../../helpers/pexec-body-store.mjs';
 
 const AC_PLAIN = 'plain ac no verifier';
@@ -102,7 +105,7 @@ let savedPath;
 let storeFile;
 
 before(() => {
-  tmpRoot = mkdtempSync(path.join(projectScratchDir('test'), 'ensure-unchecked-'));
+  tmpRoot = createActivatedUnitRuntimeRoot('ensure-unchecked-');
   fakeBin = path.join(tmpRoot, 'bin');
   mkdirSync(fakeBin, { recursive: true });
   const ghPath = path.join(fakeBin, 'gh');
@@ -138,9 +141,8 @@ after(() => {
   }
 });
 
-let stateCounter = 0;
 function stateFile(active) {
-  const p = path.join(tmpRoot, `state-${stateCounter++}.json`);
+  const p = path.join(tmpRoot, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   saveState({ active, lastActive: active }, p);
   return p;
 }

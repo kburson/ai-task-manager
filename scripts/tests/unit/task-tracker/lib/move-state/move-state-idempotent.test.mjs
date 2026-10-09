@@ -159,6 +159,7 @@ test('production completion probe recovers only the latest fully-evidenced entry
     cfg: { repo: 'kburson/ai-task-manager' },
     SKIP_NETWORK: false,
     deps: {
+      flushBoundActorInterval: async () => {},
       ghTimingComment: {
         buildRow,
         postTimingEvent: async ({ row }) => posted.push(row),
@@ -250,6 +251,7 @@ test('production completion probe recovers a demotion with target-bound timing e
     cfg: { repo: 'kburson/ai-task-manager' },
     SKIP_NETWORK: false,
     deps: {
+      flushBoundActorInterval: async () => {},
       ghTimingComment: {
         buildRow,
         postTimingEvent: async ({ row }) => posted.push(row),

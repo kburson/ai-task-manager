@@ -22,6 +22,13 @@ import {
   detectFullAuto,
 } from '../../../../task-tracker/verbs/approve.mjs';
 
+import {
+  withUnitRuntimeRoot,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
 // #881 — approve requires evidence that the Agent Review Gate (the Review state's
 // action) passed. Every fixture body below is suffixed with it; tests that care
 // about the refusal path live in approve-agent-review-complete.test.mjs.
@@ -82,140 +89,155 @@ function makeDeps(overrides = {}) {
   };
 }
 
-// 1. wrong-state when not in review (develop)
-{
-  const { deps, calls } = makeDeps({ state: 'develop' });
-  const r = await runApprove({ issueNumber: 58, cfg, deps });
-  assert.equal(r.status, 'wrong-state');
-  assert.match(r.message, /develop/);
-  assert.equal(calls.writes.length, 0);
-}
+const root = createActivatedUnitRuntimeRoot('approve-isolated-');
+const priorProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = root;
+try {
+  await withUnitRuntimeRoot(async () => {
+    // 1. wrong-state when not in review (develop)
+    {
+      const { deps, calls } = makeDeps({ state: 'develop' });
+      const r = await runApprove({ issueNumber: 58, cfg, deps });
+      assert.equal(r.status, 'wrong-state');
+      assert.match(r.message, /develop/);
+      assert.equal(calls.writes.length, 0);
+    }
 
-// 1b. wrong-state when in plan (Review approval cannot approve Plan)
-{
-  const { deps, calls } = makeDeps({ state: 'plan' });
-  const r = await runApprove({ issueNumber: 58, cfg, deps });
-  assert.equal(r.status, 'wrong-state');
-  assert.match(r.message, /plan/);
-  assert.equal(calls.writes.length, 0);
-}
+    // 1b. wrong-state when in plan (Review approval cannot approve Plan)
+    {
+      const { deps, calls } = makeDeps({ state: 'plan' });
+      const r = await runApprove({ issueNumber: 58, cfg, deps });
+      assert.equal(r.status, 'wrong-state');
+      assert.match(r.message, /plan/);
+      assert.equal(calls.writes.length, 0);
+    }
 
-// 2. first call inserts marker
-{
-  const { deps, calls, getBody } = makeDeps();
-  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  assert.equal(r.status, 'approved');
-  assert.equal(r.ts, FIXED_TS);
-  assert.equal(calls.writes.length, 1);
-  assert.match(getBody(), new RegExp(`aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"`));
-}
+    // 2. first call inserts marker
+    {
+      const { deps, calls, getBody } = makeDeps();
+      const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      assert.equal(r.status, 'approved');
+      assert.equal(r.ts, FIXED_TS);
+      assert.equal(calls.writes.length, 1);
+      assert.match(
+        getBody(),
+        new RegExp(`aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"`)
+      );
+    }
 
-// 3. second call is idempotent
-{
-  const { deps, calls } = makeDeps();
-  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  assert.equal(r.status, 'already-approved');
-  assert.equal(calls.writes.length, 1, 'second call must not rewrite the body');
-}
+    // 3. second call is idempotent
+    {
+      const { deps, calls } = makeDeps();
+      await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      assert.equal(r.status, 'already-approved');
+      assert.equal(calls.writes.length, 1, 'second call must not rewrite the body');
+    }
 
-// 4. marker placed before fields-block; legacy fixture normalized to new encoding
-{
-  const { deps, getBody } = makeDeps();
-  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  const body = getBody();
-  const markerIdx = body.indexOf('<!-- aitm-review-approved');
-  const fieldsIdx = body.indexOf('<!-- aitm-fields:');
-  assert.ok(
-    markerIdx >= 0 && fieldsIdx > markerIdx,
-    `marker must appear before field-DB; markerIdx=${markerIdx}, fieldsIdx=${fieldsIdx}`
-  );
-  assert.ok(
-    !body.includes('<!-- ai-task-manager:fields:start -->'),
-    'legacy fields-start marker must not survive an approve write'
-  );
-}
+    // 4. marker placed before fields-block; legacy fixture normalized to new encoding
+    {
+      const { deps, getBody } = makeDeps();
+      await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      const body = getBody();
+      const markerIdx = body.indexOf('<!-- aitm-review-approved');
+      const fieldsIdx = body.indexOf('<!-- aitm-fields:');
+      assert.ok(
+        markerIdx >= 0 && fieldsIdx > markerIdx,
+        `marker must appear before field-DB; markerIdx=${markerIdx}, fieldsIdx=${fieldsIdx}`
+      );
+      assert.ok(
+        !body.includes('<!-- ai-task-manager:fields:start -->'),
+        'legacy fields-start marker must not survive an approve write'
+      );
+    }
 
-// 5. marker appended at end when no fields-block
-{
-  const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
-  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  assert.match(
-    getBody(),
-    new RegExp(`aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"[^>]*-->\\s*$`)
-  );
-}
+    // 5. marker appended at end when no fields-block
+    {
+      const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
+      await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      assert.match(
+        getBody(),
+        new RegExp(`aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"[^>]*-->\\s*$`)
+      );
+    }
 
-// 6. pure helpers
-{
-  assert.equal(buildMarker(FIXED_TS), `<!-- aitm-review-approved ts="${FIXED_TS}" -->`);
-  assert.equal(hasApprovalMarker(''), false);
-  assert.equal(hasApprovalMarker(buildMarker(FIXED_TS)), true);
-  assert.equal(hasApprovalMarker('<!--aitm-review-approved:foo-->'), true);
-  // insertApprovalMarker is idempotent on already-marked body.
-  const already = `body\n${buildMarker(FIXED_TS)}\n`;
-  assert.equal(insertApprovalMarker(already, '2099-01-01T00:00:00Z'), already);
-}
+    // 6. pure helpers
+    {
+      assert.equal(buildMarker(FIXED_TS), `<!-- aitm-review-approved ts="${FIXED_TS}" -->`);
+      assert.equal(hasApprovalMarker(''), false);
+      assert.equal(hasApprovalMarker(buildMarker(FIXED_TS)), true);
+      assert.equal(hasApprovalMarker('<!--aitm-review-approved:foo-->'), true);
+      // insertApprovalMarker is idempotent on already-marked body.
+      const already = `body\n${buildMarker(FIXED_TS)}\n`;
+      assert.equal(insertApprovalMarker(already, '2099-01-01T00:00:00Z'), already);
+    }
 
-// 7. new-encoded body stays new-encoded
-{
-  const newBody = '## AC\n- [x] x\n\n<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->\n';
-  const out = insertApprovalMarker(newBody, FIXED_TS);
-  assert.ok(out.includes('<!-- aitm-fields:'), 'output must contain new-encoded field-DB');
-  assert.ok(
-    !out.includes('ai-task-manager:fields:start'),
-    'output must NOT contain legacy fields-start marker'
-  );
-  const markerIdx = out.indexOf('<!-- aitm-review-approved');
-  const fieldsIdx = out.indexOf('<!-- aitm-fields:');
-  assert.ok(markerIdx >= 0 && fieldsIdx > markerIdx, 'approval marker must precede field-DB');
-}
+    // 7. new-encoded body stays new-encoded
+    {
+      const newBody =
+        '## AC\n- [x] x\n\n<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->\n';
+      const out = insertApprovalMarker(newBody, FIXED_TS);
+      assert.ok(out.includes('<!-- aitm-fields:'), 'output must contain new-encoded field-DB');
+      assert.ok(
+        !out.includes('ai-task-manager:fields:start'),
+        'output must NOT contain legacy fields-start marker'
+      );
+      const markerIdx = out.indexOf('<!-- aitm-review-approved');
+      const fieldsIdx = out.indexOf('<!-- aitm-fields:');
+      assert.ok(markerIdx >= 0 && fieldsIdx > markerIdx, 'approval marker must precede field-DB');
+    }
 
-// 8. legacy-encoded body is normalized to new encoding
-{
-  const legacy =
-    '## AC\n- [x] x\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"M"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
-  const out = insertApprovalMarker(legacy, FIXED_TS);
-  assert.ok(
-    !out.includes('ai-task-manager:fields:start'),
-    'legacy fields-start marker must be stripped'
-  );
-  assert.ok(
-    !out.includes('ai-task-manager:fields:end'),
-    'legacy fields-end marker must be stripped'
-  );
-  assert.ok(
-    out.includes('<!-- aitm-fields: {"schema":1,"values":{"size":"M"}} -->'),
-    'output must contain canonical re-emission of parsed values'
-  );
-}
+    // 8. legacy-encoded body is normalized to new encoding
+    {
+      const legacy =
+        '## AC\n- [x] x\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"M"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
+      const out = insertApprovalMarker(legacy, FIXED_TS);
+      assert.ok(
+        !out.includes('ai-task-manager:fields:start'),
+        'legacy fields-start marker must be stripped'
+      );
+      assert.ok(
+        !out.includes('ai-task-manager:fields:end'),
+        'legacy fields-end marker must be stripped'
+      );
+      assert.ok(
+        out.includes('<!-- aitm-fields: {"schema":1,"values":{"size":"M"}} -->'),
+        'output must contain canonical re-emission of parsed values'
+      );
+    }
 
-// 9. auto-ticks "Passed final human review" Lifecycle item on approve (#139)
-{
-  const body = [
-    '## AC',
-    '- [x] x',
-    '',
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [ ] Passed final human review',
-    '- [ ] Story closed and moved to Done',
-    '- [ ] Timing data flushed to issue',
-    '',
-    '<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->',
-    '',
-  ].join('\n');
-  const { deps, getBody } = makeDeps({ initialBody: body });
-  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  const out = getBody();
-  assert.match(out, /- \[x\] Passed final human review/);
-  assert.match(out, /- \[ \] Story closed and moved to Done/);
-  assert.match(out, /- \[ \] Timing data flushed to issue/);
-}
+    // 9. auto-ticks "Passed final human review" Lifecycle item on approve (#139)
+    {
+      const body = [
+        '## AC',
+        '- [x] x',
+        '',
+        '#### Lifecycle (auto-ticked at Review/Close)',
+        '- [ ] Passed final human review',
+        '- [ ] Story closed and moved to Done',
+        '- [ ] Timing data flushed to issue',
+        '',
+        '<!-- aitm-fields: {"schema":1,"values":{"size":"S"}} -->',
+        '',
+      ].join('\n');
+      const { deps, getBody } = makeDeps({ initialBody: body });
+      await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      const out = getBody();
+      assert.match(out, /- \[x\] Passed final human review/);
+      assert.match(out, /- \[ \] Story closed and moved to Done/);
+      assert.match(out, /- \[ \] Timing data flushed to issue/);
+    }
 
-// 10. auto-tick is a no-op when there is no Lifecycle section (back-compat)
-{
-  const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
-  await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  assert.match(getBody(), /<!-- aitm-review-approved(?: ts="|:)/);
-  assert.doesNotMatch(getBody(), /Passed final human review/);
+    // 10. auto-tick is a no-op when there is no Lifecycle section (back-compat)
+    {
+      const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
+      await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      assert.match(getBody(), /<!-- aitm-review-approved(?: ts="|:)/);
+      assert.doesNotMatch(getBody(), /Passed final human review/);
+    }
+  });
+} finally {
+  if (priorProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorProjectDir;
+  rmSync(root, { recursive: true, force: true });
 }

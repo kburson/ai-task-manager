@@ -1,6 +1,6 @@
 // @story #123
 import assert from 'node:assert/strict';
-import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { mkdtempSync, writeFileSync, chmodSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -42,7 +42,7 @@ const FIELDS_NO_ENGAGED = [
 // `gh issue edit --body-file -` to a state file and serves it back, so the
 // write path now exercises mutateIssueBody's fetch → push → verify loop.
 async function makeEnv({ initialBody, fieldNodes }) {
-  const temp = await createCommittedLegacyRootFixture('aitm-log-time-test-');
+  const temp = await createCommittedRuntimeRootFixture('aitm-log-time-test-');
   const binDir = join(temp, 'bin');
   const callLog = join(temp, 'gh-calls.log');
   const stateBody = join(temp, 'body-state.txt');

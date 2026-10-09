@@ -1,3 +1,6 @@
+// @story #1857
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { rmSync } from 'node:fs';
 // @story #1670
 // @story #1857
 // This integration fixture supplies its own actor.
@@ -17,6 +20,8 @@ import {
 } from '../../../../task-tracker/lib/action-decision/contract.mjs';
 import { listLifecycleActions } from '../../../../task-tracker/lib/lifecycle-policy/actions.mjs';
 import { measureFixedActionAuthorityReads } from '../../../helpers/action-authority-cost.mjs';
+import { capturedCommitBytes } from '../../../helpers/captured-commit-bytes.mjs';
+import { fileURLToPath } from 'node:url';
 
 const FIXTURE_ROOT = new URL('../../../fixtures/1558/', import.meta.url);
 const ACTIONS = ['bind', 'resume', 'promote', 'test', 'review', 'deliver', 'close'];
@@ -90,7 +95,7 @@ test('aggregate parity executes the seven action suites, not only their metadata
   ];
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
-  const run = spawnSync(process.execPath, ['--test', ...files], {
+  const run = spawnSync(process.execPath, ['--test', '--test-concurrency=1', ...files], {
     cwd: new URL('../../../../../', import.meta.url),
     encoding: 'utf8',
     env,
@@ -110,7 +115,20 @@ test('aggregate parity executes the seven action suites, not only their metadata
 
 test('authority cost evidence matches fresh physical reads before A2 certification', async () => {
   const cost = fixture('action-authority-cost.json');
-  const measured = await measureFixedActionAuthorityReads();
+  const runtimeRoot = await createCommittedRuntimeRootFixture('action-authority-cost-');
+  const previousProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  const previousCwd = process.cwd();
+  let measured;
+  try {
+    process.env.AI_TASK_MANAGER_PROJECT_DIR = runtimeRoot;
+    process.chdir(runtimeRoot);
+    measured = await measureFixedActionAuthorityReads();
+  } finally {
+    process.chdir(previousCwd);
+    if (previousProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = previousProjectDir;
+    rmSync(runtimeRoot, { recursive: true, force: true });
+  }
   assert.equal(cost.schema, 'aitm.action-authority-cost/v1');
   assert.deepEqual(
     cost.actions.map(({ id }) => id),
@@ -130,11 +148,22 @@ test('authority cost evidence matches fresh physical reads before A2 certificati
     cost.source.wbs4AuthorityBaseline,
     cost.source.legacyBaseline,
     cost.source.observationInventory,
-    cost.source.measurementHelper,
     ...cost.source.legacyTranscripts,
   ]) {
     assert.equal(source.sha256, sha256OfProjectPath(source.path), source.path);
   }
+  // The archived cost fixture names the original collector's bytes. Preserve
+  // that provenance while checking the current collector's actual requests
+  // against every archived count, identity and ceiling below.
+  const originalCollector = capturedCommitBytes(
+    fileURLToPath(new URL('../../../../../', import.meta.url)),
+    '171c7d93866f67b58effa635be5ae737f54ef9eb',
+    cost.source.measurementHelper.path
+  );
+  assert.equal(
+    cost.source.measurementHelper.sha256,
+    `sha256:${createHash('sha256').update(originalCollector).digest('hex')}`
+  );
   const authority = fixture('authority-baseline.json');
   const baselineResources = new Set(authority.resources.map(({ id }) => id));
   const baselineById = new Map(authority.resources.map((resource) => [resource.id, resource]));

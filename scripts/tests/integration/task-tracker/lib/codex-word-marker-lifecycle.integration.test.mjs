@@ -4,10 +4,10 @@ import { strict as assert } from 'node:assert';
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 
 const THREAD_ID = '019fbe04-test-codex-lifecycle';
-const tmp = createRuntimeRootFixture('codex-word-lifecycle-');
+const tmp = await createActivatedRuntimeRootFixture('codex-word-lifecycle-');
 const projectDir = tmp;
 const previousCwd = process.cwd();
 const homeDir = path.join(tmp, 'home');

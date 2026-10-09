@@ -44,6 +44,8 @@ function makeDeps({ body, live, liveAfter, moveCode = 0 } = {}) {
     calls,
     deps: {
       projectDir: process.cwd(),
+      migrationFreezeActive: () => false,
+      loadSession: () => null,
       assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
       writeIssueBody: async ({ body: b }) => {

@@ -23,19 +23,21 @@ initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
 import { before, after } from 'node:test';
-import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 
 import { verbUpdate } from '../../../../task-tracker/verbs/update.mjs';
-import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 let tmpRoot;
 let savedProjectDir;
 
 before(() => {
-  tmpRoot = mkdtempOutsideRepo('update-cov-');
+  tmpRoot = createActivatedUnitRuntimeRoot('update-cov-');
   savedProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   // Redirect projectDir() so saveMarker writes its session-tracking marker into
   // the isolated temp dir instead of the live repo's state dir.
@@ -53,14 +55,9 @@ after(() => {
 });
 
 function stateFile(active, extra = {}) {
-  const p = path.join(tmpRoot, `state-${Math.abs(hashish(String(active)))}.json`);
+  const p = path.join(tmpRoot, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   saveState({ active, lastActive: active, ...extra }, p);
   return p;
-}
-function hashish(s) {
-  let h = 0;
-  for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0;
-  return h;
 }
 
 // Run verbUpdate with console.log trapped; returns the captured output and the

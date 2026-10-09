@@ -23,6 +23,13 @@ import {
   parseArgs,
 } from '../../../../task-tracker/verbs/approve.mjs';
 
+import {
+  withUnitRuntimeRoot,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
 // #881 — approve requires evidence that the Agent Review Gate (the Review state's
 // action) passed. Every fixture body below is suffixed with it; tests that care
 // about the refusal path live in approve-agent-review-complete.test.mjs.
@@ -83,225 +90,242 @@ function makeDeps(overrides = {}) {
   };
 }
 
-// --- #156 Full-Auto audit marker ---
+const root = createActivatedUnitRuntimeRoot('approve-isolated-');
+const priorProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = root;
+try {
+  await withUnitRuntimeRoot(async () => {
+    // --- #156 Full-Auto audit marker ---
 
-// 11. detectFullAuto: env=TT_FULL_AUTO=1 → fires with env=1 (human reviewer set
-// to isolate the legacy override signal — #177)
-{
-  const r = detectFullAuto({
-    env: { TT_FULL_AUTO: '1', TASK_TRACKER_HUMAN_REVIEWER: 'alice' },
-    tty: true,
+    // 11. detectFullAuto: env=TT_FULL_AUTO=1 → fires with env=1 (human reviewer set
+    // to isolate the legacy override signal — #177)
+    {
+      const r = detectFullAuto({
+        env: { TT_FULL_AUTO: '1', TASK_TRACKER_HUMAN_REVIEWER: 'alice' },
+        tty: true,
+      });
+      assert.equal(r.fired, true);
+      assert.match(r.signals, /reviewer-unset=0/);
+      assert.match(r.signals, /env=1/);
+      assert.match(r.signals, /tty=1/);
+      assert.match(r.signals, /ci=0/);
+    }
+
+    // 12. detectFullAuto: CI=1 → fires with ci=1
+    {
+      const r = detectFullAuto({
+        env: { CI: '1', TASK_TRACKER_HUMAN_REVIEWER: 'alice' },
+        tty: true,
+      });
+      assert.equal(r.fired, true);
+      assert.match(r.signals, /reviewer-unset=0,env=0,tty=1,ci=1/);
+    }
+
+    // 13. detectFullAuto: stdin.isTTY === false → fires with tty=0
+    {
+      const r = detectFullAuto({ env: { TASK_TRACKER_HUMAN_REVIEWER: 'alice' }, tty: false });
+      assert.equal(r.fired, true);
+      assert.match(r.signals, /reviewer-unset=0,env=0,tty=0,ci=0/);
+    }
+
+    // 14. detectFullAuto: no signals AND human reviewer set → does not fire
+    {
+      const r = detectFullAuto({ env: { TASK_TRACKER_HUMAN_REVIEWER: 'alice' }, tty: true });
+      assert.equal(r.fired, false);
+      assert.equal(r.signals, '');
+    }
+
+    // 14a. #177 — detectFullAuto: human reviewer unset (Claude-Code shape) → fires
+    // via reviewer-unset signal even when legacy signals are inert.
+    {
+      const r = detectFullAuto({ env: {}, tty: true });
+      assert.equal(r.fired, true);
+      assert.match(r.signals, /reviewer-unset=1/);
+    }
+
+    // 14b. #177 — detectFullAuto: human reviewer set to empty string is treated
+    // as unset (full-auto fires).
+    {
+      const r = detectFullAuto({ env: { TASK_TRACKER_HUMAN_REVIEWER: '   ' }, tty: true });
+      assert.equal(r.fired, true);
+      assert.match(r.signals, /reviewer-unset=1/);
+    }
+
+    // 15. runApprove stamps full-auto marker when detect fires
+    {
+      const { deps, getBody } = makeDeps({
+        deps: { detectFullAuto: () => ({ fired: true, signals: 'env=1,tty=0,ci=0' }) },
+      });
+      const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      assert.equal(r.status, 'approved');
+      assert.equal(r.fullAuto, true);
+      // #480 AC6 — full-auto is now folded into the single aitm-review-approved
+      // marker; the separate aitm-full-auto-approved marker is no longer written.
+      assert.match(
+        getBody(),
+        new RegExp(
+          `aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"[^>]*full-auto="yes"[^>]*signals="env=1,tty=0,ci=0"`
+        )
+      );
+      assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
+      // #161 / D4 — visible footnote also present.
+      assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
+      assert.match(getBody(), /Full-Auto mode enabled: human review skipped/);
+    }
+
+    // 16. runApprove omits full-auto marker AND footnote when detect returns not-fired
+    {
+      const { deps, getBody } = makeDeps({
+        deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
+      });
+      const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      assert.equal(r.fullAuto, false);
+      assert.match(getBody(), /<!-- aitm-review-approved(?: ts="|:)/);
+      assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
+      // #161 / D4 — no footnote in human-review mode.
+      assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
+    }
+
+    // #302 — When the Lifecycle box is ALREADY ticked (Full-Auto operator pre-ticked
+    // per the manual rule), approve must run silently. No `lifecycle-tick-noop`
+    // warning on stderr — that warning is reserved for genuinely-missing labels.
+    {
+      const preTickedBody = [
+        '## Acceptance Criteria',
+        '- [x] do thing',
+        '',
+        '### Definition of Done',
+        '',
+        '#### Lifecycle (auto-ticked at Review/Close)',
+        '- [x] Passed final human review',
+        '- [ ] Story closed and moved to Done',
+        '- [ ] Timing data flushed to issue',
+        '',
+      ].join('\n');
+      const { deps } = makeDeps({
+        initialBody: preTickedBody,
+        deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
+      });
+      const origWrite = process.stderr.write.bind(process.stderr);
+      let captured = '';
+      process.stderr.write = (chunk) => {
+        captured += String(chunk);
+        return true;
+      };
+      try {
+        const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+        assert.equal(r.status, 'approved');
+      } finally {
+        process.stderr.write = origWrite;
+      }
+      assert.doesNotMatch(
+        captured,
+        /lifecycle-tick-noop/,
+        'pre-ticked lifecycle box must not trigger the warning'
+      );
+    }
+
+    // #979 AC2 — parseArgs recognizes --human alongside the issue number, in
+    // either order, and defaults to false when absent.
+    {
+      assert.deepEqual(parseArgs(['58', '--human']), { issueNumber: 58, human: true });
+      assert.deepEqual(parseArgs(['--human', '#58']), { issueNumber: 58, human: true });
+      assert.deepEqual(parseArgs(['58']), { issueNumber: 58, human: false });
+    }
+
+    // #979 AC1 — pre-ticked "Passed final human review" box overrides a firing
+    // detectFullAuto: no full-auto prop, no footnote, even with every Full-Auto
+    // env/tty/ci signal present.
+    {
+      const preTickedBody = [
+        '## Acceptance Criteria',
+        '- [x] do thing',
+        '',
+        '### Definition of Done',
+        '',
+        '#### Lifecycle (auto-ticked at Review/Close)',
+        '- [x] Passed final human review',
+        '- [ ] Story closed and moved to Done',
+        '- [ ] Timing data flushed to issue',
+        '',
+      ].join('\n');
+      const { deps, getBody } = makeDeps({
+        initialBody: preTickedBody,
+        deps: {
+          detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }),
+        },
+      });
+      const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      assert.equal(r.status, 'approved');
+      assert.equal(r.fullAuto, false);
+      assert.doesNotMatch(getBody(), /full-auto="yes"/);
+      assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
+    }
+
+    // #979 AC2 — `--human` (runApprove's `human: true`) forces the same
+    // non-full-auto outcome even when the lifecycle box is NOT pre-ticked and
+    // every Full-Auto env signal is present.
+    {
+      const { deps, getBody } = makeDeps({
+        deps: {
+          detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }),
+        },
+      });
+      const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps, human: true });
+      assert.equal(r.status, 'approved');
+      assert.equal(r.fullAuto, false);
+      assert.doesNotMatch(getBody(), /full-auto="yes"/);
+      assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
+    }
+
+    // #979 regression — genuinely-full-auto path (no pretick, no --human) still
+    // fires exactly as before when detect() returns fired=true.
+    {
+      const { deps, getBody } = makeDeps({
+        deps: {
+          detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }),
+        },
+      });
+      const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+      assert.equal(r.status, 'approved');
+      assert.equal(r.fullAuto, true);
+      assert.match(getBody(), /full-auto="yes"/);
+      assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
+    }
+
+    // 17. (#161 / D4) Legacy lifecycle heading: warn to stderr, verb still succeeds
+    {
+      const legacyBody = [
+        '## Acceptance Criteria',
+        '- [x] do thing',
+        '',
+        '### Definition of Done',
+        '',
+        '#### Closeout',
+        '- [ ] Passed final human review',
+        '',
+      ].join('\n');
+      const { deps } = makeDeps({
+        initialBody: legacyBody,
+        deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
+      });
+      const origWrite = process.stderr.write.bind(process.stderr);
+      let captured = '';
+      process.stderr.write = (chunk) => {
+        captured += String(chunk);
+        return true;
+      };
+      try {
+        const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
+        assert.equal(r.status, 'approved');
+      } finally {
+        process.stderr.write = origWrite;
+      }
+      assert.match(captured, /lifecycle-tick-noop/);
+    }
   });
-  assert.equal(r.fired, true);
-  assert.match(r.signals, /reviewer-unset=0/);
-  assert.match(r.signals, /env=1/);
-  assert.match(r.signals, /tty=1/);
-  assert.match(r.signals, /ci=0/);
-}
-
-// 12. detectFullAuto: CI=1 → fires with ci=1
-{
-  const r = detectFullAuto({
-    env: { CI: '1', TASK_TRACKER_HUMAN_REVIEWER: 'alice' },
-    tty: true,
-  });
-  assert.equal(r.fired, true);
-  assert.match(r.signals, /reviewer-unset=0,env=0,tty=1,ci=1/);
-}
-
-// 13. detectFullAuto: stdin.isTTY === false → fires with tty=0
-{
-  const r = detectFullAuto({ env: { TASK_TRACKER_HUMAN_REVIEWER: 'alice' }, tty: false });
-  assert.equal(r.fired, true);
-  assert.match(r.signals, /reviewer-unset=0,env=0,tty=0,ci=0/);
-}
-
-// 14. detectFullAuto: no signals AND human reviewer set → does not fire
-{
-  const r = detectFullAuto({ env: { TASK_TRACKER_HUMAN_REVIEWER: 'alice' }, tty: true });
-  assert.equal(r.fired, false);
-  assert.equal(r.signals, '');
-}
-
-// 14a. #177 — detectFullAuto: human reviewer unset (Claude-Code shape) → fires
-// via reviewer-unset signal even when legacy signals are inert.
-{
-  const r = detectFullAuto({ env: {}, tty: true });
-  assert.equal(r.fired, true);
-  assert.match(r.signals, /reviewer-unset=1/);
-}
-
-// 14b. #177 — detectFullAuto: human reviewer set to empty string is treated
-// as unset (full-auto fires).
-{
-  const r = detectFullAuto({ env: { TASK_TRACKER_HUMAN_REVIEWER: '   ' }, tty: true });
-  assert.equal(r.fired, true);
-  assert.match(r.signals, /reviewer-unset=1/);
-}
-
-// 15. runApprove stamps full-auto marker when detect fires
-{
-  const { deps, getBody } = makeDeps({
-    deps: { detectFullAuto: () => ({ fired: true, signals: 'env=1,tty=0,ci=0' }) },
-  });
-  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  assert.equal(r.status, 'approved');
-  assert.equal(r.fullAuto, true);
-  // #480 AC6 — full-auto is now folded into the single aitm-review-approved
-  // marker; the separate aitm-full-auto-approved marker is no longer written.
-  assert.match(
-    getBody(),
-    new RegExp(
-      `aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"[^>]*full-auto="yes"[^>]*signals="env=1,tty=0,ci=0"`
-    )
-  );
-  assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
-  // #161 / D4 — visible footnote also present.
-  assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
-  assert.match(getBody(), /Full-Auto mode enabled: human review skipped/);
-}
-
-// 16. runApprove omits full-auto marker AND footnote when detect returns not-fired
-{
-  const { deps, getBody } = makeDeps({
-    deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
-  });
-  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  assert.equal(r.fullAuto, false);
-  assert.match(getBody(), /<!-- aitm-review-approved(?: ts="|:)/);
-  assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
-  // #161 / D4 — no footnote in human-review mode.
-  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
-}
-
-// #302 — When the Lifecycle box is ALREADY ticked (Full-Auto operator pre-ticked
-// per the manual rule), approve must run silently. No `lifecycle-tick-noop`
-// warning on stderr — that warning is reserved for genuinely-missing labels.
-{
-  const preTickedBody = [
-    '## Acceptance Criteria',
-    '- [x] do thing',
-    '',
-    '### Definition of Done',
-    '',
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-    '- [ ] Story closed and moved to Done',
-    '- [ ] Timing data flushed to issue',
-    '',
-  ].join('\n');
-  const { deps } = makeDeps({
-    initialBody: preTickedBody,
-    deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
-  });
-  const origWrite = process.stderr.write.bind(process.stderr);
-  let captured = '';
-  process.stderr.write = (chunk) => {
-    captured += String(chunk);
-    return true;
-  };
-  try {
-    const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-    assert.equal(r.status, 'approved');
-  } finally {
-    process.stderr.write = origWrite;
-  }
-  assert.doesNotMatch(
-    captured,
-    /lifecycle-tick-noop/,
-    'pre-ticked lifecycle box must not trigger the warning'
-  );
-}
-
-// #979 AC2 — parseArgs recognizes --human alongside the issue number, in
-// either order, and defaults to false when absent.
-{
-  assert.deepEqual(parseArgs(['58', '--human']), { issueNumber: 58, human: true });
-  assert.deepEqual(parseArgs(['--human', '#58']), { issueNumber: 58, human: true });
-  assert.deepEqual(parseArgs(['58']), { issueNumber: 58, human: false });
-}
-
-// #979 AC1 — pre-ticked "Passed final human review" box overrides a firing
-// detectFullAuto: no full-auto prop, no footnote, even with every Full-Auto
-// env/tty/ci signal present.
-{
-  const preTickedBody = [
-    '## Acceptance Criteria',
-    '- [x] do thing',
-    '',
-    '### Definition of Done',
-    '',
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-    '- [ ] Story closed and moved to Done',
-    '- [ ] Timing data flushed to issue',
-    '',
-  ].join('\n');
-  const { deps, getBody } = makeDeps({
-    initialBody: preTickedBody,
-    deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }) },
-  });
-  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  assert.equal(r.status, 'approved');
-  assert.equal(r.fullAuto, false);
-  assert.doesNotMatch(getBody(), /full-auto="yes"/);
-  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
-}
-
-// #979 AC2 — `--human` (runApprove's `human: true`) forces the same
-// non-full-auto outcome even when the lifecycle box is NOT pre-ticked and
-// every Full-Auto env signal is present.
-{
-  const { deps, getBody } = makeDeps({
-    deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }) },
-  });
-  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps, human: true });
-  assert.equal(r.status, 'approved');
-  assert.equal(r.fullAuto, false);
-  assert.doesNotMatch(getBody(), /full-auto="yes"/);
-  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote/);
-}
-
-// #979 regression — genuinely-full-auto path (no pretick, no --human) still
-// fires exactly as before when detect() returns fired=true.
-{
-  const { deps, getBody } = makeDeps({
-    deps: { detectFullAuto: () => ({ fired: true, signals: 'reviewer-unset=1,env=1,tty=1,ci=1' }) },
-  });
-  const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-  assert.equal(r.status, 'approved');
-  assert.equal(r.fullAuto, true);
-  assert.match(getBody(), /full-auto="yes"/);
-  assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
-}
-
-// 17. (#161 / D4) Legacy lifecycle heading: warn to stderr, verb still succeeds
-{
-  const legacyBody = [
-    '## Acceptance Criteria',
-    '- [x] do thing',
-    '',
-    '### Definition of Done',
-    '',
-    '#### Closeout',
-    '- [ ] Passed final human review',
-    '',
-  ].join('\n');
-  const { deps } = makeDeps({
-    initialBody: legacyBody,
-    deps: { detectFullAuto: () => ({ fired: false, signals: '' }) },
-  });
-  const origWrite = process.stderr.write.bind(process.stderr);
-  let captured = '';
-  process.stderr.write = (chunk) => {
-    captured += String(chunk);
-    return true;
-  };
-  try {
-    const r = await runApprove({ issueNumber: FIXTURE_ISSUE_NUMBER, cfg, deps });
-    assert.equal(r.status, 'approved');
-  } finally {
-    process.stderr.write = origWrite;
-  }
-  assert.match(captured, /lifecycle-tick-noop/);
+} finally {
+  if (priorProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorProjectDir;
+  rmSync(root, { recursive: true, force: true });
 }

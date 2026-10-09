@@ -1,9 +1,7 @@
 // @story #1857
 // An immutable pending row survives publication ambiguity and local cursor failure.
 import {
-  existsSync,
   mkdirSync,
-  readFileSync,
   writeFileSync,
   renameSync,
   unlinkSync,
@@ -11,6 +9,7 @@ import {
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { withLock } from '../fleet-registry.mjs';
+import { withRuntimeWrite, readRuntimeJsonRecord } from './runtime-writer.mjs';
 import { timingActorKey } from './timing-actor.mjs';
 import { parseTimingRow } from './timing-row-reader.mjs';
 import { actorTimingStateRecord } from './actor-timing-state.mjs';
@@ -116,13 +115,14 @@ export function validateActorFlushJournal(record, identity) {
   return record;
 }
 export function readActorFlushJournal(file, identity) {
-  if (!existsSync(file)) return null;
   let record;
   try {
-    record = JSON.parse(readFileSync(file, 'utf8'));
-  } catch {
+    record = readRuntimeJsonRecord(file, { optional: true, actorIdentity: identity });
+  } catch (error) {
+    if (error.code !== 'RUNTIME_STATE_CORRUPT') throw error;
     fail();
   }
+  if (record === null) return null;
   return validateActorFlushJournal(record, identity);
 }
 function prepare(file, identity, candidate) {
@@ -158,6 +158,7 @@ export async function runActorFlushJournal({
   commit,
   fault = () => {},
 }) {
+  return withRuntimeWrite(file, async () => {
   const record = prepare(file, identity, candidate);
   if (!record) return { status: 'empty' };
   await fault('prepared');
@@ -174,4 +175,5 @@ export async function runActorFlushJournal({
     unlinkSync(file);
   });
   return { status: post.queued ? 'queued' : 'published', payload: record.payload, post };
+  });
 }

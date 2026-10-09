@@ -12,7 +12,14 @@ export function createCloseFixture(prefix) {
 }
 
 export function tmpState(state, dir = createCloseFixture('aitm-613-')) {
-  const statePath = join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  const statePath = join(
+    dir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   mkdirSync(dirname(statePath), { recursive: true });
   saveState(state, statePath);
   return { statePath, dir };

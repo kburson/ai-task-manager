@@ -15,6 +15,7 @@
 // inline decision flow — not just a pure helper — is exercised end-to-end.
 
 import { strict as assert } from 'node:assert';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { test } from 'node:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -37,12 +38,18 @@ function runGuard({ cwd, stdin }) {
     cwd,
     encoding: 'utf8',
     input: stdin,
-    env: { ...process.env, PWD: cwd },
+    env: {
+      ...process.env,
+      PWD: cwd,
+      AI_TASK_MANAGER_PROJECT_DIR: cwd,
+      AI_TASK_MANAGER_SESSION_ID: 'chore-guard',
+      AI_TASK_MANAGER_APP_NAME: 'claude',
+    },
   });
 }
 
-function makeRepo() {
-  const root = realpathSync(mkdtempSync(join(projectScratchDir('test'), 'aitm-chore-guard-')));
+async function makeRepo() {
+  const root = await createCommittedRuntimeRootFixture('aitm-chore-guard-');
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'config', 'user.email', 'test@example.com');
   git(root, 'config', 'user.name', 'Test');
@@ -58,7 +65,14 @@ function makeRepo() {
 // reproducing chore-mode's detached state (and the no-active-task baseline).
 function writeState(root, { choreActive }) {
   // #573: the global ledger lives under `.tmp/aitm/state/`.
-  const statePath = join(root, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  const statePath = join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   mkdirSync(dirname(statePath), { recursive: true });
   const body = choreActive
     ? {
@@ -87,8 +101,8 @@ function commitPayload() {
   });
 }
 
-test('chore-mode OFF + no active task → WRITE_CODE edit is refused (baseline)', () => {
-  const root = makeRepo();
+test('chore-mode OFF + no active task → WRITE_CODE edit is refused (baseline)', async () => {
+  const root = await makeRepo();
   try {
     writeState(root, { choreActive: false });
     const r = runGuard({ cwd: root, stdin: editPayload(root) });
@@ -102,8 +116,8 @@ test('chore-mode OFF + no active task → WRITE_CODE edit is refused (baseline)'
   }
 });
 
-test('chore-mode ON → WRITE_CODE edit under scripts/ is allowed (silent pass)', () => {
-  const root = makeRepo();
+test('chore-mode ON → WRITE_CODE edit under scripts/ is allowed (silent pass)', async () => {
+  const root = await makeRepo();
   try {
     writeState(root, { choreActive: true });
     const r = runGuard({ cwd: root, stdin: editPayload(root) });
@@ -114,8 +128,8 @@ test('chore-mode ON → WRITE_CODE edit under scripts/ is allowed (silent pass)'
   }
 });
 
-test('chore-mode OFF + no active task → COMMIT_CODE bash is refused (baseline)', () => {
-  const root = makeRepo();
+test('chore-mode OFF + no active task → COMMIT_CODE bash is refused (baseline)', async () => {
+  const root = await makeRepo();
   try {
     writeState(root, { choreActive: false });
     const r = runGuard({ cwd: root, stdin: commitPayload() });
@@ -127,8 +141,8 @@ test('chore-mode OFF + no active task → COMMIT_CODE bash is refused (baseline)
   }
 });
 
-test('chore-mode ON → COMMIT_CODE bash is allowed (silent pass)', () => {
-  const root = makeRepo();
+test('chore-mode ON → COMMIT_CODE bash is allowed (silent pass)', async () => {
+  const root = await makeRepo();
   try {
     writeState(root, { choreActive: true });
     const r = runGuard({ cwd: root, stdin: commitPayload() });

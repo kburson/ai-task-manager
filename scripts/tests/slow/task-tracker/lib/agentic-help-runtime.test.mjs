@@ -1,6 +1,7 @@
 // @story #1011 #1023
 // @slow-parallel-safe (uses independent project-isolated temporary directories)
 import test from 'node:test';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import assert from 'node:assert/strict';
 import {
   chmodSync,
@@ -270,11 +271,11 @@ test('direct task help forms exit before project configuration is read', () => {
   }
 });
 
-test('routed task wrappers propagate command return codes', () => {
-  const temp = mkdtempProjectIsolated('aitm-task-exit-');
+test('routed task wrappers propagate command return codes', async () => {
+  const temp = await createActivatedRuntimeRootFixture('aitm-task-exit-');
   try {
     const configDir = path.join(temp, '.ai-task-manager');
-    mkdirSync(configDir);
+    mkdirSync(configDir, { recursive: true });
     writeFileSync(
       path.join(configDir, 'task-tracker.json'),
       JSON.stringify({ repo: 'test-owner/test-repo' })
@@ -286,8 +287,6 @@ test('routed task wrappers propagate command return codes', () => {
       JSON.stringify({ active: '#123', lastActive: '#123' })
     );
     const result = run(AITM, ['pull-next'], temp, {
-      AI_TASK_MANAGER_APP_NAME: 'claude',
-      AI_TASK_MANAGER_SESSION_ID: 'fixture-task-exit',
       TT_SKIP_FIELD_SELF_CHECK: '1',
       TT_SKIP_NETWORK: '1',
     });
@@ -295,8 +294,6 @@ test('routed task wrappers propagate command return codes', () => {
     assert.match(result.stderr, /Usage: \/task pull-next/);
     for (const verb of ['promote', 'demote', 'plan-approve', 'approve']) {
       const missingTarget = run(AITM, [verb], temp, {
-        AI_TASK_MANAGER_APP_NAME: 'claude',
-        AI_TASK_MANAGER_SESSION_ID: 'fixture-task-exit',
         TT_SKIP_FIELD_SELF_CHECK: '1',
         TT_SKIP_NETWORK: '1',
       });

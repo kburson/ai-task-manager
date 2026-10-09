@@ -27,21 +27,35 @@ import { test } from 'node:test';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 
-const tmp = mkdtempProjectIsolated('tt-resume-no-switch-');
+const tmp = await mkdtempProjectIsolated('tt-resume-no-switch-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
 process.chdir(tmp);
-process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
+process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+  tmp,
+  '.ai-task-manager',
+  'runtime',
+  'store',
+  'app',
+  'claude',
+  'session-transcripts'
+);
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
 // Import AFTER env is set so path resolution honors the tmp project.
 const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
 const { setActiveTask } = await import('../../../../task-tracker/session-state.mjs');
 
-let stateSeq = 0;
 function writeGlobalState(obj) {
-  const p = path.join(tmp, `state-${stateSeq++}.json`);
+  const p = path.join(
+    tmp,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   writeFileSync(p, JSON.stringify(obj), 'utf8');
   return p;
 }

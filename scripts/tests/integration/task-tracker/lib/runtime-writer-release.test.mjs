@@ -1,6 +1,4 @@
 // @story #1861
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';

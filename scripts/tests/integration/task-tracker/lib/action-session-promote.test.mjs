@@ -18,7 +18,7 @@ import { registerEarlyPromoteCases } from '../../../helpers/action-early-promote
 import { registerActionNavigationCases } from '../../../helpers/action-navigation-cases.mjs';
 import { runPreflight } from '../../../../task-tracker/lib/verb-preflight.mjs';
 import { resolveSessionActionInvocation } from '../../../../task-tracker/task-tracker.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import {
   claimOccupancy,
   OccupancyConflictError,
@@ -533,9 +533,9 @@ test('production session reads and execution refresh the same changed board auth
     readIssueBody: async () => body,
     fetchAssignmentSnapshot: async () => ({ state: liveState, assignees: [] }),
     readWorktreeIdentity: ({ projectDir }) => ({ worktreePath: projectDir }),
-    resolveProjectDir: () => '/issue-worktree',
+    resolveProjectDir: () => process.cwd(),
     readOccupancy: () => ({}),
-    findMainWorktreePath: () => '/issue-worktree',
+    findMainWorktreePath: () => process.cwd(),
     currentSessionId: () => 'session-1750',
     loadMigrationJournal: () => null,
   };
@@ -550,8 +550,8 @@ test('production session reads and execution refresh the same changed board auth
     issue: 1750,
     stateBefore,
     config,
-    projectDir: '/issue-worktree',
-    invokingDir: '/issue-worktree',
+    projectDir: process.cwd(),
+    invokingDir: process.cwd(),
     now,
     deps,
   });
@@ -616,17 +616,17 @@ test('cold numeric bind, switch, and explicit resume select the same fresh targe
       issue: invocation.issue,
       stateBefore: scenario.stateBefore,
       config,
-      projectDir: '/issue-worktree',
-      invokingDir: '/issue-worktree',
+      projectDir: process.cwd(),
+      invokingDir: process.cwd(),
       now,
       explicitTarget: invocation.explicitTarget,
       deps: {
         readIssueBody: async () => body,
         fetchAssignmentSnapshot: async () => ({ state: 'plan', assignees: [] }),
         readWorktreeIdentity: ({ projectDir }) => ({ worktreePath: projectDir }),
-        resolveProjectDir: () => '/issue-worktree',
+        resolveProjectDir: () => process.cwd(),
         readOccupancy: () => ({}),
-        findMainWorktreePath: () => '/issue-worktree',
+        findMainWorktreePath: () => process.cwd(),
         currentSessionId: () => 'session-1750',
         loadMigrationJournal: () => null,
       },
@@ -657,17 +657,17 @@ test('foreign ownership blocks both production explanation and execution preflig
     issue: 1750,
     stateBefore: { active: null, paused: false },
     config,
-    projectDir: '/issue-worktree',
-    invokingDir: '/issue-worktree',
+    projectDir: process.cwd(),
+    invokingDir: process.cwd(),
     now,
     deps: {
       readIssueBody: async () => body,
       fetchAssignmentSnapshot: async () => ({ state: 'plan', assignees: ['bob'] }),
       readCurrentUser: async () => 'alice',
       readWorktreeIdentity: ({ projectDir }) => ({ worktreePath: projectDir }),
-      resolveProjectDir: () => '/issue-worktree',
+      resolveProjectDir: () => process.cwd(),
       readOccupancy: () => ({}),
-      findMainWorktreePath: () => '/issue-worktree',
+      findMainWorktreePath: () => process.cwd(),
       currentSessionId: () => 'session-1750',
       loadMigrationJournal: () => null,
     },
@@ -691,8 +691,11 @@ test('foreign ownership blocks both production explanation and execution preflig
 });
 
 test('another issue occupying the target worktree blocks readiness and the real claim', async () => {
-  const projectDir = mkdtempProjectIsolated('action-session-occupancy-');
-  const occupancyFile = path.join(projectDir, 'occupancy.json');
+  const projectDir = await mkdtempProjectIsolated('action-session-occupancy-');
+  const occupancyFile = path.join(
+    projectDir,
+    '.ai-task-manager/runtime/store/fleet/occupancy.json'
+  );
   try {
     claimOccupancy({
       issue: 1751,
@@ -754,16 +757,16 @@ test('a body changing between scope selection and observation is indeterminate',
       projectId: 'project-1',
       preferences: { gateAssigneeMatch: false },
     },
-    projectDir: '/issue-worktree',
-    invokingDir: '/issue-worktree',
+    projectDir: process.cwd(),
+    invokingDir: process.cwd(),
     now,
     deps: {
       readIssueBody: async () => (++reads === 1 ? body : changedBody),
       fetchAssignmentSnapshot: async () => ({ state: 'plan', assignees: [] }),
       readWorktreeIdentity: ({ projectDir }) => ({ worktreePath: projectDir }),
-      resolveProjectDir: () => '/issue-worktree',
+      resolveProjectDir: () => process.cwd(),
       readOccupancy: () => ({}),
-      findMainWorktreePath: () => '/issue-worktree',
+      findMainWorktreePath: () => process.cwd(),
       currentSessionId: () => 'session-1750',
       loadMigrationJournal: () => null,
     },
@@ -783,16 +786,16 @@ test('a readable stub body without scope sections is an issue-body authority fai
       projectId: 'project-1',
       preferences: { gateAssigneeMatch: false },
     },
-    projectDir: '/issue-worktree',
-    invokingDir: '/issue-worktree',
+    projectDir: process.cwd(),
+    invokingDir: process.cwd(),
     now,
     deps: {
       readIssueBody: async () => 'Stub only',
       fetchAssignmentSnapshot: async () => ({ state: 'plan', assignees: [] }),
       readWorktreeIdentity: ({ projectDir }) => ({ worktreePath: projectDir }),
-      resolveProjectDir: () => '/issue-worktree',
+      resolveProjectDir: () => process.cwd(),
       readOccupancy: () => ({}),
-      findMainWorktreePath: () => '/issue-worktree',
+      findMainWorktreePath: () => process.cwd(),
       currentSessionId: () => 'session-1750',
       loadMigrationJournal: () => null,
     },
@@ -801,9 +804,9 @@ test('a readable stub body without scope sections is an issue-body authority fai
   assert.ok(result.blockers.some((blocker) => blocker.args.source === 'issue-body'));
 });
 
-test('real injected resume execution refreshes freeze and preserves its exit 14 refusal', () => {
+test('real injected resume execution refreshes freeze and preserves its exit 14 refusal', async () => {
   for (const mode of ['offline', 'freeze']) {
-    const projectDir = mkdtempProjectIsolated(`action-session-${mode}-`);
+    const projectDir = await mkdtempProjectIsolated(`action-session-${mode}-`);
     try {
       const child = spawnSync(
         process.execPath,

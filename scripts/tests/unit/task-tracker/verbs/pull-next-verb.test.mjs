@@ -3,7 +3,22 @@
 // Unit tests for scripts/task-tracker/verbs/pull-next.mjs (#135).
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
+const fixtureRoot = createActivatedUnitRuntimeRoot('pull-next-verb-');
+const priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = fixtureRoot;
+after(() => {
+  if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
+  rmSync(fixtureRoot, { recursive: true, force: true });
+});
 import '../../../fixtures/offline-gh-auto.mjs';
 
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';

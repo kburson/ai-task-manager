@@ -5,11 +5,16 @@
 // fetchIssueSignals + resolveIssueSignals through an injected `gh`, and the
 // runHook PreToolUse orchestration through injected deps — no gh, no network.
 // A throwaway temp project dir backs the fs-touching helpers.
-import { test } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import assert from 'node:assert/strict';
+import { after } from 'node:test';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 import {
   normalizePath,
@@ -42,7 +47,7 @@ const KANBAN = {
 };
 
 function makeProject({ active, config = KANBAN } = {}) {
-  const dir = mkdtempProjectIsolated('aitm-seg-');
+  const dir = createActivatedUnitRuntimeRoot('aitm-seg-');
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(path.join(dir, '.ai-task-manager', 'task-tracker.json'), JSON.stringify(config));
   if (active !== undefined) {
@@ -58,7 +63,7 @@ function project(opts) {
   cleanups.push(d);
   return d;
 }
-test.after(() => {
+after(() => {
   for (const d of cleanups) rmSync(d, { recursive: true, force: true });
 });
 
@@ -263,17 +268,19 @@ test('runHook: no project dir → allow', async () => {
   assert.equal(r.reason, 'no-project-dir');
 });
 test('runHook: chore-mode bypass', async () => {
+  const dir = project();
   const r = await runHook(
-    { tool_name: 'Edit', tool_input: { file_path: 'scripts/x.mjs' } },
-    { projectDir: '/proj', isChoreModeActive: () => true, loadBoundIssue: () => null }
+    { tool_name: 'Edit', tool_input: { file_path: path.join(dir, 'scripts/x.mjs') } },
+    { projectDir: dir, isChoreModeActive: () => true, loadBoundIssue: () => null }
   );
   assert.equal(r.reason, 'chore-mode-bypass');
 });
 test('runHook: bound + develop + markers via injected resolve → allow', async () => {
+  const dir = project();
   const r = await runHook(
-    { tool_name: 'Edit', tool_input: { file_path: 'scripts/x.mjs' } },
+    { tool_name: 'Edit', tool_input: { file_path: path.join(dir, 'scripts/x.mjs') } },
     {
-      projectDir: '/proj',
+      projectDir: dir,
       isChoreModeActive: () => false,
       loadBoundIssue: () => '#644',
       resolveIssueSignals: async () => ({
@@ -288,10 +295,11 @@ test('runHook: bound + develop + markers via injected resolve → allow', async 
   assert.equal(r.reason, 'state-and-markers-ok');
 });
 test('runHook: resolve throws → falls through to refuse pre-develop default', async () => {
+  const dir = project();
   const r = await runHook(
-    { tool_name: 'Write', tool_input: { file_path: 'scripts/x.mjs' } },
+    { tool_name: 'Write', tool_input: { file_path: path.join(dir, 'scripts/x.mjs') } },
     {
-      projectDir: '/proj',
+      projectDir: dir,
       isChoreModeActive: () => false,
       loadBoundIssue: () => '#644',
       resolveIssueSignals: async () => {

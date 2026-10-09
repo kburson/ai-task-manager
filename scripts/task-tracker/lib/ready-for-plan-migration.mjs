@@ -1,8 +1,9 @@
 // #1217 — fail-closed live ProjectV2 cutover from Assigned to Ready for Planning.
 
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { writeRuntimeJsonRecord, withRuntimeOperation } from './runtime-writer.mjs';
 
 import { gql as defaultGql } from '../../gh/lib/github-projects.mjs';
 import {
@@ -296,12 +297,7 @@ function journalDeps({ projectDir, journalPath } = {}) {
   const target = journalPath || defaultJournalPath(projectDir);
   return {
     loadJournal: async () => loadReadyForPlanMigrationJournal({ journalPath: target }),
-    saveJournal: async (journal) => {
-      mkdirSync(path.dirname(target), { recursive: true });
-      const scratch = `${target}.next`;
-      writeFileSync(scratch, `${JSON.stringify(journal, null, 2)}\n`);
-      renameSync(scratch, target);
-    },
+    saveJournal: async (journal) => writeRuntimeJsonRecord(target, journal),
   };
 }
 
@@ -488,7 +484,16 @@ function isBacklogSnapshot(snapshot, backlogOptionId) {
   );
 }
 
-export async function applyReadyForPlanMigration({ plan, cfg, deps = {}, projectDir } = {}) {
+export function applyReadyForPlanMigration(options = {}) {
+  const deps = options.deps || {};
+  if (deps.loadJournal && deps.saveJournal) return applyReadyForPlanMigrationUnlocked(options);
+  if (deps.loadJournal || deps.saveJournal)
+    throw new Error('Ready for Planning journal storage adapters must be supplied together');
+  const target = deps.journalPath || defaultJournalPath(options.projectDir);
+  return withRuntimeOperation(target + '.operation.lock', () => applyReadyForPlanMigrationUnlocked(options));
+}
+
+async function applyReadyForPlanMigrationUnlocked({ plan, cfg, deps = {}, projectDir } = {}) {
   if (
     plan?.schema !== 'aitm.ready-for-plan-migration-plan/v1' ||
     plan.digest !==
@@ -504,7 +509,9 @@ export async function applyReadyForPlanMigration({ plan, cfg, deps = {}, project
       })
   )
     fail('plan digest mismatch');
-  const storage = journalDeps({ projectDir, journalPath: deps.journalPath });
+  const storage = deps.loadJournal && deps.saveJournal
+    ? deps
+    : journalDeps({ projectDir, journalPath: deps.journalPath });
   const loadJournal = deps.loadJournal || storage.loadJournal;
   const saveJournal = deps.saveJournal || storage.saveJournal;
   const moveItemToBacklog =

@@ -1,58 +1,11 @@
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  renameSync,
-  rmdirSync,
-  statSync,
-} from 'node:fs';
-import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { legacyPathFor, fleetPath } from './paths.mjs';
+import { fleetPath } from './paths.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
-
-const LOCK_STALE_MS = 30_000;
-const LOCK_RETRY_MS = 25;
-const LOCK_MAX_WAIT_MS = 5_000;
+import { withRuntimeRecordLockSync, readRuntimeJsonRecord, writeRuntimeJsonRecord } from './lib/runtime-writer.mjs';
 
 export function withLock(registryPath, fn) {
-  const lockDir = registryPath + '.lock';
-  mkdirSync(path.dirname(registryPath), { recursive: true });
-  const deadline = Date.now() + LOCK_MAX_WAIT_MS;
-  let held = false;
-  while (!held) {
-    try {
-      mkdirSync(lockDir);
-      held = true;
-    } catch (err) {
-      if (err.code !== 'EEXIST') throw err;
-      try {
-        const age = Date.now() - statSync(lockDir).mtimeMs;
-        if (age > LOCK_STALE_MS) {
-          try {
-            rmdirSync(lockDir);
-          } catch {
-            /* best-effort: cleanup; failure is non-fatal */
-          }
-          continue;
-        }
-      } catch {
-        /* best-effort: cleanup; failure is non-fatal */
-      }
-      if (Date.now() > deadline) throw new Error(`fleet-registry: lock timeout on ${lockDir}`);
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, LOCK_RETRY_MS);
-    }
-  }
-  try {
-    return fn();
-  } finally {
-    try {
-      rmdirSync(lockDir);
-    } catch {
-      /* best-effort: cleanup; failure is non-fatal */
-    }
-  }
+  return withRuntimeRecordLockSync(registryPath, fn);
 }
 
 export function findMainWorktreePath(projectDir) {
@@ -154,17 +107,7 @@ export function reapStaleEntries(fleet, ctx = {}) {
 }
 
 export function readFleet(registryPath, opts) {
-  let fleet;
-  try {
-    let readPath = registryPath;
-    if (!existsSync(readPath)) {
-      const legacy = legacyPathFor(registryPath);
-      if (legacy && existsSync(legacy)) readPath = legacy;
-    }
-    fleet = !existsSync(readPath) ? {} : JSON.parse(readFileSync(readPath, 'utf8'));
-  } catch {
-    fleet = {};
-  }
+  const fleet = readRuntimeJsonRecord(registryPath);
   // #441 — opt-in lazy auto-reap. Default (one-arg) call stays pure: no lock,
   // no write — every hot path is unaffected. With opts.reap we compute the
   // stale set and only take the lock + rewrite when at least one entry is
@@ -222,10 +165,7 @@ export function pruneFleet(registryPath, ctx = {}, { dryRun = false } = {}) {
 }
 
 export function writeFleet(registryPath, data) {
-  mkdirSync(path.dirname(registryPath), { recursive: true });
-  const tmp = registryPath + '.tmp';
-  writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
-  renameSync(tmp, registryPath);
+  return writeRuntimeJsonRecord(registryPath, data);
 }
 
 function testRmwDelay() {

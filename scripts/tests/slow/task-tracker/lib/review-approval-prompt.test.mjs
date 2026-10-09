@@ -19,7 +19,7 @@ import {
   withUnitRuntimeRoot,
   unitRuntimeEntrypointArgs,
 } from '../../../helpers/unit-runtime-root.mjs';
-import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 initializeFixtureActor(import.meta.url);
@@ -299,7 +299,7 @@ process.exit(0);
 
   // ─── Test 1: verbReview success path emits the marker ────────────────────────
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-1-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-1-');
     try {
       writeConfig(sandbox);
       saveState(
@@ -389,7 +389,7 @@ process.exit(0);
 
   // ─── Test 1b: verbReview refuses when canonical commit trace is missing ──────
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-1b-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-1b-');
     try {
       writeConfig(sandbox);
       saveState(
@@ -437,7 +437,7 @@ process.exit(0);
 
   // ─── Test 1c: verbReview refuses tracked uncommitted changes ─────────────────
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-1c-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-1c-');
     try {
       writeConfig(sandbox);
       saveState(
@@ -485,7 +485,7 @@ process.exit(0);
 
   // ─── Test 2: verbReview verification-fail path does NOT emit the marker ──────
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-2-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-2-');
     try {
       writeConfig(sandbox);
       saveState(
@@ -538,7 +538,7 @@ process.exit(0);
 
   // ─── Test 3: verbReview refuses to auto-mark AC/DoD without evidence ─────────
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-3-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-3-');
     try {
       writeConfig(sandbox);
       saveState(
@@ -608,7 +608,7 @@ process.exit(0);
 
   // ─── Test 4: verbReview marks AC/DoD with passing evidence ───────────────────
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-4-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-4-');
     try {
       writeConfig(sandbox);
       saveState(
@@ -718,7 +718,7 @@ process.exit(0);
 
   // ─── Test 5: /task reject without --reason → exit non-zero ───────────────────
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-5-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-5-');
     try {
       writeConfig(sandbox);
       // No shim needed — verbReject exits on missing reason before any network call
@@ -750,7 +750,7 @@ process.exit(0);
 
   // ─── Test 6: /task reject when state != review → exit non-zero, no comment ───
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-6-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-6-');
     try {
       writeConfig(sandbox);
       const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -792,7 +792,7 @@ process.exit(0);
 
   // ─── Test 7: /task reject happy path → posts rejection comment ───────────────
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-7-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-7-');
     try {
       writeConfig(sandbox);
       const recordedBodyPath = path.join(sandbox, 'recorded-body.md');
@@ -843,7 +843,7 @@ process.exit(0);
   // gate (uncheckedPreCloseCheckboxes parity with the close gate) must refuse the
   // move into Review and emit NO review-approval prompt.
   {
-    const sandbox = await createCommittedLegacyRootFixture('tt-rap-8-');
+    const sandbox = await createCommittedRuntimeRootFixture('tt-rap-8-');
     try {
       writeConfig(sandbox);
       saveState(

@@ -33,6 +33,10 @@ import {
   FINAL_GUIDANCE_CONTEXT_BUDGETS,
   GUIDANCE_CONTEXT_BUDGETS,
 } from '../../task-tracker/lib/context-budgets.mjs';
+import {
+  EXPECTED_STATUS_ORDER,
+  validateReadyForPlanMigrationJournal,
+} from '../../task-tracker/lib/ready-for-plan-migration.mjs';
 import { readyForPlanMigrationJournalPath } from '../../task-tracker/lib/ready-for-plan-migration-freeze.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -595,6 +599,29 @@ export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
       );
       git(['reset', '--hard', stableRoot], fixtureDir);
     }
+    // Admit only the newly created disposable capture repository.
+    const fixtureModule = new URL('./runtime-root-fixture.mjs', import.meta.url).href;
+    const activation = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `import {activateRuntimeRootFixture} from ${JSON.stringify(fixtureModule)};
+       await activateRuntimeRootFixture(${JSON.stringify(fixtureDir)});`,
+      ],
+      {
+        cwd: fixtureDir,
+        env: {
+          ...process.env,
+          AI_TASK_MANAGER_PROJECT_DIR: fixtureDir,
+          AI_TASK_MANAGER_APP_NAME: 'claude',
+          AI_TASK_MANAGER_SESSION_ID: 'fixture-guidance-capture',
+        },
+        encoding: 'utf8',
+      }
+    );
+    if (activation.error) throw activation.error;
+    if (activation.status !== 0) throw Error(`capture:runtime-fixture:${activation.stderr}`);
     mkdirSync(path.join(fixtureDir, SHARED_DIR), { recursive: true });
     mkdirSync(path.dirname(statePath(fixtureDir)), { recursive: true });
     mkdirSync(path.join(fixtureDir, 'fake-bin'), { recursive: true });
@@ -735,7 +762,31 @@ export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
     query('compaction-reset', 'bind');
     const migrationJournal = readyForPlanMigrationJournalPath(fixtureDir);
     mkdirSync(path.dirname(migrationJournal), { recursive: true });
-    writeFileSync(migrationJournal, '{"phase":"active-capture"}\n');
+    const frozenPlan = {
+      schema: 'aitm.ready-for-plan-migration-plan/v1',
+      projectId: 'P1',
+      statusFieldId: 'F1',
+      backlogOptionId: 'backlog',
+      assignedOptionId: 'assigned',
+      items: [],
+      option: {
+        id: 'assigned',
+        beforeName: 'Assigned',
+        afterName: 'Ready for Planning',
+        order: [...EXPECTED_STATUS_ORDER],
+        options: [],
+      },
+      views: {},
+    };
+    const planDigest = createHash('sha256').update(JSON.stringify(frozenPlan)).digest('hex');
+    const freezeJournal = {
+      plan: { ...frozenPlan, digest: planDigest, writes: 0 },
+      planDigest,
+      phase: 'inventory-complete',
+      items: {},
+    };
+    validateReadyForPlanMigrationJournal(freezeJournal);
+    writeFileSync(migrationJournal, JSON.stringify(freezeJournal));
     query('blocked-migration-freeze', 'bind');
     query('diagnostic', 'bind', ['--diagnostic']);
     unlinkSync(migrationJournal);

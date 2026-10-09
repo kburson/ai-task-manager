@@ -4,7 +4,7 @@
 export const grokAdapter = {
   name: 'grok',
   installTarget: '.grok/skills/task',
-  stateDir: '.tmp/aitm/app/grok',
+  stateDir: '.ai-task-manager/runtime/store/app/grok',
   transcriptLocator: 'sessions',
   transcriptHomeEnv: 'GROK_HOME',
   transcriptHomeDefault: '.grok',

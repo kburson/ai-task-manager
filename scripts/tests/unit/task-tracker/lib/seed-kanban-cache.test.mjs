@@ -3,11 +3,15 @@
 // and (3) actually populate the cache on success. The pre-#273 swallowing
 // try/catch is gone.
 
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+const actor = initializeFixtureActor(import.meta.url);
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync } from 'node:fs';
-import path from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { rmSync } from 'node:fs';
 
 import {
   SeederGraphQLError,
@@ -15,7 +19,10 @@ import {
   seedSessionKanbanFromBody,
 } from '../../../../task-tracker/lib/seed-kanban-cache.mjs';
 import { getActiveTask, setActiveTask } from '../../../../task-tracker/session-state.mjs';
-import { resolveSessionId } from '../../../../task-tracker/lib/session-id.mjs';
+const fixtureRoots = [];
+after(() => {
+  for (const root of fixtureRoots) rmSync(root, { recursive: true, force: true });
+});
 
 test('SeederGraphQLError carries cause and a tagged message', () => {
   const inner = new Error('connect ETIMEDOUT');
@@ -48,9 +55,9 @@ test('SeederGraphQLError is distinguishable from SeederMarkerMissingError', () =
 // the marker absent is genuine corruption and must still throw.
 
 function makeBoundSession() {
-  const projDir = mkdtempSync(path.join(projectScratchDir('test'), 'seed-519-'));
-  mkdirSync(path.join(projDir, '.ai-task-manager', 'sessions'), { recursive: true });
-  const sid = resolveSessionId({ env: {}, transcriptDir: () => projDir });
+  const projDir = createActivatedUnitRuntimeRoot('seed-519-');
+  fixtureRoots.push(projDir);
+  const sid = actor.sid;
   setActiveTask(
     sid,
     {

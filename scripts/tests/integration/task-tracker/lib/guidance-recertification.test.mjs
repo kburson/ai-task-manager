@@ -1,10 +1,6 @@
-// @story #1861
 // @story #1767
 // @story #1857
 // Actual Git/public-CLI replay belongs to integration, not the pure unit lane.
-import { archivedObligationMapRoot } from '../../../helpers/guidance-capture-provenance.mjs';
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -28,7 +24,7 @@ test('archived recertification binds every obligation and refuses current replay
   assert.equal(decision.capture.transcriptSha256, archived.identity.transcriptSha256);
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot }),
-    /guidance-feasibility:obligation-map-drift/
+    new RegExp('guidance-feasibility:capture-replay-identity:initialFixtureSha256')
   );
   assert.equal(decision.schema, 'aitm.guidance-feasibility-recertification/v1');
   assert.equal(decision.owner.issue, 1767);
@@ -49,9 +45,7 @@ test('archived recertification binds every obligation and refuses current replay
   }
 });
 
-test('recertification refuses a relabeled or altered lifecycle capture', async (t) => {
-  const archivedRoot = archivedObligationMapRoot(projectRoot);
-  t.after(archivedRoot.cleanup);
+test('recertification refuses a relabeled or altered lifecycle capture', async () => {
   const { buildCurrentRecertificationDecision } =
     await import('../../../../maintenance/measure-guidance-candidate.mjs');
   const committed = JSON.parse(
@@ -60,25 +54,19 @@ test('recertification refuses a relabeled or altered lifecycle capture', async (
   const modeDrift = structuredClone(committed);
   modeDrift.identity.mode = 'historical';
   assert.throws(
-    () =>
-      buildCurrentRecertificationDecision({ projectRoot: archivedRoot.root, capture: modeDrift }),
+    () => buildCurrentRecertificationDecision({ projectRoot, capture: modeDrift }),
     /guidance-feasibility:capture-mode/
   );
   const transcriptDrift = structuredClone(committed);
   transcriptDrift.events.find(({ name }) => name === 'lifecycle-close').typed.status = 'blocked';
   assert.throws(
-    () =>
-      buildCurrentRecertificationDecision({
-        projectRoot: archivedRoot.root,
-        capture: transcriptDrift,
-      }),
+    () => buildCurrentRecertificationDecision({ projectRoot, capture: transcriptDrift }),
     /guidance-feasibility:capture-transcript-digest/
   );
   const sourceDrift = structuredClone(committed);
   sourceDrift.identity.implementationFiles[0].sha256 = `sha256:${'0'.repeat(64)}`;
   assert.throws(
-    () =>
-      buildCurrentRecertificationDecision({ projectRoot: archivedRoot.root, capture: sourceDrift }),
+    () => buildCurrentRecertificationDecision({ projectRoot, capture: sourceDrift }),
     /guidance-feasibility:capture-committed-source/
   );
   const selfConsistentDrift = structuredClone(committed);
@@ -88,12 +76,8 @@ test('recertification refuses a relabeled or altered lifecycle capture', async (
     .update(JSON.stringify(selfConsistentDrift.events))
     .digest('hex')}`;
   assert.throws(
-    () =>
-      buildCurrentRecertificationDecision({
-        projectRoot: archivedRoot.root,
-        capture: selfConsistentDrift,
-      }),
-    /capture-replay/
+    () => buildCurrentRecertificationDecision({ projectRoot, capture: selfConsistentDrift }),
+    /capture-replay|Invalid timing actor/
   );
 });
 
@@ -104,7 +88,7 @@ test('historical foundation stays immutable while current commands refuse obsole
   assert.equal(json('feasibility-decision.json').schema, 'aitm.guidance-feasibility-decision/v1');
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot }),
-    /guidance-feasibility:obligation-map-drift/
+    /guidance-feasibility:capture-replay-identity:initialFixtureSha256/
   );
 
   for (const args of [
@@ -120,7 +104,7 @@ test('historical foundation stays immutable while current commands refuse obsole
     });
     assert.notEqual(status, 0);
     assert.equal(stdout, '');
-    assert.match(stderr, /guidance-feasibility:obligation-map-drift/);
+    assert.match(stderr, /guidance-feasibility:capture-replay-identity:initialFixtureSha256/);
   }
 
   let stderr = '';

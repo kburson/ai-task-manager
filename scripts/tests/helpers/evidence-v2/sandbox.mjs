@@ -1,4 +1,3 @@
-// @story #1861
 // @story #1496
 // cspell:ignore NOSYSTEM
 import { randomUUID } from 'node:crypto';
@@ -11,6 +10,7 @@ import {
   realpathSync,
   readdirSync,
   existsSync,
+  lstatSync,
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,6 +39,20 @@ export function createSandbox({
   // access to production .git. This isolated authority needs no production ancestor.
   const root = realpathSync(mkdtempOutsideRepo('evidence-v2-'));
   try {
+    // Node permissions cannot grant only ancestor metadata without opening
+    // sibling fixture contents. Retain actual observations for the preload.
+    const ancestorMetadata = {};
+    for (let ancestor = path.dirname(root); ; ancestor = path.dirname(ancestor)) {
+      const stat = lstatSync(ancestor);
+      if (stat.isSymbolicLink()) throw rehearsalRefusal('sandbox-ancestor-link');
+      ancestorMetadata[ancestor] = {
+        directory: stat.isDirectory(),
+        file: stat.isFile(),
+        link: stat.isSymbolicLink(),
+      };
+      if (path.dirname(ancestor) === ancestor) break;
+    }
+    writeFileSync(path.join(root, 'ancestor-metadata.json'), JSON.stringify(ancestorMetadata));
     const manifest = JSON.stringify({ schema: 'aitm.rehearsal-sandbox/v1', runId, root });
     writeFileSync(path.join(root, 'manifest.json'), manifest);
     const sourceRoot = path.join(root, 'source');
@@ -89,7 +103,7 @@ export function createSandbox({
       authorityRoot: sourceRoot,
     });
     writeFileSync(path.join(root, 'context.json'), JSON.stringify(context));
-    mkdirSync(path.join(sourceRoot, '.ai-task-manager'));
+    mkdirSync(path.join(sourceRoot, '.ai-task-manager'), { recursive: true });
     const fields = Object.fromEntries(
       [
         'fieldBlockedBy',
@@ -108,6 +122,18 @@ export function createSandbox({
     writeFileSync(
       path.join(sourceRoot, '.ai-task-manager', 'task-tracker.json'),
       JSON.stringify({ repo: context.repositoryId, projectId: 'PVT_rehearsal', ...fields })
+    );
+    // Admit only this newly created, genuinely isolated rehearsal repository.
+    const fixtureModule = new URL('../runtime-root-fixture.mjs', import.meta.url).href;
+    execFileSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `import {activateRuntimeRootFixture} from ${JSON.stringify(fixtureModule)};
+       await activateRuntimeRootFixture(${JSON.stringify(sourceRoot)});`,
+      ],
+      { cwd: sourceRoot, env, stdio: ['ignore', 'pipe', 'pipe'] }
     );
     initializeProvider(context);
     const launch = (
@@ -131,7 +157,6 @@ export function createSandbox({
         'instructions',
         'docs',
         'package.json',
-        'README.md',
         ...dependencies,
       ].map((name) => `--allow-fs-read=${path.join(toolRoot, name)}`);
       const ancestorMarkerReads = [];

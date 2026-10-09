@@ -6,13 +6,15 @@
 // `review`, so on #878 a human was asked to sign off on a story whose agent
 // review had not run (and which the later gate run then rejected).
 
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../../helpers/unit-runtime-root.mjs';
 import '../../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
-
-import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
 
 import {
   isAgentReviewComplete,
@@ -27,7 +29,8 @@ import { createWorkflowExceptionEnvelope } from '../../../../../task-tracker/lib
 
 // `runApprove` takes the mutator lock, which mkdirs under projectDir — give it a
 // real scratch dir rather than a path that cannot be created.
-const PROJECT_DIR = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-approve-881-'));
+const PROJECT_DIR = createActivatedUnitRuntimeRoot('aitm-approve-881-');
+after(() => rmSync(PROJECT_DIR, { recursive: true, force: true }));
 const REPOSITORY = 'o/r';
 const ISSUE_NUMBER = 881;
 const APPROVED_SHA = 'a'.repeat(40);

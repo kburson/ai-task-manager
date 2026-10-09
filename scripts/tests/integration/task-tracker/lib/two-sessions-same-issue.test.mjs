@@ -6,14 +6,14 @@
 
 import { strict as assert } from 'node:assert';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const workerPath = path.join(__dirname, '../../helpers/worker.mjs');
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-int-same-'));
+const tmp = await createActivatedRuntimeRootFixture('tt-int-same-');
 const logPath = path.join(tmp, 'events.ndjson');
 writeFileSync(logPath, '');
 

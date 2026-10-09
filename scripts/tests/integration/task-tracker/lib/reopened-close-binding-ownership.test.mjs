@@ -26,7 +26,13 @@ import { test } from 'node:test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  createRuntimeRootFixture,
+  createActivatedRuntimeRootFixture,
+  activateRuntimeRootFixture,
+} from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url, 'codex');
 import { closedBindingsPath, occupancyPath } from '../../../../task-tracker/paths.mjs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
 import {
@@ -54,9 +60,23 @@ function addLinkedWorktree(main, label) {
   return linked;
 }
 
-function productionLinkedProject() {
-  const main = mkdtempProjectIsolated('reopened-binding-main-', 'test');
+async function productionLinkedProject({ withCompeting = false } = {}) {
+  const main = createRuntimeRootFixture('reopened-binding-main-');
+  execFileSync('git', [
+    '-C',
+    main,
+    '-c',
+    'user.name=fixture',
+    '-c',
+    'user.email=fixture@example.test',
+    'commit',
+    '--allow-empty',
+    '-qm',
+    'fixture',
+  ]);
   const linked = addLinkedWorktree(main, 'current');
+  const competing = withCompeting ? addLinkedWorktree(main, 'competing') : null;
+  await activateRuntimeRootFixture(main, [linked, ...(competing ? [competing] : [])]);
   const currentSession = 'codex-current-session';
   markClosedBinding({
     mainWorktreePath: main,
@@ -82,12 +102,12 @@ function productionLinkedProject() {
     },
     linked
   );
-  return { main, linked, currentSession };
+  return { main, linked, currentSession, competing };
 }
 
 // Build a real project directory carrying a real ledger and occupancy file.
-function project({ closedAt = CLOSED_AT, occupancy = null } = {}) {
-  const dir = mkdtempProjectIsolated('reopened-binding-', 'test');
+async function project({ closedAt = CLOSED_AT, occupancy = null } = {}) {
+  const dir = await createActivatedRuntimeRootFixture('reopened-binding-');
   const ledgerFile = closedBindingsPath(dir);
   mkdirSync(path.dirname(ledgerFile), { recursive: true });
   writeFileSync(
@@ -111,8 +131,8 @@ const OWN_ROW = {
   lastHeartbeatAt: REBOUND_AT,
 };
 
-test('#1490: the production inspector reports conflict for a same-session post-close rebind', () => {
-  const dir = project({ occupancy: { 1490: OWN_ROW } });
+test('#1490: the production inspector reports conflict for a same-session post-close rebind', async () => {
+  const dir = await project({ occupancy: { 1490: OWN_ROW } });
   const result = inspectTerminalIssueBindingRelease({
     projectDir: dir,
     issue: '#1490',
@@ -123,8 +143,8 @@ test('#1490: the production inspector reports conflict for a same-session post-c
   assert.equal(result.closedAt, CLOSED_AT);
 });
 
-test('#1490: `pending` is unreachable once a reopened issue carries a ledger closedAt', () => {
-  const withLedger = project({ occupancy: {} });
+test('#1490: `pending` is unreachable once a reopened issue carries a ledger closedAt', async () => {
+  const withLedger = await project({ occupancy: {} });
   assert.notEqual(
     inspectTerminalIssueBindingRelease({
       projectDir: withLedger,
@@ -134,7 +154,7 @@ test('#1490: `pending` is unreachable once a reopened issue carries a ledger clo
     'pending'
   );
   // Only a session that never closed the issue sees `pending`.
-  const foreign = project({ occupancy: {} });
+  const foreign = await project({ occupancy: {} });
   assert.equal(
     inspectTerminalIssueBindingRelease({
       projectDir: foreign,
@@ -145,8 +165,8 @@ test('#1490: `pending` is unreachable once a reopened issue carries a ledger clo
   );
 });
 
-test('#1490: ownership resolves a same-session post-close rebind as the recovery own claim', () => {
-  const dir = project({ occupancy: { 1490: OWN_ROW } });
+test('#1490: ownership resolves a same-session post-close rebind as the recovery own claim', async () => {
+  const dir = await project({ occupancy: { 1490: OWN_ROW } });
   const ownership = resolveReopenedBindingOwnership({
     projectDir: dir,
     issue: '#1490',
@@ -160,8 +180,8 @@ test('#1490: ownership resolves a same-session post-close rebind as the recovery
   assert.equal(ownership.authorized, true);
 });
 
-test('#1490: a foreign occupancy claim is refused, not adopted', () => {
-  const dir = project({
+test('#1490: a foreign occupancy claim is refused, not adopted', async () => {
+  const dir = await project({
     occupancy: { 1490: { ...OWN_ROW, sid: OTHER_SESSION } },
   });
   const ownership = resolveReopenedBindingOwnership({
@@ -175,8 +195,8 @@ test('#1490: a foreign occupancy claim is refused, not adopted', () => {
   assert.equal(ownership.authorized, false);
 });
 
-test('#1490: an own claim on a different worktree is refused', () => {
-  const dir = project({
+test('#1490: an own claim on a different worktree is refused', async () => {
+  const dir = await project({
     occupancy: { 1490: { ...OWN_ROW, worktreePath: '/wt/somewhere-else' } },
   });
   const ownership = resolveReopenedBindingOwnership({
@@ -190,8 +210,8 @@ test('#1490: an own claim on a different worktree is refused', () => {
   assert.equal(ownership.authorized, false);
 });
 
-test('#1490: a claim predating the old close is not a post-close rebind', () => {
-  const dir = project({ occupancy: { 1490: { ...OWN_ROW, boundAt: BEFORE_CLOSE } } });
+test('#1490: a claim predating the old close is not a post-close rebind', async () => {
+  const dir = await project({ occupancy: { 1490: { ...OWN_ROW, boundAt: BEFORE_CLOSE } } });
   const ownership = resolveReopenedBindingOwnership({
     projectDir: dir,
     issue: '#1490',
@@ -203,8 +223,8 @@ test('#1490: a claim predating the old close is not a post-close rebind', () => 
   assert.equal(ownership.authorized, false);
 });
 
-test('#1490: no historical ledger closedAt means the issue was never closed', () => {
-  const dir = project({ closedAt: null, occupancy: { 1490: OWN_ROW } });
+test('#1490: no historical ledger closedAt means the issue was never closed', async () => {
+  const dir = await project({ closedAt: null, occupancy: { 1490: OWN_ROW } });
   const ownership = resolveReopenedBindingOwnership({
     projectDir: dir,
     issue: '#1490',
@@ -216,8 +236,8 @@ test('#1490: no historical ledger closedAt means the issue was never closed', ()
   assert.equal(ownership.authorized, false);
 });
 
-test('#1490: a live active-task record not marked closed refuses', () => {
-  const dir = project({ occupancy: { 1490: OWN_ROW } });
+test('#1490: a live active-task record not marked closed refuses', async () => {
+  const dir = await project({ occupancy: { 1490: OWN_ROW } });
   const ownership = resolveReopenedBindingOwnership({
     projectDir: dir,
     issue: '#1490',
@@ -234,10 +254,10 @@ test('#1490: a live active-task record not marked closed refuses', () => {
   assert.equal(ownership.authorized, false);
 });
 
-test('#1490: a paused session is authorized — an active-task file is not required', () => {
+test('#1490: a paused session is authorized — an active-task file is not required', async () => {
   // #1490 is paused. Requiring an active-task record unconditionally would be
   // exactly the class of false predicate this repair exists to remove.
-  const dir = project({ occupancy: { 1490: OWN_ROW } });
+  const dir = await project({ occupancy: { 1490: OWN_ROW } });
   const ownership = resolveReopenedBindingOwnership({
     projectDir: dir,
     issue: '#1490',
@@ -253,8 +273,8 @@ test('#1490: a paused session is authorized — an active-task file is not requi
   assert.equal(ownership.authorized, true);
 });
 
-test('#1490: production defaults resolve historical authority from a linked worktree', () => {
-  const { linked, currentSession } = productionLinkedProject();
+test('#1490: production defaults resolve historical authority from a linked worktree', async () => {
+  const { linked, currentSession } = await productionLinkedProject();
   const ownership = resolveReopenedBindingOwnership({
     projectDir: linked,
     issue: '#1490',
@@ -267,9 +287,10 @@ test('#1490: production defaults resolve historical authority from a linked work
   assert.equal(ownership.authorized, true);
 });
 
-test('#1490: production defaults refuse a second live binding for the current session', () => {
-  const { main, linked, currentSession } = productionLinkedProject();
-  const competing = addLinkedWorktree(main, 'competing');
+test('#1490: production defaults refuse a second live binding for the current session', async () => {
+  const { linked, currentSession, competing } = await productionLinkedProject({
+    withCompeting: true,
+  });
   setActiveTask(
     currentSession,
     {

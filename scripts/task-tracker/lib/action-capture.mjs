@@ -14,6 +14,14 @@ import {
 } from 'node:fs';
 import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
+import { tmpAitmDir } from '../paths.mjs';
+import {
+  runtimeWriterRootsForPath,
+  readRuntimeJsonRecord,
+  writeRuntimeJsonRecord,
+  withRuntimeRecordLockSync,
+} from './runtime-writer.mjs';
+import { RuntimeRootError } from './runtime-storage.mjs';
 import { fileURLToPath } from 'node:url';
 
 import { findMainWorktreePath } from '../fleet-registry.mjs';
@@ -115,7 +123,7 @@ function dependency(deps, name, fallback) {
 
 export function actionCaptureRoot(projectDir, deps = {}) {
   const findMain = dependency(deps, 'findMainWorktreePath', findMainWorktreePath);
-  return path.join(findMain(projectDir), '.tmp', 'aitm', 'action-capture');
+  return path.join(tmpAitmDir(findMain(projectDir)), 'action-capture');
 }
 
 function enablementPath({ projectDir, repository, issue }, deps = {}) {
@@ -137,6 +145,7 @@ export function captureIssueDir({ projectDir, repository, issue }, deps = {}) {
 }
 
 function atomicWrite(filePath, bytes) {
+  runtimeWriterRootsForPath(filePath);
   mkdirSync(path.dirname(filePath), { recursive: true });
   const temporaryPath = `${filePath}.${process.pid}.${createHash('sha256')
     .update(String(Date.now()) + Math.random())
@@ -151,22 +160,25 @@ function atomicJson(filePath, value) {
 }
 
 export function isActionCaptureEnabled(context, deps = {}) {
-  return existsSync(enablementPath(context, deps));
+  return readRuntimeJsonRecord(enablementPath(context, deps), { optional: true }) !== null;
 }
 
 export function setActionCaptureEnabled(context, deps = {}) {
   const markerPath = enablementPath(context, deps);
-  if (!context.enabled) {
-    rmSync(markerPath, { force: true });
-    return { enabled: false, markerPath };
-  }
-  atomicJson(markerPath, {
-    schema: ACTION_CAPTURE_SCHEMA,
-    repository: context.repository,
-    issue: issueNumber(context.issue),
-    enabledAt: (deps.now?.() || new Date()).toISOString(),
+  return withRuntimeRecordLockSync(markerPath, () => {
+    readRuntimeJsonRecord(markerPath, { optional: true });
+    if (!context.enabled) {
+      rmSync(markerPath, { force: true });
+      return { enabled: false, markerPath };
+    }
+    writeRuntimeJsonRecord(markerPath, {
+      schema: ACTION_CAPTURE_SCHEMA,
+      repository: context.repository,
+      issue: issueNumber(context.issue),
+      enabledAt: (deps.now?.() || new Date()).toISOString(),
+    });
+    return { enabled: true, markerPath };
   });
-  return { enabled: true, markerPath };
 }
 
 function readJson(filePath) {
@@ -258,38 +270,16 @@ function writePayload(actionDir, fileName, value) {
 }
 
 function allocateSequence(issueDir) {
-  mkdirSync(issueDir, { recursive: true });
   const sequencePath = path.join(issueDir, '.sequence');
-  const lockPath = `${sequencePath}.lock`;
-  const deadline = Date.now() + 5_000;
-  while (true) {
-    try {
-      mkdirSync(lockPath);
-      break;
-    } catch (error) {
-      if (error?.code !== 'EEXIST') throw error;
-      try {
-        if (Date.now() - statSync(lockPath).mtimeMs > 30_000) rmSync(lockPath, { recursive: true });
-      } catch {
-        // Another process may have released the lock between checks.
-      }
-      if (Date.now() >= deadline) throw new Error(`action-capture: lock timeout on ${lockPath}`);
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
-    }
-  }
-  try {
-    let previous = 0;
-    try {
-      previous = Number.parseInt(readFileSync(sequencePath, 'utf8'), 10) || 0;
-    } catch {
-      // The first allocation has no counter file.
-    }
-    const sequence = previous + 1;
-    atomicWrite(sequencePath, Buffer.from(`${sequence}\n`));
-    return sequence;
-  } finally {
-    rmSync(lockPath, { recursive: true, force: true });
-  }
+  const previous = readRuntimeJsonRecord(sequencePath, { optional: true }) ?? 0;
+  if (!Number.isSafeInteger(previous) || previous < 0 || previous >= Number.MAX_SAFE_INTEGER)
+    throw new RuntimeRootError(
+      'RUNTIME_STATE_CORRUPT',
+      'Capture sequence is malformed or exhausted'
+    );
+  const sequence = previous + 1;
+  writeRuntimeJsonRecord(sequencePath, sequence);
+  return sequence;
 }
 
 function safeMetadata(value) {
@@ -337,7 +327,31 @@ export function collectGhRequestFiles(inputArgs, cwd = process.cwd()) {
   return files;
 }
 
+// Wait only before entering a publication callback. A refusal after entry may
+// follow durable writes and must never replay the publication or external call.
+function publishCapturedRecord(target, operation) {
+  const deadline = Date.now() + 3_000;
+  const sleeper = new Int32Array(new SharedArrayBuffer(4));
+  for (;;) {
+    let entered = false;
+    try {
+      return withRuntimeRecordLockSync(target, () => {
+        entered = true;
+        return operation();
+      });
+    } catch (error) {
+      if (entered || error.code !== 'RUNTIME_MIGRATION_BUSY' || Date.now() >= deadline) throw error;
+      Atomics.wait(sleeper, 0, 0, 10);
+    }
+  }
+}
+
 export function beginCapturedAction(context, deps = {}) {
+  const sequencePath = path.join(captureIssueDir(context, deps), '.sequence');
+  return publishCapturedRecord(sequencePath, () => beginCapturedActionHeld(context, deps));
+}
+
+function beginCapturedActionHeld(context, deps) {
   const repository = String(context.repository);
   const issue = issueNumber(context.issue);
   const issueDir = captureIssueDir(context, deps);
@@ -380,10 +394,28 @@ export function beginCapturedAction(context, deps = {}) {
   };
   atomicJson(path.join(pendingDir, 'intent.json'), intent);
   renameSync(pendingDir, actionDir);
+  readRuntimeJsonRecord(path.join(actionDir, 'intent.json'));
   return { actionDir, actionId, sequence, startedAt };
 }
 
 export function completeCapturedAction(handle, result = {}, deps = {}) {
+  const intentPath = path.join(handle.actionDir, 'intent.json');
+  return publishCapturedRecord(intentPath, () => {
+    const intent = readRuntimeJsonRecord(intentPath);
+    if (
+      intent.actionId !== handle.actionId ||
+      intent.sequence !== handle.sequence ||
+      intent.startedAt !== handle.startedAt
+    )
+      throw new RuntimeRootError(
+        'RUNTIME_STATE_CORRUPT',
+        'Capture completion does not match its durable intent'
+      );
+    return completeCapturedActionHeld(handle, result, deps);
+  });
+}
+
+function completeCapturedActionHeld(handle, result, deps) {
   const finishedAt = result.finishedAt || (deps.now?.() || new Date()).toISOString();
   const stdout = writePayload(handle.actionDir, 'stdout.bin', result.stdout);
   const stderr = writePayload(handle.actionDir, 'stderr.bin', result.stderr);
@@ -401,7 +433,7 @@ export function completeCapturedAction(handle, result = {}, deps = {}) {
     readback: safeMetadata(result.readback),
   };
   atomicJson(path.join(handle.actionDir, 'outcome.json'), outcome);
-  return outcome;
+  return readRuntimeJsonRecord(path.join(handle.actionDir, 'outcome.json'));
 }
 
 function actionDirectories(issueDir) {

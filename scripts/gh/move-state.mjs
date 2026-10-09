@@ -35,7 +35,6 @@ import { getProjectDir } from '../task-tracker/paths.mjs';
 import {
   withIssueLock,
   IssueLockError,
-  isIssueLockHeld,
 } from '../task-tracker/issue-mutator-lock.mjs';
 // #559 — input/policy + transition-plan concerns extracted into focused,
 // independently-testable modules. The host owns process.exit / stderr / I/O;
@@ -440,12 +439,8 @@ export async function runMoveStateHost({
     return 0;
   };
 
-  // #1261 — the flag is issue-scoped, so only a frame holding THIS issue lets
-  // the mutation run unlocked. A frame holding a different issue falls through
-  // to a real acquisition below.
-  if (isIssueLockHeld(issueArg, env)) {
-    return await runMutation();
-  }
+  // Reentrancy is verified inside the lock and retains this process's writer
+  // lease through the mutation; an inherited flag alone never bypasses it.
   try {
     return await withIssueLock(
       {

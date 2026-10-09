@@ -10,7 +10,7 @@ import { createObservationAttempt } from '../../../../task-tracker/lib/action-de
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
 import { verbReview } from '../../../../task-tracker/verbs/review.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 
 const ISSUE = 1667;
@@ -129,8 +129,15 @@ test('real Review projection preserves completeness checkbox labels in action ou
 
 // @story #1859
 test('Review consumes normalized typed labels before transitions or reviewer work', async () => {
-  const projectDir = mkdtempProjectIsolated('aitm-review-normalization-');
-  const statePath = path.join(projectDir, 'state.json');
+  const projectDir = await createActivatedRuntimeRootFixture('aitm-review-normalization-');
+  const statePath = path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   // #1857: seed the current actor contract in this isolated fixture.
   const actorEnv = {
     AI_TASK_MANAGER_SESSION_ID: 'fixture-normalization-1667',

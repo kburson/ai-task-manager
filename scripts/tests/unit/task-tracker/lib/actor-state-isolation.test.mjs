@@ -3,14 +3,24 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { createUnitRootFixture, withUnitRuntimeRoot } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  createActivatedUnitRuntimeRoot,
+  withUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 import { getActiveTask, setActiveTask } from '../../../../task-tracker/session-state.mjs';
 import { actorTimingStatePath } from '../../../../task-tracker/lib/actor-timing-state.mjs';
 
 function fixture(operation) {
-  const root = createUnitRootFixture('actor-state-');
-  const file = path.join(root, '.tmp', 'aitm', 'state', 'state.json');
+  const root = createActivatedUnitRuntimeRoot('actor-state-');
+  const file = path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   const saved = process.env.AI_TASK_MANAGER_SESSION_ID;
   const provider = process.env.AI_TASK_MANAGER_APP_NAME;
   try {
@@ -150,9 +160,9 @@ test('corrupt, unsupported and mismatched actor state refuse without global fall
       JSON.stringify({ ...valid, sid: 'another' }),
     ]) {
       writeFileSync(local, bytes);
-      assert.throws(() => loadState(file), { code: 'ACTOR_TIMING_STATE_INVALID' });
+      assert.throws(() => loadState(file), { code: 'RUNTIME_STATE_CORRUPT' });
       assert.throws(() => saveState({ active: '#999', lastWordMarker: 0 }, file), {
-        code: 'ACTOR_TIMING_STATE_INVALID',
+        code: 'RUNTIME_STATE_CORRUPT',
       });
       assert.equal(readFileSync(local, 'utf8'), bytes);
     }

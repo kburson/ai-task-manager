@@ -15,7 +15,7 @@ import { createObservationAttempt } from '../../../../task-tracker/lib/action-de
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
 import { verbReview } from '../../../../task-tracker/verbs/review.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 
 const ISSUE = 1667;
 const REPOSITORY = 'example/project';
@@ -257,8 +257,15 @@ test('Review execution refuses a stale Test receipt after a ready collector deci
   assert.equal(readyDecision.status, 'ready', JSON.stringify(readyDecision));
   assert.deepEqual(ready.effects, []);
 
-  const projectDir = mkdtempProjectIsolated('aitm-review-parity-');
-  const statePath = path.join(projectDir, 'state.json');
+  const projectDir = await createActivatedRuntimeRootFixture('aitm-review-parity-');
+  const statePath = path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   writeFileSync(
     statePath,
     JSON.stringify({ active: '#1667', lastActive: '#1667', entryStartTs: null, lastWordMarker: 0 })

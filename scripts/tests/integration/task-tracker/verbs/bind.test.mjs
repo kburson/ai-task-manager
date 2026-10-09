@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import {
   reviewNeedsAgentReview,
   formatReviewRemediationHint,
@@ -85,17 +85,31 @@ test('reviewRemediationHint returns null when the hint does not apply', () => {
 
 // --- integration: verbResume prints the attached hint -----------------------
 
-const tmp = mkdtempProjectIsolated('tt-bind-hint-');
+const tmp = await mkdtempProjectIsolated('tt-bind-hint-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
 process.chdir(tmp);
-process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
+process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+  tmp,
+  '.ai-task-manager',
+  'runtime',
+  'store',
+  'app',
+  'claude',
+  'session-transcripts'
+);
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
 const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
 
-let stateSeq = 0;
 function writeState(obj) {
-  const p = path.join(tmp, `state-${stateSeq++}.json`);
+  const p = path.join(
+    tmp,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   writeFileSync(p, JSON.stringify(obj), 'utf8');
   return p;
 }

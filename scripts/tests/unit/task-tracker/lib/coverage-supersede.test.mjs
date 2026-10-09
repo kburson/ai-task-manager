@@ -20,7 +20,10 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -195,17 +198,17 @@ test('runSupersede: back-reference comment failure is tolerated', async () => {
 // Isolate from the live session's active task: a state file under a scratch
 // `.tmp/aitm/state/` anchors projectDirForState to a scratch root with no
 // active-task.json, so loadState's session overlay resolves active → null.
-const STATE_ROOT = mkdtempSync(join(projectScratchDir('test'), 'supersede-proj-'));
-const STATE_DIR = join(STATE_ROOT, '.tmp', 'aitm', 'state');
+const STATE_ROOT = createActivatedUnitRuntimeRoot('supersede-proj-');
+const STATE_DIR = join(STATE_ROOT, '.ai-task-manager', 'runtime', 'store', 'state');
 mkdirSync(STATE_DIR, { recursive: true });
 function stateFile(active) {
-  const p = join(STATE_DIR, 'state.json');
+  const p = join(STATE_DIR, 'task-tracker-state.json');
   writeFileSync(p, JSON.stringify({ active: active ?? null, lastActive: active ?? null }));
   return p;
 }
 
 function runVerb(rest, deps, active = null) {
-  const ctx = { cfg, statePath: stateFile(active), rest, projectDir: '/repo/wt' };
+  const ctx = { cfg, statePath: stateFile(active), rest, projectDir: STATE_ROOT };
   const realExit = process.exit;
   const realErr = process.stderr.write.bind(process.stderr);
   const realOut = process.stdout.write.bind(process.stdout);

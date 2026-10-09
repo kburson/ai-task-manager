@@ -27,7 +27,11 @@
 // `lint:tmp` stays green).
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
+import {
+  createActivatedUnitRuntimeRoot,
+  withUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import path from 'node:path';
 import {
   STORE_VERSION,
@@ -40,19 +44,21 @@ import {
   record,
 } from '../../../../task-tracker/lib/verifier-cache.mjs';
 import { runVerifiers } from '../../../../task-tracker/lib/evidence-runner.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 // Each case gets an isolated store dir so writes never bleed across tests.
+const fixtureRoots = [];
 function freshDir() {
-  return mkdtempSync(path.join(projectScratchDir('test'), 'verifier-cache-'));
+  const root = createActivatedUnitRuntimeRoot('verifier-cache-');
+  fixtureRoots.push(root);
+  return path.join(root, '.ai-task-manager/runtime/store');
 }
 
-// Fake `pexec(bin, args, opts)`. Answers `git rev-parse --short HEAD` with
+// Fake `pexec(bin, args, opts)`. Answers `git rev-parse HEAD` with
 // `state.sha` and `git status --porcelain` with clean/dirty; treats everything
 // else as a verifier command and counts the run. `state.sha`/`state.clean` are
 // mutable so a single fake can model a commit landing or the tree going dirty
 // between calls.
-function makePexec({ sha = 'abc1234', clean = true } = {}) {
+function makePexec({ sha = 'a'.repeat(40), clean = true } = {}) {
   const state = { sha, clean };
   const runs = []; // every verifier command actually executed, in order
   async function pexec(bin, args = []) {
@@ -108,15 +114,31 @@ function testRecordLookupContract() {
 
   // Non-zero never recorded.
   assert.equal(
-    record({ dir, cmd: 'npm test', sha: 'aaa', exit: 1, ts: 'T' }),
+    record({
+      dir,
+      cmd: 'npm test',
+      sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      exit: 1,
+      ts: 'T',
+    }),
     false,
     'non-zero not recorded'
   );
-  assert.equal(lookup({ dir, cmd: 'npm test', sha: 'aaa' }), null, 'no entry after refused record');
+  assert.equal(
+    lookup({ dir, cmd: 'npm test', sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }),
+    null,
+    'no entry after refused record'
+  );
 
   // Ineligible never recorded.
   assert.equal(
-    record({ dir, cmd: 'npm run lint', sha: 'aaa', exit: 0, ts: 'T' }),
+    record({
+      dir,
+      cmd: 'npm run lint',
+      sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      exit: 0,
+      ts: 'T',
+    }),
     false,
     'ineligible not recorded'
   );
@@ -130,28 +152,46 @@ function testRecordLookupContract() {
 
   // Green eligible clean record succeeds, then a matching lookup returns it.
   assert.equal(
-    record({ dir, cmd: 'npm test', sha: 'aaa', exit: 0, ts: 'T1' }),
+    record({
+      dir,
+      cmd: 'npm test',
+      sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      exit: 0,
+      ts: '2026-10-01T00:00:01.000Z',
+    }),
     true,
     'green recorded'
   );
-  const hit = lookup({ dir, cmd: 'npm test', sha: 'aaa' });
-  assert.ok(hit && hit.ts === 'T1' && hit.exit === 0, 'lookup returns recorded green entry');
+  const hit = lookup({ dir, cmd: 'npm test', sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' });
+  assert.ok(
+    hit && hit.ts === '2026-10-01T00:00:01.000Z' && hit.exit === 0,
+    'lookup returns recorded green entry'
+  );
 
   // A wrong sha misses.
   assert.equal(
-    lookup({ dir, cmd: 'npm test', sha: 'bbb' }),
+    lookup({ dir, cmd: 'npm test', sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }),
     null,
     'lookup at different sha misses'
   );
 
   // Recording at a NEW sha prunes the old entry (store bounded to current HEAD).
-  record({ dir, cmd: 'npm test', sha: 'bbb', exit: 0, ts: 'T2' });
+  record({
+    dir,
+    cmd: 'npm test',
+    sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    exit: 0,
+    ts: '2026-10-01T00:00:02.000Z',
+  });
   assert.equal(
-    lookup({ dir, cmd: 'npm test', sha: 'aaa' }),
+    lookup({ dir, cmd: 'npm test', sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }),
     null,
     'old-sha entry pruned on new write'
   );
-  assert.ok(lookup({ dir, cmd: 'npm test', sha: 'bbb' }), 'new-sha entry present after prune');
+  assert.ok(
+    lookup({ dir, cmd: 'npm test', sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }),
+    'new-sha entry present after prune'
+  );
 
   console.log('ok record-lookup-contract');
 }
@@ -160,17 +200,20 @@ function testRecordLookupContract() {
 
 async function testHit() {
   const dir = freshDir();
-  const { pexec, runs } = makePexec({ sha: 'sha1111', clean: true });
+  const { pexec, runs } = makePexec({
+    sha: '1111111111111111111111111111111111111111',
+    clean: true,
+  });
 
   const first = await runVerifiers({
     commands: [SUITE],
     pexec,
     cwd: '/proj',
-    cache: CACHE(dir, () => 'TS-ORIGINAL'),
+    cache: CACHE(dir, () => '2026-10-01T00:00:00.000Z'),
   });
   assert.equal(runs.length, 1, 'first call runs the suite once');
   assert.equal(first.ran[0].cached, false, 'first run is not cached');
-  assert.equal(first.ran[0].ts, 'TS-ORIGINAL', 'first run stamps the run clock');
+  assert.equal(first.ran[0].ts, '2026-10-01T00:00:00.000Z', 'first run stamps the run clock');
   assert.ok(existsSync(path.join(dir, 'cache', 'verifier-results.json')), 'store file written');
 
   // Second call: same cmd, same sha, clean tree, but a DIFFERENT clock. The hit
@@ -179,11 +222,15 @@ async function testHit() {
     commands: [SUITE],
     pexec,
     cwd: '/proj',
-    cache: CACHE(dir, () => 'TS-LATER'),
+    cache: CACHE(dir, () => '2026-10-02T00:00:00.000Z'),
   });
   assert.equal(runs.length, 1, 'second call does NOT re-run the suite');
   assert.equal(second.ran[0].cached, true, 'second run served from cache');
-  assert.equal(second.ran[0].ts, 'TS-ORIGINAL', 'cache hit attributes the original run ts');
+  assert.equal(
+    second.ran[0].ts,
+    '2026-10-01T00:00:00.000Z',
+    'cache hit attributes the original run ts'
+  );
   assert.equal(second.ran[0].exit, 0, 'cache hit reports green');
   assert.equal(second.allPassed, true, 'cache hit counts as passed');
 
@@ -194,32 +241,39 @@ async function testHit() {
 
 async function testMissOnChangedSha() {
   const dir = freshDir();
-  const fake = makePexec({ sha: 'shaAAAA', clean: true });
+  const fake = makePexec({ sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', clean: true });
 
   await runVerifiers({
     commands: [SUITE],
     pexec: fake.pexec,
     cwd: '/proj',
-    cache: CACHE(dir, () => 'T1'),
+    cache: CACHE(dir, () => '2026-10-01T00:00:01.000Z'),
   });
   assert.equal(fake.runs.length, 1, 'initial run executes');
 
   // A commit lands: HEAD moves. Same command, still clean — but the cached
   // entry is at the old sha, so this must be a real run.
-  fake.state.sha = 'shaBBBB';
+  fake.state.sha = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
   const after = await runVerifiers({
     commands: [SUITE],
     pexec: fake.pexec,
     cwd: '/proj',
-    cache: CACHE(dir, () => 'T2'),
+    cache: CACHE(dir, () => '2026-10-01T00:00:02.000Z'),
   });
   assert.equal(fake.runs.length, 2, 'changed sha forces a real run');
   assert.equal(after.ran[0].cached, false, 'changed-sha result is not cached');
-  assert.equal(after.sha, 'shaBBBB', 'runner reports the new sha');
+  assert.equal(after.sha, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'runner reports the new sha');
 
   // The store was pruned to the current sha: old entry gone, new entry present.
-  assert.equal(lookup({ dir, cmd: SUITE, sha: 'shaAAAA' }), null, 'old-sha entry evicted');
-  assert.ok(lookup({ dir, cmd: SUITE, sha: 'shaBBBB' }), 'new-sha entry recorded');
+  assert.equal(
+    lookup({ dir, cmd: SUITE, sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }),
+    null,
+    'old-sha entry evicted'
+  );
+  assert.ok(
+    lookup({ dir, cmd: SUITE, sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }),
+    'new-sha entry recorded'
+  );
 
   console.log('ok miss-on-changed-sha');
 }
@@ -228,19 +282,19 @@ async function testMissOnChangedSha() {
 
 async function testMissOnDirtyTree() {
   const dir = freshDir();
-  const fake = makePexec({ sha: 'shaDIRTY', clean: false });
+  const fake = makePexec({ sha: 'dddddddddddddddddddddddddddddddddddddddd', clean: false });
 
   const a = await runVerifiers({
     commands: [SUITE],
     pexec: fake.pexec,
     cwd: '/proj',
-    cache: CACHE(dir, () => 'T1'),
+    cache: CACHE(dir, () => '2026-10-01T00:00:01.000Z'),
   });
   const b = await runVerifiers({
     commands: [SUITE],
     pexec: fake.pexec,
     cwd: '/proj',
-    cache: CACHE(dir, () => 'T2'),
+    cache: CACHE(dir, () => '2026-10-01T00:00:02.000Z'),
   });
 
   assert.equal(fake.runs.length, 2, 'dirty tree runs every time');
@@ -248,7 +302,11 @@ async function testMissOnDirtyTree() {
   assert.equal(a.ran[0].cached, false, 'dirty first run not cached');
   assert.equal(b.ran[0].cached, false, 'dirty second run not cached');
   // Nothing recorded on a dirty tree.
-  assert.equal(lookup({ dir, cmd: SUITE, sha: 'shaDIRTY' }), null, 'dirty tree records nothing');
+  assert.equal(
+    lookup({ dir, cmd: SUITE, sha: 'dddddddddddddddddddddddddddddddddddddddd' }),
+    null,
+    'dirty tree records nothing'
+  );
 
   console.log('ok miss-on-dirty-tree');
 }
@@ -257,20 +315,20 @@ async function testMissOnDirtyTree() {
 
 async function testNonEligibleAlwaysRuns() {
   const dir = freshDir();
-  const fake = makePexec({ sha: 'shaLINT', clean: true });
+  const fake = makePexec({ sha: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', clean: true });
   const LINT = 'npm run lint';
 
   await runVerifiers({
     commands: [LINT],
     pexec: fake.pexec,
     cwd: '/proj',
-    cache: CACHE(dir, () => 'T1'),
+    cache: CACHE(dir, () => '2026-10-01T00:00:01.000Z'),
   });
   const second = await runVerifiers({
     commands: [LINT],
     pexec: fake.pexec,
     cwd: '/proj',
-    cache: CACHE(dir, () => 'T2'),
+    cache: CACHE(dir, () => '2026-10-01T00:00:02.000Z'),
   });
 
   assert.equal(fake.runs.length, 2, 'ineligible command runs every time even clean+same-sha');
@@ -287,7 +345,7 @@ async function testNonEligibleAlwaysRuns() {
 
 async function testMultiAcSingleRun() {
   const dir = freshDir();
-  const fake = makePexec({ sha: 'shaWAVE', clean: true });
+  const fake = makePexec({ sha: 'ffffffffffffffffffffffffffffffffffffffff', clean: true });
 
   // Six independent stamp invocations (one per AC/DoD checkbox), each its own
   // runVerifiers call — the real-world shape #444 hit. Distinct clocks prove the
@@ -299,7 +357,7 @@ async function testMultiAcSingleRun() {
         commands: [SUITE],
         pexec: fake.pexec,
         cwd: '/proj',
-        cache: CACHE(dir, () => `T${i}`),
+        cache: CACHE(dir, () => `2026-10-01T00:00:0${i}.000Z`),
       })
     );
   }
@@ -308,18 +366,28 @@ async function testMultiAcSingleRun() {
   assert.equal(results[0].ran[0].cached, false, 'first stamp runs');
   for (let i = 1; i < 6; i++) {
     assert.equal(results[i].ran[0].cached, true, `stamp ${i} served from cache`);
-    assert.equal(results[i].ran[0].ts, 'T0', `stamp ${i} inherits the original run ts`);
+    assert.equal(
+      results[i].ran[0].ts,
+      '2026-10-01T00:00:00.000Z',
+      `stamp ${i} inherits the original run ts`
+    );
     assert.equal(results[i].allPassed, true, `stamp ${i} counts as passed`);
   }
 
   console.log('ok multi-ac-single-run');
 }
 
-testPureHelpers();
-testRecordLookupContract();
-await testHit();
-await testMissOnChangedSha();
-await testMissOnDirtyTree();
-await testNonEligibleAlwaysRuns();
-await testMultiAcSingleRun();
-console.log('ok verifier-cache');
+try {
+  await withUnitRuntimeRoot(async () => {
+    testPureHelpers();
+    testRecordLookupContract();
+    await testHit();
+    await testMissOnChangedSha();
+    await testMissOnDirtyTree();
+    await testNonEligibleAlwaysRuns();
+    await testMultiAcSingleRun();
+    console.log('ok verifier-cache');
+  });
+} finally {
+  for (const root of fixtureRoots) rmSync(root, { recursive: true, force: true });
+}

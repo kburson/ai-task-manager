@@ -1,4 +1,3 @@
-// @story #1861
 // @story #1772
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -11,10 +10,7 @@ import { GUIDANCE_CONTEXT_BUDGETS } from '../../../../task-tracker/lib/context-b
 import { buildGuidanceContextReport } from '../../../../task-tracker/measure-guidance-context.mjs';
 import { formatReleaseMeasurement, measure } from '../../../../task-tracker/measure-context.mjs';
 import { buildPairedContext } from '../../../helpers/guidance-paired-context.mjs';
-import {
-  assertCurrentCaptureSources,
-  publishedCaptureSource,
-} from '../../../helpers/guidance-capture-provenance.mjs';
+import { assertCurrentCaptureSources } from '../../../helpers/guidance-capture-provenance.mjs';
 import { currentCaptureManifest } from '../../../helpers/generate-current-guidance-evidence.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
@@ -165,24 +161,19 @@ test('committed final package and public-CLI archive regenerate byte for byte fr
       'utf8'
     )
   );
-  const sourceCommit = publishedCaptureSource(
-    JSON.parse(expected),
-    manifest.sourceCommit,
-    path.resolve('.')
-  );
   const fixture = mkdtempProjectIsolated('guidance-pinned-release-');
   try {
     // Regenerate immutable evidence with its immutable implementation. Changed
     // candidate sources require a new capture and cannot inherit this receipt.
-    execFileSync('git', ['fetch', '--no-tags', path.resolve('.'), sourceCommit], {
+    execFileSync('git', ['fetch', '--no-tags', path.resolve('.'), manifest.sourceCommit], {
       cwd: fixture,
     });
     execFileSync('git', ['checkout', '-q', '--detach', 'FETCH_HEAD'], { cwd: fixture });
     assert.equal(
       execFileSync('git', ['rev-parse', 'HEAD'], { cwd: fixture, encoding: 'utf8' }).trim(),
-      sourceCommit
+      manifest.sourceCommit
     );
-    assertCurrentCaptureSources(JSON.parse(expected), sourceCommit, fixture);
+    assertCurrentCaptureSources(JSON.parse(expected), manifest.sourceCommit, fixture);
     const regenerated = execFileSync(
       process.execPath,
       [path.join(fixture, 'scripts/tests/helpers/capture-guidance-release.mjs'), '--final'],
@@ -269,18 +260,16 @@ test('internally consistent dirty installed guidance cannot inherit a committed 
       path.resolve('scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json')
     )
   );
-  const sourceCommit = publishedCaptureSource(
-    originalCapture,
-    originalManifest.sourceCommit,
-    path.resolve('.')
-  );
   const fixture = mkdtempProjectIsolated('guidance-dirty-source-');
   const digest = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
   const git = (args) => execFileSync('git', args, { cwd: fixture, encoding: 'utf8' }).trim();
   try {
-    git(['fetch', '--no-tags', path.resolve('.'), sourceCommit]);
+    git(['fetch', '--no-tags', path.resolve('.'), originalManifest.sourceCommit]);
     git(['checkout', '-q', '--detach', 'FETCH_HEAD']);
-    assert.equal(assertCurrentCaptureSources(originalCapture, sourceCommit, fixture), sourceCommit);
+    assert.equal(
+      assertCurrentCaptureSources(originalCapture, originalManifest.sourceCommit, fixture),
+      originalManifest.sourceCommit
+    );
     for (const [sourcePath, packagePath] of [
       ['skill/shared/router.md', 'skill/shared/router.md'],
       ['.ai-task-manager/templates/pickup-directive.md', 'templates/pickup-directive.md'],
@@ -309,7 +298,7 @@ test('internally consistent dirty installed guidance cannot inherit a committed 
         })
       );
       const captureBytes = Buffer.from(JSON.stringify(capture));
-      const manifest = currentCaptureManifest(capture, captureBytes, sourceCommit);
+      const manifest = currentCaptureManifest(capture, captureBytes, originalManifest.sourceCommit);
       assert.equal(manifest.captureSha256, digest(captureBytes));
       assert.deepEqual(manifest.installedStatic, capture.measurement.installedStatic);
       assert.equal(git(['rev-parse', 'HEAD']), manifest.sourceCommit);

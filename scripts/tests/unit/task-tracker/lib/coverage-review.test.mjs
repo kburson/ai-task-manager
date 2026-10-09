@@ -15,11 +15,14 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 import '../../../fixtures/offline-gh-auto.mjs';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { writeFileSync, rmSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+
 import { buildPlanApprovalAuditComment } from '../../../../task-tracker/lib/plan-approval-audit.mjs';
 import '../../../../task-tracker/lib/guard-bootstrap.mjs';
 import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
@@ -28,8 +31,8 @@ import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-marke
 import { verbReview, buildDeferredReviewRow } from '../../../../task-tracker/verbs/review.mjs';
 
 function tmpState(state) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-622-'));
-  const p = join(dir, 'state.json');
+  const dir = createActivatedUnitRuntimeRoot('aitm-622-');
+  const p = join(dir, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json');
   writeFileSync(p, JSON.stringify(state));
   return { statePath: p, dir };
 }
@@ -121,7 +124,8 @@ function makeCtx(opts = {}) {
   const ctx = {
     cfg: { repo: 'o/r', projectId: 'PROJ', idleThresholdMinutes: 5 },
     statePath,
-    projectDir: '/proj',
+    projectDir: resolve(statePath, '../../../../..'),
+    session: {},
     rest,
     SKIP_NETWORK: false,
     pexec: makePexec({ gateBody, rawBody, scanBody, headSha }),

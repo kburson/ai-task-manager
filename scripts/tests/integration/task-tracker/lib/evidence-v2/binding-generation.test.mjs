@@ -1,11 +1,13 @@
 // @story #1499
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import {
   claimOccupancy,
   heartbeatOccupancy,
@@ -16,10 +18,16 @@ import {
   releaseBindingGeneration,
 } from '../../../../../task-tracker/lib/evidence-v2/binding-generation.mjs';
 
-test('new claims get fresh generations while heartbeat preserves the active generation', () => {
-  const root = path.join(projectScratchDir('test'), `binding-generation-${randomUUID()}`);
-  mkdirSync(root, { recursive: true });
-  const occupancyFile = path.join(root, 'occupancy.json');
+test('new claims get fresh generations while heartbeat preserves the active generation', async () => {
+  const root = await createCommittedRuntimeRootFixture('binding-generation-');
+  const occupancyFile = path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'fleet',
+    'occupancy.json'
+  );
   const identity = {
     occupancyFile,
     issue: 1499,

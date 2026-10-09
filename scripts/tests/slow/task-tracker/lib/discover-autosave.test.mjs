@@ -151,7 +151,14 @@ test('AC4: resolveDraftSlug agrees across save-draft and save-plan so the right 
 // the units under test.
 test('AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears the draft', async () => {
   const projectDir = tmpProject();
-  const statePath = path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  const statePath = path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   try {
     mkdirSync(path.dirname(statePath), { recursive: true });
     saveState(

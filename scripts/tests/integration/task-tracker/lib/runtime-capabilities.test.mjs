@@ -11,11 +11,11 @@ initializeFixtureActor(import.meta.url);
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import {
   assembleCapabilities,
   CAPABILITY_SURFACES,
@@ -217,8 +217,8 @@ test('AC2: verbClose is migrated to the narrow capability interface', () => {
 
 // --- AC3: verbClose runs against a small fixture, no full runtime -----------
 test('AC3: verbClose runs against a narrow fixture (no active task path)', async () => {
-  const dir = mkdtempProjectIsolated('aitm-561-');
-  const statePath = path.join(dir, 'task-tracker-state.json');
+  const dir = await createActivatedRuntimeRootFixture('aitm-561-');
+  const statePath = path.join(dir, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json');
   // No active task and no target arg → the early "no active task" return,
   // which touches only timingRecorder.drainQueueIfAny + projectConfig.statePath.
   writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }));
@@ -245,6 +245,7 @@ test('AC3: verbClose runs against a narrow fixture (no active task path)', async
     assert.equal(result, undefined, 'early return is void');
   } finally {
     console.log = origLog;
+    rmSync(dir, { recursive: true, force: true });
   }
 
   assert.ok(drained, 'verbClose drained the timing queue via the timingRecorder capability');

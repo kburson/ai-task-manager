@@ -96,6 +96,7 @@ export function registerActionNavigationCases({ test, body, now }) {
       deps: {
         effectAttempts: () => effects,
         promotePorts: {
+          loadSession: () => null,
           projectDir: process.cwd(),
           runGuards: async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null }),
         },
@@ -300,7 +301,7 @@ export function registerActionNavigationCases({ test, body, now }) {
       attempt,
       deps: {
         effectAttempts: () => effects,
-        promotePorts: { projectDir: process.cwd(), runGuards: guards },
+        promotePorts: { loadSession: () => null, projectDir: process.cwd(), runGuards: guards },
       },
     });
     assert.equal(decision.status, 'ready');
@@ -310,6 +311,7 @@ export function registerActionNavigationCases({ test, body, now }) {
       cfg: { repo: repository },
       deps: {
         assertBound: () => {},
+        sessionPolicy: {},
         migrationFreezeActive: () => false,
         resolveProjectDir: () => process.cwd(),
         fetchIssueBody: async () => ({ body }),
@@ -352,6 +354,7 @@ export function registerActionNavigationCases({ test, body, now }) {
       deps: {
         effectAttempts: () => [],
         promotePorts: {
+          loadSession: () => null,
           projectDir: process.cwd(),
           runGuards: async () => ({
             ok: false,
@@ -415,6 +418,7 @@ export function registerActionNavigationCases({ test, body, now }) {
       deps: {
         effectAttempts: () => [],
         promotePorts: {
+          loadSession: () => null,
           projectDir: process.cwd(),
           runGuards: async () => ({ ok: true, status: 'ready', refusals: [], humanDecision: null }),
         },
@@ -512,7 +516,10 @@ export function registerActionNavigationCases({ test, body, now }) {
       issue,
       inputs: { state: 'plan', head: 'a'.repeat(40), body, config: { repo: repository } },
       attempt,
-      deps: { effectAttempts: () => [], promotePorts: { skipNetwork: true } },
+      deps: {
+        effectAttempts: () => [],
+        promotePorts: { loadSession: () => null, skipNetwork: true },
+      },
     });
     assert.equal(decision.status, 'indeterminate');
     assert.deepEqual(

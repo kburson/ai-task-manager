@@ -6,7 +6,9 @@ import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { parseNpmPackReport } from '../../../helpers/npm-pack-report.mjs';
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
@@ -159,10 +161,10 @@ for (const [name, output] of [
 
 // Catches a reintroduced package lifecycle, retired seed hook, or unscoped
 // consumer path even when the checkout's dogfood self-link masks that defect.
-test('restrictive downstream tarball install runs CLI and generated provider hooks without an alias', (t) => {
-  const sandbox = createRuntimeRootFixture('downstream-package-');
+test('restrictive downstream tarball install runs CLI and generated provider hooks without an alias', async (t) => {
+  const sandbox = await createCommittedRuntimeRootFixture('downstream-package-');
   const packDir = join(sandbox, 'pack');
-  const consumerDir = join(sandbox, 'consumer');
+  const consumerDir = sandbox;
   mkdirSync(packDir, { recursive: true });
   mkdirSync(consumerDir, { recursive: true });
   const env = {
@@ -323,10 +325,7 @@ test('restrictive downstream tarball install runs CLI and generated provider hoo
       const router = readFileSync(routerPath, 'utf8');
       const shared = readFileSync(join(installedRoot, 'skill/shared/SKILL.md'), 'utf8');
       assert.equal(firstInstalledReference(shared, '/shared/router.md', consumerDir), routerPath);
-      firstInstalledReference(router, '/README.md', consumerDir);
-      assert.ok(
-        router.includes('https://github.com/kburson/ai-task-manager/blob/trunk/docs/DESIGN.md')
-      );
+      firstInstalledReference(router, '/docs/DESIGN.md', consumerDir);
       if (provider !== 'grok') {
         const scriptRoot = firstInstalledReference(canonical, '/scripts/', consumerDir);
         assert.ok(existsSync(join(scriptRoot, 'task-tracker/task-tracker.mjs')));
@@ -346,12 +345,18 @@ test('restrictive downstream tarball install runs CLI and generated provider hoo
       const memory = commands(settings, 'SessionStart').find((command) =>
         command.includes('/memory-index.mjs')
       );
-      assert.equal(
+      assert.ok(memory, 'memory seed selection must install the index hook');
+      const result = executeGenerated(
         memory,
-        undefined,
-        'a package without bundled memory must not install an empty index hook'
+        { hook_event_name: 'SessionStart' },
+        consumerDir,
+        env
       );
-      assert.equal(existsSync(join(installedRoot, 'docs')), false);
+      assert.equal(result.stderr, '');
+      assert.match(
+        JSON.parse(result.stdout).hookSpecificOutput.additionalContext,
+        /Operational-lessons memory index/
+      );
 
       const guard = commands(settings, 'PreToolUse').find((command) =>
         command.includes('/bash-guard.mjs')

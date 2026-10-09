@@ -15,22 +15,38 @@ import '../../../fixtures/offline-gh-auto.mjs';
 
 import { saveState } from '../../../../task-tracker/state.mjs';
 import { timingActorMarker } from '../../../../task-tracker/lib/timing-actor.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import {
   collectResumeActivityEvidence,
   verificationActivityTimestamps,
 } from '../../../../task-tracker/lib/resume-activity-evidence.mjs';
 
-const sandbox = mkdtempProjectIsolated('resume-auto-gap-activity-');
+const sandbox = await createCommittedRuntimeRootFixture('resume-auto-gap-activity-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
 process.chdir(sandbox);
-process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(sandbox, 'transcripts');
+process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+  sandbox,
+  '.ai-task-manager',
+  'runtime',
+  'store',
+  'app',
+  'claude',
+  'session-transcripts'
+);
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
 
 let stateSequence = 0;
 function makeState() {
-  const statePath = path.join(sandbox, `.tmp/aitm/state/state-${stateSequence++}.json`);
+  stateSequence++;
+  const statePath = path.join(
+    sandbox,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   saveState({ active: null, lastActive: '#1077' }, statePath);
   return statePath;
 }

@@ -6,11 +6,9 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
-
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { unitTest as test, createActivatedUnitRuntimeRoot } from '../../../helpers/unit-runtime-root.mjs';
 import {
   applyCloseReviewApprovalBypass,
   verbClose,
@@ -40,8 +38,8 @@ test('projected close readiness bypasses only the configured approval refusal', 
 });
 
 async function runOfflineOrdinaryClose({ gateReviewToDone, reviewer }) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-close-authority-'));
-  const statePath = join(dir, 'state.json');
+  const dir = createActivatedUnitRuntimeRoot('aitm-close-authority-');
+  const statePath = join(dir, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json');
   const configDir = join(dir, '.ai-task-manager');
   mkdirSync(configDir, { recursive: true });
   writeFileSync(
@@ -71,6 +69,8 @@ async function runOfflineOrdinaryClose({ gateReviewToDone, reviewer }) {
       statePath,
       projectDir: dir,
       // These tests exercise close ordering/labels, with terminal storage external.
+      inspectTerminalIssueBindingRelease: async () => ({ status: 'released' }),
+      resumeTerminalIssueBindingRelease: async () => ({ status: 'released' }),
       releaseIssueBindings: () => ({ released: [] }),
       deregisterTask: () => {},
       releaseBindingOccupancy: () => ({ released: [] }),

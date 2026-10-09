@@ -7,7 +7,22 @@
 // (missing-args usage, unknown state) must resolve a code rather than kill the
 // process. Both paths run with TT_SKIP_NETWORK so no GraphQL is touched.
 
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
+const fixtureRoot = createActivatedUnitRuntimeRoot('host-returns-');
+const priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = fixtureRoot;
+after(() => {
+  if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
+  rmSync(fixtureRoot, { recursive: true, force: true });
+});
 import assert from 'node:assert/strict';
 
 import { runMoveStateHost, SHELVE_BACKWARD_GUARD_CAPABILITY } from '../../../../gh/move-state.mjs';

@@ -8,11 +8,11 @@
 // Tolerates a missing session directory on read (returns null). Writes are
 // atomic via tmp + rename to avoid partial-write tears under concurrent verbs.
 
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
+import { existsSync, rmSync } from 'node:fs';
 import { activeTaskPath, sessionDir } from './paths.mjs';
 import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
 import { withLock } from './fleet-registry.mjs';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord } from './lib/runtime-writer.mjs';
 
 function normalizeCachedKanbanState(record) {
   if (!record || typeof record !== 'object' || typeof record.kanbanState !== 'string') {
@@ -22,21 +22,11 @@ function normalizeCachedKanbanState(record) {
 }
 
 function readJson(p) {
-  if (!existsSync(p)) return null;
-  try {
-    const raw = readFileSync(p, 'utf8');
-    if (!raw.trim()) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  return readRuntimeJsonRecord(p, { optional: true });
 }
 
 function atomicWrite(p, payload) {
-  mkdirSync(path.dirname(p), { recursive: true });
-  const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
-  writeFileSync(tmp, JSON.stringify(payload, null, 2) + '\n', 'utf8');
-  renameSync(tmp, p);
+  writeRuntimeJsonRecord(p, payload);
 }
 
 // Returns the active-task record for `sid` or null when none is bound.

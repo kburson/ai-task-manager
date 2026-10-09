@@ -14,7 +14,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
-import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -222,7 +222,7 @@ function readCalls(callsLog) {
 
 // ─── Test 1: Solo-wave happy path ─────────────────────────────────────────────
 {
-  const sandbox = await createLegacyRootFixture('tt-ewp-1-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ewp-1-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
@@ -251,7 +251,7 @@ function readCalls(callsLog) {
 
 // ─── Test 2: All-parented passthrough ─────────────────────────────────────────
 {
-  const sandbox = await createLegacyRootFixture('tt-ewp-2-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ewp-2-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
@@ -280,7 +280,7 @@ function readCalls(callsLog) {
 
 // ─── Test 3: Mixed fan-out rejection ──────────────────────────────────────────
 {
-  const sandbox = await createLegacyRootFixture('tt-ewp-3-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ewp-3-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {
@@ -299,7 +299,7 @@ function readCalls(callsLog) {
 
 // ─── Test 4: Multi-parent rejection ───────────────────────────────────────────
 {
-  const sandbox = await createLegacyRootFixture('tt-ewp-4-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ewp-4-');
   try {
     writeConfig(sandbox);
     const { binDir } = makeGhShim(sandbox, {
@@ -316,7 +316,7 @@ function readCalls(callsLog) {
 
 // ─── Test 5: Single-issue passthrough ─────────────────────────────────────────
 {
-  const sandbox = await createLegacyRootFixture('tt-ewp-5-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ewp-5-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, { parents: { 50: null } });
@@ -333,7 +333,7 @@ function readCalls(callsLog) {
 
 // ─── Test 6: Idempotency — existing wave-id reused ────────────────────────────
 {
-  const sandbox = await createLegacyRootFixture('tt-ewp-6-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ewp-6-');
   try {
     writeConfig(sandbox);
     // compute the wave-id the helper will compute for [60, 61]
@@ -367,7 +367,7 @@ function readCalls(callsLog) {
 
 // ─── Test 7 (#459 Bug B): search query must NOT contain HTML comment syntax ────
 {
-  const sandbox = await createLegacyRootFixture('tt-ewp-7-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ewp-7-');
   try {
     writeConfig(sandbox);
     const { binDir, callsLog } = makeGhShim(sandbox, {

@@ -62,7 +62,12 @@ function fixture({ state, jsonlLines = [], marker = null, appName = 'claude' } =
   execFileSync('git', ['init', '-q', proj]);
   process.env.AI_TASK_MANAGER_SESSION_ID = 'sess-test';
   process.env.AI_TASK_MANAGER_APP_NAME = appName;
-  const transcripts = path.join(proj, '.tmp/aitm/app', appName, 'session-transcripts');
+  const transcripts = path.join(
+    proj,
+    '.ai-task-manager/runtime/store/app',
+    appName,
+    'session-transcripts'
+  );
   mkdirSync(transcripts, { recursive: true });
   if (state) saveState(state, statePath(proj));
   const sid = 'sess-test';

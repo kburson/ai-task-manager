@@ -182,11 +182,7 @@ export function classifyRuntimeRecord({ relative, kind, actorIdentity } = {}) {
     return null;
   if (kind !== 'volatile-runtime') return null;
   const known = {
-    'migrations/ready-for-plan-migration.json': [
-      'ready-for-plan-journal',
-      'shared',
-      (value) => validateReadyForPlanMigrationJournal(value) === value,
-    ],
+    'migrations/ready-for-plan-migration.json': ['ready-for-plan-journal', 'shared', (value) => validateReadyForPlanMigrationJournal(value) === value],
     'state/task-tracker-state.json': ['state', 'local', stateRecord],
     'state/task-tracker-queue.json': ['queue', 'local', queueRecord],
     'fleet/task-fleet.json': ['fleet', 'shared', fleetRecord],
@@ -201,10 +197,8 @@ export function classifyRuntimeRecord({ relative, kind, actorIdentity } = {}) {
       'shared',
       (value) =>
         object(value) &&
-        (value.schema === undefined ||
-          (value.schema === 'aitm.orchestrator-lock/v1' &&
-            object(value.owner) &&
-            value.owner.actor === timingActorKey(value.owner))) &&
+        (value.schema === undefined || (value.schema === 'aitm.orchestrator-lock/v1' &&
+          object(value.owner) && value.owner.actor === timingActorKey(value.owner))) &&
         issue(value.epic) &&
         instant(value.startedAt) &&
         number(value.ttlMs) &&

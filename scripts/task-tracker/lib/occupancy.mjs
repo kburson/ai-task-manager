@@ -1,9 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 import { findMainWorktreePath, withLock } from '../fleet-registry.mjs';
 import { occupancyPath } from '../paths.mjs';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord } from './runtime-writer.mjs';
 
 function issueKey(issue) {
   const value = String(issue ?? '')
@@ -42,47 +42,11 @@ export class OccupancyConflictError extends Error {
 }
 
 export function readOccupancy(occupancyFile) {
-  const file = path.resolve(occupancyFile);
-  if (!existsSync(file)) return {};
-  try {
-    const parsed = JSON.parse(readFileSync(file, 'utf8'));
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('shape');
-    for (const [key, row] of Object.entries(parsed)) {
-      if (
-        !/^\d+$/.test(key) ||
-        !row ||
-        typeof row !== 'object' ||
-        Array.isArray(row) ||
-        String(row.issue) !== key ||
-        typeof row.sid !== 'string' ||
-        !row.sid ||
-        typeof row.provider !== 'string' ||
-        !row.provider ||
-        typeof row.worktreePath !== 'string' ||
-        !row.worktreePath ||
-        typeof row.boundAt !== 'string' ||
-        typeof row.lastHeartbeatAt !== 'string' ||
-        (row.bindingGenerationId !== undefined &&
-          !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
-            row.bindingGenerationId
-          ))
-      ) {
-        throw new Error('row-shape');
-      }
-    }
-    return parsed;
-  } catch (error) {
-    throw new Error(`occupancy: unreadable authority store ${file}: ${error.message}`, {
-      cause: error,
-    });
-  }
+  return readRuntimeJsonRecord(path.resolve(occupancyFile));
 }
 
 function writeOccupancy(file, rows) {
-  mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.${Math.random().toString(16).slice(2)}.tmp`;
-  writeFileSync(tmp, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
-  renameSync(tmp, file);
+  return writeRuntimeJsonRecord(file, rows);
 }
 
 function holderDiagnostic(row) {

@@ -31,7 +31,7 @@ import test from 'node:test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildRow } from '../../../../task-tracker/gh-timing-comment.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const repoRoot = path.resolve(here, '../../../..');
@@ -108,7 +108,25 @@ assert.equal(
 
 // ---- 5. Same-issue resume repairs missing fleet evidence (#1140) -----------
 test('same-issue resume restores fleet evidence without timing writes', async () => {
-  const tmp = mkdtempProjectIsolated('tt-self-bind-fleet-repair-');
+  const tmp = await createActivatedRuntimeRootFixture('tt-self-bind-fleet-repair-');
+  execFileSync('git', ['checkout', '-b', 'feature/1140-resume-fleet-repair'], {
+    cwd: tmp,
+    stdio: 'pipe',
+  });
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=fixture',
+      '-c',
+      'user.email=fixture@example.test',
+      'commit',
+      '--allow-empty',
+      '-qm',
+      'fixture',
+    ],
+    { cwd: tmp, stdio: 'pipe' }
+  );
   const oldProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   const oldTranscriptDir = process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
   const oldSessionId = process.env.AI_TASK_MANAGER_SESSION_ID;
@@ -121,7 +139,14 @@ test('same-issue resume restores fleet evidence without timing writes', async ()
   try {
     const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
     const { saveState } = await import('../../../../task-tracker/state.mjs');
-    const statePath = path.join(tmp, '.tmp', 'aitm', 'state', 'state.json');
+    const statePath = path.join(
+      tmp,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'state',
+      'task-tracker-state.json'
+    );
     saveState(
       {
         active: '#1140',

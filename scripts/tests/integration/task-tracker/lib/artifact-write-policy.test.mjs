@@ -49,6 +49,29 @@ function activity(tool_input, tool_name = 'Write', state = null, chore = false) 
   return result.stdout ? JSON.parse(result.stdout).decision : 'allow';
 }
 
+test('protected runtime writes refuse before binding and chore while ordinary artifacts survive corrupt runtime', async () => {
+  const runtime = '.ai-task-manager/runtime';
+  mkdirSync(path.join(root, runtime), { recursive: true });
+  writeFileSync(path.join(root, runtime, 'control.json'), '{');
+  symlinkSync(path.join(root, runtime), path.join(root, '.scratch/runtime-alias'));
+  for (const filePath of [runtime + '/control.json', '.scratch/runtime-alias/control.json']) {
+    const result = await runHook({ tool_name: 'Write', tool_input: { file_path: filePath }, cwd: root }, {
+      projectDir: root, isChoreModeActive: () => { throw new Error('runtime read must not occur'); },
+    });
+    assert.equal(result.decision, 'block');
+    assert.match(result.code, /runtime|target/);
+    assert.equal(activity({ file_path: filePath }, 'Write', 'develop', true), 'block');
+    const command = 'printf x > ' + filePath;
+    assert.equal(evaluateBashWorktreeBinding({ command, invoking: { worktreePath: root, worktreeBranch: 'fixture' } }).block, true);
+  }
+  for (const filePath of artifacts) {
+    const result = await runHook({ tool_name: 'Write', tool_input: { file_path: filePath }, cwd: root }, {
+      projectDir: root, isChoreModeActive: () => { throw new Error('artifact consulted runtime'); },
+    });
+    assert.equal(result.decision, 'allow');
+  }
+});
+
 test('ordinary docs and every scratch format allow without ownership in every state', () => {
   for (const issueState of states)
     for (const filePath of artifacts) {

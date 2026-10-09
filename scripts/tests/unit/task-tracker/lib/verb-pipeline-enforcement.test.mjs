@@ -13,12 +13,14 @@
 //   5. --out-of-band with empty reason → refused (exit 2).
 //   6. cfg.directMoveStateAllowed=true → permitted + warning printed.
 
-import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  unitRuntimeEntrypointArgs,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,7 +30,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const SCRIPT = path.resolve(__dir, '../../helpers/move-state-cli.mjs');
 
 function makeSandbox(extraConfig = {}) {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-vpe-'));
+  const sandbox = createActivatedUnitRuntimeRoot('tt-vpe-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -57,6 +59,8 @@ function cleanEnv(sandbox, extra = {}) {
   return {
     PATH: process.env.PATH,
     HOME: process.env.HOME,
+    AI_TASK_MANAGER_APP_NAME: 'claude',
+    AI_TASK_MANAGER_SESSION_ID: 'fixture-verb-pipeline-enforcement',
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
     TT_SKIP_NETWORK: '1',
     ...extra,

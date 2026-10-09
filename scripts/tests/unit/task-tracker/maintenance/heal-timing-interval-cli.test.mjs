@@ -199,7 +199,7 @@ test('main serializes the full operation under the issue timing lock', async () 
     err: { write: (chunk) => err.push(chunk) },
     exit: (code) => exits.push(code),
     loadConfig: async () => ({ repo: 'kburson/ai-task-manager' }),
-    getProjectDir: () => '/project',
+    getProjectDir: () => process.cwd(),
     withLock: async (path, fn, options) => {
       locks.push({ path, options });
       return fn();

@@ -11,7 +11,6 @@ import {
   projectScratchDir,
   resolveScratchRoot,
 } from '../../../../task-tracker/lib/scratch-dir.mjs';
-import { BoundWorktreeMissingError } from '../../../../task-tracker/lib/project-dir.mjs';
 
 await withUnitRuntimeRoot(async () => {
   const originalCwd = process.cwd();
@@ -50,50 +49,38 @@ await withUnitRuntimeRoot(async () => {
       else process.env.AI_TASK_MANAGER_PROJECT_DIR = prev;
     }
 
-    // 6. a valid bound-worktree result remains authoritative
+    // Artifact allocation follows physical root identity even when a binding resolver
+    // would select a different worktree or fail. It never consumes binding authority.
     const boundRoot = path.join(sandbox, 'bound-worktree');
+    for (const bindingResolver of [
+      () => boundRoot,
+      () => {
+        throw new Error('corrupt binding record');
+      },
+    ]) {
+      assert.equal(
+        resolveScratchRoot(undefined, {
+          resolveProjectDir: bindingResolver,
+          env: {},
+          cwd: () => sandbox,
+        }),
+        sandbox
+      );
+    }
     assert.equal(
       resolveScratchRoot(undefined, {
-        resolveProjectDir: () => boundRoot,
-        env: {},
-        cwd: () => path.join(sandbox, 'wrong-cwd'),
-      }),
-      boundRoot
-    );
-
-    // 7. only a missing binding degrades through env and cwd fallbacks
-    const missingBinding = () => {
-      throw new BoundWorktreeMissingError('the active issue');
-    };
-    assert.equal(
-      resolveScratchRoot(undefined, {
-        resolveProjectDir: missingBinding,
         env: { AI_TASK_MANAGER_PROJECT_DIR: sandbox },
         cwd: () => sandbox,
       }),
       sandbox
     );
-    assert.equal(
-      resolveScratchRoot(undefined, {
-        resolveProjectDir: missingBinding,
-        env: {},
-        cwd: () => sandbox,
-      }),
-      sandbox
-    );
-
-    // 8. a resolver failure other than BoundWorktreeMissingError stays fatal
-    const corruptBinding = new Error('corrupt binding record');
     assert.throws(
       () =>
         resolveScratchRoot(undefined, {
-          resolveProjectDir: () => {
-            throw corruptBinding;
-          },
-          env: {},
+          env: { AI_TASK_MANAGER_PROJECT_DIR: boundRoot },
           cwd: () => sandbox,
         }),
-      (error) => error === corruptBinding
+      { code: 'ROOT_IDENTITY_MISMATCH' }
     );
   } finally {
     process.chdir(originalCwd);

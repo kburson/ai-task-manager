@@ -23,10 +23,13 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  withUnitRuntimeRoot,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import {
   saveState,
   loadState,
@@ -34,56 +37,61 @@ import {
   clearActive,
 } from '../../../../task-tracker/state.mjs';
 
-const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-407-binding-'));
+const sandbox = createActivatedUnitRuntimeRoot('tt-407-binding-');
 const prevProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
 process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
 try {
-  const statePath = path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json');
+  await withUnitRuntimeRoot(async () => {
+    const statePath = path.join(
+      sandbox,
+      '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+    );
 
-  // Bind #999 with an OPEN timing session, as `start #999` would leave it.
-  saveState(
-    {
-      active: '#999',
-      lastActive: '#999',
-      entryStartTs: '2026-06-15T10:00:00.000Z',
-      wordsAtEntryStart: 1000,
-      totalActiveMinutes: 0,
-      discoverBucket: null,
-    },
-    statePath
-  );
+    // Bind #999 with an OPEN timing session, as `start #999` would leave it.
+    saveState(
+      {
+        active: '#999',
+        lastActive: '#999',
+        entryStartTs: '2026-06-15T10:00:00.000Z',
+        wordsAtEntryStart: 1000,
+        totalActiveMinutes: 0,
+        discoverBucket: null,
+      },
+      statePath
+    );
 
-  // --- Verb 1: `test #999` passes. Writes via pauseTimingKeepBinding. ---
-  let s = loadState(statePath);
-  assert.equal(s.active, '#999', 'precondition: #999 is bound');
-  saveState(pauseTimingKeepBinding(s, '#999'), statePath);
+    // --- Verb 1: `test #999` passes. Writes via pauseTimingKeepBinding. ---
+    let s = loadState(statePath);
+    assert.equal(s.active, '#999', 'precondition: #999 is bound');
+    saveState(pauseTimingKeepBinding(s, '#999'), statePath);
 
-  let afterTest = loadState(statePath);
-  assert.equal(afterTest.active, '#999', 'AC1/AC2: binding must survive a successful `test`');
-  assert.equal(afterTest.entryStartTs, null, 'test closes the timing session');
-  assert.equal(afterTest.wordsAtEntryStart, 0, 'test resets the word marker');
-  assert.equal(afterTest.lastActive, '#999', 'lastActive records the issue');
+    let afterTest = loadState(statePath);
+    assert.equal(afterTest.active, '#999', 'AC1/AC2: binding must survive a successful `test`');
+    assert.equal(afterTest.entryStartTs, null, 'test closes the timing session');
+    assert.equal(afterTest.wordsAtEntryStart, 0, 'test resets the word marker');
+    assert.equal(afterTest.lastActive, '#999', 'lastActive records the issue');
 
-  // --- Verb 2: `review #999` runs with NO intervening `start #999`. ---
-  // The binding from verb 1 is still present, so review operates directly.
-  s = loadState(statePath);
-  assert.equal(
-    s.active,
-    '#999',
-    'AC1: second verb must find the issue still bound — no re-bind required'
-  );
-  saveState(pauseTimingKeepBinding(s, '#999'), statePath);
+    // --- Verb 2: `review #999` runs with NO intervening `start #999`. ---
+    // The binding from verb 1 is still present, so review operates directly.
+    s = loadState(statePath);
+    assert.equal(
+      s.active,
+      '#999',
+      'AC1: second verb must find the issue still bound — no re-bind required'
+    );
+    saveState(pauseTimingKeepBinding(s, '#999'), statePath);
 
-  const afterReview = loadState(statePath);
-  assert.equal(afterReview.active, '#999', 'AC3: binding survives across the verb→verb sequence');
-  assert.equal(afterReview.entryStartTs, null, 'review leaves the timing session closed');
+    const afterReview = loadState(statePath);
+    assert.equal(afterReview.active, '#999', 'AC3: binding survives across the verb→verb sequence');
+    assert.equal(afterReview.entryStartTs, null, 'review leaves the timing session closed');
 
-  // --- AC2 contrast: only an explicit unbind clears `active`. ---
-  clearActive(statePath);
-  const afterPause = loadState(statePath);
-  assert.equal(afterPause.active, null, 'AC2: explicit pause/unbind is what clears the binding');
+    // --- AC2 contrast: only an explicit unbind clears `active`. ---
+    clearActive(statePath);
+    const afterPause = loadState(statePath);
+    assert.equal(afterPause.active, null, 'AC2: explicit pause/unbind is what clears the binding');
 
-  console.log('test-407-binding-survives.test.mjs: all passed');
+    console.log('test-407-binding-survives.test.mjs: all passed');
+  });
 } finally {
   if (prevProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
   else process.env.AI_TASK_MANAGER_PROJECT_DIR = prevProjectDir;

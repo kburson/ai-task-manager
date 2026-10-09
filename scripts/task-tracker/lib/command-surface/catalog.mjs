@@ -629,15 +629,9 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints current values, the changed setting, or interview results.']
   ),
   'migrate-runtime': contract(
-    [
-      'Physical registered roots and exact approved schemas are required; main empty and linked-v2 recovery require operation plus observed digest.',
-    ],
-    [
-      'Plans and inspects without ordinary authority reads; migration or explicit main/linked initialization publishes only its approved recoverable outcome.',
-    ],
-    [
-      'Prints a JSON migration/empty/linked plan, protected status with exact observation digests, or typed refusal.',
-    ]
+    ['Physical registered roots are required; apply requires an exact trusted plan and genuine quiescent writer census.'],
+    ['Plans and inspects without importing state; explicit apply or resume publishes only the approved recoverable transaction.'],
+    ['Prints a JSON plan, transaction status, or typed refusal.']
   ),
   migrate: contract(
     [

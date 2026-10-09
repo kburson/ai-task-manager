@@ -10,9 +10,14 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  createCommittedRuntimeRootFixture,
+  createRuntimeRootFixture,
+} from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import {
   isPausedTask,
   isTerminalIssueState,
@@ -39,8 +44,8 @@ test('hookStampKey hashes the complete normalized identity without exposing the 
   assert.doesNotMatch(key, /secret|grok|sid/);
 });
 
-test('claimHookStamp deduplicates exact identities and anchors sibling worktrees together', () => {
-  const repo = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-hook-stamp-repo-'));
+test('claimHookStamp deduplicates exact identities and anchors sibling worktrees together', async () => {
+  const repo = await createCommittedRuntimeRootFixture('aitm-hook-stamp-repo-');
   const sibling = `${repo}-sibling`;
   try {
     execFileSync('git', ['init', '-q'], { cwd: repo });
@@ -83,8 +88,8 @@ test('claimHookStamp deduplicates exact identities and anchors sibling worktrees
   }
 });
 
-test('claimHookStamp propagates non-EEXIST write errors', () => {
-  const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-hook-stamp-error-'));
+test('claimHookStamp propagates non-EEXIST write errors', async () => {
+  const projectDir = await createCommittedRuntimeRootFixture('aitm-hook-stamp-error-');
   assert.throws(
     () =>
       claimHookStamp({
@@ -196,14 +201,14 @@ test('fetchIssueState: returns null when runner yields empty stdout', async () =
 });
 
 test('claimRecoveryOnce: first call wins, second call for same path loses', () => {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-recovery-'));
+  const dir = createRuntimeRootFixture('aitm-recovery-');
   const lock = path.join(dir, 'recovery.lock');
   assert.equal(claimRecoveryOnce(lock), true, 'first claim should win');
   assert.equal(claimRecoveryOnce(lock), false, 'second claim should lose');
 });
 
 test('claimRecoveryOnce: a fresh path in the same dir wins independently', () => {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-recovery-'));
+  const dir = createRuntimeRootFixture('aitm-recovery-');
   assert.equal(claimRecoveryOnce(path.join(dir, 'a.lock')), true);
   assert.equal(claimRecoveryOnce(path.join(dir, 'b.lock')), true);
 });

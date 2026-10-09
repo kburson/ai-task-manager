@@ -16,6 +16,7 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { mkdtempSync, rmSync, writeFileSync, chmodSync, readFileSync } from 'node:fs';
 import {
   projectScratchDir,
@@ -32,7 +33,7 @@ const __dirname = path.dirname(__filename) + '/..';
 const repoRoot = path.resolve(__dirname, '../../../..');
 const fakeGhMjs = path.join(__dirname, '../../fixtures/fake-gh.mjs');
 
-const tmp = mkdtempProjectIsolated('tt-timing-conc-');
+const tmp = await createActivatedRuntimeRootFixture('tt-timing-conc-');
 const binDir = path.join(tmp, 'bin');
 const store = path.join(tmp, 'store.json');
 
@@ -88,6 +89,8 @@ function runWorker(label, event) {
         FAKE_GH_STORE: store,
         FAKE_GH_DELAY_MS: '50', // widen race window
         AI_TASK_MANAGER_PROJECT_DIR: tmp,
+        AI_TASK_MANAGER_SESSION_ID: `timing-${label}`,
+        AI_TASK_MANAGER_APP_NAME: 'claude',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });

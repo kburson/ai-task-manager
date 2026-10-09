@@ -1,11 +1,5 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import path from 'node:path';
-import {
-  legacyPathFor,
-  statePath as resolveStatePath,
-  SHARED_DIR_SEGMENT,
-  TMP_AITM_SEGMENT,
-} from './paths.mjs';
+import { statePath as resolveStatePath } from './paths.mjs';
+import { runtimeWriterRootsForPath, withRuntimeRecordLockSync, readRuntimeJsonRecord, writeRuntimeJsonRecord, validateRuntimeJsonPublication } from './lib/runtime-writer.mjs';
 import { clearActiveTask, getActiveTask, setActiveTask } from './session-state.mjs';
 import {
   ACTOR_TIMING_FIELDS,
@@ -65,24 +59,15 @@ export function stateFullWordMarker(state, marker = null) {
 // is still emitted. Callers that already have a loaded state should use
 // `state.lastWordMarker ?? 0` directly instead of reloading.
 export function durableWordMarker(projDir) {
-  try {
-    const sp = resolveStatePath(projDir);
-    return loadState(sp).lastWordMarker ?? 0;
-  } catch {
-    return 0;
-  }
+  return loadState(resolveStatePath(projDir)).lastWordMarker ?? 0;
 }
 
 export function durableWordMarkers(projDir) {
-  try {
-    const state = loadState(resolveStatePath(projDir));
-    return {
-      marker: state.lastWordMarker ?? 0,
-      fullMarker: stateFullWordMarker(state),
-    };
-  } catch {
-    return { marker: 0, fullMarker: 0 };
-  }
+  const state = loadState(resolveStatePath(projDir));
+  return {
+    marker: state.lastWordMarker ?? 0,
+    fullMarker: stateFullWordMarker(state),
+  };
 }
 
 // #1142 — one invariant for every transcript-boundary producer: the per-session
@@ -196,49 +181,15 @@ function migrateLegacyFields(parsed) {
 // always the correct project root. `indexOf` returned the outer (`<main>`)
 // segment, contaminating worktree session state into main.
 export function projectDirForState(statePath) {
-  const abs = path.isAbsolute(statePath) ? statePath : path.resolve(statePath);
-  const norm = abs.split(path.sep).join('/');
-  // #573: the state file now lives under `<projDir>/.tmp/aitm/state/`. Anchor on
-  // the rightmost `/.tmp/aitm/` segment first (worktree-local wins over main, per
-  // #332). Checked before the legacy `.ai-task-manager/`/`.claude/` containers so
-  // a relocated state path resolves to its true project root.
-  const tmpIdx = norm.lastIndexOf(TMP_AITM_SEGMENT);
-  if (tmpIdx !== -1) return abs.slice(0, tmpIdx);
-  // `.ai-task-manager/` is always a real state container — anchor on the
-  // rightmost one (worktree-local wins over main, per #332).
-  const aimIdx = norm.lastIndexOf(SHARED_DIR_SEGMENT);
-  if (aimIdx !== -1) return abs.slice(0, aimIdx);
-  // `.claude/` is trickier: `<main>/.claude/worktrees/<wt>/…` uses `.claude`
-  // as a worktree HOST, not a state container. A state file living deeper
-  // under such a worktree (e.g. a test sandbox at `<wt>/.scratch/test/…/state.json`)
-  // must NOT mis-anchor to `<main>`. Walk `.claude/` matches right-to-left and
-  // skip any whose next segment is `worktrees/` (the host marker); the first
-  // real container wins. Legacy inner state (`…/<wt>/.claude/state.json`) is
-  // followed by the state file, so it still anchors correctly. (#486 follow-up)
-  for (let from = norm.length; ;) {
-    const idx = norm.lastIndexOf('/.claude/', from);
-    if (idx === -1) break;
-    const after = norm.slice(idx + '/.claude/'.length);
-    if (!after.startsWith('worktrees/')) return abs.slice(0, idx);
-    from = idx - 1;
-  }
-  return path.dirname(abs);
+  // Only the rightmost exact durable store can identify an owner. The shared
+  // resolver verifies its physical Git registration and every path ancestor.
+  // Enclosing config directories and volatile legacy paths grant no authority.
+  return runtimeWriterRootsForPath(statePath).projectRoot;
 }
 
 export function loadState(statePath) {
-  let readPath = statePath;
-  if (!existsSync(readPath)) {
-    const legacy = legacyPathFor(statePath);
-    if (legacy && existsSync(legacy)) readPath = legacy;
-  }
-  let parsed = {};
-  if (existsSync(readPath)) {
-    try {
-      parsed = JSON.parse(readFileSync(readPath, 'utf8'));
-    } catch {
-      parsed = {};
-    }
-  }
+  const roots = runtimeWriterRootsForPath(statePath);
+  const parsed = readRuntimeJsonRecord(statePath);
   const base = { ...EMPTY_STATE, ...migrateLegacyFields(parsed) };
   for (const field of ACTOR_TIMING_FIELDS) delete base[field];
   Object.assign(base, EMPTY_STATE);
@@ -252,7 +203,7 @@ export function loadState(statePath) {
   // its values take precedence over any legacy fields surfaced from the global
   // file. Missing-dir tolerated by getActiveTask (returns null).
   const sid = currentSid();
-  const projDir = projectDirForState(statePath);
+  const projDir = roots.projectRoot;
   const ownTiming = readActorTimingState({ provider: aiAppName(), sid }, projDir);
   if (ownTiming) Object.assign(base, migrateLegacyFields(ownTiming));
   else {
@@ -287,11 +238,20 @@ export function loadState(statePath) {
 }
 
 export function saveState(state, statePath) {
+  return withRuntimeRecordLockSync(statePath, () => {
+  state = { ...state };
   const sid = currentSid();
   const identity = { provider: aiAppName(), sid };
   const actorRecord = actorTimingStateRecord(identity, migrateLegacyFields(state));
-  mkdirSync(path.dirname(statePath), { recursive: true });
   const projDir = projectDirForState(statePath);
+  const previous = readRuntimeJsonRecord(statePath);
+  const shared = Object.fromEntries(
+    Object.entries(state).filter(([key]) => !ACTOR_TIMING_FIELDS.includes(key))
+  );
+  const globalPayload = { ...previous, ...shared };
+  delete globalPayload.state;
+  for (const field of WORKTREE_SESSION_FIELDS) delete globalPayload[field];
+  validateRuntimeJsonPublication(statePath, globalPayload);
   readActorTimingState(identity, projDir);
   const priorBinding = getActiveTask(sid, projDir);
   // Split: per-session triple goes to active-task.json; remainder stays in the
@@ -325,22 +285,8 @@ export function saveState(state, statePath) {
   // retaining only this actor's resume and word cursor evidence.
   writeActorTimingState(identity, projDir, actorRecord.state);
   void PER_SESSION_FIELDS;
-  let previous = {};
-  if (existsSync(statePath)) {
-    try {
-      previous = JSON.parse(readFileSync(statePath, 'utf8'));
-    } catch {
-      /* legacy unknown */
-    }
-  }
-  const shared = Object.fromEntries(
-    Object.entries(state).filter(([key]) => !ACTOR_TIMING_FIELDS.includes(key))
-  );
-  const globalPayload = { ...previous, ...shared };
-  // #218: never persist `state` to disk — issue body is the source of truth.
-  delete globalPayload.state;
-  for (const field of WORKTREE_SESSION_FIELDS) delete globalPayload[field];
-  writeFileSync(statePath, JSON.stringify(globalPayload, null, 2) + '\n', 'utf8');
+  writeRuntimeJsonRecord(statePath, globalPayload);
+  });
 }
 
 // #407 — next-state for a successful NON-terminal verb (test, review) that
@@ -360,6 +306,7 @@ export function pauseTimingKeepBinding(state, ref) {
 }
 
 export function clearActive(statePath) {
+  return withRuntimeRecordLockSync(statePath, () => {
   const s = loadState(statePath);
   s.active = null;
   s.entryStartTs = null;
@@ -367,4 +314,5 @@ export function clearActive(statePath) {
   s.discoverBucket = null;
   // keep lastActive; `state` is body-sourced (#218), not persisted here.
   saveState(s, statePath);
+  });
 }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import { uncheckedPreCloseCheckboxes } from '../../../../task-tracker/close-gate.mjs';
 import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
@@ -15,8 +15,15 @@ const REPO = 'example/project';
 // @story #1859
 for (const lane of ['delivered', 'local-trunk']) {
   test(`Close preserves unchecked reasons after ${lane} authority with old attachments removed`, async () => {
-    const projectDir = mkdtempProjectIsolated('aitm-close-normalization-');
-    const statePath = path.join(projectDir, 'state.json');
+    const projectDir = await createActivatedRuntimeRootFixture('aitm-close-normalization-');
+    const statePath = path.join(
+      projectDir,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'state',
+      'task-tracker-state.json'
+    );
     // #1857: seed the current actor contract in this isolated fixture.
     const actorEnv = {
       AI_TASK_MANAGER_SESSION_ID: 'fixture-normalization-1669',

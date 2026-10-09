@@ -12,6 +12,10 @@
 // asserts the two-stage cleanup (git remove → fs.rmSync) succeeds even when
 // a nested .git/ fixture is present.
 import { strict as assert } from 'node:assert';
+import { testSandboxDirectory } from '../../../../task-tracker/lib/test-sandbox-reaper.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
@@ -37,8 +41,12 @@ async function git(args, cwd) {
 // the parent-repo shape `defaultCreateWorktree` needs. The companion wtPath
 // must live outside the project dir (git refuses worktree add inside the same
 // dir); use mkdtempOutsideRepo for that.
-const projectDir = mkdtempProjectIsolated('aitm-346-proj-');
-const wtPath = mkdtempOutsideRepo('aitm-346-wt-');
+const projectDir = await createCommittedRuntimeRootFixture('aitm-346-proj-');
+const wtPath = path.join(
+  testSandboxDirectory(projectDir),
+  `.task-test-346-12345678-${process.pid}-12345678`
+);
+mkdirSync(path.dirname(wtPath), { recursive: true });
 // `defaultCreateWorktree` calls `git worktree add` which requires the target
 // not to exist; drop the bare directory mkdtemp created.
 rmSync(wtPath, { recursive: true, force: true });

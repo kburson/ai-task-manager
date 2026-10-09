@@ -479,6 +479,42 @@ export function captureGuidanceLifecycle({ mode = 'historical' } = {}) {
       );
       git(['reset', '--hard', stableRoot], fixtureDir);
     }
+    // Synthetic capture repositories migrate their own known legacy fixture
+    // records before any candidate runtime reader is invoked.
+    const migrationModule = new URL('../task-tracker/lib/runtime-migration.mjs', import.meta.url)
+      .href;
+    const fixtureRoot = JSON.stringify(fixtureDir);
+    const activation = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `import {mkdirSync,writeFileSync} from 'node:fs'; import path from 'node:path';
+       import {planRuntimeMigration,applyRuntimeMigration} from ${JSON.stringify(migrationModule)};
+       const root=${fixtureRoot};
+       for (const [relative,value] of Object.entries({'state/task-tracker-state.json':{},
+         'state/task-tracker-queue.json':[], 'fleet/task-fleet.json':{}, 'fleet/occupancy.json':{}})) {
+         const file=path.join(root,'.tmp','aitm',relative); mkdirSync(path.dirname(file),{recursive:true});
+         writeFileSync(file,JSON.stringify(value));
+       }
+       const adapters={identity:()=>({provider:'fixture',sid:'guidance-capture',pid:process.pid,processToken:'capture-fixture'}),
+         trustLegacy:()=> 'explicit-operator-trust',writerCensus:()=>({complete:true,writers:[],claims:[]})};
+       const plan=await planRuntimeMigration({projectRoot:root,mainRoot:root,adapters});
+       await applyRuntimeMigration({plan,approvedPlanDigest:plan.digest,adapters});`,
+      ],
+      {
+        cwd: fixtureDir,
+        env: {
+          ...process.env,
+          AI_TASK_MANAGER_PROJECT_DIR: fixtureDir,
+          AI_TASK_MANAGER_SESSION_ID: 'guidance-capture',
+          AI_TASK_MANAGER_APP_NAME: 'claude',
+        },
+        encoding: 'utf8',
+      }
+    );
+    if (activation.error) throw activation.error;
+    if (activation.status !== 0) throw Error(`capture:runtime-fixture:${activation.stderr}`);
     mkdirSync(path.join(fixtureDir, SHARED_DIR), { recursive: true });
     mkdirSync(path.dirname(statePath(fixtureDir)), { recursive: true });
     mkdirSync(path.join(fixtureDir, 'fake-bin'), { recursive: true });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @story #309
-import { withUnitRuntimeRoot } from '../../../helpers/unit-runtime-root.mjs';
+import { withUnitRuntimeRoot, createUnitRootFixture } from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -107,7 +107,7 @@ await withUnitRuntimeRoot(async () => {
   rmSync(tmp, { recursive: true });
 
   // Aliases identify the same injected unit root; production conflicts have integration coverage.
-  const unitRoot = path.join(repoRoot, 'unit-root-model');
+  const unitRoot = createUnitRootFixture('path-alias-');
   for (const alias of [
     'AI_TASK_MANAGER_PROJECT_DIR',
     'TASK_TRACKER_PROJECT_DIR',
@@ -142,8 +142,8 @@ await withUnitRuntimeRoot(async () => {
   // (task-tracker.json) and the shared scratch subtree remain tracked under
   // SHARED_DIR; the markdown templates (pickup-directive.md, definition-of-done.md)
   // remain tracked but moved under SHARED_DIR/templates/ (#574); everything else moves.
-  const TMP_AITM = ['.tmp', 'aitm'];
-  const PX = '/tmp/proj-xyz-572';
+  const TMP_AITM = ['.ai-task-manager', 'runtime', 'store'];
+  const PX = createUnitRootFixture('path-local-');
   assert.equal(configPath(PX), path.join(PX, SHARED_DIR, 'task-tracker.json'));
   assert.equal(statePath(PX), path.join(PX, ...TMP_AITM, 'state', 'task-tracker-state.json'));
   assert.equal(queuePath(PX), path.join(PX, ...TMP_AITM, 'state', 'task-tracker-queue.json'));
@@ -167,7 +167,7 @@ await withUnitRuntimeRoot(async () => {
   // main-anchored resolvers join the supplied main worktree path. Relocated under
   // `.tmp/aitm/fleet/`; the MAIN-worktree anchor is preserved (sibling worktrees
   // share one registry/lock).
-  const MAIN = '/tmp/main-wt-572';
+  const MAIN = createUnitRootFixture('path-main-');
   assert.equal(fleetPath(MAIN), path.join(MAIN, ...TMP_AITM, 'fleet', 'task-fleet.json'));
   assert.equal(
     orchestratorLockPath(MAIN),
@@ -187,5 +187,6 @@ await withUnitRuntimeRoot(async () => {
     }
   }
 
+  for (const root of [unitRoot, PX, MAIN]) rmSync(root, { recursive: true });
   console.log('paths.test.mjs: all passed');
 });

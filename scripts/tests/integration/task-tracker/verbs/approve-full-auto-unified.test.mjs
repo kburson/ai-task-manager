@@ -1,3 +1,22 @@
+// @story #1857
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync as removeRuntimeFixture, copyFileSync, mkdirSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
+const approvalRuntimeFixture = await createCommittedRuntimeRootFixture('approve-full-auto-');
+process.env.AI_TASK_MANAGER_PROJECT_DIR = approvalRuntimeFixture;
+const approvalOriginalCwd = process.cwd();
+process.chdir(approvalRuntimeFixture);
+mkdirSync(`${approvalRuntimeFixture}/.ai-task-manager/templates`, { recursive: true });
+for (const template of ['pickup-directive.md', 'definition-of-done.md']) {
+  copyFileSync(
+    `${approvalOriginalCwd}/.ai-task-manager/templates/${template}`,
+    `${approvalRuntimeFixture}/.ai-task-manager/templates/${template}`
+  );
+}
+process.on('exit', () =>
+  removeRuntimeFixture(approvalRuntimeFixture, { recursive: true, force: true })
+);
 // @story #310
 // Unit tests for scripts/task-tracker/verbs/approve.mjs.
 //
@@ -170,7 +189,7 @@ function makeDeps(overrides = {}) {
   const rendered = execFileSync(
     'node',
     [
-      'scripts/task-tracker/preflight-issue.mjs',
+      path.resolve(approvalOriginalCwd, 'scripts/task-tracker/preflight-issue.mjs'),
       '--shape',
       'solo',
       '--user-story-file',

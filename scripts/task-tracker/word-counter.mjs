@@ -1,7 +1,9 @@
 // Word counter — extracted from tally-chat-words.mjs for reuse.
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { resolveRuntimeRoot } from './lib/runtime-storage.mjs';
+import { tmpAitmDir } from './paths.mjs';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord } from './lib/runtime-writer.mjs';
+import { resolveRuntimeRoot, assertRuntimeStoragePath, RuntimeRootError } from './lib/runtime-storage.mjs';
 import { homedir } from 'node:os';
 
 import { detectProvider, getProvider, listProviders } from '../providers/index.mjs';
@@ -32,23 +34,40 @@ export function aiAppName() {
 }
 
 export function appStateDir() {
-  // Provider-specific AITM state dir (registry-driven).
-  return path.join(projectDir(), getProvider(aiAppName()).stateDir);
+  // Provider data is owned by the same durable worktree store as its binding.
+  return path.join(tmpAitmDir(projectDir()), 'app', aiAppName());
+}
+
+function validatedTranscriptPath(target, root) {
+  const absolute = path.resolve(target);
+  if (absolute.split(path.sep).some((part) => ['.scratch', '.tmp', 'docs'].includes(part)))
+    throw new RuntimeRootError('RUNTIME_OVERRIDE_UNSAFE', 'Artifact paths cannot supply authoritative transcript evidence');
+  return assertRuntimeStoragePath(absolute, path.resolve(root));
+}
+
+function nativeTranscriptRoot(adapter) {
+  const providerHome = adapter.transcriptHomeEnv && process.env[adapter.transcriptHomeEnv]
+    ? process.env[adapter.transcriptHomeEnv]
+    : adapter.transcriptHomeDefault ? path.join(homedir(), adapter.transcriptHomeDefault) : homedir();
+  return adapter.transcriptLocator ? path.join(providerHome, adapter.transcriptLocator) : null;
 }
 
 export function transcriptDir() {
-  if (process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR) return process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
   const local = path.join(appStateDir(), 'session-transcripts');
-  if (existsSync(local)) return local;
-  // Fall back to the provider's native per-project transcript directory when
-  // the local session-transcripts directory hasn't been created (e.g.
-  // pre-existing install). Only providers that declare a `transcriptLocator`
-  // expose a homedir-rooted fallback.
-  const locator = getProvider(aiAppName()).transcriptLocator;
-  if (locator) {
-    const nativeDir = path.join(homedir(), locator, projectKey());
-    if (existsSync(nativeDir)) return nativeDir;
+  validatedTranscriptPath(local, appStateDir());
+  const adapter = getProvider(aiAppName());
+  const nativeRoot = nativeTranscriptRoot(adapter);
+  const nativeDir = nativeRoot && adapter.transcriptLayout === 'flat'
+    ? path.join(nativeRoot, projectKey()) : nativeRoot;
+  const explicit = process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
+  if (explicit) {
+    const selected = path.resolve(explicit);
+    if (selected !== local && selected !== nativeDir)
+      throw new RuntimeRootError('RUNTIME_OVERRIDE_UNSAFE', 'Transcript override must name the exact durable mirror or declared native provider directory');
+    return validatedTranscriptPath(selected, selected === local ? appStateDir() : nativeRoot);
   }
+  if (existsSync(local)) return local;
+  if (nativeDir && existsSync(nativeDir)) return validatedTranscriptPath(nativeDir, nativeRoot);
   return local;
 }
 
@@ -58,7 +77,9 @@ export function markerDir() {
 
 export function jsonlPath(sid) {
   const adapter = getProvider(aiAppName());
-  const flat = path.join(transcriptDir(), `${sid}.jsonl`);
+  timingActorKey({ provider: aiAppName(), sid });
+  const selectedDir = transcriptDir();
+  const flat = validatedTranscriptPath(path.join(selectedDir, `${sid}.jsonl`), selectedDir);
   if (adapter.sessionIdFallback === 'legacy' && existsSync(flat)) return flat;
   if (adapter.transcriptLayout !== 'flat') {
     const resolved = resolveTranscriptPath({
@@ -69,7 +90,7 @@ export function jsonlPath(sid) {
       cwd: projectDir(),
       env: process.env,
     });
-    return resolved || '';
+    return resolved ? validatedTranscriptPath(resolved, nativeTranscriptRoot(adapter)) : '';
   }
   // The flat path (env override → local session-transcripts → Claude's homedir
   // fallback) is the historical resolution and stays authoritative when it
@@ -110,10 +131,7 @@ export function ensureSessionTracking(sid) {
       wordCount: { line: 0, words: 0, wordsFull: 0, task: null, ts: null },
     };
     validateWordCursor(record, identity);
-    mkdirSync(path.dirname(trackingPath), { recursive: true });
-    const temporary = trackingPath + '.tmp.' + process.pid;
-    writeFileSync(temporary, JSON.stringify(record, null, 2) + String.fromCharCode(10), 'utf8');
-    renameSync(temporary, trackingPath);
+    writeRuntimeJsonRecord(trackingPath, record, { actorIdentity: identity });
     return record;
   });
 }
@@ -164,29 +182,21 @@ export function validateWordCursor(record, identity) {
   return merged;
 }
 function readCursor(markerPath, identity) {
-  if (!existsSync(markerPath)) return null;
-  let record;
-  try {
-    record = JSON.parse(readFileSync(markerPath, 'utf8'));
-  } catch {
-    invalidCursor();
-  }
+  const record = readRuntimeJsonRecord(markerPath, { optional: true, actorIdentity: identity });
+  if (record === null) return null;
   validateWordCursor(record, identity);
   return record;
 }
 export function loadMarker(markerPath, { identity = cursorIdentity() } = {}) {
-  if (!existsSync(markerPath)) return { line: 0, words: 0, wordsFull: 0, task: null };
-  try {
-    const { wordCount } = readCursor(markerPath, identity);
+    const record = readCursor(markerPath, identity);
+    if (record === null) return { line: 0, words: 0, wordsFull: 0, task: null };
+    const { wordCount } = record;
     const merged = { line: 0, words: 0, task: null, ...wordCount };
     // Legacy markers persisted before the full-expansion tier lack `wordsFull`.
     // Default it to the loaded `words` so the cumulative full snapshot never
     // reads back as NaN/undefined and the `wordsFull >= words` invariant holds.
     if (merged.wordsFull == null) merged.wordsFull = merged.words;
     return merged;
-  } catch {
-    invalidCursor();
-  }
 }
 
 export function saveMarker(
@@ -214,16 +224,14 @@ export function saveMarker(
       },
     };
     validateWordCursor(record, identity);
-    mkdirSync(path.dirname(markerPath), { recursive: true });
-    const temporary = markerPath + '.tmp.' + process.pid;
-    writeFileSync(temporary, JSON.stringify(record, null, 2) + '\n', 'utf8');
-    renameSync(temporary, markerPath);
+    writeRuntimeJsonRecord(markerPath, record, { actorIdentity: identity });
   });
 }
 
 // #1142 — compaction is a transcript cursor boundary, not a word-count reset.
 // Advance only the consumed line index while carrying both absolute markers.
 export function advanceMarkerCursor(markerPath, line, task = undefined, options = {}) {
+  return withLock(markerPath, () => {
   const marker = loadMarker(markerPath, options);
   saveMarker(
     markerPath,
@@ -234,6 +242,7 @@ export function advanceMarkerCursor(markerPath, line, task = undefined, options 
     options
   );
   return loadMarker(markerPath, options);
+  });
 }
 
 // Prefixes/markers that indicate injected (non-reader-visible) text.

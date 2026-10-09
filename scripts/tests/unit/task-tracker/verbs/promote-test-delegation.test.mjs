@@ -15,10 +15,16 @@
 
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
-import path from 'node:path';
+import { rmSync } from 'node:fs';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import {
+  runtimeWriterRootsForPath,
+  runtimeOperationKey,
+} from '../../../../task-tracker/lib/runtime-writer.mjs';
+import { inspectRuntimeOperationLock } from '../../../../task-tracker/lib/runtime-migration-lock.mjs';
+initializeFixtureActor(import.meta.url);
 import {
   ISSUE_LOCK_HELD_ENV,
   issueLockPath,
@@ -28,23 +34,29 @@ import { runTestWithEntryInterlock } from '../../../../task-tracker/verbs/test.m
 
 const ISSUE = 1261;
 
-function freshProjDir(label) {
-  const dir = path.join(
-    projectScratchDir('inspect'),
-    `promote-test-delegation-${label}-${process.pid}`
-  );
-  rmSync(dir, { recursive: true, force: true });
-  mkdirSync(dir, { recursive: true });
-  return dir;
+const roots = [];
+test.after(() => {
+  for (const root of roots) rmSync(root, { recursive: true, force: true });
+});
+async function freshProjDir(label) {
+  const root = await createActivatedRuntimeRootFixture('promote-test-delegation-' + label + '-');
+  roots.push(root);
+  return root;
+}
+function protectedLock(file) {
+  return inspectRuntimeOperationLock({
+    ...runtimeWriterRootsForPath(file),
+    recordKey: runtimeOperationKey(file),
+  });
 }
 
 // This suite can itself run inside a held frame (the `/task test` sandbox is
 // spawned under promote's lock), so scrub the inherited flag before asserting.
-function withScrubbedEnv(fn) {
+async function withScrubbedEnv(fn) {
   const prior = process.env[ISSUE_LOCK_HELD_ENV];
   delete process.env[ISSUE_LOCK_HELD_ENV];
   try {
-    return fn();
+    return await fn();
   } finally {
     if (prior === undefined) delete process.env[ISSUE_LOCK_HELD_ENV];
     else process.env[ISSUE_LOCK_HELD_ENV] = prior;
@@ -53,7 +65,7 @@ function withScrubbedEnv(fn) {
 
 test('the test delegate runs inside promote-held lock instead of deadlocking', async () => {
   await withScrubbedEnv(async () => {
-    const projectDir = freshProjDir('delegate');
+    const projectDir = await freshProjDir('delegate');
     const lockPath = issueLockPath(ISSUE, projectDir);
     let delegateRan = false;
 
@@ -67,7 +79,7 @@ test('the test delegate runs inside promote-held lock instead of deadlocking', a
             delegateRan = true;
             assert.equal(issueNumber, ISSUE);
             assert.equal(dir, projectDir);
-            assert.equal(existsSync(lockPath), true, 'promote still holds the lock');
+            assert.equal(protectedLock(lockPath).status, 'owned', 'promote still holds the lock');
             return { status: 'ok' };
           },
         },
@@ -76,13 +88,13 @@ test('the test delegate runs inside promote-held lock instead of deadlocking', a
 
     assert.equal(delegateRan, true, 'delegate body executed — no IssueLockError');
     assert.deepEqual(result, { status: 'ok' }, 'the delegate result propagates to promote');
-    assert.equal(existsSync(lockPath), false, 'promote released the lock on exit');
+    assert.equal(protectedLock(lockPath).status, 'absent', 'promote released the lock on exit');
   });
 });
 
 test('the test delegate still acquires for real when promote is not holding', async () => {
   await withScrubbedEnv(async () => {
-    const projectDir = freshProjDir('standalone');
+    const projectDir = await freshProjDir('standalone');
     const lockPath = issueLockPath(ISSUE, projectDir);
     let delegateRan = false;
 
@@ -95,20 +107,20 @@ test('the test delegate still acquires for real when promote is not holding', as
       deps: {
         runVerbTest: async () => {
           delegateRan = true;
-          assert.equal(existsSync(lockPath), true, 'delegate holds the lock itself');
+          assert.equal(protectedLock(lockPath).status, 'owned', 'delegate holds the lock itself');
           return { status: 'ok' };
         },
       },
     });
 
     assert.equal(delegateRan, true);
-    assert.equal(existsSync(lockPath), false, 'and releases it');
+    assert.equal(protectedLock(lockPath).status, 'absent', 'and releases it');
   });
 });
 
 test('a promote frame on a different issue does not wave the delegate through', async () => {
   await withScrubbedEnv(async () => {
-    const projectDir = freshProjDir('cross-issue');
+    const projectDir = await freshProjDir('cross-issue');
     const ownLock = issueLockPath(ISSUE, projectDir);
 
     await withIssueLock({ issue: 871, verb: 'promote', projDir: projectDir }, () =>
@@ -118,13 +130,17 @@ test('a promote frame on a different issue does not wave the delegate through', 
         projectDir,
         deps: {
           runVerbTest: async () => {
-            assert.equal(existsSync(ownLock), true, 'the #1261 delegate took its own lock');
+            assert.equal(
+              protectedLock(ownLock).status,
+              'owned',
+              'the #1261 delegate took its own lock'
+            );
             return { status: 'ok' };
           },
         },
       })
     );
 
-    assert.equal(existsSync(ownLock), false);
+    assert.equal(protectedLock(ownLock).status, 'absent');
   });
 });

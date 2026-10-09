@@ -1,109 +1,55 @@
 #!/usr/bin/env node
-// Orchestrator lock — companion CLI to agent-guard.mjs.
-//
-// Writes/reads/clears `<main>/.ai-task-manager/orchestrator.lock` so a Claude
-// session running on the main worktree can legitimately fan out Agent tool
-// spawns (each spawn must still set `isolation: "worktree"` — enforced by
-// agent-guard.mjs).
-//
-// Verbs:
-//   acquire <epic> [--ttl-hours <h>]
-//                    write lock {epic, startedAt, ttlMs}. Refuses if a
-//                    non-expired lock already exists; auto-replaces an
-//                    expired lock.
-//   release          remove lock unconditionally. Idempotent.
-//   status           print lock state to stdout (json). Exit 0.
-//
-// Default TTL: 4 hours. Override per-acquire with `--ttl-hours`.
-
-import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, realpathSync } from 'node:fs';
-import path from 'node:path';
+// @story #1857
+// Durable orchestrator permission. Expiry disables capability; it never grants
+// takeover or foreign release. A legacy ownerless record needs explicit
+// operator disposition before adoption and is preserved on refusal.
+import { rmSync } from 'node:fs';
 import { findMainWorktreePath } from './fleet-registry.mjs';
 import { orchestratorLockPath } from './paths.mjs';
+import { currentSessionId, aiAppName } from './word-counter.mjs';
+import { timingActorKey } from './lib/timing-actor.mjs';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord, withRuntimeRecordLockSync } from './lib/runtime-writer.mjs';
 
 const DEFAULT_TTL_MS = 4 * 60 * 60 * 1000;
-
-function canon(p) {
-  try {
-    return realpathSync(path.resolve(p));
-  } catch {
-    return path.resolve(p);
-  }
-}
-
-function lockPath() {
-  const main = canon(findMainWorktreePath(process.cwd()));
-  return orchestratorLockPath(main);
-}
-
-function readLockFile(p) {
-  if (!existsSync(p)) return null;
-  try {
-    return JSON.parse(readFileSync(p, 'utf8'));
-  } catch {
-    return null;
-  }
-}
-
-function lockExpired(lock) {
-  const ttl = Number.isFinite(lock.ttlMs) && lock.ttlMs > 0 ? lock.ttlMs : DEFAULT_TTL_MS;
-  const started = Date.parse(lock.startedAt);
-  if (!Number.isFinite(started)) return true;
-  return Date.now() - started > ttl;
-}
-
-function fail(msg, code = 1) {
-  process.stderr.write(msg + '\n');
-  process.exit(code);
-}
-
 const argv = process.argv.slice(2);
-const verb = argv[0];
-const rest = argv.slice(1);
-const p = lockPath();
+const verb = argv.shift();
+const usage = 'usage: orchestrator-lock.mjs <acquire <epic> [--ttl-hours <h>] | release | status>';
 
-function takeFlag(name) {
-  const i = rest.indexOf(name);
-  if (i === -1) return null;
-  const v = rest[i + 1];
-  rest.splice(i, 2);
-  return v;
+try {
+  if (!['acquire', 'release', 'status'].includes(verb)) throw new Error(usage);
+  let ttlMs = DEFAULT_TTL_MS;
+  let epic;
+  if (verb === 'acquire') {
+    epic = argv.shift();
+    if (!epic || !/^#?[1-9][0-9]*$/.test(epic))
+      throw new Error('usage: orchestrator-lock.mjs acquire <epic> [--ttl-hours <h>]');
+    if (argv.length) {
+      if (argv.length !== 2 || argv[0] !== '--ttl-hours') throw new Error(usage);
+      ttlMs = Math.round(Number(argv[1]) * 3600 * 1000);
+      if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) throw new Error('invalid --ttl-hours');
+    }
+  } else if (argv.length) throw new Error(usage);
+  const p = orchestratorLockPath(findMainWorktreePath(process.cwd()));
+  const result = withRuntimeRecordLockSync(p, () => {
+    const existing = readRuntimeJsonRecord(p, { optional: true });
+    if (verb === 'status')
+      return existing ? JSON.stringify({ held: true, expired: Date.now() - Date.parse(existing.startedAt) > existing.ttlMs, ...existing }) : JSON.stringify({ held: false });
+    const identity = { provider: aiAppName(), sid: currentSessionId() };
+    const actor = timingActorKey(identity);
+    if (verb === 'acquire') {
+      if (existing) throw new Error('lock held for ' + existing.epic + '; explicit owner release or recovery is required, including expired records');
+      writeRuntimeJsonRecord(p, { schema: 'aitm.orchestrator-lock/v1', epic, startedAt: new Date().toISOString(), ttlMs, owner: { ...identity, actor } });
+      return 'acquired orchestrator lock for ' + epic + ' (ttl=' + ttlMs + 'ms)';
+    }
+    if (existing) {
+      if (existing.schema !== 'aitm.orchestrator-lock/v1' || existing.owner.actor !== actor)
+        throw new Error('ORCHESTRATOR_OWNER_MISMATCH: refusing foreign or ownerless lock release');
+      rmSync(p);
+    }
+    return 'orchestrator lock released';
+  });
+  process.stdout.write(result + '\n');
+} catch (error) {
+  process.stderr.write((error.code ? error.code + ': ' : '') + error.message + '\n');
+  process.exitCode = 1;
 }
-
-if (verb === 'acquire') {
-  const ttlHours = takeFlag('--ttl-hours');
-  const epic = rest[0];
-  if (!epic) fail('usage: orchestrator-lock.mjs acquire <epic> [--ttl-hours <h>]');
-  const ttlMs = ttlHours ? Math.round(Number(ttlHours) * 3600 * 1000) : DEFAULT_TTL_MS;
-  if (!Number.isFinite(ttlMs) || ttlMs <= 0) fail(`invalid --ttl-hours: ${ttlHours}`);
-  const existing = readLockFile(p);
-  if (existing && !lockExpired(existing)) {
-    fail(
-      `lock held for ${existing.epic} (startedAt=${existing.startedAt}). ` +
-        `Run \`release\` first.`
-    );
-  }
-  mkdirSync(path.dirname(p), { recursive: true });
-  const body = { epic, startedAt: new Date().toISOString(), ttlMs };
-  writeFileSync(p, JSON.stringify(body, null, 2) + '\n', 'utf8');
-  process.stdout.write(`acquired orchestrator lock for ${epic} (ttl=${ttlMs}ms)\n`);
-  process.exit(0);
-}
-
-if (verb === 'release') {
-  if (existsSync(p)) rmSync(p, { force: true });
-  process.stdout.write('orchestrator lock released\n');
-  process.exit(0);
-}
-
-if (verb === 'status') {
-  const lock = readLockFile(p);
-  if (!lock) {
-    process.stdout.write(JSON.stringify({ held: false }) + '\n');
-    process.exit(0);
-  }
-  process.stdout.write(JSON.stringify({ held: true, expired: lockExpired(lock), ...lock }) + '\n');
-  process.exit(0);
-}
-
-fail('usage: orchestrator-lock.mjs <acquire <epic> [--ttl-hours <h>] | release | status>');

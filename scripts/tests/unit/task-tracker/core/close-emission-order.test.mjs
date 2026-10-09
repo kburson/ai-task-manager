@@ -25,14 +25,16 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { rmSync } from 'node:fs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import { join } from 'node:path';
 
 import { buildReviewToDoneClosePair } from '../../../../task-tracker/gh-timing-comment.mjs';
 import { PHASE_EVENTS } from '../../../../task-tracker/phase-events.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
 import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
 
@@ -73,8 +75,8 @@ test('buildReviewToDoneClosePair emits review:approved then issue:wrap', () => {
 // ── Part B: real verbClose path — rows precede the terminal move (AC4) ───────
 
 function makeStatePath(state) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-540-'));
-  const p = join(dir, 'state.json');
+  const dir = createActivatedUnitRuntimeRoot('aitm-540-');
+  const p = join(dir, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   saveState(state, p);
   return { statePath: p, dir };
 }
@@ -99,6 +101,8 @@ test('verbClose emits review:approved + issue:wrap before the done board move', 
     cfg: { repo: 'o/r' },
     statePath,
     projectDir: dir,
+    loadCurrentSession: () => null,
+    inspectTerminalIssueBindingRelease: async () => ({ status: 'released' }),
     // These tests exercise close ordering/labels, with terminal storage external.
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},
@@ -253,6 +257,8 @@ test('#692 AC2 — retried close does not re-emit an existing review:approved/is
     cfg: { repo: 'o/r' },
     statePath,
     projectDir: dir,
+    loadCurrentSession: () => null,
+    inspectTerminalIssueBindingRelease: async () => ({ status: 'released' }),
     // These tests exercise close ordering/labels, with terminal storage external.
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},
@@ -333,6 +339,8 @@ test('#692 AC3 — review:approved active duration derives from the timing comme
     cfg: { repo: 'o/r' },
     statePath,
     projectDir: dir,
+    loadCurrentSession: () => null,
+    inspectTerminalIssueBindingRelease: async () => ({ status: 'released' }),
     // These tests exercise close ordering/labels, with terminal storage external.
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},

@@ -12,7 +12,7 @@
 //   gate toggle.
 
 import { strict as assert } from 'node:assert';
-import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
@@ -187,13 +187,13 @@ function writeState(sandbox, issueNum) {
       entryStartTs: null,
       wordsAtEntryStart: 0,
     },
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+    path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json')
   );
 }
 
 // ─── Test 1: missing immutable approval refuses before prompt/mutation ───────
 {
-  const sandbox = await createLegacyRootFixture('tt-gate-1-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-gate-1-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 201);
@@ -213,7 +213,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 2: --answer cannot manufacture immutable approval ─────────────────
 {
-  const sandbox = await createLegacyRootFixture('tt-gate-2-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-gate-2-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 202);
@@ -233,7 +233,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 3: gateReviewToDone=false cannot bypass immutable authorization ────
 {
-  const sandbox = await createLegacyRootFixture('tt-gate-3-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-gate-3-');
   try {
     writeConfig(sandbox, { gateReviewToDone: false });
     writeState(sandbox, 203);
@@ -256,7 +256,7 @@ function writeState(sandbox, issueNum) {
 
 // ─── Test 4: exact-SHA human approval passes immutable authorization ─────────
 {
-  const sandbox = await createLegacyRootFixture('tt-gate-4-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-gate-4-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 204);
@@ -279,8 +279,8 @@ function writeState(sandbox, issueNum) {
 //     at a clean sandbox, a cwd-relative `.tmp/aitm/gates/*.json` that flips
 //     reviewToDone=false cannot create immutable approval evidence. ──────────
 {
-  const sandbox = await createLegacyRootFixture('tt-gate-5-');
-  const hostileCwd = await createLegacyRootFixture('tt-gate-5-cwd-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-gate-5-');
+  const hostileCwd = await createActivatedRuntimeRootFixture('tt-gate-5-cwd-');
   try {
     // Clean project sandbox explicitly requires manual task review. A hostile
     // gate file outside the project must not override that project policy.

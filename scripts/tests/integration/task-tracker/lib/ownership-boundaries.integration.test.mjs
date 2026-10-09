@@ -1,6 +1,21 @@
 // @story #1212
 // cspell:ignore Fquery
-import test from 'node:test';
+import test, { after } from 'node:test';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
+const fixtureRoot = await createCommittedRuntimeRootFixture('ownership-boundaries-');
+const priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+const priorCwd = process.cwd();
+process.chdir(fixtureRoot);
+process.env.AI_TASK_MANAGER_PROJECT_DIR = fixtureRoot;
+after(() => {
+  process.chdir(priorCwd);
+  if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
+  rmSync(fixtureRoot, { recursive: true, force: true });
+});
 import assert from 'node:assert/strict';
 
 import { runPreflight } from '../../../../task-tracker/lib/verb-preflight.mjs';

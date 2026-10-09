@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { classifyKnownLegacyRuntimeRecord } from '../../../../task-tracker/lib/runtime-migration-catalog.mjs';
 
 import {
   EXPECTED_STATUS_ORDER,
@@ -479,10 +480,25 @@ test('a completed journal returns a complete idempotent result', async () => {
     phase: 'final-verification',
     items: {},
   };
+  const classified = classifyKnownLegacyRuntimeRecord({
+    kind: 'legacy-durable',
+    relative: 'ready-for-plan-migration.json',
+  });
+  assert.equal(classified?.family, 'ready-for-plan-journal');
+  assert.equal(classified.scope, 'shared');
+  assert.equal(classified.validate(Buffer.from(JSON.stringify(journal))), true);
+  for (const invalid of [
+    { ...journal, planDigest: '0'.repeat(64) },
+    { ...journal, plan: { ...plan, schema: 'unknown/v2' } },
+    { ...journal, phase: 'unknown' },
+    { ...journal, items: { unknown: { mutation: 'verified' } } },
+    { ...journal, plan: { ...plan, projectId: 'tampered' } },
+  ])
+    assert.equal(classified.validate(Buffer.from(JSON.stringify(invalid))), false);
   const result = await applyReadyForPlanMigration({
     plan,
     cfg,
-    deps: { loadJournal: async () => journal },
+    deps: { loadJournal: async () => journal, saveJournal: async () => assert.fail('completed replay must not publish') },
   });
   assert.deepEqual(
     {

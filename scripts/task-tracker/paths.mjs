@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { resolveRuntimeRoot } from './lib/runtime-storage.mjs';
+import { resolveRuntimeRoot, runtimeStoragePaths } from './lib/runtime-storage.mjs';
 
 export const SHARED_DIR = '.ai-task-manager';
 export const LEGACY_CLAUDE_DIR = '.claude';
@@ -23,6 +23,7 @@ export const TEMPLATES_SUBDIR = 'templates';
 // folders (`.ai-task-manager/`, `.claude/`) shrink to the worktree-required set.
 // Sub-directory vocabulary mirrors the legacy SHARED_DIR layout.
 export const TMP_AITM_REL = '.tmp/aitm';
+export const RUNTIME_STORE_REL = '.ai-task-manager/runtime/store';
 export const STATE_SUBDIR = 'state';
 export const FLEET_SUBDIR = 'fleet';
 export const GATES_SUBDIR = 'gates';
@@ -70,8 +71,8 @@ export const RUNTIME_REL = Object.freeze(
 // exact same on-disk location as the absolute `statePath()`/`queuePath()` helpers
 // below, but as a relative string so the existing override mechanism keeps working.
 export const TMP_RUNTIME_REL = Object.freeze({
-  state: `${TMP_AITM_REL}/${STATE_SUBDIR}/${FILE.state}`,
-  queue: `${TMP_AITM_REL}/${STATE_SUBDIR}/${FILE.queue}`,
+  state: `${RUNTIME_STORE_REL}/${STATE_SUBDIR}/${FILE.state}`,
+  queue: `${RUNTIME_STORE_REL}/${STATE_SUBDIR}/${FILE.queue}`,
 });
 
 // The `/.ai-task-manager/` path segment, used by state.mjs to anchor the
@@ -137,7 +138,13 @@ export function projectTmpDir(projDir) {
 // All state/queue/cache/locks/sessions/gates/app artifacts nest under here so the
 // tracked config roots hold only behavior-defining shared files (#573, EPIC #571).
 export function tmpAitmDir(projDir = getProjectDir()) {
-  return path.join(projDir, '.tmp', 'aitm');
+  const identity = resolveRuntimeRoot({ cwd: projDir, env: {} });
+  return runtimeStoragePaths({ projectRoot: identity.projectRoot, mainRoot: identity.mainRoot }).localRoot;
+}
+
+function sharedRuntimeStore(projDir) {
+  const identity = resolveRuntimeRoot({ cwd: projDir, env: {} });
+  return runtimeStoragePaths({ projectRoot: identity.projectRoot, mainRoot: identity.mainRoot }).sharedRoot;
 }
 
 // Base dir handed to verifier-cache.mjs::storePath (which appends `cache/`).
@@ -244,7 +251,7 @@ export function templatesDir(projDir = getProjectDir()) {
 // under `.tmp/aitm/fleet/` (#573); only the layout segment changes, the main-worktree
 // anchor is preserved so sibling worktrees still share one registry.
 export function fleetPath(mainWorktreePath) {
-  return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.fleet);
+  return path.join(sharedRuntimeStore(mainWorktreePath), FLEET_SUBDIR, FILE.fleet);
 }
 
 // Current-session issue closures that invalidate otherwise-live
@@ -252,15 +259,15 @@ export function fleetPath(mainWorktreePath) {
 // authority, not tracked project configuration, and shares the main-worktree
 // fleet anchor so every linked checkout observes the same terminal record.
 export function closedBindingsPath(mainWorktreePath) {
-  return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, 'closed-bindings.json');
+  return path.join(sharedRuntimeStore(mainWorktreePath), FLEET_SUBDIR, 'closed-bindings.json');
 }
 
 export function occupancyPath(mainWorktreePath) {
-  return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.occupancy);
+  return path.join(sharedRuntimeStore(mainWorktreePath), FLEET_SUBDIR, FILE.occupancy);
 }
 
 // orchestrator.lock — the single-orchestrator lock, anchored to the main worktree.
 // Relocated under `.tmp/aitm/fleet/` (#573); anchor preserved (see fleetPath).
 export function orchestratorLockPath(mainWorktreePath) {
-  return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.orchestratorLock);
+  return path.join(sharedRuntimeStore(mainWorktreePath), FLEET_SUBDIR, FILE.orchestratorLock);
 }

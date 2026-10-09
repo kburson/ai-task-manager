@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @story #1848
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { enforceDirectGuidance } from './lib/direct-guidance-admission.mjs';
@@ -16,12 +16,21 @@ import { fetchAssignmentSnapshot, singletonOwner } from './lib/assignment-snapsh
 import { getActiveTask } from './session-state.mjs';
 import { currentSessionId } from './word-counter.mjs';
 import { withIssueLock } from './issue-mutator-lock.mjs';
+import { tmpAitmDir } from './paths.mjs';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord, withRuntimeWrite } from './lib/runtime-writer.mjs';
 import { DRAFTING_STATES } from './activity-policy.mjs';
 import { loadConfig } from './config.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 enforceDirectGuidance(import.meta.url, 'draft-branch');
 
-export async function createDraftBranch({
+export function createDraftBranch(options = {}) {
+  if (!Number.isSafeInteger(options.issue) || options.issue <= 0)
+    throw new Error('draft-branch: invalid issue');
+  if (hasUnsupportedGitEnvironment()) throw new Error('draft-branch: unsupported Git environment');
+  const target = path.join(tmpAitmDir(options.projectDir || process.cwd()), 'draft-branch', options.issue + '.json');
+  return withRuntimeWrite(target, () => createDraftBranchLeased(options));
+}
+async function createDraftBranchLeased({
   issue,
   projectDir = process.cwd(),
   sessionId = currentSessionId(),
@@ -72,9 +81,9 @@ export async function createDraftBranch({
         throw new Error('draft-branch: live state differs from binding');
       const head = git('rev-parse', 'HEAD');
       expectedHead = head;
-      const journalPath = path.join(projectDir, '.tmp', 'aitm', 'draft-branch', `${issue}.json`);
-      if (existsSync(journalPath)) {
-        const journal = JSON.parse(readFileSync(journalPath, 'utf8'));
+      const journalPath = path.join(tmpAitmDir(projectDir), 'draft-branch', `${issue}.json`);
+      const journal = readRuntimeJsonRecord(journalPath, { optional: true });
+      if (journal) {
         if (
           journal.issue !== issue ||
           journal.sessionId !== sessionId ||
@@ -94,13 +103,9 @@ export async function createDraftBranch({
           if (error.status !== 1) throw error;
         }
         if (exists) throw new Error('draft-branch: canonical branch already exists');
-        mkdirSync(path.dirname(journalPath), { recursive: true });
-        writeFileSync(
-          journalPath,
-          JSON.stringify({ issue, sessionId, worktree: observed.worktreePath, head, branch }) +
-            '\n',
-          { flag: 'wx' }
-        );
+        writeRuntimeJsonRecord(journalPath, {
+          issue, sessionId, worktree: observed.worktreePath, head, branch,
+        });
       }
       const fresh = readWorktreeIdentity({ projectDir });
       if (

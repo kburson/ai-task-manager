@@ -433,12 +433,7 @@ if (_isMain)
         const result = await verbMigrateRuntime(process.argv.slice(2));
         process.stdout.write(JSON.stringify(result, null, 2) + String.fromCharCode(10));
       } catch (error) {
-        process.stderr.write(
-          (error.code || 'RUNTIME_MIGRATION_FAILED') +
-            ': ' +
-            error.message +
-            String.fromCharCode(10)
-        );
+        process.stderr.write((error.code || 'RUNTIME_MIGRATION_FAILED') + ': ' + error.message + String.fromCharCode(10));
         process.exitCode = 1;
       }
       return;

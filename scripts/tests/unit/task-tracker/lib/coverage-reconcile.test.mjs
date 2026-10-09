@@ -15,10 +15,15 @@
 //
 // @parallel-subprocess (runReconcile default helpers reach github-projects.mjs's real gh spawn)
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
-import { mkdtempSync, writeFileSync, chmodSync } from 'node:fs';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+import { mkdtempSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { runReconcile, verbReconcile } from '../../../../task-tracker/verbs/reconcile.mjs';
 import { writeLastKnownState } from '../../../../task-tracker/gh-timing-comment.mjs';
 import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
@@ -28,7 +33,14 @@ const FIXED_TS = '2026-06-29T00:00:00Z';
 const now = () => FIXED_TS;
 
 // Isolated project dir keeps withIssueLock's lock files under scratch.
-const PROJ = mkdtempSync(join(projectScratchDir('test'), 'reconcile-proj-'));
+const PROJ = createActivatedUnitRuntimeRoot('reconcile-proj-');
+const priorProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = PROJ;
+after(() => {
+  if (priorProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorProjectDir;
+  rmSync(PROJ, { recursive: true, force: true });
+});
 
 // --- fixture-body builders --------------------------------------------------
 // Entry-marker timestamps must sort in stage order for verifyChainIntegrity.
@@ -345,7 +357,7 @@ test('verbReconcile: revert wrong-direction → exit 5, names accept-live (#740)
 // PATH. No global stdout trap here, so the subprocess can't corrupt the
 // reporter. RECORDED_DEVELOP + live Develop yields no-drift-refused with no
 // write side-effects, so only the read helpers run.
-const FAKE_GH_DIR = mkdtempSync(join(projectScratchDir('test'), 'reconcile-gh-'));
+const FAKE_GH_DIR = mkdtempSync(join(PROJ, 'reconcile-gh-'));
 writeFileSync(
   join(FAKE_GH_DIR, 'gh'),
   [

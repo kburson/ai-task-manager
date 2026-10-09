@@ -16,7 +16,14 @@ function freezeObject(value) {
 }
 
 function statePath(root) {
-  return path.join(root, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  return path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
 }
 
 function writeFixtureState(fixture) {
@@ -65,7 +72,7 @@ export function resetChoreModeFixture(fixture) {
     transports: [],
     environment: createChoreModeEnvironment(fixture),
   };
-  rmSync(path.join(fixture.root, '.tmp', 'aitm'), { recursive: true, force: true });
+  rmSync(fixture.statePath, { force: true });
   writeFixtureState(fixture);
   return fixture;
 }

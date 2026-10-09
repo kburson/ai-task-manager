@@ -1,5 +1,6 @@
 // @story #1412
-// Lazy crash recovery for detached worktrees created by `/task test`.
+// Read-only crash candidates for detached Test worktrees. Retirement requires
+// the governed cleanup plan's content, occupancy and host evidence.
 
 import { execFile } from 'node:child_process';
 import path from 'node:path';
@@ -66,19 +67,14 @@ export async function listRegisteredWorktreePaths({ projectDir } = {}) {
 
 export async function reapStaleTestSandboxes({
   projectDir,
-  removeWorktree,
   listWorktrees = listRegisteredWorktreePaths,
   isPidAlive = isProcessAlive,
 } = {}) {
-  if (typeof removeWorktree !== 'function') {
-    throw new TypeError('test-sandbox-reaper: removeWorktree is required');
-  }
-
   let worktreePaths;
   try {
     worktreePaths = await listWorktrees({ projectDir });
   } catch {
-    return { candidates: [], attempted: [] };
+    return { candidates: [], attempted: [], status: 'unavailable', reason: 'worktree-census-unavailable' };
   }
 
   const candidates = selectStaleTestSandboxPaths({
@@ -86,14 +82,7 @@ export async function reapStaleTestSandboxes({
     worktreePaths,
     isPidAlive,
   });
-  const attempted = [];
-  for (const worktreePath of candidates) {
-    attempted.push(worktreePath);
-    try {
-      await removeWorktree({ projectDir, path: worktreePath });
-    } catch {
-      // Best-effort crash recovery; normal sandbox creation must still run.
-    }
-  }
-  return { candidates, attempted };
+  // A dead PID and tokenized name do not prove clean/unpublished contents,
+  // current attachment authority or safe retirement. No automatic deletion.
+  return { candidates, attempted: [], status: candidates.length ? 'cleanup-proof-required' : 'observed' };
 }

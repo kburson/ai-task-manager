@@ -1,9 +1,9 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
+import { writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
-import { legacyPathFor } from './paths.mjs';
 import { randomUUID } from 'node:crypto';
 import { withLock } from './fleet-registry.mjs';
 import { parseTimingRow } from './lib/timing-row-reader.mjs';
+import { withRuntimeWrite, withRuntimeWriteSync, readRuntimeJsonRecord } from './lib/runtime-writer.mjs';
 
 const SCHEMA = 'aitm.timing-queue/v1';
 function invalid() {
@@ -43,18 +43,7 @@ export function validateTimingQueue(record) {
 }
 
 function read(queuePath) {
-  let readPath = queuePath;
-  if (!existsSync(readPath)) {
-    const legacy = legacyPathFor(queuePath);
-    if (legacy && existsSync(legacy)) readPath = legacy;
-  }
-  if (!existsSync(readPath)) return [];
-  try {
-    const parsed = JSON.parse(readFileSync(readPath, 'utf8'));
-    return validateTimingQueue(parsed);
-  } catch {
-    invalid();
-  }
+  return validateTimingQueue(readRuntimeJsonRecord(queuePath));
 }
 
 function write(items, queuePath) {
@@ -69,14 +58,14 @@ export function peek(queuePath) {
 }
 
 export function enqueue(event, queuePath) {
-  return withLock(queuePath, () => {
+  return withRuntimeWriteSync(queuePath, () => withLock(queuePath, () => {
     const items = read(queuePath);
     items.push({
       id: randomUUID(),
       event: eventValid({ ...event, queuedAt: new Date().toISOString() }),
     });
     write(items, queuePath);
-  });
+  }));
 }
 function snapshot(queuePath) {
   return withLock(queuePath, () => {
@@ -100,6 +89,7 @@ function consume(queuePath, completed) {
 }
 
 export async function drain(handler, queuePath) {
+  return withRuntimeWrite(queuePath, async () => {
   const items = snapshot(queuePath);
   const completed = new Map();
   let failed = 0;
@@ -113,12 +103,14 @@ export async function drain(handler, queuePath) {
   }
   consume(queuePath, completed);
   return failed === 0;
+  });
 }
 
 // Drain only matching items while retaining failed deliveries for a later
 // retry. Terminal evidence uses this stricter variant: an issue must not freeze
 // an immutable outcome while one of its timing rows is still only local.
 export async function drainMatching(handler, queuePath, predicate) {
+  return withRuntimeWrite(queuePath, async () => {
   const items = snapshot(queuePath);
   const completed = new Map();
   let delivered = 0;
@@ -137,6 +129,7 @@ export async function drainMatching(handler, queuePath, predicate) {
   }
   consume(queuePath, completed);
   return { delivered, pending };
+  });
 }
 
 // Drain only items matching `predicate`, consuming them regardless of handler
@@ -150,6 +143,7 @@ export async function drainAndDiscard(
   predicate,
   shouldRetainOnFailure = () => false
 ) {
+  return withRuntimeWrite(queuePath, async () => {
   const items = snapshot(queuePath);
   const completed = new Map();
   const targeted = [];
@@ -175,4 +169,5 @@ export async function drainAndDiscard(
   }
   consume(queuePath, completed);
   return { delivered, discarded, retained };
+  });
 }

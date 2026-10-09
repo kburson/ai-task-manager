@@ -5,12 +5,28 @@
 // All cases drive runPromote with stubbed deps — no network, no spawn.
 
 import { strict as assert } from 'node:assert';
-import { after, before, test } from 'node:test';
+import { after, before } from 'node:test';
 
 import { installStubGh } from '../../../fixtures/stub-gh.mjs';
 import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
+
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
+const fixtureRoot = createActivatedUnitRuntimeRoot('promote-verb-');
+const priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = fixtureRoot;
+after(() => {
+  if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
+  rmSync(fixtureRoot, { recursive: true, force: true });
+});
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 

@@ -142,7 +142,7 @@ test("case 6: two session IDs do not see each other's overrides", () => {
 });
 
 // Case 7 — orphan GC: stale file deleted, fresh file untouched.
-test('case 7: sweepOrphans deletes files older than maxAgeMs and leaves younger ones', () => {
+test('case 7: age alone does not authorize deleting session policy records', () => {
   const dir = '.claude';
   const now = 10_000_000;
   const maxAgeMs = 1000;
@@ -154,8 +154,8 @@ test('case 7: sweepOrphans deletes files older than maxAgeMs and leaves younger 
     [path.join(dir, 'unrelated.json')]: { content: '{}', mtimeMs: now - 9999 },
   });
   const deleted = sweepOrphans({ now, maxAgeMs, fs, dir });
-  assert.equal(deleted, 1);
-  assert.equal(fs.existsSync(stalePath), false);
+  assert.equal(deleted, 0);
+  assert.equal(fs.existsSync(stalePath), true);
   assert.equal(fs.existsSync(freshPath), true);
   assert.equal(fs.existsSync(path.join(dir, 'unrelated.json')), true);
 });

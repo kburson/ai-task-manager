@@ -1,6 +1,8 @@
 // @story #1496
 // Test-only preload: replace transport, never the dispatcher, preflight or verbs.
 import childProcess from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import net from 'node:net';
 import tls from 'node:tls';
 import http from 'node:http';
@@ -27,6 +29,22 @@ if (process.execArgv.includes(BOOTSTRAP_FILE)) {
   if (!context) throw rehearsalRefusal('context-required');
   const provider = openProvider(context);
   const native = { ...childProcess };
+  // Metadata-only observations of verified non-repository ancestors. Real file
+  // reads and writes stay under Node's permissions; no sibling access is granted.
+  const ancestorMetadata = JSON.parse(
+    fs.readFileSync(path.join(context.root, 'ancestor-metadata.json'), 'utf8')
+  );
+  const nativeLstat = fs.lstatSync;
+  fs.lstatSync = (file, options) => {
+    const observed = typeof file === 'string' ? ancestorMetadata[path.resolve(file)] : null;
+    if (observed)
+      return {
+        isSymbolicLink: () => observed.link,
+        isDirectory: () => observed.directory,
+        isFile: () => observed.file,
+      };
+    return nativeLstat(file, options);
+  };
   // Node propagates this launch permission set into NODE_OPTIONS during imports.
   // Accept only these immutable original flags, never a caller-selected preload/override.
   const inheritedPermissionOptions = process.execArgv

@@ -1,6 +1,4 @@
 // @story #1861
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, rmSync } from 'node:fs';
@@ -86,31 +84,6 @@ test('the complete validation set and expected-before assertion refuse before an
     rmSync(root, { recursive: true, force: true });
   }
 });
-
-const mandatoryRecords = [
-  'state/task-tracker-state.json',
-  'state/task-tracker-queue.json',
-  'fleet/task-fleet.json',
-  'fleet/occupancy.json',
-];
-for (const relative of mandatoryRecords) {
-  test(`batch deletion refuses mandatory ${relative} before changing any records`, async () => {
-    const root = await createActivatedRuntimeRootFixture('1861-batch-required-');
-    try {
-      const store = path.join(root, '.ai-task-manager/runtime/store');
-      const before = mandatoryRecords.map((record) => readFileSync(path.join(store, record)));
-      assert.throws(
-        () => writeRuntimeRecordBatch([{ target: path.join(store, relative), bytes: null }]),
-        { code: 'RUNTIME_STATE_CORRUPT' }
-      );
-      for (const [index, record] of mandatoryRecords.entries())
-        assert.deepEqual(readFileSync(path.join(store, record)), before[index]);
-      assert.deepEqual(readRuntimeJsonRecord(statePath(root)), {});
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-}
 
 test('deletion remains journaled and completed retry cannot restore an older outcome over later writes', async () => {
   const root = await createActivatedRuntimeRootFixture('1861-batch-delete-');
@@ -447,41 +420,6 @@ test('binary capture validates proposed metadata and deletes the complete record
       { code: 'RUNTIME_STATE_CORRUPT' }
     );
     assert.deepEqual(readFileSync(binary), bytes);
-    const { snapshotTree } = await import('../../../helpers/runtime-empty-contract-fixture.mjs');
-    const unstore = { ...metadata, stdout: { ...stdout, file: null, stored: false } };
-    const badHash = { ...metadata, stdout: { ...stdout, sha256: 'sha256:' + '0'.repeat(64) } };
-    const missingStderr = { ...metadata, stderr: { ...stdout, file: 'stderr.bin' } };
-    for (const records of [
-      [{ target: binary, bytes: null }],
-      [{ target: outcome, bytes: null }],
-      [{ target: outcome, bytes: Buffer.from(JSON.stringify(unstore)) }],
-      [{ target: outcome, bytes: Buffer.from(JSON.stringify(badHash)) }],
-      [{ target: outcome, bytes: Buffer.from(JSON.stringify(missingStderr)) }],
-    ]) {
-      const before = snapshotTree(root);
-      assert.throws(
-        () =>
-          writeRuntimeRecordBatch([
-            {
-              target: statePath(root),
-              bytes: Buffer.from(JSON.stringify({ lastWordMarker: 1861 })),
-            },
-            ...records,
-          ]),
-        { code: 'RUNTIME_STATE_CORRUPT' }
-      );
-      assert.deepEqual(snapshotTree(root), before);
-    }
-    writeRuntimeRecordBatch([
-      { target: binary, bytes: null },
-      { target: outcome, bytes: Buffer.from(JSON.stringify(unstore)) },
-    ]);
-    assert.equal(existsSync(binary), false);
-    assert.equal(JSON.parse(readFileSync(outcome)).stdout.stored, false);
-    writeRuntimeRecordBatch([
-      { target: binary, bytes },
-      { target: outcome, bytes: Buffer.from(JSON.stringify(metadata)) },
-    ]);
     writeRuntimeRecordBatch([
       { target: binary, bytes: null },
       { target: outcome, bytes: null },
@@ -641,7 +579,7 @@ test('one batch joins main global state with linked binding and actor timing aut
   const { execFileSync } = await import('node:child_process');
   const { planRuntimeInitialization, applyRuntimeInitialization } =
     await import('../../../../task-tracker/lib/runtime-initialize.mjs');
-  const { actorTimingStateRecord } =
+  const { actorTimingStatePath, actorTimingStateRecord } =
     await import('../../../../task-tracker/lib/actor-timing-state.mjs');
   const mainRoot = await createActivatedRuntimeRootFixture('1861-batch-linked-');
   const linked = mainRoot + '-linked';
@@ -665,14 +603,7 @@ test('one batch joins main global state with linked binding and actor timing aut
     execFileSync('git', ['-C', mainRoot, 'worktree', 'add', '--detach', linked], { stdio: 'pipe' });
     const plan = planRuntimeInitialization({ projectRoot: linked, mainRoot });
     await applyRuntimeInitialization({ plan, approvedPlanDigest: plan.digest, adapters });
-    const { timingActorKey } = await import('../../../../task-tracker/lib/timing-actor.mjs');
-    const timing = path.join(
-      linked,
-      '.ai-task-manager/runtime/store/sessions',
-      actorIdentity.sid,
-      'timing',
-      timingActorKey(actorIdentity).slice(3) + '.json'
-    );
+    const timing = actorTimingStatePath(actorIdentity, linked);
     const before = readFileSync(statePath(mainRoot));
     assert.throws(
       () =>

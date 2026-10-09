@@ -5,19 +5,27 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import test from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { after } from 'node:test';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import * as wordCounter from '../../../../task-tracker/word-counter.mjs';
 
-const { countWords, loadMarker, saveMarker } = wordCounter;
+const { countWords, loadMarker, saveMarker, markerPathFor } = wordCounter;
+const roots = [];
+after(() => {
+  for (const root of roots) rmSync(root, { recursive: true, force: true });
+});
 
 test('compaction advances only the line cursor and preserves both markers', () => {
-  const dir = path.join(projectScratchDir('test'), `word-marker-compaction-${process.pid}`);
-  mkdirSync(dir, { recursive: true });
-  const markerPath = path.join(dir, 'marker.json');
+  const dir = createActivatedUnitRuntimeRoot('word-marker-compaction-');
+  roots.push(dir);
+  const markerPath = markerPathFor(process.env.AI_TASK_MANAGER_SESSION_ID, dir);
+  mkdirSync(path.dirname(markerPath), { recursive: true });
   saveMarker(markerPath, 4, 1_234, '1142', 2_468);
   assert.equal(typeof wordCounter.advanceMarkerCursor, 'function');
   wordCounter.advanceMarkerCursor(markerPath, 9, '1142');
@@ -29,8 +37,8 @@ test('compaction advances only the line cursor and preserves both markers', () =
 });
 
 test('Codex compacted replacement-history metadata is not counted twice', () => {
-  const dir = path.join(projectScratchDir('test'), `word-marker-compaction-${process.pid}`);
-  mkdirSync(dir, { recursive: true });
+  const dir = createActivatedUnitRuntimeRoot('word-marker-compaction-');
+  roots.push(dir);
   const transcript = path.join(dir, 'rollout.jsonl');
   const records = [
     {

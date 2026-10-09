@@ -18,19 +18,23 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 
 import { runCommitTrace, verbCommitTrace } from '../../../../task-tracker/verbs/commit-trace.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
-const tmpRoot = mkdtempSync(path.join(projectScratchDir('test'), 'commit-trace-cov-'));
+const tmpRoot = createActivatedUnitRuntimeRoot('commit-trace-cov-');
 
-let stateCounter = 0;
+after(() => rmSync(tmpRoot, { recursive: true, force: true }));
 function stateFile(active) {
-  const p = path.join(tmpRoot, `state-${stateCounter++}.json`);
-  writeFileSync(p, JSON.stringify({ active, lastActive: active }));
+  const p = path.join(tmpRoot, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
+  saveState({ active, lastActive: active }, p);
   return p;
 }
 

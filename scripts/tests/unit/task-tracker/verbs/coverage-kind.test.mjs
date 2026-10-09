@@ -16,14 +16,17 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test, before, after } from 'node:test';
+import { before, after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbKind } from '../../../../task-tracker/verbs/kind.mjs';
 import { reconcileEpicBody } from '../../../../gh/lib/epic-metadata.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { dodPath } from '../../../../task-tracker/paths.mjs';
 import { parseVerificationCommands } from '../../../../task-tracker/lib/verification-commands.mjs';
 import { runReviewPreflight } from '../../../../task-tracker/lib/review-preflight.mjs';
@@ -34,7 +37,7 @@ let fakeBin;
 let savedPath;
 
 before(() => {
-  tmpRoot = mkdtempSync(path.join(projectScratchDir('test'), 'kind-cov-'));
+  tmpRoot = createActivatedUnitRuntimeRoot('kind-cov-');
   fakeBin = path.join(tmpRoot, 'bin');
   mkdirSync(fakeBin, { recursive: true });
   const ghPath = path.join(fakeBin, 'gh');
@@ -65,14 +68,9 @@ after(() => {
 });
 
 function stateFile(active) {
-  const p = path.join(tmpRoot, `state-${Math.abs(hashish(String(active)))}.json`);
+  const p = path.join(tmpRoot, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   saveState({ active, lastActive: active }, p);
   return p;
-}
-function hashish(s) {
-  let h = 0;
-  for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0;
-  return h;
 }
 
 function makePexec(body) {

@@ -13,7 +13,7 @@ const fixtureOriginalCwd = process.cwd();
 
 import { strict as assert } from 'node:assert';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import path from 'node:path';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import { verbNew } from '../../../../task-tracker/verbs/new.mjs';
@@ -39,14 +39,21 @@ function parseRow(row) {
 
 // #442 — verbNew (with TT_FAKE_NEW_ISSUE) registers a fleet entry; git-isolate
 // the sandbox so registerTask cannot escape into the live registry.
-const dir = mkdtempProjectIsolated('aitm-aged-bucket-');
+const dir = await mkdtempProjectIsolated('aitm-aged-bucket-');
 // word-counter.mjs resolves its state dir from AI_TASK_MANAGER_PROJECT_DIR (not
 // ctx.projectDir). Without this, verbNew's word-count marker write falls back to
 // process.cwd() and pollutes the live worktree's session-tracking marker with
 // the fake #999 issue, breaking every later state-reading test in the run.
 process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
 process.chdir(dir);
-const statePath = path.join(dir, '.tmp', 'aitm', 'state', 'state.json');
+const statePath = path.join(
+  dir,
+  '.ai-task-manager',
+  'runtime',
+  'store',
+  'state',
+  'task-tracker-state.json'
+);
 
 // Bucket opened 10 minutes ago — well beyond the 60s freshness window.
 const TEN_MIN_MS = 10 * 60 * 1000;

@@ -11,7 +11,7 @@
 // worktree with no override.
 //
 // Current rule: spawning from the main worktree is allowed **only** when
-//   (a) an orchestrator lock file is present at <main>/.ai-task-manager/orchestrator.lock,
+//   (a) the invoking actor owns the validated durable orchestrator permission,
 //   (b) the lock has not expired (now < startedAt + ttlMs, default 4h), and
 //   (c) the Agent tool input requests `isolation: "worktree"`.
 //
@@ -22,14 +22,17 @@
 // TTL exists because Claude Code's pid isn't reachable through the bash →
 // node lock-acquire chain; pid-liveness would mark every lock stale
 // immediately. The orchestrator is expected to release the lock when the
-// wave ends; the TTL is a forgotten-lock backstop.
+// wave ends. TTL disables capability only; it never authorizes lock takeover.
 //
 // Acquire/release via `scripts/task-tracker/orchestrator-lock.mjs`.
 
-import { readFileSync, realpathSync, existsSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { findMainWorktreePath } from './fleet-registry.mjs';
 import { orchestratorLockPath } from './paths.mjs';
+import { readRuntimeJsonRecord } from './lib/runtime-writer.mjs';
+import { currentSessionId, aiAppName } from './word-counter.mjs';
+import { timingActorKey } from './lib/timing-actor.mjs';
 
 const DEFAULT_TTL_MS = 4 * 60 * 60 * 1000;
 
@@ -42,13 +45,7 @@ function canon(p) {
 }
 
 function readLock(mainPath) {
-  const lockPath = orchestratorLockPath(mainPath);
-  if (!existsSync(lockPath)) return null;
-  try {
-    return JSON.parse(readFileSync(lockPath, 'utf8'));
-  } catch {
-    return null;
-  }
+  return readRuntimeJsonRecord(orchestratorLockPath(mainPath), { optional: true });
 }
 
 function lockExpired(lock) {
@@ -75,7 +72,15 @@ const main = canon(findMainWorktreePath(cwd));
 
 if (cwd !== main) process.exit(0);
 
-const lock = readLock(main);
+let lock;
+try {
+  lock = readLock(main);
+  if (lock && (lock.schema !== 'aitm.orchestrator-lock/v1' ||
+      lock.owner.actor !== timingActorKey({ provider: aiAppName(), sid: currentSessionId() })))
+    emitBlock('ORCHESTRATOR_OWNER_MISMATCH: this actor does not own the durable orchestrator permission');
+} catch (error) {
+  emitBlock((error.code || 'RUNTIME_STATE_CORRUPT') + ': ' + error.message);
+}
 if (!lock) {
   emitBlock(
     `Agent tool spawns are forbidden in the main worktree ` +

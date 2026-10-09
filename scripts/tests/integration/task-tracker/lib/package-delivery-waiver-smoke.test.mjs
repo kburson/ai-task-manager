@@ -17,6 +17,7 @@ import {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..');
 const REQUIRED = [
   'bin/aitm.mjs',
+  'docs/guides/workflow.md',
   'skill/shared/rules/deliver.md',
   'scripts/task-tracker/verbs/workflow-exception.mjs',
   'scripts/task-tracker/verbs/help-data.mjs',
@@ -188,8 +189,8 @@ test('offline installed package prepares a delivery waiver read-only and exposes
       request.deliveryScope
     );
     assert.match(
-      readFileSync(join(installed, 'README.md'), 'utf8'),
-      /https:\/\/github\.com\/kburson\/ai-task-manager\/blob\/trunk\/docs\/guides\/workflow\.md/
+      readFileSync(join(installed, 'docs/guides/workflow.md'), 'utf8'),
+      /delivery-waiver-ambiguity/
     );
   } finally {
     rmSync(scratch, { recursive: true, force: true });

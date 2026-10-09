@@ -43,7 +43,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const EXPECTED_CLAUDE = Object.freeze({
   name: 'claude',
   installTarget: '.claude/skills/task',
-  stateDir: '.tmp/aitm/app/claude',
+  stateDir: '.ai-task-manager/runtime/store/app/claude',
   transcriptLocator: '.claude/projects',
   transcriptHomeEnv: null,
   transcriptHomeDefault: null,
@@ -73,7 +73,7 @@ const EXPECTED_CLAUDE = Object.freeze({
 const EXPECTED_CODEX = Object.freeze({
   name: 'codex',
   installTarget: '.agents/skills/task',
-  stateDir: '.tmp/aitm/app/codex',
+  stateDir: '.ai-task-manager/runtime/store/app/codex',
   transcriptLocator: '.codex/sessions',
   transcriptHomeEnv: null,
   transcriptHomeDefault: null,

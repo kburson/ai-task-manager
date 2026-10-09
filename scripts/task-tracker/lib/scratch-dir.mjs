@@ -16,7 +16,6 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir as systemTmpdir } from 'node:os';
 import path from 'node:path';
 import { resolveRuntimeRoot } from './runtime-storage.mjs';
-import { BoundWorktreeMissingError, resolveProjectDir } from './project-dir.mjs';
 
 const VALID_PURPOSE_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
 
@@ -50,18 +49,12 @@ export function projectScratchDir(purpose, projectDir) {
 // "no bind record" case degrades; any other resolver failure still propagates,
 // because it means the record exists and is unusable.
 export function resolveScratchRoot(projectDir, deps = {}) {
-  const resolve = deps.resolveProjectDir || resolveProjectDir;
-  const env = deps.env || process.env;
   const cwd = deps.cwd || (() => process.cwd());
-  try {
-    return resolve({ deps: { projectDir } });
-  } catch (error) {
-    if (!(error instanceof BoundWorktreeMissingError)) throw error;
-    return (
-      projectDir ||
-      resolveRuntimeRoot({ env, cwd: cwd(), adapters: deps.runtimeRootAdapters }).projectRoot
-    );
-  }
+  // Artifact allocation uses physical project identity, never runtime binding.
+  return resolveRuntimeRoot({
+    cwd: projectDir ?? cwd(), env: projectDir == null ? (deps.env || process.env) : {},
+    adapters: deps.runtimeRootAdapters,
+  }).projectRoot;
 }
 
 // Genuine Git fixtures live outside freely writable artifact roots (#1857).

@@ -11,9 +11,9 @@ import path from 'node:path';
 
 import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 
-const tmp = mkdtempProjectIsolated('timing-degraded-write-visibility-');
+const tmp = await mkdtempProjectIsolated('timing-degraded-write-visibility-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
 process.chdir(tmp);
 process.env.TT_SKIP_NETWORK = '1';
@@ -103,7 +103,14 @@ assert.equal(
 }
 
 {
-  const statePath = path.join(tmp, '.tmp', 'aitm', 'state', 'pause-state.json');
+  const statePath = path.join(
+    tmp,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   mkdirSync(path.dirname(statePath), { recursive: true });
   saveState(
     {
@@ -150,7 +157,14 @@ for (const [name, verb, expectedPrefix] of [
   ['stop', verbStop, 'Stopped #1107'],
   ['update', verbUpdate, 'Update #1107'],
 ]) {
-  const statePath = path.join(tmp, '.tmp', 'aitm', 'state', `${name}-state.json`);
+  const statePath = path.join(
+    tmp,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   mkdirSync(path.dirname(statePath), { recursive: true });
   saveState(
     {

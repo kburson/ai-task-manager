@@ -64,7 +64,7 @@ test('retains a candidate when the liveness probe cannot prove death', () => {
   assert.deepEqual(selected, []);
 });
 
-test('attempts every proven stale registration even when one removal fails', async () => {
+test('PID death identifies candidates but never authorizes removal of unpublished or host-managed work', async () => {
   const attempted = [];
   const result = await reapStaleTestSandboxes({
     projectDir,
@@ -76,8 +76,9 @@ test('attempts every proven stale registration even when one removal fails', asy
     },
   });
   assert.deepEqual(result.candidates, [staleA, staleB]);
-  assert.deepEqual(result.attempted, [staleA, staleB]);
-  assert.deepEqual(attempted, [staleA, staleB]);
+  assert.deepEqual(result.attempted, []);
+  assert.deepEqual(attempted, []);
+  assert.equal(result.status, 'cleanup-proof-required');
 });
 
 test('inventory failure is non-fatal and performs no removal', async () => {
@@ -91,7 +92,7 @@ test('inventory failure is non-fatal and performs no removal', async () => {
       removals += 1;
     },
   });
-  assert.deepEqual(result, { candidates: [], attempted: [] });
+  assert.deepEqual(result, { candidates: [], attempted: [], status: 'unavailable', reason: 'worktree-census-unavailable' });
   assert.equal(removals, 0);
 });
 

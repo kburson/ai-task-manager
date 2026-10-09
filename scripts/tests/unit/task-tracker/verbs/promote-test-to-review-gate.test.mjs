@@ -23,21 +23,19 @@
 // entered Review surfaces as `promoted-with-warning` (still in Review), not as
 // a false `promoted` and not as a demote.
 
-import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { join } from 'node:path';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { createStateCursor } from '../../../../task-tracker/lib/state-cursor.mjs';
 import { STATE_MACHINE } from '../../../../task-tracker/states/index.mjs';
 import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
 
 // Keep the verb's withIssueLock dir off the live project tree.
-process.env.AI_TASK_MANAGER_PROJECT_DIR = mkdtempSync(
-  join(projectScratchDir('test'), 'promote-820-')
-);
+process.env.AI_TASK_MANAGER_PROJECT_DIR = createActivatedUnitRuntimeRoot('promote-820-');
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
@@ -62,6 +60,7 @@ function makeDeps({ body, live, liveAfter, spawnCode = 0, moveCode = 0 } = {}) {
   return {
     calls,
     deps: {
+      migrationFreezeActive: () => false,
       pexec: async (bin, args) => {
         if (bin === 'git' && args[0] === 'rev-parse') {
           return { stdout: `${'a'.repeat(40)}\n` };

@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 // @story #7
 import { strict as assert } from 'node:assert';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, mkdirSync, utimesSync } from 'node:fs';
 import path from 'node:path';
@@ -36,11 +39,19 @@ async function runConcurrent(helper, projectDir) {
   // that as a `Promise.all` rejection turned the intended race into a flaky
   // test failure. The downstream assertion checks survivor count, not exec
   // success.
-  await Promise.allSettled(procs);
+  const results = await Promise.allSettled(procs);
+  if (helper === lockedHelper)
+    assert.deepEqual(
+      results
+        .filter((r) => r.status === 'rejected')
+        .map((r) => r.reason.stderr || String(r.reason)),
+      [],
+      'locked workers must all complete'
+    );
 }
 
 // Test 1: control — without the lock, the race destroys entries.
-const ctlDir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-fleet-ctl-'));
+const ctlDir = await createActivatedRuntimeRootFixture('tt-fleet-ctl-');
 // #304 — sandbox sits inside this repo's worktree. `findMainWorktreePath`
 // walks up to the nearest git root, so without an isolating `git init` the
 // helper procs would resolve to the real repo root and clobber the live
@@ -63,7 +74,7 @@ try {
 }
 
 // Test 2: with the lock, all entries survive under the same race conditions.
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-fleet-cc-'));
+const tmp = await createActivatedRuntimeRootFixture('tt-fleet-cc-');
 execFileSync('git', ['init', '-q'], { cwd: tmp });
 try {
   await runConcurrent(lockedHelper, tmp);
@@ -73,17 +84,21 @@ try {
     assert.equal(fleet[`#${100 + i}`].branch, `b-${i}`);
   }
 
-  // Test 3: stale lock (older than TTL) is force-cleared.
+  // Test 3: age never grants recovery of a legacy lock.
   const rPath = fleetRegistryPath(tmp);
   const lockDir = rPath + '.lock';
   mkdirSync(lockDir);
   const ancient = new Date(Date.now() - 60_000);
   utimesSync(lockDir, ancient, ancient);
   let acquired = false;
-  withLock(rPath, () => {
-    acquired = true;
-  });
-  assert.equal(acquired, true, 'stale lock must be force-cleared');
+  assert.throws(
+    () =>
+      withLock(rPath, () => {
+        acquired = true;
+      }),
+    { code: 'RUNTIME_LOCK_RECOVERY_REQUIRED' }
+  );
+  assert.equal(acquired, false, 'legacy lock remains protected regardless of age');
 
   console.log('fleet-registry-concurrent.test.mjs: all passed');
 } finally {

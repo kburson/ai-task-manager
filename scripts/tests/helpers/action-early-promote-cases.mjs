@@ -41,6 +41,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       body: bodyValue,
       attempt,
       ports: {
+        loadSession: () => null,
         scope,
         cfg: { repo: 'example/project' },
         projectDir: process.cwd(),
@@ -96,6 +97,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       body,
       attempt,
       ports: {
+        loadSession: () => null,
         scope: 'plan-approval:1751',
         cfg: { repo: 'example/project' },
         projectDir: process.cwd(),
@@ -130,7 +132,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       fromState: 'mystery',
       body,
       attempt: { observe: () => assert.fail('unknown state must not collect') },
-      ports: { scope: 'unknown:1751' },
+      ports: { loadSession: () => null, scope: 'unknown:1751' },
     });
     assert.equal(unknown.status, 'indeterminate');
     assert.equal(unknown.target, null);
@@ -161,7 +163,12 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       fromState: 'plan',
       body,
       attempt,
-      ports: { scope, cfg: { repo: 'example/project' }, projectDir: process.cwd() },
+      ports: {
+        loadSession: () => null,
+        scope,
+        cfg: { repo: 'example/project' },
+        projectDir: process.cwd(),
+      },
     });
     assert.equal(conflicting.status, 'indeterminate');
     assert.deepEqual(
@@ -204,6 +211,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
         body: bodyValue,
         attempt,
         ports: {
+          loadSession: () => null,
           scope,
           cfg: { repo: 'example/project' },
           projectDir: process.cwd(),
@@ -249,6 +257,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       body,
       attempt,
       ports: {
+        loadSession: () => null,
         scope,
         cfg: { repo: 'example/project' },
         projectDir: process.cwd(),
@@ -272,7 +281,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       fromState: 'done',
       body,
       attempt: { observe: () => assert.fail('terminal state must not read authority') },
-      ports: { scope: 'terminal:1751' },
+      ports: { loadSession: () => null, scope: 'terminal:1751' },
     });
     assert.equal(result.target, null);
     assert.equal(result.status, 'indeterminate');
@@ -291,7 +300,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       fromState: 'develop',
       body,
       attempt: { observe: () => assert.fail('pending adapter must not collect') },
-      ports: { scope: 'pending:1751' },
+      ports: { loadSession: () => null, scope: 'pending:1751' },
     });
     assert.equal(result.status, 'indeterminate');
     assert.equal(result.target, 'test');
@@ -307,7 +316,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       fromState: 'plan',
       body,
       attempt: { observe: () => assert.fail('skipped authority must not be read') },
-      ports: { scope: 'skipped:1751', skipNetwork: true },
+      ports: { loadSession: () => null, scope: 'skipped:1751', skipNetwork: true },
     });
     assert.equal(result.status, 'indeterminate');
     assert.ok(result.blockers.every((blocker) => blocker.code === 'authority-read-skipped'));
@@ -325,7 +334,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
         fromState: 'plan',
         body,
         attempt: { observe: () => assert.fail('network skip must precede reads') },
-        ports: { scope: 'skipped:1751' },
+        ports: { loadSession: () => null, scope: 'skipped:1751' },
       });
       assert.equal(result.status, 'indeterminate');
       assert.ok(result.blockers.some((blocker) => blocker.code === 'authority-read-skipped'));
@@ -362,6 +371,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       body,
       attempt,
       ports: {
+        loadSession: () => null,
         scope,
         cfg: { repo: 'example/project' },
         projectDir: process.cwd(),
@@ -430,7 +440,13 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       fromState: 'plan',
       body,
       attempt,
-      ports: { scope, cfg: { repo: 'example/project' }, projectDir: process.cwd(), runGuards },
+      ports: {
+        loadSession: () => null,
+        scope,
+        cfg: { repo: 'example/project' },
+        projectDir: process.cwd(),
+        runGuards,
+      },
     });
     assert.equal(explanation.status, 'ready');
     dependencyDone = false;
@@ -440,6 +456,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       cfg: { repo: 'example/project' },
       deps: {
         assertBound: () => {},
+        migrationFreezeActive: () => false,
         fetchIssueBody: async () => ({ body }),
         getLiveState: async () => 'plan',
         resolveProjectDir: () => process.cwd(),
@@ -553,6 +570,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
       body,
       attempt,
       ports: {
+        loadSession: () => null,
         scope: 'real-plan-gate',
         cfg: { repo: 'example/project', gateAnalysisToDevelopment: false },
         projectDir: process.cwd(),
@@ -644,6 +662,7 @@ export function registerEarlyPromoteCases({ test, body, now }) {
         body: scenario.bodyValue,
         attempt,
         ports: {
+          loadSession: () => null,
           scope: `registry:${scenario.from}`,
           cfg,
           deps,

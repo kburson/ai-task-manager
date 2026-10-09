@@ -16,7 +16,7 @@ import {
   __internals as timingInternals,
 } from '../../../../task-tracker/gh-timing-comment.mjs';
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import { bankTranscriptTail, loadState, saveState } from '../../../../task-tracker/state.mjs';
 import { loadMarker, markerPathFor, saveMarker } from '../../../../task-tracker/word-counter.mjs';
 
@@ -152,10 +152,21 @@ test('the real review-approved and issue-wrap producer preserves a known full ma
   );
 });
 
-test('bankTranscriptTail keeps durable markers independent across actor session ids', () => {
-  const projectDir = mkdtempProjectIsolated('absolute-bank-1142-', 'test');
-  const transcriptDir = path.join(projectDir, 'transcripts');
-  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
+test('bankTranscriptTail keeps durable markers independent across actor session ids', async () => {
+  const projectDir = await mkdtempProjectIsolated('absolute-bank-1142-', 'test');
+  const transcriptDir = path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
+  const statePath = path.join(
+    projectDir,
+    '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+  );
   const priorEnv = {
     projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
     transcriptDir: process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR,
@@ -220,10 +231,21 @@ test('bankTranscriptTail keeps durable markers independent across actor session 
   }
 });
 
-test('bankTranscriptTail preserves a legacy per-session full cursor above global state', () => {
-  const projectDir = mkdtempProjectIsolated('absolute-legacy-bank-1142-', 'test');
-  const transcriptDir = path.join(projectDir, 'transcripts');
-  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
+test('bankTranscriptTail preserves a legacy per-session full cursor above global state', async () => {
+  const projectDir = await mkdtempProjectIsolated('absolute-legacy-bank-1142-', 'test');
+  const transcriptDir = path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
+  const statePath = path.join(
+    projectDir,
+    '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+  );
   const sid = 'absolute-legacy-bank';
   const priorEnv = {
     projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
@@ -264,9 +286,12 @@ test('bankTranscriptTail preserves a legacy per-session full cursor above global
   }
 });
 
-test('bankTranscriptTail reports unavailable Codex input without advancing durable cursors', () => {
-  const projectDir = mkdtempProjectIsolated('absolute-unavailable-bank-1142-', 'test');
-  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
+test('bankTranscriptTail reports unavailable Codex input without advancing durable cursors', async () => {
+  const projectDir = await mkdtempProjectIsolated('absolute-unavailable-bank-1142-', 'test');
+  const statePath = path.join(
+    projectDir,
+    '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+  );
   const sid = '019fbf00-unavailable-codex-bank';
   const priorEnv = {
     projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
@@ -317,10 +342,21 @@ test('bankTranscriptTail reports unavailable Codex input without advancing durab
 });
 
 test('a fresh governed bind emits the available full-expansion marker', async () => {
-  const projectDir = mkdtempProjectIsolated('absolute-bind-1142-', 'test');
-  const transcriptDir = path.join(projectDir, 'transcripts');
+  const projectDir = await mkdtempProjectIsolated('absolute-bind-1142-', 'test');
+  const transcriptDir = path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
   const sid = 'absolute-bind-1142';
-  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
+  const statePath = path.join(
+    projectDir,
+    '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+  );
   const priorEnv = {
     projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
     transcriptDir: process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR,
@@ -372,13 +408,24 @@ test('a fresh governed bind emits the available full-expansion marker', async ()
 });
 
 async function runResumeTailCase({ explicitTarget }) {
-  const projectDir = mkdtempProjectIsolated(
+  const projectDir = await mkdtempProjectIsolated(
     `absolute-${explicitTarget ? 'target' : 'normal'}-resume-tail-1142-`,
     'test'
   );
-  const transcriptDir = path.join(projectDir, 'transcripts');
+  const transcriptDir = path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
   const sid = `absolute-${explicitTarget ? 'target' : 'normal'}-resume-tail-1142`;
-  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
+  const statePath = path.join(
+    projectDir,
+    '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+  );
   const priorEnv = {
     projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
     transcriptDir: process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR,

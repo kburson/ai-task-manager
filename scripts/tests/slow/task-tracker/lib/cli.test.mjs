@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @story #309
 import { strict as assert } from 'node:assert';
-import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
 initializeFixtureActor(import.meta.url);
@@ -30,7 +30,7 @@ const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
 // #442 — this sandbox binds #999/#108 via the CLI, which registers a fleet
 // entry; git-isolate it so registerTask cannot escape into the live registry.
-const sandbox = await createCommittedLegacyRootFixture('tt-cli-');
+const sandbox = await createCommittedRuntimeRootFixture('tt-cli-');
 admittedRoots.add(sandbox);
 mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
 writeFileSync(
@@ -120,7 +120,7 @@ assert.match(r5.stdout, /Active: #999/);
 // makes `start #N` switch like `resume #N`.
 // #442 — this sandbox binds #200/#201/#202 via the CLI, which registers a fleet
 // entry; git-isolate it so registerTask cannot escape into the live registry.
-const startSwitchSandbox = await createCommittedLegacyRootFixture('tt-start-switch-');
+const startSwitchSandbox = await createCommittedRuntimeRootFixture('tt-start-switch-');
 admittedRoots.add(startSwitchSandbox);
 mkdirSync(path.join(startSwitchSandbox, '.ai-task-manager'), { recursive: true });
 writeFileSync(
@@ -194,7 +194,7 @@ rmSync(sandbox, { recursive: true });
 // ---- Uninitialized guard tests ----
 // Dir has .ai-task-manager/ but no task-tracker.json — fail-closed `config-not-found`.
 // fleet-sandbox-ok: deliberately uninitialized (no task-tracker.json) — every verb fails config-not-found before reaching registerTask, so no leak is possible.
-const noRepoDirBase = await createCommittedLegacyRootFixture('tt-norepo-');
+const noRepoDirBase = await createCommittedRuntimeRootFixture('tt-norepo-');
 admittedRoots.add(noRepoDirBase);
 mkdirSync(path.join(noRepoDirBase, '.ai-task-manager'), { recursive: true });
 const noRepoEnv = {
@@ -241,7 +241,7 @@ rmSync(noRepoDirBase, { recursive: true });
 // Worktree pipeline regression guard. Must exit non-zero with "config-not-found at <path>"
 // when an agent boots into a worktree that wasn't seeded with .ai-task-manager/.
 // fleet-sandbox-ok: deliberately unseeded worktree — --role agent must fail config-not-found before reaching registerTask, so no leak is possible.
-const bareWorktree = await createCommittedLegacyRootFixture('tt-bare-wt-');
+const bareWorktree = await createCommittedRuntimeRootFixture('tt-bare-wt-');
 admittedRoots.add(bareWorktree);
 const bareEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: bareWorktree, TT_SKIP_NETWORK: '1' };
 try {

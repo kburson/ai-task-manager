@@ -22,11 +22,13 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { rmSync } from 'node:fs';
 import { loadState, saveState } from '../../../../task-tracker/state.mjs';
-import { join } from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { join, resolve } from 'node:path';
 
 import {
   verbReview,
@@ -37,8 +39,8 @@ import * as reviewModule from '../../../../task-tracker/verbs/review.mjs';
 import { reviewAgentValidationAction } from '../../../../task-tracker/lib/resident-actions/review-agent-validation.mjs';
 
 function makeTmpStatePath(state) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-463-'));
-  const p = join(dir, 'state.json');
+  const dir = createActivatedUnitRuntimeRoot('aitm-463-');
+  const p = join(dir, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   saveState(state, p);
   return { statePath: p, dir };
 }
@@ -49,7 +51,8 @@ function makeCtx({ statePath, rest = ['#999'], active = '#999', flushFn } = {}) 
   const ctx = {
     cfg: { repo: 'o/r', projectId: 'PROJ', idleThresholdMinutes: 5 },
     statePath,
-    projectDir: '/proj',
+    projectDir: resolve(statePath, '../../../../..'),
+    session: {},
     rest,
     SKIP_NETWORK: true,
     pexec: async () => ({ stdout: '{}', stderr: '' }),

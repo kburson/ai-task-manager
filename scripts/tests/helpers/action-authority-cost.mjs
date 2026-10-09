@@ -140,6 +140,7 @@ export async function measureFixedActionAuthorityReads() {
             cfg: { repo: REPOSITORY },
             projectDir: process.cwd(),
             runGuards: readyGuards,
+            loadSession: () => null,
           },
         })
       ),
@@ -231,6 +232,7 @@ export async function measureFixedActionAuthorityReads() {
               projectDir: process.cwd(),
               head: HEAD,
               runGuards: readyGuards,
+              loadSession: () => null,
             },
           }),
         ({ issueBody }) => ({

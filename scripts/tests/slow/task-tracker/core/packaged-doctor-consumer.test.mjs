@@ -17,7 +17,7 @@ function run(command, args, cwd) {
   return execFileSync(command, args, {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, npm_config_loglevel: 'silent' },
+    env: { ...process.env, npm_config_loglevel: 'silent', npm_config_offline: 'true' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 }
@@ -26,7 +26,7 @@ function doctor(cwd) {
   return spawnSync('npx', ['--no-install', 'aitm', 'doctor', '--json'], {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, npm_config_loglevel: 'silent' },
+    env: { ...process.env, npm_config_loglevel: 'silent', npm_config_offline: 'true' },
   });
 }
 

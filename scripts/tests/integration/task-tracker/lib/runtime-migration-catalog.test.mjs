@@ -1,15 +1,10 @@
 // @story #1857
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import {
-  createRuntimeRootFixture,
-  createActivatedRuntimeRootFixture,
-} from '../../../helpers/runtime-root-fixture.mjs';
+import { createRuntimeRootFixture, createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { planRuntimeMigration } from '../../../../task-tracker/lib/runtime-migration-plan.mjs';
 import {
   beginCapturedAction,
@@ -18,70 +13,29 @@ import {
 } from '../../../../task-tracker/lib/action-capture.mjs';
 import { classifyCaptureRecord } from '../../../../task-tracker/lib/runtime-capture-catalog.mjs';
 import { readdirSync } from 'node:fs';
-import {
-  readPhysicalRuntimeIdentity,
-  withRuntimeRootAdapters,
-} from '../../../../task-tracker/lib/runtime-storage.mjs';
+import { readPhysicalRuntimeIdentity, withRuntimeRootAdapters } from '../../../../task-tracker/lib/runtime-storage.mjs';
 
 test('one plan observes each physical root independently of file count and rechecks its final census', async () => {
   const root = createRuntimeRootFixture('1857-root-census-budget-');
   try {
     const identity = readPhysicalRuntimeIdentity(root);
     for (let index = 0; index < 20; index++) {
-      const file = path.join(
-        root,
-        '.tmp',
-        'aitm',
-        'sessions',
-        'session-' + index,
-        'active-task.json'
-      );
+      const file = path.join(root, '.tmp', 'aitm', 'sessions', 'session-' + index, 'active-task.json');
       mkdirSync(path.dirname(file), { recursive: true });
       writeFileSync(file, '{}');
     }
     let observations = 0;
-    const plan = await withRuntimeRootAdapters(
-      {
-        readIdentity: () => {
-          observations++;
-          return identity;
-        },
-      },
-      () => planRuntimeMigration({ projectRoot: root, mainRoot: root, adapters })
-    );
+    const plan = await withRuntimeRootAdapters({ readIdentity: () => { observations++; return identity; } },
+      () => planRuntimeMigration({ projectRoot: root, mainRoot: root, adapters }));
     assert.equal(plan.files.length, 20);
     assert.ok(observations <= 6, 'Git identity must not be re-observed for every source file');
     let changed = false;
-    const shifted = await withRuntimeRootAdapters(
-      {
-        readIdentity: () =>
-          changed
-            ? {
-                ...identity,
-                worktreeIdentity: {
-                  ...identity.worktreeIdentity,
-                  registeredRoots: [root, root + '/new-root'],
-                },
-              }
-            : identity,
-      },
-      () =>
-        planRuntimeMigration({
-          projectRoot: root,
-          mainRoot: root,
-          adapters: {
-            ...adapters,
-            writerCensus: () => {
-              changed = true;
-              return { complete: true, writers: [], claims: [] };
-            },
-          },
-        })
-    );
+    const shifted = await withRuntimeRootAdapters({ readIdentity: () => changed ? {
+      ...identity, worktreeIdentity: { ...identity.worktreeIdentity, registeredRoots: [root, root + '/new-root'] },
+    } : identity }, () => planRuntimeMigration({ projectRoot: root, mainRoot: root,
+      adapters: { ...adapters, writerCensus: () => { changed = true; return { complete: true, writers: [], claims: [] }; } } }));
     assert.ok(shifted.blockers.some((entry) => entry.code === 'root-census-changed'));
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('supported legacy roots have an explicit byte-preserving route and duplicates refuse', async () => {
@@ -93,8 +47,7 @@ test('supported legacy roots have an explicit byte-preserving route and duplicat
     writeFileSync(source, bytes);
     writeFileSync(path.join(root, '.claude/config.json'), '{"trackedConfig":true}');
     const plan = await planRuntimeMigration({ projectRoot: root, mainRoot: root, adapters });
-    assert.equal(plan.blockers.length, 3);
-    assert.ok(plan.blockers.every((entry) => entry.code === 'required-record-missing'));
+    assert.deepEqual(plan.blockers, []);
     assert.equal(plan.files.length, 1);
     assert.equal(plan.files[0].source, source);
     assert.equal(
@@ -158,13 +111,7 @@ test('capture catalog accepts actual producer records and validates each stored 
       ...readdirSync(handle.actionDir).map((name) => path.join(handle.actionDir, name)),
     ];
     for (const file of files) {
-      const legacyStore = path.join(root, '.tmp', 'aitm');
-      assert.ok(
-        file.startsWith(store + path.sep) || file.startsWith(legacyStore + path.sep),
-        'actual capture bytes stay in a declared source root'
-      );
-      const sourceRoot = file.startsWith(store + path.sep) ? store : legacyStore;
-      const relative = path.relative(sourceRoot, file).split(path.sep).join('/');
+      const relative = path.relative(store, file).split(path.sep).join('/');
       const classified = classifyCaptureRecord({
         relative,
         readSibling: (name) => readFileSync(path.join(path.dirname(file), name)),
@@ -175,13 +122,8 @@ test('capture catalog accepts actual producer records and validates each stored 
       mkdirSync(path.dirname(legacy), { recursive: true });
       writeFileSync(legacy, readFileSync(file));
     }
-    const plan = await planRuntimeMigration({
-      projectRoot: legacyRoot,
-      mainRoot: legacyRoot,
-      adapters,
-    });
-    assert.equal(plan.blockers.length, 4);
-    assert.ok(plan.blockers.every((entry) => entry.code === 'required-record-missing'));
+    const plan = await planRuntimeMigration({ projectRoot: legacyRoot, mainRoot: legacyRoot, adapters });
+    assert.deepEqual(plan.blockers, []);
     assert.equal(plan.files.length, files.length);
     assert.equal(
       plan.files.find((entry) => entry.source.endsWith('/stdin.bin')).size,
@@ -240,8 +182,7 @@ test('migration classifiers receive exact binary capture bytes without text deco
         }),
       },
     });
-    assert.equal(plan.blockers.length, 4);
-    assert.ok(plan.blockers.every((entry) => entry.code === 'required-record-missing'));
+    assert.deepEqual(plan.blockers, []);
     assert.equal(plan.files[0].size, bytes.length);
     assert.deepEqual(readFileSync(source), bytes);
   } finally {

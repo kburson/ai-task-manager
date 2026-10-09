@@ -19,6 +19,7 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
 import {
   projectScratchDir,
@@ -28,15 +29,19 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { issueLockPath } from '../../../../task-tracker/issue-mutator-lock.mjs';
+import {
+  issueLockPath,
+  withIssueLock,
+  readIssueLockHolder,
+} from '../../../../task-tracker/issue-mutator-lock.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 // #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
 const MOVE_STATE = path.resolve(__dir, '../../helpers/move-state-cli.mjs');
 const REPO_ROOT = path.resolve(__dir, '../../../..');
 
-function setupProjectDir() {
-  const dir = mkdtempProjectIsolated('tt-conc-');
+async function setupProjectDir() {
+  const dir = await createActivatedRuntimeRootFixture('tt-conc-');
   const cfgDir = path.join(dir, '.ai-task-manager');
   mkdirSync(cfgDir, { recursive: true });
   writeFileSync(
@@ -55,6 +60,7 @@ function runMoveState(projDir, issue, state) {
   // both exit 0 — the assertion `expected non-zero exit; got code 0` fires.
   const baseEnv = { ...process.env };
   delete baseEnv.AITM_ISSUE_LOCK_HELD;
+  delete baseEnv.AITM_ISSUE_LOCK_PROOF;
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [MOVE_STATE, String(issue), state], {
       cwd: projDir,
@@ -74,53 +80,41 @@ function runMoveState(projDir, issue, state) {
   });
 }
 
-const projDir = setupProjectDir();
+const projDir = await setupProjectDir();
 const issue = 31415;
 
-// Pre-create the lock dir to force contention on first attempt
 const lockPath = issueLockPath(issue, projDir);
-mkdirSync(lockPath, { recursive: true });
-writeFileSync(
-  path.join(lockPath, 'holder.json'),
-  JSON.stringify({
-    sessionId: 'holder-sess',
-    pid: 12345,
-    acquiredAt: new Date().toISOString(),
-    verb: 'external-test-hold',
-  }) + '\n',
-  'utf8'
-);
+await withIssueLock({ issue, projDir }, async () => {
+  // Race two processes — both see the held lock. Default retries=1 with
+  // timeoutMs=500 means each retries once before failing.
+  const [a, b] = await Promise.all([
+    runMoveState(projDir, issue, 'refine'),
+    runMoveState(projDir, issue, 'refine'),
+  ]);
 
-// Race two processes — both see the held lock. Default retries=1 with
-// timeoutMs=500 means each retries once before failing.
-const [a, b] = await Promise.all([
-  runMoveState(projDir, issue, 'refine'),
-  runMoveState(projDir, issue, 'refine'),
-]);
+  // Both should fail with the locked-by message (lock is externally held the
+  // whole time — no winner).
+  for (const [label, res] of [
+    ['a', a],
+    ['b', b],
+  ]) {
+    assert.notEqual(
+      res.code,
+      0,
+      `${label}: expected non-zero exit; got code ${res.code}\n${res.stderr}`
+    );
+    assert.match(
+      res.stderr,
+      new RegExp(`issue ${issue} locked by session `),
+      `${label}: stderr missing locked-by pattern:\n${res.stderr}`
+    );
+  }
+});
 
-// Both should fail with the locked-by message (lock is externally held the
-// whole time — no winner).
-for (const [label, res] of [
-  ['a', a],
-  ['b', b],
-]) {
-  assert.notEqual(
-    res.code,
-    0,
-    `${label}: expected non-zero exit; got code ${res.code}\n${res.stderr}`
-  );
-  assert.match(
-    res.stderr,
-    new RegExp(`issue ${issue} locked by session holder-sess \\(held since `),
-    `${label}: stderr missing locked-by pattern:\n${res.stderr}`
-  );
-}
-
-// Release and retry — should succeed cleanly.
-rmSync(lockPath, { recursive: true, force: true });
+// Protected owner releases and retry succeeds.
 const c = await runMoveState(projDir, issue, 'refine');
 assert.equal(c.code, 0, `after release expected exit 0, got ${c.code}\n${c.stderr}`);
-assert.equal(existsSync(lockPath), false, 'lock released after successful run');
+assert.equal(readIssueLockHolder(lockPath), null, 'protected lock released after successful run');
 
 rmSync(projDir, { recursive: true, force: true });
 console.log('state-mutator-concurrency.test.mjs: all passed');

@@ -1,7 +1,9 @@
 // @story #1500
-import { closeSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { resolveRuntimeRoot, assertRuntimeReadable, RuntimeRootError } from '../runtime-storage.mjs';
+import { withRuntimeOperation } from '../runtime-writer.mjs';
 import { pexec } from '../../../gh/lib/gh-client.mjs';
 import { mutateIssueBody } from '../issue-body-mutate.mjs';
 import { buildRuntimeCapability } from './runtime-capabilities.mjs';
@@ -77,6 +79,10 @@ function decodedImport(body) {
 
 export function createLiveEvidenceRuntime({ context, cfg }) {
   if (context?.providerMode !== 'live') return null;
+  const identity = resolveRuntimeRoot({ cwd: context.sourceRoot, env: {} });
+  if (path.resolve(context.authorityRoot) !== identity.mainRoot)
+    throw new RuntimeRootError('ROOT_IDENTITY_MISMATCH', 'Evidence authority must be the physical source repository main root');
+  assertRuntimeReadable({ projectRoot: identity.projectRoot, mainRoot: identity.mainRoot });
   const entries = ['approve', 'close', 'deliver', 'evidence', 'reopen', 'review', 'test', 'verify'];
   const capability = buildRuntimeCapability({
     authorityHostId: context.authorityHostId,
@@ -126,25 +132,10 @@ export function createLiveEvidenceRuntime({ context, cfg }) {
     readRuntimeCapability: async () => capability,
     listResidentEntries: async () => entries,
     withAuthorityLock: async ({ issueNumber }, callback) => {
-      const dir = path.join(context.authorityRoot, '.ai-task-manager', 'evidence-v2');
-      mkdirSync(dir, { recursive: true });
-      const file = path.join(dir, `enroll-${issueNumber}.lock`);
-      let handle;
-      try {
-        handle = openSync(file, 'wx');
-        writeFileSync(
-          handle,
-          canonical({ pid: process.pid, authorityHostId: context.authorityHostId })
-        );
-      } catch {
-        fail('enrollment-lock-held');
-      }
-      try {
-        return await callback();
-      } finally {
-        closeSync(handle);
-        unlinkSync(file);
-      }
+      if (!Number.isSafeInteger(issueNumber) || issueNumber <= 0 || issueNumber !== context.issueNumber)
+        fail('enrollment-issue-mismatch');
+      const target = path.join(identity.mainRoot, '.ai-task-manager', 'runtime', 'store', 'evidence-v2', 'enroll-' + issueNumber + '.lock');
+      return withRuntimeOperation(target, callback);
     },
     appendImportRecords: async (records) => {
       const current = await readIssue({ issueNumber: context.issueNumber });

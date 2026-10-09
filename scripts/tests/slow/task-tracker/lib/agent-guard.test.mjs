@@ -5,8 +5,16 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync, existsSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+  realpathSync,
+  existsSync,
+} from 'node:fs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -26,31 +34,50 @@ function runGuard({ cwd, stdin }) {
     cwd,
     encoding: 'utf8',
     input: stdin,
-    env: { ...process.env, PWD: cwd },
+    env: {
+      ...process.env,
+      PWD: cwd,
+      AI_TASK_MANAGER_PROJECT_DIR: cwd,
+      AI_TASK_MANAGER_APP_NAME: 'claude',
+      AI_TASK_MANAGER_SESSION_ID: 'agent-guard-fixture',
+    },
   });
 }
 
-function makeRepo() {
+async function makeRepo() {
   // realpath to neutralize macOS /tmp -> /private/tmp symlink
-  const root = realpathSync(mkdtempSync(join(projectScratchDir('test'), 'aitm-agent-guard-')));
+  const root = await createCommittedRuntimeRootFixture('aitm-agent-guard-');
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'config', 'user.email', 'test@example.com');
   git(root, 'config', 'user.name', 'Test');
   writeFileSync(join(root, 'README.md'), 'x\n');
-  git(root, 'add', '.');
+  git(root, 'add', 'README.md');
   git(root, 'commit', '-q', '-m', 'init');
   return root;
 }
 
 function writeLock(main, body) {
-  // #573: the orchestrator lock is main-anchored under `.tmp/aitm/fleet/`.
-  const dir = join(main, '.tmp', 'aitm', 'fleet');
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, 'orchestrator.lock'), JSON.stringify(body));
+  const lockScript = fileURLToPath(
+    new URL('../../../../task-tracker/orchestrator-lock.mjs', import.meta.url)
+  );
+  const result = spawnSync(process.execPath, [lockScript, 'acquire', '13'], {
+    cwd: main,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      AI_TASK_MANAGER_PROJECT_DIR: main,
+      AI_TASK_MANAGER_APP_NAME: 'claude',
+      AI_TASK_MANAGER_SESSION_ID: 'agent-guard-fixture',
+    },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const file = join(main, '.ai-task-manager', 'runtime', 'store', 'fleet', 'orchestrator.lock');
+  const owned = JSON.parse(readFileSync(file, 'utf8'));
+  writeFileSync(file, JSON.stringify({ ...owned, startedAt: body.startedAt, ttlMs: body.ttlMs }));
 }
 
-test('blocks when cwd === main worktree and no orchestrator lock', () => {
-  const main = makeRepo();
+test('blocks when cwd === main worktree and no orchestrator lock', async () => {
+  const main = await makeRepo();
   try {
     const r = runGuard({ cwd: main, stdin: JSON.stringify({ tool_input: {} }) });
     assert.equal(r.status, 0, `stderr: ${r.stderr}`);
@@ -65,8 +92,8 @@ test('blocks when cwd === main worktree and no orchestrator lock', () => {
   }
 });
 
-test('blocks when lock has expired (startedAt + ttlMs < now)', () => {
-  const main = makeRepo();
+test('blocks when lock has expired (startedAt + ttlMs < now)', async () => {
+  const main = await makeRepo();
   try {
     writeLock(main, {
       epic: '#13',
@@ -86,8 +113,8 @@ test('blocks when lock has expired (startedAt + ttlMs < now)', () => {
   }
 });
 
-test('blocks when lock is held but isolation !== "worktree"', () => {
-  const main = makeRepo();
+test('blocks when lock is held but isolation !== "worktree"', async () => {
+  const main = await makeRepo();
   try {
     writeLock(main, {
       epic: '#13',
@@ -104,8 +131,8 @@ test('blocks when lock is held but isolation !== "worktree"', () => {
   }
 });
 
-test('passes when lock is fresh and isolation === "worktree"', () => {
-  const main = makeRepo();
+test('passes when lock is fresh and isolation === "worktree"', async () => {
+  const main = await makeRepo();
   try {
     writeLock(main, {
       epic: '#13',
@@ -123,8 +150,8 @@ test('passes when lock is fresh and isolation === "worktree"', () => {
   }
 });
 
-test('passes when cwd is a linked worktree (cwd !== main)', () => {
-  const main = makeRepo();
+test('passes when cwd is a linked worktree (cwd !== main)', async () => {
+  const main = await makeRepo();
   const linked = join(main, '..', `agent-guard-linked-${Date.now()}`);
   try {
     git(main, 'worktree', 'add', '-b', 'feature-branch', linked);
@@ -140,8 +167,8 @@ test('passes when cwd is a linked worktree (cwd !== main)', () => {
   }
 });
 
-test('safe-passes on malformed stdin (does not block)', () => {
-  const main = makeRepo();
+test('safe-passes on malformed stdin (does not block)', async () => {
+  const main = await makeRepo();
   // Use a linked worktree so a malformed payload doesn't get auto-blocked
   // by the main-worktree rule. Malformed-stdin behavior is "exit 0, no
   // output" regardless of cwd, but we assert it specifically here.
