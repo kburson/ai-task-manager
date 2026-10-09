@@ -1,0 +1,16 @@
+{
+  "schema": "ai-peer-review.relicensing-declaration/v1",
+  "copyright_holder": "Kendrick Burson",
+  "covered_source_repository": "https://github.com/kburson/ai-task-manager",
+  "covered_source_commit": "4b3bcd43cba141a611da4a2b861433b915462806",
+  "license_grant": "Apache-2.0",
+  "proprietary_fork_consequence_accepted": true,
+  "authorization_statement": "I, Kendrick Burson, as copyright holder, approve relicensing the extracted ai-peer-review code covered by AITM source commit 4b3bcd43cba141a611da4a2b861433b915462806 under Apache-2.0, accept the proprietary-fork consequence, and authorize use of my existing SSH Ed25519 key to sign the declaration and proceed with public publication.",
+  "signature_type": "ssh-ed25519",
+  "signature_namespace": "ai-peer-review-relicensing",
+  "signer_identity": "copyright-holder",
+  "signer_public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHWi13X884S5FApYT7CnAWf7xSbkGGAj97r+pf0/kgFU kpburson@pm.me",
+  "signer_fingerprint": "SHA256:5coWixpZ2nPevuuMFWsJkk7oc3UN8zybVaMpA12HNPI",
+  "signed_at": "2026-09-08T12:13:12Z",
+  "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgdaLXdfzzhLkUClhPsKcBZ/vFJu\nQYYCP3uv6l/T+SAVQAAAAaYWktcGVlci1yZXZpZXctcmVsaWNlbnNpbmcAAAAAAAAABnNo\nYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQ/Dhg157XO1TMvUJHAa5QtIoBlCwwpv32X\nZbmKnyhlHl6F/gh0aby3KGHoqH0j1TE5pHefHuqPQ6/Cuiks16BA==\n-----END SSH SIGNATURE-----\n"
+}

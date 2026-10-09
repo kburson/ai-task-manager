@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ai-peer-review.runtime/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "classification",
+    "ownership",
+    "transport_mode",
+    "reviewer",
+    "adapter_version",
+    "project_root_digest"
+  ],
+  "properties": {
+    "schema": { "const": "ai-peer-review.runtime/v1" },
+    "classification": { "enum": ["SPR", "XPR"] },
+    "ownership": { "enum": ["native", "broker"] },
+    "transport_mode": { "enum": ["manual", "resume-only", "automatic-required"] },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selector", "provider", "host", "model_id", "model_display", "effort"],
+      "properties": {
+        "selector": { "enum": ["codex", "claude", "grok"] },
+        "provider": { "enum": ["openai", "anthropic", "xai"] },
+        "host": { "enum": ["codex", "claude-code", "grok"] },
+        "model_id": { "type": "string", "minLength": 1 },
+        "model_display": { "type": "string", "minLength": 1 },
+        "effort": { "type": "string", "minLength": 1 }
+      }
+    },
+    "adapter_version": { "type": "string", "minLength": 1 },
+    "project_root_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

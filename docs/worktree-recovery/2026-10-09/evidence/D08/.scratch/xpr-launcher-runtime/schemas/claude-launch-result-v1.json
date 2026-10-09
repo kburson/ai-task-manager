@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ai-peer-review.claude-launch-result/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "command",
+    "review_id",
+    "status",
+    "protocol_revision",
+    "response",
+    "session_fingerprint",
+    "recovery"
+  ],
+  "properties": {
+    "schema": { "const": "ai-peer-review.claude-launch-result/v1" },
+    "command": { "const": "launch-reviewer" },
+    "review_id": { "type": "string", "minLength": 1 },
+    "status": {
+      "enum": ["submitted", "permission-blocked", "failed", "outcome-unknown"]
+    },
+    "protocol_revision": { "type": "integer", "minimum": 0 },
+    "response": { "type": "string", "pattern": "^/" },
+    "session_fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "recovery": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["command", "reason"],
+          "properties": {
+            "command": { "type": "string", "minLength": 1 },
+            "reason": { "const": "response-permission-denied" }
+          }
+        }
+      ]
+    }
+  }
+}
