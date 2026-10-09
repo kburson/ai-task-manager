@@ -384,6 +384,20 @@
       "localEvidencePaths": 511,
       "originalSourceRetained": true,
       "decision": "Review evidence and classification under #1953"
+    },
+    {
+      "id": "D10",
+      "owner": "kburson",
+      "story": 1514,
+      "recoveryStory": 1953,
+      "originalStoryAssignees": [],
+      "sourcePR": "https://github.com/kburson/ai-task-manager/pull/1981",
+      "recoveryBranch": "codex/1953-1514-planning-evidence",
+      "verifiedPublishedHead": "da0969a1b94f02d1ba41929179e1a669ed6ad049",
+      "sourceHead": "477a0bf30756dee0e93008e76c7e9a85245b261c",
+      "sourceBranch": "codex/feature-1514-externalize-forecast-comparables",
+      "priorPlanningPR": 1515,
+      "decision": "Review local planning operator fragments before assigning or implementing open #1514."
     }
   ],
   "sourcePRs": [
@@ -11538,11 +11552,11 @@
       "issue": 1953,
       "owner": "kburson",
       "branch": "codex/1953-local-and-archive-evidence-1",
-      "commit": "62b3f644bd81fa2d521ebb603e227aa07a4ed485",
+      "commit": "7b913f4f3a4117cc30ba3e406ce76b0fe949b83a",
       "url": "https://github.com/kburson/ai-task-manager/pull/1967",
       "part": 1,
       "total": 2,
-      "files": 900
+      "files": 903
     },
     {
       "family": "local-and-archive-evidence",
@@ -11696,5 +11710,125 @@
     "same-published-evidence-blob": 615,
     "published-evidence": 3237,
     "already-reachable-on-origin": 35
-  }
+  },
+  "additionalPlanningEvidence": {
+    "branch": "codex/1953-1514-planning-evidence",
+    "commit": "da0969a1b94f02d1ba41929179e1a669ed6ad049",
+    "url": "https://github.com/kburson/ai-task-manager/pull/1981",
+    "metadata": {
+      "owner": "kburson",
+      "recoveryStory": 1953,
+      "originalStory": 1514,
+      "originalStoryAssignees": [],
+      "sourceHead": "477a0bf30756dee0e93008e76c7e9a85245b261c",
+      "sourceBranch": "codex/feature-1514-externalize-forecast-comparables",
+      "priorPlanningPR": 1515,
+      "purpose": "Preserve seven local planning/acceptance-criteria operator fragments for the open forecast-comparables story. These records are not proof that an operation ran or that implementation is approved.",
+      "files": [
+        {
+          "original": ".scratch/gh/1514-ac-evidence-map.json",
+          "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-ac-evidence-map.json",
+          "blob": "fffcba5b41cd4be63a1724fdd69963667832f19d",
+          "sha256": "d89642abbc14501aba79221074bdd9634dec4a6955d5a384c902c74286bd7709"
+        },
+        {
+          "original": ".scratch/gh/1514-acs-operation.json",
+          "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-acs-operation.json",
+          "blob": "0964a146e4d5e51026d6cdad2692c926582f248c",
+          "sha256": "c50d42f028eba437efb1924a91589554e06c4ed65afa2085a42b7189813e2b39"
+        },
+        {
+          "original": ".scratch/gh/1514-compact-link-ac-operation.json",
+          "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-compact-link-ac-operation.json",
+          "blob": "640414b348dd040e68581675c679bbf2a9f596e7",
+          "sha256": "b684db752217f9fa6321e2abf05f1fdde81d40b149022dec5e33f4f77703c87b"
+        },
+        {
+          "original": ".scratch/gh/1514-plan-metadata-operation.json",
+          "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-plan-metadata-operation.json",
+          "blob": "b85170df127ed8c30acc9e178f208a2550fdb00c",
+          "sha256": "c6614ef21e4cf912c6b41d21ea3263f337c2dcf45beb2b254df1143a86a11408"
+        },
+        {
+          "original": ".scratch/gh/1514-planning-pr-body.md",
+          "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-planning-pr-body.md",
+          "blob": "33588ee0436a86da6552cdb960203536a46f241f",
+          "sha256": "cbbdaa5a30c05bc184ce4ed7d2b4bdc37942bd2d0321f8581fe85079f29daeae"
+        },
+        {
+          "original": ".scratch/gh/1514-scope-operation.json",
+          "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-scope-operation.json",
+          "blob": "c3da896715e74b411f02414ccab4ca48b9593a70",
+          "sha256": "4d55931847f98e1220277c45cf8fcc1d5c8cfeadf78f57859e1c1dc58960c211"
+        },
+        {
+          "original": ".scratch/gh/1514-verification-operation.json",
+          "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-verification-operation.json",
+          "blob": "66cb1aee681cd9a5adfb815c10327539cb92d91c",
+          "sha256": "3d933657b7534ac8bd3c9c212e7fcf8054c1f81790dad93f08287767b378d02f"
+        }
+      ]
+    }
+  },
+  "toolingLatest": [
+    {
+      "path": "docs/worktree-recovery/2026-10-09/evidence/tooling/split-evidence-review.mjs.snapshot",
+      "sha256": "e8d1e3f7932e2ae44f6dad693401f60734bcc50f373487f1bde61f1949a178de",
+      "blob": "f2e607fd6f55a699654abb23c88a2cf1d4975da1",
+      "branch": "codex/1953-local-and-archive-evidence-1",
+      "PR": "https://github.com/kburson/ai-task-manager/pull/1967"
+    },
+    {
+      "path": "docs/worktree-recovery/2026-10-09/evidence/tooling/capture-1514-evidence.mjs.snapshot",
+      "sha256": "7366a8513a12f625eb46f83087ac6a36defef349dde891ca57f87351f6191b6d",
+      "blob": "9456559ccf55db381fd26d031045b9daf07540b0",
+      "branch": "codex/1953-local-and-archive-evidence-1",
+      "PR": "https://github.com/kburson/ai-task-manager/pull/1967"
+    },
+    {
+      "path": "docs/worktree-recovery/2026-10-09/evidence/tooling/finalize-recovery.mjs.snapshot",
+      "sha256": "1c8680226c93974fcc87d8b746bff4405922fbf18dcf5ec19fa6abf2d5a83d39",
+      "blob": "feaa46e421d809a860a4793e4e872f0d9e6d6976",
+      "branch": "codex/1953-local-and-archive-evidence-1",
+      "PR": "https://github.com/kburson/ai-task-manager/pull/1967"
+    }
+  ],
+  "sourcePreservationVerification": [
+    {
+      "id": "P01",
+      "currentHeadUnchanged": true,
+      "stagedStateUnchanged": true,
+      "contentDrift": []
+    },
+    {
+      "id": "P02",
+      "currentHeadUnchanged": true,
+      "stagedStateUnchanged": true,
+      "contentDrift": []
+    },
+    {
+      "id": "P08",
+      "currentHeadUnchanged": true,
+      "stagedStateUnchanged": true,
+      "contentDrift": []
+    },
+    {
+      "id": "P09",
+      "currentHeadUnchanged": true,
+      "stagedStateUnchanged": true,
+      "contentDrift": []
+    },
+    {
+      "id": "P07",
+      "currentHeadUnchanged": true,
+      "stagedStateUnchanged": true,
+      "contentDrift": []
+    },
+    {
+      "id": "D09",
+      "currentHeadUnchanged": true,
+      "stagedStateUnchanged": true,
+      "contentDrift": []
+    }
+  ]
 }

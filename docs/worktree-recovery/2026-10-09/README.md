@@ -69,3 +69,11 @@ Review these as retention/provenance decisions after the owning source PR. They 
 | delivered-story-evidence | #1953 | 2/2 | 188 | [PR](https://github.com/kburson/ai-task-manager/pull/1980) |
 
 Additional Superpowers task reports, publication QA images/PDFs and inert recovery-tool source copies are included in these evidence PRs. supplement-dispositions.json.gz records the final ignored-file sweep.
+
+## Final coverage check
+
+D10 (#1514) was clean but contained seven ignored planning/AC operator fragments. [PR #1981](https://github.com/kburson/ai-task-manager/pull/1981) stores them individually and records their provenance. #1514 is open and unassigned; @kburson owns this recovery review through #1953. The original planning was already merged in PR #1515; no new implementation acceptance is inferred.
+
+The final source-preservation check found unchanged original HEADs, unchanged staged state (including the original staged rename), and no content drift across all six uncommitted-source/collateral captures. Three final helper scripts are preserved as inert source copies in https://github.com/kburson/ai-task-manager/pull/1967.
+
+There are 10 source/collateral recovery PRs, 15 evidence/planning review PRs, and this four-file index PR. All are drafts. Nothing was merged or deleted during recovery.
