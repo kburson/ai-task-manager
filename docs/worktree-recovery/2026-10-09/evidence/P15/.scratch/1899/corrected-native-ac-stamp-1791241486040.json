@@ -1,0 +1,12 @@
+{
+  "args": [
+    "aitm",
+    "ac-stamp",
+    "Invalid, empty, duplicate, unknown or non-Test references fail before provider execution; failed prerequisite results cannot satisfy derived commands."
+  ],
+  "startedAt": "2026-10-05T23:04:37.900Z",
+  "completedAt": "2026-10-05T23:04:46.040Z",
+  "status": 0,
+  "stdout": "[task-tracker] ac-stamp on #1899: running 1 verifier(s) for AC \"Invalid, empty, duplicate, unknown or non-Test references fail before provider execution; failed prerequisite results cannot satisfy derived commands.\"…\n  ✓ node --test scripts/tests/unit/task-tracker/lib/verification-provider-registry.test.mjs scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs (exit=0)\n[task-tracker] ✓ ac-stamp on #1899: run-props (key=8d53d10f) upserted onto the AC line's aitm-verified marker (sha=c254618a).\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ac-stamp Invalid, empty, duplicate, unknown or non-Test references fail before provider execution; failed prerequisite results cannot satisfy derived commands.\n"
+}

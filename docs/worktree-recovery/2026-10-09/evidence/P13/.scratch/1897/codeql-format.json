@@ -1,0 +1,12 @@
+{
+  "cmd": "npx",
+  "args": [
+    "prettier",
+    "--write",
+    "scripts/task-tracker/lib/ac-evidence.mjs",
+    "scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs"
+  ],
+  "status": 0,
+  "stdout": "scripts/task-tracker/lib/ac-evidence.mjs 52ms (unchanged)\nscripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs 20ms\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'prettier' --write scripts/task-tracker/lib/ac-evidence.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs\n"
+}

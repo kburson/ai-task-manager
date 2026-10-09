@@ -1,0 +1,11 @@
+{
+  "bin": "npx",
+  "args": [
+    "aitm",
+    "commit-trace",
+    "1899"
+  ],
+  "status": 0,
+  "stdout": "✓ Commit trace updated for #1899.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' commit-trace 1899\n"
+}

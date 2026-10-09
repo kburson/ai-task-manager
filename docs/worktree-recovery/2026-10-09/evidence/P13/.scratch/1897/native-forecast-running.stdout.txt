@@ -1,0 +1,4 @@
+33869 28174       00:57 node .scratch/1897/run.mjs repeat-plan-estimate npx aitm plan-estimate 1897 --evidence-file .scratch/1897/plan-estimation-input.json --allow-foreign-worktree
+33900 33869       00:57 npm exec aitm plan-estimate 1897 --evidence-file .scratch/1897/plan-estimation-input.json      
+33950 33900       00:56 node /Users/kpburson/.npm/_npx/f1d9ba10f428b83e/node_modules/.bin/aitm plan-estimate 1897 --evidence-file .scratch/1897/plan-estimation-input.json
+34025 33950       00:56 /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/task-tracker/task-tracker.mjs plan-estimate 1897 --evidence-file .scratch/1897/plan-estimation-input.json

@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-05T23:27:25.055Z",
+  "head": "b0911ff3af3c813492e94724da548805684c6942",
+  "base": "cf62c49258ad0a377549273576db96acea5dc417",
+  "preserved": [
+    {
+      "path": "docs/superpowers/plans/2026-10-05-1897-canonical-ac-heading.md",
+      "sha256": "b515403c024ee9f6f97f6e2f8bf84c810b45fae63737ee8abe70b29510ba69a0",
+      "currentSha256": "b515403c024ee9f6f97f6e2f8bf84c810b45fae63737ee8abe70b29510ba69a0"
+    },
+    {
+      "path": "scripts/task-tracker/lib/ac-evidence.mjs",
+      "sha256": "8bb9c661d5f563bea5adfcc59ea0150458834578c20ffb3ede44ae50f267e7ed",
+      "currentSha256": "8bb9c661d5f563bea5adfcc59ea0150458834578c20ffb3ede44ae50f267e7ed"
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs",
+      "sha256": "88d3949b460eac51f939f93c227382f248a439fdca0548d22e5e9147b1696c0f",
+      "currentSha256": "88d3949b460eac51f939f93c227382f248a439fdca0548d22e5e9147b1696c0f"
+    }
+  ],
+  "changed": [
+    "docs/superpowers/plans/2026-10-05-1897-canonical-ac-heading.md",
+    "scripts/task-tracker/lib/ac-evidence.mjs",
+    "scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "merge-history-guard",
+      "description": "Preserve reviewed merge-containing child history with existing ancestry guard and real Git safety regressions",
+      "baseHumanHours": 2,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/merge-back.mjs",
+          "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+          "scripts/tests/unit/task-tracker/merge-back.test.mjs"
+        ],
+        "dependencies": []
+      }
+    }
+  ],
+  "testImpact": {
+    "expectedMinutes": 3,
+    "isolation": "Three issue-declared affected merge-back files on host; full suites in exact-head CI only",
+    "lanes": [
+      "unit-merge-back",
+      "integration-merge-back-cli",
+      "integration-merge-back-verification"
+    ]
+  },
+  "risks": [
+    "Existing rebase-required fake fixtures must distinguish child and grandparent ancestry",
+    "Preserve post-verification HEAD and parent-checkout refusal boundaries"
+  ],
+  "comparableIssueIds": [
+    1882
+  ]
+}

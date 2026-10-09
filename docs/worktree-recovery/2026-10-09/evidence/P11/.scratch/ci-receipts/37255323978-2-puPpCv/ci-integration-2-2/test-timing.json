@@ -1,0 +1,618 @@
+{
+  "schema": 5,
+  "generatedAt": "2026-10-05T02:37:07.039Z",
+  "lane": "integration",
+  "command": "node scripts/run-tests.mjs --lane integration --shard 2/3",
+  "commit": "93fbfcf788bc282caf85650bbdc7fd1fdf5e352d",
+  "runnerProfile": {
+    "label": "GitHub Actions 1000139728",
+    "platform": "linux",
+    "arch": "x64",
+    "nodeVersion": "24.21.0",
+    "logicalCpuCount": 4
+  },
+  "discoveryInventory": [
+    "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
+    "scripts/tests/integration/maintenance/done-delivery-audit.test.mjs",
+    "scripts/tests/integration/meta/package-test-corpus.test.mjs",
+    "scripts/tests/integration/task-tracker/core/assert-file-excludes.test.mjs",
+    "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+    "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs",
+    "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+    "scripts/tests/integration/task-tracker/core/project-fields.test.mjs",
+    "scripts/tests/integration/task-tracker/core/project-tmp-dir.test.mjs",
+    "scripts/tests/integration/task-tracker/core/seed-worktree.test.mjs",
+    "scripts/tests/integration/task-tracker/core/templates.test.mjs",
+    "scripts/tests/integration/task-tracker/delivery-content-comparison.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/config-init/project-workflow-compatibility-cli.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/delivery-waiver-journal.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-claim-races.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-gate-parity.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-projection.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-branch-reachability.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-marker-provenance.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/cli-contract.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/delivery-flow.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/journal.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/subject.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/foreign-session-refusal.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-actual-traffic.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/hook-entrypoint.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/init-project-workflow-compatibility.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/is-main-symlink.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/memory-resync-cli.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-unknown-cli.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/update-event-fields-states.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs",
+    "scripts/tests/integration/task-tracker/maintenance/lint-test-coverage-reach.test.mjs",
+    "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+    "scripts/tests/integration/task-tracker/merge-back-verification.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/bind.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs"
+  ],
+  "count": 79,
+  "elapsed": {
+    "runnerMs": 224526.5,
+    "poolMs": 0.1,
+    "subprocessPoolMs": 0,
+    "slowPoolMs": 0,
+    "serialMs": 224526.3
+  },
+  "sums": {
+    "fileWallMs": 224525.3,
+    "inProcessMs": 210504.4,
+    "estimatedSpawnIoMs": 14020.9
+  },
+  "pareto": {
+    "p50": 4,
+    "p80": 12
+  },
+  "slowBucket": {
+    "thresholdMs": 2000,
+    "overThreshold": 15,
+    "slowBucketFiles": 0,
+    "slowBucketStillSlow": 0,
+    "slowBucketNowFast": 0,
+    "fastLaneOverThreshold": 15,
+    "demotionCandidates": [],
+    "promotionCandidates": [
+      "scripts/tests/integration/task-tracker/lib/delivery-waiver-journal.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/init-project-workflow-compatibility.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs"
+    ]
+  },
+  "files": {
+    "scripts/tests/integration/fixtures/feature-fixtures.test.mjs": {
+      "label": "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
+      "wallMs": 218.5,
+      "inProcMs": 159.6,
+      "status": 0
+    },
+    "scripts/tests/integration/maintenance/done-delivery-audit.test.mjs": {
+      "label": "scripts/tests/integration/maintenance/done-delivery-audit.test.mjs",
+      "wallMs": 114.6,
+      "inProcMs": 25.5,
+      "status": 0
+    },
+    "scripts/tests/integration/meta/package-test-corpus.test.mjs": {
+      "label": "scripts/tests/integration/meta/package-test-corpus.test.mjs",
+      "wallMs": 1596.8,
+      "inProcMs": 1557.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/assert-file-excludes.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/assert-file-excludes.test.mjs",
+      "wallMs": 249.7,
+      "inProcMs": 194.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+      "wallMs": 397.6,
+      "inProcMs": 360.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs",
+      "wallMs": 79.3,
+      "inProcMs": 41.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+      "wallMs": 117.3,
+      "inProcMs": 78,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/project-fields.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/project-fields.test.mjs",
+      "wallMs": 86.5,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/project-tmp-dir.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/project-tmp-dir.test.mjs",
+      "wallMs": 166.2,
+      "inProcMs": 109.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/seed-worktree.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/seed-worktree.test.mjs",
+      "wallMs": 99.1,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/templates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/templates.test.mjs",
+      "wallMs": 461,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/delivery-content-comparison.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/delivery-content-comparison.integration.test.mjs",
+      "wallMs": 933,
+      "inProcMs": 800.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs",
+      "wallMs": 202.1,
+      "inProcMs": 76.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs",
+      "wallMs": 838.8,
+      "inProcMs": 619,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/hooks/grok-wire.test.mjs",
+      "wallMs": 337.5,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs",
+      "wallMs": 2151.8,
+      "inProcMs": 1906.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+      "wallMs": 555.3,
+      "inProcMs": 487.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs",
+      "wallMs": 274,
+      "inProcMs": 151.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/config-init/project-workflow-compatibility-cli.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/config-init/project-workflow-compatibility-cli.test.mjs",
+      "wallMs": 150.5,
+      "inProcMs": 112.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/delivery-waiver-journal.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/delivery-waiver-journal.test.mjs",
+      "wallMs": 14711.6,
+      "inProcMs": 14632.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-claim-races.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-claim-races.integration.test.mjs",
+      "wallMs": 163.6,
+      "inProcMs": 44.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs",
+      "wallMs": 145.5,
+      "inProcMs": 28,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-gate-parity.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-gate-parity.integration.test.mjs",
+      "wallMs": 103.3,
+      "inProcMs": 7.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-projection.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-projection.integration.test.mjs",
+      "wallMs": 131.9,
+      "inProcMs": 14,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs",
+      "wallMs": 184.9,
+      "inProcMs": 63.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs",
+      "wallMs": 741.3,
+      "inProcMs": 685.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-branch-reachability.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-branch-reachability.test.mjs",
+      "wallMs": 282.2,
+      "inProcMs": 172.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-marker-provenance.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-marker-provenance.test.mjs",
+      "wallMs": 187.4,
+      "inProcMs": 119,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/cli-contract.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/cli-contract.test.mjs",
+      "wallMs": 916.7,
+      "inProcMs": 860.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/delivery-flow.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/delivery-flow.test.mjs",
+      "wallMs": 1020.2,
+      "inProcMs": 859.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/journal.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/journal.test.mjs",
+      "wallMs": 1656.5,
+      "inProcMs": 1539.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/subject.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/subject.test.mjs",
+      "wallMs": 849.4,
+      "inProcMs": 733.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/foreign-session-refusal.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/foreign-session-refusal.test.mjs",
+      "wallMs": 105.6,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-actual-traffic.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-actual-traffic.test.mjs",
+      "wallMs": 119.7,
+      "inProcMs": 74.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+      "wallMs": 53168.4,
+      "inProcMs": 52911.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs",
+      "wallMs": 489.9,
+      "inProcMs": 254.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs",
+      "wallMs": 5998,
+      "inProcMs": 5822.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+      "wallMs": 10393.6,
+      "inProcMs": 10318.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+      "wallMs": 3294.4,
+      "inProcMs": 3139.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs",
+      "wallMs": 150.7,
+      "inProcMs": 95.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs",
+      "wallMs": 223.9,
+      "inProcMs": 25.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs",
+      "wallMs": 333.1,
+      "inProcMs": 284.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+      "wallMs": 5501.5,
+      "inProcMs": 5196.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs",
+      "wallMs": 22303.6,
+      "inProcMs": 22096.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs",
+      "wallMs": 573.9,
+      "inProcMs": 500.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs",
+      "wallMs": 29270.2,
+      "inProcMs": 29195.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "wallMs": 21118.4,
+      "inProcMs": 20809,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs",
+      "wallMs": 1514.1,
+      "inProcMs": 1333.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/hook-entrypoint.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/hook-entrypoint.test.mjs",
+      "wallMs": 338,
+      "inProcMs": 283.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs",
+      "wallMs": 234.5,
+      "inProcMs": 122.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/init-project-workflow-compatibility.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/init-project-workflow-compatibility.test.mjs",
+      "wallMs": 2379.4,
+      "inProcMs": 2324.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/is-main-symlink.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/is-main-symlink.test.mjs",
+      "wallMs": 567.9,
+      "inProcMs": 509.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/memory-resync-cli.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/memory-resync-cli.test.mjs",
+      "wallMs": 756.5,
+      "inProcMs": 696.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
+      "wallMs": 347.4,
+      "inProcMs": 213.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+      "wallMs": 4323.8,
+      "inProcMs": 4266.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+      "wallMs": 4556.3,
+      "inProcMs": 4462.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+      "wallMs": 4370.3,
+      "inProcMs": 4312.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+      "wallMs": 1052.4,
+      "inProcMs": 814.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs",
+      "wallMs": 4875.9,
+      "inProcMs": 4696.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs",
+      "wallMs": 1269.7,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs",
+      "wallMs": 486,
+      "inProcMs": 233,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs",
+      "wallMs": 2683.1,
+      "inProcMs": 2619.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+      "wallMs": 325.3,
+      "inProcMs": 113,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs",
+      "wallMs": 405.5,
+      "inProcMs": 192.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+      "wallMs": 636.1,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+      "wallMs": 383.1,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs",
+      "wallMs": 450.2,
+      "inProcMs": 234.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-unknown-cli.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-unknown-cli.test.mjs",
+      "wallMs": 1323.7,
+      "inProcMs": 1271.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/update-event-fields-states.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/update-event-fields-states.test.mjs",
+      "wallMs": 1719.7,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs",
+      "wallMs": 152.3,
+      "inProcMs": 90.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/maintenance/lint-test-coverage-reach.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/maintenance/lint-test-coverage-reach.test.mjs",
+      "wallMs": 52.6,
+      "inProcMs": 12.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+      "wallMs": 1696.1,
+      "inProcMs": 1513.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/merge-back-verification.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/merge-back-verification.test.mjs",
+      "wallMs": 2107.8,
+      "inProcMs": 1927.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/bind.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/bind.test.mjs",
+      "wallMs": 433.9,
+      "inProcMs": 310.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs",
+      "wallMs": 670.1,
+      "inProcMs": 457.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs",
+      "wallMs": 503.1,
+      "inProcMs": 254.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs",
+      "wallMs": 225.3,
+      "inProcMs": 45.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs",
+      "wallMs": 247.8,
+      "inProcMs": 26.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs",
+      "wallMs": 268.3,
+      "inProcMs": null,
+      "status": 0
+    }
+  },
+  "shard": {
+    "index": 2,
+    "total": 3
+  }
+}

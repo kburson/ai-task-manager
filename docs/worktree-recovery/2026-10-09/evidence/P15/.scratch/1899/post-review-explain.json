@@ -1,0 +1,11 @@
+{
+  "args": [
+    "aitm",
+    "explain",
+    "1899",
+    "--json"
+  ],
+  "status": 0,
+  "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1899,\"actionId\":\"close\",\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"review-exit-close-gates\",\"code\":\"close-delivery-not-attributed\",\"args\":{\"target\":\"trunk\",\"sha\":\"15faa18e18b31a5965a15d0482750c6c0b9d125d\"},\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}},{\"guardId\":\"review-exit-close-gates\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"action-result-validation\",\"code\":\"guard-error\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"result-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1899,\"actionId\":\"close\"},\"args\":{\"guardId\":\"review-exit-close-gates\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.close\",\"digest\":\"sha256:a62f668fc999787492462b9207f0fcf60744339e3a5886d46ac63dadadfc71c7\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"close\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"close\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1899 --json\n"
+}

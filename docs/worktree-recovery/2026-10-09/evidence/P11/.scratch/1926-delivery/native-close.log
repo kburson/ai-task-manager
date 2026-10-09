@@ -1,0 +1,26 @@
+Issue #1926: 24 timing rows
+  Engaged: Unknown
+  Session: Unknown
+  Review: Unknown
+  Plan: Unknown
+  Known engagement lower bound: 2852.393 seconds
+  Unavailable: legacy-attribution-unknown
+  Stage Time (per visit):
+    backlog#1: 4m 55s
+    refine#1: 1m 35s
+    ready-for-plan#1: 1m 26s
+    ready-for-plan#2: 39s
+    plan#1: 6m 09s
+    develop#1: 34m 37s
+    test#1: 3m 23s
+    review#1: open
+  Stage Time (totals):
+    backlog: 4m 55s
+    refine: 1m 35s
+    ready-for-plan: 2m 05s
+    plan: 6m 09s
+    develop: 34m 37s
+    test: 3m 23s
+AITM_TIMING_RESULT {"schema":"aitm.timing-field-result/v1","status":"incomplete","reasons":["legacy-attribution-unknown"],"knownEngagedSec":2852.393,"values":{"engagedTime":null,"sessionTime":null,"reviewTime":null,"planTime":null},"secondsByKey":{"engagedTime":null,"sessionTime":null,"reviewTime":null,"planTime":null},"unknownFields":["engagedTime","sessionTime","reviewTime","planTime"],"issue":1926,"repository":"kburson/ai-task-manager","sourceCommentId":"IC_kwDOSU6LgM8AAAABaeYkyg"}
+Fields updated on GitHub Projects board.
+Closed #1926.

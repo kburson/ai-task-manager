@@ -1,0 +1,27 @@
+{
+  "schema": "issue1887.execution/v1",
+  "runId": "599327c0-23e9-4ebd-bffe-7113bffa0e71",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1887,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "node",
+    "--test",
+    "scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs"
+  ],
+  "sourceCommit": "469593566084c14e821f1493299ca0763ad2d0c8",
+  "dirtyPaths": [],
+  "dirtyDiffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T02:20:10.090Z",
+  "stdout": ".scratch/1887/ci-regression-red.log",
+  "finishedAt": "2026-10-05T02:20:10.379Z",
+  "exitCode": 1,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "4f89ae6cef6465fb346886aa4ff881aa092b81ffd04a89d501b5d9c48f304659"
+}

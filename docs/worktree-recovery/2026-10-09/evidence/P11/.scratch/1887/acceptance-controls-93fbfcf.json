@@ -1,0 +1,28 @@
+{
+  "schema": "issue1887.execution/v1",
+  "runId": "cfe29a27-13a7-4a9c-859a-76d8b99195ac",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1887,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "node",
+    "bin/aitm.mjs",
+    "ac-stamp",
+    "Malformed, ambiguous, foreign-issue and current wrong-tree receipts remain fail-closed; retirement or read-back refusal prevents replacement execution."
+  ],
+  "sourceCommit": "93fbfcf788bc282caf85650bbdc7fd1fdf5e352d",
+  "dirtyPaths": [],
+  "dirtyDiffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T02:23:07.192Z",
+  "stdout": ".scratch/1887/acceptance-controls-93fbfcf.log",
+  "finishedAt": "2026-10-05T02:23:19.825Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "f9dadeb174e1ef9e4bd63c4c6140a8691f59a4b0364ab97e9523b1c2b861482b"
+}

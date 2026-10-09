@@ -1,0 +1,28 @@
+{
+  "schema": "issue1887.execution/v1",
+  "runId": "f2539465-ae67-490d-b49b-fb6936ba7899",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1887,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "gh",
+    "api",
+    "--allow-escape-sequences",
+    "repos/kburson/ai-task-manager/actions/jobs/111591023655/logs"
+  ],
+  "sourceCommit": "93fbfcf788bc282caf85650bbdc7fd1fdf5e352d",
+  "dirtyPaths": [],
+  "dirtyDiffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T02:30:47.127Z",
+  "stdout": ".scratch/1887/ci-dispatch-integration-failure.log",
+  "finishedAt": "2026-10-05T02:30:48.191Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "e2286ef18f5fce83c33140fa5f785b63c0a15869a184670cac46980f99ca0bfe"
+}

@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expectedVersion": 10,
+  "expected": "- **Source-plan-commit**: 5deb09ff3d3669b0aa75565db374f8e92ef6ee56",
+  "replacement": "- **Source-plan-commit**: 8a24aa38da6c262778a23c40d1c0546d5eb8e4c1\n- **Source-plan-sha256**: 32a311090945134c1b0a8d1b4117809c786c2960450b5d50519ea85d7e890432\n- **Creation-source-plan-commit**: 5deb09ff3d3669b0aa75565db374f8e92ef6ee56\n- **Creation-source-plan-sha256**: 9e656a77c156ed629ba5f2365f11d45f2a540f9c05e1693c0db1e58d08515ae7\n- **Current-plan-review**: docs/superpowers/reviews/1663/plan/2026-09-21-1663-authority-split-grok-review.md (independent semantic review; not package-protocol acceptance)"
+}

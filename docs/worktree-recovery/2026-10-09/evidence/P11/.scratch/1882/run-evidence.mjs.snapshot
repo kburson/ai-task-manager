@@ -1,0 +1,14 @@
+import {spawnSync} from 'node:child_process';
+import {createHash,randomUUID} from 'node:crypto';
+import {readFileSync,writeFileSync,openSync,closeSync} from 'node:fs';
+const [label,command,...args]=process.argv.slice(2);
+const git=(...args)=>{const r=spawnSync('git',args,{encoding:'utf8'});if(r.status!==0)throw new Error(r.stderr);return r.stdout;};
+const untracked=git('ls-files','--others','--exclude-standard').trim().split('\n').filter(Boolean).sort();
+const hash=createHash('sha256').update(git('diff','--binary','HEAD'));
+for(const file of untracked) hash.update(file).update(readFileSync(file));
+const log=`.scratch/1882/${label}.log`,receipt=`.scratch/1882/${label}.json`;
+const data={schema:'issue1882.execution/v1',runId:randomUUID(),repository:'kburson/ai-task-manager',issue:1882,worktree:process.cwd(),command:[command,...args],sourceCommit:git('rev-parse','HEAD').trim(),dirtyPaths:git('status','--porcelain').trim().split('\n').filter(Boolean),dirtyDiffSHA256:hash.digest('hex'),runtime:{node:process.versions.node,platform:process.platform,arch:process.arch},executedAt:new Date().toISOString(),stdout:log};
+writeFileSync(receipt,JSON.stringify(data,null,2)+'\n');
+const fd=openSync(log,'w');const result=spawnSync(command,args,{stdio:['ignore',fd,fd]});closeSync(fd);
+Object.assign(data,{finishedAt:new Date().toISOString(),exitCode:result.status,signal:result.signal,error:result.error?.message??null,stdoutSHA256:createHash('sha256').update(readFileSync(log)).digest('hex')});
+writeFileSync(receipt,JSON.stringify(data,null,2)+'\n');console.log(JSON.stringify(data));process.exitCode=result.status??1;

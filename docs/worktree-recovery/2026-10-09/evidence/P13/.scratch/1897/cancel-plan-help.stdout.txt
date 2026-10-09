@@ -1,0 +1,37 @@
+/task cancel-plan — Cancel short-lived Plan work and return exactly one edge to Ready for Planning.
+
+  Purpose: Cancel short-lived Plan work and return exactly one edge to Ready for Planning.
+  Usage:  /task cancel-plan <N> --reason <text>
+
+  Arguments:
+    <N>
+        Plan issue number to return to Ready for Planning.
+    --reason <text>
+        required cancellation provenance
+
+  Preconditions:
+    The target must be in Plan, --reason is required, and preflight checks must pass.
+
+  Effects:
+    Invalidates Plan-only approval, forecast, deep-dive completion, and incomplete verification evidence, then moves exactly one edge to Ready for Planning.
+    Clears the stale Planned Estimate appendix and restores Plan artifacts, board fields, and comment evidence when the Status transition fails.
+
+  Output:
+    Prints the cancellation edge or a fail-closed recovery diagnostic.
+
+  Exit codes:
+    0  success (or idempotent no-op)
+    1  runtime error (message on stderr)
+    2  required issue or reason is missing or malformed
+    4  gate refused the transition (blockers printed); state unchanged
+    7  target differs from the active issue binding
+    9  live board state differs from the recorded state marker
+    10  issue assignee is mismatched, absent, or unverifiable
+
+  Examples:
+    /task cancel-plan 1213 --reason "planning interrupted"
+
+  Related:
+    plan
+    plan-estimate
+    plan-approve

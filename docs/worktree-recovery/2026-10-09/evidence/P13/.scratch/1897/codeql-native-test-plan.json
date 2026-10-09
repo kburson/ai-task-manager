@@ -1,0 +1,137 @@
+{
+  "capturedAt": "2026-10-05T23:57:46.569Z",
+  "sourceHead": "344a6abb3dbf6d0a3f5ab4037b1bd78b0cabd86e",
+  "config": {
+    "id": "project",
+    "develop": {
+      "iterationSteps": [
+        {
+          "classification": "test-affected",
+          "kind": "test",
+          "command": "node scripts/maintenance/verify-affected-or-cloud.mjs"
+        }
+      ],
+      "finalSteps": [
+        {
+          "classification": "lint-full",
+          "kind": "lint",
+          "command": "npm run lint"
+        },
+        {
+          "classification": "format-full",
+          "kind": "format",
+          "command": "npm run format:check"
+        }
+      ]
+    },
+    "test": {
+      "setup": "npm-ci",
+      "steps": [
+        {
+          "classification": "test-cloud-complete",
+          "kind": "test",
+          "command": "node scripts/maintenance/verify-ci-receipts.mjs"
+        }
+      ],
+      "declaredCommandCoverage": [
+        {
+          "command": "npm test",
+          "requires": [
+            "test-cloud-complete"
+          ]
+        },
+        {
+          "command": "npm run test:slow",
+          "requires": [
+            "test-cloud-complete"
+          ]
+        }
+      ]
+    }
+  },
+  "plan": {
+    "providerId": "project",
+    "stage": "test",
+    "setup": "npm-ci",
+    "setupArgs": [],
+    "steps": [
+      {
+        "classification": "test-cloud-complete",
+        "kind": "test",
+        "command": "node",
+        "args": [
+          "scripts/maintenance/verify-ci-receipts.mjs"
+        ],
+        "label": "node scripts/maintenance/verify-ci-receipts.mjs",
+        "allowlistSource": "verification-allowlist"
+      },
+      {
+        "classification": "test-targeted-1",
+        "kind": "test",
+        "command": "node",
+        "args": [
+          "--test",
+          "scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs",
+          "scripts/tests/unit/task-tracker/lib/ac-evidence.test.mjs",
+          "scripts/tests/unit/task-tracker/lib/ac-evidence-vc-list-774.test.mjs",
+          "scripts/tests/unit/task-tracker/lib/ac-evidence-non-demonstrable-marker.test.mjs"
+        ],
+        "label": "node --test scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-vc-list-774.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-non-demonstrable-marker.test.mjs",
+        "allowlistSource": "verification-allowlist"
+      },
+      {
+        "classification": "test-targeted-2",
+        "kind": "test",
+        "command": "npm",
+        "args": [
+          "run",
+          "lint"
+        ],
+        "label": "npm run lint",
+        "allowlistSource": "verification-allowlist"
+      },
+      {
+        "classification": "test-targeted-3",
+        "kind": "test",
+        "command": "npm",
+        "args": [
+          "run",
+          "format:check"
+        ],
+        "label": "npm run format:check",
+        "allowlistSource": "verification-allowlist"
+      },
+      {
+        "classification": "test-targeted-4",
+        "kind": "test",
+        "command": "git",
+        "args": [
+          "log",
+          "--oneline",
+          "-1"
+        ],
+        "label": "git log --oneline -1",
+        "allowlistSource": "verification-allowlist"
+      }
+    ],
+    "derivedSteps": [
+      {
+        "classification": "test-covered-1",
+        "command": "npm test",
+        "requires": [
+          "test-cloud-complete"
+        ]
+      },
+      {
+        "classification": "test-covered-2",
+        "command": "npm run test:slow",
+        "requires": [
+          "test-cloud-complete"
+        ]
+      }
+    ],
+    "requiredClassifications": [
+      "test-cloud-complete"
+    ]
+  }
+}

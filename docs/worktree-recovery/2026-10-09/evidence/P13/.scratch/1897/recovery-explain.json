@@ -1,0 +1,13 @@
+{
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+  "cmd": "npx",
+  "args": [
+    "aitm",
+    "explain",
+    "1897",
+    "--json"
+  ],
+  "status": 0,
+  "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1897,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[{\"normalizerId\":\"functional-dod-derived/v1\",\"decisions\":[{\"key\":\"acs\",\"derivationRule\":\"derive-acs/v1\",\"stamp\":true,\"tick\":true},{\"key\":\"checkboxes\",\"derivationRule\":\"derive-checkboxes/v1\",\"stamp\":true,\"tick\":true}],\"disposition\":\"persist-on-execute\"}],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1897 --json\n"
+}

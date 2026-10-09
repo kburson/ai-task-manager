@@ -1,0 +1,65 @@
+[
+  {
+    "bin": "git",
+    "args": [
+      "status",
+      "--short"
+    ],
+    "start": "2026-10-05T21:51:23.513Z",
+    "finishedAt": "2026-10-05T21:51:23.670Z",
+    "status": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "bin": "git",
+    "args": [
+      "rev-parse",
+      "HEAD"
+    ],
+    "start": "2026-10-05T21:51:23.673Z",
+    "finishedAt": "2026-10-05T21:51:23.692Z",
+    "status": 0,
+    "stdout": "0f92be933dcdd867d6fd12469db86744053f6784\n",
+    "stderr": ""
+  },
+  {
+    "bin": "npx",
+    "args": [
+      "aitm",
+      "commit-trace",
+      "1897"
+    ],
+    "start": "2026-10-05T21:51:23.692Z",
+    "finishedAt": "2026-10-05T21:51:28.994Z",
+    "status": 0,
+    "stdout": "✓ Commit trace created for #1897.\n",
+    "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' commit-trace 1897\n"
+  },
+  {
+    "bin": "npx",
+    "args": [
+      "aitm",
+      "ac-stamp",
+      "A canonical Acceptance Criteria section after embedded lower-level source headings is found and its exact vc-list commands resolve."
+    ],
+    "start": "2026-10-05T21:51:28.995Z",
+    "finishedAt": "2026-10-05T21:51:35.330Z",
+    "status": 0,
+    "stdout": "[task-tracker] ac-stamp on #1897: running 1 verifier(s) for AC \"A canonical Acceptance Criteria section after embedded lower-level source headings is found and its exact vc-list commands resolve.\"…\n  ✓ node --test scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-vc-list-774.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-non-demonstrable-marker.test.mjs (exit=0)\n[task-tracker] ✓ ac-stamp on #1897: run-props (key=e4ce90e6) upserted onto the AC line's aitm-verified marker (sha=0f92be93).\n",
+    "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ac-stamp A canonical Acceptance Criteria section after embedded lower-level source headings is found and its exact vc-list commands resolve.\n"
+  },
+  {
+    "bin": "npx",
+    "args": [
+      "aitm",
+      "ensureChecked",
+      "A canonical Acceptance Criteria section after embedded lower-level source headings is found and its exact vc-list commands resolve."
+    ],
+    "start": "2026-10-05T21:51:35.331Z",
+    "finishedAt": "2026-10-05T21:51:41.554Z",
+    "status": 0,
+    "stdout": "[task-tracker] ✓ Checked \"A canonical Acceptance Criteria section after embedded lower-level source headings is found and its exact vc-list commands resolve.\" on #1897\n",
+    "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ensureChecked A canonical Acceptance Criteria section after embedded lower-level source headings is found and its exact vc-list commands resolve.\n"
+  }
+]
