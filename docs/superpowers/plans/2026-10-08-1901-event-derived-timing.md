@@ -4,11 +4,11 @@
 
 **Goal:** Show recoverable story Active/Idle from recorded event history, with exact optional-days clock formatting, coherent accounting and safe historical preview/apply tooling.
 
-**Architecture:** A pure normalized-source derivation engine produces per-lane half-open allocations and availability, independently of transcript estimates. Tolerant codecs and one verified publication seam preserve immutable source identity, sealed bytes and recoverable queue/journal semantics. Producers, model-dispatched consumers, guarded repair and explicit rollout use that contract.
+**Architecture:** A pure normalized-source derivation engine produces one joint task clock with half-open allocations and availability, independently of transcript estimates. Actor/session identity supplies provenance and exclusive ownership rather than additive effort. Tolerant codecs and one verified publication seam preserve immutable source identity, sealed bytes and recoverable queue/journal semantics. Producers, model-dispatched consumers, guarded repair and explicit rollout use that contract.
 
 **Tech Stack:** Existing Node ES modules, node:test, GitHub comment authority, existing AITM runtime journal/queue and issue locks. No new product dependency or alternative storage authority.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-1901-event-derived-timing-design.md`, accepted artifact commit `bb24dd7ec75c43e3cb0acfbe4803d51a58ef3cd8`, SHA-256 `6e6e0aae4f1764850701f4f0be0b4593dfde8f1b84e968652b6cdf7b7bcd958f`. Specification XPR finalized at `aa5bfc190213a568afc5a18e4e5a98e949f3d8b3`. The later XPR clarification sections are normative and their more specific contracts govern earlier summary wording. This plan resolves the two accepted nonblocking suggestions without editing the accepted spec.
+**Spec:** `docs/superpowers/specs/2026-10-08-1901-event-derived-timing-design.md`, accepted artifact commit `bb24dd7ec75c43e3cb0acfbe4803d51a58ef3cd8`, SHA-256 `6e6e0aae4f1764850701f4f0be0b4593dfde8f1b84e968652b6cdf7b7bcd958f`. Specification XPR finalized at `aa5bfc190213a568afc5a18e4e5a98e949f3d8b3`. The historical XPR clarification sections govern earlier summary wording except where superseded by the later direct user amendment below. The historical accepted bytes remain intact. The normative amendment below records the later direct user clarification, supersedes separate-lane effort and assumed SessionTime-seam wording, and is part of this tracked plan review. Acceptance must include that amendment before execution; historical spec acceptance alone does not approve it.
 
 **Repository baseline:** `54dcf2397f6101d67b58e67d3b5e1d81c044fd44`; package `@kburson/ai-task-manager` 0.1.0. Revalidate current interfaces and native dependencies at deep dive and each child pickup; material changes require plan amendment and renewed review.
 
@@ -24,7 +24,7 @@ Implement all #1901 AC1–AC6: pure allocation, display and metadata, producers,
 
 - Priority: P1
 - Size: XL
-- Estimate: 60 hours aggregate engineering effort, provisional until current child refinement
+- Estimate: 70 hours joint engineering effort, provisional until current child refinement
 - Labels: bug
 - Governing-spec: docs/superpowers/specs/2026-10-08-1901-event-derived-timing-design.md
 - Stop-boundary: parent Develop prepared; children Ready for Planning; no implementation
@@ -43,14 +43,29 @@ Implement all #1901 AC1–AC6: pure allocation, display and metadata, producers,
 - Reject unsafe, negative, fractional/nonfinite numeric seconds, numeric strings to formatting, invalid dates/offsets and malformed/conflicting recognized suffixes; never clamp to zero.
 - Pure derivation has no network, writes, transcript access or implicit clock. Active/Idle need attributable bounded observation; unrelated/shared events cannot close a lone actor opener or interruption.
 - Preserve immutable timestamps, event/actor identity, engagement endpoints and original estimate, description, words, transition identity and unrelated suffixes. Delta Words retains its existing separate publisher normalization.
-- Event projection metadata is `aitm-duration:v1`, model `event-delta/v1`; activation control is one immutable `aitm-duration-model:v1` in the canonical Timing Log.
+- Event projection metadata is `aitm-duration:v1`, model `joint-event-delta/v1`; activation control is one immutable `aitm-duration-model:v1` in the canonical Timing Log.
 - Every fully known dimension agrees across display, allocation and numeric metadata; partial rows omit a misleading complete row-sec pair and expose known subtotals/reasons.
 - A live source admission plus affected reallocation is one body mutation, with full-projection read-back and a maximum of three mutation attempts. No own-row-only acknowledgment, CAS claim or automatic restore over newer data.
 - Preserve exact sealed source prefix/suffix bytes and old outcome semantics; protected true late insertion/repair refuses. A valid ordinary append after a protected cutoff survives with an explicit unavailable protected remainder.
 - Local config authorizes requesting rollout; the shared marker governs actual model. Marker-present legacy/disabled participants follow it or refuse. Unsupported installations are excluded operationally, not magically made safe.
 - Historical apply consumes a reviewed preview digest, exact backup and coordinated exclusive maintenance window. Preview/export stays available without writer exclusion; no real historical apply is authorized here.
-- Board codec and independent SessionTime wall-span stay unchanged. Plan/Review Active are subsets of Engaged. Round minute totals only after summing seconds.
+- Board codec stays unchanged. Task 5 introduces the defined independent SessionTime because the baseline board mapping currently aliases actor Active totals. Plan/Review Active are subsets of Engaged. Round minute totals only after summing seconds.
 - Root ACs and governed child Test/Review gates remain required. Each child owns executable focused verifiers; aggregate gates never substitute for a failed child contract.
+
+## Normative amendment to the historical accepted specification
+
+Authority is the user's explicit 1A/2A response and subsequent clarification, recorded in [#1901 joint-effort clarification](https://github.com/kburson/ai-task-manager/issues/1901#issuecomment-6071936726). The user selected independent recorded SessionTime and stated that effort is joint, a task has one agent at any given time, and replacing an agent/session is a handoff affecting real context-token and word measurements. This changes the original specification's separate-lane summation. This amendment is reviewed with this plan by SPR and XPR; acceptance at bb24dd7e remains historical evidence, not acceptance of this amendment.
+
+- One issue has one joint Active/Idle clock. Human and agent activity are not separate additive effort counters. At most one agent owns active execution at a time. Parallel work is across distinct child tasks, with one active agent per child. Author and reviewer take sequential protocol turns.
+- Actor/session IDs remain immutable provenance. Replacement consumes a recorded ownership handoff, not another simultaneous effort lane. Detected conflicting current source-owner/handoff evidence refuses admission before a write or checkpoint change. Supported execution is operationally limited to one agent per task; this defect does not claim to implement a new distributed task lease. Publisher convergence detects conflicts under the existing bounded non-CAS contract, without promising global atomic exclusion. Historical contradictory overlaps are retained and diagnosed as `ownership-conflict`; affected joint allocations are unavailable, never double-summed. Later unambiguous ownership evidence restores future allocation without erasing conflict.
+- A handoff records genuine predecessor/successor actor/session binding identities, source IDs, original observed endpoints and availability. Proven same-instant handoff preserves engagement/interruption state and task cursor; it creates no Idle. Explicit departure/resume keeps the actual Idle gap. Missing handoff/end evidence remains a scoped unavailable remainder, never an invented end or session identity. Task 2 stores attestation in immutable source evidence; Task 4 produces it from sanctioned bind/recovery observations using existing event vocabulary.
+- `joint-event-delta/v1` is a distinct planned model. Earlier `event-delta/v1` is not silently reinterpreted: historical evidence retains its explicit interpretation and incompatible current writes refuse. The reader-compatible release understands the new model. Neither proposed model is claimed to have shipped.
+- Joint Engaged and Idle sum disjoint slices of the single task clock. For complete coverage, Active + Idle is at most SessionTime; excluded, unconverted or protected coverage explains a remainder. Plan and Review are Active subsets, never added again. Attribution/ownership uncertainty need not invalidate independently proven wall endpoints.
+- `projectSessionWallSpan({sources})` is a new Task 5 pure function. It takes the first valid recorded engagement opener and last recorded event horizon for this issue, floors original millisecond endpoints to second ticks, and subtracts. Pauses and gaps count in wall span; no now-based tail, actor sum or Active alias is permitted. Return `{state,value,knownSec,reasons,sourceRefs,fromTick,untilTick}` with integer seconds or null. Missing opener/horizon, conflicting source timestamps, invalid potentially horizon-defining evidence or unsafe/negative subtraction yields unavailable, with a proven lower bound where available. A lone valid opener yields known zero at its recorded horizon. Incomplete effort/stage, mixed models or protected allocation do not invalidate proven immutable wall endpoints. Enabled board seconds read `sessionSec.value`, minutes read complete seconds / 60 with Math.round; null remains Unknown. Legacy marker-free and sealed calculations retain their pinned mapping; enabled current board/maintenance mappings deliberately use this new scalar.
+- Required examples: start0/pause10/resume30/update40 => Active20, Idle20, Session40. Proven A-to-B handoff at10 between opener0 and update20 => Active20, Idle0, Session20. Contradictory A0..10 and B5..15 without handoff => independently known Session15 but unavailable affected joint effort with conflict scope and nonconflicting subtotal; never summed 20-second effort. Unresolved effort at a valid recorded horizon never grows with the local clock.
+- Raw measured per-session word/context cursors remain immutable. Imported context counts only when actually measured with source/availability. A handoff retains predecessor cursor refs and successor baseline; Tasks 4/5 derive joint task totals using explicit offsets and replay IDs without counting cumulative cursors twice, fabricating context size, resetting task totals or rewriting protected word cells. Existing Delta Words normalization remains separate. Unknown measurements stay Unknown; native input-token traffic is not context capacity or elapsed effort.
+
+All other accepted constraints remain: bounded observation, whole-second flooring, source identity, stage attribution, sealed bytes, original estimates, shared-boundary partition, atomic pairs, distinct durable enqueue/remote publication, bounded non-CAS convergence, safe repair and explicit rollout. If task text contradicts this amendment, correct it before hydration; the amendment governs.
 
 ## Review Focus
 
@@ -64,8 +79,8 @@ Implement all #1901 AC1–AC6: pure allocation, display and metadata, producers,
 
 The following names are new planned interfaces, not claims that they already exist. Task ownership below creates them. Types use JavaScript objects; named shapes below fix their fields across workers.
 
-- `SourceFact = { sourceId, evidenceDigest, sourceOrder, tick, timestampText, event, lane: {kind,key}, stage, endpoints, originalEstimate, words, description, transitionId, opaqueSuffixes }`. `lane.kind` is actor, legacy-single-stream or shared; an actor key is existing identity, never synthesized. `sourceOrder` is a stable integer tuple, not a current array index. `endpoints` holds original ms and attributable closing observations, or null. Pauses are separate scoped immutable facts.
-- `Allocation = { lane, fromTick, untilTick, seconds, dimension, stage, sourceRefs, method }`; dimension is active/idle; method is event-bracket, engagement-endpoints or legacy-idle-bridge. Each half-open allocation belongs to one closing source row.
+- `SourceFact = { sourceId, evidenceDigest, sourceOrder, tick, timestampText, event, lane: {kind,key}, stage, endpoints, originalEstimate, words, description, transitionId, opaqueSuffixes }`. `lane.kind` is actor, legacy-single-stream or shared; an actor key is existing identity, never synthesized. `sourceOrder` is a stable integer tuple, not a current array index. `endpoints` holds original ms and attributable closing observations, or null. Pauses are separate scoped immutable facts. Immutable source evidence optionally carries `handoff = {fromActorKey,toActorKey,predecessorSourceId,successorSourceId,fromSessionRef,toSessionRef,observedFromMs,observedUntilMs,availability}` and `measurement = {sessionRef,wordCursor,fullWordCursor,contextTokens,baselineRefs,availability}`; missing values remain null/unavailable. Session refs come from real bindings, never fabricated IDs. Source identity hashing includes these attestations.
+- `Allocation = { lane, fromTick, untilTick, seconds, dimension, stage, sourceRefs, method }`; dimension is active/idle; method is event-bracket, engagement-endpoints or legacy-idle-bridge. Each half-open allocation belongs to one closing source row and one joint task clock; lane is provenance, never permission for overlapping effort credit.
 - `Availability = { state, knownSec, reasons, sourceRefs, extents }`; state is known, fillable-pending or terminal-unavailable. Unknown stage/lane diagnostics have inspectable scopes; known Idle alone cannot invalidate Active.
 - `deriveEventDurations({ sources, pauses, activation, protectedRegions })` returns `{ model, sourceDigest, rows, scalars, diagnostics }`. A row contains `{sourceId, activeSec, idleSec, allocations, activeAvailability, idleAvailability, precision}`. Each scalar is { value: nullable integer seconds or minutes, knownSec: integer subtotal seconds, state, reasons, sourceRefs }; scalars expose independent availability and subtotal; no projected implicit tail.
 - `decodeTimingSource(body)` returns `{sources,pauses,activation,diagnostics}` from lexical rows and canonical event grammar. It is pure and consumes the unchanged original source evidence, not displayed duration as event truth.
@@ -73,7 +88,7 @@ The following names are new planned interfaces, not claims that they already exi
 - `parseDurationSuffixes(line)` and `replaceDurationProjection(line, projection)` preserve opaque/source bytes and use the accepted composed-suffix order. Activation marker insertion is separate control evidence, never a mutable projection rewrite.
 - `discoverProtectedTimingRegions({repo,issueNumber,commentNodeId,readRecords})` returns `{complete,regions,records}`. Each region identifies exact source bytes/digest and cutoff. Missing, inaccessible or ambiguous authority means complete=false and publication/apply refuses mutation.
 - `publishTimingAdmission({context,admission,deps})` consumes one immutable single-source or lifecycle-pair admission unit, a real source tick/order and optional explicit authorized activation request. It returns existing normalized publication/queue outcomes plus sourceDigest, attempts and reason. It uses injected reads/writes/locks and calls Task 1's pure engine and Task 2's codecs.
-- `projectEventScalars(derivation)` yields complete seconds/null, known subtotals, reasons and rounded minutes for Engaged/Idle/Plan/Review/per-stage values. SessionTime remains a separate old wall-span function.
+- `projectEventScalars(derivation)` yields complete seconds/null, known subtotals, reasons and rounded minutes for Engaged/Idle/Plan/Review/per-stage values. SessionTime uses Task 5's new projectSessionWallSpan contract above, independently of joint effort and under explicit model dispatch. Task 5 also exports `readVerifiedJointStageTiming({body,context})`, returning verified per-stage seconds/availability, source digest and model; it never converts incomplete subtotals or bare stored row-sec into complete stagesMs.
 - `prepareEventDurationRepair({source,context})` returns an immutable preview with source/target digests, operation/operator identity, categories, allocations, protection, model coverage and board deltas. `applyEventDurationRepair({preview,coordination,deps})` requires that exact preview and validates every byte/write outcome.
 
 Treat signatures as interface commitments. An implementer cannot silently rename fields used by siblings. Additions must be backward compatible within this plan or reviewed before another wave depends on them.
@@ -82,20 +97,52 @@ Treat signatures as interface commitments. An implementer cannot silently rename
 
 These are logical execution ranks, not already created issue IDs. Hydration binds them to real child issues, adds native blocking dependencies and uses the same rank for same-wave siblings. No worker is launched in this preparation session.
 
-| Task                                            | Rank/wave | Depends on tasks | Files independently owned                                           | Initial hours |
-| ----------------------------------------------- | --------- | ---------------- | ------------------------------------------------------------------- | ------------: |
-| 1 Engine and bounded evidence                   | 1         | none             | new derivation/source modules and engine tests                      |             8 |
-| 2 Tolerant lexical/display codecs               | 1         | none             | lexical leaf, marker codec, new display codec and codec tests       |             6 |
-| 3 Verified publication and source protection    | 2         | 1,2              | publisher, source-protection helper and convergence tests           |            10 |
-| 4 Producers and atomic lifecycle admission      | 3         | 3                | runtime, bind, journal, queue, approval/close adapters              |             8 |
-| 5 Accounting and outcome compatibility          | 3         | 3                | scalar projection, old/new adapters, rollup and outcome validators  |             8 |
-| 6 Guarded historical recalculation              | 4         | 4,5              | repair implementation and preview/apply tests                       |             8 |
-| 7 Maintenance consumer compatibility            | 4         | 4,5              | heal/rename/sequence consumers and their tests                      |             4 |
-| 8 Reader-first rollout and aggregate validation | 5         | 6,7              | config, command registration, rollout command/docs and system tests |             6 |
+| Task                                                   | Rank/wave | Depends on tasks | Independently owned surface                               | Initial joint hours |
+| ------------------------------------------------------ | --------- | ---------------- | --------------------------------------------------------- | ------------------: |
+| 1 Engine, bounded evidence and exact histories         | 1         | none             | new engine/source facts, captures and tests               |                  10 |
+| 2 Tolerant lexical, actor and display codecs           | 1         | none             | lexical/actor leaf and new codecs                         |                   8 |
+| 3 Verified publication and source protection           | 2         | 1,2              | publisher, protection and convergence tests               |                  10 |
+| 4 Producers, ownership handoff and durable outcomes    | 3         | 3                | runtime/bind/journal/queue/wrapper/lifecycle emitters     |                  10 |
+| 5 Joint scalars, independent session span and outcomes | 3         | 3                | projection, ladder, rollup, board and estimation adapters |                  10 |
+| 6 Guarded historical recalculation                     | 4         | 4,5              | repair and preview/apply tests                            |                   8 |
+| 7 Maintenance consumer compatibility                   | 4         | 4,5              | heal/rename/sequence and all sequence tests               |                   6 |
+| 8 Reader-first rollout and aggregate validation        | 5         | 6,7              | config/catalog/routing/release docs and system tests      |                   6 |
 
 Task 1 does not import the Task 2 lexical implementation: it accepts normalized SourceFacts. Task 2 does not import derivation: it provides lexical/codec primitives and pure source decoding. Wave 1 validates their agreed shape independently before Task 3 integrates it. Tasks 4/5 and 6/7 may fan out only on integrated predecessor commits. Existing files are single-owner: Task 5 owns `lib/timing-rows.mjs` and `lib/timing-engagement.mjs`; Task 2 owns new formatting/metadata modules instead of editing those same files. Task 8 alone owns command catalog/routing and configuration. Task 6 supplies repair exported parser/help contracts for Task 8 registration. If a consumer sweep discovers an unlisted shared file, pause that change and route it to its declared owner; do not create overlapping edits in sibling worktrees.
 
-Effort sum is 58 hours; reserve 2 hours root integration/orchestration, yielding 60 hours. Wave critical-path sums are 8 + 10 + 8 + 8 + 6 = 40 hours before staffing/coordination overhead; do not replace board effort with this parallel elapsed estimate. These are engineering estimates, not measured model time. Refined children replace these initial values before parent Develop entry.
+Joint effort sum is 68 hours; reserve 2 hours root integration/orchestration, yielding 70 hours. Wave critical-path sums are 10 + 10 + 10 + 8 + 6 = 44 hours before staffing/coordination overhead; do not replace board effort with this parallel elapsed estimate. These are engineering estimates, not measured model time. Refined children replace these initial values before parent Develop entry.
+
+## Adapter ownership and model dispatch
+
+All shortened lib/ and verb paths resolve beneath scripts/task-tracker; shortened test paths resolve beneath scripts/tests. These known seams are assigned now. A later sweep verifies completeness rather than deciding their owners.
+
+| Existing production seam                                                                                                                                                                                           | Owner / wave | Legacy or sealed behavior                                     | Enabled current-model behavior                                                                                          | Focused verifier                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| lib/timing-row-reader.mjs::readEstimationStageTiming                                                                                                                                                               | Task 2 / 1   | Explicitly legacy-only calculation                            | Enabled numeric callers use Task 5 readVerifiedJointStageTiming; lexical rows retain raw metadata                       | timing-row-reader and new source/metadata tests                                    |
+| lib/timing-actor.mjs::readTimingActor                                                                                                                                                                              | Task 2 / 1   | Preserve identity, endpoint and cursor checks                 | Tolerant composed suffixes; no duration policy import                                                                   | timing-actor and new metadata tests                                                |
+| gh-timing-comment.mjs::postTimingEvent                                                                                                                                                                             | Task 3 / 2   | Preserve legacy admission                                     | Single-owner source admission, full joint projection verification, max three mutation attempts                          | publication and gh-timing-comment-actors tests                                     |
+| runtime.mjs, queue.mjs, lib/actor-flush-journal.mjs, lib/bind-event.mjs                                                                                                                                            | Task 4 / 3   | Original checkpoints, journal identities, estimates and words | Proven ownership handoff, real measurement baselines and explicit durable/remote/pending outcomes                       | producers, journal, isolation and bind-event tests                                 |
+| verbs/resume.mjs, verbs/review.mjs, verbs/approve.mjs, verbs/close.mjs, hook-handler.mjs, lib/review-approval-timing.mjs, lib/terminal-review-handoff.mjs, lib/move-state/audit-timing.mjs and guard-execution.mjs | Task 4 / 3   | Original vocabulary and lifecycle gates                       | Actual emitter/pair/checkpoint paths use Task 3 seam; no unsupported core-emitter escape                                | producers, terminal-review-handoff and coverage-audit-timing tests                 |
+| lib/timing-post-outcome.mjs::postTimingSafely and queue drain handlers                                                                                                                                             | Task 4 / 3   | Original successful legacy paths                              | Pending/refused never becomes ok:true or dequeues an item; durable acceptance differs from remote publication           | new timing-post-outcome test and producers/queue integration                       |
+| timing-rollup.mjs, lib/timing-rows.mjs, timing-engagement.mjs, timing-ladder.mjs                                                                                                                                   | Task 5 / 3   | Pinned old snapshot and legacy API dispatch                   | Retain raw model/source data; verify joint projection, session span and per-stage availability                          | projection, rollup and ladder tests                                                |
+| scripts/gh/log-issue-time.mjs::timingFieldProjection                                                                                                                                                               | Task 5 / 3   | Baseline mapping and unchanged board codec                    | Explicit joint model maps independent sessionSec/sessionMin, never Active aliases                                       | slow log-issue-time and projection tests                                           |
+| lib/estimation/runtime-adapter.mjs, outcome-builder.mjs, outcome-record.mjs                                                                                                                                        | Task 5 / 3   | Pinned sealed source/snapshot interpretation                  | Actual live complete/partial selection uses verified stage availability; stale/mixed/protected input stays incomplete   | new estimation-runtime integration plus telemetry/builder/writer/child-close tests |
+| heal-backlog.mjs, lib/heal-timing-log.mjs, heal-timing-interval.mjs, timing-slug-rename.mjs, agent-review/validators/timing-log-sequence.mjs                                                                       | Task 7 / 4   | Preserve legacy/protected bytes                               | Verified current session scalar and joint model, refuse stale/malformed projection, retain handoff/measurement evidence | maintenance and all three sequence validator tests                                 |
+
+Task 4 defines `PublicationResult = {status: remote-published|queued-durably|pending|refused, remotePublished, queuedDurably, sourceDigest, receipt, reason}`. A resolved promise alone is not success. Skipped is not remote acknowledgment. An exact durable queue receipt may advance the original local banking checkpoint once; it cannot seal remote terminal evidence. Queue drain removes only remotely verified admission. Pending, refused or throwing handlers retain the immutable item/receipt/digest. Queue persistence failure leaves checkpoint unchanged. Tests exercise the real wrapper and drain.
+
+## Root verification bindings
+
+Existing vc:1–vc:4 retain their live exact commands; vc:5–vc:9 retain npm test, npm run test:slow, npm run lint, npm run format:check and git log --oneline -1. They provide baseline/aggregate evidence and never substitute for new behavior. Planned vc:10–vc:17 correspond to Tasks 1–8: each exact focused command is that task's first node --test command in its Verification Commands block below, preserving the full argv. Task 8 additionally contributes existing aggregate vc:5–vc:8. No command is declared passed here. After plan acceptance, a governed issue-body operation materializes the exact commands into root numbered entries and AC vc-list references before hydration. Future child evidence remains linked to those actual root groups.
+
+| Root AC                                                   | Existing groups | New groups / future child owner                                      |
+| --------------------------------------------------------- | --------------- | -------------------------------------------------------------------- |
+| AC1 recovered seconds, missing transcript and captures    | vc:1, vc:3      | vc:10 Task 1, vc:12 Task 3, vc:13 Task 4, vc:17 Task 8               |
+| AC2 grammar and board codec                               | vc:2, vc:4      | vc:11 Task 2, vc:14 Task 5, vc:17 Task 8                             |
+| AC3 actual producer/checkpoint paths                      | vc:1            | vc:12 Task 3, vc:13 Task 4, vc:16 Task 7, vc:17 Task 8               |
+| AC4 session/scalar/outcome dispatch and sealed reuse      | vc:2, vc:4      | vc:11 Task 2, vc:12 Task 3, vc:14 Task 5, vc:16 Task 7, vc:17 Task 8 |
+| AC5 guarded preview/apply/idempotency                     | vc:3            | vc:12 Task 3, vc:15 Task 6, vc:17 Task 8                             |
+| AC6 joint clock, handoff, conflict, replay and protection | vc:1, vc:4      | vc:10 Task 1, vc:12 Task 3, vc:13 Task 4, vc:14 Task 5, vc:17 Task 8 |
 
 ## Acceptance Criteria
 
@@ -104,7 +151,7 @@ Effort sum is 58 hours; reserve 2 hours root integration/orchestration, yielding
 - [ ] AC3: every producer uses event derivation under the canonical model with source/word preservation and honest unavailable reasons (Tasks 3,4,7,8).
 - [ ] AC4: readers, metadata, scalar projections, replay, partial totals and original sealed outcome semantics agree (Tasks 2,3,5,7,8).
 - [ ] AC5: preview-default, source-bound apply, non-overwriting exact backup, exclusion/drift/read-back failure and idempotency pass without real historical writes (Tasks 3,6,8).
-- [ ] AC6: actor isolation/overlap, sequential actors, shared pairs, delayed events, queue/journal restart and protected boundaries conserve allocations without duplicate credit (Tasks 1,3,4,5,8).
+- [ ] AC6: actor attribution/conflicting overlap, sequential ownership handoffs, shared pairs, delayed events, queue/journal restart and protected boundaries conserve allocations without duplicate credit (Tasks 1,3,4,5,8).
 
 ## Implementation Tasks
 
@@ -121,8 +168,10 @@ Effort sum is 58 hours; reserve 2 hours root integration/orchestration, yielding
 
 Create `scripts/task-tracker/lib/timing-duration-derivation.mjs` and `scripts/tests/unit/task-tracker/lib/timing-duration-derivation.test.mjs`. Create synthetic source-fact builders in `scripts/tests/helpers/1901-duration-facts.mjs`; later tasks use them read-only. Consume `lib/timing-events/index.mjs` classification without changing vocabulary. Interface: implement deriveEventDurations and Allocation/Availability exactly as above; normalized input rejects bad timestamps and source identity conflicts.
 
-**Rank:** 1. **Estimate:** 8 hours, L. **Dependencies:** none.
+**Rank:** 1. **Estimate:** 10 hours, L. **Dependencies:** none.
 
+- [ ] Read-only capture exact complete Timing Log bodies for #1851, #1852 and #1854 into `scripts/tests/fixtures/1901-timing-history/{1851,1852,1854}.md` plus `manifest.json`. Include repository, issue, canonical comment URL/node ID, body SHA-256, capture time and status. Verify sources https://github.com/kburson/ai-task-manager/issues/1851#issuecomment-5915448363, https://github.com/kburson/ai-task-manager/issues/1852#issuecomment-5915705167 and https://github.com/kburson/ai-task-manager/issues/1854#issuecomment-5915941693 against canonical current comment authority. Capture failure blocks the real-history verifier; labeled synthetic inputs never replace missing captures. Task 1 owns those fixtures and `scripts/tests/unit/task-tracker/lib/1901-timing-history-fixtures.test.mjs`; Tasks 6/8 consume them read-only. Assert hash/provenance agreement, the full supplied #1854 sequence and actual #1851/#1852 Unknown recoveries without live writes.
+- [ ] Pin the normative single-clock examples, genuine handoffs, owner-conflict extents and no double summation. Closed allocations retain provenance but are unique in task time; prove complete Active+Idle<=Session. Missing attribution/ownership cannot synthesize another additive effort lane.
 - [ ] Add table-driven failing tests for tick flooring, 51 Active, 453660 legacy bridge Idle, 133 update Active, boundary 5 and subsequent 901; same-second pair zero; minute-resolution input; offset changes; invalid calendar date/missing zone; unsafe tick; duplicate start; repeated departure; source conflict. Synthetic fixtures must be labeled synthetic.
 - [ ] Add these executable kernel tests, with `makeFact` from the helper constructing complete SourceFact fields. Times below are already normalized ticks; real timestamp tests separately exercise the decoder.
 
@@ -154,14 +203,14 @@ test('unrelated boundary cannot end a lone opener', () => {
 });
 ```
 
-- [ ] Implement lane state machine, unique source-order validation, observed endpoint reconciliation, narrow legacy bridge retirement, scoped pause union, shared boundary split and unavailable extent propagation. Add symmetric never-resumed Idle, matching late endpoint spanning boundaries, orphan recovery without original end, observed long transcript gap with zero event Idle, overlapping independent lanes and stage-uncertainty cases.
+- [ ] Implement the joint task state machine with immutable actor attribution and validated handoff chain, unique source-order validation, observed endpoint reconciliation, narrow legacy bridge retirement, scoped pause union, shared boundary split and unavailable extent propagation. Add symmetric never-resumed Idle, matching late endpoint spanning boundaries, orphan recovery without original end, observed long transcript gap with zero event Idle, contradictory historical overlapping owners without handoff and stage-uncertainty cases.
 - [ ] Add deterministic late-insertion tests start=0/update=20/boundary=10 => 10+10; ensure sourceOrder persistence and completion-before-entry. Property tests iterate deterministic seeded interleavings, prove slice uniqueness and Active+Idle conservation for fully observed windows, and retain extents/subtotals rather than guessing incomplete values.
 - [ ] Run the verifier, inspect each invariant and commit an issue-prefixed change after red/green tests. New module failures must be caused by missing implementation or wrong behavior, not broken test import paths.
 
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/unit/task-tracker/lib/timing-duration-derivation.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/timing-duration-derivation.test.mjs scripts/tests/unit/task-tracker/lib/1901-timing-history-fixtures.test.mjs
 ```
 
 ### Task 2: Add tolerant lexical metadata and Timing Log duration codecs
@@ -175,9 +224,9 @@ node --test scripts/tests/unit/task-tracker/lib/timing-duration-derivation.test.
 
 #### Files
 
-Modify `scripts/task-tracker/lib/timing-row-reader.mjs`. Create `lib/timing-duration-codec.mjs`, `lib/timing-duration-metadata.mjs`, `lib/timing-duration-source.mjs` and focused tests `scripts/tests/unit/task-tracker/lib/timing-duration-codec.test.mjs`, `timing-duration-metadata.test.mjs`, `timing-duration-source.test.mjs`. Paths beginning lib here resolve under scripts/task-tracker. Do not edit Task 5's timing-rows/timing-engagement modules. Source decoder converts lexical events/endpoints into the agreed SourceFact shape and calls canonical event grammar. It neither estimates durations nor mutates source identity.
+Modify `scripts/task-tracker/lib/timing-row-reader.mjs` and `scripts/task-tracker/lib/timing-actor.mjs`. Preserve strict identity, endpoint and word-cursor validation while supporting tolerant composed suffixes. Keep readEstimationStageTiming explicitly legacy-only: enabled callers bypass it through Task 5 policy, so Task 2 never imports the engine or adds a wave-1 dependency. Create `lib/timing-duration-codec.mjs`, `lib/timing-duration-metadata.mjs`, `lib/timing-duration-source.mjs` and focused tests `scripts/tests/unit/task-tracker/lib/timing-duration-codec.test.mjs`, `timing-duration-metadata.test.mjs`, `timing-duration-source.test.mjs`. Paths beginning lib here resolve under scripts/task-tracker. Do not edit Task 5's timing-rows/timing-engagement modules. Source decoder converts lexical events/endpoints into the agreed SourceFact shape and calls canonical event grammar. It neither estimates durations nor mutates source identity.
 
-**Rank:** 1. **Estimate:** 6 hours, M. **Dependencies:** none; integrates with Task 1 only in wave 2.
+**Rank:** 1. **Estimate:** 8 hours, L. **Dependencies:** none; integrates with Task 1 only in wave 2.
 
 - [ ] Add failing round-trip and rejection tables for 0,47,133,3599,3600,86399,86400,453660,multi-digit days and MAX_SAFE_INTEGER. Check positive unpadded days, literal days, clock bounds, missing timezone/calendar invalidity in source decoding, and legacy Xh MMm SSs/minute cells. Blank, Unknown and malformed are distinct typed decoding results.
 
@@ -202,7 +251,7 @@ for (const n of [-1, 1.5, NaN, Infinity, '133']) assert.throws(() => formatTimin
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/unit/task-tracker/lib/timing-duration-codec.test.mjs scripts/tests/unit/task-tracker/lib/timing-duration-metadata.test.mjs scripts/tests/unit/task-tracker/lib/timing-duration-source.test.mjs scripts/tests/unit/task-tracker/core/timing-row-reader-structure.test.mjs scripts/tests/unit/task-tracker/lib/timing-row-reader.test.mjs scripts/tests/unit/task-tracker/lib/duration.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/timing-actor.test.mjs scripts/tests/unit/task-tracker/lib/timing-duration-codec.test.mjs scripts/tests/unit/task-tracker/lib/timing-duration-metadata.test.mjs scripts/tests/unit/task-tracker/lib/timing-duration-source.test.mjs scripts/tests/unit/task-tracker/core/timing-row-reader-structure.test.mjs scripts/tests/unit/task-tracker/lib/timing-row-reader.test.mjs scripts/tests/unit/task-tracker/lib/duration.test.mjs
 ```
 
 ### Task 3: Publish immutable admissions with complete projection verification
@@ -234,6 +283,7 @@ assert.deepEqual(await harness.sourceIds(), ['start-a', 'update-a', 'boundary-b'
 assert.equal(await harness.projectionMatchesFreshDerivation(), true);
 ```
 
+- [ ] Include the candidate's current source-owner/handoff evidence in full source-inventory validation. Refuse detected conflicting ownership, retain recoverable journal/queue evidence, and diagnose historical conflict extents without double summation. This is source-admission validation among supported single-agent task executions, not a new global agent lease or CAS guarantee.
 - [ ] Implement source/evidence digest correlation, atomic in-memory body construction, stable source order, protected-reference enumeration and exact protected-byte checks before each attempt. Query all relevant sealed authority references exhaustively; pagination/identity/read failures are incomplete discovery and refuse mutation. No global atomicity claim.
 - [ ] Verify all observed projection fields and known immutable pre-write inventory, not only candidate presence. On drift merge retained known source facts with fresh authority, rederive and retry; source conflicts and protected intersections refuse. Keep full recoverable journal/queue evidence on pending result.
 - [ ] Cover protected ordinary append after an opener-before-cutoff: preserve source endpoints and protected bytes; terminalize only previously uncredited protected extent; credit only observed post-cutoff windows and retain existing credited prefix interpretation. True late insertion inside protected bytes refuses. Verify current successor validation before acknowledgment.
@@ -257,11 +307,13 @@ node --test scripts/tests/unit/task-tracker/core/timing-duration-publication.tes
 
 #### Files
 
-Modify `scripts/task-tracker/runtime.mjs`, `queue.mjs`, `lib/actor-flush-journal.mjs`, `lib/bind-event.mjs`, `lib/move-state/audit-timing.mjs`, `lib/review-approval-timing.mjs`, `lib/terminal-review-handoff.mjs`, and existing close timing callers discovered by import sweep. Create `scripts/tests/integration/task-tracker/core/1901-duration-producers.test.mjs`. Extend actor-flush-journal, actor-flush-isolation, bind-event and coverage-audit-timing tests. Publication logic remains owned by Task 3; producers call that exported seam. Inventory every caller of postTimingEvent/buildFlushRow/buildReviewToDoneClosePair, including orphan/session recovery and Ask hooks; handle via the existing source boundary rather than introducing new event vocabulary.
+Modify `scripts/task-tracker/runtime.mjs`, `queue.mjs`, `lib/actor-flush-journal.mjs`, `lib/bind-event.mjs`, `lib/move-state/audit-timing.mjs`, `lib/review-approval-timing.mjs`, `lib/terminal-review-handoff.mjs`, `lib/timing-post-outcome.mjs`, `verbs/resume.mjs`, `verbs/close.mjs`, `verbs/review.mjs`, `verbs/approve.mjs`, `hook-handler.mjs`, and `lib/move-state/guard-execution.mjs`. Create `scripts/tests/integration/task-tracker/core/1901-duration-producers.test.mjs`. Extend actor-flush-journal, actor-flush-isolation, bind-event and coverage-audit-timing tests. Publication logic remains owned by Task 3; producers call that exported seam. Inventory every caller of postTimingEvent/buildFlushRow/buildReviewToDoneClosePair, including orphan/session recovery and Ask hooks; handle via the existing source boundary rather than introducing new event vocabulary.
 
-**Rank:** 3. **Estimate:** 8 hours, L. **Dependencies:** Task 3.
+**Rank:** 3. **Estimate:** 10 hours, L. **Dependencies:** Task 3.
 
 - [ ] Add failing adapter tests using unavailable readActivityEvidence and a live uncompleted turn; event display recovers valid durations while original active estimate remains unknown. Also include an observed transcript gap whose bounded event window becomes all Active/zero Idle, without replacing the estimate.
+- [ ] Produce immutable handoff attestations from real bind/resume/recovery observations. Verify real issue/session binding identity, then have Task 3 validate the candidate's source-owner/handoff chain against canonical source inventory before admission. Existing assignee ownership is human-login policy, not proof of exclusive agent ownership; do not claim it already provides an agent lock or global CAS. A contender refuses without writing, banking words or shifting checkpoint. Cover same-instant and paused handoffs, missing predecessor observation, actually measured differing context sizes, unavailable measurements, each session restarting, replay of imported cumulative cursors and partial handoff recovery. Reuse actual runtime word measurement inputs; retain protected history and never estimate absent counts.
+- [ ] Implement the PublicationResult wrapper/drain contract above in actual timing-post-outcome and queue paths. Test resolved pending/refused/skipped results, exact durable acceptance, enqueue failure, lost remote response and queue-item retention; freeze terminal evidence only after verified remote admission.
 - [ ] Pass immutable actor identity, original endpoint and continued own-boundary observation through admission. Never attest other actors. Retain journal payload/digest and queue identity. Confirm remote read-back or exact durable enqueue advances checkpoint; neither success keeps checkpoint unchanged.
 
 ```javascript
@@ -274,13 +326,13 @@ assert.equal(harness.remotePublished(), false);
 ```
 
 - [ ] Prepare completion+entry as one immutable ordered pair with common tick and transition identity, delivered or queued together. Keep the independent pre-flush and its words: it owns through its tick, first boundary only the remaining observed slice, second zero. Failure after flush preserves it; retry admits only the missing pair with original timestamp, including restart/lost-response cases.
-- [ ] Exercise queue acceptance then process restart, queue write failure, source replay after reallocation, duplicate/conflicting pair replay, same-second pairs, independently observed overlapping actors, word/reset cursors and orphan recovery. Canonical mutation failure must not counterfeit a board transition or remote freeze.
+- [ ] Exercise queue acceptance then process restart, queue write failure, source replay after reallocation, duplicate/conflicting pair replay, same-second pairs, exclusive owner handoffs and contradictory historical owner overlap, word/reset cursors and orphan recovery. Canonical mutation failure must not counterfeit a board transition or remote freeze.
 - [ ] Inventory actual approval/close/recovery producers and prove they use the seam in integration tests. Run listed tests and commit; no durable runtime migration, new pause semantics or fabricated task_complete events.
 
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/integration/task-tracker/core/1901-duration-producers.test.mjs scripts/tests/unit/task-tracker/lib/actor-flush-journal.test.mjs scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs scripts/tests/unit/task-tracker/lib/bind-event.test.mjs scripts/tests/unit/task-tracker/lib/move-state/coverage-audit-timing.test.mjs
+node --test scripts/tests/integration/task-tracker/core/1901-duration-producers.test.mjs scripts/tests/unit/task-tracker/lib/timing-post-outcome.test.mjs scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs scripts/tests/unit/task-tracker/lib/actor-flush-journal.test.mjs scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs scripts/tests/unit/task-tracker/lib/bind-event.test.mjs scripts/tests/unit/task-tracker/lib/move-state/coverage-audit-timing.test.mjs
 ```
 
 ### Task 5: Project coherent totals while preserving sealed outcome semantics
@@ -294,11 +346,13 @@ node --test scripts/tests/integration/task-tracker/core/1901-duration-producers.
 
 #### Files
 
-Create `scripts/task-tracker/lib/timing-duration-projection.mjs` and `scripts/tests/unit/task-tracker/lib/timing-duration-projection.test.mjs`. Modify `lib/timing-rows.mjs`, `lib/timing-engagement.mjs`, `timing-rollup.mjs`, `lib/estimation/outcome-record.mjs`, `lib/estimation/outcome-builder.mjs`, `scripts/gh/log-issue-time.mjs` and relevant existing rollup/outcome tests. Keep lexical implementation stable; Task 5 imports Task 2's codec. Add model dispatch adjacent to old functions rather than replacing old-schema semantics.
+Create `scripts/task-tracker/lib/timing-duration-projection.mjs` and `scripts/tests/unit/task-tracker/lib/timing-duration-projection.test.mjs`. Modify `lib/timing-rows.mjs`, `lib/timing-engagement.mjs`, `lib/timing-ladder.mjs`, `lib/estimation/runtime-adapter.mjs`, `timing-rollup.mjs`, `lib/estimation/outcome-record.mjs`, `lib/estimation/outcome-builder.mjs`, `scripts/gh/log-issue-time.mjs` and relevant existing rollup/outcome tests. Keep lexical implementation stable; Task 5 imports Task 2's codec, creates projectSessionWallSpan and readVerifiedJointStageTiming beside timing-duration-projection, and retains raw source/control metadata in the ladder for verified model dispatch. The runtime adapter chooses enabled complete/partial outcomes from verified joint stage completeness, not old deriveActorEngagement or bare row-sec. Old sealed-record validation keeps original semantics. Add model dispatch adjacent to old functions rather than replacing old-schema semantics.
 
-**Rank:** 3. **Estimate:** 8 hours, L. **Dependencies:** Task 3.
+**Rank:** 3. **Estimate:** 10 hours, L. **Dependencies:** Task 3.
 
-- [ ] Add failing scalar tests for 120 Active/180 Idle Plan => 2 Plan minutes; two 20-second Plan visits => 1 minute; repeated/demoted/open visits; stage-scoped unknown; known Idle with complete Active; unknown-stage scope; independent SessionTime; overlapping Idle and Active exceeding wall time. Whole-log mixed legacy/event coverage returns legacy-segment-unconverted instead of blending estimates.
+- [ ] Implement and test projectSessionWallSpan plus actual board timingFieldProjection against the normative formula/null rules. Cover start0/pause10/resume30/update40 => session40/engaged20/idle20; handoff0..20 => session20/engaged20; owner conflict horizon15 => session15/affected engaged null; lone opener zero; invalid/missing horizon null; protected effort remainder with proven wall endpoints; mixed models; day/offset transitions; and no now-based growth. Enabled board mapping reads sessionSec/sessionMin rather than totalActiveSec/totalActiveMin. Old marker-free/sealed mapping stays pinned; Task 7 consumes this API for heal-backlog. Board codec output stays unchanged.
+- [ ] Add `scripts/tests/integration/task-tracker/lib/1901-duration-estimation-runtime.test.mjs` exercising actual estimation runtime adapter/outcome writer with complete, projection-stale, mixed-segment, protected-unknown and stage-scoped partial current-model inputs. Complete stages come only from readVerifiedJointStageTiming after full projection validation. Separately exercise actual old sealed-record reuse and the ladder retaining model/source metadata for dispatch.
+- [ ] Add failing scalar tests for 120 Active/180 Idle Plan => 2 Plan minutes; two 20-second Plan visits => 1 minute; repeated/demoted/open visits; stage-scoped unknown; known Idle with complete Active; unknown-stage scope; independent SessionTime; conflicting historical owners without double summation and complete joint Active+Idle bounded by independent wall span. Whole-log mixed legacy/event coverage returns legacy-segment-unconverted instead of blending estimates.
 
 ```javascript
 const s = projectEventScalars(deriveFixture({ planActive: [20, 20], planIdle: [180] }));
@@ -316,7 +370,7 @@ assert.equal(s.totalIdleSec.value, 180);
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/unit/task-tracker/lib/timing-duration-projection.test.mjs scripts/tests/unit/task-tracker/core/timing-rollup.test.mjs scripts/tests/unit/task-tracker/lib/timing-ladder.test.mjs scripts/tests/unit/task-tracker/lib/estimation/outcome-telemetry.test.mjs scripts/tests/unit/task-tracker/lib/estimation/outcome-builder.test.mjs scripts/tests/unit/task-tracker/lib/estimation/outcome-writer.test.mjs scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/timing-duration-projection.test.mjs scripts/tests/integration/task-tracker/lib/1901-duration-estimation-runtime.test.mjs scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs scripts/tests/unit/task-tracker/core/timing-rollup.test.mjs scripts/tests/unit/task-tracker/lib/timing-ladder.test.mjs scripts/tests/unit/task-tracker/lib/estimation/outcome-telemetry.test.mjs scripts/tests/unit/task-tracker/lib/estimation/outcome-builder.test.mjs scripts/tests/unit/task-tracker/lib/estimation/outcome-writer.test.mjs scripts/tests/integration/task-tracker/lib/child-close-outcome-evidence.test.mjs
 ```
 
 ### Task 6: Build guarded historical preview and idempotent apply capability
@@ -373,7 +427,7 @@ node --test scripts/tests/unit/task-tracker/core/timing-duration-repair.test.mjs
 
 Modify `scripts/task-tracker/lib/heal-timing-log.mjs`, `lib/heal-timing-interval.mjs`, `lib/timing-slug-rename.mjs`, `heal-backlog.mjs`, `lib/agent-review/validators/timing-log-sequence.mjs` and their tests. Add `scripts/tests/unit/task-tracker/maintenance/1901-timing-consumers.test.mjs`. All module paths resolve under scripts/task-tracker. Do not change Task 6's backfill or Task 5's old engagement/outcome implementation. Consume stable lexical/model APIs; any additional consumer discovered is assigned to a single owner before edits.
 
-**Rank:** 4. **Estimate:** 4 hours, M. **Dependencies:** Tasks 4,5.
+**Rank:** 4. **Estimate:** 6 hours, M. **Dependencies:** Tasks 4,5.
 
 - [ ] Add failing table tests for every maintenance/validation adapter on legacy, enabled, mixed-segment and partial rows. Include composed opaque suffixes, missing Full Word Marker, minute timestamps, zero and multi-day clocks, duplicate recognized metadata, invalid timestamp/ordering and projection-stale diagnostics.
 - [ ] Replace display heuristics for event model with decoded availability/seconds and preserve old-schema validation semantics. Heal or slug-rename never authorizes changing immutable event identity/source or protected bytes merely because a duration is Unknown. Reuse admission/repair guards when a supported maintenance action would affect projection/source.
@@ -381,7 +435,7 @@ Modify `scripts/task-tracker/lib/heal-timing-log.mjs`, `lib/heal-timing-interval
 ```javascript
 const before = capturedEnabledBody;
 const result = await validateSequenceFixture(before);
-assert.equal(result.model, 'event-delta/v1');
+assert.equal(result.model, 'joint-event-delta/v1');
 assert.equal(result.unknownRemainderReason, 'sealed-source-protected');
 assert.equal(await maintenanceNoop(before), before);
 ```
@@ -392,7 +446,7 @@ assert.equal(await maintenanceNoop(before), before);
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/unit/task-tracker/maintenance/1901-timing-consumers.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-log.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-interval.test.mjs scripts/tests/unit/task-tracker/lib/timing-slug-rename.test.mjs
+node --test scripts/tests/unit/task-tracker/maintenance/1901-timing-consumers.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-log.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-interval.test.mjs scripts/tests/unit/task-tracker/lib/timing-slug-rename.test.mjs scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence.test.mjs scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence-update-slug.test.mjs scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence-audit-rows.test.mjs
 ```
 
 ### Task 8: Gate reader-first activation and prove complete repository integration
@@ -413,7 +467,7 @@ Create `scripts/task-tracker/timing-duration-model.mjs`, `scripts/tests/integrat
 - [ ] Add failing rollout tests where no inventory/concrete release/config revision => no activation; stale allowed host/session/worktree => no activation; conflicting tuple => refusal; identical operation retry => one activation; marker-present local disabled => event output or duration-model-unsupported, never downgrade. Test post-activation legacy rows as refused evidence with raw preservation.
 - [ ] Introduce disabled-by-default timingDurationModel. The readiness record lists all allowed writers and consumers, their concrete compatible release and capability/config revision, excluded/suspended old sessions, exact canonical source digest and operator operation ID. Release N is the first actually produced compatible release; activation refuses a symbolic N, unassigned version or unverified participant. Documentation names how to obtain/verify that concrete release rather than pretending a version has shipped.
 - [ ] Future-only activation uses the next real ordinary candidate event admitted by an already authorized producer. The rollout command authorizes an activation request for that operation; it does not invent a new timing event or retrospective observation. If there is no eligible real candidate, activation remains pending and reports that status. The existing sanctioned task update can supply a real operator checkpoint; only its genuine admission can carry the marker. The marker and that source row are admitted together. Historical conversion instead uses Task 6's selected existing row; both paths share immutable model tuple/readiness/protection checks.
-- [ ] Test full #1854 captured table recovering 51/453660/133/5/901, missing task_complete and non-Codex estimates, baseline disabled emission, release-N reading, sealed outcome reuse, full projection convergence, repaired replay, protected cutoff successors and complete/null board values. Record capture URL/body digest/time separately from synthetic tests; do not alter historical live logs.
+- [ ] Test all three captured #1851/#1852/#1854 tables and the full supplied #1854 sequence recovering 51/453660/133/5/901, missing task_complete and non-Codex estimates, baseline disabled emission, release-N reading, sealed outcome reuse, full projection convergence, repaired replay, protected cutoff successors and complete/null board values. Record capture URL/body digest/time separately from synthetic tests; do not alter historical live logs.
 
 ```javascript
 const result = await rolloutHarness.activate({
@@ -422,7 +476,7 @@ const result = await rolloutHarness.activate({
 });
 assert.equal(result.status, 'activated');
 assert.equal(result.markerCount, 1);
-assert.equal(await rolloutHarness.disabledPeerAppend(), 'event-delta/v1');
+assert.equal(await rolloutHarness.disabledPeerAppend(), 'joint-event-delta/v1');
 assert.equal(await rolloutHarness.legacyPeerAttempt(), 'duration-model-unsupported');
 ```
 
