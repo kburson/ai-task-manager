@@ -1,0 +1,14 @@
+{
+  "owner": "kburson",
+  "story": 1725,
+  "originalStory": 1725,
+  "sourceHead": "46952470a4f89a61bf7f689ea7937397ed8314d2",
+  "protectedIds": [
+    "P06"
+  ],
+  "purpose": "Original planning checkpoint from the MCP adapter/reverse-review experiment, including two commits not reachable from current origin. Related architecture and evidence were delivered in PRs #1724 and #1726. This checkpoint is historical and does not approve the interrupted XPR setup or architecture implementation.",
+  "sourcePaths": [
+    "/Users/kpburson/.codex/worktrees/planning/ai-task-manager"
+  ],
+  "validation": "Original object preservation only; current tests and review not run."
+}
