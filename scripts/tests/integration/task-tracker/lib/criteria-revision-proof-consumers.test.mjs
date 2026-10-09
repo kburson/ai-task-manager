@@ -231,6 +231,17 @@ async function qualify(files, minimumTests, t) {
   assert.ok(count >= minimumTests, `Empty/partial original selection: ${count}`);
   for (const field of ['fail', 'cancelled', 'skipped'])
     assert.match(result.stdout, new RegExp(`^# ${field} 0\\s*$`, 'm'));
+  if (files.some((file) => file.endsWith('policy-evidence-activity.test.mjs'))) {
+    for (const title of [
+      'verification aggregate reader rejects missing revision binding',
+      'verification aggregate reader rejects different-revision revision binding',
+      'verification aggregate reader rejects different-digest revision binding',
+      'verification aggregate reader rejects extra-key revision binding',
+      'evidence-v2 reuse rejects unbound historical aggregates inside an actual current revision',
+      'evidence-v2 subject codec retains a closed current binding and reuse rejects a stripped subject',
+    ])
+      assert.ok(result.stdout.includes(title), `Missing real revised reader case: ${title}`);
+  }
   t.diagnostic(`Complete original profile: ${count} cases`);
 }
 
@@ -243,13 +254,14 @@ test(
         qualify(
           [
             'scripts/tests/unit/task-tracker/lib/criteria-revision/policy-evidence-activity.test.mjs',
+            'scripts/tests/unit/task-tracker/lib/criteria-revision/policy-receipts.test.mjs',
             'scripts/tests/integration/task-tracker/lib/criteria-revision-consumers.test.mjs',
             'scripts/tests/unit/task-tracker/lib/story-approval-binding-guard.test.mjs',
             'scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs',
             'scripts/tests/unit/task-tracker/lib/evidence-v2/eligibility.test.mjs',
             'scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs',
           ],
-          133,
+          153,
           child
         )
       ),
