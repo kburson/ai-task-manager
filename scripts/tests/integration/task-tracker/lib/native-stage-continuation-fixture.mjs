@@ -253,7 +253,14 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
         try {
           output = execFileSync(process.execPath, ['--test', fileURLToPath(entrypoint)], {
             cwd: isolation.context.sourceRoot,
-            env: { ...isolation.env, AITM_NATIVE_STAGE_CONTEXT: '1' },
+            env: {
+              ...isolation.env,
+              AITM_NATIVE_STAGE_CONTEXT: '1',
+              ...(process.env.TZ ? { TZ: process.env.TZ } : {}),
+              ...(process.env.AITM_NATIVE_STAGE_EXPECTED_TZ
+                ? { AITM_NATIVE_STAGE_EXPECTED_TZ: process.env.AITM_NATIVE_STAGE_EXPECTED_TZ }
+                : {}),
+            },
             encoding: 'utf8',
             timeout: 590000,
           });
@@ -267,6 +274,17 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       } finally {
         isolation.dispose();
       }
+    }
+    const expectedTimezone = process.env.AITM_NATIVE_STAGE_EXPECTED_TZ;
+    if (expectedTimezone) {
+      assert.equal(
+        process.env.TZ,
+        expectedTimezone,
+        'requested native timezone reaches executing case'
+      );
+      assert.equal(new Intl.DateTimeFormat().resolvedOptions().timeZone, expectedTimezone);
+      assert.equal(new Date().getTimezoneOffset() !== 0, expectedTimezone !== 'UTC');
+      t.diagnostic('executing native timezone: ' + expectedTimezone);
     }
     const f = await nativeFinalFixture({
       bodyStages: ['backlog', 'refine', 'plan', 'develop'],

@@ -16,7 +16,7 @@ function qualify(files, { timezone, minimumTests }, t) {
   // Node discovery can silently omit a missing path when another path exists.
   // Verify each owned input before invoking its complete, unfiltered cases.
   for (const file of paths) assert.ok(statSync(file).isFile(), `Missing owned verifier: ${file}`);
-  const env = { ...process.env, TZ: timezone };
+  const env = { ...process.env, TZ: timezone, AITM_NATIVE_STAGE_EXPECTED_TZ: timezone };
   delete env.NODE_TEST_CONTEXT;
   const result = spawnSync(
     process.execPath,
@@ -38,6 +38,15 @@ function qualify(files, { timezone, minimumTests }, t) {
     Number.isInteger(count) && count >= minimumTests,
     'No empty or partial owned selection'
   );
+  if (
+    files.some(
+      (file) => file.includes('native-actor-candidate') || file.includes('native-stage-phase')
+    )
+  )
+    assert.ok(
+      result.stdout.includes('executing native timezone: ' + timezone),
+      'Original executing native case confirms timezone'
+    );
   assert.match(result.stdout, /^# fail 0\s*$/m);
   assert.match(result.stdout, /^# cancelled 0\s*$/m);
   assert.match(result.stdout, /^# skipped 0\s*$/m);
