@@ -1,3 +1,4 @@
+import { withRevisionConsumer } from '../criteria-revision/policy.mjs';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -179,5 +180,14 @@ async function repairAuthorized({
 
 export async function repairIssueProjections(input = {}) {
   assertTransitionAuthorityCapability(input.transitionAuthority, { requireDurable: true });
-  return repairAuthorized(input);
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'contract-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => repairAuthorized(input)
+  );
 }

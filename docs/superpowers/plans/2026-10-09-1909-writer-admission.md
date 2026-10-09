@@ -51,7 +51,7 @@ Consume the existing public writer inputs, authentic memory backend/context and 
 - Dependency selection and fresh reads precede effects; nested calls do not acquire a new revision interlock beneath existing locks.
 - The focused entrypoint has source-backed graph discovery and complete real cases, not an allowlist-only coverage claim or an empty Node selection.
 
-## Task1: Close missing public writer boundaries
+## Task 1: Close missing public writer boundaries
 
 **Files:** Inspect/reuse criteria-revision/policy.mjs, issue-mutator-lock.mjs, versioned-issue-write.mjs, issue-body-mutate.mjs, github-records/contract-write.mjs, capsule-chain.mjs and lifecycle-transition.mjs. Owned discoveries may require changes in github-records/singleton-initializer.mjs, projection-repair.mjs and github-comment-store.mjs.
 
@@ -59,7 +59,7 @@ Consume the existing public writer inputs, authentic memory backend/context and 
 - Add the smallest fresh admission wrapper around each proved missing boundary. Keep the original admitted algorithm and validation intact. Test genuine approved/baseline positive controls and disabled-domain ordinary cases.
 - Run existing initialization, projection, comment-store, lifecycle, policy and lock regressions with their actual fixtures. Diagnose owned failures; retain unrelated native phase/status/recovery/saga failures under their existing1918 owners.
 
-## Task2: Qualify independent writer discovery and ordered delegation
+## Task 2: Qualify independent writer discovery and ordered delegation
 
 **Create:** scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs.
 
@@ -68,7 +68,7 @@ Consume the existing public writer inputs, authentic memory backend/context and 
 - Qualify exact nested lock ordering, no new revision lock below an existing issue lock, bare-flag refusal, callback/effect order and return/throw cleanup through the real APIs.
 - Run the declared focused command and package/ordinary regressions. Record real current-head failures and owners; no globally green claim from scoped success.
 
-## Task3: Review and reconcile delivery evidence
+## Task 3: Review and reconcile delivery evidence
 
 Commit with explicit1918/1909 attribution and request one fresh review of the bounded source changes. Record local/Linux qualification at the actual source HEAD. Preserve every declared full-suite/slow/lint/format/commit obligation and reconcile normal child lifecycle evidence once aggregate failures are resolved; no false Test, Review or Done markers.
 

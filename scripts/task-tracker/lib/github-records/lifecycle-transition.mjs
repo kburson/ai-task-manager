@@ -1,3 +1,4 @@
+import { withRevisionConsumer } from '../criteria-revision/policy.mjs';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -391,5 +392,14 @@ async function appendAuthorized({
 
 export function appendLifecycleTransition(input = {}) {
   assertTransitionAuthorityCapability(input.transitionAuthority);
-  return appendAuthorized(input);
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'capsule-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => appendAuthorized(input)
+  );
 }

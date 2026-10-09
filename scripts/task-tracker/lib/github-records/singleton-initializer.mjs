@@ -1,3 +1,4 @@
+import { withRevisionConsumer } from '../criteria-revision/policy.mjs';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -310,7 +311,7 @@ export async function discoverIssueSingletons({
   return discover({ repository, issue, issueNodeId, deps: resolvedDeps, issueBody });
 }
 
-export async function initializeIssueDirectory({
+async function initializeIssueDirectoryAdmitted({
   repository,
   issue,
   issueNodeId,
@@ -399,7 +400,7 @@ export async function initializeIssueDirectory({
   });
 }
 
-export async function repairIssueDirectory({
+async function repairIssueDirectoryAdmitted({
   repository,
   issue,
   issueNodeId,
@@ -447,4 +448,32 @@ export async function repairIssueDirectory({
     singletons: Object.freeze(Object.values(found.singletons)),
     repaired: true,
   });
+}
+
+export async function initializeIssueDirectory(input = {}) {
+  assertInput(input, { needsActor: true });
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'issue-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => initializeIssueDirectoryAdmitted(input)
+  );
+}
+
+export async function repairIssueDirectory(input = {}) {
+  assertInput(input);
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'issue-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => repairIssueDirectoryAdmitted(input)
+  );
 }
