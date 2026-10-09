@@ -1,0 +1,12 @@
+✔ native dependency guard allows no dependencies and all-Done dependencies (1.188083ms)
+✔ native dependency guard refuses unfinished and unknown dependencies (0.282292ms)
+✔ native dependency guard fails closed on graph, state, or projection failure (0.213416ms)
+✔ bootstrap keeps the native dependency guard on every forward delivery exit (0.098834ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.370916

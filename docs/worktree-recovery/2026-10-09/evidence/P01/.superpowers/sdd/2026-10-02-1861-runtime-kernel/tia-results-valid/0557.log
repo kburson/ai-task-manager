@@ -1,0 +1,14 @@
+✔ epic orchestration plan binds the complete child graph and strict execution policy (1.541208ms)
+✔ R4P-origin Plan approval is bound to current trunk before Develop (1.789084ms)
+✔ epic Plan exit requires a durable graph matching live children and trunk (0.536708ms)
+✔ plan approval stamps trunk and complete epic orchestration provenance (5.351875ms)
+✔ plan approval discovers children for an implicit epic before stamping approval (1.392542ms)
+✔ legacy Plan epic without kind or R4P markers still freezes children and trunk (1.063708ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18.397375

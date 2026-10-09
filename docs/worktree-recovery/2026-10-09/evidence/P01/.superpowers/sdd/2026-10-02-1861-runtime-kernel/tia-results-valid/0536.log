@@ -1,0 +1,12 @@
+✔ formatDiscussStartBanner: 💬-led, interpolates the ref (0.545583ms)
+✔ formatDiscussEndBanner: ✅-led, interpolates the ref (0.102125ms)
+✔ finalizeDiscussion: emits the ✅ end banner exactly once after a successful write (2.853792ms)
+✔ finalizeDiscussion: does NOT emit the end banner when the body write fails (0.740458ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.028084

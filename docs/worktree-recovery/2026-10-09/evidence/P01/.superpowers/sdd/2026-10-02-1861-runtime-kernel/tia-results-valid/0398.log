@@ -1,0 +1,79 @@
+✖ move to review while already in review exits 0 as a no-op (the reported defect) (262.769458ms)
+✖ the no-op path performs no move — no entry stamp, no timing row, no board write (231.91425ms)
+✖ every state is re-runnable in place, not just review (229.938584ms)
+✔ a genuine illegal transition still refuses with exit 5 (45.638417ms)
+✖ the structured result reads as success, so verb guards do not treat it as a refusal (256.245ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 1
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1034.567125
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:61:1
+✖ move to review while already in review exits 0 as a no-op (the reported defect) (262.769458ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/gh/move-state.mjs:445:18)
+      at runHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:44:18)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:62:42)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:70:1
+✖ the no-op path performs no move — no entry stamp, no timing row, no board write (231.91425ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/gh/move-state.mjs:445:18)
+      at runHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:44:18)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:71:28)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:81:1
+✖ every state is re-runnable in place, not just review (229.938584ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/gh/move-state.mjs:445:18)
+      at runHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:44:18)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:83:36)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:95:1
+✖ the structured result reads as success, so verb guards do not treat it as a refusal (256.245ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/gh/move-state.mjs:445:18)
+      at runMoveStateInProcess (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/runtime.mjs:186:18)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs:96:21)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }

@@ -1,0 +1,20 @@
+✔ waived authority preserves the exact exception revision and evaluated scope (2.812166ms)
+✔ ordinary approval remains satisfied and fingerprints the exact approval marker (0.887667ms)
+✔ approval fingerprint uses the same fence-aware marker that passed parsing (0.317917ms)
+✔ recordedAt requires canonical millisecond UTC form (0.21525ms)
+✔ disabled approval gate is not represented as satisfied approval (0.105208ms)
+✔ required approval without a marker or waiver fails closed (0.1835ms)
+✔ completion requires matching Develop entry and move-complete transition identities (0.954416ms)
+✔ writer creates and exactly reads back one immutable authority record (0.491334ms)
+✔ writer reconciles an ambiguous create transport from one exact listed record (0.384833ms)
+✔ writer fails closed when ambiguous transport finds no exact record (0.268ms)
+✔ writer fails closed when ambiguous transport finds duplicate exact records (0.253209ms)
+✔ modern approval audits require the authority codec transition ID grammar (0.411583ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.331041

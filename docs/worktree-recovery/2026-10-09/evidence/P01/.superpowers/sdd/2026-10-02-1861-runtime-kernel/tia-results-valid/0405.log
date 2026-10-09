@@ -1,0 +1,31 @@
+✔ acKeyForLabel is 8 hex chars and deterministic (1.777334ms)
+✔ acKeyForLabel strips aitm-verified cmd="..." and aitm-ac-evidence before hashing (0.091916ms)
+✔ parseEvidenceAcs returns only verified AC lines with commands + key (1.214708ms)
+✔ parseEvidenceAcs ignores plain criteria with no aitm-verified declaration (0.218334ms)
+✔ parseEvidenceAcs recognizes a migrated consolidated aitm-verified declaration (#391) (0.337958ms)
+✔ parseEvidenceAcs reads cmd + proof from a single combined aitm-verified marker (#481) (0.110708ms)
+✔ stampAcEvidenceMarker upserts run-props onto the single marker, idempotently (0.456584ms)
+✔ stampAcEvidenceMarker records run-props on the single aitm-verified marker (#481) (0.130167ms)
+✔ parseAcEvidence reads the new fully-quoted form (#379) (0.085416ms)
+✔ parseAcEvidence still reads the legacy half-quoted colon form (#379 back-compat) (0.109291ms)
+✔ stampAcEvidenceMarker preserves a declaration with an embedded double-quote (#481) (0.116125ms)
+✔ stampAcEvidenceMarker strips a legacy sibling and records on the single marker (#481) (0.125917ms)
+✔ stampAcEvidenceMarker throws when label has no evidence-bearing AC (0.237208ms)
+✔ parseAcEvidence reads back a stamped marker (0.051417ms)
+✔ gateEvidenceTick refuses unticked verified AC with no stamp (0.103542ms)
+✔ gateEvidenceTick passes once the AC is stamped (0.081125ms)
+✔ gateEvidenceTick passes an already-ticked verified AC (unticking allowed) (0.048333ms)
+✔ gateEvidenceTick passes a plain AC with no verifier (0.050583ms)
+✔ gateEvidenceTick leaves the Functional DoD path intact (regression) (0.427584ms)
+✔ #443 reproduces the #429 refusal — non-standard AC command missing from Verification Commands (0.320417ms)
+✔ #443 stampAcEvidenceAndReconcile clears the refusal and keeps the AC marker (0.349958ms)
+✔ #443 stampAcEvidenceAndReconcile is idempotent — no duplicate VC entry on re-run (0.17075ms)
+✔ #443 reconcile scopes to the stamped AC — an unrelated AC gap is left untouched (0.102292ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.457084

@@ -1,0 +1,19 @@
+✔ warnMissingFieldId: emits expected single-line WARN (0.669459ms)
+✔ warnMissingFieldId: deduped per cfgKey (0.082083ms)
+✔ warnMissingFieldId: distinct cfgKeys each warn once (0.060458ms)
+✔ warnMissingFieldId: rejects empty cfgKey (0.053959ms)
+✔ selfCheckFieldConfig: emits consolidated WARN listing every missing key (0.471792ms)
+✔ selfCheckFieldConfig: no WARN when all keys present (0.125542ms)
+✔ selfCheckFieldConfig: deduped per process (0.076917ms)
+✔ #342 — every WELL_KNOWN_FIELD_KEY is enumerated in config.mjs DEFAULTS (1.509708ms)
+✔ #342 — fresh-init cfg fixture populates every WELL_KNOWN_FIELD_KEY via fieldIds auto-mirror (118.543584ms)
+✔ writeBlockedByField: missing cfg.fieldBlockedBy → WARN to stderr (0.277959ms)
+✔ stampStartTime: missing cfg.fieldStartTime → WARN to stderr (0.167416ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 126.2995

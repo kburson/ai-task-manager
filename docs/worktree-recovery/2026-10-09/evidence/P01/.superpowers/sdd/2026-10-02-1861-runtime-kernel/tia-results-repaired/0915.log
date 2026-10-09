@@ -1,0 +1,11 @@
+✔ AC1: two auto-token calls with identical inputs yield different paths (1.362625ms)
+✔ AC2: explicit token is deterministic; distinct tokens never alias (0.163375ms)
+✔ AC3 regression: run B reclaim target never names run A live worktree (0.139583ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.046584

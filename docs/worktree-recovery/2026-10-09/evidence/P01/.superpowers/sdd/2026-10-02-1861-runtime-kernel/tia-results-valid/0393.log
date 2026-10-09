@@ -1,0 +1,10 @@
+✔ #222: rank write fires exactly one number-write mutation when fieldRank is configured (0.851458ms)
+✔ #222: missing Rank fieldId emits stderr warning and skips write (0.185125ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.660917
