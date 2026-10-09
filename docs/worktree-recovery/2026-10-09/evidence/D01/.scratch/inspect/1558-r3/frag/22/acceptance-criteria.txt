@@ -1,3 +1,0 @@
-- [ ] Valid/invalid catalogs compile deterministically into split artifacts; concurrent writers and corrupt/stale cache files recover safely. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Unchanged cross-process warm calls are silent and skip YAML parsing/semantic validation with worktree-aware tracking identity. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Runtime benchmarks and production-package cache certification satisfy the B1+B2 consumer-release requirement. <!-- aitm-verified vc-list="vc:1" -->

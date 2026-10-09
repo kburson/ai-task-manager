@@ -1,7 +1,0 @@
-Restore exact idempotency and read-back for the existing actor timing publisher when its derived Delta Words cell differs from the original queued event. Preserve every other row cell, actor identity, timestamp, cursor, duration and evidence marker. A replay must acknowledge the already-published semantic row without writing another opener or weakening conflicting-evidence refusal.
-
-Extend the existing registered heal-timing-log command with an explicit, dry-run-first actor-opener replay recovery mode. Remove only proven redundant opener copies whose durable fields match the retained original and whose derived delta contributes no new observed work. Preserve full original evidence, source identity/hashes and a repair audit; re-read and validate the exact repaired result. Never invent a departure, duration, identity or missing cursor. Reject ambiguous or conflicting rows and changed remote evidence.
-
-Discovered during #1872 Review: all source checks and exact-head CI are green, but original queued rows repeatedly append and fail canonical read-back. Review recorded 168 duplicate-actor-start objections across three actors; delivery refused agent-review-evidence. Keep #1872 source at its verified SHA while fixing this completion blocker separately.
-
-This is a focused legacy timing-publication defect. #1862 retains protected runtime adoption, migration, census and broader compatibility ownership. No runtime default activation or cross-provider changes belong here.

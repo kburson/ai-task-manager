@@ -1,2 +1,0 @@
-save-draft: no-active-discover-bucket
-  Start a discovery session first: `/task discover`

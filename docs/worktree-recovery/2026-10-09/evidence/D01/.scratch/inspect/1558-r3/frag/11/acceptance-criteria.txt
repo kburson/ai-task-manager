@@ -1,3 +1,0 @@
-- [ ] Complete guards, conditional policy enrichment, provenance, and contiguity refresh share one read-only evaluation path with mutation. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Required-read failures, incompatible evidence, malformed results, and pending adapters never become ready; explanation performs no effects. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Read reuse is bounded to one attempt and does not remove execution refreshes. <!-- aitm-verified vc-list="vc:1" -->

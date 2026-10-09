@@ -1,4 +1,0 @@
-- [ ] AC1: Canonical subjects remain equal for identical complete content-only inputs across SHA changes, but change for relevant content, requirements, recipe, environment or Git-sensitive changes. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] AC2: Reuse appends an equivalence relationship without altering the original tested SHA; missing evidence or policy yields precise verify/refuse results. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] AC3: Acceptance requires exact candidate, requirements, target and authorized review evidence; patch identity or copied booleans cannot substitute. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] AC4: Journal writes verify durable bytes, reuse logical operation identity after uncertain responses, serialize same-host writers and reject conflicting forks or unsupported hosts. <!-- aitm-verified vc-list="vc:3" -->

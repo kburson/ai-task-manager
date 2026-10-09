@@ -1,3 +1,0 @@
-- [ ] Reproducible paired reports count complete equivalent workflows for both adapters and preserve the original baseline; actual versus modeled evidence is explicit. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] Real-tokenizer calibration and complete diagnostic/heavy-case costs are recorded without truncation, hidden traffic, or universal-bound claims. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] Authority request/refresh/diagnostic invariants and separately identified timing budgets pass; final context/reduction acceptance stays gated on Task 17. <!-- aitm-verified vc-list="vc:1 vc:2" -->

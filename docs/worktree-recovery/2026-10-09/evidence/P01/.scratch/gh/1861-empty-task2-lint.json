@@ -1,6 +1,0 @@
-{
-  "status": 1,
-  "signal": null,
-  "stdout": "\n/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/output/audit-story-tags-shebang-late-9TIEdX/scripts/gh/shebang-late.test.mjs\n  3:2  error  Parsing error: Unexpected character '!'\n\n/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/task-tracker/lib/runtime-activation-admission.mjs\n  9:3  error  'emptyRuntimeDigest' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars\n\n✖ 2 problems (2 errors, 0 warnings)\n\n",
-  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 lint\nnpm notice run npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals && npm run lint:guidance-release\nnpm notice run @kburson/ai-task-manager@0.1.0 lint:js\nnpm notice run eslint .\n"
-}

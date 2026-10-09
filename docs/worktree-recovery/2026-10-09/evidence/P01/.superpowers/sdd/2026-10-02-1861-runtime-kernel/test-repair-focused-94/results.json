@@ -1,8 +1,0 @@
-[
-  {
-    "file": "scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs",
-    "status": 1,
-    "durationMs": 19054,
-    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-94/0000.log"
-  }
-]

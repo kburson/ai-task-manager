@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "## Plan Metadata\n",
-  "replacement": "## Plan Metadata\n\n**Implementation-plan**: docs/superpowers/plans/2026-10-06-1904-root-ac-consumers.md\n**Verification-boundary**: Host affected/TIA only; full exact-head hosted CI through project verificationProvider.\n"
-}

@@ -1,3 +1,0 @@
-**Scope/files and boundary:** Extend comparison functions in `guidance-characterization.mjs`; own `guidance-candidate-measurement.test.mjs`, `action-cardinality.json`, `serialization-sensitivity.json`, `context-comparison.json` and ordered `candidate-workflow/` artifacts. No authoritative verdict or production changes.
-
-**Handoff and verification behavior:** This child produces comparison artifacts only. Its favorable totals cannot authorize runtime work. WBS 8 alone combines semantic, completeness and budget results into the authoritative verdict.

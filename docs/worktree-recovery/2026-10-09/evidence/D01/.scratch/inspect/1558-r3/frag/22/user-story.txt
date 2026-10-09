@@ -1,3 +1,0 @@
-As a user of one-shot AITM commands,
-I want to reuse validated static guidance across processes,
-So that unchanged invocations avoid parsing YAML without retaining stale authority.

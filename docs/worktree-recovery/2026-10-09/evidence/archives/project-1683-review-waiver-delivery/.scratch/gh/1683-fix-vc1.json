@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- [ ] `node --test scripts/tests/unit/task-tracker/lib/delivery-preflight.test.mjs` <!-- id=1 -->",
-  "replacement": "- [ ] `node --test scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs scripts/tests/unit/task-tracker/verbs/deliver-no-commit.test.mjs` <!-- id=1 -->"
-}

@@ -1,2 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' comment 1902 --key deep-dive.analysis-v1 --body-file .scratch/1902/deep-dive.md

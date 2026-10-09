@@ -1,1 +1,0 @@
-node --test scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs

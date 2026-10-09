@@ -1,7 +1,0 @@
-- **Parent-epic**: #1755
-- **Nested-epic**: #1755
-- **Governing-spec**: docs/superpowers/specs/2026-09-22-1755-delivery-attribution-exception-design.md
-- **Source-plan**: docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception-reviewed-spec.md
-- **Source-plan-commit**: 4302b767e2e3d4f0d98b6785613184d9e87bc34e
-- **Source-plan-section**: ### Task 5: Open-PR preflight, late revalidation, and operation-bound intent
-- **Generated-by**: `npx aitm split-plan`

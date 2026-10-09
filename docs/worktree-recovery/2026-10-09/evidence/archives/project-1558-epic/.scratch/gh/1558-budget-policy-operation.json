@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- Fixed proxy ceilings: 5,000 / 300 / 500 / 7,000; working maxima: 4,000 / 240 / 400 / 5,600. Both adapters must demonstrate lower actual complete lifecycle context than their preserved Markdown baselines. Required diagnostics count toward the same total.",
-  "replacement": "- Fixed absolute proxy ceilings remain 5,000 / 300 / 500 / 7,000. Static, clean, and blocked working maxima remain 4,000 / 240 / 400. The original lifecycle headroom gate was 5,600; the final user-approved policy aims below 6,000 and permits up to 6,500 only when wording clarity needs it. Both measured adapters also pass the original 5,600 gate and cost less than their preserved Markdown baselines. Required diagnostics count toward the same total."
-}

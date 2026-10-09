@@ -1,5 +1,0 @@
-- Removing `npx aitm co-review` or `scripts/review/**`.
-- Converting legacy archives into the ai-peer-review schema.
-- Fabricating delivery receipts, lifecycle events, archive acceptance, or incident authority.
-- Weakening the migration guard for unresolved active reviews.
-- Changing ai-peer-review package behavior.

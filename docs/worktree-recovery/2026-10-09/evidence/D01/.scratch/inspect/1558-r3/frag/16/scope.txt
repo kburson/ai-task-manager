@@ -1,1 +1,0 @@
-Create `action-decision/deliver.mjs`. Modify `verbs/deliver.mjs`, `lib/delivery-preflight.mjs`, `lib/delivery-authority.mjs`, and existing delivery dependency adapters only where extraction requires it. Create `scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs`.

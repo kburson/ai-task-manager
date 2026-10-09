@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- [ ] The human-only false-delivery close mode fails closed unless audit, recovery, historical no-commit, same-SHA Test and Review, merged PR, receipt, trunk, worktree, and binding authority all correlate. <!-- aitm-verified key=\"05fe6145\" vc-list=\"vc:9\" -->",
-  "replacement": "- [ ] The human-only false-delivery close mode fails closed unless audit, recovery, historical no-commit, delivered-SHA Test and Review, exact integration topology when needed, merged PR, receipt, trunk, worktree, and binding authority all correlate. <!-- aitm-verified key=\"05fe6145\" vc-list=\"vc:9\" -->"
-}

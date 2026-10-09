@@ -1,7 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-section",
-  "heading": "## Fix Direction",
-  "expected": "\n\nEnrich the `merge-back` production graph node with parent branch authority through the existing fail-closed worktree-location reader used by child creation and Close lineage. Keep the pure merge protocol unchanged. Add adapter-level and real-Git regression coverage for recorded custom authority, canonical fallback, malformed or ambiguous authority, and zero-mutation refusal.\n\n",
-  "replacement": "\n\nEnrich each `merge-back` production graph node with parent branch authority through the existing fail-closed worktree-location reader, prefetch child and immediate-epic nodes by numeric issue ID, and carry that numeric parent identity through lineage resolution instead of parsing the authoritative branch. Preserve the operational merge protocol and add adapter, lineage, and real-Git regression coverage for recorded custom authority, canonical fallback, malformed or ambiguous authority, missing graph data, and zero-mutation refusal.\n\n"
-}

@@ -1,4 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 lint
-npm notice run npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals && npm run lint:guidance-release
-npm notice run @kburson/ai-task-manager@0.1.0 lint:js
-npm notice run eslint .

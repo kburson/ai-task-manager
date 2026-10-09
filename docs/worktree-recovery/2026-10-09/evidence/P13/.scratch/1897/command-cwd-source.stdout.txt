@@ -1,6 +1,0 @@
-121:  const effectiveDir = directGit.cwd || invocationDir;
-122:  const projectRoot = readWorktreeIdentity({ projectDir: effectiveDir }).worktreePath;
-153:    const invoking = bound ? readWorktreeIdentity({ projectDir: invokingDir }) : null;
-460:              cwd: commitDir || root,
-532:        cwd: root,
-585:    if (direct.kind === 'commit') return { args: direct.args, effectiveDir: direct.cwd };

@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "The branch diff against trunk adds exactly one file and modifies or deletes none, so the specification, earlier review documents, code, tests, package manifest, and dependencies are untouched.",
-  "replacement": "The branch diff against trunk modifies, deletes, renames or retypes nothing, so the specification, earlier review documents, code, tests, package manifest, and dependencies are untouched."
-}

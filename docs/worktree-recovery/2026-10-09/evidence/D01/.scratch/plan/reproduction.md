@@ -1,1 +1,0 @@
-On the ai-peer-review epic #39 worktree, `npx aitm deliver 39` refuses before merge with `delivery-preflight:attribution predicate=source-attribution-conflict` because 90 source commits have canonical `[#N]` subjects and 21 historical single-parent commits lack them. Rewriting history would invalidate accepted evidence.

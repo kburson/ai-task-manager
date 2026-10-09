@@ -1,4 +1,0 @@
-- [ ] AC1: Same accepted full content can be delivered through explicitly linked rewritten PR history without searching for a PR by old accepted SHA. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] AC2: Wrong content, repository, PR, target, head race, or required method-policy violation refuses before unauthorized effects. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] AC3: Intent precedes provider action and retry reuses durable identity; target/source advancement after valid delivery does not erase history. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] AC4: Default v1 authority and configured squash-only policy remain unchanged for unenrolled issues. <!-- aitm-verified vc-list="vc:2" -->

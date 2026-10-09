@@ -1,4 +1,0 @@
-- [ ] AC1: Different trusted tool and pinned source roots are honored without module fallback or source ref mutation. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] AC2: Inspection reports predicate sources and proposed migration without writes; stale plans and malformed or unverifiable imports refuse. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] AC3: Enrollment preserves original records, creates explicit cycle relationships, and never synthesizes historic test/approval/provider evidence. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] AC4: All public producers, consumers, resident actions and help/catalog surfaces select v1/v2 consistently; incompatible writers cannot silently mutate enrolled state. <!-- aitm-verified vc-list="vc:3" -->

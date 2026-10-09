@@ -1,7 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **depth**: one sibling defect under #1516; this repair will not spawn another defect",
-  "replacement": "- **parent**: #1609\n- **depth**: second-level defect under #1609; maximum depth reached and this repair will not spawn another defect",
-  "expectedVersion": 8
-}

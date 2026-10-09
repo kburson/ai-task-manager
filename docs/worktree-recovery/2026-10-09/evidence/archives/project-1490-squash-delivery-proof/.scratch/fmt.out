@@ -1,9 +1,0 @@
-
-> @kburson/ai-task-manager@1.0.0 format:check
-> prettier --check .
-
-Checking formatting...
-[warn] scripts/task-tracker/lib/reopened-close-recovery.mjs
-[warn] scripts/task-tracker/verbs/close.mjs
-[warn] scripts/tests/unit/task-tracker/verbs/close-reopened-recovery-wiring.test.mjs
-[warn] Code style issues found in 3 files. Run Prettier with --write to fix.

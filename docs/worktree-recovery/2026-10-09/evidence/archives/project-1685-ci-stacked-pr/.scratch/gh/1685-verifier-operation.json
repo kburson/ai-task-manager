@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "node --test scripts/tests/unit/task-tracker/core/ci-actions-node-pins.test.mjs",
-  "replacement": "node --test scripts/tests/unit/task-tracker/core/ci-745-trunk-ref.test.mjs"
-}

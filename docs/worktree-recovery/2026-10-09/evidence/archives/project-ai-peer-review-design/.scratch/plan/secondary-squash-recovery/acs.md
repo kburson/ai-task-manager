@@ -1,4 +1,0 @@
-- [ ] A GitHub-default multi-source squash can recover an exact receipt for a secondary issue when the target token and the title-leading token are both members of the complete authorized token set and the observed merge token set equals it exactly. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] Recovery refuses when the target token is absent, the title-leading token is unauthorized, any observed token is extra or missing, the source inventory is incomplete, the attribution trailer is malformed, or topology does not prove a squash. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] Existing top-level external recovery, canonical trailer verification, and zero-write refusal behavior remain unchanged. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] Repository lint, format, fast, and slow verification remain green. <!-- aitm-verified vc-list="vc:3 vc:4 vc:5 vc:6" -->

@@ -1,1 +1,0 @@
-Do not reinterpret bare `Refs` text as attribution. Do not create incident records or incorporated dispositions. Do not change merge-method inference, source inventory collection, canonical trailer semantics, provider actions, lifecycle state manually, or any existing issue's parent relationship.

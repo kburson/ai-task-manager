@@ -1,2 +1,0 @@
-node --test scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs
-node scripts/task-tracker/guidance.mjs validate --published --refresh --json

@@ -1,2 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'prettier' --write scripts/task-tracker/merge-back.mjs scripts/tests/unit/task-tracker/merge-back.test.mjs scripts/tests/integration/task-tracker/merge-back-cli.test.mjs

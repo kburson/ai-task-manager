@@ -1,3 +1,0 @@
-As an agent finishing an issue,
-I want to have complete close readiness and fresh guarded execution,
-So that explaining close cannot bypass delivery or approval.

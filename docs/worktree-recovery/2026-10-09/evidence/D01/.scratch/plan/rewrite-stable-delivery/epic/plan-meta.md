@@ -1,7 +1,0 @@
-- **Design status**: Proposed detailed architecture and six-child implementation plan; backlog hydration only, no implementation approval
-- **Execution**: Six sequential children; no parallel dispatch; normal governed Refine/Plan/Develop/Test/Review gates
-- **Planning branch**: codex/rewrite-stable-delivery-plan
-- **Planning worktree**: .worktrees/rewrite-stable-delivery-plan
-- **Reference commit**: 18f2af8ae867dd893020218418ea9ed41e935ac2
-- **Sizing**: Re-estimate at Refine; no premature Backlog Size or Estimate
-- **Cutover**: Disposable rehearsal before separately authorized real migration; preserve all original issues and worktrees

@@ -1,2 +1,0 @@
-- [ ] After an authorized rebase, stale genuine legacy Test receipts no longer deadlock Test entry; Explain is read-only and canonical Test retires only the eligible exact receipt before ordinary entry gates and fresh verification. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Malformed, ambiguous, foreign-issue and current wrong-tree receipts remain fail-closed; retirement or read-back refusal prevents replacement execution. <!-- aitm-verified vc-list="vc:1" -->

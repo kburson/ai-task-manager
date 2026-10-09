@@ -1,3 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' refine 1897 --size XS --estimate 2 --priority p0 --reason Deep dive posted and mirrored; shared locator root cause, bounded implementation, seven-question story review, legacy compatibility and exact affected verifiers are recorded.
-refine: refinement-snapshot:field-rank

@@ -1,3 +1,0 @@
-As an agent choosing the next action,
-I want to have compact fresh operational guidance and explicit access to evidence when investigation needs it,
-So that repeated instructions and unused provenance do not inflate routine context.

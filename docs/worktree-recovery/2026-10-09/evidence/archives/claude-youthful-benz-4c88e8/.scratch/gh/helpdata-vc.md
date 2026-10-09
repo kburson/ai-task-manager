@@ -1,4 +1,0 @@
-- [ ] `npm run lint` <!-- id=1 -->
-- [ ] `npm run format:check` <!-- id=2 -->
-- [ ] `node --test scripts/tests/unit/task-tracker/verbs/help.test.mjs` <!-- id=3 -->
-- [ ] `npm run test:unit` <!-- id=4 -->

@@ -1,5 +1,0 @@
-{
-  "status": 0,
-  "stdout": "Closed #1899.\n",
-  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' close 1899\n"
-}

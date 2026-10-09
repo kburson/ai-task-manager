@@ -1,3 +1,0 @@
-- **kind**: code
-- **discovered-during**: #1755
-- **source-plan-section**: ### Task 4: Two-pass CLI and Codex-only user authority

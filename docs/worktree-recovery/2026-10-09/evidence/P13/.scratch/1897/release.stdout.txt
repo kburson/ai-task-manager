@@ -1,1 +1,0 @@
-Released occupancy #1897: provider=codex sid=01a10a24-0dc worktree=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac

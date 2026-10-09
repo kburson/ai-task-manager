@@ -1,2 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' user-story 1902 --as release operator --want integrate an already synchronized child at its reviewed commit because unnecessary rebase destroys its accepted merge ancestry --so-that accepted history and exact verification remain intact during fast-forward delivery

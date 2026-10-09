@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- [ ] The CLI help, command catalog, close rule, and workflow guide distinguish false-delivery recovery from stale, reopened, unauthorized-close, and generic backfill paths. <!-- aitm-verified key=\"b95b0e54\" vc-list=\"vc:11 vc:10\" -->\n\n## Recovery Completion",
-  "replacement": "- [ ] The CLI help, command catalog, close rule, and workflow guide distinguish false-delivery recovery from stale, reopened, unauthorized-close, and generic backfill paths. <!-- aitm-verified key=\"b95b0e54\" vc-list=\"vc:11 vc:10\" -->\n- [ ] Already-merged delivery reconciliation derives source attribution from the full canonical commit message rather than GitHub's truncated headline. <!-- aitm-verified cmd=\"node --test scripts/tests/unit/task-tracker/verbs/deliver-default-deps.test.mjs\" -->\n\n## Recovery Completion"
-}

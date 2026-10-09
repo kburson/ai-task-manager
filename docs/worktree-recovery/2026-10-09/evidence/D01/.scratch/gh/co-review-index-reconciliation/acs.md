@@ -1,6 +1,0 @@
-- [ ] The reconciliation inventory deterministically accounts for every row marked active in the main legacy index and records its protocol ID, source category, runtime existence, lifecycle evidence, and disposition. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Rows are changed only when durable evidence proves they are stale or terminal; unresolved or genuinely active protocols remain fail-closed and visibly block decommission. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Reconciliation runs under the legacy timing/index lock, is idempotent, and writes a durable journal sufficient to audit every changed row without manufacturing protocol events or archives. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Accepted and abandoned legacy archives are hash-identical before and after reconciliation. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] After the governed reconciliation is applied, the peer-review migration guard no longer refuses because of an active legacy row and instead reaches the known production-consumer checks. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] Focused tests cover stale test sandboxes, missing historical worktrees, genuinely live runtimes, ambiguous evidence, lock contention, interrupted retry, and journal replay. <!-- aitm-verified vc-list="vc:1" -->

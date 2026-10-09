@@ -1,7 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Specification:** docs/superpowers/specs/2026-09-22-1755-delivery-attribution-exception-design.md",
-  "replacement": "- **Specification:** docs/superpowers/specs/2026-09-22-1755-delivery-attribution-exception-design.md\n- **Reviewed-spec commit:** `0fc890a98ba79497df5b6beb9436fd8389d6f13c` (manual review rounds 1\u20132; reviewer acceptance pending)",
-  "expectedVersion": 19
-}

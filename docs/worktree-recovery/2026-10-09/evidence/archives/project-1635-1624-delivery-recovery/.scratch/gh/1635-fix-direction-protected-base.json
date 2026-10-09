@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "Preserve the accepted branch exactly, publish it, deliver through AITM's governed\nPR provider action, and use the existing reopened-close recovery transaction to\nsupersede the false terminal record. Verify current trunk delivery for the epic\nand every affected child; do not edit historical authority markers by hand.",
-  "replacement": "Preserve the historical accepted commit exactly, add only the approved current-trunk\nmerge commit, deliver that integration head through AITM's governed PR provider action,\nand use the audited false-delivery recovery transaction to supersede the false terminal\nrecord at the delivered SHA. Verify current trunk delivery for the epic and every\naffected child; do not edit historical authority markers by hand."
-}

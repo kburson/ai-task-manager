@@ -1,2 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' cancel-plan 1897 --reason Correct approval provenance: session auto both did not propagate TT_FULL_AUTO to public plan-approve, which emitted human despite AI author review. Preserve receipt and re-enter with explicit authorized machine approval.

@@ -1,2 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' issue-body 1897 --operation-file .scratch/1897/value-label-operation.json

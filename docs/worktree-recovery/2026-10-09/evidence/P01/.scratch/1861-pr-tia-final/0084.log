@@ -1,9 +1,0 @@
-✔ migrate-project smoke: --skip-init --dry-run with no resolvable config → exits 1 with repo-not-configured guard, offline (517.835166ms)
-ℹ tests 1
-ℹ suites 0
-ℹ pass 1
-ℹ fail 0
-ℹ cancelled 0
-ℹ skipped 0
-ℹ todo 0
-ℹ duration_ms 521.272084

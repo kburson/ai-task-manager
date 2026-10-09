@@ -1,1 +1,0 @@
-node --test scripts/tests/unit/task-tracker/verbs/deliver-source-inventory.test.mjs scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs

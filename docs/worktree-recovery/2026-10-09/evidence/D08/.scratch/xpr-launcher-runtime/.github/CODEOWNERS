@@ -1,3 +1,0 @@
-# Repository ownership practice. Approval enforcement is intentionally disabled for this solo-maintainer repository.
-/.github/CODEOWNERS @kburson
-/.github/workflows/ci.yml @kburson

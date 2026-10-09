@@ -1,7 +1,0 @@
-{
-  "dataPath": "/Users/kpburson/.codex/worktrees/story-144-contracts/ai-peer-review/.scratch/144/post-compact-live-144.json",
-  "bodySha256": "52469b875e824966127a3eac81daa7405afef3de1cd7433dd7566cb30ab1e3cc",
-  "label": "Deliver \"### Task 5: Reconcile Accepted Contract Owners\" exactly as specified in the pinned source plan.",
-  "found": null,
-  "mode": "Pure actual public downstream issue-body DATA lookup; no native downstream action/body change"
-}

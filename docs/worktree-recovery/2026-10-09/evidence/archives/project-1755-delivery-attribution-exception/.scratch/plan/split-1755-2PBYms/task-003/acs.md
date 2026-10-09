@@ -1,1 +1,0 @@
-- [ ] Deliver "### Task 3: Immutable record schema, proposal digest, and append-only chain" exactly as specified in the pinned source plan. <!-- aitm-verified vc-list="vc:1" -->

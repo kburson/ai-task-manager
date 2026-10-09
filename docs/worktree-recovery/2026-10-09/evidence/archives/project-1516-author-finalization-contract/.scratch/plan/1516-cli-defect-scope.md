@@ -1,1 +1,0 @@
-Repair the `ai-peer-review` terminal result renderer so a successful `finalize` command handles its terminal null next action and exits zero. Add the upstream regression test, publish a patch release, update AITM's exact dependency and lockfile, and extend the AITM package-parity test to execute and retry the installed CLI finalization path.

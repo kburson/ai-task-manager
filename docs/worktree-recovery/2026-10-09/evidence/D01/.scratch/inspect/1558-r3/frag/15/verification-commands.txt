@@ -1,1 +1,0 @@
-node --test scripts/tests/integration/task-tracker/lib/action-review.test.mjs scripts/tests/unit/task-tracker/lib/review-preflight.test.mjs scripts/tests/unit/task-tracker/lib/review-preflight-epic-aware.test.mjs scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs

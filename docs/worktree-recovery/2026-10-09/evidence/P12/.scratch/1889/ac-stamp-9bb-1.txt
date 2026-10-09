@@ -1,3 +1,0 @@
-[task-tracker] ac-stamp on #1889: running 1 verifier(s) for AC "Native fresh start, same-issue active rebind, paused resume and real issue switch persist the exact successful occupancy generation in the owning per-session binding; load/save retains it without shared-ledger leakage."…
-  ✓ node --test scripts/tests/integration/task-tracker/verbs/resume-binding-generation.test.mjs scripts/tests/integration/task-tracker/verbs/switch-binding-generation.test.mjs scripts/tests/integration/task-tracker/lib/state-binding-generation.test.mjs scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs (exit=0)
-[task-tracker] ✓ ac-stamp on #1889: run-props (key=5546e5bc) upserted onto the AC line's aitm-verified marker (sha=9bb4a280).

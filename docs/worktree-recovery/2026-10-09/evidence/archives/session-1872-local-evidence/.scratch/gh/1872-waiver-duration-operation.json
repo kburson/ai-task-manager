@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Expected-focused-duration:** 7 hours, using the existing AI P80 forecast. Preserve the authoritative XL size and 28 human-hour estimate.",
-  "replacement": "- **Expected-focused-duration:** 7 hours\n- **Forecast basis:** Existing AI P80 forecast; authoritative XL size and 28 human-hour estimate remain unchanged."
-}

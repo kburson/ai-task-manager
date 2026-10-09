@@ -1,3 +1,0 @@
-- [ ] Explicit valid coverage maps declared full-suite commands to derived results while retaining affected local checks and genuine executed cloud commands. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Invalid, empty, duplicate, unknown or non-Test references fail before provider execution; failed prerequisite results cannot satisfy derived commands. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Without coverage configuration, project and Node provider behavior is unchanged and uncovered commands still execute. <!-- aitm-verified vc-list="vc:1" -->

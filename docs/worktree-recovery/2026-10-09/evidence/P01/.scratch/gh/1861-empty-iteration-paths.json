@@ -1,8 +1,0 @@
-[
-  "scripts/tests/helpers/runtime-empty-contract-fixture.mjs",
-  "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
-  "scripts/task-tracker/lib/runtime-empty-record.mjs",
-  "scripts/task-tracker/lib/runtime-authority-census.mjs",
-  "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
-  "scripts/task-tracker/lib/runtime-migration-plan.mjs"
-]

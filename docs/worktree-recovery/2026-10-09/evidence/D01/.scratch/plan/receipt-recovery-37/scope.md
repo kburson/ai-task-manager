@@ -1,5 +1,0 @@
-Make delivery-receipt recovery proportional to the risk it protects against. When GitHub and local evidence independently prove the repository, issue, governed branch, exact accepted head, pull request, required hosted CI, merge method, merge commit, trunk reachability, and tree equivalence, a missing canonical attribution trailer must not force an agent into a destructive branch-rewrite and re-merge loop.
-
-Define a bounded recovery outcome that preserves the evidence AITM actually needs, records any metadata deficiency as an explicit audit warning, and refuses only on ambiguity or conflicting attribution. Improve delivery failures so they name the missing condition and supported recovery action instead of returning only `delivery-preflight:attribution` or `delivery-verification:attribution`.
-
-Cover the related timing-repair failure exposed by the same recovery loop: demotion/resume can emit a redundant zero-duration same-second `resumed` row after `demoted:develop`, Review rejects it, and the shipped timing healer recognizes an unpaired reengagement but cannot repair it because no timestamp exists strictly between the equal-second rows.

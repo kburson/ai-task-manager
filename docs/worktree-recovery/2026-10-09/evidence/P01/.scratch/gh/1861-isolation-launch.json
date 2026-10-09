@@ -1,6 +1,0 @@
-{
-  "status": 71,
-  "signal": null,
-  "stdout": "",
-  "stderr": "sandbox-exec: sandbox_apply: Operation not permitted\n"
-}

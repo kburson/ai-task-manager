@@ -1,3 +1,0 @@
-Repair legacy external recovery for GitHub-default multi-source squash commits. Preserve complete source-commit inventory, exact accepted-head, topology, tree, trunk, Test, Review, and exact token-set verification. Permit recovery for a secondary issue only when its bracketed issue token is present in the complete authorized token set and the merge title's leading bracketed token is also a member of that same set.
-
-Limit production changes to the default-squash attribution predicate. Do not weaken canonical `Attribution:` trailers, single-source squash proof, merge-method proof, provider-action bytes, child-lineage behavior, incident-ledger authority, or required-check gates.

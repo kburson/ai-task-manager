@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "Implement the smallest regression-protected correction that satisfies the Acceptance Criteria while preserving unrelated behavior.",
-  "replacement": "Add per-issue heal-timing-log --continuity-session SID. Validate native session metadata and a completed transcript prefix, reject ambiguous/interrupted windows, insert only neutral update observations with Unknown durations and carried word cursors, and verify identical actor accounting. Apply binds source/comment/transcript dry-run identities, preserves backups and checks canonical source after the final transcript await before exact read-back. The single new runtime file has an explicit package allowance; existing general backdating and eight-hour validation remain unchanged."
-}

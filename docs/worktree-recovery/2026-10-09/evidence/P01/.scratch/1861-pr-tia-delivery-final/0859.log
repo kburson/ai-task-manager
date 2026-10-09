@@ -1,9 +1,0 @@
-PASS: parseArgs extracts all fields
-PASS: validateArgs rejects unknown size
-PASS: buildInflationSection produces three-part format
-PASS: successful append — comment patched, board updated, body updated
-PASS: estimate inflation converges comment, board, and body on the ceiling
-PASS: missing refine-estimate comment → no-refine-comment
-PASS: idempotent re-run appends second block, preserves first
-
-All inflate-estimate tests passed.

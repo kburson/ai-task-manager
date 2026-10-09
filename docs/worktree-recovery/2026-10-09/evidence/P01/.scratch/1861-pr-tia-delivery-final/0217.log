@@ -1,2 +1,0 @@
-fleet-registry-concurrent.test.mjs: control proved race exists — 1/8 survived without lock
-fleet-registry-concurrent.test.mjs: all passed

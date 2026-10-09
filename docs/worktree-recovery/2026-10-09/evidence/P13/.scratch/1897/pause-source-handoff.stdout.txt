@@ -1,1 +1,0 @@
-Paused #1897: +Unknown active min (wall 12), +177 words. Use "/task resume" to resume.

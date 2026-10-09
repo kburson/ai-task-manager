@@ -1,4 +1,0 @@
-npm notice run @kburson/ai-peer-review@0.3.0 npx
-npm notice run 'aitm' approve 106
-[task-tracker] WARN: configuration is missing 1 known project field id(s): Blocked By (cfg.fieldBlockedBy). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
-✓ Review approved for #106 at 2026-09-27T00:47:14.086Z. `/task close #106` may now proceed.

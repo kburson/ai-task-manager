@@ -1,3 +1,0 @@
-As a feasibility analyst,
-I want to have complete paired costs and sensitivity evidence,
-So that a smaller selected fragment cannot masquerade as a smaller workflow.

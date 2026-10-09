@@ -1,3 +1,0 @@
-- [ ] A valid partial close resumes from durable exact-head review authority without false drift; genuine approval, source, PR, intent or receipt changes still refuse. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Production read-only Close evaluation validates a v5 integration proof against pinned observed identities and reports ready for valid delivery without mutation or fetch. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] Missing, conflicting or changed v5 evidence refuses; existing non-v5 close behavior and effect confinement remain intact. <!-- aitm-verified vc-list="vc:1 vc:2" -->

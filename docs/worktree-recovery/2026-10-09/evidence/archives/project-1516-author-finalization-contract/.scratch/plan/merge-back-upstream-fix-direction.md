@@ -1,1 +1,0 @@
-Detect whether the merged child has upstream tracking metadata. If present, unset only that local tracking relationship immediately before the existing non-force `git branch -d` call. Keep the fast-forward merge and ancestry-protecting deletion unchanged, and prove both tracked and untracked paths in focused tests.

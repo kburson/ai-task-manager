@@ -1,5 +1,0 @@
-scripts/task-tracker/lib/vc-ref.mjs:31:// #772 — resolution is BY ID, not by ordinal position. A `vc:5` names the VC
-scripts/task-tracker/lib/vc-ref.mjs:35:// pre-#772 corpus) fall back to the original 1-based ordinal lookup so old
-scripts/task-tracker/lib/vc-ref.mjs:44:  // original ordinal lookup, so those citations keep resolving as before.
-scripts/task-tracker/lib/vc-ref.mjs:69:// #804 — the ordinal `cmd="vc:N"` citation fallback is RETIRED. The canonical
-scripts/task-tracker/lib/vc-ref.mjs:75:export function resolveCitedOrLiteralCommands(cmd, _vcItems) {

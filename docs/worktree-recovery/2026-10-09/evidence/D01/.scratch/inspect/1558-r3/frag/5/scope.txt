@@ -1,1 +1,0 @@
-Own `scripts/tests/fixtures/1558/spec-clause-index.json`, initial `oracle-traceability.json`, `scripts/tests/helpers/guidance-clause-index.mjs`, and `guidance-clause-index.test.mjs`. No full candidate serializer, costs or final feasibility decision.

@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "key=\"89bcf030\" vc-list=\"vc:5\"",
-  "replacement": "key=\"89bcf030\" vc-list=\"vc:5 vc:12\""
-}

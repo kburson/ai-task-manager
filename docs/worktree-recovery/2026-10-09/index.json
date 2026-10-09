@@ -11531,5 +11531,170 @@
     }
   },
   "heldCredentials": [],
-  "validation": "Blob preservation and remote commit identity verified; functional tests and implementation readiness are unverified."
+  "validation": "Blob preservation and remote commit identity verified; functional tests and implementation readiness are unverified.",
+  "evidencePRs": [
+    {
+      "family": "local-and-archive-evidence",
+      "issue": 1953,
+      "owner": "kburson",
+      "branch": "codex/1953-local-and-archive-evidence-1",
+      "commit": "62b3f644bd81fa2d521ebb603e227aa07a4ed485",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1967",
+      "part": 1,
+      "total": 2,
+      "files": 900
+    },
+    {
+      "family": "local-and-archive-evidence",
+      "issue": 1953,
+      "owner": "kburson",
+      "branch": "codex/1953-local-and-archive-evidence-2",
+      "commit": "1173a0a989ff901998140a9d0a15b9576fa8ae7d",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1968",
+      "part": 2,
+      "total": 2,
+      "files": 613
+    },
+    {
+      "family": "1725-architecture-evidence",
+      "issue": 1725,
+      "owner": "kburson",
+      "branch": "codex/1953-1725-architecture-evidence-1",
+      "commit": "6678c14305a161c3745e447501d64cc0bb744903",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1969",
+      "part": 1,
+      "total": 1,
+      "files": 438
+    },
+    {
+      "family": "1861-runtime-evidence",
+      "issue": 1861,
+      "owner": "kburson",
+      "branch": "codex/1953-1861-runtime-evidence-1",
+      "commit": "f0defddfc0b28328a57c33a914bef6a45c6b45bd",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1970",
+      "part": 1,
+      "total": 7,
+      "files": 900
+    },
+    {
+      "family": "1861-runtime-evidence",
+      "issue": 1861,
+      "owner": "kburson",
+      "branch": "codex/1953-1861-runtime-evidence-2",
+      "commit": "3ab46063dd859cf30007109c07dcad8e7894a7b6",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1971",
+      "part": 2,
+      "total": 7,
+      "files": 900
+    },
+    {
+      "family": "1861-runtime-evidence",
+      "issue": 1861,
+      "owner": "kburson",
+      "branch": "codex/1953-1861-runtime-evidence-3",
+      "commit": "dbc65eb72c54c8b12686b134310b8a0dd5d205d9",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1972",
+      "part": 3,
+      "total": 7,
+      "files": 900
+    },
+    {
+      "family": "1861-runtime-evidence",
+      "issue": 1861,
+      "owner": "kburson",
+      "branch": "codex/1953-1861-runtime-evidence-4",
+      "commit": "b67ba2ee4d70b5b9c68510487eb0055e224b4078",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1973",
+      "part": 4,
+      "total": 7,
+      "files": 900
+    },
+    {
+      "family": "1861-runtime-evidence",
+      "issue": 1861,
+      "owner": "kburson",
+      "branch": "codex/1953-1861-runtime-evidence-5",
+      "commit": "abbc28e1cd719bdcc54b1fe76952c85bd3590141",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1974",
+      "part": 5,
+      "total": 7,
+      "files": 900
+    },
+    {
+      "family": "1861-runtime-evidence",
+      "issue": 1861,
+      "owner": "kburson",
+      "branch": "codex/1953-1861-runtime-evidence-6",
+      "commit": "b3b65943418fd68f756d0adf1c6aabc39bdccf53",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1975",
+      "part": 6,
+      "total": 7,
+      "files": 900
+    },
+    {
+      "family": "1861-runtime-evidence",
+      "issue": 1861,
+      "owner": "kburson",
+      "branch": "codex/1953-1861-runtime-evidence-7",
+      "commit": "dfd00d177ea1c916d979f6a199870b75bc97ff88",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1976",
+      "part": 7,
+      "total": 7,
+      "files": 222
+    },
+    {
+      "family": "1918-criteria-evidence",
+      "issue": 1918,
+      "owner": "kburson",
+      "branch": "codex/1953-1918-criteria-evidence-1",
+      "commit": "b102d04b28d822a14c432762ca23ac668ba059e8",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1977",
+      "part": 1,
+      "total": 1,
+      "files": 343
+    },
+    {
+      "family": "publication-qa-evidence",
+      "issue": 1953,
+      "owner": "kburson",
+      "branch": "codex/1953-publication-qa-evidence-1",
+      "commit": "bbe7cff6804dd23b0364e78d407406c1e7b9dcfc",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1978",
+      "part": 1,
+      "total": 1,
+      "files": 249
+    },
+    {
+      "family": "delivered-story-evidence",
+      "issue": 1953,
+      "owner": "kburson",
+      "branch": "codex/1953-delivered-story-evidence-1",
+      "commit": "0976831a98fcb7dd53c354ba5846cdae7d550428",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1979",
+      "part": 1,
+      "total": 2,
+      "files": 900
+    },
+    {
+      "family": "delivered-story-evidence",
+      "issue": 1953,
+      "owner": "kburson",
+      "branch": "codex/1953-delivered-story-evidence-2",
+      "commit": "27bb847f9178f0077563ff79d1b524e426bad491",
+      "url": "https://github.com/kburson/ai-task-manager/pull/1980",
+      "part": 2,
+      "total": 2,
+      "files": 188
+    }
+  ],
+  "completeEvidenceProvenance": {
+    "branch": "codex/1953-complete-evidence-provenance",
+    "head": "9e30e52fcf79933ecfc21fc5e45502be9ff67d1e"
+  },
+  "supplementStats": {
+    "same-published-evidence-blob": 615,
+    "published-evidence": 3237,
+    "already-reachable-on-origin": 35
+  }
 }

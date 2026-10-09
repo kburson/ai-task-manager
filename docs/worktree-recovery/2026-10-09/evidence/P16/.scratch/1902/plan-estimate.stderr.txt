@@ -1,2 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' plan-estimate 1902 --evidence-file .scratch/1902/plan-estimation-input.json

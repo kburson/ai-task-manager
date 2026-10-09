@@ -1,4 +1,0 @@
-- [ ] Delivery accepts `review:waived` only when a current explicit workflow-exception record authorizes the semantic-review waiver for the exact issue and accepted head. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] Delivery rejects missing, stale, malformed, revoked, wrong-issue, wrong-requirement, and wrong-head waiver authority with a specific review-authority refusal. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] The waived path remains distinct from `passed`, emits no false Agent Review Passed evidence, and honors `provider.managed-execution: deny`. <!-- aitm-verified vc-list="vc:2 vc:3" -->
-- [ ] Ordinary passed-review delivery behavior and every unrelated Test, approval, CI, pull-request, merge, attribution, and receipt gate remain unchanged. <!-- aitm-verified vc-list="vc:1 vc:2 vc:3 vc:4" -->

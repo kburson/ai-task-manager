@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "The native child map above records the completed 26-child hydration. See review PR #1652, hydration audit PR #1679, and docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-audit.md for the live verification record.",
-  "replacement": "The native child map above records the completed 26-child hydration. See review PR #1652, hydration audit PR #1679, and docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-audit.md for the live verification record.\n\n**Discovered-work amendment:** The 26 rows remain the original WBS identities and hydration record. #1765 is a separately tracked defect in #1675's actual-CLI lifecycle capture. #1767 is a new child for the corrected, obligation-complete feasibility recheck transferred from #1676 Step 4a after the catalog work. The live epic therefore has two discovered children beyond the original 26; no original WBS row is renumbered. #1767 is natively blocked by #1676 and #1765, and #1677 is additionally blocked by #1767. WBS 8/#1660 remains the foundation authority; the new recheck must reach GO before downstream Task 25 can proceed. This amendment does not relax one-child WIP or the fixed budgets."
-}

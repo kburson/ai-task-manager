@@ -1,1 +1,0 @@
-Keep exact set equality. Require the target issue token and title-leading token to be members of the authorized set, rather than requiring them to be the same token. Add focused RED/GREEN unit and verb-boundary tests, including zero-write negative cases.

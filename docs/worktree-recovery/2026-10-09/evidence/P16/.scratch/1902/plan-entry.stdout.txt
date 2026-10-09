@@ -1,9 +1,0 @@
-✓ Issue #1902 moved to: plan
-✓ move #1902 ready-for-plan→plan complete
-  exit flush  : ready-for-plan row closed (verified)
-  entry stamp : aitm-entered-plan present (verified)
-  entry row   : plan row opened (verified)
-  status      : Status == Plan (verified)
-  sentinel    : aitm-move-complete state=plan (written last)
-  tail        : 8/8 best-effort steps ok
-✓ #1902 promoted: ready-for-plan → plan (direct)

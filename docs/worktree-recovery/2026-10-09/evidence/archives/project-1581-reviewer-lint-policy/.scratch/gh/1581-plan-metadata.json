@@ -1,7 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "## Plan Metadata\n\n## Pickup Directive — MANDATORY, DO NOT SKIP",
-  "replacement": "## Plan Metadata\n\n- **Governing-spec**: docs/superpowers/specs/2026-09-11-1581-reviewer-markdownlint-policy-design.md\n- **Implementation-plan**: docs/superpowers/plans/2026-09-11-1581-reviewer-markdownlint-policy.md\n- **Plan-commit**: d41b832170119975572a86c1fcdb2318dfce7cb1\n\n## Pickup Directive — MANDATORY, DO NOT SKIP",
-  "expectedVersion": 11
-}

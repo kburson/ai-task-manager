@@ -1,4 +1,0 @@
-- [ ] All seven v1 actions use one bare-ID registry and one versioned decision contract; #1561 has a documented consumption boundary. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] Every inventoried refusal is coded or explicitly manual, and new/changed unclassified sites fail CI. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] The closed blocker/warning/request schemas enforce producer, args, status, scope and policy invariants while preserving complete internal evidence; Task 1 GO is a checked prerequisite. <!-- aitm-verified vc-list="vc:1 vc:2" -->
-- [ ] Before runtime work, the recorded decision and input digests match current accepted artifacts and VC27 exits 0; stale/missing/NO-GO evidence blocks entry regardless of issue closure state. <!-- aitm-verified vc-list="vc:3" -->

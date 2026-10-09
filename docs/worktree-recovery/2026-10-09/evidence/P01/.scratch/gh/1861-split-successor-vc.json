@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "node --test scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
-  "replacement": "node --test scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs scripts/tests/integration/task-tracker/lib/runtime-migration-successor-timing.test.mjs scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs"
-}

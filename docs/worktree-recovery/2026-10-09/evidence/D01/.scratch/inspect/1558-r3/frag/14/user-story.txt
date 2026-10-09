@@ -1,3 +1,0 @@
-As an agent preparing verification,
-I want to inspect whether the Test action may begin,
-So that asking for guidance never creates a sandbox or executes verification commands.

@@ -1,8 +1,0 @@
-[
-  {
-    "file": "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
-    "status": 1,
-    "durationMs": 31802,
-    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-72/0000.log"
-  }
-]

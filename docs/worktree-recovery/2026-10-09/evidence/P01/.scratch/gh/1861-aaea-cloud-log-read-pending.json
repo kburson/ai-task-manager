@@ -1,9 +1,0 @@
-{
-  "run": 37185103268,
-  "job": 111385285306,
-  "inspection": "gh run view --job --log",
-  "status": 1,
-  "stderr": "run 37185103268 is still in progress; logs will be available when it is complete",
-  "testsRun": false,
-  "interpretation": "Inspection availability only; no slow-lane failure or downloaded-log proof."
-}

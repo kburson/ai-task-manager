@@ -1,3 +1,0 @@
-- [ ] Explanation uses the same pure ordered projection as execution and discloses pending writes without performing them. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Concurrent edits trigger complete recomputation; failed writes/readbacks stop all subsequent effects. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Decision identity excludes timestamps/marker bytes, while execution readback checks actual provenance and idempotence. <!-- aitm-verified vc-list="vc:1" -->

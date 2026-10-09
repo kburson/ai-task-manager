@@ -1,7 +1,0 @@
-[#680] docs(spike): redact project ids and add spell-dictionary entries
-
-The resolved-block example carried this repo's real GitHub Project and Status
-field ids; replaced with redaction placeholders. Adds precedented, remediations,
-and repointing to the cspell dictionary so lint:spell passes.
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

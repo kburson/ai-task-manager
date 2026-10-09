@@ -1,4 +1,0 @@
-- **kind:** code
-- **discovered-during:** ai-peer-review epic #39 delivery on 2026-09-22
-- **related:** kburson/ai-peer-review#39 and PR #89
-- **blocks:** governed delivery of ai-peer-review epic #39

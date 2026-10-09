@@ -1,7 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Implementation plan**: docs/superpowers/plans/2026-10-05-1897-canonical-ac-heading.md\n- **Verification boundary**: affected AC lookup, stamping and gate tests on host; full exact-head suites through configured hosted CI",
-  "replacement": "- **Implementation-plan**: docs/superpowers/plans/2026-10-05-1897-canonical-ac-heading.md\n- **Verification-boundary**: affected AC lookup, stamping and gate tests on host; full exact-head suites through configured hosted CI",
-  "expectedVersion": 27
-}

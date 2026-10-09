@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- [ ] Epic #1624 is recovered through governed evidence and is not considered Delivered until its accepted content is on trunk. <!-- aitm-verified vc-list=\"vc:3\" -->",
-  "replacement": "- [ ] Epic #1624 recovery is delegated to #1633's governed false-Done inventory; #1632 does not fabricate historical delivery while installing the prerequisite guard. <!-- aitm-verified vc-list=\"vc:3\" -->"
-}

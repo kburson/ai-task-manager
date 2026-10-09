@@ -1,8 +1,0 @@
-[
-  {
-    "file": "scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs",
-    "status": 0,
-    "durationMs": 12983,
-    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-67/0000.log"
-  }
-]

@@ -1,1 +1,0 @@
-Own `guidance/{source,admission}.mjs`, `scripts/task-tracker/guidance.mjs`, release manifest/generator, `guidance-source-trust.test.mjs` and `guidance-release-refusal.test.mjs`, plus initial package-boundary assertions. Define the single recovery allowlist here. No operational route enumeration/wiring or annotation; no B2 cache implementation.

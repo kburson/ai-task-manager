@@ -1,7 +1,0 @@
-- [ ] `scripts/review/**` and all superseded AITM-owned co-review runtime fixtures are absent, while immutable historical review archives remain hash-identical. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] AITM exposes no `co-review` executable, command registration, self-documentation entry, wrapper, or hidden production routing path. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] No production AITM module imports the legacy review implementation or produces an AITM-owned co-review protocol schema. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] New review operations use the installed exact `ai-peer-review` package through its public CLI or documented public API, with AITM retaining only non-authoritative task occupancy integration. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] Package parity, Phase 2 compatibility, archive preservation, and migration tests pass with the legacy runtime directory physically absent. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] User and maintainer documentation identifies `peer-review` as the sole supported review command and contains no compatibility promise for `npx aitm co-review`. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Full Unit, Integration, Slow, package-boundary, lint, and format gates pass for the exact removal SHA. <!-- aitm-verified vc-list="vc:3 vc:4 vc:5" -->

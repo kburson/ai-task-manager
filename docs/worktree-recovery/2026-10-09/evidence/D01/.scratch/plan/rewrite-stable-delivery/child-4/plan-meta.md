@@ -1,9 +1,0 @@
-- **Sequence**: 4
-- **Dependency**: #1498; complete this predecessor under epic #1495 before pickup
-- **Specification**: docs/superpowers/specs/2026-09-03-1495-rewrite-stable-delivery-design.md
-- **Implementation plan**: docs/superpowers/plans/2026-09-03-1495-rewrite-stable-delivery.md — Task 4
-- **Planning branch**: codex/rewrite-stable-delivery-plan
-- **Reference commit**: 18f2af8ae867dd893020218418ea9ed41e935ac2
-- **Verification status**: Commands below are implementation targets, not executed evidence
-- **Sizing**: Refine before commitment; no Backlog estimate is asserted
-- **Authority**: No production recovery or source-worktree mutation; separate human cutover approval after rehearsal

@@ -1,7 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- [ ] `node --test --test-name-pattern=\"author-owned co-review archive finalization\" scripts/tests/unit/review/co-review.test.mjs` <!-- id=1 -->",
-  "replacement": "- [ ] `node --test --test-name-pattern=\"author-owned peer-review finalization remains package-governed\" scripts/tests/integration/review/peer-review-package-parity.test.mjs` <!-- id=1 -->",
-  "expectedVersion": 12
-}

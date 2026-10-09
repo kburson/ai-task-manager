@@ -1,9 +1,0 @@
-✔ real dispatcher exposes write-free inspect, digest-bound enroll and guarded reopen (5292.962375ms)
-ℹ tests 1
-ℹ suites 0
-ℹ pass 1
-ℹ fail 0
-ℹ cancelled 0
-ℹ skipped 0
-ℹ todo 0
-ℹ duration_ms 5296.0855

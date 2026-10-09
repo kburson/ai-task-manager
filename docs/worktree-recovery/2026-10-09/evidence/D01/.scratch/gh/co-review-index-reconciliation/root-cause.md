@@ -1,1 +1,0 @@
-Task 15 made legacy-runtime removal conditional on an empty authoritative active set, but test and historical review rows accumulated in the main legacy index without a complete governed reconciliation path. Runtime-path disappearance alone is intentionally not authority to rewrite lifecycle state, so the fail-closed guard correctly retains the runtime indefinitely.

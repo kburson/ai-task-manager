@@ -1,3 +1,0 @@
-As a release reviewer,
-I want to have an equivalent complete before/after context comparison and separately measured authority cost,
-So that claimed reduction cannot hide command traffic, required investigation, or additional reads.

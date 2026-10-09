@@ -1,7 +1,0 @@
-- **kind**: audit
-- **audit**: #1633
-- **systemic-fix**: #1632
-- **affected-epic**: #1624
-- **affected-children**: #1625, #1626, #1627, #1628, #1629, #1630
-- **accepted-sha**: `2158a289a63b27b9b4d08b8701a16f0b9d3e805d`
-- **authority**: user requires Delivered to mean the accepted work is on trunk

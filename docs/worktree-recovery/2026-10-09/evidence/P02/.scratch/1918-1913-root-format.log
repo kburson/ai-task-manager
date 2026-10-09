@@ -1,3 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'prettier' --write scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs
-scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs 25ms

@@ -1,6 +1,0 @@
-grep -c "Disposition: \*\*accepted\*\* — terminal" docs/peer-reviews/spec/2026-09-22-2026-09-22-1755-delivery-attribution-exception-design-review-cc015b243c3fe236325ac37f5899783f/review-cc015b243c3fe236325ac37f5899783f-reviewer-response-3.md
-shasum -a 256 docs/peer-reviews/spec/2026-09-22-2026-09-22-1755-delivery-attribution-exception-design-review-cc015b243c3fe236325ac37f5899783f/review-cc015b243c3fe236325ac37f5899783f-reviewer-response-3.md
-grep -c -e 0fc890a98ba79497df5b6beb9436fd8389d6f13c -e 9e841e404b2cd45ce417b051e723c02442bd40c7 -e review-cc015b243c3fe236325ac37f5899783f -e docs/superpowers/specs/2026-09-22-1755-delivery-attribution-exception-design.md docs/peer-reviews/spec/2026-09-22-2026-09-22-1755-delivery-attribution-exception-design-review-cc015b243c3fe236325ac37f5899783f/review-cc015b243c3fe236325ac37f5899783f-reviewer-response-3.md
-grep -c "does not rewrite history and does not claim that a terminal reviewer acceptance existed prior to delivery" docs/peer-reviews/spec/2026-09-22-2026-09-22-1755-delivery-attribution-exception-design-review-cc015b243c3fe236325ac37f5899783f/review-cc015b243c3fe236325ac37f5899783f-reviewer-response-3.md
-git diff --name-status origin/trunk...HEAD
-git diff --check origin/trunk...HEAD

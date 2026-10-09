@@ -1,3 +1,0 @@
-- **kind**: code
-- **discovered-during**: #1755
-- **source-plan-section**: ### Task 6: Waived receipt and merge verification

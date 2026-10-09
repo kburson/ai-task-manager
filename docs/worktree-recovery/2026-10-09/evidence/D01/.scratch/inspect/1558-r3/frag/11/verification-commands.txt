@@ -1,1 +1,0 @@
-node --test scripts/tests/unit/task-tracker/lib/action-observations.test.mjs scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs

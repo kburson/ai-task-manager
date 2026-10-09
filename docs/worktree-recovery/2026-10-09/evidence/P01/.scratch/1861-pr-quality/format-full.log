@@ -1,4 +1,0 @@
-Checking formatting...
-All matched files use Prettier code style!
-npm notice run @kburson/ai-task-manager@0.1.0 format:check
-npm notice run prettier --check .

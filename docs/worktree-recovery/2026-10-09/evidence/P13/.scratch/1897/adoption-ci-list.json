@@ -1,5 +1,0 @@
-{
-  "status": 0,
-  "stdout": "[{\"conclusion\":\"\",\"databaseId\":37388940888,\"event\":\"pull_request\",\"headSha\":\"b0911ff3af3c813492e94724da548805684c6942\",\"status\":\"in_progress\",\"workflowName\":\"CI\"},{\"conclusion\":\"success\",\"databaseId\":37380422898,\"event\":\"pull_request\",\"headSha\":\"a7ad2b4583deda01a4fcc8dd8b4e65d13957779a\",\"status\":\"completed\",\"workflowName\":\"CI\"},{\"conclusion\":\"success\",\"databaseId\":37378791546,\"event\":\"pull_request\",\"headSha\":\"0f92be933dcdd867d6fd12469db86744053f6784\",\"status\":\"completed\",\"workflowName\":\"CI\"}]\n",
-  "stderr": ""
-}

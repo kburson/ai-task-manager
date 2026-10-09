@@ -1,4 +1,0 @@
-- Rewriting, rebasing, amending, or discarding the accepted #1624 history.
-- Fabricating a historical PR, receipt, or Done timestamp.
-- Unrelated changes to the workflow-exception implementation.
-- Cleanup of the preserved branch/worktree before recovery is verified.

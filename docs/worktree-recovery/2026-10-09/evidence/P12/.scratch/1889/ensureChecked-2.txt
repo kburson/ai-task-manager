@@ -1,1 +1,0 @@
-[task-tracker] ✓ Checked "Same-generation rebind preserves continuity; refused claims and failed binds retain or roll back prior authority safely, without importing another session's generation or weakening occupancy collision checks." on #1889

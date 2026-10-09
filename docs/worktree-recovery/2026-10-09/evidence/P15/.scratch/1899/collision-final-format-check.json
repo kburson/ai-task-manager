@@ -1,8 +1,0 @@
-{
-  "script": "format:check",
-  "startedAt": "2026-10-05T23:02:33.566Z",
-  "completedAt": "2026-10-05T23:02:59.957Z",
-  "status": 0,
-  "stdout": "Checking formatting...\nAll matched files use Prettier code style!\n",
-  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 format:check\nnpm notice run prettier --check .\n"
-}

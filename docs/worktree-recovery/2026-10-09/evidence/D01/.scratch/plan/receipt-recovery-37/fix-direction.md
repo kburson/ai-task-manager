@@ -1,5 +1,0 @@
-Introduce an evidence-weighted recovery policy. Preserve strict expected-head, accepted Test/Review SHA, required-CI, PR identity, merge-method, trunk-reachability, tree, and conflicting-token checks. When those all agree and the merge title/body contains no conflicting issue attribution, allow a current-head external recovery receipt even if the canonical trailer is absent; record a durable `metadata-warning` describing the missing convention.
-
-Alternatively, allow `deliver` to generate a non-mutating merge-intent byte envelope while the issue remains in Test so projects that require merge-before-Review can use the sanctioned provider action without weakening later receipt verification. The recovery API should return structured failed predicates and a supported next command.
-
-Add a narrowly proven timing repair for one zero-duration same-second reengagement adjacent to a lifecycle row, guarded by unchanged word cursors, zero active/idle seconds, exact adjacency, and validator read-back. Prevent the writer from emitting that redundant row in the first place.

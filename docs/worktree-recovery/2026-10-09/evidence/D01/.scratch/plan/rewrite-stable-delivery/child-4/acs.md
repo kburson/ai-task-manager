@@ -1,4 +1,0 @@
-- [ ] AC1: Reopen creates one correlated successor cycle while rebases remain candidates in the existing cycle; historical completion is not retired. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] AC2: Full command retries after every effect and checkpoint converge on one logical close with no duplicated timing or restarted historical transaction. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] AC3: Old cleanup cannot clear same-session newer or foreign binding generations; paused and absent binding cases are handled explicitly. <!-- aitm-verified vc-list="vc:3" -->
-- [ ] AC4: Pre-close foreign contention refuses remote effects; a post-completion claim race preserves the claimant and reports closed with cleanup pending. <!-- aitm-verified vc-list="vc:2" -->

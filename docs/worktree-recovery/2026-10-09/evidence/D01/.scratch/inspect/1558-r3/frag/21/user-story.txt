@@ -1,3 +1,0 @@
-As an operational CLI user,
-I want to have every route admitted before effects and divergence audited once,
-So that aliases or startup imports cannot evade source trust.

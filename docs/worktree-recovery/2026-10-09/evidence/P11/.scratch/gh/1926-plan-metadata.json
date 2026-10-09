@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "## Plan Metadata\n\n",
-  "replacement": "## Plan Metadata\n\n- **Size**: M\n- **Estimate**: 4 hours\n- **Execution**: Root implements the bounded repair inline using the current Deep-Dive Analysis; no linked specification or plan file.\n- **Dependencies**: Existing public timing and Codex transcript APIs; #1901 duration-format work is excluded.\n\n"
-}

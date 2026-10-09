@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "### #1904 Deep-Dive Analysis\n",
-  "replacement": "## #1904 Deep-Dive Analysis\n"
-}

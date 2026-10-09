@@ -1,4 +1,0 @@
-npm notice run @kburson/ai-peer-review@0.3.0 npx
-npm notice run 'aitm' deliver 106
-[task-tracker] WARN: configuration is missing 1 known project field id(s): Blocked By (cfg.fieldBlockedBy). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
-AITM_PROVIDER_ACTION_REQUIRED: {"action":"github.merge-pull-request","baseRef":"trunk","commitMessage":"PR #108\nSource: 7e1b2dee7f9321b2f628a14dc82e999c7a8305f8\n\nAttribution: [#106]","commitTitle":"[#106] Governed PR delivery","expectedHeadSha":"7e1b2dee7f9321b2f628a14dc82e999c7a8305f8","headRef":"codex/106-manual-xpr-startup","intentId":"01M3G5GDC7M07BAVDC9SQ3PH4P","issueNumber":106,"mergeMethod":"squash","prNumber":108,"repository":"kburson/ai-peer-review","schema":1}

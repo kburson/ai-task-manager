@@ -1,3 +1,0 @@
-**Scope/files and boundary:** Create candidate semantics in `scripts/tests/helpers/guidance-characterization.mjs`, `guidance-candidate-oracle.test.mjs`, and `scripts/tests/fixtures/1558/action-decision-fixtures/{bind,resume,promote,test,review,deliver,close}.json`. Complete WBS 5’s traceability outcome mappings. No production schemas/evaluators, cost comparison or gate writer.
-
-**Handoff and verification behavior:** This child owns the full semantic oracle and serializer. WBS 5 supplies traceability infrastructure, not a second serializer. Later production conformance consumes the same frozen clause index and all candidate cases.

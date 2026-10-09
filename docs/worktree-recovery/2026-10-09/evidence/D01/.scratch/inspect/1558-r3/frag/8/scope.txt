@@ -1,1 +1,0 @@
-Own `scripts/maintenance/measure-guidance-candidate.mjs`, aggregate `guidance-characterization.test.mjs`, and `scripts/tests/fixtures/1558/feasibility-decision.json`. Aggregate tests execute WBS 5–7 checks. No budget changes, runtime extraction or competing gate.

@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Value:** Verified delivery can finish without rewriting approved Scope or bypassing evidence gates.",
-  "replacement": "- **Value or failure prevented:** Verified delivery can finish without rewriting approved Scope or bypassing evidence gates."
-}

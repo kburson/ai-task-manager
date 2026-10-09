@@ -1,6 +1,0 @@
-{
-  "status": 0,
-  "signal": null,
-  "stdout": "✔ sandbox bounds apply to Node, helpers, descendants and path aliases (70.077625ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 129.104333\n{\"ok\":true,\"mode\":\"iteration\",\"changedPaths\":[\"canaries/trigger.txt\"],\"selection\":{\"tests\":[\"scripts/tests/unit/admission/isolation.test.mjs\"],\"lanes\":[],\"reasons\":[{\"changedPath\":\"canaries/trigger.txt\",\"test\":\"scripts/tests/unit/admission/isolation.test.mjs\",\"signal\":\"manifest\",\"reason\":\"Harmless isolation qualification, never source candidate acceptance\"}],\"escalated\":false},\"commands\":[{\"classification\":\"test-affected\",\"providerId\":\"node\",\"kind\":\"test\",\"command\":\"node\",\"args\":[\"--test\",\"scripts/tests/unit/admission/isolation.test.mjs\"],\"label\":\"node --test scripts/tests/unit/admission/isolation.test.mjs\",\"allowlistSource\":\"core\",\"exitCode\":0,\"durationMs\":174,\"startedAt\":\"2026-10-03T21:52:28.982Z\",\"completedAt\":\"2026-10-03T21:52:29.157Z\"}],\"reasons\":[]}\n",
-  "stderr": ""
-}

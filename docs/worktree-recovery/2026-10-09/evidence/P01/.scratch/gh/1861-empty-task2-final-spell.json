@@ -1,6 +1,0 @@
-{
-  "status": 0,
-  "signal": null,
-  "stdout": "",
-  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 lint:spell\nnpm notice run cspell --no-progress \"**/*.{md,mjs,js,json}\"\nCSpell: Files checked: 3059, Issues found: 0 in 0 files.\n"
-}

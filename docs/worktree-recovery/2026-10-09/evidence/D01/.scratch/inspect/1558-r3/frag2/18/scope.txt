@@ -1,3 +1,0 @@
-**Scope/files and boundary:** Own `scripts/tests/integration/task-tracker/lib/action-parity.test.mjs`, authority-count/timing evidence and residual legacy review record under `scripts/tests/fixtures/1558/`; complete conformance registry metadata after all action suites pass. Consume WBS 17 close implementation.
-
-**Handoff and verification behavior:** Covers baseline Task 10 Step 2, aggregate portion of Step 4 and Step 5. Splitting does not relax any original VC10 command or AC; downstream work that required completed Task 10 now waits for WBS 18.

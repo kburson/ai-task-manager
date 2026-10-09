@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Implementation-plan**: docs/superpowers/plans/2026-10-02-1861-runtime-kernel.md",
-  "replacement": "- **Implementation-plan**: docs/superpowers/plans/2026-10-03-1861-empty-runtime-revised-plan.md\n- **Historical-implementation-plan**: docs/superpowers/plans/2026-10-02-1861-runtime-kernel.md\n- **Empty-runtime-amendment**: docs/superpowers/specs/2026-10-02-1861-explicit-empty-runtime-design.md (manual consensus sha256:fa2f1291dc351f1d9c543b73ae73777774b768abcc14d061c5d69cd6e6d0a94c)\n- **Current-plan-confirmation**: Human confirmed accepted amendment Plan and execution in this chat on 2026-10-03; retain one #1861 story, estimate 20.5h and rank 1. Exact Plan sha256:b34943415a050ebeb33e777c4871252b6d40fcc59d0315b1d53af7fe2eb29e2e. Historical lifecycle approval and forecasts retain their original provenance."
-}

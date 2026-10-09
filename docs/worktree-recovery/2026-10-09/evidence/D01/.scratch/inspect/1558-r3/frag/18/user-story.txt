@@ -1,3 +1,0 @@
-As a lifecycle maintainer,
-I want to have all seven extracted actions certified together,
-So that local close success is not mistaken for complete A2 parity.

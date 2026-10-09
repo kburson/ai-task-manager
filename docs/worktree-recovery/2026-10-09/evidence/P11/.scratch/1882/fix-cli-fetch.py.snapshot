@@ -1,5 +1,0 @@
-from pathlib import Path
-p=Path('scripts/task-tracker/lib/merge-back-cli.mjs')
-s=p.read_text().replace("import { fetchIssueBody } from './graph-node-authority.mjs';","import { fetchParentIssueBody } from './graph-node-authority.mjs';")
-s=s.replace("await (deps.fetchIssueBody || fetchIssueBody)(child, cfg)","await (deps.fetchIssueBody || ((issue, config) => fetchParentIssueBody({ parentIssue: issue, cfg: config })))(child, cfg)")
-p.write_text(s)

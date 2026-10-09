@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- [ ] `git log --oneline -1` <!-- id=11 -->",
-  "replacement": "- [ ] `git log --oneline -1` <!-- id=11 -->\n- [ ] `git diff --name-only --diff-filter=A origin/trunk...HEAD` <!-- id=12 -->"
-}

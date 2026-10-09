@@ -1,7 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Reviewed-spec comparison plan:** docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception-reviewed-spec.md @ `ff1f41585178d6f26ea3e4ed910d408d6001b2ba` (manual plan review round 2; reviewer acceptance pending)",
-  "replacement": "- **Reviewed-spec comparison plan:** docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception-reviewed-spec.md @ `4574c0574075bba0fc7f0eea339badefb1988db9` (accepted by Claude Opus 5, manual plan review round 3)",
-  "expectedVersion": 25
-}

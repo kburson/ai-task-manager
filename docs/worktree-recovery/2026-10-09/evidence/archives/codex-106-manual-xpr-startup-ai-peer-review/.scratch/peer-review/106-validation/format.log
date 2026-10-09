@@ -1,5 +1,0 @@
-npm notice run @kburson/ai-peer-review@0.3.0 format:check
-npm notice run prettier --check .
-Checking formatting...
-[warn] native/broker-security/build/Release/build-identity.json
-[warn] Code style issues found in the above file. Run Prettier with --write to fix.

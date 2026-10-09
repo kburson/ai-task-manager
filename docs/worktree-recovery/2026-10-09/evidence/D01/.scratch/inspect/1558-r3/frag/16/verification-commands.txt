@@ -1,1 +1,0 @@
-node --test scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs scripts/tests/unit/task-tracker/lib/delivery-real-pr-evidence.test.mjs scripts/tests/unit/task-tracker/lib/manual-code-review-delivery.test.mjs

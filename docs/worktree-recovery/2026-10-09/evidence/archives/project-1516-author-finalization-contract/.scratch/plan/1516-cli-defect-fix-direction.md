@@ -1,1 +1,0 @@
-Render the next action with a null-safe branch and add an upstream CLI integration test that asserts exit zero for first finalization and idempotent retry. Publish the smallest patch release, update AITM's exact dependency and lockfile integrity, and keep the AITM host test on the public CLI surface.

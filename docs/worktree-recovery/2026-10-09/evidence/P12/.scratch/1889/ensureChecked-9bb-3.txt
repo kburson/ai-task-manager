@@ -1,1 +1,0 @@
-[task-tracker] ✓ "A real native parent bind supplies the generation required by rank-wave preparation, while missing, foreign and mismatched generations remain refused; installed-package coverage does not use manually manufactured parent state." already checked on #1889 (no-op)

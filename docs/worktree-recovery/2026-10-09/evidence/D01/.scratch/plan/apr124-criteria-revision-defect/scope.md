@@ -1,7 +1,0 @@
-Repair the governed issue-body workflow for an explicitly approved change to acceptance criteria after planning. Keep ordinary marker-loss protections intact. Provide a bounded, auditable operation that can replace obsolete criteria without copying verifier declarations, ticks, or proof onto new text.
-
-Observed blocker: ai-peer-review [#124](https://github.com/kburson/ai-peer-review/issues/124) changed from per-command model hooks to startup/resume session handshakes at the user's direction. Scope, Fix Direction, User Story, and the linked plan reflect that decision. Its four obsolete hook criteria remain unchecked with old verifier declarations. Removing those declarations while replacing the criteria is refused. The story cannot legitimately meet the old criteria and its required Test gate remains blocked.
-
-Require exact fresh-body preconditions, attributable approval and a reason. Archive prior criteria, declarations, completion state, and evidence before invalidation. Distinguish verifier declarations from execution receipts. Invalidate affected current evidence and approvals without losing history or unrelated authority; subsequent gates must require corrected scope and fresh verification. No generic invariant-disable option.
-
-The separate agent should investigate, prepare a reviewed design and implementation plan, then follow normal implementation, verification, review, and delivery gates. The user will start that agent. This filing does not authorize modifying downstream live criteria or any AITM #1841 review records.

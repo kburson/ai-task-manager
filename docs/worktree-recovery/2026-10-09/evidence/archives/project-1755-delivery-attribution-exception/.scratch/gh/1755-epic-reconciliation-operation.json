@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "## Acceptance Criteria\n",
-  "replacement": "## Epic Reconciliation\n\nThe seven completed children satisfy the parent goals as follows. #1756 proves the ordered source inventory and local commit identity. #1757 provides exact rejected-SHA mapping and deterministic attribution. #1758 defines the canonical proposal, bounded record, and append-only chain. #1759 enforces the two-pass CLI and transcript-verified Codex user authority. #1760 applies the exception only to open-PR attribution failure, retains unrelated gates, and revalidates before provider action. #1761 carries and verifies the waived v2 intent and v3 receipt. #1762 supplies operator guidance, help, installed-package smoke, and complete local lane verification. The parent final review added edited-comment rejection and a bound for full downstream intent and receipt comments. The parent release still requires this branch's PR, hosted CI, and governed delivery. No exception was activated for #1755 or ai-peer-review #39 during implementation.\n\n## Acceptance Criteria\n"
-}

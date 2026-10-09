@@ -1,8 +1,0 @@
-Resumed #777.
-Started #888.
-already active: #999
-resume-seed.test.mjs: all passed
-[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
-[dependency-disposition] #777: binding remains active; retry dependency projection (dependency-disposition:config)
-[dependency-disposition] #888: binding remains active; retry dependency projection (dependency-disposition:config)
-[dependency-disposition] #999: binding remains active; retry dependency projection (dependency-disposition:config)

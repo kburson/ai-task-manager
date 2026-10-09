@@ -41,8 +41,31 @@ These are review sequencing suggestions, not a claim that any source PR is ready
 
 ## Evidence and archives
 
-Each unique meaningful local file is stored under evidence/ with a manifest mapping its original path, owning group, original content hash and stored Git blob. Files already reachable from current origin were not duplicated. Large logs and metadata are individually gzip-compressed; their original SHA-256 and encoding are recorded. Source snippets ending .snapshot are inert copies for review, not runnable replacements.
+Each unique meaningful local file is stored under evidence/ in the linked evidence PR branches with a manifest mapping its original path, owning group, original content hash and stored Git blob. Files already reachable from current origin were not duplicated. Large logs and metadata are individually gzip-compressed; their original SHA-256 and encoding are recorded. Source snippets ending .snapshot are inert copies for review, not runnable replacements.
 
 49 archive/control snapshots were inspected. 46 original archived source HEADs are published as named origin branches in their owning repositories. Unique archive evidence was unpacked into individual files under evidence/archives/; recovery does not depend on retaining an opaque tarball. Generated dependency caches, Node compile caches, active runtime fixtures and generated test copies are explicitly classified as reconstructible instead of being presented as unfinished source.
 
 See index.json for story/PR/branch ownership and archive details. file-dispositions.json.gz records every inspected disposition. Historical test logs remain historical evidence only; they do not certify the captured source HEADs.
+
+## Evidence PRs
+
+Review these as retention/provenance decisions after the owning source PR. They do not add executable product changes. The index PR deliberately remains small; payloads are grouped into bounded review diffs.
+
+| Family | Owner story | Part | Files | PR |
+|---|---|---:|---:|---|
+| local-and-archive-evidence | #1953 | 1/2 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1967) |
+| local-and-archive-evidence | #1953 | 2/2 | 613 | [PR](https://github.com/kburson/ai-task-manager/pull/1968) |
+| 1725-architecture-evidence | #1725 | 1/1 | 438 | [PR](https://github.com/kburson/ai-task-manager/pull/1969) |
+| 1861-runtime-evidence | #1861 | 1/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1970) |
+| 1861-runtime-evidence | #1861 | 2/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1971) |
+| 1861-runtime-evidence | #1861 | 3/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1972) |
+| 1861-runtime-evidence | #1861 | 4/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1973) |
+| 1861-runtime-evidence | #1861 | 5/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1974) |
+| 1861-runtime-evidence | #1861 | 6/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1975) |
+| 1861-runtime-evidence | #1861 | 7/7 | 222 | [PR](https://github.com/kburson/ai-task-manager/pull/1976) |
+| 1918-criteria-evidence | #1918 | 1/1 | 343 | [PR](https://github.com/kburson/ai-task-manager/pull/1977) |
+| publication-qa-evidence | #1953 | 1/1 | 249 | [PR](https://github.com/kburson/ai-task-manager/pull/1978) |
+| delivered-story-evidence | #1953 | 1/2 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1979) |
+| delivered-story-evidence | #1953 | 2/2 | 188 | [PR](https://github.com/kburson/ai-task-manager/pull/1980) |
+
+Additional Superpowers task reports, publication QA images/PDFs and inert recovery-tool source copies are included in these evidence PRs. supplement-dispositions.json.gz records the final ignored-file sweep.

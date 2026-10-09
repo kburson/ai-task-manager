@@ -1,8 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-section",
-  "expectedVersion": 21,
-  "heading": "## Plan Metadata",
-  "expected": "\n\n- **Design Specification**: `docs/superpowers/specs/2026-09-04-1512-full-auto-default-manual-review-overrides-design.md`\n- **Implementation Plan**: `docs/superpowers/plans/2026-09-04-1512-full-auto-default-manual-review-overrides.md`\n- **Execution Mode**: Serial Full-Auto under the user's explicit drive-to-Done instruction\n- **Review Policy**: Current task uses autonomous plan, code, and final-task review while implementing opt-in manual controls for future sessions\n\n",
-  "replacement": "\n\n- **design-spec**: `docs/superpowers/specs/2026-09-04-1512-full-auto-default-manual-review-overrides-design.md`\n- **implementation-plan**: `docs/superpowers/plans/2026-09-04-1512-full-auto-default-manual-review-overrides.md`\n- **execution-mode**: Serial Full-Auto under the user's explicit drive-to-Done instruction\n- **review-policy**: Current task uses autonomous plan, code, and final-task review while implementing opt-in manual controls for future sessions\n\n"
-}

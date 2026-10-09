@@ -1,7 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- [ ] `node --test scripts/tests/unit/task-tracker/core/quality-config.test.mjs` <!-- id=1 -->",
-  "replacement": "- [ ] `node --test scripts/tests/unit/task-tracker/core/quality-config.test.mjs scripts/tests/integration/maintenance/markdownlint-review-artifact-policy.test.mjs` <!-- id=1 -->",
-  "expectedVersion": 16
-}

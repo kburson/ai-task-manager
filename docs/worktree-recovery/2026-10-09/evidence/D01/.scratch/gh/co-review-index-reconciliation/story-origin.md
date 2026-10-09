@@ -1,5 +1,0 @@
-- **kind**: code
-- **discovered-during**: post-delivery audit of epic #1531 and package-boundary story #1546
-- **related**: #1531, #1546, #1549
-- **sequencing**: must complete before the separate co-review runtime decommission defect
-- **motivation**: the intended Task 15 deletion remained fail-closed because the legacy index still reports active rows even though referenced runtime paths are absent

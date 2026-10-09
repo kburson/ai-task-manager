@@ -1,3 +1,0 @@
-As a semantic reviewer,
-I want to have a spec-derived clause index independent of serializer fields,
-So that an incomplete oracle cannot certify itself.

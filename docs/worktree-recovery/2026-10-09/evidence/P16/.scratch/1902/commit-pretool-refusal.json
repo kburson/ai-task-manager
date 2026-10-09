@@ -1,9 +1,0 @@
-{
-  "kind": "native-pretool-rejection",
-  "executed": false,
-  "command": "git -C /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history commit -m '[#1902] Preserve reviewed child history when parent is already contained'",
-  "workdir": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
-  "sandbox": "require_escalated",
-  "reason": "[task-tracker] Native hook session has no active issue binding.",
-  "resolution": "Root will use its genuine native1902 orchestrator binding after own agent pause/release. No commit wrapper retry, SID injection or hook bypass."
-}

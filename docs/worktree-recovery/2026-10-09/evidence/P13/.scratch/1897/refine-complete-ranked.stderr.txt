@@ -1,2 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' refine 1897 --size XS --estimate 2 --priority p0 --rank 1 --reason Current delivery-blocking defect; mirrored deep dive records bounded shared-locator repair, semantic story review, legacy compatibility and exact affected verifiers.

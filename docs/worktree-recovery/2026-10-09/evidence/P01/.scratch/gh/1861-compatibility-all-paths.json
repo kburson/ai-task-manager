@@ -1,7 +1,0 @@
-[
-  "scripts/task-tracker/lib/runtime-batch.mjs",
-  "scripts/task-tracker/lib/runtime-authority-census.mjs",
-  "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
-  "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
-  "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs"
-]

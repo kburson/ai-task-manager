@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-verifier-declaration",
-  "expected": "<!-- aitm-verified cmd=\"`npm test` `npm run test:slow`\" -->",
-  "replacement": "<!-- aitm-verified cmd=\"`node scripts/maintenance/verify-ci-receipts.mjs`\" -->"
-}

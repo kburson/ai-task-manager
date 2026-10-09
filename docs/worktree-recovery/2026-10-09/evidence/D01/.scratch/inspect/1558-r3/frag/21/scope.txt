@@ -1,1 +1,0 @@
-Own `scripts/tests/fixtures/1558/admission-surface.json`, command/alias/direct-entrypoint wiring, `guidance/annotation.mjs`, aggregate `guidance-admission.test.mjs`, downstream package tests and CI integration. Consume WBS 20’s source/trust API and recovery allowlist; no cache internals.

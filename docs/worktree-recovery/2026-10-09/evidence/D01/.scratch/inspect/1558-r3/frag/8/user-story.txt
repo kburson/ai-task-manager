@@ -1,3 +1,0 @@
-As a maintainer funding runtime extraction,
-I want to have a reproducible feasibility verdict with an enforced GO prerequisite,
-So that an honest negative result cannot release runtime work.

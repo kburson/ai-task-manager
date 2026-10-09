@@ -1,1 +1,0 @@
-The generic text renderer assumes every successful command result has an object-valued `next_action`. Terminal finalization correctly returns `next_action: null`; `writeResult` dereferences `.command` before applying its fallback, after the finalization transaction has already succeeded.

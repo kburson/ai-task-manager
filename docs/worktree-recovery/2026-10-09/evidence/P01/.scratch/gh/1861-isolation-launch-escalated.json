@@ -1,6 +1,0 @@
-{
-  "status": 0,
-  "signal": null,
-  "stdout": "{\"allPassed\":true,\"tests\":[\"scripts/tests/unit/admission/isolation.test.mjs\"],\"output\":[{\"exit\":0,\"stdout\":\"✔ sandbox bounds apply to Node, helpers, descendants and path aliases (82.74925ms)\\nℹ tests 1\\nℹ suites 0\\nℹ pass 1\\nℹ fail 0\\nℹ cancelled 0\\nℹ skipped 0\\nℹ todo 0\\nℹ duration_ms 158.721166\\n\",\"stderr\":\"\"}]}\n",
-  "stderr": ""
-}

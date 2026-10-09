@@ -1,6 +1,0 @@
-import fs from 'node:fs';
-import {execFileSync} from 'node:child_process';
-const a=JSON.parse(fs.readFileSync('.scratch/archive-reconciliation.json'));
-const groups=new Map(),done=[];
-for(const r of a.records){const sha=r.freshHead??r.head;if(!sha)continue;const branch='codex/recovery-1953-archive-'+r.archive.split('/').at(-1).replace(/\.tar\.gz$/,'').replace(/[^a-zA-Z0-9-]/g,'-').slice(0,75);const cwd=r.main;if(!groups.has(cwd))groups.set(cwd,[]);if(groups.get(cwd).some(x=>x.branch===branch))continue;groups.get(cwd).push({repository:r.repository,sha,branch,archive:r.archive,recoveryStory:1953});}
-for(const [cwd,rows] of groups){for(const r of rows)execFileSync('git',['cat-file','-e',r.sha+'^{commit}'],{cwd});execFileSync('git',['push','origin',...rows.map(r=>r.sha+':refs/heads/'+r.branch)],{cwd,stdio:'inherit'});const refs=execFileSync('git',['ls-remote','--heads','origin'],{cwd,encoding:'utf8'});for(const r of rows){if(!refs.includes(r.sha+'\trefs/heads/'+r.branch+'\n'))throw Error('Remote archive HEAD mismatch');done.push(r);}fs.writeFileSync('.scratch/published-archive-heads.json',JSON.stringify(done,null,2)+'\n');console.log(JSON.stringify({repository:rows[0].repository,publishedOriginalHeads:rows.length}));}

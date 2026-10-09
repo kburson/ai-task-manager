@@ -1,3 +1,0 @@
-As an agent preparing delivery,
-I want to inspect current delivery authorization and exact-HEAD requirements,
-So that a ready explanation cannot substitute for the provider's guarded mutation boundary.

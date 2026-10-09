@@ -1,5 +1,0 @@
-- **kind**: code
-- **source**: user-directed defect
-- **discovered-during**: completion of kburson/ai-peer-review issue #37 on 2026-09-14
-- **evidence**: merged PRs #52, #53, and #54; delivery-preflight:attribution; delivery-verification:attribution; timing-log-sequence doubled-step refusal
-- **intent**: lighten receipt rules that force branch-rewrite loops when agents miss a merge-message convention while retaining meaningful delivery proof

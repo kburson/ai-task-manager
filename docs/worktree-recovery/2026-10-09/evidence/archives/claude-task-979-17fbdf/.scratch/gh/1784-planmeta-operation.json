@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "## Plan Metadata\n\n## Pickup Directive",
-  "replacement": "## Plan Metadata\n\n- **Kind**: docs-only (post-delivery audit completion)\n- **Size**: XS\n- **Estimate**: 1 hour\n- **Priority**: P2\n- **Wave**: none\n- **Dependencies**: none — #1755 is closed and is not reopened or modified\n- **Review mode**: manual peer review; the  package is not used\n- **Change surface**: one new file under ; no code, tests, package manifest, or dependencies\n- **Delivery**: docs-only PR to trunk under Full-Auto\n\n## Pickup Directive"
-}

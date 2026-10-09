@@ -1,5 +1,0 @@
-- [ ] Ordinary mixed-history delivery remains blocked without a valid scoped exception. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] An explicit host-verified user authorization maps every excepted source commit and produces deterministic delivery attribution for an unchanged operation. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Invalid authority, scope, inventory, mappings, expiry, revocation, supersession, and reuse fail closed while unrelated delivery gates remain enforced. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Delivery receipts truthfully identify authorized attribution exceptions and preserve audit provenance. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] CLI help and operator documentation cover preparation and explicit activation; package build and complete local suite pass. <!-- aitm-verified vc-list="vc:2" -->

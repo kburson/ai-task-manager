@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Specification**: docs/superpowers/specs/2026-09-08-1557-blocked-disposition-native-dependencies-design.md\n- **Planning status**: Conceptual design approved; implementation plan follows written-spec review.",
-  "replacement": "- **Specification**: docs/superpowers/specs/2026-09-08-1557-blocked-disposition-native-dependencies-design.md @ 2061f38bd32f847f8cea56ac098de3785ec42d6a\n- **Implementation-plan**: docs/superpowers/plans/2026-09-08-1557-blocked-disposition-native-dependencies.md @ 2061f38bd32f847f8cea56ac098de3785ec42d6a\n- **Execution**: Inline serial TDD under explicit AFK authorization."
-}

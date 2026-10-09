@@ -1,6 +1,0 @@
-npm notice run @kburson/ai-peer-review@0.3.0 npx
-npm notice run 'aitm' ac-stamp Explicit manual reviews join using manual participant capability even when official resume commands are inherited; declared identities remain labeled declared and non-manual identity gates remain enforced.
-[task-tracker] WARN: configuration is missing 1 known project field id(s): Blocked By (cfg.fieldBlockedBy). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
-[task-tracker] ac-stamp on #106: running 1 verifier(s) for AC "Explicit manual reviews join using manual participant capability even when official resume commands are inherited; declared identities remain labeled declared and non-manual identity gates remain enforced."…
-  ✓ node --test test/integration/manual-xpr-startup.test.mjs (exit=0)
-[task-tracker] ✓ ac-stamp on #106: run-props (key=4e2af64b) upserted onto the AC line's aitm-verified marker (sha=176e1e7).

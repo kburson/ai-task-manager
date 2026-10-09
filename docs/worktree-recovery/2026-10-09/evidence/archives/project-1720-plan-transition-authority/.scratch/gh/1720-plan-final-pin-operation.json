@@ -1,8 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-section",
-  "heading": "## Plan Metadata",
-  "expected": "\n\n- **Implementation-plan**: docs/superpowers/plans/2026-09-19-1720-plan-transition-authority.md @ 6bda1c9ae444060fac29c9915a43e186431efbc1\n- **Design**: docs/superpowers/specs/2026-09-19-1720-plan-transition-authority-design.md @ f7c67aee73288033821115755179d8a47b368325\n- **Implementation-authority**: Issue #1720 Scope, Fix Direction, approved design, and governed Deep-Dive Analysis.\n- **Verification-authority**: Root Acceptance Criteria and Verification Commands on issue #1720.\n\n",
-  "replacement": "\n\n- **Implementation-plan**: docs/superpowers/plans/2026-09-19-1720-plan-transition-authority.md @ 4267b7a8c351484d81d588e5f3499f6e92f5041f\n- **Design**: docs/superpowers/specs/2026-09-19-1720-plan-transition-authority-design.md @ f7c67aee73288033821115755179d8a47b368325\n- **Implementation-authority**: Issue #1720 Scope, Fix Direction, approved design, and governed Deep-Dive Analysis.\n- **Verification-authority**: Root Acceptance Criteria and Verification Commands on issue #1720.\n\n",
-  "expectedVersion": 16
-}

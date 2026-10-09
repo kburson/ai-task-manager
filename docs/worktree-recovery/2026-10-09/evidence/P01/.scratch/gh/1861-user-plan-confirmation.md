@@ -1,9 +1,0 @@
-The human clarified in this genuine #1861 session that the amendment plan was already reviewed and accepted, that #1861 remains one story at its current 20.5h estimate, and that rank 1 is intentional because C1 must complete first in the epic. This is the current execution decision; no further decomposition or waiver is requested.
-
-Fresh delivered configured-project read verifies Rank 1, Estimate 20.5, Size XL, Priority P1; Status is Develop. The original kernel review had already resolved the cohesive kernel boundary without a waiver. The subsequent 42.5h preview was unapproved, did not converge through AITM, and does not replace the live estimate. The draft Plan's superseded split/approval question has been corrected while preserving raw historical evidence.
-
-Current Plan: docs/superpowers/plans/2026-10-03-1861-empty-runtime-revised-plan.md; sha256:b34943415a050ebeb33e777c4871252b6d40fcc59d0315b1d53af7fe2eb29e2e. Amendment manual acceptance remains bound to sha256:fa2f1291dc351f1d9c543b73ae73777774b768abcc14d061c5d69cd6e6d0a94c. Human confirmation is recorded as human confirmation, not a fabricated Claude Plan review, package XPR, revised forecast, historical approval marker, test receipt or delivery.
-
-Ranking follows importance and dependency urgency against assigned work, normally ranks 1–100. P0/blocking work belongs below 20, preferably top 10. Unassigned parking ranks such as 1500 must not drive maximum-plus-one placement. Preserve the user's rank 1.
-
-Execution remains in /Users/kpburson/.codex/worktrees/8dae/ai-task-manager on codex/1857-continuation, using delivered scoped lifecycle control. Local verification remains lint, format and canonical TIA under enforced candidate confinement; broader lanes stay in PR/cloud CI. Preserve all WIP/index/fixtures/refs and unresolved package evidence. No live candidate activation/migration and no #1862 implementation. No acceptance box or lifecycle state is advanced by this confirmation.

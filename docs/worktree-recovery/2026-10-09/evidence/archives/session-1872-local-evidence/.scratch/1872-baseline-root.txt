@@ -1,1 +1,0 @@
-/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/1872-baseline-tdpuk0

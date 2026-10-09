@@ -1,1 +1,0 @@
-- [ ] Deliver "### Task 7: Operator guide, package smoke, and release gates" exactly as specified in the pinned source plan. <!-- aitm-verified vc-list="vc:1" -->

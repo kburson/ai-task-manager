@@ -1,4 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'prettier' --write scripts/task-tracker/lib/move-state/cache-unpark.mjs scripts/task-tracker/lib/move-state/move-state-core.mjs
-scripts/task-tracker/lib/move-state/cache-unpark.mjs 56ms
-scripts/task-tracker/lib/move-state/move-state-core.mjs 205ms

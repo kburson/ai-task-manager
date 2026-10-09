@@ -1,6 +1,0 @@
-scripts/task-tracker/merge-back.mjs
-scripts/tests/integration/task-tracker/merge-back-verification.test.mjs
-scripts/tests/integration/task-tracker/merge-back-cli.test.mjs
-scripts/task-tracker/lib/merge-back-verification.mjs
-scripts/tests/unit/task-tracker/merge-back.test.mjs
-scripts/task-tracker/lib/merge-back-cli.mjs

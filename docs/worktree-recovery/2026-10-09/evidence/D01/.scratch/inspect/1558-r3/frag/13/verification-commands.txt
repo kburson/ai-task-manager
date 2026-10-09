@@ -1,1 +1,0 @@
-node --test scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs scripts/tests/unit/task-tracker/lib/lifecycle-policy.test.mjs scripts/tests/unit/task-tracker/lib/guard-parity-early-stages.test.mjs scripts/tests/unit/task-tracker/lib/guard-parity-plan-develop.test.mjs

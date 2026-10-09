@@ -1,3 +1,0 @@
-Implement v2 delivery intent and receipt resolution using explicit acceptance and provider PR identities. Retain original and landed SHAs as provenance and expected-head SHA as the provider concurrency check. Validate content, target, repository, actor/intent, and existing configured merge-method policy separately. Preserve v1 behavior behind the protocol seam. Exercise actual sandbox Git amend/rebase/squash and changed-target cases; do not deliver a real issue.
-
-Execution is serial under epic #1495. Follow Task 3 in the committed epic implementation plan. This is backlog hydration only; no approval, execution proof, or implementation completion is claimed. Preserve #1490/#1488/#1485 and their original worktrees; do not create circular defect dependencies.

@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "Existing children #1909–#1917 belong to this sibling epic under #1847,",
-  "replacement": "Existing children #1909–#1917 belong to this repair epic under #1855 and outer epic #1847,"
-}

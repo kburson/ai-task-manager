@@ -1,3 +1,0 @@
-As a harness maintainer,
-I want to have all physical transport intercepted before production imports,
-So that the unchanged CLI can be exercised without external effects.

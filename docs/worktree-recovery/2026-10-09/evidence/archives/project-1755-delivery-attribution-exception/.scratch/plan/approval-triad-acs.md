@@ -1,3 +1,0 @@
-- [ ] Auto gates continue without a human prompt; each manually enabled Plan, PR, or final gate offers Approve, Delegate to agent, and Reject independently. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Approval evidence distinguishes human-reviewed, human-delegated, and autonomous decisions, binds the decision to the current artifact, and refuses stale or ambiguous authority. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] PR delegation uses the agent review path without fabricating a GitHub self-approval, while external repository merge restrictions remain enforced. <!-- aitm-verified vc-list="vc:1" -->

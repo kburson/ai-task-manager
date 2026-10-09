@@ -1,1 +1,0 @@
-{"metadata":"## Plan Metadata\n","deepDive":"## Deep-Dive Analysis (2026-10-05)\n","readyMarker":null,"approval":null}

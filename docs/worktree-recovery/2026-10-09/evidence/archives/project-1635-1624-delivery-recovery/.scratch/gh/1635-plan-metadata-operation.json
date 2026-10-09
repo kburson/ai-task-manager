@@ -1,8 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-section",
-  "heading": "## Plan Metadata",
-  "expected": "\n\n",
-  "replacement": "\n\n- **Implementation-plan**: docs/superpowers/plans/2026-09-15-1635-false-delivery-close-recovery.md\n- **Governing-spec**: docs/superpowers/specs/2026-09-15-1635-false-delivery-close-recovery-design.md\n- **Plan-commit**: 254b81267502f6aa80d921ef806f05a6fdeab9b6\n\n",
-  "expectedVersion": 10
-}

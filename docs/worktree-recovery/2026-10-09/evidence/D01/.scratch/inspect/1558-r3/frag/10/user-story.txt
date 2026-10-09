@@ -1,3 +1,0 @@
-As an agent choosing a lifecycle action,
-I want to have all operationally necessary information without repeated evidence metadata,
-So that routine guidance remains small while explicit investigation can inspect complete evidence.

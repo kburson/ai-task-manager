@@ -1,4 +1,0 @@
-- **kind**: code
-- **source**: follow-up defect from the completed #1716 recovery and `kburson/ai-peer-review#61`
-- **evidence**: `ai-peer-review#61` entered Develop at 2026-09-19T15:22:16.645Z while workflow-exception revision 2 covered `approval.plan`; no `aitm-plan-approved` marker was written; revision 4 revoked the exception at 2026-09-19T17:25:45.930Z; #1716 later reconstructed approval from durable evidence
-- **intent**: identify and fix the originating transition-provenance gap so future issues do not require retrospective repair or human rubber stamps

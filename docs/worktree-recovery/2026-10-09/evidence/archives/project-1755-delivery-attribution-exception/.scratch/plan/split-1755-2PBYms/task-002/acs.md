@@ -1,1 +1,0 @@
-- [ ] Deliver "### Task 2: Exact mapping evaluator without relaxing ordinary attribution" exactly as specified in the pinned source plan. <!-- aitm-verified vc-list="vc:1" -->

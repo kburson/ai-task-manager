@@ -1,1 +1,0 @@
-node --test scripts/tests/unit/task-tracker/lib/guidance-candidate-oracle.test.mjs

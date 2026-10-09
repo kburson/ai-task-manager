@@ -1,8 +1,0 @@
-[
-  {
-    "file": "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
-    "status": 0,
-    "durationMs": 114558,
-    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-53-trace/0000.log"
-  }
-]

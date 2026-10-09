@@ -1,3 +1,0 @@
-scripts/task-tracker/verbs/issue-body.mjs
-scripts/task-tracker/lib/issue-body-mutate.mjs
-scripts/task-tracker/lib/issue-body-push.mjs

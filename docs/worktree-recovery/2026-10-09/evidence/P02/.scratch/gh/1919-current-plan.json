@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Planning-status**: Bounded repair hydration; accepted child implementation plan remains due at Plan.",
-  "replacement": "- **Planning-status**: Bounded repair hydration; accepted child implementation plan remains due at Plan.\n- **Implementation-plan**: docs/superpowers/plans/2026-10-08-1919-ci-checkpoint-repair.md\n- **Implementation-plan-commit**: 5177aa40f1c34facec6bd51f26bd71066a5c348b\n- **Ancestor-epics**: #1855, #1847"
-}

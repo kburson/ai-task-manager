@@ -1,6 +1,0 @@
-PASS: update-event-fields exits 1 on field-write failure
-PASS: update-event-fields exits 0 on success
-PASS: set_once guard skips write when startTime already set
-PASS: refine binding fires on assigned→refine
-PASS: develop binding is empty — no startTime write
-All start-time-sync tests passed.

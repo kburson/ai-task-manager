@@ -1,3 +1,0 @@
-As a characterization maintainer,
-I want to have fingerprinted authority and flag inventories,
-So that no unclassified path or bypass can distort measurement.

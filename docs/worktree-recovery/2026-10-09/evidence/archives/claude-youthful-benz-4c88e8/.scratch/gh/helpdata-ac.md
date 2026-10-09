@@ -1,6 +1,0 @@
-- [ ] `/task deliver --help` lists `--reconcile-merge-method` with its accepted values <!-- aitm-verified vc-list="vc:3" -->
-- [ ] `/task deliver --help` lists `--reason` and states that it is required whenever the reconciliation flag is passed <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The documented effects state that the lane applies only on the already-merged external recovery path <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The documented effects state that the declared method must agree with the observed merge topology, so the lane cannot record a method that did not occur <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The help output states that squash-direction reconciliation is unsupported, so it never implies capability the lane does not have <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The lane's behaviour, verification, and the delivery verifier are unchanged by this issue <!-- aitm-verified vc-list="vc:4" -->

@@ -1,8 +1,0 @@
-- [ ] A merged pull request with no prior delivery intent can be reconciled and produce a verified receipt <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The reconstructed intent is derived only from the pull-request record and the merge commit; no operator-supplied intent, SHA, or method is accepted as evidence <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The declared merge method is still refused unless live merge topology agrees with it <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The path requires the explicit reconciliation flag and a substantive reason, and is never entered implicitly <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The reconciliation record marks the intent as retroactively reconstructed, distinguishing it from one written at delivery time <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The path refuses when the pull request is unmerged, when its merge commit is not reachable from the resolved trunk ref, or when the merge topology is unattributable <!-- aitm-verified vc-list="vc:3" -->
-- [ ] `delivery-verification.mjs` merge-method equality is unchanged, proven by the existing regression test still passing <!-- aitm-verified vc-list="vc:4" -->
-- [ ] #680 closes through this path on real evidence, with no forced bypass and no synthesized intent <!-- aitm-non-demonstrable -->

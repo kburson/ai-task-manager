@@ -1,3 +1,0 @@
-- [ ] AC1: The sandbox cannot invoke production GitHub transport, mutate original issue IDs, access production authority roots, or push to production remotes; refusals precede effects. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] AC2: The offline provider's real payloads pass production codecs and persist state across process restart, including ambiguous responses and pagination. <!-- aitm-verified vc-list="vc:2" -->
-- [ ] AC3: Real Git operations and frozen synthetic legacy shapes reproduce the known failures, and before/after protected-state comparison is explicit rather than assumed. <!-- aitm-verified vc-list="vc:3" -->

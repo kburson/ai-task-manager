@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Plan-commit**: 2e933f1b192d87035d1ddb320dbd0ed5bc1130b1",
-  "replacement": "- **Plan-commit**: 0a534ec156cf308e5f6126f9d85c63679c3714e2"
-}

@@ -1,6 +1,0 @@
-[
-  "A continuous-session timing interval longer than eight hours can be repaired from genuine bounded transcript observations so the unchanged timing-log-sequence validator passes without a fabricated departure or extra known time.",
-  "Wrong session, real interruption or unexplained gap, changed transcript/source, malformed timestamps and ambiguous actor evidence refuse before a timing write.",
-  "Repair is dry-run-first, backed up, fresh-source guarded, exact-read-back checked and idempotent; original rows, unknown duration values, word totals, actor attribution and lifecycle accounting are preserved.",
-  "General backdating and unexplained-gap controls remain enforced; #1901 event-derived duration/format behavior is unchanged."
-]

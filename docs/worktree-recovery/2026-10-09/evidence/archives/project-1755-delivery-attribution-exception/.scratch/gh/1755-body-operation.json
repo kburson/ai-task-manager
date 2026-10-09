@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Prior implementation plan:** docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception.md (historical, unreviewed)",
-  "replacement": "- **Prior implementation plan:** docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception.md (historical, unreviewed)\n- **Planning publication:** PR #1763 merged the reviewed specification, plan, and peer-review collateral into trunk at b0b299c3690f876bceccd175d1cda19b8da6ebf6; implementation remains with children #1756–#1762."
-}

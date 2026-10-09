@@ -1,3 +1,0 @@
-- **kind**: code
-- **discovered-during**: #1755
-- **source-plan-section**: ### Task 2: Exact mapping evaluator without relaxing ordinary attribution

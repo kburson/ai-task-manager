@@ -1,4 +1,0 @@
-- [ ] Generic/targeted/alias CLI modes use fresh shared readiness with no effects; routine result preserves operations and omits evidence-only material throughout visible output. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Explicit diagnostics expose complete same-invocation evidence/messages without extra reads; later diagnostics are fresh, never implicit retrieval or fallback. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Receipt/source suppression and compaction invalidation follow the spec; explicit human help/recovery remain separate and invalid receipts never weaken execution. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Actual traffic replaces candidate serialization before content migration, with honest current versus modeled-static totals and enforced intermediate feasibility. <!-- aitm-verified vc-list="vc:1" -->

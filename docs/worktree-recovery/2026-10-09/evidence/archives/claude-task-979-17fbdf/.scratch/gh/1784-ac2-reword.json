@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "The committed reviewer-response-3 document is byte-for-byte identical to the reviewer-authored source: its SHA-256 is `3a7e022fa7c1bc11c61e894d04b68658b78b287dfd917ea12a9736cfbebe9993`.",
-  "replacement": "The committed reviewer-response-3 document is byte-for-byte identical to the reviewer-authored source: the blob at its path is exactly `4e49669612ab444ba5c59bf2a02ba35b2301cb67` (SHA-256 of those bytes: `3a7e022fa7c1bc11c61e894d04b68658b78b287dfd917ea12a9736cfbebe9993`)."
-}

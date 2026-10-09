@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- **Design-status**: Draft written in the owned issue worktree; independent read-only critique and controller approval pending. No implementation or delivery evidence is claimed.",
-  "replacement": "- **Design-status**: Exact design SHA256 3ad25cfed0936e0c66326ab96a35a9f541063c8951f44ebe261b679ea7e4635a accepted by controller after independent read-only critique; all concrete findings addressed.\n- **Implementation-plan**: docs/superpowers/plans/2026-10-03-1872-rank-level-parallel.md\n- **Plan-review**: Exact plan SHA256 b854b7a615117581dd4436a81ae19a7d39ed1cd6d04fb177bc6af1f125cdc630 accepted by controller and independent read-only reviewer. Actual lifecycle approval and verification remain separate. No implementation or delivery evidence is claimed."
-}

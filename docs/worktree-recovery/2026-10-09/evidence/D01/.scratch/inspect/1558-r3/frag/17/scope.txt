@@ -1,1 +1,0 @@
-Own baseline Task 10 production file changes and `action-close.test.mjs`; preserve existing guard-parity-review-done and close-gate-order suites. No aggregate seven-action certification or A2 completion declaration.

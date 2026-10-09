@@ -1,3 +1,0 @@
-As an agent entering or rerunning Review,
-I want to see the same evidence and completeness blockers as the reviewer action,
-So that explanation neither stamps approval nor recommends close before Review is complete.

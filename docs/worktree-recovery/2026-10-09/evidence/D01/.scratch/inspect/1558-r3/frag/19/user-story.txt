@@ -1,3 +1,0 @@
-As a guidance maintainer,
-I want to validate a complete catalog with precise independent diagnostics,
-So that malformed or ambiguous YAML never becomes operational instruction.

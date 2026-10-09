@@ -1,1 +1,0 @@
-Introduce a separate delivery-attribution exception schema, command surface, authority validation, evaluator, and delivery integration. Bind authorization to the complete ordered source inventory and exact mappings; recompute immediately before merge; fail closed on drift; record waived attribution truthfully.

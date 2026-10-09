@@ -1,3 +1,0 @@
-- [ ] A child branch with a configured but divergent upstream is cleaned after successful fast-forward integration without force deletion. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] A local-only child branch retains the existing safe `branch -d` cleanup behavior without an unnecessary upstream mutation. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] The already-integrated #1609 residue is reconciled only after ancestry proves the child tip is contained by #1516. <!-- aitm-verified vc-list="vc:3" -->

@@ -1,3 +1,0 @@
-[task-tracker] ac-stamp on #1887: running 1 verifier(s) for AC "After an authorized rebase, stale genuine legacy Test receipts no longer deadlock Test entry; Explain is read-only and canonical Test retires only the eligible exact receipt before ordinary entry gates and fresh verification."…
-  ✓ node --test scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs scripts/tests/integration/task-tracker/lib/action-test.test.mjs (exit=0)
-[task-tracker] ✓ ac-stamp on #1887: run-props (key=fdf62ae0) upserted onto the AC line's aitm-verified marker (sha=93fbfcf7).

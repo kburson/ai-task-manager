@@ -1,2 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' refine 1897 --size XS --estimate 2 --priority p0 --reason Canonical AC lookup currently selects embedded approved Scope headings and blocks evidence-gated downstream delivery; bounded shared-locator repair preserves legacy behavior.

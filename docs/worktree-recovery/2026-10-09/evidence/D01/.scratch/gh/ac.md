@@ -1,6 +1,0 @@
-- [ ] Test stage, after pushing the branch/PR, triggers a local code-review pass targeted at the PR's diff (by PR number), at an effort level suitable for gating a merge. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Code-review findings are posted to the PR as comments via the existing comment-posting path; no findings document is committed to git. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] The Test-stage exit gate (the check that currently allows promotion to Review) refuses to promote unless cloud CI is green AND the local code-review pass reports zero outstanding findings. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] When the code-review pass finds defects, the story is demoted to Develop through the existing sanctioned rework loop (demote, fix, verify-develop.mjs, commit, re-promote to Test), not a new mechanism. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Re-running the code-review pass after a demote/fix cycle posts its updated findings to the same PR, so the PR's comment thread carries the full history of findings and resolutions across iterations. <!-- aitm-verified vc-list="vc:1" -->
-- [ ] Once CI and the code-review pass are both clean, Test allows the PR to merge to trunk, and the issue's board state advances from Test to Review. <!-- aitm-verified vc-list="vc:1" -->

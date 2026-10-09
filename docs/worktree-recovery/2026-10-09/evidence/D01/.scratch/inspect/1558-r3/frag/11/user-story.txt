@@ -1,3 +1,0 @@
-As an agent choosing a lifecycle action,
-I want to receive readiness derived from the executor's complete current evidence,
-So that an explanation cannot omit a known blocker or reuse stale authority.

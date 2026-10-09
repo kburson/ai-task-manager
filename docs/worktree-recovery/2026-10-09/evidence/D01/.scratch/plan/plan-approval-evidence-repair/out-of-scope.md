@@ -1,1 +1,0 @@
-General historical approval migration; human approval reconstruction; state rewinds; workflow waivers; automatic approval for issues that never completed Plan; changing Plan Adjustment semantics; repairing missing forecasts unrelated to a revoked exception.

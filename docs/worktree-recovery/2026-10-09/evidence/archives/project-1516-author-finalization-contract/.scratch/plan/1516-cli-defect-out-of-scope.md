@@ -1,4 +1,0 @@
-- Redesigning peer-review lifecycle states or finalization transactions.
-- Adding another review authority or an AITM-side wrapper.
-- Changing protected human good-enough semantics.
-- Broad package refactoring beyond the terminal renderer and regression coverage.

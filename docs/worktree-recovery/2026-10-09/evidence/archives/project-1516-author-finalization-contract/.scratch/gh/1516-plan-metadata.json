@@ -1,8 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-section",
-  "heading": "## Plan Metadata",
-  "expected": "\n\n",
-  "replacement": "\n\n- **Governing-spec**: docs/superpowers/specs/2026-09-11-1516-author-owned-finalization-contract-design.md\n- **Implementation-plan**: docs/superpowers/plans/2026-09-11-1516-author-owned-finalization-contract.md\n- **Plan-commit**: ccfeef7fa810f25a8bc93c8857eed3da2ac0dcdd\n\n",
-  "expectedVersion": 11
-}

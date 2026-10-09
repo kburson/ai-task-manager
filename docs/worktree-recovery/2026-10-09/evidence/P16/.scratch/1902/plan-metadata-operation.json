@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "## Plan Metadata\n\n",
-  "replacement": "## Plan Metadata\n\n- **Implementation-plan**: docs/superpowers/plans/2026-10-06-1902-preserve-merge-history.md\n- **Verification-boundary**: issue-declared affected tests on host; exact-head full suites exclusively CI; maximum 800 seconds\n\n"
-}

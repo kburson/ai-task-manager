@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "## Plan Metadata\n\n## Pickup Directive — MANDATORY, DO NOT SKIP",
-  "replacement": "## Plan Metadata\n\n- **design-spec**: [2026-09-26-1821-branch-local-estimation-rubric-design.md](https://github.com/kburson/ai-task-manager/blob/trunk/docs/superpowers/specs/2026-09-26-1821-branch-local-estimation-rubric-design.md)\n\n## Pickup Directive — MANDATORY, DO NOT SKIP"
-}

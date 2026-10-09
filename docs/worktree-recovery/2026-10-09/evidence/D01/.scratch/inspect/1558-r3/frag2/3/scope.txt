@@ -1,3 +1,0 @@
-**Scope/files and boundary:** Create `scripts/tests/helpers/guidance-legacy-authority.mjs` and `guidance-legacy-authority.test.mjs`; own deterministic store/scenario builders under `scripts/tests/fixtures/1558/legacy-workflow/`. Extend the existing captureLegacyWorkflow launcher to use these fixtures. Consume, do not redefine, WBS 2 transport/preload functions. No frozen loaded text or candidate model.
-
-**Handoff and verification behavior:** WBS 2 → WBS 3 is mandatory. WBS 3 owns lifecycle store/request expectations and authority tests; WBS 2 remains owner of interception symbols. Baseline aggregate tests are introduced only by WBS 4. Task 16 later extends the WBS 2 runner using the complete frozen generation published by WBS 4.

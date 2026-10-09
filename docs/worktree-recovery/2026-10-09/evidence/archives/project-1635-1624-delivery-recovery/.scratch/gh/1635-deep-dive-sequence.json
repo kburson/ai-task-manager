@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "2. Publish the exact `feature/epic/1624` head, open its governed PR, and merge it with merge-commit topology so the source history remains intact.\n3. Reopen #1624, restore it one sanctioned lifecycle step to Review, bind its preserved worktree, refresh exact-SHA Test/Review evidence if required, and run delivery recovery to write the real intent/receipt.",
-  "replacement": "2. Preserve the historical `feature/epic/1624` head as parent one of a single `--no-ff` current-trunk integration commit, push it to governed PR #1638, and deliver that source head without rewriting history.\n3. Reopen #1624, restore it through the sanctioned lifecycle to Review, bind its preserved worktree, refresh Test/Review evidence at the integration SHA, and run delivery recovery to supersede the stale intent and write the real receipt."
-}

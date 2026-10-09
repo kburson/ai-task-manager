@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "- [ ] `shasum -a 256 docs/peer-reviews/spec/2026-09-22-2026-09-22-1755-delivery-attribution-exception-design-review-cc015b243c3fe236325ac37f5899783f/review-cc015b243c3fe236325ac37f5899783f-reviewer-response-3.md` <!-- id=2 -->",
-  "replacement": "- [ ] `git diff --exit-code 4e49669612ab444ba5c59bf2a02ba35b2301cb67 HEAD:docs/peer-reviews/spec/2026-09-22-2026-09-22-1755-delivery-attribution-exception-design-review-cc015b243c3fe236325ac37f5899783f/review-cc015b243c3fe236325ac37f5899783f-reviewer-response-3.md` <!-- id=2 -->"
-}

@@ -1,1 +1,0 @@
-scripts/task-tracker/config.mjs:280:export function getPreferences(paths = {}) {

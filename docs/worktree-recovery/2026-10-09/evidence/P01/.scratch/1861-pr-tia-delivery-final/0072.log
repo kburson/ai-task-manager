@@ -1,3 +1,0 @@
-test 1: guard ON + foreign assignee → exit 10 OK
-test 2: guard OFF → bypass OK
-assignee-guard.integration.test.mjs: ok

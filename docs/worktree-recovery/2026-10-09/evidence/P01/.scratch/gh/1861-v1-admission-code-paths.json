@@ -1,7 +1,0 @@
-[
-  "scripts/task-tracker/lib/runtime-activation-admission.mjs",
-  "scripts/task-tracker/lib/runtime-storage.mjs",
-  "scripts/task-tracker/lib/runtime-initialize.mjs",
-  "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
-  "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs"
-]

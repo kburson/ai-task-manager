@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "### Story Intent\n- Beneficiary: AITM delivery operator.\n- Capability: Locate, stamp, and evidence-check canonical acceptance criteria even when approved Scope contains source-plan AC headings.\n- Need: The current first-match locator selects an embedded lower-level heading before the issue's canonical level-two section, hiding declared verifier citations.\n- Value: Verified delivery can finish without rewriting approved Scope or bypassing evidence gates.\n\n",
-  "replacement": "### Story Intent\n- **Beneficiary:** AITM delivery operator.\n- **Capability:** Locate, stamp, and evidence-check canonical acceptance criteria even when approved Scope contains source-plan AC headings.\n- **Need:** The current first-match locator selects an embedded lower-level heading before the issue's canonical level-two section, hiding declared verifier citations.\n- **Value:** Verified delivery can finish without rewriting approved Scope or bypassing evidence gates.\n\n"
-}

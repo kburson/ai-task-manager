@@ -1,1 +1,0 @@
-71417 71343       03:10 /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history/scripts/task-tracker/task-tracker.mjs plan-estimate 1902 --evidence-file .scratch/1902/plan-estimation-input.json

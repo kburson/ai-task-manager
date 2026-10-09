@@ -1,7 +1,0 @@
-- [ ] `runGuards` supports a probe mode that evaluates a transition's guards without performing it and aggregates every refusal, with no short-circuit <!-- aitm-verified vc-list="vc:3" -->
-- [ ] The Guard contract carries a structured `remediation` field whose shape matches the gate verdict schema defined by the gate plugin API epic <!-- aitm-verified vc-list="vc:3" -->
-- [ ] Every exit guard that can block a forward transition returns a populated `remediation` <!-- aitm-verified vc-list="vc:3" -->
-- [ ] `aitm next --explain` reports current state, unmet exit gates, and remediation commands in a stable machine-readable form <!-- aitm-verified vc-list="vc:4" -->
-- [ ] `aitm close --explain` and `aitm review --explain` report unmet close gates in the same form <!-- aitm-verified vc-list="vc:4" -->
-- [ ] `rules/state-walk.md` no longer restates gate requirements in prose and points at the query command instead <!-- aitm-non-demonstrable -->
-- [ ] The token cost of a state-walk decision is measured before and after, and the reduction is recorded on this epic <!-- aitm-non-demonstrable -->

@@ -1,3 +1,0 @@
-- **kind**: code
-- **provenance**: Observed during authorized delivery of ai-peer-review#107/#144 and ai-task-manager#1897. Native #1897 Test executed the full host fast suite after a successful exact-head cloud receipt verifier, contrary to the user TIA-only host constraint. The public provider plan reproduces the appended npm test and npm run test:slow without executing either. Evidence retained in .scratch/1897/root-project-provider-host-suite-plan.json and interrupted-test-preservation/.
-- **relationships**: Blocks ai-task-manager#1897 and ai-peer-review#144/#107 native Test completion. Separate from #1897 canonical AC scope.

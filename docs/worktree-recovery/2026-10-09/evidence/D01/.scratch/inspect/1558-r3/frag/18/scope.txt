@@ -1,1 +1,0 @@
-Own `scripts/tests/integration/task-tracker/lib/action-parity.test.mjs`, authority-count/timing evidence and residual legacy review record under `scripts/tests/fixtures/1558/`; complete conformance registry metadata after all action suites pass. Consume WBS 17 close implementation.

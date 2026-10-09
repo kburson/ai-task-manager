@@ -1,3 +1,0 @@
-As an AITM agent,
-I want to retain only the boundary/query/receipt protocol and load guidance when needed,
-So that a complete governed lifecycle fits the fixed context budget without weakening execution.

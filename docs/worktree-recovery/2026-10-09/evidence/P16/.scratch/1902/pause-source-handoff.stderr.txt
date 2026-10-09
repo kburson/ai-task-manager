@@ -1,2 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' pause Verified staged1902 conditional history-preservation fix handed to real root hook binding for attributed commit/publication after preserved native no-active-binding refusal; uncommitted, not CODE_COMPLETE.

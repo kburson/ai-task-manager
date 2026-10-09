@@ -1,9 +1,0 @@
-{
-  "args": [
-    "api",
-    "repos/kburson/ai-task-manager/check-runs/112029370666/annotations"
-  ],
-  "status": 0,
-  "stdout": "[{\"path\":\"scripts/task-tracker/lib/ac-evidence.mjs\",\"blob_href\":\"https://github.com/kburson/ai-task-manager/blob/b0911ff3af3c813492e94724da548805684c6942/scripts/task-tracker/lib/ac-evidence.mjs\",\"start_line\":171,\"start_column\":41,\"end_line\":171,\"end_column\":49,\"annotation_level\":\"failure\",\"title\":\"Bad HTML filtering regexp\",\"message\":\"This regular expression only parses --> and not --!> as a HTML comment end tag.\",\"raw_details\":null},{\"path\":\"scripts/task-tracker/lib/ac-evidence.mjs\",\"blob_href\":\"https://github.com/kburson/ai-task-manager/blob/b0911ff3af3c813492e94724da548805684c6942/scripts/task-tracker/lib/ac-evidence.mjs\",\"start_line\":183,\"start_column\":39,\"end_line\":183,\"end_column\":47,\"annotation_level\":\"failure\",\"title\":\"Bad HTML filtering regexp\",\"message\":\"This regular expression only parses --> and not --!> as a HTML comment end tag.\",\"raw_details\":null}]",
-  "stderr": ""
-}

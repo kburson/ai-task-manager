@@ -1,3 +1,0 @@
-- Source-plan: docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r3.md
-- Source-plan-commit: 55dedc066701a9fce1066ac4ebebce58ed147638
-- Source-plan-section: ### Task 3: Model coherent authority fixtures and lifecycle scenarios

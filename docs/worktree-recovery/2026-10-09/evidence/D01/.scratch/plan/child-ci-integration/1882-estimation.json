@@ -1,7 +1,0 @@
-{
-  "schema": "aitm.plan-estimation-input/v1",
-  "wbs": [{"id":"child-verification","description":"Reuse project verification for child integration and preserve completion checkout with refusal regressions","baseHumanHours":2,"signals":{"modules":["merge-back","verification-provider-registry"],"dependencies":["project-verification","authoritative-graph"]},"independentlyReviewable":false}],
-  "testImpact":{"lanes":["unit","integration","slow"],"isolation":"affected tests on host; full suites and receipt artifacts in CI","expectedMinutes":15},
-  "risks":["Rebase invalidates prior-head CI proof","Parent branch may already be checked out in its own worktree","A successful command must not leave unverified source mutations"],
-  "comparableIssueIds":[1872,1873]
-}

@@ -1,9 +1,0 @@
-[
-  {
-    "file": "scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs",
-    "status": 0,
-    "signal": null,
-    "durationMs": 27163,
-    "log": "0000.log"
-  }
-]

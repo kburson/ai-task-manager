@@ -1,6 +1,0 @@
-- A bespoke reconciliation branch for merge-method, or for any other single predicate, as the primary fix.
-- Weakening, relaxing or deleting any delivery predicate. Every invariant keeps refusing by default; only the human's recorded decision changes the outcome, and only with disclosure.
-- Making Full-Auto able to satisfy a delivery waiver.
-- Changing `mergeMethod` in `.ai-task-manager/task-tracker.json`, or otherwise papering over this instance by reconfiguring the repo.
-- Retroactive closure of #1784 by hand-editing or deleting its pending delivery-intent comment. That fabricates delivery authority and is forbidden.
-- npm publication, tarball rebuilds, or changes to `ai-peer-review`.

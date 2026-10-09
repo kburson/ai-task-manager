@@ -1,7 +1,0 @@
-[
-  "scripts/task-tracker/lib/runtime-process-census.mjs",
-  "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
-  "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/node24-mainthread-census.json",
-  "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
-  "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md"
-]

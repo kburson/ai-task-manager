@@ -1,3 +1,0 @@
-As a measurement maintainer,
-I want to have complete frozen legacy adapter traces,
-So that candidate comparisons use identical governed work.

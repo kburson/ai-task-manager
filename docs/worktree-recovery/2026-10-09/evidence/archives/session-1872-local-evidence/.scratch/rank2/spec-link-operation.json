@@ -1,6 +1,0 @@
-{
-  "schema": "aitm.issue-body-operation/v1",
-  "kind": "replace-exact",
-  "expected": "## Plan Metadata\n\n",
-  "replacement": "## Plan Metadata\n\n- **Governing-spec**: docs/superpowers/specs/2026-10-03-1872-rank-level-parallel-design.md\n- **Design-status**: Draft written in the owned issue worktree; independent read-only critique and controller approval pending. No implementation or delivery evidence is claimed.\n\n"
-}

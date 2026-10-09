@@ -1,5 +1,0 @@
-- Source-plan: docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r3.md
-- Source-plan-commit: 55dedc066701a9fce1066ac4ebebce58ed147638
-- Source-plan-section: ### Task 11: Extract immutable authority collection and complete guard evaluation
-- Baseline-plan: docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-replacement.md
-- Baseline-plan-commit: a168753999617066d98bbc1227c4b5d97fa531c5

@@ -1,4 +1,0 @@
-- **kind**: code
-- **discovered-during**: #1580 delivery after PR #1582
-- **related**: #1531, #1546, #1577, #1578, #1580, PR #1582
-- **blocks**: #1580 and its dependency chain

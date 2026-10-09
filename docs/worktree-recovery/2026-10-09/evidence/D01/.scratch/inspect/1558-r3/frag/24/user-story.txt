@@ -1,3 +1,0 @@
-As a maintainer reviewing lifecycle instructions,
-I want to inspect terse agent guidance and its complete human explanation in one catalog,
-So that slimming the skill does not discard workflow obligations or conceal local customization.
