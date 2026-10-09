@@ -1,0 +1,2 @@
+node --test scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs
+node scripts/task-tracker/measure-guidance-context.mjs --all --json

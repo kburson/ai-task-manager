@@ -1,0 +1,3 @@
+node --test scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs
+node scripts/maintenance/lint-action-refusals.mjs
+node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-feasible --json

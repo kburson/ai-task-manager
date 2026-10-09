@@ -1,0 +1,19 @@
+{
+  "attempts": [
+    {
+      "consumed_grant_digest": null,
+      "event_log_digest": "sha256:2ebb78a1eb3a2f16337c1db0d9b5bdf147727198195ad307b24f44ff7330dec3",
+      "predecessor_review_id": null,
+      "reciprocal_receipt_digest": null,
+      "record_id": "review-b9a20b7ba40e0363b2cecb59a3293f6e",
+      "recovery_claim_digest": null,
+      "recovery_id": null,
+      "recovery_ordinal": 0,
+      "review_id": "review-b9a20b7ba40e0363b2cecb59a3293f6e",
+      "root_review_id": "review-b9a20b7ba40e0363b2cecb59a3293f6e",
+      "successor_review_id": null
+    }
+  ],
+  "complete": true,
+  "schema": "ai-peer-review.lineage-receipt/v1"
+}

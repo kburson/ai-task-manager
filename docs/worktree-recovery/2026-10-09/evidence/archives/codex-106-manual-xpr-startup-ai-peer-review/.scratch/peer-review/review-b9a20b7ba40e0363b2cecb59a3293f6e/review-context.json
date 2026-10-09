@@ -1,0 +1,12 @@
+{
+  "artifact_kind": "spec",
+  "artifact_name": "2026-09-26-106-manual-xpr-startup-design",
+  "issue": 106,
+  "record_id": "review-b9a20b7ba40e0363b2cecb59a3293f6e",
+  "repository_root": "/Users/kpburson/.codex/worktrees/106-manual-xpr-startup/ai-peer-review",
+  "review_date": "2026-09-26",
+  "review_id": "review-b9a20b7ba40e0363b2cecb59a3293f6e",
+  "review_path_template": "<kind>/<date>-<name>-<record-id>",
+  "reviews_root": "docs/superpowers/peer-reviews",
+  "schema": "ai-peer-review.context/v1"
+}

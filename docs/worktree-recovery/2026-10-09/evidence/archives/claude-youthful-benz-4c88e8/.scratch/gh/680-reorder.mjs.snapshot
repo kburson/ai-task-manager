@@ -1,0 +1,63 @@
+import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
+import { loadConfig } from '../../scripts/task-tracker/config.mjs';
+
+const cfg = await loadConfig();
+
+const STORY_ORIGIN = [
+  '## Story Origin',
+  '',
+  '**Kind:** spike (discovery / brainstorming — no implementation authorized from this issue)',
+  '',
+  '**Provenance:** Filed as a durable capture point for the discovery and debate around a',
+  'configurable, open-ended N-state machine, so the design challenges and eventual',
+  'recommendation are tracked rather than lost in chat.',
+  '',
+  '**Deliverable:** the `spike-deliverable` comment on this issue, landed as a tracked design',
+  'spec at `docs/superpowers/specs/2026-09-08-aitm-yml-pipeline-engine-design.md`.',
+  '',
+  '**Relationships:** recommendation proposes four follow-on epics — ask-the-script, recycle',
+  'verb, pipeline as config, and gate & action plugin API. Interacts with the',
+  '`installed-guard-path.mjs` consumer-edit interlock (#659), which the design leaves intact.',
+  '',
+  '**Size guess:** M',
+  '',
+].join('\n');
+
+// Section boundaries are top-level `## ` headings.
+function splitSections(body) {
+  const lines = body.split('\n');
+  const marks = [];
+  lines.forEach((l, i) => {
+    if (l.startsWith('## ')) marks.push(i);
+  });
+  const preamble = lines.slice(0, marks[0]).join('\n');
+  const sections = marks.map((start, n) => {
+    const end = n + 1 < marks.length ? marks[n + 1] : lines.length;
+    return { heading: lines[start], text: lines.slice(start, end).join('\n') };
+  });
+  return { preamble, sections };
+}
+
+const res = await mutateIssueBody({
+  issueNumber: 680,
+  repo: cfg.repo,
+  mutate: (body) => {
+    const { preamble, sections } = splitSections(body);
+    const byName = (needle) => sections.findIndex((s) => s.heading.startsWith(needle));
+
+    if (byName('## Story Origin') === -1) {
+      const scopeIdx = byName('## Scope');
+      sections.splice(scopeIdx + 1, 0, { heading: '## Story Origin', text: STORY_ORIGIN.trimEnd() });
+    }
+
+    const ddIdx = byName('## Deep-Dive Analysis');
+    const acIdx = byName('## Acceptance Criteria');
+    if (ddIdx > -1 && acIdx > -1 && ddIdx > acIdx) {
+      const [dd] = sections.splice(ddIdx, 1);
+      sections.splice(byName('## Acceptance Criteria'), 0, dd);
+    }
+
+    return [preamble, ...sections.map((s) => s.text)].join('\n').replace(/\n{3,}/g, '\n\n');
+  },
+});
+console.log('reorder:', JSON.stringify(res?.status ?? res));

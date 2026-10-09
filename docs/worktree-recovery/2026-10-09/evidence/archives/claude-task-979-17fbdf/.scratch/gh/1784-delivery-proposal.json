@@ -1,0 +1,11 @@
+{
+  "schema": "aitm.delivery-waiver-proposal/v1",
+  "action": "record",
+  "exceptionId": null,
+  "priorRecordId": null,
+  "priorRevision": null,
+  "requirementId": "delivery.verification.merge-method",
+  "reason": "PR #1785 was merged by the operator with a merge commit after AITM recorded a squash intent for the exact accepted head. The merged commit is reachable from trunk, includes that head, and changes only the intended #1784 review document. Waive only the merge-method match so delivery can record the observed merge truthfully.",
+  "expiresAt": "2026-10-02T23:59:59.000Z",
+  "deliveryOperationId": null
+}

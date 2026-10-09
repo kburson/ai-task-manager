@@ -1,0 +1,2 @@
+- [ ] Direct/delegated Review and explanation share complete evidence, projection, policy, and transition checks. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Incomplete Review is navigated consistently; explanation never performs reviewer, probe, approval, or evidence effects. <!-- aitm-verified vc-list="vc:1" -->

@@ -1,0 +1,6 @@
+- [ ] A valid already-merged delivery can obtain a receipt without rewriting the branch when exact accepted-head, pull-request, required-CI, merge-method, trunk-reachability, and tree evidence agree and attribution is missing but not conflicting. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+- [ ] Recovery continues to reject wrong heads, wrong pull requests, failed or pending required checks, non-equivalent trees, unproven merge methods, and conflicting or extra issue tokens. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+- [ ] Attribution failures identify the failed predicate and a supported recovery action instead of exposing only an opaque category string. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Projects that merge before Review have a sanctioned way to obtain authorized merge bytes in Test or to recover equivalent delivery evidence afterward without weakening Review and close gates. <!-- aitm-verified vc-list="vc:2" -->
+- [ ] Demotion/resume no longer emits a redundant same-second reengagement, and the timing healer can safely remove the exact zero-duration legacy shape without permitting arbitrary row deletion. <!-- aitm-verified vc-list="vc:3" -->
+- [ ] Documentation explains which receipt fields are safety authority, which are audit conventions, and when a warning is sufficient instead of a hard refusal. <!-- aitm-verified vc-list="vc:4" -->

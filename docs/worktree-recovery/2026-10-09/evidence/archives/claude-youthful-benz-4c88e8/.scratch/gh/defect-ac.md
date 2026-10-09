@@ -1,0 +1,6 @@
+- [ ] A merged pull request whose observed merge method differs from the configured method has a named recovery lane that produces a terminal close <!-- aitm-verified vc-list="vc:4" -->
+- [ ] The receipt written by that lane records the merge method actually observed and flags it as divergent from the configured intent <!-- aitm-verified vc-list="vc:3" -->
+- [ ] The lane requires an explicit flag and an operator-supplied reason; it is never entered implicitly <!-- aitm-verified vc-list="vc:3" -->
+- [ ] The lane refuses when the pull request is unmerged, or when its head does not match the accepted SHA — it reconciles the method only, never what shipped <!-- aitm-verified vc-list="vc:3" -->
+- [ ] `delivery-verification.mjs` still refuses to write a receipt naming a merge method that was not observed, proven by a test asserting the original refusal survives <!-- aitm-verified vc-list="vc:3" -->
+- [ ] The operator-facing refusal message names the recovery lane instead of leaving `--force` as the only discoverable escape <!-- aitm-verified vc-list="vc:4" -->

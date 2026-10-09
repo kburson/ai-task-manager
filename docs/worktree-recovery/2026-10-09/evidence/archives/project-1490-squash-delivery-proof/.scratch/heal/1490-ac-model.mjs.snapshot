@@ -1,0 +1,77 @@
+// Disposable, exact-target heal for #1490's AC model (Codex item 5).
+// Routed through mutateIssueBody on a fresh base. Adds no execution proof.
+import { loadConfig } from '../../scripts/task-tracker/config.mjs';
+import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
+import { retireVerificationReceipt } from '../../scripts/task-tracker/lib/verification-receipt-retirement.mjs';
+import { invalidateEvidence } from '../../scripts/task-tracker/lib/evidence-invalidation.mjs';
+
+const ISSUE = 1490;
+const STALE_RECEIPT = '01M1HWVVRF81133W1WV3HWA46R';
+const STALE_SHA = 'd6a3dece2c4c2e429cb27683e64316b3e216c71b';
+
+const REBIND = [
+  ['An externally squash-merged multi-commit pull request whose merge tree', 'vc:7'],
+  ['A multi-commit rebase topology is refused', 'vc:7'],
+  ['An ordinary two-parent merge, a fast-forward, a tree mismatch', 'vc:7'],
+  ['Existing single-source external-squash, provider-action', 'vc:1 vc:7'],
+];
+
+const NEW_AC =
+  '- [ ] An externally squash-merged multi-commit pull request carrying GitHub’s default squash body ' +
+  'is proven by exact title prefix plus exact authorized token set with no `Attribution:` trailer, while a ' +
+  'missing or extra token, and any malformed canonical-looking trailer including an indented one, each refuse. ' +
+  '<!-- aitm-verified vc-list="vc:7" -->';
+
+const cfg = loadConfig();
+
+const retired = await retireVerificationReceipt({
+  cfg,
+  issueNumber: ISSUE,
+  stage: 'test',
+  receiptId: STALE_RECEIPT,
+});
+console.log('retire stale test receipt:', retired.status);
+
+const write = await mutateIssueBody({
+  issueNumber: ISSUE,
+  repo: cfg.repo,
+  mutate: (fresh) => {
+    let body = fresh;
+
+    // 1. Uncheck + strip execution proof from every checkbox still at the stale sha.
+    if (body.includes(STALE_SHA)) {
+      const { body: cleaned, invalidated } = invalidateEvidence(body);
+      body = cleaned;
+      console.log('invalidated checkboxes:', invalidated.length);
+    }
+
+    // 2. Rebind AC citations. Only rewrites the vc-list of a BARE declaration;
+    //    refuses if execution proof is still present on the line.
+    for (const [needle, vcList] of REBIND) {
+      const lines = body.split('\n');
+      const index = lines.findIndex((l) => l.includes(needle) && l.includes('aitm-verified'));
+      if (index === -1) throw new Error(`heal: AC not found: ${needle}`);
+      if (/\bts="|\bsha="|\bevidence="/.test(lines[index])) {
+        throw new Error(`heal: refusing to rebind a line still carrying execution proof: ${needle}`);
+      }
+      lines[index] = lines[index].replace(/vc-list="[^"]*"/, `vc-list="${vcList}"`);
+      body = lines.join('\n');
+    }
+
+    // 3. Append the new AC for the default-squash-body rule, unchecked, no proof.
+    if (!body.includes('carrying GitHub’s default squash body')) {
+      const lines = body.split('\n');
+      const start = lines.findIndex((l) => l.trim() === '## Acceptance Criteria');
+      if (start === -1) throw new Error('heal: AC section not found');
+      let last = start;
+      for (let i = start + 1; i < lines.length; i += 1) {
+        if (lines[i].startsWith('## ')) break;
+        if (/^- \[.\] /.test(lines[i])) last = i;
+      }
+      lines.splice(last + 1, 0, NEW_AC);
+      body = lines.join('\n');
+    }
+    return body;
+  },
+});
+console.log('body write ok:', typeof write?.body === 'string');

@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "_Stub — describe the work at Refine._",
+  "replacement": "Make GitHub native issue dependencies the sole authority for blocked-by relationships. Add an exact `BLOCKED` option to the project Disposition field and derive that transient value from whether any native dependency has not reached AITM Status `Done`; clear Disposition when all dependencies are Done while retaining the relationships as provenance. Preserve the existing blocker gates on every forward transition from Ready for Planning through Review and make `pull-next` dependency-aware. Make `aitm block` an idempotent set union and `aitm unblock --by` an idempotent set subtraction, with an explicit remove-all form. Reconcile eagerly on block/unblock and AITM Done, and lazily on bind, `pull-next`, and guarded transitions. Provide a dry-run/apply migration for strict legacy markers on open issues, then retire legacy marker, `Blocked By` field, and `BLOCKED` label writes and provisioning. Do not add a webhook, background daemon, commit hook, destructive project-field deletion, or automatic migration of ambiguous label-only state."
+}

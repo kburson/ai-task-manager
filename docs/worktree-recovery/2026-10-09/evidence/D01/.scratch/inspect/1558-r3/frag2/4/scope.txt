@@ -1,0 +1,3 @@
+**Scope/files and boundary:** Own `guidance-legacy-baseline.test.mjs`, `scripts/tests/fixtures/1558/legacy-baseline.json`, and frozen loaded-text/authority/transcript artifacts under `legacy-workflow/`. The aggregate baseline suite executes the inventory, transport and authority assertions from WBS 1–3. No candidate or production changes.
+
+**Handoff and verification behavior:** This child owns baseline Task 1a Step 5 and publishes the single pinned input generation consumed by WBS 5 and baseline Task 16. It certifies the composition of prior child proofs without reassigning their implementation ownership.

@@ -1,0 +1,1 @@
+No npm publication, paid-provider calls, additional issues, ai-peer-review changes or delivery, or authorization for epic #39. No relaxation of the generic workflow-exception commit-provenance rule or unrelated delivery gates.

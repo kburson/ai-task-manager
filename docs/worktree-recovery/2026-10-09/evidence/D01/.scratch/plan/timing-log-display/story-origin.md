@@ -1,0 +1,6 @@
+- **kind**: code
+- **discovered-during**: User review of #1847 child timing logs; read-only intake on 2026-10-06.
+- **authorization**: User requested investigation, Backlog creation and assignment to them. Authenticated GitHub identity verified as kburson.
+- **root-cause-surface**: active-time.mjs::readActivityEvidence; runtime.mjs::flushActiveToGH; gh-timing-comment.mjs::buildRow; lib/timing-rows.mjs.
+- **related**: #1847, #1851, #1852, #1854, #1857, #1862, #1735, #1858.
+- **classification**: Independent defect plus requested display enhancement.

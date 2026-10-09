@@ -1,0 +1,14 @@
+✓ Issue #1562 moved to: develop
+✓ move #1562 test→develop complete
+  exit flush  : test row closed (verified)
+  entry stamp : aitm-entered-develop present (verified)
+  entry row   : develop row opened (verified)
+  status      : Status == Develop (verified)
+  sentinel    : aitm-move-complete state=develop (written last)
+  tail        : 8/8 best-effort steps ok
+
+⛔ Refusing /task review for #1562:
+   BLOCKED: verification receipt invalid: sha-mismatch, vc-set-mismatch, test-started-sha-mismatch, dod-verified-sha-mismatch; Develop finalization and a new Test pass required.
+   RECOVERY: Return to Develop, run Develop finalization, then complete one new Test pass.
+
+promote: promote: delegate /task review exited 4; board drifted to "develop"; marker reconciled.

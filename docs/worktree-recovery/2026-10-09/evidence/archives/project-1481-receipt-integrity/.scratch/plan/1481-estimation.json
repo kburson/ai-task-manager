@@ -1,0 +1,66 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "receipt-authority",
+      "description": "Add canonical Verification Commands authority to fingerprints, receipts, and validation",
+      "baseHumanHours": 2,
+      "signals": {
+        "modules": ["verification-receipt"],
+        "dependencies": ["verification-allowlist", "markers"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "consumer-wiring",
+      "description": "Bind all receipt consumers to the live issue command authority",
+      "baseHumanHours": 1.5,
+      "signals": {
+        "modules": ["test", "review", "close", "estimation"],
+        "dependencies": ["verification-receipt"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "retirement",
+      "description": "Retire invalid receipt markers by exact stage and receipt identity",
+      "baseHumanHours": 1,
+      "signals": {
+        "modules": ["verification-receipt-retirement", "test"],
+        "dependencies": ["issue-body-mutate", "markers"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "race-guards",
+      "description": "Fail closed on fresh-base command changes and stale Develop exit evidence",
+      "baseHumanHours": 0.5,
+      "signals": {
+        "modules": ["test", "develop-exit-guard"],
+        "dependencies": ["verification-receipt"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "regression-coverage",
+      "description": "Adapt historical regressions and verify current provider and lifecycle compatibility",
+      "baseHumanHours": 1,
+      "signals": {
+        "modules": ["tests"],
+        "dependencies": ["unit", "integration", "slow"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "test-sandbox",
+    "expectedMinutes": 6
+  },
+  "risks": [
+    "Command canonicalization drift between execution and receipt validation",
+    "Concurrent issue-body edits during receipt replacement",
+    "Legacy receipts without command authority default closed"
+  ],
+  "comparableIssueIds": [1170, 1171]
+}

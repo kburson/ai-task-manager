@@ -1,0 +1,729 @@
+WORKTREE SQUASH INVESTIGATION
+Scope: the 69 previously held worktrees. origin/trunk fetched in all three repositories.
+No worktrees, branches, or commits deleted. No pushes or PR writes.
+
+SUMMARY
+45: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+12: PARTIAL-OR-UNMATCHED-INVESTIGATE
+2: ALREADY-REACHABLE-FROM-ORIGIN-TRUNK
+10: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+
+693 unique repository-qualified commits outside origin/trunk; 618 trace to merged PR source ancestry or stable patch equivalence.
+35 complete branch diffs equal their single-parent PR integration commit using stable patch IDs.
+Stable patch IDs ignore whitespace. A merged source ancestor proves delivery lineage, not that every intermediate edit survived later edits or reverts.
+Context-free matching proves identical file additions/removals while omitting surrounding context; keep separate from strict patch matching.
+Three nonidentical rebased variants are explained below. No cleanup recommendation is implied by any classification.
+Fresh status detects tracked/untracked WIP; prior ignored runtime archives and live-session holds still require preservation checks before removal.
+
+PINNED REMOTE TRUNK COMMITS
+pws-mock-dashboard: 24fbd934234b19f1fa2271cdd63a4d847c986529
+ai-peer-review: 0036f9cc007440715fb9d19ca65c79e2d1d5db1a
+ai-task-manager: 4187a64fae6319808ec350f3beb0f126fc36769b
+
+UNIQUE COMMIT CLASSIFICATIONS
+491: VERIFIED-MERGED-PR-SOURCE
+63: UNMATCHED
+2: GENERIC-MESSAGE-COINCIDENCE
+127: VERIFIED-REBASED-PATCH-IN-PR
+6: MATCHED-CONTEXT-FREE-DELTA-REVIEW
+3: REBASE-ADAPTED-DELIVERED-VERSION
+1: UNVERIFIED-MERGE-COMMIT
+
+REBASE ADAPTATIONS IN PR 1775
+ac88b8c078f380c0c912db14088f96522d398371 [#1661] test: align guard contract expectations
+Delivered source: cee1b01d2f9968766811c96c7beb558488fbaba4 https://github.com/kburson/ai-task-manager/pull/1775
+Same authored additions except package-budget addition attaches after the newer deliveryAttributionCommandAllowance instead of planTransitionAuthorityAllowance. Final trunk retains actionDecisionContractAllowance and includes it in the package budget.
+--- ac88b8c078f380c0c912db14088f96522d398371
+
++++ cee1b01d2f9968766811c96c7beb558488fbaba4
+
+@@ -52,6 +52,6 @@
+
+ +// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1714 #1716 #1720
+ +  // #1661 ships three shared action-decision runtime assets and one guide.
+ +  const actionDecisionContractAllowance = 4;
+--    planTransitionAuthorityAllowance;
+-+    planTransitionAuthorityAllowance +
++-    deliveryAttributionCommandAllowance;
+++    deliveryAttributionCommandAllowance +
+ +    actionDecisionContractAllowance;
+
+7d7e524657ed0e412112520e4b3348d2222a967b [#1668] Validate delivery readiness against live records and authority
+Delivered source: 57adeadf5ceb70f5d21a5b8ff0c1296880b319bc https://github.com/kburson/ai-task-manager/pull/1775
+Delivered rebased version has the same authored additions/removals except the authorizedIntentBytes export change was already present in its parent. Final trunk exports authorizedIntentBytes.
+--- 7d7e524657ed0e412112520e4b3348d2222a967b
+
++++ 57adeadf5ceb70f5d21a5b8ff0c1296880b319bc
+
+@@ -462,8 +462,6 @@
+
+ +        },
+ +      ];
+ +    }
+--function authorizedIntentBytes(intent) {
+-+export function authorizedIntentBytes(intent) {
+ +import { validateActionDecision } from '../../../../task-tracker/lib/action-decision/contract.mjs';
+ +import * as deliveryDecision from '../../../../task-tracker/lib/action-decision/deliver.mjs';
+ +import {
+
+2544d1eca544ff493928a520860849c5de261fbe [#1661] test: align guard contract expectations
+Delivered source: cee1b01d2f9968766811c96c7beb558488fbaba4 https://github.com/kburson/ai-task-manager/pull/1775
+Same authored additions except package-budget addition attaches after the newer deliveryAttributionCommandAllowance instead of planTransitionAuthorityAllowance. Final trunk retains actionDecisionContractAllowance and includes it in the package budget.
+--- 2544d1eca544ff493928a520860849c5de261fbe
+
++++ cee1b01d2f9968766811c96c7beb558488fbaba4
+
+@@ -52,6 +52,6 @@
+
+ +// @story #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1714 #1716 #1720
+ +  // #1661 ships three shared action-decision runtime assets and one guide.
+ +  const actionDecisionContractAllowance = 4;
+--    planTransitionAuthorityAllowance;
+-+    planTransitionAuthorityAllowance +
++-    deliveryAttributionCommandAllowance;
+++    deliveryAttributionCommandAllowance +
+ +    actionDecisionContractAllowance;
+
+The remaining local merge 0d89d887c9 has no combined diff (git show --cc); that does not establish exact ancestry on trunk.
+Two generic "Peer review revision 1" messages in #1821 match unrelated #1830 squash messages. They are coincidences, not delivery proof.
+
+ALL 69 WORKTREES
+
+1. /Users/kpburson/.codex/worktrees/eba6/pws-mock-dashboard
+Branch: detached; current HEAD: 883a2c41a1a7e80dcf520e73fb46527ae0ea9886
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 1; classes: {"VERIFIED-MERGED-PR-SOURCE": 1}
+Current tracked/untracked WIP: True; earlier hold: Uncommitted/untracked files
+PRs: https://github.com/pace-water-systems-cloud/pws-mock-dashboard/pull/53
+
+2. /Users/kpburson/.codex/worktrees/106-manual-xpr-startup/ai-peer-review
+Branch: codex/106-manual-xpr-startup; current HEAD: 7e1b2dee7f9321b2f628a14dc82e999c7a8305f8
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 6; classes: {"VERIFIED-MERGED-PR-SOURCE": 6}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #108; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-peer-review/pull/108
+Complete branch patch equals integration commit: {"pr": 108, "trunkSha": "0d360c5d2717aa3679441150e3c842f18e46ee2a", "patchId": "9ea2ec8ed3c9d18dfea8160f9f5ce3ed9901ddf1", "base": "b7fbf455125e92cc3bbe073fc7e585cb0c623bc9"}
+
+3. /Users/kpburson/.codex/worktrees/107-runtime-api-spec/ai-peer-review
+Branch: codex/107-runtime-api-spec; current HEAD: 8b232c760be2ffe6e3bf4f857ecb9c47acec2f7a
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 6; classes: {"VERIFIED-MERGED-PR-SOURCE": 6}
+Current tracked/untracked WIP: True; earlier hold: Uncommitted/untracked files
+PRs: https://github.com/kburson/ai-peer-review/pull/110
+Complete branch patch equals integration commit: {"pr": 110, "trunkSha": "c75dacc7753f2e9f235e1b7ad00ae0696faaaa48", "patchId": "8a422bfb3294ee5d59a995b2932964c184a92094", "base": "f167a7031fe1f94d70d1a6bbbd82a2b72387a856"}
+
+4. /Users/kpburson/.codex/worktrees/437b/ai-peer-review
+Branch: codex/128-setup-config-formatting; current HEAD: 6adbd9a266661f73f4cf16a4638656b200faa284
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 3; classes: {"UNMATCHED": 3}
+Current tracked/untracked WIP: False; earlier hold: Live process has cwd here or in child worktree
+PRs: 
+  6adbd9a266661f73f4cf16a4638656b200faa284 UNMATCHED [#128] Bound formatter and installed-runtime integration contention
+  96088fd10178a379faea83d58feeab8eccc1f7e4 UNMATCHED [#128] Include formatter in the audited dependency contract
+  c335c9e00bd2d5b8d13667f79a5ca45fbb69ec60 UNMATCHED [#128] Format authored setup JSON with destination Prettier settings
+
+5. /Users/kpburson/.codex/worktrees/88c8/ai-peer-review
+Branch: detached; current HEAD: efc908155233e485035b7def36b7766c335507fb
+Assessment: ALREADY-REACHABLE-FROM-ORIGIN-TRUNK
+Outside origin/trunk: 0; classes: {}
+Current tracked/untracked WIP: False; earlier hold: HEAD is an ancestor of origin/trunk
+PRs: 
+
+6. /Users/kpburson/.codex/worktrees/baec/ai-peer-review
+Branch: codex/defect-124; current HEAD: 9775e384cf0d9af883ec227aabf00c5c6adee899
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 13; classes: {"UNMATCHED": 13}
+Current tracked/untracked WIP: False; earlier hold: Open PR [125]
+PRs: 
+  9775e384cf0d9af883ec227aabf00c5c6adee899 UNMATCHED [#124] Build manual join fixture from the canonical Git root
+  b25317051252be733c7464fdef808a3ab90d2a04 UNMATCHED [#124] Compare resumed response authority by physical path
+  841b387ea857cddbfb5c052c1019a07b57edb251 UNMATCHED [#124] Resolve Claude resume paths within the physical repository
+  5b3a4287af44ceb98c749aa8340fa23a4dcc8810 UNMATCHED [#124] Report bounded Claude resume path mismatch
+  ded115c60a509ca065934fd3b7bd1d4f80086c61 UNMATCHED [#124] Validate Claude resume paths by normalized identity
+  88dd8cfb351ad1d53f5aea25260c8c4f3c7456ab UNMATCHED [#124] Compare resume invitation paths across platforms
+  33ca6e1927f43c957011fc3b945a470c52febe99 UNMATCHED [#124] Normalize prior Claude response in resume fixture
+  680d1757be47f09c86775d895a2b7abe47395ca6 UNMATCHED [#124] Canonicalize Claude resume fixture paths
+  4d1a05b5e50121d0a6178ab705c283142a4c250c UNMATCHED [#124] Isolate doctor fixture from host skill installation
+  06370035110438cb466fc0fb6ae36ca18363a62f UNMATCHED [#124] Use session handshakes for peer-review identity
+  ae27a8e9f4f6d503840ab4cc852c17b5dd10aa62 UNMATCHED [#124] Explain Codex hook trust recovery for linked worktrees
+  819328ff3dd826596f21b31e7b7eafdb003cb424 UNMATCHED [#124] Capture Codex model for code-mode peer-review calls
+  c16536c67bcd84ce91ba28ba45de4ae8c44012af UNMATCHED [#124] Bind Codex hook evidence to headless child sessions
+
+7. /Users/kpburson/.codex/worktrees/e507/ai-peer-review
+Branch: detached; current HEAD: efc908155233e485035b7def36b7766c335507fb
+Assessment: ALREADY-REACHABLE-FROM-ORIGIN-TRUNK
+Outside origin/trunk: 0; classes: {}
+Current tracked/untracked WIP: False; earlier hold: HEAD is an ancestor of origin/trunk; archive ignored evidence before removal
+PRs: 
+
+8. /Users/kpburson/.codex/worktrees/e7c0/ai-peer-review
+Branch: codex/102-install-policy-plan; current HEAD: 78b9676b83845396b66f16ee4416263ccf4dd1a9
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 7; classes: {"UNMATCHED": 7}
+Current tracked/untracked WIP: True; earlier hold: Uncommitted/untracked files
+PRs: 
+  78b9676b83845396b66f16ee4416263ccf4dd1a9 UNMATCHED [#102] Complete Astra SAR of runtime authority design
+  55f58d52cf09f1532635d7e2c5d77e2b0673ee1f UNMATCHED [#102] Scope compatibility to review collateral
+  d13b85ceae5f603bfe6896d5ccaa8e4d54db560b UNMATCHED [#102] Require setup output to pass host formatting
+  e1f1916010f5ad9d8121b322ddd37f43b719fbc7 UNMATCHED [#102] Clarify compatibility and deployment verification
+  8bff89d84e7690fb90c5170edd65504cb453f8f1 UNMATCHED [#102] Keep tests and release tools out of installed package
+  f31881bdfbd3edaed5d473fb95f3b2189f506b33 UNMATCHED [#102] Keep AIPR global and project dependencies local
+  c9decbf118a8f9d89407dc4576fa3ca456387efc UNMATCHED [#102] Draft primary runtime authority design
+
+9. /Users/kpburson/.codex/worktrees/planning/ai-peer-review
+Branch: codex/planning; current HEAD: 1860a95c4ab6ebf859a2fe57146c720220c62480
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 2; classes: {"UNMATCHED": 1, "VERIFIED-MERGED-PR-SOURCE": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-peer-review/pull/35
+  1860a95c4ab6ebf859a2fe57146c720220c62480 UNMATCHED docs: plan project-local lifecycle delivery [#29]
+
+10. /Users/kpburson/.codex/worktrees/123e/ai-task-manager
+Branch: feature/epic/1818; current HEAD: f57c2de9197e5ac8d1ee9612a1a36e0910720b1b
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 15; classes: {"UNMATCHED": 15}
+Current tracked/untracked WIP: False; earlier hold: Live process has cwd here or in child worktree
+PRs: 
+  f57c2de9197e5ac8d1ee9612a1a36e0910720b1b UNMATCHED [#1837] Parse issue operands separately from CLI option values
+  792624e4f408e335fffecec8987ac5f0ed0f47c1 UNMATCHED [#1837] Refresh GraphQL source inventory after shim review fix
+  3c2d961467729ba36c1eb452c38ebe09cabc37b8 UNMATCHED [#1837] Keep CLI option parsing spell-check clean
+  20638f89d7a4b6cf3e02a84f9f56ad0df89aeb50 UNMATCHED [#1837] Fix reviewed GraphQL usage attribution and response failures
+  76acf7d0f5d5c5ec14f59fba65cd8cebd8673fca UNMATCHED [#1837] Register collector launch surface in admission inventory
+  0721cb4b47a06e5b29bd6f7cab4c0a2c6def6fa0 UNMATCHED [#1837] Refresh paired guidance report artifacts
+  63397e197d20985fb879bf574b88d10ad46d2026 UNMATCHED [#1837] Refresh exact guidance capture after collection wiring
+  ee0ee9659963addd2842b2f31ba08b36607ac42b UNMATCHED [#1837] Preserve GraphQL telemetry context and failure behavior
+  f956a9db814803741615113b4ff9e9fc2c60fc2a UNMATCHED [#1837] Wire GraphQL usage collection across CLI and HTTP boundaries
+  b3c2974fb01a7dc49f61b987ef2544fa15c0e34f UNMATCHED [#1836] Harden storage snapshots and inherited attribution
+  0a9c212b8ef808a7c79b02f3da03d4b92161010d UNMATCHED [#1836] Add Git-common GraphQL usage storage and enrollment
+  f6b73fdf46e72776362f53dc99792005afb19286 UNMATCHED [#1835] Reject variable defaults and orphaned diagnostic payloads
+  d7d5bc5510b3a7d9d1cbb65539709eb4e4f82c93 UNMATCHED [#1835] Tighten GraphQL usage contract and inventory
+  270906b37da38ea84d123b77f33d5d86a16afe82 UNMATCHED [#1835] Define GraphQL usage inventory and metadata contract
+  932ecf1739056a780cf975584931e99243e619a6 UNMATCHED [#1818] Normalize plan task story intents for WBS
+
+11. /Users/kpburson/.codex/worktrees/123e/ai-task-manager/.worktrees/1836-graphql-storage
+Branch: feature/child/1836; current HEAD: b3c2974fb01a7dc49f61b987ef2544fa15c0e34f
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 6; classes: {"UNMATCHED": 6}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: 
+  b3c2974fb01a7dc49f61b987ef2544fa15c0e34f UNMATCHED [#1836] Harden storage snapshots and inherited attribution
+  0a9c212b8ef808a7c79b02f3da03d4b92161010d UNMATCHED [#1836] Add Git-common GraphQL usage storage and enrollment
+  f6b73fdf46e72776362f53dc99792005afb19286 UNMATCHED [#1835] Reject variable defaults and orphaned diagnostic payloads
+  d7d5bc5510b3a7d9d1cbb65539709eb4e4f82c93 UNMATCHED [#1835] Tighten GraphQL usage contract and inventory
+  270906b37da38ea84d123b77f33d5d86a16afe82 UNMATCHED [#1835] Define GraphQL usage inventory and metadata contract
+  932ecf1739056a780cf975584931e99243e619a6 UNMATCHED [#1818] Normalize plan task story intents for WBS
+
+12. /Users/kpburson/.codex/worktrees/1811-integration-proof/ai-task-manager
+Branch: feature/child/1811; current HEAD: d8f666fba749521bece368b8274d535bec4f7fe9
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 4; classes: {"VERIFIED-MERGED-PR-SOURCE": 4}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1820
+
+13. /Users/kpburson/.codex/worktrees/1812-receipt-close/ai-task-manager
+Branch: detached; current HEAD: d8f666fba749521bece368b8274d535bec4f7fe9
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 4; classes: {"VERIFIED-MERGED-PR-SOURCE": 4}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1820
+
+14. /Users/kpburson/.codex/worktrees/1813-regression-guidance/ai-task-manager
+Branch: detached; current HEAD: 4b5f9d0fc2d1429bbb9eb696bd949740f6030a5e
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 1; classes: {"VERIFIED-MERGED-PR-SOURCE": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1820
+
+15. /Users/kpburson/.codex/worktrees/1847-draft/ai-task-manager
+Branch: codex/1847-draft; current HEAD: 9b9825cee89e6dde1f73d664f19e09429481248d
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 10; classes: {"UNMATCHED": 10}
+Current tracked/untracked WIP: True; earlier hold: Uncommitted/untracked files
+PRs: 
+  9b9825cee89e6dde1f73d664f19e09429481248d UNMATCHED [#1847] Finalize peer review review-ba8635687023d792982f5a0148954d7a
+  3bb590b5702754f4d222ce43262291083eb28b99 UNMATCHED [#1847] Peer review revision 2
+  042ed2d8fb002feeda3771a85761ab5d27dcb8b7 UNMATCHED [#1847] Peer review revision 1
+  29bd66e799633f784be324e34c728ee2cf4721a6 UNMATCHED [#1847] Record converged Astra SAR round 3
+  31ebcc2d1dedbcc46b57ac8e061575ab314734c2 UNMATCHED [#1847] Revise criteria design through Astra SAR round 2
+  854d2448969db48816f2916adc2f8f877c1ca396 UNMATCHED [#1847] Revise criteria design through Astra SAR round 1
+  c80fadafc5c5859d7baaa9a829821f9994d5c89b UNMATCHED [#1847] Record GPT-6 Astra specification SAR
+  77e8741b04ad0a74b6ea10775e0f237272d123e3 UNMATCHED [#1847] Record GPT 6.1 Astra SAR retry refusal
+  6df1d7f477e2c6a871c9f1a8eefad8de5061f065 UNMATCHED [#1847] Record exact Astra SAR selection refusal
+  b1c86bd8685910f6d172d876eb5a8ea8b3e8ab5d UNMATCHED [#1847] Draft governed criteria revision design
+
+16. /Users/kpburson/.codex/worktrees/3719/ai-task-manager
+Branch: codex/uninstall-cleanup; current HEAD: 9b2889f4d29cfc727a25f738263db01e5932a1c7
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 1; classes: {"VERIFIED-MERGED-PR-SOURCE": 1}
+Current tracked/untracked WIP: True; earlier hold: Uncommitted/untracked files
+PRs: https://github.com/kburson/ai-task-manager/pull/1680
+
+17. /Users/kpburson/.codex/worktrees/5e96/ai-task-manager
+Branch: codex/1821-branch-local-estimation-sar; current HEAD: 609eb47c8059052c61086fb00faff7dcd761ad29
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 5; classes: {"UNMATCHED": 3, "GENERIC-MESSAGE-COINCIDENCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Issue #1821 is open
+PRs: 
+  609eb47c8059052c61086fb00faff7dcd761ad29 UNMATCHED [#1821] docs: capture XPR recovery collateral
+  06a6813b58c10236b3486228b9c07e0439e3e8eb UNMATCHED chore: finalize peer review review-26eae81664ce959353d2e614ce3af1fc
+  33579649fbabdeff5da7e520d555b6161b342fb7 GENERIC-MESSAGE-COINCIDENCE Peer review revision 1
+  83e26e246fe8b8c56f3703e7480bff5993855767 GENERIC-MESSAGE-COINCIDENCE Peer review revision 1
+  4a7f805ff8921b55a709ad4027a5703a74723ec5 UNMATCHED [#1821] docs: record branch-local estimation SAR
+
+18. /Users/kpburson/.codex/worktrees/655b/ai-task-manager
+Branch: codex/1848-backlog-design-drafts; current HEAD: 70dd5e2dd6f5d9f89302ddabbdccddc57026112e
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 6; classes: {"VERIFIED-MERGED-PR-SOURCE": 6}
+Current tracked/untracked WIP: False; earlier hold: Live process has cwd here or in child worktree
+PRs: https://github.com/kburson/ai-task-manager/pull/1849
+Complete branch patch equals integration commit: {"pr": 1849, "trunkSha": "4187a64fae6319808ec350f3beb0f126fc36769b", "patchId": "d7b0f67f9517f0a317c543e84d17e23dd1f7dfcf", "base": "291d27a3eb1c8eb6d94432079de67f0fb3f666fc"}
+
+19. /Users/kpburson/.codex/worktrees/655b/ai-task-manager/.scratch/.task-test-1848-edbfabd6-73172-f796a10f
+Branch: detached; current HEAD: edbfabd65774e2db4da05f42bf127e7b19180586
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 5; classes: {"VERIFIED-MERGED-PR-SOURCE": 5}
+Current tracked/untracked WIP: False; earlier hold: Sandbox belongs to live parent; wait for owner cleanup
+PRs: https://github.com/kburson/ai-task-manager/pull/1849
+
+20. /Users/kpburson/.codex/worktrees/issue-1835/ai-task-manager
+Branch: feature/child/1835; current HEAD: f6b73fdf46e72776362f53dc99792005afb19286
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 4; classes: {"UNMATCHED": 4}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: 
+  f6b73fdf46e72776362f53dc99792005afb19286 UNMATCHED [#1835] Reject variable defaults and orphaned diagnostic payloads
+  d7d5bc5510b3a7d9d1cbb65539709eb4e4f82c93 UNMATCHED [#1835] Tighten GraphQL usage contract and inventory
+  270906b37da38ea84d123b77f33d5d86a16afe82 UNMATCHED [#1835] Define GraphQL usage inventory and metadata contract
+  932ecf1739056a780cf975584931e99243e619a6 UNMATCHED [#1818] Normalize plan task story intents for WBS
+
+21. /Users/kpburson/.codex/worktrees/parallel-chore-mode/ai-task-manager
+Branch: codex/parallel-chore-mode; current HEAD: 199d2dae9ab26211ac90c46ce96627523e66a270
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 2; classes: {"VERIFIED-MERGED-PR-SOURCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1815; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1815
+Complete branch patch equals integration commit: {"pr": 1815, "trunkSha": "e301a5eec5650d08476a79ce8c529ab988f3ef1e", "patchId": "44928aa44fa76989c2f43ff692da3541e4348495", "base": "7f08f72d60c2b734518c1e6ddd9346106e8a0825"}
+
+22. /Users/kpburson/.codex/worktrees/planning/ai-task-manager
+Branch: codex/aitm-mcp-adapter-xpr-first; current HEAD: 46952470a4f89a61bf7f689ea7937397ed8314d2
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 2; classes: {"UNMATCHED": 2}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: 
+  46952470a4f89a61bf7f689ea7937397ed8314d2 UNMATCHED docs: exclude interrupted XPR-first setup pending fresh author
+  e03773d98415086d9875781216188c8d4d5d45dc UNMATCHED docs: freeze original spec for XPR-first experiment
+
+23. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1207-assignee-state
+Branch: codex/issue-1207-assignee-state; current HEAD: c0697158c880be8ca60b46839a38aa82d6886cbb
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 8; classes: {"UNMATCHED": 8}
+Current tracked/untracked WIP: True; earlier hold: Uncommitted/untracked files
+PRs: 
+  c0697158c880be8ca60b46839a38aa82d6886cbb UNMATCHED [#1207] Harden assignment races and project lookup
+  8a85e8ce39a6f7588904608e47b5bb23e0bd065e UNMATCHED [#1207] Close assignment verification races
+  88b86f51c730ca1158cd6fd4fe65097d2a9e134c UNMATCHED [#1207] Harden Assigned invariant recovery paths
+  a969bd0033a82d6b875ece5e6c727b9158b3b900 UNMATCHED [#1207] fix: harden assigned invariant review paths
+  3f6bab0c5a3eeb845e116fe6c280b9f0c31c826b UNMATCHED [#1207] docs: reconcile implementation plan evidence
+  ac2c47539ecc4a2553f5dcaba67ee2105a9b4993 UNMATCHED [#1207] fix: harden assigned invariant coupling
+  fd016a9bb96ebd59904e14ddb2d1585adef24281 UNMATCHED [#1207] feat: bind Assigned state to assignees
+  2cc8f20ae2075424c7e548159c2d137bb8869d70 UNMATCHED [#1207] docs: plan assigned assignee invariant
+
+24. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1481-receipt-integrity
+Branch: codex/defect-1481-receipt-integrity; current HEAD: 76f58cd2335c8cd5005df47159e972d0fc9eb22b
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 10; classes: {"VERIFIED-MERGED-PR-SOURCE": 10}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1482; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1482
+Complete branch patch equals integration commit: {"pr": 1482, "trunkSha": "345e62aed1628f8c838452695b86a96cc12abe24", "patchId": "4c4e0de4607078ac8e4a2ce45116c932df2e7939", "base": "651d2af1d61d06064f5eaed8fafa707cafc7a2f9"}
+
+25. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1485-merge-back-authority
+Branch: codex/defect-1485-merge-back-authority; current HEAD: 94575a4a009383c8749343c5c8023241c84ebd5c
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 5; classes: {"VERIFIED-MERGED-PR-SOURCE": 5}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1487; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1487
+Complete branch patch equals integration commit: {"pr": 1487, "trunkSha": "f83eb22f6e60c26235da479c054edbdb3ee0755b", "patchId": "ef8b1869257901135b1fac88e052a880489013e6", "base": "e5b3060cb27caf92239f05ca5552f364d500eec7"}
+
+26. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1486-graph-node-authority
+Branch: codex/issue-1486-graph-node-authority; current HEAD: 5565718a479ece4bf445f4f1862a9f682637d6db
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 6; classes: {"VERIFIED-MERGED-PR-SOURCE": 6}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1606; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1606
+Complete branch patch equals integration commit: {"pr": 1606, "trunkSha": "900da3dd6bfa809dfdafbdcc51a031755605d0c4", "patchId": "a8a3c37a7f6fff6cb1129ff09bfe8863a6860bb3", "base": "678463fc105fd88e4954d9da0ef464e43b5f1414"}
+
+27. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1488-review-bind-timer
+Branch: codex/defect-1488-review-bind-timer; current HEAD: 82eba885bac295a57c236c611c84e0fd6f69d7e3
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 3; classes: {"VERIFIED-MERGED-PR-SOURCE": 3}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1489; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1489
+Complete branch patch equals integration commit: {"pr": 1489, "trunkSha": "3a044ea8411a9f0e34f54c33f412749cb735c457", "patchId": "95c9ee7f68f965592880e6b62e26b8555f172743", "base": "f83eb22f6e60c26235da479c054edbdb3ee0755b"}
+
+28. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1490-squash-delivery-proof
+Branch: codex/defect-1490-squash-delivery-proof; current HEAD: 8fafa6681a54c349bd2a02a69e944c07c7df6468
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 6; classes: {"VERIFIED-MERGED-PR-SOURCE": 6}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1510; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1510
+Complete branch patch equals integration commit: {"pr": 1510, "trunkSha": "081aa3e8df11405695ac6015a71bd92749f342cf", "patchId": "76fd50712d2a08ecbc86df2b3cb82382f80fc424", "base": "00c38cf73a7e4bf7a67ae1af039836e894488f94"}
+
+29. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1512-full-auto-default
+Branch: codex/chore-1512-full-auto-default; current HEAD: 99bec143fd3c6401076da84ab78fefe65d054d60
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 1; classes: {"VERIFIED-MERGED-PR-SOURCE": 1}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1513; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1513
+Complete branch patch equals integration commit: {"pr": 1513, "trunkSha": "07984e5137ba53f56fe062a351e5dd4111fb87bd", "patchId": "e3fb648f46d8ab9134a829b6266534b4213a0a93", "base": "91e65af227047f0c7e846c3ea75fe652f35b8dab"}
+
+30. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1516-author-finalization-contract
+Branch: codex/issue-1516-author-finalization-contract; current HEAD: 094a10bddba9102b4bf9f2483e3b7ba6583bd16c
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 7; classes: {"VERIFIED-MERGED-PR-SOURCE": 7}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1612; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1612
+Complete branch patch equals integration commit: {"pr": 1612, "trunkSha": "99c5e2c6f79b246144483068eafdc2369a3c5b09", "patchId": "fc87cb8c43194bbc60bd1cc1d7a69429e0a286f9", "base": "f2bbe7845b21424d682c2bd97ea16647a0e9e9b2"}
+
+31. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1557-blocked-disposition-dependencies
+Branch: codex/feature-1557-blocked-disposition-dependencies; current HEAD: 698d712240b4f1eb4d1b18cda1faa6c977f7c060
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 20; classes: {"VERIFIED-MERGED-PR-SOURCE": 20}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1563; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1563
+Complete branch patch equals integration commit: {"pr": 1563, "trunkSha": "7daa7bfaece8bca1e9df492ffb03ca0841b35024", "patchId": "c8f7d54c28203d56cbc2dbd6a569bcc7f38dac65", "base": "ce9d066dbe4bb0e92d46b3e10970346fff7c59db"}
+
+32. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1558-ask-the-script-spec
+Branch: codex/1558-ask-the-script-spec; current HEAD: 99588ebbe299567496554d034bff04e2b0063309
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 1; classes: {"VERIFIED-MERGED-PR-SOURCE": 1}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1644; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1644
+Complete branch patch equals integration commit: {"pr": 1644, "trunkSha": "b3f3671efb39c482f31671801abe555e4999639e", "patchId": "a1dd8496132f2347b9bec740df0d02fab42896a8", "base": "60f43d809f1b4e8475deac559980100b630a2a0b"}
+
+33. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1558-epic
+Branch: feature/epic/1558; current HEAD: ee5803e4ae031210c269cf1e655167e7bdd305ab
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 204; classes: {"VERIFIED-MERGED-PR-SOURCE": 204}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1775; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+Complete branch patch equals integration commit: {"pr": 1775, "trunkSha": "05cacd330f6335b0b61ef40de1145b581814eb21", "patchId": "5161f09719c5008f7bb97ae75dad642e9090b45f", "base": "5e7a83c72217091cb585c6100f311f250891d6e2"}
+
+34. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1573-merge-method-help
+Branch: codex/issue-1573-merge-method-help; current HEAD: 15632970a34a8ed2deb26e4594570756baa1d492
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 3; classes: {"VERIFIED-MERGED-PR-SOURCE": 3}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1593; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1593
+Complete branch patch equals integration commit: {"pr": 1593, "trunkSha": "75647c5657cd96f849b275364f0a56df0996c24c", "patchId": "c02a55d5d27069ff98b33f6a32addaf38800afdc", "base": "493b4e591cce8867894b3b5ea99f1cf584366e13"}
+
+35. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1574-historical-intent
+Branch: codex/defect-1574-historical-intent; current HEAD: b9fce8501a4d1ec3583c949475a69d95ea8c5d1f
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 2; classes: {"VERIFIED-MERGED-PR-SOURCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1576; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1576
+Complete branch patch equals integration commit: {"pr": 1576, "trunkSha": "34c7bd288d98593f7374bc7b964426cb0f873403", "patchId": "d5b8a516c0b6458047b3c4aff97e8c6a288ef251", "base": "bb052ee3993315a7a454345150aa00bdecac20c0"}
+
+36. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1579-governed-plan-policy
+Branch: codex/issue-1579-governed-plan-policy; current HEAD: 190c03c6d3ed139743326ca282e54f9f6d19e1da
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 4; classes: {"VERIFIED-MERGED-PR-SOURCE": 4}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1607; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1607
+Complete branch patch equals integration commit: {"pr": 1607, "trunkSha": "8bf0ef6f757560ef0c5a544c6b91e94fed562669", "patchId": "66adf14a4f8f11d8a9f8d04d8647f5ea8fa8b2c0", "base": "900da3dd6bfa809dfdafbdcc51a031755605d0c4"}
+
+37. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1581-reviewer-lint-policy
+Branch: codex/issue-1581-reviewer-lint-policy; current HEAD: 3dce8ffe22d909a92d561ac8bb335395848c8cf6
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 2; classes: {"VERIFIED-MERGED-PR-SOURCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1608; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1608
+Complete branch patch equals integration commit: {"pr": 1608, "trunkSha": "f2bbe7845b21424d682c2bd97ea16647a0e9e9b2", "patchId": "e1df809a1b1af1cd509f8a30351980b44682ec9f", "base": "8bf0ef6f757560ef0c5a544c6b91e94fed562669"}
+
+38. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1583-secondary-squash-recovery
+Branch: codex/defect-1583-secondary-squash-recovery; current HEAD: ddcafc07b45989a136467028b64027ade0515e40
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 2; classes: {"VERIFIED-MERGED-PR-SOURCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1584; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1584
+Complete branch patch equals integration commit: {"pr": 1584, "trunkSha": "561c922319b5bb4c935f6274b30ac3b94fa17783", "patchId": "23a22b9e40c60b2ee146d830b0206bdc95c0e054", "base": "fd2b0830d9c214aac087de4c29efbd13f4c85b0d"}
+
+39. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1591-legacy-index-reconciliation
+Branch: codex/issue-1591-legacy-index-reconciliation; current HEAD: 65ca762ff0c72c34ef925e0a6752054e1b60834a
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 11; classes: {"VERIFIED-MERGED-PR-SOURCE": 11}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1594; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1594
+Complete branch patch equals integration commit: {"pr": 1594, "trunkSha": "0988881f5796d19c270e4121a851143bb5046a6f", "patchId": "e4f797aed8597ebf7de3e945b8362e3290764031", "base": "75647c5657cd96f849b275364f0a56df0996c24c"}
+
+40. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1592-remove-co-review-runtime
+Branch: codex/issue-1592-remove-co-review-runtime; current HEAD: 8dd7b298b1168fdf3ec50ff6cd072f2944db8e78
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 11; classes: {"VERIFIED-MERGED-PR-SOURCE": 11}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1605; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1605
+Complete branch patch equals integration commit: {"pr": 1605, "trunkSha": "678463fc105fd88e4954d9da0ef464e43b5f1414", "patchId": "73e3368b747c89bfaee2235a920dbd1b67115c88", "base": "16da6e1fd18d915b0f5e1a3e2db879c53f6d7ea1"}
+
+41. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1595-vc-citation
+Branch: codex/defect-1595-vc-citation; current HEAD: 4881ecd6ba56ec2cf9850cfe19b503703aa14b43
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 2; classes: {"VERIFIED-MERGED-PR-SOURCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1596; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1596
+Complete branch patch equals integration commit: {"pr": 1596, "trunkSha": "d8c228abf7db2aa1a8ea0c3b882b8bfdfb443827", "patchId": "2ad2def52a918ade63f4fb674d541c8e79e8d398", "base": "0988881f5796d19c270e4121a851143bb5046a6f"}
+
+42. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1597-tombstone-recovery
+Branch: codex/defect-1597-tombstone-recovery; current HEAD: 9c06054d9d7b9345a76a51c0679493c1b3aeab4e
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 3; classes: {"VERIFIED-MERGED-PR-SOURCE": 3}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1598; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1598
+Complete branch patch equals integration commit: {"pr": 1598, "trunkSha": "ac090344c87d6c0dfea9560598762fa00671907f", "patchId": "c38533619f4ca2b1d274154c286a873e6afee417", "base": "d8c228abf7db2aa1a8ea0c3b882b8bfdfb443827"}
+
+43. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1601-merge-back-child-authority
+Branch: codex/defect-1601-merge-back-child-authority; current HEAD: b0c7480873e7f305ef4ff8729f309fc5f9abc6e1
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 2; classes: {"VERIFIED-MERGED-PR-SOURCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1602; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1602
+Complete branch patch equals integration commit: {"pr": 1602, "trunkSha": "56711d9b2ab5c306df117929fa294c0cc9ca4fa4", "patchId": "b329f61bfe105c14cf8e2b0b9cdfdb9b5b06ce21", "base": "ac090344c87d6c0dfea9560598762fa00671907f"}
+
+44. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1603-epic-test-deferral
+Branch: codex/defect-1603-epic-test-deferral; current HEAD: 0c3e50b6e481f8e55c7a18981d255d881c8b2b91
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 5; classes: {"VERIFIED-MERGED-PR-SOURCE": 5}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1604; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1604
+Complete branch patch equals integration commit: {"pr": 1604, "trunkSha": "16da6e1fd18d915b0f5e1a3e2db879c53f6d7ea1", "patchId": "092144fa6465e8315795028a37708eb43a8bf114", "base": "56711d9b2ab5c306df117929fa294c0cc9ca4fa4"}
+
+45. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1632-trunk-delivery-gate
+Branch: codex/defect-1632-trunk-delivery-gate; current HEAD: 2e41eece3b92f886c4d173a422de386cfcae793e
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 2; classes: {"VERIFIED-MERGED-PR-SOURCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1634; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1634
+Complete branch patch equals integration commit: {"pr": 1634, "trunkSha": "cc3a8307644be8af3b84194c236168e26c506a47", "patchId": "d4060a3e326fad3b517b04e2b4a928d201c15072", "base": "e4330f916f15a6f81984d75c1a628834db47de39"}
+
+46. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1633-done-delivery-survey
+Branch: codex/audit-1633-done-delivery-survey; current HEAD: c5d712c2adddbf6411408454e0c6493d004952df
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 5; classes: {"VERIFIED-MERGED-PR-SOURCE": 5}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1636; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1636
+Complete branch patch equals integration commit: {"pr": 1636, "trunkSha": "1eb2bfead6fe54a12cb6cccd12c9ab9cad2dc0ce", "patchId": "4ea812f0183cbff0b8c3a163e5ae3414d0440c39", "base": "cc3a8307644be8af3b84194c236168e26c506a47"}
+
+47. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1635-1624-delivery-recovery
+Branch: codex/audit-1635-1624-delivery-recovery; current HEAD: 0a534ec156cf308e5f6126f9d85c63679c3714e2
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 23; classes: {"VERIFIED-MERGED-PR-SOURCE": 23}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1641; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1637; https://github.com/kburson/ai-task-manager/pull/1639; https://github.com/kburson/ai-task-manager/pull/1640; https://github.com/kburson/ai-task-manager/pull/1641
+Complete branch patch equals integration commit: {"pr": 1641, "trunkSha": "8661b2dd8de3742bd3c68ee7328b1182a67f88f4", "patchId": "cd9a1865cee37375f3ea3de0a76e2d81f16c0c54", "base": "d8162ee027e1a61d56d0eb2411c5a99b30733932"}
+
+48. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1665-session-promote-readiness
+Branch: feature/epic/1665; current HEAD: 8bd263471d1e2c8c841d215baa78fe6554b22f7c
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 64; classes: {"VERIFIED-REBASED-PATCH-IN-PR": 60, "MATCHED-CONTEXT-FREE-DELTA-REVIEW": 3, "REBASE-ADAPTED-DELIVERED-VERSION": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  954e0a6649ba5ab458d5fe6f71979b7bc7957d65 MATCHED-CONTEXT-FREE-DELTA-REVIEW feat(action-decision): evaluate complete guards [#1729]
+  b9d77a73ccf0e8a820303012c3f609e07c4263e9 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  ac6672f96f6fd6e4751df8daf6fd345fe38763df MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  ac88b8c078f380c0c912db14088f96522d398371 REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+49. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1666-test-entry-readiness
+Branch: feature/child/1666; current HEAD: 9dd260c10c51ecf3bb519f6471d94d5aaf553cba
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 67; classes: {"VERIFIED-REBASED-PATCH-IN-PR": 63, "MATCHED-CONTEXT-FREE-DELTA-REVIEW": 3, "REBASE-ADAPTED-DELIVERED-VERSION": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  954e0a6649ba5ab458d5fe6f71979b7bc7957d65 MATCHED-CONTEXT-FREE-DELTA-REVIEW feat(action-decision): evaluate complete guards [#1729]
+  b9d77a73ccf0e8a820303012c3f609e07c4263e9 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  ac6672f96f6fd6e4751df8daf6fd345fe38763df MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  ac88b8c078f380c0c912db14088f96522d398371 REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+50. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1667-review-readiness
+Branch: feature/child/1667; current HEAD: 2b71f294e1b9b5363dae1352d756d481f39486cc
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 73; classes: {"VERIFIED-REBASED-PATCH-IN-PR": 69, "MATCHED-CONTEXT-FREE-DELTA-REVIEW": 3, "REBASE-ADAPTED-DELIVERED-VERSION": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  954e0a6649ba5ab458d5fe6f71979b7bc7957d65 MATCHED-CONTEXT-FREE-DELTA-REVIEW feat(action-decision): evaluate complete guards [#1729]
+  b9d77a73ccf0e8a820303012c3f609e07c4263e9 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  ac6672f96f6fd6e4751df8daf6fd345fe38763df MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  ac88b8c078f380c0c912db14088f96522d398371 REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+51. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1668-delivery-readiness
+Branch: feature/child/1668; current HEAD: e76757037eb662d8f814a000cb22c8e479ffe944
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 78; classes: {"MATCHED-CONTEXT-FREE-DELTA-REVIEW": 4, "VERIFIED-REBASED-PATCH-IN-PR": 72, "REBASE-ADAPTED-DELIVERED-VERSION": 2}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  e76757037eb662d8f814a000cb22c8e479ffe944 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1668] Refresh delivery authority at effect boundaries
+  7d7e524657ed0e412112520e4b3348d2222a967b REBASE-ADAPTED-DELIVERED-VERSION [#1668] Validate delivery readiness against live records and authority
+  954e0a6649ba5ab458d5fe6f71979b7bc7957d65 MATCHED-CONTEXT-FREE-DELTA-REVIEW feat(action-decision): evaluate complete guards [#1729]
+  b9d77a73ccf0e8a820303012c3f609e07c4263e9 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  ac6672f96f6fd6e4751df8daf6fd345fe38763df MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  ac88b8c078f380c0c912db14088f96522d398371 REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+52. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1669-close-readiness
+Branch: feature/child/1669; current HEAD: 8f0d319e11769ff22e6de24106cab85a394ac803
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 87; classes: {"VERIFIED-REBASED-PATCH-IN-PR": 81, "MATCHED-CONTEXT-FREE-DELTA-REVIEW": 4, "REBASE-ADAPTED-DELIVERED-VERSION": 2}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  e76757037eb662d8f814a000cb22c8e479ffe944 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1668] Refresh delivery authority at effect boundaries
+  7d7e524657ed0e412112520e4b3348d2222a967b REBASE-ADAPTED-DELIVERED-VERSION [#1668] Validate delivery readiness against live records and authority
+  954e0a6649ba5ab458d5fe6f71979b7bc7957d65 MATCHED-CONTEXT-FREE-DELTA-REVIEW feat(action-decision): evaluate complete guards [#1729]
+  b9d77a73ccf0e8a820303012c3f609e07c4263e9 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  ac6672f96f6fd6e4751df8daf6fd345fe38763df MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  ac88b8c078f380c0c912db14088f96522d398371 REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+53. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1670-action-parity
+Branch: feature/child/1670; current HEAD: ada8f2855c438fe66c8c59f0e31c3e187d2cc3b8
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 92; classes: {"VERIFIED-REBASED-PATCH-IN-PR": 86, "MATCHED-CONTEXT-FREE-DELTA-REVIEW": 4, "REBASE-ADAPTED-DELIVERED-VERSION": 2}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  e76757037eb662d8f814a000cb22c8e479ffe944 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1668] Refresh delivery authority at effect boundaries
+  7d7e524657ed0e412112520e4b3348d2222a967b REBASE-ADAPTED-DELIVERED-VERSION [#1668] Validate delivery readiness against live records and authority
+  954e0a6649ba5ab458d5fe6f71979b7bc7957d65 MATCHED-CONTEXT-FREE-DELTA-REVIEW feat(action-decision): evaluate complete guards [#1729]
+  b9d77a73ccf0e8a820303012c3f609e07c4263e9 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  ac6672f96f6fd6e4751df8daf6fd345fe38763df MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  ac88b8c078f380c0c912db14088f96522d398371 REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+54. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1678-consumer-release
+Branch: feature/child/1678; current HEAD: e3ae66d29ab14b9ac7465b5ee3f3d6d629263f1e
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 196; classes: {"VERIFIED-MERGED-PR-SOURCE": 196}
+Current tracked/untracked WIP: False; earlier hold: HEAD is contained in merged trunk PR #1775; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+
+55. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1683-review-waiver-delivery
+Branch: codex/1683-review-waiver-delivery; current HEAD: b125d453b1c69c768afa5b09c9fb09cb505ffe25
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 5; classes: {"VERIFIED-MERGED-PR-SOURCE": 5}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1686; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1686
+Complete branch patch equals integration commit: {"pr": 1686, "trunkSha": "15706f4c9310787651b84cb8192b8e0ab9d408e5", "patchId": "2ed30ce42d15a23b34cadaf5d372af0e0767da5a", "base": "157990b0bce21a938da71114377c1e5e3c12f229"}
+
+56. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1685-ci-stacked-pr
+Branch: codex/1685-ci-stacked-pr; current HEAD: 394caaf53ce8a9bee21694d9fd3c89475ecc2937
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 4; classes: {"VERIFIED-MERGED-PR-SOURCE": 4}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1687; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1687
+Complete branch patch equals integration commit: {"pr": 1687, "trunkSha": "157990b0bce21a938da71114377c1e5e3c12f229", "patchId": "c44900ecc5ac36457b800c8e461942d766ccfddb", "base": "8f3547e4fdab9f05f293d9b65e95b62f3972424c"}
+
+57. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1716-plan-approval-evidence-repair
+Branch: codex/1716-plan-approval-evidence-repair; current HEAD: eb871922ec4914c99918e516161276aceb1f41f0
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 2; classes: {"VERIFIED-MERGED-PR-SOURCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1717; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1717
+Complete branch patch equals integration commit: {"pr": 1717, "trunkSha": "7f441b7532add7f0319ddfeb76fd5ec6cad0e100", "patchId": "f3adec4f9b4927b91ea3914ee2a3e5ab79a9a6f5", "base": "4663a2fa103d0311e06fdcef73edff7a625bbcce"}
+
+58. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1720-plan-transition-authority
+Branch: codex/1720-plan-transition-authority; current HEAD: dafb599e7da3028fd76f4090fda5cf09d4e71a0f
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 15; classes: {"VERIFIED-MERGED-PR-SOURCE": 15}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1722; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1722
+Complete branch patch equals integration commit: {"pr": 1722, "trunkSha": "45b2f21b741ee3fdbc223b838462eea18741e8eb", "patchId": "bdeaf75831becfd4fd31a2266ba17eefab80e509", "base": "72123cd9e79fb4c85679c7e44eb1d583731c4cf6"}
+
+59. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1728-authority-observations
+Branch: feature/child/1728; current HEAD: 309f6fe5ea3206a6159893e76b8c4be01f8433f7
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 45; classes: {"VERIFIED-REBASED-PATCH-IN-PR": 41, "MATCHED-CONTEXT-FREE-DELTA-REVIEW": 2, "UNVERIFIED-MERGE-COMMIT": 1, "REBASE-ADAPTED-DELIVERED-VERSION": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  22b6b12418c41c704dfe292dc2f8b695eabaa4ad MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  0d89d887c948ff015414fe656c47f136a8ab6f44 UNVERIFIED-MERGE-COMMIT Merge branch 'feature/epic/1663' into feature/child/1728
+  5b07f8d17fc0cd9cb7d00ef1b6f364e9380bd817 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  2544d1eca544ff493928a520860849c5de261fbe REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+60. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1750-session-authority
+Branch: feature/child/1750; current HEAD: 3e22569fda1cf44160487d80a18a050aa43cc508
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 58; classes: {"VERIFIED-REBASED-PATCH-IN-PR": 54, "MATCHED-CONTEXT-FREE-DELTA-REVIEW": 3, "REBASE-ADAPTED-DELIVERED-VERSION": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  954e0a6649ba5ab458d5fe6f71979b7bc7957d65 MATCHED-CONTEXT-FREE-DELTA-REVIEW feat(action-decision): evaluate complete guards [#1729]
+  b9d77a73ccf0e8a820303012c3f609e07c4263e9 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  ac6672f96f6fd6e4751df8daf6fd345fe38763df MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  ac88b8c078f380c0c912db14088f96522d398371 REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+61. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1751-early-promotion-readiness
+Branch: feature/child/1751; current HEAD: e406aeccee7f64f94308c8d238af2746f9c45277
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 59; classes: {"VERIFIED-REBASED-PATCH-IN-PR": 55, "MATCHED-CONTEXT-FREE-DELTA-REVIEW": 3, "REBASE-ADAPTED-DELIVERED-VERSION": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  954e0a6649ba5ab458d5fe6f71979b7bc7957d65 MATCHED-CONTEXT-FREE-DELTA-REVIEW feat(action-decision): evaluate complete guards [#1729]
+  b9d77a73ccf0e8a820303012c3f609e07c4263e9 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  ac6672f96f6fd6e4751df8daf6fd345fe38763df MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  ac88b8c078f380c0c912db14088f96522d398371 REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+62. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1752-early-navigation-conformance
+Branch: feature/child/1752; current HEAD: 99814535b4bf12307040a92c521bf674e9177e42
+Assessment: TRACED-TO-PR1775-WITH-REBASE-ADAPTATIONS-REVIEW
+Outside origin/trunk: 61; classes: {"VERIFIED-REBASED-PATCH-IN-PR": 57, "MATCHED-CONTEXT-FREE-DELTA-REVIEW": 3, "REBASE-ADAPTED-DELIVERED-VERSION": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+  954e0a6649ba5ab458d5fe6f71979b7bc7957d65 MATCHED-CONTEXT-FREE-DELTA-REVIEW feat(action-decision): evaluate complete guards [#1729]
+  b9d77a73ccf0e8a820303012c3f609e07c4263e9 MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1728] test: enforce observation boundary and package surface
+  ac6672f96f6fd6e4751df8daf6fd345fe38763df MATCHED-CONTEXT-FREE-DELTA-REVIEW [#1662] fix: close projection review gaps
+  ac88b8c078f380c0c912db14088f96522d398371 REBASE-ADAPTED-DELIVERED-VERSION [#1661] test: align guard contract expectations
+
+63. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1755-delivery-attribution-exception
+Branch: codex/defect-1755-delivery-attribution-exception; current HEAD: c0f114435ab5b7cc5a4a32676c35bf59322685c7
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 22; classes: {"VERIFIED-MERGED-PR-SOURCE": 22}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1771; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1771
+Complete branch patch equals integration commit: {"pr": 1771, "trunkSha": "5e7a83c72217091cb585c6100f311f250891d6e2", "patchId": "c2010996061d67a38a9dad9a02a6dd1c6b9fb154", "base": "b0b299c3690f876bceccd175d1cda19b8da6ebf6"}
+
+64. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1772-context-budgets
+Branch: feature/child/1772; current HEAD: cce58c72565ef22e8a6acbb1ccc2d458176c7ffa
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 192; classes: {"VERIFIED-MERGED-PR-SOURCE": 192}
+Current tracked/untracked WIP: False; earlier hold: HEAD is contained in merged trunk PR #1775; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+
+65. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1773-adapter-protocols
+Branch: feature/child/1773; current HEAD: edd049b0bb6a3238bbcdfd0a18a3ea42145965d8
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 195; classes: {"VERIFIED-MERGED-PR-SOURCE": 195}
+Current tracked/untracked WIP: False; earlier hold: HEAD is contained in merged trunk PR #1775; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+
+66. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1774-release-certification
+Branch: feature/child/1774; current HEAD: e3ae66d29ab14b9ac7465b5ee3f3d6d629263f1e
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 196; classes: {"VERIFIED-MERGED-PR-SOURCE": 196}
+Current tracked/untracked WIP: False; earlier hold: HEAD is contained in merged trunk PR #1775; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1775
+
+67. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/ai-peer-review-design
+Branch: codex/ai-peer-review-design; current HEAD: 3a1be5f0b9d016fac9ecf2ad656145e839cf6fa4
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 74; classes: {"VERIFIED-MERGED-PR-SOURCE": 74}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1590; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1582; https://github.com/kburson/ai-task-manager/pull/1585; https://github.com/kburson/ai-task-manager/pull/1586; https://github.com/kburson/ai-task-manager/pull/1587; https://github.com/kburson/ai-task-manager/pull/1590
+Complete branch patch equals integration commit: {"pr": 1590, "trunkSha": "493b4e591cce8867894b3b5ea99f1cf584366e13", "patchId": "c3b4b8363ee31ad3df4a78f798d029453d9ecfb5", "base": "e2556ca5466f3f63b27fe5b31d870acf10b085dd"}
+
+68. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/chore-hybrid-insights-specs
+Branch: codex/chore-hybrid-insights-specs; current HEAD: 4f70500b60c78a090aefd9eea052122c04467480
+Assessment: PARTIAL-OR-UNMATCHED-INVESTIGATE
+Outside origin/trunk: 1; classes: {"UNMATCHED": 1}
+Current tracked/untracked WIP: False; earlier hold: Clean checkout, but HEAD delivery not proven
+PRs: 
+  4f70500b60c78a090aefd9eea052122c04467480 UNMATCHED chore: add hybrid ledger and insights program plans
+
+69. /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/estimation-rubric-spec
+Branch: codex/estimation-rubric-spec; current HEAD: d03b6526ea604bd03a9e33755075b26d942c7366
+Assessment: ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH
+Outside origin/trunk: 2; classes: {"VERIFIED-MERGED-PR-SOURCE": 2}
+Current tracked/untracked WIP: False; earlier hold: Exact HEAD merged to trunk in PR #1822; archive ignored evidence before removal
+PRs: https://github.com/kburson/ai-task-manager/pull/1822
+Complete branch patch equals integration commit: {"pr": 1822, "trunkSha": "1421b1284bedec675d0e0a68561631130f701396", "patchId": "5a3ece3e5eff9e71f67a29b4d56697bee4e1b4a2", "base": "3f10a3b48ab8daac4574d621783d5edd7bb447ab"}

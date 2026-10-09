@@ -1,0 +1,23 @@
+✔ reproduces single-slash denial then submits from the same corrected Claude session (5023.468959ms)
+✔ launch-reviewer CLI emits the sanitized governed result (3266.64475ms)
+✔ manual XPR registers without asking a recovery-only broker worker to launch (2820.926291ms)
+✔ manual declared join ignores an inherited official resume command (2530.516833ms)
+✔ CLI captures stream evidence before join (malformed=false) (3257.699ms)
+✔ CLI captures stream evidence before join (malformed=true) (1108.38825ms)
+✔ actual Claude CLI attribution, resume=false (5331.974958ms)
+✔ actual Claude CLI attribution, resume=true (3264.591208ms)
+✔ fallback environment drops only Codex identity without mutating its input (0.3585ms)
+✔ clean parent launch environment preserves genuine Claude metadata (0.122625ms)
+✔ runner refuses a wrong-provider reviewer before persisting launch state (13.25525ms)
+✔ normal launch and resume pass sanitized child environments without changing parent state (35.4835ms)
+✔ preflight environment passes through by identity (1 keys) (16.088959ms)
+✔ preflight environment passes through by identity (0 keys) (25.150125ms)
+✔ a present invalid child environment fails before provider execution (2.97975ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10133.558666
