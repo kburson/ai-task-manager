@@ -49,8 +49,12 @@ Run full lint and format, commit with1918/1912 attribution, and request one fres
 
 ## Verification
 
-Run: node --test scripts/tests/integration/task-tracker/lib/criteria-revision-transition-prefix.test.mjs
+Run: node --test --test-concurrency=1 scripts/tests/integration/task-tracker/lib/criteria-revision-transition-prefix.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-transition-custody.test.mjs
 
 Expected: real original prefix, all eight sentinel faults and actual source/request negatives execute with intact assertions and genuine controls inside unchanged budgets.
 
 Run complete affected original regressions, npm run lint, npm run format:check and git log --oneline -1. Preserve the required npm test/npm run test:slow and exact-head Linux receipts. Scoped or partial results do not close1912 or its ancestors.
+
+## Reviewed qualification correction
+
+The fresh review identified missing current-source drift and eight of eleven sentinel late-input classes. Preserve all original cases in two semantic groups: prefix/transport (thirteen native files plus61 DATA cases) and live source/input custody (twelve native files). Each keeps the original600000ms file/section limit and at most four independent case processes. The declared sequential combined command must finish within the unchanged20-minute verifier limit. This replaces the incomplete16-file qualification, without changing production or original tests. Prospective scope increases from8h to9h for the observed qualification correction; passive execution is excluded.
