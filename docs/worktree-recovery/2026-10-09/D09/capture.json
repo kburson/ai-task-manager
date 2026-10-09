@@ -1,0 +1,32 @@
+{
+  "story": 1953,
+  "originalStory": 1953,
+  "owner": "kburson",
+  "sourcePath": "/Users/kpburson/.codex/worktrees/b957/ai-task-manager",
+  "sourceHead": "43e8d35d53952ef2a23615d98cf901fa4c74121b",
+  "originalIndexSha256": "72bd243f6c6527aba9d842d245dba0e2ded350194542b57eb95886de01f28460",
+  "sourceIndexEntries": "",
+  "purpose": "Preserve the user-requested temporary hook-disable settings from this cleanup chat. This PR is an operational record; do not merge disabled hooks as a permanent policy change.",
+  "captured": [
+    {
+      "path": ".claude/settings.json",
+      "blob": "47d17e69d08b674a307fb46a25fb0961afb62a54",
+      "sha256": "42f346e8fecbb27a81a42845e62f9bd16155e8286f5d08bb3047bb965d5366ec",
+      "bytes": 1539
+    },
+    {
+      "path": ".codex/hooks.json",
+      "blob": "deffac973448cdf6f444085b535b8f69f7e84ad6",
+      "sha256": "78922a784ee78e9e50587e93628cd3b9d4dfbe49087adc4514e6781cea38cbb9",
+      "bytes": 18
+    },
+    {
+      "path": ".codex/config.toml",
+      "blob": "9bed608bf83107d04c919bce99f67497c42fc23d",
+      "sha256": "c5b3cc54a94573e3a629074fb7b676fcb92ef46e145a3f900927df4de6158798",
+      "bytes": 91
+    }
+  ],
+  "excludedRuntimeFixtures": [],
+  "validation": "Content preservation only. No current functional test, lint, peer review or merge readiness claim."
+}
