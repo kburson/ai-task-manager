@@ -1,0 +1,12 @@
+✔ buildFieldSyncPlan emits a write for value 0 (0.959333ms)
+✔ buildFieldSyncPlan skips null and undefined (0.12025ms)
+✔ buildFieldSyncPlan emits duration strings for non-zero timing (0.136916ms)
+✔ buildFieldSyncPlan skips empty-string values (0.08475ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.432292

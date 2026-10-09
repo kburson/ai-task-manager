@@ -1,0 +1,15 @@
+✔ rejects when issueNumber is missing (0.83575ms)
+✔ rejects when repo is missing (0.12525ms)
+✔ rejects when mutate is not a function (0.164083ms)
+✔ round trip: mutate sees fresh remote base, push stamps N+1 (3.782792ms)
+✔ race-loss: mutate is re-invoked against the new remote base on retry (0.521959ms)
+✔ mutate throw: original error propagates without wrapping (0.132375ms)
+✔ mutateIssueBody refuses a snapshot pattern via the underlying stale-input gate (0.517292ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.60425

@@ -1,0 +1,17 @@
+✔ findAcSectionCheckbox finds a plain AC line with no verifier (1.006125ms)
+✔ findAcSectionCheckbox finds a marker-tagged AC by its stripped label (0.172916ms)
+✔ findAcSectionCheckbox returns null for a Definition of Done line (outside the AC section) (0.062125ms)
+✔ findAcSectionCheckbox returns null when no line matches the label (0.063334ms)
+✔ classifyUnverifiedTick refuses an undeclared AC (no verifier, no opt-out marker) (0.412833ms)
+✔ classifyUnverifiedTick is eligible once the opt-out marker is present (0.160333ms)
+✔ classifyUnverifiedTick still refuses a real-verifier AC as refuse-verifier-ac, not refuse-undeclared-ac (0.611916ms)
+✔ classifyUnverifiedTick is eligible for a checkbox outside the AC section (unaffected) (0.156875ms)
+✔ formatUndeclaredAcRefusal names the label and points at both fixes (0.103083ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.418083

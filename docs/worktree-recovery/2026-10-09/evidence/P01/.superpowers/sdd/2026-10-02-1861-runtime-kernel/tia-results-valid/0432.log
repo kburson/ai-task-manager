@@ -1,0 +1,43 @@
+✔ new sessions and project defaults are Full-Auto for all three review boundaries (0.536709ms)
+✔ explicit project policy remains authoritative over Full-Auto defaults (0.081ms)
+✔ legacy two-gate project config keeps explicit values and defaults PR review to auto (0.05925ms)
+✔ legacy parent metadata survives session round trips without changing gate values (1.714291ms)
+✔ binding source contains no legacy first-bind auto-mode prompt (0.655875ms)
+✔ reset clears all three overrides and returns to Full-Auto defaults (0.159959ms)
+✔ case 6: two session IDs do not see each other's overrides (0.137084ms)
+✖ case 7: sweepOrphans deletes files older than maxAgeMs and leaves younger ones (0.671208ms)
+✔ fresh and legacy session files hydrate the third nullable override (0.180125ms)
+✔ manual and auto choices update one gate additively (0.574625ms)
+✔ precedence: session override takes precedence over project config (0.078291ms)
+✔ Review handoff honors the session final-task override over project policy (0.102875ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 11
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.0395
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/auto-mode.test.mjs:145:1
+✖ case 7: sweepOrphans deletes files older than maxAgeMs and leaves younger ones (0.671208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/auto-mode.test.mjs:157:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

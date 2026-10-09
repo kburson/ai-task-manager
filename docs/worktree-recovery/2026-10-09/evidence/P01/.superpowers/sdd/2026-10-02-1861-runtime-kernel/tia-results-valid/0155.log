@@ -1,0 +1,13 @@
+✔ the live repo docs pass lint:doc-anchors (2.923542ms)
+✔ a fully-anchored fixture is clean (107.353167ms)
+✔ a missing required anchor is reported (27.544542ms)
+✔ a forbidden anchor present is reported (29.043667ms)
+✔ an unreadable doc is reported rather than throwing (35.486042ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 205.970208

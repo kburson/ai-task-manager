@@ -1,0 +1,56 @@
+✔ moveState runs guard → rows → markers → status → sentinel → commit → tail (1.188916ms)
+✔ atomic core order: rows + markers land before Status, sentinel before tail (0.132791ms)
+✔ transition commit failure warns without failing a confirmed move (0.416ms)
+✔ moveState fails closed when the sentinel does not verify (0.127583ms)
+✔ moveState halts on guard refusal and never writes status (0.088667ms)
+✔ moveState prefers the public pre-evaluated guard over the legacy test seam (0.112083ms)
+✖ pre-mutation guard consumes the locked snapshot body without a second issue fetch (192.438792ms)
+✖ pre-mutation boundary reloads policy only after a waivable guard refusal (159.704083ms)
+✔ Plan → Develop exposes the exact successful guard decision for durable authority (22.191792ms)
+✔ Plan → Develop verifies authority after replay probe and before mutation (0.304041ms)
+✔ Plan → Develop authority failure is fail-closed before every mutation (0.236333ms)
+✔ Plan → Develop scope drift after authority write fails before lifecycle mutation (0.208375ms)
+✔ Plan → Develop scope drift at entry stamping returns the typed authority refusal (0.147708ms)
+✔ moveState halts on status exit and never runs tail (0.064166ms)
+✔ AC5: a throwing tail step is logged and never fails-reports or reverts the move (0.2725ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 13
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 384.882083
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs:154:1
+✖ pre-mutation guard consumes the locked snapshot body without a second issue fetch (192.438792ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at runGuardExecution (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/move-state/guard-execution.mjs:212:42)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs:156:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs:186:1
+✖ pre-mutation boundary reloads policy only after a waivable guard refusal (159.704083ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at runGuardExecution (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/move-state/guard-execution.mjs:212:42)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs:189:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+[move-state:warn] #999: transition commit provenance missing: github unavailable

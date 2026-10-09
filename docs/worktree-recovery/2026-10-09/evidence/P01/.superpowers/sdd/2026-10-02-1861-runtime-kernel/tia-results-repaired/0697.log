@@ -1,0 +1,26 @@
+PASS: STANDARD_DOD_COMMANDS contract pinned
+PASS: review.mjs imports STANDARD_DOD_COMMANDS
+PASS: review.mjs validates receipt evidence before command consumption
+PASS: seeded commandResults satisfies the evidenceCommands consumer contract
+PASS: missing-sandbox-marker refusal preserved
+PASS: review.mjs VC-command regex tolerates trailing proof markers (source pin)
+PASS: tolerant VC-command regex extracts command across marker variants
+PASS: review.mjs gates the success banner on the runMoveState result (#406)
+PASS: #406 refusal predicate fires only on genuine refusals
+PASS: review.mjs issues no test→test self-move (#408)
+PASS: removing the test→test self-move eliminates the illegal-transition stderr noise (#408)
+PASS: review.mjs short-circuits on NON_DEMONSTRABLE_TAG_RE before the loop body (#679)
+PASS: only the tagged non-demonstrable checkbox is exempted from the regression check (#679)
+
+All review-verb evidence-command tests passed.
+PASS: review.mjs delegates AC declaration resolution to the shared helper
+PASS: #1131 dual-attribute vc-list AC survives the review evidence loop
+✔ #1131 Review gives vc-list precedence on dual-attribute sandbox markers (2.3965ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.558291

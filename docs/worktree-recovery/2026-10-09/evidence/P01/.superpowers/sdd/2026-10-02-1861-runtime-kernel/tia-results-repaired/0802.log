@@ -1,0 +1,15 @@
+check-verb-migration.test.mjs: defined
+[task-tracker] ✓ "already checked criterion" already checked on #777 (no-op)
+[task-tracker] ✓ "already checked criterion" already checked on #777 (no-op)
+✔ legacy `check` on an already-checked box does NOT uncheck (no toggle) (166.124125ms)
+✔ legacy `check` emits a deprecation notice on stderr (173.740792ms)
+✔ no instructional `task check "<label>"` toggle call site survives (2527.274584ms)
+✔ no "Toggle a checkbox" description survives (1360.573291ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4235.722

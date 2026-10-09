@@ -1,0 +1,28 @@
+✖ new claims get fresh generations while heartbeat preserves the active generation (23.613625ms)
+✔ generation release preserves same-session newer and foreign claims under the authority lock (0.733125ms)
+✔ absent and paused bindings remain explicit cleanup observations (0.1835ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28.111167
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs:19:1
+✖ new claims get fresh generations while heartbeat preserves the active generation (23.613625ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/fleet-registry.mjs:8:10)
+      at claimOccupancy (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/occupancy.mjs:66:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs:31:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }

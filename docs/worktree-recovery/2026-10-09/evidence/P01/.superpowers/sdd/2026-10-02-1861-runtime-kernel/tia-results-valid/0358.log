@@ -1,0 +1,13 @@
+✔ readTimingCommentBody: hit → status "found" with body (0.613209ms)
+✔ readTimingCommentBody: normalizes numeric issue IDs before the production reader (0.091125ms)
+✔ readTimingCommentBody: missing comment → status "absent", body "" (0.341542ms)
+✔ readTimingCommentBody: underlying throw → status "error", NOT absent (0.119417ms)
+✔ bodyOf tolerates a legacy bare-string result (0.057166ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.623125

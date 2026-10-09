@@ -1,0 +1,11 @@
+✔ fail-closed: move-state refuses unsanctioned (non-verb, non-TTY) invocation (42.290375ms)
+✔ fail-closed: findLostMarkers reports a dropped invariant marker (1.743041ms)
+✔ fail-closed: findCheckboxesTickedWithoutProof flags an unproven tick (0.4805ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 47.194792

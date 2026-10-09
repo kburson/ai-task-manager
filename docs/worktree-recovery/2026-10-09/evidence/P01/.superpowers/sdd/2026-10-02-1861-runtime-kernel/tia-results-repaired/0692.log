@@ -1,0 +1,29 @@
+✔ gate passes for a non-epic (no children) (1.165666ms)
+✔ gate passes when every child is done (0.25725ms)
+✔ gate refuses when a child is still at review (0.179042ms)
+✔ gate refuses when any child is at backlog (0.111208ms)
+✔ gate refuses when any child is at assigned (0.081167ms)
+✔ gate refuses when any child is at refine (0.060958ms)
+✔ gate refuses when any child is at plan (0.146ms)
+✔ gate refuses when any child is at develop (0.115709ms)
+✔ gate refuses when any child is at test (0.092167ms)
+✔ gate refuses when any child is at review (0.142583ms)
+✔ gate accepts mixed-case "DONE" (0.129333ms)
+✔ gate surfaces fetch failure as a blocker (0.188375ms)
+✔ gate requires cfg and issueNumber (0.597708ms)
+✔ guard exposes the expected id (0.075375ms)
+✔ short-circuits when toState is not "done" (e.g. bounce-back to develop) (0.173083ms)
+✔ short-circuits when ctx is missing cfg (0.067958ms)
+✔ short-circuits when ctx is missing issueNumber (0.054791ms)
+✔ passes when gate returns ok (0.055834ms)
+✔ surfaces gate refusal with reason + blockers (0.0565ms)
+✔ omitted toState (legacy call site) still invokes the gate (0.05775ms)
+✔ defaults reason to the generic key when the gate omits blockers (0.053084ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.414916

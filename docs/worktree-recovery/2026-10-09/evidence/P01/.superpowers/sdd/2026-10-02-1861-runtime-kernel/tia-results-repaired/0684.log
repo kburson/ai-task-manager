@@ -1,0 +1,27 @@
+✔ guard exposes the expected id (0.550125ms)
+✔ short-circuits when fromState is not Ready for Planning (0.44025ms)
+✔ short-circuits when toState !== "plan" (0.073458ms)
+✔ short-circuits when ctx missing cfg (0.064916ms)
+✔ short-circuits when ctx missing issueNumber (0.059791ms)
+✔ passes when issue has no parent (leaf / top-level epic) (0.077792ms)
+✔ passes when parent state is "develop" (0.217041ms)
+✔ passes when parent state is "test" (0.068209ms)
+✔ passes when parent state is "review" (0.069791ms)
+✔ passes when parent state is "done" (0.112584ms)
+✔ refuses when parent state is "backlog" (0.175ms)
+✔ refuses when parent state is "ready-for-plan" (0.066791ms)
+✔ refuses when parent state is "refine" (0.050584ms)
+✔ refuses when parent state is "plan" (0.053667ms)
+✔ passes when parent state is null (not on board / transient read failure) (0.07025ms)
+✔ fail-closed when fetchParentIssue throws (#565) (0.13775ms)
+✔ fail-closed when readParentStatus throws (#565) (0.111791ms)
+✔ mixed-case parent state still matches (normalized) (0.052083ms)
+✔ legacy call site without fromState/toState still invokes deps (0.067ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.521875

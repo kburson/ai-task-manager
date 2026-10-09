@@ -1,0 +1,15 @@
+✔ AC1: a child exiting non-zero WITH stderr detail names the step and exit code (0.788667ms)
+✔ AC1: exit code read from `.status` when `.code` is a string (spawn-style) (0.151167ms)
+✔ AC3: a non-zero exit with NO usable stderr detail yields the explicit fallback (0.110875ms)
+✔ AC2: a benign human-reviewer-audit line is NOT chosen as the failure reason (0.2675ms)
+✔ AC2: when ONLY benign informational lines are present, fall back to no-detail (0.169375ms)
+✔ a plain (non-child) Error throw without an exit code names the step and message (0.167417ms)
+✔ AC2 (source): audit-timing informational lines are level-tagged as non-failure (1.182625ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.773084

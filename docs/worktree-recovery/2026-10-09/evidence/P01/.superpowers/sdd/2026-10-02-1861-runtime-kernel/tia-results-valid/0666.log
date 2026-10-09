@@ -1,0 +1,21 @@
+✔ parsePauseMarkers: dot-dot back-compat form (1.976792ms)
+✔ parsePauseMarkers: kv form with reason (0.210709ms)
+✔ parsePauseMarkers: kv form without reason (0.083709ms)
+✔ parsePauseMarkers: kv form rejects missing timestamp (0.068625ms)
+✔ parsePauseMarkers: rejects until <= from (0.089166ms)
+✔ parsePauseMarkers: rejects garbage timestamps (0.06575ms)
+✔ parsePauseMarkers: handles both forms together (0.07125ms)
+✔ pauseSpansBetween: kv-form span fully inside window (0.45225ms)
+✔ pauseSpansBetween: partial-overlap is pro-rated (0.092875ms)
+✔ pauseSpansBetween: span outside window returns nothing (0.122833ms)
+✔ deriveStateMoveDelta: subtracts kv-form pause from window (0.531459ms)
+✔ applyPauseSpansToRows: rollup drops engaged time by 20 min (0.543ms)
+✔ parsePauseMarkers: kv fields permit any order and preserve optional reason (0.0855ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.127917

@@ -1,0 +1,20 @@
+✔ preflight shows delivery revisions but evaluates only ordinary policy (19.61025ms)
+✔ preflight discloses expired delivery grants as blocked without writes (1.409833ms)
+✔ arguments require one explicit issue and explicit supported target (0.333708ms)
+✔ public command routing stays explicit and bypasses binding preflight (0.132458ms)
+✔ preflight aggregates current blockers, future evidence, external unknowns, and authority provenance (1.015209ms)
+✔ external uncertainty is indeterminate while complete evidence is conditionally compatible (0.521458ms)
+✔ authority revision reporting derives superseded disposition from the validated chain (0.92225ms)
+✔ snapshot read failures retain the complete indeterminate report schema in both views (0.240458ms)
+✔ an empty dependency snapshot satisfies the current dependency invariant (0.247833ms)
+✔ preflight treats documented automatic plan authorization as satisfied, not waived (0.279167ms)
+✔ production runtime derives ownership, binding, and state-contiguity evidence read-only (0.353625ms)
+✔ workflow exception show remains read-only and does not resolve or append authority (0.609709ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 33.419542
