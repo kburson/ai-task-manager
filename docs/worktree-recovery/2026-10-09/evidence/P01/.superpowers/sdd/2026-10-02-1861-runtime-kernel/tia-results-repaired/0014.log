@@ -1,0 +1,15 @@
+✔ legacy runtime and superseded AITM test assets are physically absent (21.57025ms)
+✔ AITM exposes neither legacy review command nor a package wrapper (136.831125ms)
+✔ task CLI starts when the extracted review package cannot be imported (176.005333ms)
+✔ published dependency graph and production sources are independent of the extracted package (78.452084ms)
+✔ production source contains no legacy runtime path or owned protocol schema (33.653208ms)
+✔ current operator documentation leaves artifact review independent of AITM (3.121541ms)
+✔ every pre-migration review archive remains byte-identical (14.758833ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 470.196833

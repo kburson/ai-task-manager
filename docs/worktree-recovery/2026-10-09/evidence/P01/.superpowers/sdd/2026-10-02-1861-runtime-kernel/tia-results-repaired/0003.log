@@ -1,0 +1,17 @@
+✔ selectDoneIssues uses exact Done markers, frozen inclusive bounds, and one row per issue (11.201459ms)
+✔ receipt-backed squash verifies only with correlated live PR and landed trunk commit (1.950833ms)
+✔ historical squash reconstruction verifies an attributed landed commit with matching PR head (0.527916ms)
+✔ root epic no-commit record is false-Done while a genuine audit artifact is local-only (0.550625ms)
+✔ allowed local-only kinds fail closed on malformed or invalid no-commit evidence (0.294625ms)
+✔ missing accepted authority fails closed and report verification requires recovery coverage (0.720625ms)
+✔ superseded Done records are terminal dispositions, not false delivery claims (0.129166ms)
+✔ superseded marker cannot mask an accepted but undelivered SHA (0.151208ms)
+✔ legacy main-thread attribution is an explicit exception without an accepted SHA (0.177875ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19.252833

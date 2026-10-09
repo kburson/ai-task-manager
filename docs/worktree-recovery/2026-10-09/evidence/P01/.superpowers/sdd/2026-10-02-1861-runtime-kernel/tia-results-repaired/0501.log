@@ -1,0 +1,10 @@
+✔ preflightVerb: assignee-mismatch prints PROMPT_REQUIRED and exits (2.643209ms)
+✔ preflightVerb: human-move prints PROMPT_REQUIRED and exits 9 (0.237333ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.613416

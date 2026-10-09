@@ -1,0 +1,25 @@
+▶ #498 formatDefectHint
+  ✔ formats `aitm-defect-hint: <verb> <reason>` (0.438708ms)
+  ✔ collapses a multi-line reason to one line (0.086625ms)
+  ✔ returns empty string when verb is empty or blank (0.06025ms)
+  ✔ omits the reason when blank, keeping just the verb (0.056166ms)
+  ✔ length-caps an overlong reason with an ellipsis (0.109958ms)
+✔ #498 formatDefectHint (1.334625ms)
+▶ #498 appendDefectHint
+  ✔ appends exactly one trailer line to existing text (0.085209ms)
+  ✔ returns the text unchanged when the trailer would be empty (0.071875ms)
+✔ #498 appendDefectHint (0.24625ms)
+▶ #498 emission sites
+  ✔ gh-edit-guard --body refusal carries the trailer (0.865875ms)
+  ✔ gh-edit-guard --body-file refusal carries the trailer (0.186708ms)
+  ✔ MarkerLossError exposes a defectHint matching the grammar (0.124583ms)
+  ✔ SeederMarkerMissingError exposes a defectHint matching the grammar (0.077666ms)
+✔ #498 emission sites (1.380625ms)
+ℹ tests 11
+ℹ suites 3
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.34

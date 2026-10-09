@@ -1,0 +1,11 @@
+✔ writer + reader resolve identical sid (no env, no transcripts) (2.52575ms)
+✔ writer-resolved sid points at the same file the reader scans (170.254334ms)
+✔ explicit orchestrator env var lands writer and reader on the same dir (79.563583ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 259.89375

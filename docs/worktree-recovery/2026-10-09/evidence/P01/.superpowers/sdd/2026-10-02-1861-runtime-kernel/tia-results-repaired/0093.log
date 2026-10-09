@@ -1,0 +1,18 @@
+✔ uncertain append is read back exactly and cold restart reuses its logical operation (2772.265541ms)
+✔ pagination retains identical physical duplicates and refuses operation conflicts forks and wrong references (6873.4385ms)
+✔ durable local observations detect manual edit deletion and foreign-host writes before effects (2775.755167ms)
+✔ lost response before any visible effect stays uncertain instead of blindly repeating create (2649.781333ms)
+✔ independent processes sharing authority serialize conflicting appends (3356.286292ms)
+✔ unrelated mutable comments do not become immutable evidence history (1867.573583ms)
+✔ a process death after response resumes the saved operation and recovers only a dead local lock (1866.59525ms)
+✔ authority storage refuses symlink redirection before writing journal files (1733.361667ms)
+✔ an unresolved operation blocks a different operation ID for the same issue (1792.219167ms)
+✔ a same-tree rewrite appends equivalence and fresh acceptance without rewriting its prior verification (2940.108ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28631.653375

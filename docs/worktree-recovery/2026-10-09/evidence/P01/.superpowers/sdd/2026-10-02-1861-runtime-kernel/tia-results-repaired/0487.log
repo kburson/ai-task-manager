@@ -1,0 +1,22 @@
+✔ throws when cfg is missing (0.744375ms)
+✔ throws when issueNumber is missing (0.088125ms)
+✔ TASK_TRACKER_SKIP_DELTA=1 posts the bypass note and returns skipped (1.352916ms)
+✔ skip-delta swallows a throwing postComment and still returns skipped (0.1675ms)
+✔ board path parses estimate + duration strings to seconds (0.486625ms)
+✔ board path degrades a blank/malformed duration to null (0.249625ms)
+✔ board fetch throwing is swallowed, leaving estimate null (0.162ms)
+✔ estimate falls back to the issue-field DB when no projectId (0.340209ms)
+✔ drivers are pulled from a Review Notes comment (0.455917ms)
+✔ a throwing fetchComments is swallowed (0.164167ms)
+✔ a throwing postComment yields status:error with the message (0.472792ms)
+✔ default helpers run when deps.exec is injected (no postComment/fetchComments) (0.2775ms)
+✔ defaultFetchComments returns [] when exec throws (post still succeeds) (0.13625ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.638875
+⚠ review-delta: comment post failed: post-fail

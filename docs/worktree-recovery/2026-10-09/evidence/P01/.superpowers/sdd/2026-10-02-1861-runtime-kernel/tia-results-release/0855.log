@@ -1,0 +1,12 @@
+✔ AC2: isHelpProbe is true for each help token, case-insensitive (0.452334ms)
+✔ AC3: a title containing a help word is NOT a probe (0.0665ms)
+✔ AC4: no-arg / empty rest is NOT a probe (0.05925ms)
+✔ AC1: verbNew("help") prints help and performs no create/bind mutation (10.141375ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.017125

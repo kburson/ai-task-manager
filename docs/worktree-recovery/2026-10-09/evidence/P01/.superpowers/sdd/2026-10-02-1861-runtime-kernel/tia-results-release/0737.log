@@ -1,0 +1,21 @@
+✔ draft validation accepts only unfinished drafts or quality substantive prose (1.898666ms)
+✔ substantive authoring rejects administrative prose without erasing stories (0.57625ms)
+✔ AC1: buildUserStoryLines composes three prefixed, non-placeholder lines (0.855625ms)
+✔ AC1: existing Connextra lead-in is kept verbatim, not double-prefixed (0.089417ms)
+✔ AC1: empty or placeholder input is rejected (0.089666ms)
+✔ AC2: inserts `## User Story` ahead of an existing leading section (0.400292ms)
+✔ AC2: markers above the first heading are preserved (0.174458ms)
+✔ AC2: empty body produces a valid, leading User Story section (0.106042ms)
+✔ AC3: replaces a placeholder User Story in place without duplicating the heading (0.273583ms)
+✔ AC3: re-running with identical input reproduces the same bytes (0.251375ms)
+✔ AC3: markers inside the section are preserved on replace (0.1335ms)
+✔ AC4: catalog registers `user-story` with the `story` alias (0.088791ms)
+✔ AC4: dispatch switch has matching `user-story` and `story` case labels (0.320667ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.104291

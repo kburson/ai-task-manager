@@ -1,0 +1,13 @@
+backfill-vc-sections-help.test.mjs: all assertions passed
+✔ --help prints usage, never calls listOpenIssues or mutateIssueBody (0.816833ms)
+✔ -h is a recognized alias for --help (0.183083ms)
+✔ no flags defaults to audit-only — no writes without --apply (1.310125ms)
+✔ an unrecognized flag is refused outright, not degraded to audit-only (0.32125ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.745209

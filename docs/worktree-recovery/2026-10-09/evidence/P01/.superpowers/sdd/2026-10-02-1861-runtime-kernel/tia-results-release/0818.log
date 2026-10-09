@@ -1,0 +1,30 @@
+coverage-dod-stamp.test.mjs: defined
+[task-tracker] dod-stamp tests on #777: running 1 verifier(s)…
+  ✗ node --test scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs (exit=1)
+[task-tracker] dod-stamp tests on #777: running 1 verifier(s)…
+  ✓ node --test scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs (exit=0)
+[task-tracker] ✓ dod-stamp tests on #777: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=abc1234).
+✔ no active task → exit 1 (121.246625ms)
+✔ empty key → exit 1 (131.298875ms)
+✔ unknown key → exit 1 (128.358291ms)
+✔ derived key (acs) → refuse, exit 1 (125.295875ms)
+✔ keyed line absent → exit 1 (124.02675ms)
+✔ keyed line has no verifier command → exit 1 (131.417ms)
+✔ verifier non-zero exit → refuse, exit 1 (129.004208ms)
+✔ happy path: verifier passes → stamps marker, no exit (134.097ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1033.1565
+[task-tracker] dod-stamp: no active task
+Usage: /task dod-stamp <key>
+  key ∈ { tests, lint, commits }
+[task-tracker] dod-stamp: unknown key "bogus"
+[task-tracker] dod-stamp: key "acs" is DERIVED — it is computed from the body at close time. Do not stamp manually; `/task close` will derive it.
+[task-tracker] dod-stamp: no `dod:functional:tests` line found in #777 body.
+[task-tracker] dod-stamp: `dod:functional:tests` line carries no verifier command. Add one (e.g. `<!-- aitm-verified cmd="\`npm test\`" -->`) before stamping.
+[task-tracker] dod-stamp tests: verifier `node --test scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs` failed (exit=1). No marker stamped.

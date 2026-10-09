@@ -1,0 +1,19 @@
+✔ buildFullAutoFootnoteBlock contains delimiters, ts, and signals (0.569875ms)
+✔ hasFullAutoFootnote detects presence (0.176ms)
+✔ hasFullAutoFootnote ignores prose-embedded start+end pair (backtick-wrapped) (0.122334ms)
+✔ insertFullAutoFootnote inserts (not replaces) when both delimiters appear only in prose (#178 corruption regression) (0.63225ms)
+✔ hasFullAutoFootnote ignores prose mention of start delimiter alone (0.141708ms)
+✔ insertFullAutoFootnote inserts block when only prose-mention of start delimiter exists (#178 regression) (0.163666ms)
+✔ insertFullAutoFootnote anchors after Lifecycle subsection checklist (0.100792ms)
+✔ insertFullAutoFootnote anchors at end of DoD when no Lifecycle subsection (0.200708ms)
+✔ insertFullAutoFootnote appends to end when no DoD or Lifecycle (0.1545ms)
+✔ insertFullAutoFootnote is idempotent — replaces existing block in place (0.180625ms)
+✔ removeFullAutoFootnote strips the block; no-op if absent (0.097667ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.069916

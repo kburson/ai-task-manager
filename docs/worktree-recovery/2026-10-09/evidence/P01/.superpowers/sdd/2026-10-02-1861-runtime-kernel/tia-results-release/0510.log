@@ -1,0 +1,17 @@
+✔ v3 intent and v4 receipt round-trip full pinned three-comment history (16.872ms)
+✔ provisional facts and mismatched confirmed burn cannot construct a receipt (5.834208ms)
+✔ v3 graph refuses original authorization drift and unsupported predecessors (11.818958ms)
+✔ v3 provider comment must follow the original provider comment (4.333792ms)
+✔ v4 projection and pinned validation reject receipt identity drift (6.087708ms)
+✔ v3 graph refuses receipted predecessor, competing successors, and operation reuse (4.669584ms)
+✔ v4 refuses altered grant, reason, scope, burn, mixed versions, and duplicate receipt (14.40375ms)
+✔ pinned validation uses provider timestamp and immutable burn, not wall clock (3.177709ms)
+✔ comment parser refuses overlarge v4 body and mixed nested authority (3.756792ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 76.144166

@@ -1,0 +1,28 @@
+plan-approve-core.test.mjs: all passed
+✔ approval persists root linked intent and revalidates each observation once (24.975625ms)
+✔ approval persists task linked intent and revalidates each observation once (35.135292ms)
+✔ approval refuses fresh path changes with zero writes (20.634125ms)
+✔ approval refuses fresh selector changes with zero writes (17.584833ms)
+✔ approval refuses fresh duplicate changes with zero writes (27.883625ms)
+✔ approval refuses fresh file changes with zero writes (31.113417ms)
+✔ approval refuses fresh key changes with zero writes (22.369875ms)
+✔ directory missing inspection fails without mutation (0.588541ms)
+✔ directory invalid inspection fails without mutation (0.301958ms)
+✔ directory transport inspection fails without mutation (0.120541ms)
+✔ directory syntax inspection fails without mutation (0.129542ms)
+✔ directory introduced in fresh transaction is refused without a write (39.932ms)
+✔ directory introduced in fresh transaction is refused without a write (44.532291ms)
+✔ failed repair audit retains prior payload and exact retry repairs once (245.284083ms)
+✔ real versioned writer refuses story authority drift before a retry push (4.227583ms)
+✔ real versioned writer refuses directory authority drift before a retry push (1.090792ms)
+✔ complete no-op refuses persisted marker or Plan-entry drift before audit (152.802458ms)
+✔ stale complete bindings renew actor and timestamp even in the same clock tick (341.483875ms)
+✔ a failed canonical Full-Auto audit retains the original binding repair payload (137.008667ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1156.326166

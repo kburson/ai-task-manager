@@ -1,0 +1,14 @@
+✔ external recovery refuses identical source and merge messages as squash proof (10.784209ms)
+✔ external recovery refuses a multi-commit inventory not terminating at the accepted head as squash proof (0.504917ms)
+✔ external recovery refuses missing source evidence fields as squash proof (1.027958ms)
+✔ external recovery refuses source parent mismatch as squash proof (0.624833ms)
+✔ external recovery refuses source tree mismatch as squash proof (0.488584ms)
+✔ external recovery refuses configured merge method as squash proof (0.486833ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.196542

@@ -1,0 +1,20 @@
+coverage-plan.test.mjs: defined
+✔ runPlan: throws without cfg (0.760875ms)
+✔ runPlan: throws on non-positive issue# (0.178458ms)
+✔ runPlan: assertBound is invoked and may throw (0.104292ms)
+✔ runPlan: current is not R4P → wrong-state (no promote) (0.144583ms)
+✔ runPlan: unknown live state → wrong-state message names "unknown" (0.091375ms)
+✔ runPlan: R4P → promoted (promote called with issue#) (0.454708ms)
+✔ runPlan: default getLiveState via fake gh → promoted (198.207208ms)
+✔ verbPlan: no issue number → usage, exit 2 (0.314208ms)
+✔ verbPlan: R4P → promoted, no exit (0.146209ms)
+✔ verbPlan: wrong-state → stderr, exit 1 (0.191916ms)
+✔ verbPlan: runPlan throws → stderr, exit 1 (0.112ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 204.341458

@@ -1,0 +1,14 @@
+✔ legacy body without dod:functional markers passes the gate (0.914625ms)
+✔ label outside Functional section passes the gate (0.889042ms)
+✔ stampable key without evidence marker refuses with missing-evidence (0.112083ms)
+✔ stampable key WITH evidence marker passes (0.098084ms)
+✔ derived keys refuse outright with refuse-derived (0.102958ms)
+✔ already-ticked Functional key passes (unticking allowed) (0.069792ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.287542

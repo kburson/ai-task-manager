@@ -1,0 +1,13 @@
+✔ two Git clones share one local-trunk burn and exact receipt (1967.696416ms)
+✔ different operation cannot replay one grant across Git clones (1515.343834ms)
+✔ revision barrier winning Git CAS blocks the old grant burn on another clone (874.508375ms)
+✔ burn winning Git CAS remains ordered before a later revision (3871.049958ms)
+✔ revision POST claim is one-shot across two Git clones (2187.162625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10419.41625

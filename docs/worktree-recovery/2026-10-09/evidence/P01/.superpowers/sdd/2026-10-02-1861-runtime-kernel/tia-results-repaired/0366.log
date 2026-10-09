@@ -1,0 +1,19 @@
+✔ every state self-transition is a legal no-op (0.91625ms)
+✔ review → review specifically is legal (the reported defect) (0.466042ms)
+✔ a genuine illegal transition still refuses (0.167375ms)
+✔ a legal non-self transition is NOT flagged noop (0.064667ms)
+✔ an unknown state still refuses even when from === to (0.090375ms)
+✔ computeTransitionPlan surfaces noop for a self-transition (0.112416ms)
+✔ computeTransitionPlan reports noop:false for a real move (0.05425ms)
+✔ computeTransitionPlan reports noop:false when the matrix gate is skipped (0.060416ms)
+✔ classifyMoveStateBenign is de-enumerated — it matches ANY self-loop (1.357125ms)
+✔ classifyMoveStateBenign still surfaces genuine refusals (0.7205ms)
+✔ isMoveStateNoop matches only the host token (0.243084ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.622459

@@ -1,0 +1,26 @@
+✔ reconcile accept-live: drifted issue writes new state + reconciled audit marker (3.793875ms)
+✔ reconcile accept-live: test → develop invalidates stale demotion proof and reports it (#1037) (1.053042ms)
+✔ reconcile accept-live: review → develop invalidates stale demotion proof and reports it (#1037) (0.262333ms)
+✔ reconcile accept-live preserves execution proof for forward drift (#1037) (0.167375ms)
+✔ reconcile accept-live preserves execution proof for unrelated rollback (#1037) (0.142209ms)
+✔ reconcile accept-live stamps aitm-entered-<live> when absent (#174) (0.381541ms)
+✔ reconcile accept-live is idempotent for entry marker (#174) (0.17725ms)
+✔ reconcile accept-live: legacy Assigned status stamps canonical R4P evidence (#436, #1211) (0.224708ms)
+✔ reconcile revert-to-recorded: recorded BEHIND live refuses forward-only, names accept-live (#740) (0.099625ms)
+✔ reconcile: no drift refused (106.38675ms)
+✔ reconcile: missing mode returns error (0.134875ms)
+✔ reconcile: unknown mode returns error (0.089541ms)
+✔ reconcile revert-to-recorded: no recorded state → error (0.092625ms)
+✔ reconcile accept-live: no live state → error (0.106375ms)
+✔ reconcile accept-live: preserves forward markers as history + adds visit marker (#181) (0.28025ms)
+✔ reconcile revert-to-recorded: does NOT strip future entry markers (0.140375ms)
+✔ reconcile revert: transition-failed when move-state exits non-zero (0.064958ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 121.664833
+[reconcile] cache-seed attempt failed: Partial runtime loss requires registered recovery

@@ -1,0 +1,11 @@
+✔ AC1/AC2 — current session record wins over a ghost global pointer (9.863ms)
+✔ AC3 — no current-session record falls back to global pointer + cross-session scan (7.022667ms)
+✔ #1211 — historical session and global state caches resolve as Ready for Planning (7.506458ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28.091292

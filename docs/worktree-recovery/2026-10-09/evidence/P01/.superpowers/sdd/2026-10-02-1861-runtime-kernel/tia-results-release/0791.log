@@ -1,0 +1,51 @@
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 was already closed on GitHub — finalized housekeeping and converged the board to Done.
+#925 recovery completed after posting the timing audit.
+#925 recovery completed after posting the timing audit.
+✔ finalize passes the configured tail profile and explicit review authority (601.507583ms)
+✔ stale close approval refuses after fresh Test and Agent Review evidence (280.067ms)
+✔ #1403 close authorizes review against accepted delivery SHA after local HEAD advances (135.339084ms)
+✔ close consumes marker-free exact-head directory human authority (137.405708ms)
+✔ production close derives accepted head from marker-free directory Review evidence (133.260833ms)
+✔ production close resolves directory authority from immutable Test SHA after local HEAD advances (131.894125ms)
+✔ production close refuses directory Review without directory Approval despite body approval (131.197334ms)
+✔ close fails closed for stale or malformed marker-free directory authority (395.214833ms)
+✔ verb entry rejects a empty string tail profile before every observable effect (118.010791ms)
+✔ verb entry rejects a null tail profile before every observable effect (117.83125ms)
+✔ verb entry rejects a false tail profile before every observable effect (114.814625ms)
+✔ verb entry rejects a zero tail profile before every observable effect (142.192458ms)
+✔ verb entry rejects a negative zero tail profile before every observable effect (120.430917ms)
+✔ verb entry rejects a zero bigint tail profile before every observable effect (121.923667ms)
+✔ verb entry rejects a NaN tail profile before every observable effect (113.187625ms)
+✔ verb entry rejects a object tail profile before every observable effect (153.441417ms)
+✔ verb entry rejects a unknown string tail profile before every observable effect (112.916584ms)
+✔ lifecycle reconcile delegates through the grouped issue-body mutator (141.378792ms)
+✔ transaction prefix does not satisfy exact timing transaction lookup (134.967958ms)
+✔ incidental prose does not satisfy exact timing transaction lookup (131.6345ms)
+✔ false timing audit fails and leaves durable recovery pending at Review (131.11125ms)
+✔ failed timing audit fails and leaves durable recovery pending at Review (135.753916ms)
+✔ queued timing audit fails and leaves durable recovery pending at Review (136.908166ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3877.864708
+[task-tracker] ⛔ Refusing to close #925: review-authorization-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: directory-approval-evidence-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: directory-review-evidence-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: directory-review-evidence-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: directory-review-evidence-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+#925 closed-issue aberration failed at postTimingAudit: postTimingAudit returned a failed result. Local task state was retained for retry.
+#925 closed-issue aberration failed at postTimingAudit: postTimingAudit returned a failed result. Local task state was retained for retry.
+#925 closed-issue aberration failed at postTimingAudit: postTimingAudit returned a failed result. Local task state was retained for retry.

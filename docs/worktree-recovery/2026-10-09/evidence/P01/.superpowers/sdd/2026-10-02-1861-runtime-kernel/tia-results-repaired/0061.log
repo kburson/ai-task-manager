@@ -1,0 +1,33 @@
+✔ dispatchOnEnterActions: SKIP_NETWORK short-circuits (0.859417ms)
+✔ dispatchOnEnterActions: runs onEnter actions and swallows a throwing one (0.934042ms)
+✔ dispatchOnEnterActions: outer catch absorbs an import/lookup failure (0.158667ms)
+✔ refreshKanbanStateCache: non-stage stateArg short-circuits (0.134625ms)
+✔ refreshKanbanStateCache: refreshes cache for the matching active task (0.281583ms)
+✔ refreshKanbanStateCache: no session id → skip, and mismatched active → skip (0.173125ms)
+✔ refreshKanbanStateCache: catch absorbs a throwing collaborator (0.114ms)
+✔ unparkDoneDependents: non-done move short-circuits (0.114375ms)
+✔ unparkDoneDependents: summarizes cleared + errored releases (0.152084ms)
+✔ unparkDoneDependents: enforcement catch absorbs a throw (0.16725ms)
+✔ syncTrackerState: syncs the tracker ledger for the new state (596.144584ms)
+✔ syncEventFields: SKIP_NETWORK short-circuits (0.270292ms)
+✔ syncEventFields: dispatches the update-event-fields subprocess via ctx.pexec (0.459875ms)
+✔ syncEventFields: a throwing pexec surfaces a warning, no rethrow (0.303584ms)
+✔ endTaskTracking: non-done move short-circuits (0.297292ms)
+✔ endTaskTracking: fires the local task-tracker end on the move to done (0.168834ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 605.315417
+[move-state] #10: onEnter action "boom" failed: action failed
+[move-state] #10: onEnter dispatch failed: states module boom
+[move-state] #10: kanbanState cache refresh failed: session lookup boom
+[unpark] #10: partial reconciliation for 12: boom
+[unpark] #10: partial reconciliation for ?: x
+[unpark] #10: enforcement failed: unpark down
+warning: Start Time field sync failed: sync failed line
+more
+  To repair: node scripts/gh/update-event-fields.mjs 10 develop --item-id undefined

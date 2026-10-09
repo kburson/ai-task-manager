@@ -1,0 +1,18 @@
+✔ pre-split must-split evidence is decomposition-ready, never delivery-ready (2.520167ms)
+✔ fully reconciled materialized WBS is delivery-ready on recorded epic branch (3.174916ms)
+✔ canonical epic branch remains valid when no durable override exists (1.479459ms)
+✔ an accepted terminal child keeps its existing successful admission behavior (1.155333ms)
+✔ bounded section contradictions refuse and name the section boundary (1.330917ms)
+✔ rank and dependency contradictions are accumulated fail-closed (0.89175ms)
+✔ stale or unreadable child planning evidence refuses (0.825583ms)
+✔ malformed durable branch authority refuses without canonical fallback (1.0135ms)
+✔ #1486: decomposition branch readiness delegates authority to the shared adapter (0.372084ms)
+✔ unreadable WBS evidence refuses and evaluator performs no mutations (0.828667ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.412459
