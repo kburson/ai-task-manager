@@ -1,0 +1,28 @@
+✔ formatStatus renders all fields (0.747625ms)
+✔ chore-mode on writes active=true with reason and previousIssue (5251.806166ms)
+✖ chore-mode on stays local while another worktree agent is active (2382.785875ms)
+✔ chore-mode on is idempotent when already on (3232.845458ms)
+✔ chore-mode off clears active without --resume (2253.948833ms)
+✔ chore-mode off --resume invokes verbStart with previous issue context (2738.000458ms)
+✔ chore-mode off is idempotent when already off (2224.126708ms)
+✔ chore-mode status reports off + defaults on fresh state (918.444416ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 7
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19115.682166
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs:130:1
+✖ chore-mode on stays local while another worktree agent is active (2382.785875ms)
+  TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string or an instance of Buffer or URL. Received an instance of Promise
+      at rmSync (node:fs:1567:25)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs:158:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ERR_INVALID_ARG_TYPE'
+  }

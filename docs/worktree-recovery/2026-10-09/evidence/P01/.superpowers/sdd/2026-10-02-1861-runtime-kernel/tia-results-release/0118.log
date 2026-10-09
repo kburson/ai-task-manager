@@ -1,0 +1,14 @@
+Resumed #1142.
+✔ departure rows flush both absolute markers (15.744583ms)
+✔ a lifecycle opener after departure is preceded by canonical resumed (1.379416ms)
+✔ departure-to-resume marker growth is excluded from own-issue phase words (0.255917ms)
+✔ real pause and switch-out flushes preserve both markers while away growth stays excluded (34500.185ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34523.66225
+[dependency-disposition] #1142: binding remains active; retry dependency projection (dependency-disposition:config)

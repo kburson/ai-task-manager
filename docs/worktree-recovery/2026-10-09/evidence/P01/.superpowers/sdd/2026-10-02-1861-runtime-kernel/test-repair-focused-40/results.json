@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/close-repair.test.mjs",
+    "status": 0,
+    "durationMs": 890,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-40/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs",
+    "status": 0,
+    "durationMs": 294,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-40/0001.log"
+  }
+]

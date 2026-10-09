@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs",
+    "status": 0,
+    "durationMs": 2777,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-29/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs",
+    "status": 0,
+    "durationMs": 1435,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-29/0001.log"
+  }
+]

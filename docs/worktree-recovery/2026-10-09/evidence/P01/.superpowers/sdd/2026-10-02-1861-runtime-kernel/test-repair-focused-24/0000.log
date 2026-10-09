@@ -1,0 +1,36 @@
+coverage-reconcile.test.mjs: defined
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/reconcile-proj-HpGBiU for #9100002
+✔ runReconcile: throws without issueNumber (1.04025ms)
+✔ runReconcile: throws without cfg (0.094ms)
+✔ runReconcile: missing mode → error status (0.169083ms)
+✔ runReconcile: unknown mode → error status (0.12625ms)
+✔ runReconcile: no live and no recorded → error (0.288333ms)
+✔ runReconcile: backfill with no holes → no-holes (0.37ms)
+✔ runReconcile: backfill fills a hole → backfilled (0.842125ms)
+✔ runReconcile: recorded === live and no cache gap → no-drift-refused (6.470959ms)
+✔ runReconcile: accept-live with no live → error (0.185208ms)
+✔ runReconcile: accept-live reconciled (external-mutation reason) (0.536ms)
+✔ runReconcile: accept-live reason from recording-failure comment (0.320833ms)
+✔ runReconcile: accept-live tolerates listComments throwing (0.180125ms)
+✔ runReconcile: accept-live tolerates audit-marker write throwing (0.104125ms)
+✔ runReconcile: revert with no recorded → error (0.056958ms)
+✔ runReconcile: revert transition-failed when move-state non-zero (0.095833ms)
+✔ runReconcile: revert reconciled when move-state succeeds (0.163875ms)
+✔ runReconcile: revert tolerates audit-marker write throwing (0.94175ms)
+✔ runReconcile: revert refuses when recorded is BEHIND live (wrong-direction, #740) (0.075792ms)
+✔ runReconcile: default persistTrackerState runs without a session (3.821ms)
+✔ verbReconcile: missing issue number → usage, exit 1 (0.3555ms)
+✔ verbReconcile: missing mode → usage, exit 1 (0.10025ms)
+✔ verbReconcile: fetch failure → generic error, exit 1 (70.600458ms)
+✔ verbReconcile: no drift → refused, exit 4 (66.379625ms)
+✔ verbReconcile: backfill with no holes → stdout, no exit (64.484458ms)
+✔ verbReconcile: revert wrong-direction → exit 5, names accept-live (#740) (59.321541ms)
+✔ runReconcile: default read helpers fetch body + live state via gh (406.453084ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 922.624083

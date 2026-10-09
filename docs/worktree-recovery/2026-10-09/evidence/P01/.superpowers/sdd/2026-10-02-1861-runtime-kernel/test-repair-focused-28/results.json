@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs",
+    "status": 0,
+    "durationMs": 1107,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-28/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs",
+    "status": 1,
+    "durationMs": 2587,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-28/0001.log"
+  }
+]

@@ -1,0 +1,20 @@
+✔ new sessions and project defaults are Full-Auto for all three review boundaries (0.598667ms)
+✔ explicit project policy remains authoritative over Full-Auto defaults (0.079125ms)
+✔ legacy two-gate project config keeps explicit values and defaults PR review to auto (0.069958ms)
+✔ legacy parent metadata survives session round trips without changing gate values (1.497ms)
+✔ binding source contains no legacy first-bind auto-mode prompt (0.560708ms)
+✔ reset clears all three overrides and returns to Full-Auto defaults (0.203834ms)
+✔ case 6: two session IDs do not see each other's overrides (0.156292ms)
+✔ case 7: age alone does not authorize deleting session policy records (0.316709ms)
+✔ fresh and legacy session files hydrate the third nullable override (0.156208ms)
+✔ manual and auto choices update one gate additively (0.62075ms)
+✔ precedence: session override takes precedence over project config (0.085083ms)
+✔ Review handoff honors the session final-task override over project policy (0.094917ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 276.817291

@@ -1,0 +1,8 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs",
+    "status": 1,
+    "durationMs": 3219,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-104-release-red/0000.log"
+  }
+]

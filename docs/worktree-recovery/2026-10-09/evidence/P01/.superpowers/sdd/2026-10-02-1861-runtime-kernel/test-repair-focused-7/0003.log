@@ -1,0 +1,21 @@
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+✔ reviewNeedsAgentReview is true only for review + no pass evidence (0.75775ms)
+✔ reviewNeedsAgentReview is false for a complete review (0.069125ms)
+✔ reviewNeedsAgentReview is false for any non-review state (0.08775ms)
+✔ formatReviewRemediationHint names /task review and warns against demote (0.207708ms)
+✔ formatReviewRemediationHint distinguishes the review-failed cause (504.449959ms)
+✔ reviewRemediationHint returns null when the hint does not apply (518.061583ms)
+[dependency-disposition] #935: binding remains active; retry dependency projection (dependency-disposition:config)
+▶ verbResume review-remediation hints
+  ✔ verbResume prints the review-remediation hint when the seed attaches one (6130.938792ms)
+[dependency-disposition] #936: binding remains active; retry dependency projection (dependency-disposition:config)
+  ✔ verbResume stays silent when the seed attaches no hint (4987.118ms)
+✔ verbResume review-remediation hints (11124.859417ms)
+ℹ tests 8
+ℹ suites 1
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12631.052083

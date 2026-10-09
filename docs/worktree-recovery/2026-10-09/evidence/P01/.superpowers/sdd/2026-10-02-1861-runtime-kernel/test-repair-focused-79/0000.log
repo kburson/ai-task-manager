@@ -1,0 +1,43 @@
+coverage-close.test.mjs: defined
+✔ no active task (288.295333ms)
+✔ discover bucket → discarded (395.117625ms)
+✔ target adopted into empty state → Closed (846.383209ms)
+✔ convergence close-issue: board Done + issue OPEN → gh close (1401.681167ms)
+✔ convergence close-issue: outcome failure leaves the issue OPEN and active (292.320209ms)
+✔ convergence close-issue: disposition failure leaves issue OPEN and active (292.009667ms)
+✔ convergence close-issue: gh close fails → exit 1 (298.583916ms)
+✔ convergence noop + boardDrift: issue CLOSED, board behind → converge (740.779625ms)
+✔ convergence noop + boardDrift: move fails + board not Done → exit 1 (275.736167ms)
+✔ convergence noop, no drift: issue CLOSED + board Done → already closed (712.76ms)
+✔ happy tail: approval marker present → emitted, Closed (750.864916ms)
+✔ happy tail: Full-Auto default records review approval without a prior marker (697.660167ms)
+✔ happy-tail candidate refuses close when terminal timing is only queued (268.22125ms)
+✔ final move non-benign failure + board not Done → exit 1 (280.439833ms)
+✔ offline final move cannot verify board Done → refuses non-benign failure (274.214875ms)
+✔ dirty + CI headless, no --answer → exit 5 (464.808417ms)
+✔ dirty + --answer cancel → left in Review (398.28475ms)
+✔ dirty + --answer yes → refuse, exit 6 (340.815125ms)
+✔ dirty + invalid --answer → exit 1 (328.861459ms)
+✔ dirty + interactive (no CI, no answer) → PROMPT_REQUIRED (314.583583ms)
+✔ dirty + --answer no → audit row, continues to Closed (898.436291ms)
+✔ gate-eval failure, no --force → fail-closed exit 3 (335.497875ms)
+✔ --force: gate-eval throw swallowed → cascade + close pipeline → Closed (1208.168375ms)
+✔ cascade: disposition failure leaves child and parent OPEN and active (282.826958ms)
+✔ cascade: outcome failure leaves child in Review and parent OPEN and active (301.885583ms)
+✔ cascade: queued terminal timing leaves child in Review and retains evidence for retry (321.527542ms)
+✔ cascade: each child outcome uses its own resolved worktree (1100.628375ms)
+✔ assertFieldsPersisted: aitm-fields marker missing → throws (300.228ms)
+✔ assertFieldsPersisted: engagedTime null → throws (312.141208ms)
+✔ assertFieldsPersisted: body re-read fails → throws (387.717042ms)
+✔ tickLifecycleOnClose: ticks story-closed + timing-flushed via mutate (0.730791ms)
+⚠ lifecycle-tick best-effort failed: boom
+✔ tickLifecycleOnClose: mutate throws → best-effort swallow (1504.439291ms)
+✔ nested fixture state never reads or clears its isolated parent session (5444.520041ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22341.730583

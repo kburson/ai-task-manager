@@ -1,0 +1,56 @@
+✔ one actor pause cannot replace another actor start or word cursors (468.086166ms)
+✔ legacy own binding establishes its current interval without inheriting unattributed global history (199.877875ms)
+✖ invalid actor write refuses before mutating binding or prior evidence (204.258792ms)
+✔ corrupt, unsupported and mismatched actor state refuse without global fallback (464.807541ms)
+✔ a genuine new binding supersedes only its own stale paused interval (203.519917ms)
+✔ timing updates preserve genuine same-issue binding generation and original bound time (381.283583ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 5
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2018.436167
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs:137:1
+✖ invalid actor write refuses before mutating binding or prior evidence (204.258792ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ACTOR_TIMING_STATE_INVALID'
+  -   code: 'RUNTIME_STATE_CORRUPT'
+    }
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs:144:12
+      at withUnitRuntimeRoot.projectRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs:31:9)
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeRootAdapters (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:159:30)
+      at withUnitRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/unit-runtime-root.mjs:42:10)
+      at fixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs:29:12)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs:138:3)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: Actor timing state is malformed or belongs to another identity
+        at invalid (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/actor-timing-state.mjs:27:17)
+        at validateActorTimingState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/actor-timing-state.mjs:67:78)
+        at actorTimingStateRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/actor-timing-state.mjs:86:10)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/state.mjs:245:23
+        at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+        at coordinated.retainOnAsync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:600:67)
+        at coordinated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:295:20)
+        at withRuntimeStoreLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:600:10)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:116:45
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:102:12 {
+      [cause]: undefined
+    },
+    expected: { code: 'RUNTIME_STATE_CORRUPT' },
+    operator: 'throws',
+    diff: 'simple'
+  }

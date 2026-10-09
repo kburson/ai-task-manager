@@ -1,0 +1,41 @@
+
+⛔ Refusing to move #1667 to Review:
+   BLOCKED: Test receipt SHA no longer matches HEAD
+
+Resolve the blockers above, then retry `/task review #1667`.
+
+✔ direct Review and Test-state Promote share ready evidence without effects (8.676833ms)
+✔ Review routing uses its complete collector even when generic guards are available (0.831083ms)
+✔ Review guards receive project config and a read-only dependency reconciliation port (0.735583ms)
+▶ Review explanation refuses stale HEAD, unreadable evidence, and board drift
+  ✔ stale HEAD (1.293041ms)
+  ✔ unreadable preflight (0.784333ms)
+  ✔ board drift (1.188542ms)
+✔ Review explanation refuses stale HEAD, unreadable evidence, and board drift (3.588666ms)
+✔ Review preserves simultaneous typed preflight refusals without exposing prose (0.93875ms)
+✔ Review retains independent preflight and completeness blockers together (0.665125ms)
+✔ Review does not accept a contradictory successful preflight carrying refusals (0.625667ms)
+✔ Review refuses a stale exact-HEAD Test receipt even when preflight and guards pass (1.030166ms)
+✔ Review execution refuses a stale Test receipt after a ready collector decision (1300.560583ms)
+✔ Review refuses a preflight computed from a different issue-body revision (1.736916ms)
+✔ Review reports a projected Functional DoD normalization without persistence (8.711708ms)
+✔ Review guards receive the current directory-backed Test evidence from preflight (1.076917ms)
+✔ Review refuses contradictory directory Test evidence read at one boundary (1.405417ms)
+✔ real Test-to-Review guards refuse missing exact-HEAD Test proof and incomplete ACs (92.800042ms)
+✔ Review resident reruns only incomplete evidence and does not recommend close (1.236583ms)
+✔ Review-state Promote delegates to Close rather than a Review rerun (3.471417ms)
+✔ live Review read adapter refreshes issue, board, HEAD, and preflight at this boundary (1.467083ms)
+✔ live Review-state adapter selects a rerun only after current semantic policy is read (2.21975ms)
+✔ live Review-state policy read failure is typed indeterminate, never a rerun grant (0.986083ms)
+✔ initial Review authority read failure is typed indeterminate (0.163458ms)
+✔ resident ledger comment reader fetches the exact GitHub comment read-only (0.195459ms)
+✔ active semantic waiver with failed Review marker selects self-rerun (1.522ms)
+✔ Review re-entry with a clean older ledger head still selects current resident work (2.84475ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1607.424542

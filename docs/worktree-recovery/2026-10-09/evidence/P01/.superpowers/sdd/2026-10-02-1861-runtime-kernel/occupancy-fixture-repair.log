@@ -1,0 +1,73 @@
+✔ claim is idempotent for the same issue and session (177.275ms)
+✔ claim refuses a missing worktree path instead of resolving the process cwd (1.315833ms)
+✔ one session switching issues atomically releases its prior issue (193.835458ms)
+✔ another session cannot claim the held issue and diagnostics name the holder (178.719708ms)
+✔ another session cannot share a physical worktree (151.269625ms)
+✖ corrupt authority data fails closed (4.39975ms)
+✔ heartbeat updates only an exact session claim (224.778208ms)
+✔ SessionStart touch atomically adopts an absent row and heartbeats an exact row (164.130334ms)
+✔ SessionStart touch cannot adopt over an existing issue holder (145.09875ms)
+✔ release is exact-session scoped while force release is issue scoped (386.135667ms)
+✔ terminal release is locked to the original close timestamp (431.074083ms)
+✔ rollback restores the exact prior rows after a downstream bind failure (327.400833ms)
+✖ rollback cannot erase a later valid claim (365.956375ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 11
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2835.466875
+
+✖ failing tests:
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:65:10
+✖ corrupt authority data fails closed (4.39975ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /occupancy: unreadable authority store/. Input:
+  
+  'RuntimeRootError: Unsupported runtime record schema: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-occupancy-QmBlp8/.ai-task-manager/runtime/store/fleet/occupancy.json'
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/occupancy.test.mjs:104:10
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/unit-runtime-root.mjs:65:69
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeRootAdapters (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:159:30)
+      at withUnitRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/unit-runtime-root.mjs:42:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/unit-runtime-root.mjs:65:43)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: RuntimeRootError: Unsupported runtime record schema: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-occupancy-QmBlp8/.ai-task-manager/runtime/store/fleet/occupancy.json
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+        at assertRuntimeStoreRecords (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:404:9)
+        at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:375:3)
+        at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+        at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+        at readOccupancy (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/occupancy.mjs:45:10)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/occupancy.test.mjs:104:23
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/occupancy.test.mjs:104:10,
+    expected: /occupancy: unreadable authority store/,
+    operator: 'throws',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:65:10
+✖ rollback cannot erase a later valid claim (365.956375ms)
+  Error [RuntimeRootError]: Refusing malformed, unknown or incorrectly scoped runtime publication
+      at validateRuntimeJsonPublication (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:81:11)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:89:22
+      at withRuntimeStoreLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:596:12)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:116:45
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:102:12
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:545:32)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:100:10)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:116:10)
+      at writeRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:86:10) {
+    code: 'RUNTIME_STATE_CORRUPT'
+  }

@@ -1,0 +1,19 @@
+✖ runHook blocks in backlog state via injected signal resolver (1.625125ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 122.390666
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs:268:1
+✖ runHook blocks in backlog state via injected signal resolver (1.625125ms)
+  ReferenceError: exactBinding is not defined
+      at runHook (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/source-edit-gate.mjs:621:5)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs:269:13)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)

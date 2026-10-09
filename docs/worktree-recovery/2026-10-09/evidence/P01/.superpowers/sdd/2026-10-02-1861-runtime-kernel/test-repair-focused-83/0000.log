@@ -1,0 +1,33 @@
+✔ shim preserves exact request, stdout, stderr, and exit while recording body-file bytes (3816.564917ms)
+✔ shim captures piped stdin and refuses invalid metadata before child execution (3438.194084ms)
+✔ shim preserves a terminating signal while recording the outcome (3478.603083ms)
+✔ shim does not wait for EOF on an unused execFile stdin pipe (4023.18075ms)
+✖ concurrent shim processes allocate unique ordered action directories (9699.884041ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24567.768667
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:215:1
+✖ concurrent shim processes allocate unique ordered action directories (9699.884041ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  21 !== 8
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:234:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 21,
+    expected: 8,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

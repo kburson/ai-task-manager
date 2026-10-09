@@ -1,0 +1,18 @@
+✔ real Review projection preserves completeness checkbox labels in action output (9.641334ms)
+✔ Review consumes normalized typed labels before transitions or reviewer work (2871.232875ms)
+✔ real registry preserves reviewed-scope-current-missing without an unclassified fallback (2.494041ms)
+✔ real registry preserves reviewed-scope-stale without an unclassified fallback (1.589083ms)
+✔ real registry preserves reviewed-scope-comment-invalid without an unclassified fallback (1.045958ms)
+✔ real registry preserves reviewed-scope-wrong-checkout without an unclassified fallback (0.922833ms)
+✔ real registry preserves reviewed-scope-read-unavailable without an unclassified fallback (1.084791ms)
+✔ reviewed Scope guard is registered only in Test exit (0.121958ms)
+✔ read-only Review collector threads explicit execution and invoking directories (1.086583ms)
+✔ Review evaluator retains injected authoritative reviewed Scope ports (1.925875ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2895.034167

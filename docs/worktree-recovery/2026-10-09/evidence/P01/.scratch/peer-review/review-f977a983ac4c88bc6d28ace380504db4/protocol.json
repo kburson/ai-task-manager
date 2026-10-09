@@ -1,0 +1,88 @@
+{
+  "artifact": {
+    "blob": "c6d3630251b574839e131d09e93eb3aa0a3b885d",
+    "digest": "sha256:3cd6310adf37aea0a9b38490cb2f1b316b0eda7cc6bdb553cf2a83feb0f35ffd",
+    "head": "daf91641b41cd2eae0ee91f2ba2b5b01fd917306",
+    "path": "docs/superpowers/specs/2026-10-02-1861-explicit-empty-runtime-design.md"
+  },
+  "authority": {
+    "authority_policy": "unavailable",
+    "challenge_ttl_ms": 900000,
+    "verifier": null
+  },
+  "challenges": [],
+  "claim_ttl_ms": 28800000,
+  "claims": {},
+  "commit_mode": "normal",
+  "compatibility": {
+    "accepted_event_schemas": [
+      "ai-peer-review.event/v1",
+      "ai-peer-review.event/v2"
+    ],
+    "minimum_reader_version": "0.4.1",
+    "minimum_writer_version": "0.4.1"
+  },
+  "current_actor": "reviewer",
+  "deliveries": [],
+  "intervention": null,
+  "max_turns": 10,
+  "next_action": "join-reviewer",
+  "review_id": "review-f977a983ac4c88bc6d28ace380504db4",
+  "reviewer_boundary": null,
+  "revision": 1,
+  "schema": "ai-peer-review.protocol/v2",
+  "sequence": 3,
+  "startup": {
+    "author_startup_digest": "sha256:7540c457c09adb461b2369298613793fb2d8234be9319d5381842d9e42179797",
+    "author_transport_capability": "manual",
+    "bootstrap": null,
+    "context": {
+      "artifact_kind": "spec",
+      "artifact_name": "2026-10-02-1861-explicit-empty-runtime-design",
+      "issue": 1861,
+      "record_id": "review-f977a983ac4c88bc6d28ace380504db4",
+      "repository_root": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager",
+      "review_date": "2026-10-03",
+      "review_id": "review-f977a983ac4c88bc6d28ace380504db4",
+      "review_path_template": "<kind>/<date>-<name>-<record-id>",
+      "reviews_root": "docs/superpowers/reviews/1861-empty-runtime-amendment-xpr",
+      "schema": "ai-peer-review.context/v1"
+    },
+    "context_digest": "sha256:50697419c7ef3d1ed00eec1708b52d122d00ec9e9e43ca9ea7cdbff37e29a538",
+    "destination": "docs/superpowers/reviews/1861-empty-runtime-amendment-xpr/spec/2026-10-03-2026-10-02-1861-explicit-empty-runtime-design-review-f977a983ac4c88bc6d28ace380504db4",
+    "no_commit_baseline": null,
+    "reviewer_invitation_digest": "sha256:8d8f770f340ff5c59a4baf90de253b3b65126a61a1280b937f116e14d0763730",
+    "runtime": {
+      "adapter_version": "1.0.0",
+      "author": {
+        "effort": "medium",
+        "host": "codex",
+        "model_display": "gpt-6.1-sol",
+        "model_id": "gpt-6.1-sol",
+        "provider": "openai"
+      },
+      "classification": "XPR",
+      "ownership": "broker",
+      "project_root_digest": "7d86ec505558d7823dba08164b7d558745724d5133d188497d34e161b64b4208",
+      "reviewer": {
+        "effort": "high",
+        "host": "claude-code",
+        "model_display": "claude-opus-5-5",
+        "model_id": "claude-opus-5-5",
+        "provider": "anthropic",
+        "selector": "claude"
+      },
+      "schema": "ai-peer-review.runtime/v1",
+      "transport_mode": "manual"
+    },
+    "transport_mode": "manual"
+  },
+  "state": "awaiting-reviewer",
+  "supplements": [],
+  "terminal_evidence": null,
+  "transports": {
+    "author": "manual",
+    "reviewer": null
+  },
+  "turns_used": 0
+}

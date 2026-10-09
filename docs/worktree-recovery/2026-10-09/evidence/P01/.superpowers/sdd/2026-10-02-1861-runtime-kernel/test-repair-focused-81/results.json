@@ -1,0 +1,20 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+    "status": 1,
+    "durationMs": 19337,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-81/0000.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs",
+    "status": 1,
+    "durationMs": 5270,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-81/0001.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs",
+    "status": 0,
+    "durationMs": 9487,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-81/0002.log"
+  }
+]

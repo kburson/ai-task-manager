@@ -1,0 +1,20 @@
+✔ runMoveStateInProcess drives the in-process host with the right argv/env (no spawn) (1.563625ms)
+✔ runMoveStateInProcess folds extraArgs (--force) into the synthetic argv (0.26025ms)
+✔ runMoveStateInProcess strips a leading # from the issue (0.143041ms)
+✔ exit-5 done→done self-loop is classified benign via tee-captured stderr (0.3755ms)
+✔ exit-5 test→test self-loop is classified benign (0.18675ms)
+✔ exit-5 genuine illegal transition (backlog→done) is NOT benign (0.522958ms)
+✔ SKIP_NETWORK short-circuits without calling the host (0.076375ms)
+✔ process.stdout/stderr are restored after the in-process call (0.141291ms)
+✔ runtime forwards authoritative execution and invoking directories to the lower host (0.16325ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.252541
+[task-tracker] Could not move 9 to done: move-state exited 5
+BLOCKED: illegal transition: backlog → done. Allowed: assigned.
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 9 done

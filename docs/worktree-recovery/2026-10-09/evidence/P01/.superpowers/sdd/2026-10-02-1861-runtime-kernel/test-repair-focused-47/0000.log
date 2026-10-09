@@ -1,0 +1,96 @@
+coverage-source-edit-gate.test.mjs: ok
+✔ normalizePath: empty → empty, relative → posix, outside → abs (1.955625ms)
+✔ isAllowlistedPath: empty false, .tmp/ true, scratch true, src false (0.318042ms)
+✔ decide: non-gated tool → allow (0.419417ms)
+✔ decide: chore-mode → allow bypass (0.5065ms)
+✔ decide: allowlisted path → allow (0.295916ms)
+✔ decide: no bound issue → block (0.14025ms)
+✔ decide: pre-develop state → block state-gate (0.1555ms)
+✔ decide: historical On Deck state remains a pre-develop block (0.142875ms)
+✔ decide: develop but markers missing → block marker-gate (0.205125ms)
+✔ decide: develop + both markers → allow (0.142583ms)
+✔ loadBoundIssue: no state file → null (2.81ms)
+✔ loadBoundIssue: numeric active → #N (2.088833ms)
+✔ loadBoundIssue: discover/plan sentinels → null (17.911667ms)
+✔ cacheFilePath: lands under .ai-task-manager/.cache (0.161417ms)
+✔ readCache: missing file → null; write then read → hit (4.145459ms)
+✔ readCache: wrong issue → null (3.141084ms)
+✔ readCache: stale entry → null (2.203542ms)
+✔ fetchIssueSignals: shared exact-project snapshot supplies state and ownership (2.799041ms)
+✔ fetchIssueSignals: name shape → canonical state (3.892542ms)
+✔ fetchIssueSignals: historical display name and legacy config key map to Ready for Planning (4.597292ms)
+✔ resolveIssueSignals: cache miss fetches then warms cache (3.523917ms)
+✔ runHook: non-gated tool → allow (0.455917ms)
+✔ runHook: no project dir → allow (0.220792ms)
+✖ runHook: chore-mode bypass (3.473166ms)
+✖ runHook: bound + develop + markers via injected resolve → allow (5.392209ms)
+✖ runHook: resolve throws → falls through to refuse pre-develop default (2.425167ms)
+✔ runHook: findProjectDir honours env override (3.730291ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 24
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 889.276625
+
+✖ failing tests:
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ runHook: chore-mode bypass (3.473166ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '[task-tracker] Source-edit target refused: mutation-context: target outside bound worktree'
+  - 'chore-mode-bypass'
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs:275:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[task-tracker] Source-edit target refused: mutation-context: target outside bound worktree',
+    expected: 'chore-mode-bypass',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ runHook: bound + develop + markers via injected resolve → allow (5.392209ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '[task-tracker] Source-edit target refused: mutation-context: target outside bound worktree'
+  - 'state-and-markers-ok'
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs:293:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[task-tracker] Source-edit target refused: mutation-context: target outside bound worktree',
+    expected: 'state-and-markers-ok',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ runHook: resolve throws → falls through to refuse pre-develop default (2.425167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'source-edit-target'
+  - 'source-edit-state-gate'
+                 ^
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs:308:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'source-edit-target',
+    expected: 'source-edit-state-gate',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
