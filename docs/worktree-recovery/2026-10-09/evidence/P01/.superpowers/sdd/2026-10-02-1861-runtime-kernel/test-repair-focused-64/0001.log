@@ -1,0 +1,30 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48
+    throw new RuntimeRootError('RUNTIME_OVERRIDE_UNSAFE', 'Runtime target must be a path');
+          ^
+
+RuntimeRootError: Runtime target must be a path
+    at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48:11)
+    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:152:17)
+    at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/state.mjs:241:10)
+    at setActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:106:11)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:147:13
+    at async file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:23:1 {
+  code: 'RUNTIME_OVERRIDE_UNSAFE'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs (1374.838833ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1380.173416
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs (1374.838833ms)
+  'test failed'

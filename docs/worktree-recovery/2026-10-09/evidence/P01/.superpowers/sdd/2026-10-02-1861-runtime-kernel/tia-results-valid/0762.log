@@ -1,0 +1,17 @@
+✔ #565 backlog-exit: fetchParentIssue throw → fail closed (0.961416ms)
+✔ #565 backlog-exit: readParentStatus throw → fail closed (0.178583ms)
+✔ #565 backlog-exit: genuine no-parent (fetch returns null) → ok:true (0.086042ms)
+✔ #565 refine-exit: fetchParentIssue throw → fail closed (0.1205ms)
+✔ #565 refine-exit: readParentStatus throw → fail closed (0.086375ms)
+✔ #565 refine-exit: genuine no-parent (fetch returns null) → ok:true (0.072375ms)
+✔ #565 child-cannot-lead: fetchParentIssue throw → fail closed (0.110167ms)
+✔ #565 child-cannot-lead: genuine no-parent (fetch returns null) → ok:true (0.079125ms)
+✔ #565 AC3: each guard source carries the fail-closed policy token (0.351333ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.7425

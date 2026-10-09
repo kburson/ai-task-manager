@@ -1,0 +1,31 @@
+✔ hookStampKey hashes the complete normalized identity without exposing the sid (1.145709ms)
+✔ claimHookStamp deduplicates exact identities and anchors sibling worktrees together (1957.585125ms)
+✔ claimHookStamp propagates non-EEXIST write errors (1134.514375ms)
+✔ isPausedTask: returns true when entry status is "paused" (0.215375ms)
+✔ isPausedTask: returns false when entry status is "active" (0.155834ms)
+✔ isPausedTask: returns false when entry status is "done" (0.1495ms)
+✔ isPausedTask: returns false when entry is absent (post-close) (0.062916ms)
+✔ isPausedTask: returns false when lastActive is null (0.047708ms)
+✔ isPausedTask: returns false when lastActive is undefined (0.061167ms)
+✔ isPausedTask: returns false when fleet is null (0.096583ms)
+✔ isPausedTask: returns false when entry has no status field (0.070084ms)
+✔ isTerminalIssueState: true for CLOSED (case-insensitive, padded) (0.082792ms)
+✔ isTerminalIssueState: false for OPEN and unknown/nullish (fail-open) (0.045875ms)
+✔ fetchIssueState: returns trimmed state from injected runner (0.181584ms)
+✔ fetchIssueState: returns null on runner error (offline fail-open) (0.146292ms)
+✔ fetchIssueState: returns null for non-numeric / missing active ref (0.064042ms)
+✔ fetchIssueState: returns null when runner yields empty stdout (0.060666ms)
+✔ claimRecoveryOnce: first call wins, second call for same path loses (15.593583ms)
+✔ claimRecoveryOnce: a fresh path in the same dir wins independently (14.76725ms)
+✔ buildOrphanRecoveryRowSpecs: below threshold posts a single active session-end-recovery row (0.25725ms)
+✔ buildOrphanRecoveryRowSpecs: at the threshold still posts the active row (boundary is exclusive) (0.047167ms)
+✔ buildOrphanRecoveryRowSpecs: above threshold posts an honest pause/resumed pair, no fabricated active time (0.048375ms)
+✔ terminal state lookup accepts the actual hash-prefixed binding reference (0.075584ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3259.203625

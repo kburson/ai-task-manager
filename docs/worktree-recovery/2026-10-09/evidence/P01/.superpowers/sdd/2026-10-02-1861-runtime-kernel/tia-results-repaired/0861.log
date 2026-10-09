@@ -1,0 +1,49 @@
+ensure-checked.test.mjs: defined
+[task-tracker] ✓ Checked "proven ac with execution proof" on #777
+[task-tracker] ✓ Checked "proven ac with execution proof" on #777
+[task-tracker] ✓ "proven ac with execution proof" already checked on #777 (no-op)
+[task-tracker] ✓ "verified ac checked" already checked on #777 (no-op)
+[task-tracker] ✓ Checked "plain ac no verifier" on #777 (unverified — audit marker recorded)
+✔ setChecklistLine: ticks an unchecked line (changed) (1.092583ms)
+✔ setChecklistLine: already-checked is a byte-identical no-op (0.149ms)
+✔ setChecklistLine: checked desired never unchecks a checked line (0.092417ms)
+✔ setChecklistLine: preserves trailing evidence markers on tick (0.556ms)
+✔ setChecklistLine: not-found (0.112416ms)
+✔ setChecklistLine: ambiguous reports count (0.08275ms)
+✔ setChecklistLines: folds desired across labels, records per-label result (0.508ms)
+✔ verbEnsureChecked: ticks a proof-bearing unchecked AC and writes [x] (174.31ms)
+✔ verbEnsureChecked: idempotent re-run on already-checked is a no-op (299.123375ms)
+✔ verbEnsureChecked: never unchecks an already-checked AC (169.635125ms)
+✔ verbEnsureChecked: evidence gate fires on verifier-AC transition → exit 1 (166.815042ms)
+✔ verbEnsureChecked: --allow-unverified-ticks hatch ticks a proofless AC (203.878834ms)
+✔ verbEnsureChecked: --allow-unverified-ticks refused on an undeclared AC (no verifier, no marker) → exit 1 (149.100334ms)
+✔ verbEnsureChecked: --allow-unverified-ticks refused on verifier AC → exit 1 (136.72625ms)
+[task-tracker] ✓ Marked deep-dive-complete on #777 at 2026-10-03T06:57:37.083Z
+✔ verbEnsureChecked: special-label "deep dive complete" routes to ensureDeepDive (366.787833ms)
+[task-tracker] ✓ Marked discussion complete on #777 at 2026-10-03T06:57:37.454Z (token stripped, aitm-discussed stamped, Discuss label removed)
+
+✅ DISCUSSION RESOLVED — #777 · implementation may commence
+✔ verbEnsureChecked: special-label "discussion complete" marks discussed (441.355708ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2120.117333
+EVIDENCE_REQUIRED: [task-tracker] ✗ Refusing to tick AC "verified ac unchecked" on #777.
+  This acceptance criterion declares a verifier (aitm-verified cmd="…") but carries
+  no aitm-ac-evidence:abc61792 marker. Run `/task ac-stamp "verified ac unchecked"` to
+  execute `echo ok` in a sandbox; the evidence marker it stamps unlocks this tick.
+UNVERIFIED_HATCH_REFUSED: [task-tracker] ✗ Refusing --allow-unverified-ticks on AC "undeclared ac no verifier no marker" in #777.
+  This acceptance criterion declares no verifier and carries no
+  `<!-- aitm-non-demonstrable -->` opt-out marker, so it is not yet classified as
+  demonstrable or honestly non-demonstrable. Either declare a verifier (aitm-verified
+  cmd="…") and run `/task ac-stamp "undeclared ac no verifier no marker"`, or add the opt-out marker to the line
+  if it is genuinely unverifiable.
+UNVERIFIED_HATCH_REFUSED: [task-tracker] ✗ Refusing --allow-unverified-ticks on AC "verified ac unchecked" in #777.
+  This acceptance criterion declares a verifier (aitm-verified cmd="…"), so it is
+  demonstrable — the unverified hatch is only for ACs carrying the
+  `<!-- aitm-non-demonstrable -->` opt-out marker or otherwise no machine verifier.
+  Run `/task ac-stamp "verified ac unchecked"` to execute `echo ok` and stamp real evidence instead.

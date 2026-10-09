@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+    "status": 0,
+    "durationMs": 586,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-48/0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+    "status": 0,
+    "durationMs": 3082,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-48/0001.log"
+  }
+]

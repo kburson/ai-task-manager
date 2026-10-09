@@ -1,0 +1,25 @@
+coverage-ac-stamp.test.mjs: defined
+[task-tracker] ac-stamp: no active task
+[task-tracker] ac-stamp: no active task
+Usage: /task ac-stamp "<acceptance criterion label>"
+[task-tracker] ac-stamp: no Acceptance Criteria line carrying `aitm-verified-by` matching "totally absent label" found in #777 body.
+[task-tracker] ac-stamp on #777: running 1 verifier(s) for AC "cover the ac-stamp verb"…
+  ✗ node scripts/task-tracker/tools/coverage-threshold.mjs scripts/task-tracker/verbs/ac-stamp.mjs scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs 80 (exit=1)
+[task-tracker] ac-stamp: verifier `node scripts/task-tracker/tools/coverage-threshold.mjs scripts/task-tracker/verbs/ac-stamp.mjs scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs 80` failed (exit=1). No marker stamped.
+[task-tracker] ac-stamp on #777: running 1 verifier(s) for AC "cover the ac-stamp verb"…
+  ✓ node scripts/task-tracker/tools/coverage-threshold.mjs scripts/task-tracker/verbs/ac-stamp.mjs scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs 80 (exit=0)
+[task-tracker] ✓ ac-stamp on #777: run-props (key=e8e3ca61) upserted onto the AC line's aitm-verified marker (sha=abc1234).
+✔ no active task → exit 1 (144.88675ms)
+✔ discover bucket active → exit 1 (132.446791ms)
+✔ empty label → exit 1 (121.562167ms)
+✔ no AC line matching label → exit 1 (133.990667ms)
+✔ verifier non-zero exit → refuse, exit 1 (141.273708ms)
+✔ happy path: verifier passes → stamps marker, no exit (134.562125ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 925.227417

@@ -1,0 +1,22 @@
+✔ observed merge receipt preserves a proposed squash intent (5.138583ms)
+✔ ordinary v1 intent/v1 receipt and warning v2 receipt remain readable (1.01275ms)
+✔ #1755 attribution-waived v2 intent/v3 receipt remain readable (2.271833ms)
+✔ pending squash intent refuses a provider-reported merge without a receipt (7.120291ms)
+✔ no grant retains the original merge-method refusal (1.958083ms)
+✔ wrong accepted SHA refuses without terminal writes (1.212792ms)
+✔ wrong PR base target refuses without terminal writes (2.522916ms)
+✔ unreachable merge refuses without terminal writes (1.510709ms)
+✔ unmerged PR remains pending without a receipt or terminal write (1.272ms)
+✔ malformed persisted intent refuses without a receipt (0.881917ms)
+✔ Task 8 precedence: method mismatch plus invalid merge SHA reports merge-commit-sha (1.171459ms)
+✔ Task 8 precedence: method mismatch plus invalid mergedAt reports merged-at (1.271875ms)
+✔ Task 8 precedence: method mismatch plus unknown Git topology reports merge-method-unknown (1.919208ms)
+✔ one-issue local-trunk proposal cannot waive a PR delivery failure (0.419208ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 36.968375

@@ -1,0 +1,17 @@
+close-force-atomic.test.mjs — all assertions passed
+✔ AC1: the matrix refuses the terminal done-move from every non-review state (0.552583ms)
+✔ AC5: a failed forced move from any non-review state refuses (no split-brain) (0.101875ms)
+✔ AC5: a successful forced move (board → done) proceeds to close (0.066208ms)
+✔ AC5: a benign done→done forced move (race won out-of-band) proceeds (0.052667ms)
+✔ AC4: the force path moves the board with the --force flag (0.300083ms)
+✔ AC3: the forced board move is gated on the force path only (0.096417ms)
+✔ AC3: the forced board move runs BEFORE the primary gh issue close (0.114ms)
+✔ AC3: a failed forced move refuses (exitCode 1 + return) without closing (0.106ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.616875

@@ -1,0 +1,64 @@
+✖ owned native phase-11-prefix validates exact shared phase history [failAfter:intent-write] (681.9135ms)
+ℹ ✖ owned native phase-11-prefix validates exact shared phase history [failAfter:intent-write] (5.352166ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 306.806625
+
+✖ failing tests:
+
+test at ../../../../../../../../Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs:247:3
+✖ owned native phase-11-prefix validates exact shared phase history [failAfter:intent-write] (5.352166ms)
+  AssertionError [ERR_ASSERTION]: requested native timezone reaches executing case
+  + actual - expected
+  
+  + undefined
+  - 'America/Chicago'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs:279:14)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'America/Chicago',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 898.78225
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs:247:3
+✖ owned native phase-11-prefix validates exact shared phase history [failAfter:intent-write] (681.9135ms)
+  AssertionError [ERR_ASSERTION]: isolated actual native stage fixture
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs:271:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

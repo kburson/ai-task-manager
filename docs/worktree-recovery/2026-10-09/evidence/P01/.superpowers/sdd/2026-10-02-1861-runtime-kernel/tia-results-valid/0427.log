@@ -1,0 +1,14 @@
+✔ the Assigned status migration module exists (0.451125ms)
+✔ dry-run is the default and plans an in-place rename with every option id retained (0.60825ms)
+✔ --apply uses updateProjectV2Field, preserves option ids, and verifies the rename (0.20325ms)
+✔ the migration is idempotent once Assigned exists (0.083792ms)
+✔ ambiguous or mismatched live-board state fails closed (0.3545ms)
+✔ maintenance board rebinding projects historical second-state markers to Ready for Planning (0.360125ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.23125

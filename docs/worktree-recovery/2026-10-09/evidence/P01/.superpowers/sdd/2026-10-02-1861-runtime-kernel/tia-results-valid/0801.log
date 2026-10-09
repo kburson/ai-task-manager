@@ -1,0 +1,61 @@
+close-converge-audit-emission.test.mjs: defined
+✖ Case A — converge with approved body emits BOTH review:approved and issue:wrap (#801 AC1) (32.459ms)
+✖ Case B — converge with no approval marker WITHHOLDS review:approved, still emits issue:wrap (#801 AC2) (29.299792ms)
+✖ Case C — converge is idempotent when the pair already exists (#801 AC3) (39.38ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 108.359083
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:133:1
+✖ Case A — converge with approved body emits BOTH review:approved and issue:wrap (#801 AC1) (32.459ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbClose (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/close.mjs:2261:24)
+      at runConverge (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:112:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:134:24)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:142:1
+✖ Case B — converge with no approval marker WITHHOLDS review:approved, still emits issue:wrap (#801 AC2) (29.299792ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbClose (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/close.mjs:2261:24)
+      at runConverge (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:112:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:143:24)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:157:1
+✖ Case C — converge is idempotent when the pair already exists (#801 AC3) (39.38ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbClose (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/close.mjs:2261:24)
+      at runConverge (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:112:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs:176:24)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }

@@ -1,0 +1,150 @@
+✔ independent initializeIssueDirectory pending refuses before original callback or transport selection (107.097417ms)
+✔ independent initializeIssueDirectory stale refuses before original callback or transport selection (242.347333ms)
+✔ independent initializeIssueDirectory malformed refuses before original callback or transport selection (17.457375ms)
+✔ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (17.408208ms)
+✔ independent initializeIssueDirectory baseline retains its complete original algorithm (20.794041ms)
+✔ independent initializeIssueDirectory approved retains its complete original algorithm (352.897292ms)
+✔ independent repairIssueDirectory pending refuses before original callback or transport selection (77.388667ms)
+✔ independent repairIssueDirectory stale refuses before original callback or transport selection (239.236416ms)
+✔ independent repairIssueDirectory malformed refuses before original callback or transport selection (17.321334ms)
+✔ independent repairIssueDirectory unavailable refuses before original callback or transport selection (18.772542ms)
+✔ independent repairIssueDirectory baseline retains its complete original algorithm (23.881084ms)
+✔ independent repairIssueDirectory approved retains its complete original algorithm (420.449ms)
+✔ independent createIssueComment pending refuses before original callback or transport selection (67.766333ms)
+✔ independent createIssueComment stale refuses before original callback or transport selection (235.228167ms)
+✔ independent createIssueComment malformed refuses before original callback or transport selection (17.179583ms)
+✔ independent createIssueComment unavailable refuses before original callback or transport selection (17.531458ms)
+✔ independent createIssueComment baseline retains its complete original algorithm (17.605041ms)
+✔ independent createIssueComment approved retains its complete original algorithm (323.24675ms)
+✔ independent updateIssueComment pending refuses before original callback or transport selection (69.137833ms)
+✔ independent updateIssueComment stale refuses before original callback or transport selection (217.058333ms)
+✔ independent updateIssueComment malformed refuses before original callback or transport selection (15.737666ms)
+✔ independent updateIssueComment unavailable refuses before original callback or transport selection (17.780208ms)
+✔ independent updateIssueComment baseline retains its complete original algorithm (17.07025ms)
+✔ independent updateIssueComment approved retains its complete original algorithm (331.048666ms)
+✔ durable projection repair pending retains custody and rereads revision admission (101.637375ms)
+✔ durable projection repair stale retains custody and rereads revision admission (241.379125ms)
+✔ durable projection repair malformed retains custody and rereads revision admission (34.801125ms)
+✔ durable projection repair unavailable retains custody and rereads revision admission (35.828375ms)
+✔ durable projection repair baseline retains custody and rereads revision admission (36.32875ms)
+✔ durable projection repair approved retains custody and rereads revision admission (356.608458ms)
+✖ independent lifecycle append pending cannot reuse historical custody as current readiness (126.750416ms)
+✖ independent lifecycle append stale cannot reuse historical custody as current readiness (209.647917ms)
+✖ independent lifecycle append malformed cannot reuse historical custody as current readiness (39.649458ms)
+✖ independent lifecycle append unavailable cannot reuse historical custody as current readiness (34.381334ms)
+✖ independent lifecycle append baseline cannot reuse historical custody as current readiness (40.804459ms)
+✖ independent lifecycle append approved cannot reuse historical custody as current readiness (284.49825ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 30
+ℹ fail 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4639.466458
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append pending cannot reuse historical custody as current readiness (126.750416ms)
+  AssertionError [ERR_ASSERTION]: No original replay/capsule callback before fresh admission
+  + actual - expected
+  
+  + [
+  +   'capsule-list'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:358:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capsule-list' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append stale cannot reuse historical custody as current readiness (209.647917ms)
+  AssertionError [ERR_ASSERTION]: No original replay/capsule callback before fresh admission
+  + actual - expected
+  
+  + [
+  +   'capsule-list'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:358:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capsule-list' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append malformed cannot reuse historical custody as current readiness (39.649458ms)
+  AssertionError [ERR_ASSERTION]: No original replay/capsule callback before fresh admission
+  + actual - expected
+  
+  + [
+  +   'capsule-list'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:358:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capsule-list' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append unavailable cannot reuse historical custody as current readiness (34.381334ms)
+  AssertionError [ERR_ASSERTION]: No original replay/capsule callback before fresh admission
+  + actual - expected
+  
+  + [
+  +   'capsule-list'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:358:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capsule-list' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append baseline cannot reuse historical custody as current readiness (40.804459ms)
+  TypeError: lifecycle-transition:capability
+      at transitionError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/lifecycle-transition.mjs:40:10)
+      at assertTransitionAuthorityCapability (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/lifecycle-transition.mjs:230:11)
+      at appendLifecycleTransition (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/lifecycle-transition.mjs:393:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:348:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append approved cannot reuse historical custody as current readiness (284.49825ms)
+  TypeError: lifecycle-transition:capability
+      at transitionError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/lifecycle-transition.mjs:40:10)
+      at assertTransitionAuthorityCapability (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/lifecycle-transition.mjs:230:11)
+      at appendLifecycleTransition (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/lifecycle-transition.mjs:393:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:348:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

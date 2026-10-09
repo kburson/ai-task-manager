@@ -1,0 +1,38 @@
+
+✅ DISCUSSION RESOLVED — #405 · implementation may commence
+✔ hasDiscussMarker: bare token alone on a line → true (0.612ms)
+✔ hasDiscussMarker: whitespace-padded bare token → true (#479 AC1) (0.067209ms)
+✔ hasDiscussMarker: inline prose mention → false (#479 AC2) (0.062083ms)
+✔ hasDiscussMarker: backticked mention, even alone on a line → false (#479 AC3) (0.061833ms)
+✔ hasDiscussMarker: prefixed / quoted lines → false (#479 AC4) (0.068833ms)
+✔ hasDiscussMarker: trivial / no-bare-token bodies → false (#479 AC5) (0.059875ms)
+✔ markDiscussed: strips the bare line-alone marker + stamps audit marker (0.306291ms)
+✔ markDiscussed: leaves inline / prose / backticked mentions untouched (#479 AC6) (0.088125ms)
+✔ markDiscussed: removes the whole bare-token line (no stray blank line) (0.080167ms)
+✔ markDiscussed: idempotent on second call, single audit marker (0.111958ms)
+✔ markDiscussed: a body with only inline mentions still stamps once, strips nothing (0.065083ms)
+✔ markDiscussed: preserves invariant markers (1.485916ms)
+✔ round-trip: a bare marker is detected, then resolved, then not detected (0.090291ms)
+✔ finalizeDiscussion: scope splice + token consume in one write; prose mention survives (2.865542ms)
+✔ finalizeDiscussion: rejects empty scope (0.257042ms)
+✔ hasDiscussRequest: detects the durable request marker; disjoint from aitm-discussed (0.065334ms)
+✔ hasDiscussedMarker: detects completion; disjoint from request (0.04475ms)
+✔ isDiscussPending: token OR request marker while not yet discussed (0.057292ms)
+✔ convergeDiscuss: strips token, ensures exactly one request marker (0.082292ms)
+✔ convergeDiscuss: idempotent — byte-stable fixed point on re-run (0.04825ms)
+✔ convergeDiscuss: collapses duplicate request markers to one (0.042125ms)
+✔ convergeDiscuss: marker-only body keeps the marker, stays pending (0.036667ms)
+✔ convergeDiscuss: already-discussed body is returned unchanged (0.027375ms)
+✔ convergeDiscuss: no signal → unchanged (0.027458ms)
+✔ markDiscussed: also strips the durable request marker on completion (0.038417ms)
+✔ markDiscussed: converge → complete round-trip strips both carriers (0.039458ms)
+✔ convergeDiscuss: preserves invariant markers (0.059875ms)
+✔ template parity: user-request.yml hardcodes the token; task/bug do not (1.13ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.990459

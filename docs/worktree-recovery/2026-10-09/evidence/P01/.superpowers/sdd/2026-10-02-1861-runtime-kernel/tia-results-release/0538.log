@@ -1,0 +1,24 @@
+✔ AC 1 — a commit-citing AC satisfies the evidence requirement with no non-demonstrable tag (1.35475ms)
+✔ AC 1 — the citation parses to its cited shas and is hidden from the visible label (0.31625ms)
+✔ AC 1 — a `commits` value with no well-formed sha is NOT a citation (0.158375ms)
+✔ AC 1 — a plain AC with neither citation nor verifier is still an offender (0.098625ms)
+✔ AC 2 — a citation naming an unreachable commit is refused, naming the citation (0.271166ms)
+✔ AC 2 — every offending citation is collected, not just the first (0.12875ms)
+✔ AC 2 — an abbreviated citation resolves against the full sha in the log (0.097125ms)
+✔ AC 3 — a resolvable commit attributable to no child of this epic is refused (0.101542ms)
+✔ AC 3 — a resolvable commit carrying no [#N] token at all is refused (0.087041ms)
+✔ AC 3 — runReviewPreflight surfaces citation refusals on the epic branch (1.556666ms)
+✔ AC 3 — a clean epic with valid citations still passes preflight (0.348333ms)
+✔ AC 4 — the existing `cmd` evidence form is unaffected by the citation path (0.296625ms)
+✔ AC 4 — an AC carrying BOTH a citation and a cmd keeps its command declaration (0.065792ms)
+✔ AC 4 — the non-demonstrable opt-out still short-circuits ahead of the citation check (0.443041ms)
+✔ AC 5 — the aggregate quality gates remain in the epic Definition of Done (0.194375ms)
+✔ AC 5 — an epic whose every AC is commit-cited still carries the aggregate gates (0.103792ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.648792

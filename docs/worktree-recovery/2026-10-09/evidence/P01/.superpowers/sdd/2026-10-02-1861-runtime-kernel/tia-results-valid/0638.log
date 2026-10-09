@@ -1,0 +1,10 @@
+✔ memorySeedFiles() sources the real durable seed from docs/ai-memory (1.934333ms)
+✔ the manifest group excludes archive/, meta-docs, and EXCLUDE_PATTERNS (26.601917ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32.087291

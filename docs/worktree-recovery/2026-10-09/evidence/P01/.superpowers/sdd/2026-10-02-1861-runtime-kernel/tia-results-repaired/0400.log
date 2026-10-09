@@ -1,0 +1,13 @@
+✔ move to review while already in review exits 0 as a no-op (the reported defect) (77.303125ms)
+✔ the no-op path performs no move — no entry stamp, no timing row, no board write (70.845834ms)
+✔ every state is re-runnable in place, not just review (260.52625ms)
+✔ a genuine illegal transition still refuses with exit 5 (0.526167ms)
+✔ the structured result reads as success, so verb guards do not treat it as a refusal (63.738375ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 483.338291

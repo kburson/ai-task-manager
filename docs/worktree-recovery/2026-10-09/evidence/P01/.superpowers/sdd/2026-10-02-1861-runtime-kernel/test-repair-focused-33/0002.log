@@ -1,0 +1,10 @@
+heal-timing-log-command.test.mjs: ok
+✔ scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs (449.842292ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 454.503875

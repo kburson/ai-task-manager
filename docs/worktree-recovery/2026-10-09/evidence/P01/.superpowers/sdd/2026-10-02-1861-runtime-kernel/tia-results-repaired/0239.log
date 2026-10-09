@@ -1,0 +1,50 @@
+✔ shaFreshGate: marker absent / HEAD unresolved → no-marker & no-head blockers (0.860709ms)
+✔ shaFreshGate: stale marker, commitsSince throws → best-effort blocker without extras (0.302166ms)
+✔ shaFreshGate: stale marker, >8 new commits → list truncates with +overflow (0.12925ms)
+✔ chainIntegrityGate: legacy grammar full chain → passes (1.25025ms)
+✔ issueDirtyGate: missing cfg / issueNumber throw (0.364ms)
+✔ issueDirtyGate: listComments throws → close-dirty-comments-fetch-failed (0.09125ms)
+✔ issueDirtyGate: filesForSha throws for one sha → best-effort skip, still clean (0.366708ms)
+✔ issueDirtyGate: dirtyFiles throws → close-dirty-git-status-failed (0.263834ms)
+✔ commitsOnTrunkGate: missing cfg / issueNumber throw (0.185708ms)
+✔ commitsOnTrunkGate: no trail / empty marker → graceful skips (0.1475ms)
+✔ commitsOnTrunkGate: listComments throws → close-trunk-comments-fetch-failed (0.095875ms)
+✔ commitsOnTrunkGate: trunk ref unresolved → close-trunk-ref-unresolved (100.779166ms)
+✔ commitsOnTrunkGate: attributed commit on trunk → passes with trunkRef (54.197167ms)
+✔ commitsOnTrunkGate: no attributed commit on trunk → close-no-attributed-commit-on-trunk (107.909833ms)
+✔ commitsOnTrunkGate: attribution lookup throws → close-trunk-attribution-failed (173.606708ms)
+✔ runCloseGates: getHeadSha throws → close-head-resolve-failed in blockers (0.746833ms)
+✔ runCloseGates: chain hole → chainIntegrityGate blockers propagate (0.302875ms)
+✔ runCloseGates: no attributed commit on trunk blocks close (15.3995ms)
+✔ runCloseGates: lineageDoneGate throws → close-lineage-gate-error caught (7.421042ms)
+✔ runCloseGates: issueDirtyGate throws → close-dirty-gate-error caught (8.527292ms)
+✔ runCloseGates: dirty touched file blocks close; clean deps → ok (14.522417ms)
+✖ commitsOnTrunkGate: cfg.trunkRef short-circuits defaultResolveTrunkRef (433.802959ms)
+✔ commitsOnTrunkGate: default trunk-ref resolution + default attributingCommits (real git) (489.4735ms)
+✔ issueDirtyGate: default filesForSha + dirtyFiles (real git) on HEAD (117.67375ms)
+✔ runCloseGates: default getHeadSha (real git) resolves HEAD (10.440958ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 24
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1543.140875
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs:350:1
+✖ commitsOnTrunkGate: cfg.trunkRef short-circuits defaultResolveTrunkRef (433.802959ms)
+  AssertionError [ERR_ASSERTION]: {"ok":false,"blocker":"close-trunk-attribution-failed: message-attribution lookup against trunk failed: Command failed: git log trunk --fixed-strings --grep=[#1] --format=%H%x09%s%x09%aI\nfatal: ambiguous argument 'trunk': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'\n","trunkRef":"trunk"}
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs:360:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

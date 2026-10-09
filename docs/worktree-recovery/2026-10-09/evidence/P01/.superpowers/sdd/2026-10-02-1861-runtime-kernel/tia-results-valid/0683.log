@@ -1,0 +1,16 @@
+✔ reject: backtick-embedded `cmd` literal command → refine-exit-vc-citation (2.681708ms)
+✔ reject: interim ordinal `cmd="vc:N"` citation → refine-exit-vc-citation (0.338167ms)
+✔ reject: dangling `vc-list` citation naming a missing id → refine-exit-vc-citation (0.239916ms)
+✔ pass: every AC cites existing ids via `vc-list`; an uncited VC entry does not block (0.502708ms)
+✔ multi-id `vc-list` citation resolves and passes (0.831125ms)
+✔ reject: empty `vc-list=""` on a verified AC → refine-exit-vc-citation (#804 no silent green) (0.279042ms)
+✔ reject: verified marker with no citation attribute → refine-exit-vc-citation (#804 missing) (0.19425ms)
+✔ guardrail is scoped to the AC section — a `## Verification Commands` entry is never flagged (0.215583ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.237542

@@ -1,0 +1,18 @@
+✔ AC1 commit-trace: surfaces attributed=true when a [#N] commit exists (0.800834ms)
+✔ AC1 commit-trace: surfaces attributed=false when NO [#N] commit exists (0.184042ms)
+✔ AC1 commit-trace: attribution error is NON-FATAL — never crashes the drive (0.19425ms)
+✔ AC2 review-preflight: orphaned recorded SHA passes when a [#733] commit exists (1.366ms)
+✔ AC2 commit-trace (engine): unreachable SHA does not stop attribution existence (0.424625ms)
+✔ AC3 close: token present in trunkRef scope → gate passes (13.424ms)
+✔ AC3 review-preflight: feature-branch deliverable accepted via --all message scope (0.306292ms)
+✔ NEG review-preflight: trail records commits but no [#733] token anywhere → fail (0.191ms)
+✔ NEG close: no [#733] commit on trunkRef → blocker with message-based code (10.199875ms)
+✔ AC3 integration: trunk-scoped attribution flips false→true across a merge (269.007542ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 299.572041

@@ -1,0 +1,21 @@
+✔ Shelve exports the Backlog target and Refine/R4P source boundary (0.937875ms)
+✔ strict Shelve argv accepts one explicit stale-blocker refresh flag (0.267375ms)
+✔ strict Shelve argv refuses a duplicate stale-blocker refresh flag (0.215375ms)
+✔ runShelve preserves ordinary transaction intent when no migration flag is supplied (0.180292ms)
+✔ runShelve threads explicit stale-blocker migration intent into the transaction (0.092834ms)
+✔ Shelve reports the explicit stale-blocker migration in its success audit output (17.532292ms)
+✔ strict Shelve argv retains deterministic unknown-argument refusal (0.161834ms)
+✔ runShelve refuses blank reasons before binding, network, or writes (0.098792ms)
+✔ park is only a compatibility alias for the same Shelve transaction (0.302792ms)
+✔ Park retains alias-aware usage, success, and refusal diagnostics (32.121291ms)
+✔ direct Shelve and Park executable entrypoints are inert and require the hub (707.928208ms)
+✔ Shelve is canonical across routing, catalog, and executable entrypoints (0.291667ms)
+✔ Shelve uses target preflight and one issue lock before entering the transaction (0.287334ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 763.596417

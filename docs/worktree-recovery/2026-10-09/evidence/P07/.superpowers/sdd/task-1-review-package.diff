@@ -1,0 +1,368 @@
+# Review package: 14ce7fe390660a2f5da0dffdf331906bed228d4d..5f2235066b290ae248f74dc55d1a670aef711f7d
+
+## Commits
+5f223506 feat(book): stage title page placeholder
+
+## Files changed
+ docs/articles/assets/book/title-page.png           | Bin 0 -> 1715886 bytes
+ scripts/articles/compose-book.mjs                  |   9 ++++-
+ scripts/articles/lib/book/chapter-openers.mjs      |  42 ++++++++++++++++++++-
+ .../articles/lib/book/chapter-openers.test.mjs     |  40 ++++++++++++++++++++
+ .../tests/unit/articles/lib/book/corpus.test.mjs   |  10 ++++-
+ .../tests/unit/articles/lib/book/render.test.mjs   |  37 +++++++++++++++++-
+ 6 files changed, 132 insertions(+), 6 deletions(-)
+
+## Diff
+diff --git a/docs/articles/assets/book/title-page.png b/docs/articles/assets/book/title-page.png
+new file mode 100644
+index 00000000..cc1f8a96
+Binary files /dev/null and b/docs/articles/assets/book/title-page.png differ
+diff --git a/scripts/articles/compose-book.mjs b/scripts/articles/compose-book.mjs
+index 537cf303..f3a1cfe5 100644
+--- a/scripts/articles/compose-book.mjs
++++ b/scripts/articles/compose-book.mjs
+@@ -6,21 +6,26 @@
+ //                                          [--out <dir>] [--doctor] [--help]
+ //
+ // Reads docs/articles/ and never writes there.
+ 
+ import { constants } from 'node:fs';
+ import { access, copyFile, mkdir, writeFile } from 'node:fs/promises';
+ import path from 'node:path';
+ import { fileURLToPath } from 'node:url';
+ 
+ import { renderBookDiagrams } from './lib/book/diagrams.mjs';
+-import { planChapterImages, stageChapterImages } from './lib/book/chapter-openers.mjs';
++import {
++  planChapterImages,
++  planTitleImage,
++  stageChapterImages,
++  stageTitleImage,
++} from './lib/book/chapter-openers.mjs';
+ import { buildManuscript } from './lib/book/manuscript.mjs';
+ import { renderTarget, TARGETS } from './lib/book/render.mjs';
+ import { doctor } from './lib/book/toolchain.mjs';
+ 
+ const HERE = path.dirname(fileURLToPath(import.meta.url));
+ const REPO_ROOT = path.resolve(HERE, '..', '..');
+ const ARTICLES_DIR = path.join(REPO_ROOT, 'docs', 'articles');
+ const BOOK_DIR = path.join(ARTICLES_DIR, 'assets', 'book');
+ const DEFAULT_OUT = path.join(REPO_ROOT, '.tmp', 'book');
+ 
+@@ -60,22 +65,24 @@ export function createAssetStager({ articlesDir, bookDir, outDir }) {
+   let staged = null;
+   return (chapterImages) => {
+     if (staged === null) {
+       staged = (async () => {
+         const cssPath = path.join(bookDir, 'book.css');
+         const imagePlan = planChapterImages({
+           articlesDir,
+           chapters: chapterImages,
+           outDir,
+         });
++        const titlePlan = planTitleImage({ bookDir, outDir });
+         await access(cssPath, constants.R_OK);
+         await stageChapterImages(imagePlan);
++        await stageTitleImage(titlePlan);
+         await copyFile(cssPath, path.join(outDir, 'book.css'));
+       })();
+     }
+     return staged;
+   };
+ }
+ 
+ export async function composeTarget({
+   target,
+   outDir,
+diff --git a/scripts/articles/lib/book/chapter-openers.mjs b/scripts/articles/lib/book/chapter-openers.mjs
+index 326acbc6..45713614 100644
+--- a/scripts/articles/lib/book/chapter-openers.mjs
++++ b/scripts/articles/lib/book/chapter-openers.mjs
+@@ -1,17 +1,19 @@
+ // Target-specific chapter opener markup and validated image staging.
+ 
+ import { constants, accessSync } from 'node:fs';
+-import { access, copyFile, mkdir } from 'node:fs/promises';
++import { access, copyFile, mkdir, open } from 'node:fs/promises';
+ import path from 'node:path';
+ 
+ const BOOK_BANNER_RE = /^assets\/article-headers\/[^/]+\.png$/;
++const TITLE_IMAGE_NAME = 'title-page.png';
++const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+ 
+ const LATEX_ESCAPES = Object.freeze({
+   '\\': '\\textbackslash{}',
+   '{': '\\{',
+   '}': '\\}',
+   $: '\\$',
+   '&': '\\&',
+   '#': '\\#',
+   _: '\\_',
+   '%': '\\%',
+@@ -52,21 +54,21 @@ export function chapterOpenerFor({ target, chapter, imageName, subtitle }) {
+       ':::',
+       '',
+     ];
+   }
+   throw new Error(`unsupported chapter opener target: ${target}`);
+ }
+ 
+ function assertContained(root, candidate, label) {
+   const relative = path.relative(root, candidate);
+   if (relative === '' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+-    throw new Error(`${label} escapes the article root`);
++    throw new Error(`${label} escapes the approved root`);
+   }
+ }
+ 
+ export function planChapterImages({ articlesDir, chapters, outDir }) {
+   const articleRoot = path.resolve(articlesDir);
+   const outputRoot = path.resolve(outDir);
+   const seenOutputs = new Set();
+   const plan = chapters.map((chapter) => {
+     const first = chapter.members?.[0]?.article ?? chapter;
+     const chapterNumber = chapter.number ?? chapter.chapter;
+@@ -102,10 +104,46 @@ export function planChapterImages({ articlesDir, chapters, outDir }) {
+   return Object.freeze(plan);
+ }
+ 
+ export async function stageChapterImages(plan) {
+   await Promise.all(plan.map(({ sourcePath }) => access(sourcePath, constants.R_OK)));
+   await Promise.all(
+     plan.map(({ outputPath }) => mkdir(path.dirname(outputPath), { recursive: true }))
+   );
+   await Promise.all(plan.map(({ sourcePath, outputPath }) => copyFile(sourcePath, outputPath)));
+ }
++
++export function planTitleImage({ bookDir, outDir }) {
++  const bookRoot = path.resolve(bookDir);
++  const sourcePath = path.resolve(bookRoot, TITLE_IMAGE_NAME);
++  assertContained(bookRoot, sourcePath, 'title image');
++  try {
++    accessSync(sourcePath, constants.R_OK);
++  } catch {
++    throw new Error(`cannot read title image: ${TITLE_IMAGE_NAME}`);
++  }
++  return Object.freeze({
++    sourcePath,
++    imageName: TITLE_IMAGE_NAME,
++    outputPath: path.join(path.resolve(outDir), TITLE_IMAGE_NAME),
++  });
++}
++
++async function assertPngSignature(sourcePath) {
++  const handle = await open(sourcePath, 'r');
++  try {
++    const signature = Buffer.alloc(PNG_SIGNATURE.length);
++    const { bytesRead } = await handle.read(signature, 0, signature.length, 0);
++    if (bytesRead !== PNG_SIGNATURE.length || !signature.equals(PNG_SIGNATURE)) {
++      throw new Error('title image has an invalid PNG signature');
++    }
++  } finally {
++    await handle.close();
++  }
++}
++
++export async function stageTitleImage({ sourcePath, outputPath }) {
++  await access(sourcePath, constants.R_OK);
++  await assertPngSignature(sourcePath);
++  await mkdir(path.dirname(outputPath), { recursive: true });
++  await copyFile(sourcePath, outputPath);
++}
+diff --git a/scripts/tests/unit/articles/lib/book/chapter-openers.test.mjs b/scripts/tests/unit/articles/lib/book/chapter-openers.test.mjs
+index d5b7363b..0d2789c3 100644
+--- a/scripts/tests/unit/articles/lib/book/chapter-openers.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/chapter-openers.test.mjs
+@@ -1,21 +1,23 @@
+ // @chore
+ import assert from 'node:assert/strict';
+ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+ import path from 'node:path';
+ import test from 'node:test';
+ 
+ import {
+   chapterOpenerFor,
+   escapeLatex,
+   planChapterImages,
++  planTitleImage,
+   stageChapterImages,
++  stageTitleImage,
+ } from '../../../../../articles/lib/book/chapter-openers.mjs';
+ import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
+ 
+ const article = (slug, bannerPath, over = {}) => ({
+   slug,
+   title: `Title ${slug}`,
+   subtitle: `Subtitle ${slug}`,
+   bannerPath,
+   ...over,
+ });
+@@ -149,10 +151,48 @@ test('planChapterImages rejects duplicate staged names', async () => {
+             chapter(1, [article('02', 'assets/article-headers/two.png')]),
+           ],
+           outDir: path.join(root, 'out'),
+         }),
+       /duplicate chapter image output/
+     );
+   } finally {
+     await rm(root, { recursive: true, force: true });
+   }
+ });
++
++const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
++
++test('planTitleImage stages a readable PNG under a stable replaceable name', async () => {
++  const root = await mkdtemp(path.join(projectScratchDir('test'), 'title-image-'));
++  const bookDir = path.join(root, 'book');
++  const outDir = path.join(root, 'out');
++  try {
++    await mkdir(bookDir, { recursive: true });
++    await writeFile(path.join(bookDir, 'title-page.png'), PNG_SIGNATURE);
++    const plan = planTitleImage({ bookDir, outDir });
++    assert.deepEqual(plan, {
++      sourcePath: path.join(bookDir, 'title-page.png'),
++      imageName: 'title-page.png',
++      outputPath: path.join(outDir, 'title-page.png'),
++    });
++    await stageTitleImage(plan);
++    assert.deepEqual(await readFile(plan.outputPath), PNG_SIGNATURE);
++  } finally {
++    await rm(root, { recursive: true, force: true });
++  }
++});
++
++test('stageTitleImage rejects missing or non-PNG input before copying', async () => {
++  const root = await mkdtemp(path.join(projectScratchDir('test'), 'title-image-invalid-'));
++  const bookDir = path.join(root, 'book');
++  const outDir = path.join(root, 'out');
++  try {
++    await mkdir(bookDir, { recursive: true });
++    assert.throws(() => planTitleImage({ bookDir, outDir }), /cannot read title image/);
++    await writeFile(path.join(bookDir, 'title-page.png'), 'not a png');
++    const plan = planTitleImage({ bookDir, outDir });
++    await assert.rejects(stageTitleImage(plan), /invalid PNG signature/);
++    assert.deepEqual(await readdir(outDir).catch(() => []), []);
++  } finally {
++    await rm(root, { recursive: true, force: true });
++  }
++});
+diff --git a/scripts/tests/unit/articles/lib/book/corpus.test.mjs b/scripts/tests/unit/articles/lib/book/corpus.test.mjs
+index ef776346..4aee32dc 100644
+--- a/scripts/tests/unit/articles/lib/book/corpus.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/corpus.test.mjs
+@@ -1,27 +1,35 @@
+ // @chore
+ import assert from 'node:assert/strict';
+-import { access } from 'node:fs/promises';
++import { access, readFile } from 'node:fs/promises';
+ import path from 'node:path';
+ import test from 'node:test';
+ 
+ import { parseArticle } from '../../../../../articles/lib/parse-article.mjs';
+ import { parseBibliography } from '../../../../../articles/lib/book/footnotes.mjs';
+ import { buildManuscript } from '../../../../../articles/lib/book/manuscript.mjs';
+ import { scanSections } from '../../../../../articles/lib/book/markers.mjs';
+ import { listSpine } from '../../../../../articles/lib/book/spine.mjs';
+ import { applyBookStrip } from '../../../../../articles/lib/book/strip.mjs';
+ 
+ const REPO_ROOT = path.resolve(import.meta.dirname, '../../../../../..');
+ const ARTICLES_DIR = path.join(REPO_ROOT, 'docs', 'articles');
+ const BOOK_DIR = path.join(ARTICLES_DIR, 'assets', 'book');
+ 
++test('the tracked title placeholder initially matches chapter seven artwork', async () => {
++  const title = await readFile(path.join(BOOK_DIR, 'title-page.png'));
++  const chapterSeven = await readFile(
++    path.join(ARTICLES_DIR, 'assets', 'article-headers', 'article-07-header.png')
++  );
++  assert.deepEqual(title, chapterSeven);
++});
++
+ test('the live corpus composes into a manuscript', async () => {
+   for (const target of ['manuscript', 'pdf', 'epub', 'html']) {
+     const built = await buildManuscript({ articlesDir: ARTICLES_DIR, bookDir: BOOK_DIR, target });
+     assert.equal(
+       built.chapters,
+       15,
+       `${target}: expected the drafted series, got ${built.chapters} chapters`
+     );
+     assert.equal(built.chapterImages.length, 15, `${target}: every chapter has one opener image`);
+     assert.ok(built.footnotes > 0, `${target}: the series citations become notes`);
+diff --git a/scripts/tests/unit/articles/lib/book/render.test.mjs b/scripts/tests/unit/articles/lib/book/render.test.mjs
+index 6c357008..b47e77bf 100644
+--- a/scripts/tests/unit/articles/lib/book/render.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/render.test.mjs
+@@ -1,18 +1,22 @@
+ // @chore
+ import assert from 'node:assert/strict';
+ import { readFileSync } from 'node:fs';
+-import { mkdtemp, rm } from 'node:fs/promises';
++import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+ import path from 'node:path';
+ import test from 'node:test';
+ 
+-import { composeTarget, parseArgs } from '../../../../../articles/compose-book.mjs';
++import {
++  composeTarget,
++  createAssetStager,
++  parseArgs,
++} from '../../../../../articles/compose-book.mjs';
+ import {
+   latexmkArgs,
+   pandocArgs,
+   TOC_DEPTH,
+   renderInvocations,
+   TARGETS,
+ } from '../../../../../articles/lib/book/render.mjs';
+ import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
+ 
+ const CHAPTER_HEADER = path.resolve(
+@@ -158,20 +162,49 @@ test('composeTarget stages assets before writing and rendering every target', as
+         target === 'manuscript'
+           ? ['build', 'stage', 'write']
+           : ['build', 'stage', 'write', 'diagrams', 'render']
+       );
+     }
+   } finally {
+     await rm(outDir, { recursive: true, force: true });
+   }
+ });
+ 
++test('createAssetStager copies chapter, title, and CSS assets once', async () => {
++  const root = await mkdtemp(path.join(projectScratchDir('test'), 'book-assets-'));
++  const articlesDir = path.join(root, 'articles');
++  const bookDir = path.join(articlesDir, 'assets', 'book');
++  const headersDir = path.join(articlesDir, 'assets', 'article-headers');
++  const outDir = path.join(root, 'out');
++  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
++  try {
++    await mkdir(bookDir, { recursive: true });
++    await mkdir(headersDir, { recursive: true });
++    await writeFile(path.join(headersDir, 'article-01-header.png'), png);
++    await writeFile(path.join(bookDir, 'title-page.png'), png);
++    await writeFile(path.join(bookDir, 'book.css'), '.book {}\n');
++    const stage = createAssetStager({ articlesDir, bookDir, outDir });
++    await stage([
++      {
++        chapter: 1,
++        slug: '01-first',
++        bannerPath: 'assets/article-headers/article-01-header.png',
++      },
++    ]);
++    assert.deepEqual(await readFile(path.join(outDir, 'chapter-01-header.png')), png);
++    assert.deepEqual(await readFile(path.join(outDir, 'title-page.png')), png);
++    assert.equal(await readFile(path.join(outDir, 'book.css'), 'utf8'), '.book {}\n');
++  } finally {
++    await rm(root, { recursive: true, force: true });
++  }
++});
++
+ test('renderInvocations also runs latexmk with cwd set to outDir for the pdf target, so LaTeX image includes resolve', () => {
+   const invocations = renderInvocations({
+     manuscriptPath: '/tmp/book/manuscript.md',
+     bookDir: '/repo/docs/articles/assets/book',
+     outDir: '/tmp/book',
+     target: 'pdf',
+   });
+   assert.equal(invocations.length, 2);
+   assert.deepEqual(
+     invocations.map((i) => i.command),

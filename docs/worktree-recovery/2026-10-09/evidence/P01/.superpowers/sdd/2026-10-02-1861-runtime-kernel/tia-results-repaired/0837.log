@@ -1,0 +1,14 @@
+coverage-fleet.test.mjs: defined
+✔ list: empty registry → "No fleet tasks registered." (1418.229958ms)
+✔ list: renders entries, covering both age formats and effectiveKind (1248.925ms)
+✔ prune: nothing stale → "nothing stale", no eviction (1308.862042ms)
+✔ prune: evicts a worktree entry whose directory is gone (1922.6545ms)
+✔ prune --dry-run: reports "Would evict" but leaves the registry intact (2296.061042ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8236.092291

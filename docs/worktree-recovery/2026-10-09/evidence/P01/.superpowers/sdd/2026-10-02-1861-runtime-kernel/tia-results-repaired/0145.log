@@ -1,0 +1,10 @@
+✔ SIGKILL after control activation at root 0 refuses partial authority and resumes exactly (1844.599541ms)
+✔ SIGKILL after control activation at root 1 refuses partial authority and resumes exactly (1891.767041ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3739.445375

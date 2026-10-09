@@ -1,0 +1,13 @@
+✔ observes a two-parent merge commit as the merge method (0.598375ms)
+✔ refuses a single-parent rewrite rather than guessing squash (0.328625ms)
+✔ refuses when the second parent is not the expected head (0.105166ms)
+✔ propagates a malformed inspection as evidence failure (0.095ms)
+✔ requires its inputs (0.096875ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.511542

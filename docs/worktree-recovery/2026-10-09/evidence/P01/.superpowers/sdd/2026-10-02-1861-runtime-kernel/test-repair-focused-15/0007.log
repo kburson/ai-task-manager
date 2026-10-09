@@ -1,0 +1,12 @@
+✔ SIGKILL before initialization publication and during resumer claim preserves exclusive recoverable ownership (2212.73275ms)
+✔ real SIGKILL at after-initialization-stage preserves empty local bytes and original activation (1898.002875ms)
+✔ real SIGKILL at after-initialization-publish preserves empty local bytes and original activation (1927.217042ms)
+✔ real SIGKILL at after-initialization-journal preserves empty local bytes and original activation (1944.943167ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8060.13775

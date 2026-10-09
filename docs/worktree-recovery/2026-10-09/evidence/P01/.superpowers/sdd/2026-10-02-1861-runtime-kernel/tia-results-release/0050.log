@@ -1,0 +1,10 @@
+✔ pending flush preserves exact evidence across every publication and cursor crash boundary (4142.50175ms)
+✔ publication failure leaves the cursor unchanged and conflicting or corrupt recovery refuses (1846.756541ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5992.680833

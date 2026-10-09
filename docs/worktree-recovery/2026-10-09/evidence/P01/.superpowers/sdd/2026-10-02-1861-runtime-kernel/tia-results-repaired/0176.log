@@ -1,0 +1,10 @@
+✔ Develop source edit accepts only an explicit deep-dive waiver (1.330666ms)
+✔ runHook revalidates policy for every edit so revocation blocks the next boundary (1.921875ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.313834

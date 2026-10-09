@@ -1,0 +1,12 @@
+✔ planStageHeal: zero-marker backlog → backfill via createdAt fallback (3.139375ms)
+✔ planStageHeal: zero-marker body for a non-backlog stage → no-heal-needed (0.357584ms)
+✔ apply: zero-marker backlog gets a well-formed marker with ts > createdAt (0.876834ms)
+✔ planStageHeal: zero-marker backlog with bad createdAt → no-heal-needed (no throw) (0.083167ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.095042

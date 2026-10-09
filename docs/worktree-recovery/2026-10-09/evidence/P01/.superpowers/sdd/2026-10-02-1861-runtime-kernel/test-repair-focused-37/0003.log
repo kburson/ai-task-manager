@@ -1,0 +1,15 @@
+close-reconcile-lifecycle.test.mjs: defined
+✔ close on already-done issue (no drift) re-ticks strayed lifecycle DoD boxes (502.078958ms)
+✔ close on closed issue with lagging board (drift) reconciles after converging (243.05225ms)
+✔ reconcile drives an unticked real body to ticked story-closed + timing-flushed (#753 AC4) (0.88275ms)
+✔ reconcile does not fabricate an absent lifecycle box (#753 AC3) (0.178292ms)
+✔ reconcile is idempotent on already-ticked boxes (#753 AC3) (0.114417ms)
+✔ convergence decision for the happy path is unchanged by the #753 seam (#753 AC4) (0.472083ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 968.561083

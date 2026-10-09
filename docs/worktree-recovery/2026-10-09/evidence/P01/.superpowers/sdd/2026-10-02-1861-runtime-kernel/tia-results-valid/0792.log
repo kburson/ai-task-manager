@@ -1,0 +1,70 @@
+✔ exports the marker-authorized approval timing capabilities (0.49625ms)
+✔ #1127 marker-authorized boundary is inserted at approval and deduplicated (18.019ms)
+✔ marker-authorized boundary ignores fenced approval lookalikes (0.726792ms)
+✔ legacy colon approval marker remains valid reconciliation authority (0.344584ms)
+✔ #1127 delayed close cannot inflate Review or published active totals (1.73275ms)
+✔ legacy repair uses the last marker at approval, not a later close marker (0.804541ms)
+✔ legacy repair preserves an explicit unavailable full marker at approval (0.774833ms)
+✔ legacy repair treats an empty historical full-marker cell as unavailable (0.923791ms)
+✔ post-close retry cannot duplicate the same authoritative approval event (0.984542ms)
+✖ runApprove reconciles timing after first approval and on an already-approved retry (202.864667ms)
+✖ runApprove refreshes stale Full-Auto approval carriers after lifecycle invalidation (194.995666ms)
+✖ runApprove removes a legacy unbounded Full-Auto footnote during stale re-approval (187.69725ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 9
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 618.168875
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs:282:1
+✖ runApprove reconciles timing after first approval and on an already-approved retry (202.864667ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runApprove (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/approve.mjs:323:10)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs:288:19)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs:315:1
+✖ runApprove refreshes stale Full-Auto approval carriers after lifecycle invalidation (194.995666ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runApprove (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/approve.mjs:323:10)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs:339:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs:364:1
+✖ runApprove removes a legacy unbounded Full-Auto footnote during stale re-approval (187.69725ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runApprove (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/approve.mjs:323:10)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs:387:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }

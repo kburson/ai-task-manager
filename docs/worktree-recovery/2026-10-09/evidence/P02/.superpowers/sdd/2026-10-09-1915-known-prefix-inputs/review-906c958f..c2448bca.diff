@@ -1,0 +1,627 @@
+# Review package: 906c958f73d20412df21c23157939a83d1a13b46..HEAD
+
+## Commits
+c2448bca [#1918] [#1915] Refuse malformed known-prefix inputs without authority
+b892ab4a [#1918] [#1915] Recognize exact completed early-prefix input data
+
+## Files changed
+ .../plans/2026-10-09-1915-known-prefix-inputs.md   |   2 +-
+ .../lib/criteria-revision/stage-execution.mjs      | 152 +++++++++++++++
+ .../criteria-revision-known-prefix-inputs.test.mjs |   3 +
+ .../criteria-revision-known-prefix-later.test.mjs  |   3 +
+ .../lib/native-stage-continuation-fixture.mjs      | 208 ++++++++++++++++++++-
+ .../native-stage-known-prefix-boundary.test.mjs    |  51 +++++
+ 6 files changed, 417 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/plans/2026-10-09-1915-known-prefix-inputs.md b/docs/superpowers/plans/2026-10-09-1915-known-prefix-inputs.md
+index c197dc57..fe0d03e3 100644
+--- a/docs/superpowers/plans/2026-10-09-1915-known-prefix-inputs.md
++++ b/docs/superpowers/plans/2026-10-09-1915-known-prefix-inputs.md
+@@ -16,21 +16,21 @@ Input bf37623bb includes reviewed/fixed1924. The full original recovery-from-com
+ 
+ Fresh admission must revalidate original executor, approval/source, current prefix and common lock. Current native guard evaluation consumes the exact held body, lifecycle sources and current evidence binding; substituting a constructed ready state is forbidden. The actual actor runtime allocates a fresh clock and counts the transcript, while retained recovery must preserve original clock/actor effects. These admission/runtime bridges remain the subsequent implementation work of1915, with no new issues, defects or prerequisite chain.
+ 
+ This plan owns only the independently testable prefix-input delta, estimated2 of the existing14 prospective human hours, excluding passive tests/CI and prior implementation. Remaining original-entry admission/resumption stays on1915 and is not completed by this plan. Normal child lifecycle, full/cloud and complete-tail checks remain pending; known17–24 stays1923 and unknown effects1925.
+ 
+ ## Global Constraints
+ 
+ - Native1847→1855→1918→1915, existing feature/epic/1918/parent and active parent source sequencing exception; preserve ordinary states/edges.
+ - Preserve all original algorithms, fixtures/assertions/tests, proof/approval/source guards and lock order. No authority cache, runtime brand from DATA, caller callbacks/after bytes, activation or lifecycle receipt.
+ - Node/Markdown only; unchanged600000ms per file/semantic section,1200s focused command,45-minute sandbox, maximum four isolated native processes.
+-- Reassess/split if prospective remaining effort reaches24h. No historical or passive walltime charged as productive estimate.
++- Reassess/split if prospective remaining effort reaches24h. No historical or passive wall time charged as productive estimate.
+ - Retain the workspace while actual reentry and aggregate obligations remain pending; parent source integration is not child completion.
+ 
+ ## Review Focus
+ 
+ - A completed resource may not disappear or revert to its before value while still qualifying as a known completed prefix.
+ - Caller input mutated after the first await must not change the detached recognized prefix or execute a getter.
+ - Incomplete readbacks and compensation must remain fenced even if some physical effects landed.
+ - Later-tail, foreign executor, body/version or unrelated-resource substitutions cannot qualify early-prefix inputs.
+ - Recognized DATA must never mint current approval, runtime membership or generic pending-writer/retry authority.
+ 
+diff --git a/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs b/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
+index c241de38..fb8bcbcf 100644
+--- a/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
++++ b/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
+@@ -2993,10 +2993,162 @@ export async function deriveRecordedNativeStagePartialFacts(input) {
+     transitionCommitPresent = sentinelPresent && comment.complete;
+   }
+   return Object.freeze({
+     itemId: boardMoved ? header.intent.itemId : '',
+     boardMoved,
+     sentinelPresent,
+     transitionCommitPresent,
+     transitionCommitId: transitionCommitPresent ? steps[15].intent.commentId : null,
+   });
+ }
++
++// @story #1915 — historical completed-prefix inputs only, never runtime admission.
++export async function deriveRecordedNativeStageKnownPrefix(input) {
++  try {
++    if (!input || Object.getPrototypeOf(input) !== Object.prototype)
++      revisionError('native-stage-known-prefix');
++    const keys = ['journal', 'resources', 'body', 'stage', 'executor'];
++    const descriptors = Object.getOwnPropertyDescriptors(input);
++    if (
++      Reflect.ownKeys(descriptors).length !== keys.length ||
++      keys.some(
++        (key) =>
++          !descriptors[key] ||
++          !Object.hasOwn(descriptors[key], 'value') ||
++          !descriptors[key].enumerable
++      )
++    )
++      revisionError('native-stage-known-prefix');
++    const detached = JSON.parse(canonicalRecordJson(input));
++    const { journal, resources, body, stage, executor } = detached;
++    validateNativeStageJournal(journal);
++    const { header, steps } = journal,
++      ordinal = steps.length;
++    if (
++      ordinal > 16 ||
++      Object.hasOwn(journal, 'compensation') ||
++      steps.some((step) => step.readback === null) ||
++      !same(executor, header.scope.executor)
++    )
++      revisionError('native-stage-known-prefix');
++    const origin = header.original.observation;
++    validateRevisionObservation(origin);
++    exactKeys(
++      header.scope,
++      ['repository', 'issue', 'domain', 'executor'],
++      'native-stage-known-prefix'
++    );
++    exactKeys(
++      header.intent,
++      [
++        'source',
++        'target',
++        'transitionId',
++        'actor',
++        'provider',
++        'sessionId',
++        'projectId',
++        'itemId',
++        'statusFieldId',
++        'sourceOptionId',
++        'targetOptionId',
++        'tailProfile',
++      ],
++      'native-stage-known-prefix'
++    );
++    const moveId = new RegExp(
++      '^move:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
++    );
++    const actor = header.original.actor;
++    if (
++      origin.sourceKind !== 'legacy-body' ||
++      origin.stage !== 'develop' ||
++      origin.issueState !== 'open' ||
++      !same(header.scope, {
++        repository: origin.repository,
++        issue: origin.issue,
++        domain: origin.writerDomain,
++        executor: origin.executor,
++      }) ||
++      header.intent.source !== 'develop' ||
++      header.intent.target !== 'test' ||
++      header.intent.tailProfile !== 'task-owner' ||
++      typeof header.intent.transitionId !== 'string' ||
++      !moveId.test(header.intent.transitionId) ||
++      typeof actor.capture.ts !== 'string' ||
++      !Number.isFinite(Date.parse(actor.capture.ts)) ||
++      new Date(actor.capture.ts).toISOString() !== actor.capture.ts ||
++      header.intent.provider !== actor.identity.provider ||
++      header.intent.sessionId !== actor.identity.sid ||
++      actor.identity.sid !== origin.executor.sessionId ||
++      [
++        'actor',
++        'provider',
++        'sessionId',
++        'projectId',
++        'itemId',
++        'statusFieldId',
++        'sourceOptionId',
++        'targetOptionId',
++      ].some((key) => typeof header.intent[key] !== 'string' || !header.intent[key])
++    )
++      revisionError('native-stage-known-prefix');
++    let expectedResources = structuredClone(header.original.resources);
++    let expectedBody = structuredClone(header.original.observation.body);
++    let expectedStage = header.original.observation.stage;
++    if (ordinal === 1) expectedResources.local.actorFlush = { bytes: steps[0].intent.journalBytes };
++    else if (ordinal === 2)
++      expectedResources = (
++        await reconstructNativeStageActorTiming({ header, first: steps[0], step: steps[1] })
++      ).afterResources;
++    else if (ordinal === 3)
++      expectedResources = (
++        await reconstructNativeStageActorCursor({
++          header,
++          first: steps[0],
++          second: steps[1],
++          step: steps[2],
++        })
++      ).afterResources;
++    else if ([4, 5, 6, 8, 9, 10].includes(ordinal))
++      expectedResources = (await reconstructNativeStageCheckpointSteps({ header, steps }))
++        .afterResources;
++    else if (ordinal === 7)
++      expectedResources = (await reconstructNativeStageActorRemoval({ header, steps }))
++        .afterResources;
++    else if ([11, 12].includes(ordinal))
++      expectedResources = (await reconstructNativeStagePhaseTiming({ header, steps }))
++        .afterResources;
++    else if (ordinal === 13) {
++      const entry = await reconstructNativeStageEntryBody({ header, steps });
++      expectedResources = entry.resources;
++      expectedBody = entry.afterBody;
++    } else if (ordinal === 14) {
++      const board = await reconstructNativeStageBoard({ header, steps });
++      if (!board.confirmed) revisionError('native-stage-known-prefix');
++      expectedResources = board.afterResources;
++      expectedBody = board.body;
++      expectedStage = board.afterStage;
++    } else if (ordinal === 15) {
++      const sentinel = await reconstructNativeStageSentinel({ header, steps });
++      expectedResources = sentinel.resources;
++      expectedBody = sentinel.afterBody;
++      expectedStage = sentinel.stage;
++    } else if (ordinal === 16) {
++      const comment = await reconstructNativeStageTransitionComment({ header, steps });
++      if (!comment.complete) revisionError('native-stage-known-prefix');
++      expectedResources = comment.afterResources;
++      expectedBody = comment.body;
++      expectedStage = comment.stage;
++    }
++    if (!same(resources, expectedResources) || !same(body, expectedBody) || stage !== expectedStage)
++      revisionError('native-stage-known-prefix');
++    return Object.freeze({
++      ordinal,
++      nextOrdinal: ordinal + 1,
++      transitionId: header.intent.transitionId,
++      actorClock: header.original.actor.capture.ts,
++    });
++  } catch {
++    revisionError('native-stage-known-prefix');
++  }
++}
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-known-prefix-inputs.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-known-prefix-inputs.test.mjs
+new file mode 100644
+index 00000000..4e23ff0d
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-known-prefix-inputs.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1915
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('known-prefix-inputs', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-known-prefix-later.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-known-prefix-later.test.mjs
+new file mode 100644
+index 00000000..6139aa3d
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-known-prefix-later.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1915
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('known-prefix-later', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs b/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
+index a0044a5a..da882f88 100644
+--- a/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
++++ b/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
+@@ -34,21 +34,24 @@ import {
+   statSync,
+   test,
+   updateMarker,
+   verbAcStamp,
+   verbEnsureChecked,
+   withRevisionConsumer,
+   writeFileSync,
+ } from './native-continuation-fixtures.mjs';
+ 
+ export function registerNativeStageCase(mode, entrypoint, fault = null) {
++  const knownPrefixLater = mode === 'known-prefix-later';
++  if (knownPrefixLater) mode = 'tail-cache';
+   const faultMode = mode;
++  const knownPrefixCapture = mode === 'known-prefix-inputs';
+   const partialReporting = [
+     'partial-reporting-14',
+     'partial-reporting-15',
+     'partial-reporting-16',
+     'partial-reporting-unknown',
+     'partial-reporting-cancel',
+     'partial-reporting-late-source',
+     'partial-reporting-late-input',
+     'partial-reporting-late-authority',
+     'partial-reporting-final-source',
+@@ -66,20 +69,21 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+     'transition-create-response': ['create', 'response'],
+     'transition-read-response': ['read', 'response'],
+     'transition-create-parsed': ['create', 'parsed'],
+     'transition-read-parsed': ['read', 'parsed'],
+     'transition-request-accessor': ['create', 'request'],
+     'transition-current-config': ['create', 'configuration'],
+   }[mode];
+   const transitionMode =
+     transitionCustody ||
+     partialReporting ||
++    knownPrefixCapture ||
+     [
+       'transition-comment',
+       'transition-comment-prefix',
+       'transition-result-custody',
+       'transition-history',
+       'recovery-from-comment',
+       'tail-dispatch',
+       'tail-dispatch-reentry',
+       'tail-cache',
+       'tail-cache-late-read',
+@@ -2707,22 +2711,40 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+                     partialConfigFile,
+                     JSON.stringify({ ...cfg, kanbanOptionTest: 'OPTION_foreign' })
+                   );
+                 else f.backend.lifecycleTransition = true;
+                 partialInjectedSnapshot = f.backend.snapshot;
+                 partialInjectedEffects = f.backend.effects;
+               });
+             }
+             return value;
+           };
++        const knownSnapshots = new Map();
++        let readingKnownSnapshot = false;
+         Object.getOwnPropertyDescriptors = function (...args) {
+           const descriptors = Reflect.apply(originalDescriptors, this, args);
++          if ((knownPrefixCapture || knownPrefixLater) && !readingKnownSnapshot) {
++            readingKnownSnapshot = true;
++            try {
++              const snapshot = f.backend.snapshot,
++                journal = snapshot.nativeStageRecords?.at(-1);
++              if (
++                journal &&
++                journal.steps.length <= 18 &&
++                journal.steps.every((step) => step.readback !== null) &&
++                !knownSnapshots.has(journal.steps.length)
++              )
++                knownSnapshots.set(journal.steps.length, snapshot);
++            } finally {
++              readingKnownSnapshot = false;
++            }
++          }
+           if (
+             partialReporting &&
+             !partialCaptures &&
+             Reflect.ownKeys(descriptors).sort().join(',') === 'backend,capability,context,holder' &&
+             descriptors.backend?.value === f.backend &&
+             new Error().stack.includes('readMemoryNativeStagePartialFacts')
+           ) {
+             partialCaptures++;
+             partialInput = args[0];
+             queueMicrotask(() => {
+@@ -2868,22 +2890,25 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+         if (cacheMode) {
+           process.stderr.write = function (chunk, ...args) {
+             cacheWarnings += String(chunk);
+             return Reflect.apply(originalStderr, this, [chunk, ...args]);
+           };
+         }
+         if (faultMode === 'tail-cache' && fault === null) {
+           const originalCache = (
+             await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs')
+           ).refreshKanbanStateCache;
++          const cachePriorObserver = knownPrefixLater
++            ? Object.getOwnPropertyDescriptors
++            : originalDescriptors;
+           Object.getOwnPropertyDescriptors = function (value) {
+-            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
++            const descriptors = Reflect.apply(cachePriorObserver, this, arguments);
+             if (
+               !cacheReentryProbe &&
+               Reflect.ownKeys(descriptors).sort().join(',') ===
+                 'backend,capability,context,invocation,token' &&
+               new Error().stack.includes('readMemoryNativeStageCache')
+             ) {
+               cacheReentryProbe = true;
+               const authority = Object.fromEntries(
+                 Object.entries(descriptors).map(([key, d]) => [key, d.value])
+               );
+@@ -3137,20 +3162,180 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+               deps: createRevisionMemory(lost),
+             });
+             assert.equal(
+               rejected.status,
+               'indeterminate',
+               'completed resource facts cannot disappear'
+             );
+           }
+           return;
+         }
++        if (knownPrefixCapture) {
++          assert.equal(journal.steps.length, 16);
++          assert.ok(journal.steps.every((step) => step.readback !== null));
++          assert.deepEqual(
++            [...knownSnapshots.keys()].sort((a, b) => a - b),
++            Array.from({ length: 16 }, (_, i) => i + 1),
++            'capture every actual original completed prefix'
++          );
++          assert.deepEqual(captureFiles(), files);
++          const codec =
++            await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
++          const originalEffects = f.backend.effects;
++          for (const [ordinal, selected] of knownSnapshots) {
++            const input = {
++              journal: selected.nativeStageRecords.at(-1),
++              resources: selected.nativeStageResources,
++              body: selected.observation.body,
++              stage: selected.observation.stage,
++              executor: selected.observation.executor,
++            };
++            const known = await codec.deriveRecordedNativeStageKnownPrefix(input);
++            assert.equal(known.ordinal, ordinal);
++            assert.equal(known.nextOrdinal, ordinal + 1);
++            assert.equal(known.transitionId, input.journal.header.intent.transitionId);
++            assert.equal(known.actorClock, input.journal.header.original.actor.capture.ts);
++            for (const [label, change] of [
++              [
++                'completed resource',
++                (value) => {
++                  value.resources.local.activeTask.bytes += ' ';
++                },
++              ],
++              [
++                'body',
++                (value) => {
++                  value.body.bytes += '\n';
++                },
++              ],
++              [
++                'body version',
++                (value) => {
++                  value.body.version += 1;
++                },
++              ],
++              [
++                'stage',
++                (value) => {
++                  value.stage = 'review';
++                },
++              ],
++              [
++                'executor',
++                (value) => {
++                  value.executor.sessionId += '-foreign';
++                },
++              ],
++              [
++                'incomplete readback',
++                (value) => {
++                  value.journal.steps.at(-1).readback = null;
++                },
++              ],
++              [
++                'compensation',
++                (value) => {
++                  value.journal.compensation = {};
++                },
++              ],
++            ]) {
++              const changed = structuredClone(input);
++              change(changed);
++              await assert.rejects(
++                codec.deriveRecordedNativeStageKnownPrefix(changed),
++                (error) => error.message === 'criteria-revision:native-stage-known-prefix',
++                ordinal + ':' + label
++              );
++            }
++            const detached = structuredClone(input),
++              retained = detached.resources;
++            let gets = 0;
++            const pending = codec.deriveRecordedNativeStageKnownPrefix(detached);
++            queueMicrotask(() =>
++              Object.defineProperty(detached, 'resources', {
++                enumerable: true,
++                get() {
++                  gets++;
++                  return retained;
++                },
++              })
++            );
++            assert.deepEqual(await pending, known);
++            assert.equal(gets, 0, 'caller DATA detached across recognition await');
++            assert.deepEqual(
++              Object.keys(known).sort(),
++              ['ordinal', 'nextOrdinal', 'transitionId', 'actorClock'].sort()
++            );
++          }
++          const { canonicalRecordJson } =
++            await import('../../../../task-tracker/lib/github-records/canonical-json.mjs');
++          const first = knownSnapshots.get(1);
++          for (const key of ['transitionId', 'actorClock']) {
++            const changed = {
++              journal: structuredClone(first.nativeStageRecords.at(-1)),
++              resources: structuredClone(first.nativeStageResources),
++              body: structuredClone(first.observation.body),
++              stage: first.observation.stage,
++              executor: structuredClone(first.observation.executor),
++            };
++            if (key === 'transitionId') delete changed.journal.header.intent.transitionId;
++            else delete changed.journal.header.original.actor.capture.ts;
++            const { id, ...unsigned } = changed.journal.header;
++            changed.journal.header.id = hashBytes(canonicalRecordJson(unsigned));
++            changed.journal.steps[0].previous = changed.journal.header.id;
++            await assert.rejects(
++              codec.deriveRecordedNativeStageKnownPrefix(changed),
++              (error) => error.message === 'criteria-revision:native-stage-known-prefix',
++              'missing recognized scalar: ' + key
++            );
++          }
++          assert.deepEqual(
++            f.backend.effects,
++            originalEffects,
++            'recognition creates no effects or runtime membership'
++          );
++          assert.deepEqual(f.backend.snapshot, snapshot);
++          const calls = [];
++          const restarted = createRevisionMemory(snapshot);
++          await assert.rejects(
++            withRevisionConsumer(
++              {
++                repository: f.context.repository,
++                issue: f.context.issue,
++                activity: 'stage-write',
++                backend: restarted,
++                projectDir: f.projectDir,
++              },
++              () => calls.push('stage')
++            ),
++            (error) => error.code === 'revision-pending'
++          );
++          await assert.rejects(
++            mutateIssueBody({
++              issueNumber: f.context.issue,
++              repo: f.context.repository,
++              mutate: (body) => {
++                calls.push('body');
++                return body;
++              },
++              deps: { revisionBackend: restarted, pexec: async () => calls.push('transport') },
++            }),
++            (error) => error.code === 'revision-pending'
++          );
++          assert.deepEqual(calls, []);
++          assert.equal(
++            (await observeRevision({ context: f.context, deps: createRevisionMemory(snapshot) }))
++              .status,
++            'pending-native-stage'
++          );
++          return;
++        }
+         assert.ok(beforeComment, 'capture after actual completed15');
+         assert.equal(beforeComment.nativeStageRecords[0].steps.length, 15);
+         assert.ok(
+           beforeComment.nativeStageRecords[0].steps.every((step) => step.readback !== null)
+         );
+         assert.equal(beforeComment.nativeStageRecords[0].steps[13].outcome.kind, 'confirmed');
+         if (reentryProbe) {
+           t.diagnostic(
+             JSON.stringify({
+               tailPreIntentReentry: {
+@@ -3248,20 +3433,41 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+           assert.deepEqual(captureFiles(), files, 'actual cache effects never touch host state');
+           const observed = await observeRevision({
+             context: f.context,
+             deps: createRevisionMemory(snapshot),
+           });
+           assert.equal(observed.status, 'pending-native-stage');
+           assert.equal(observed.nativeHistoryApproved, false);
+           if (fault === null) {
+             const codec =
+               await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
++            if (knownPrefixLater) {
++              const effects = f.backend.effects;
++              for (const ordinal of [17, 18]) {
++                const captured = knownSnapshots.get(ordinal);
++                assert.ok(captured, 'actual later original prefix captured: ' + ordinal);
++                assert.equal(captured.nativeStageRecords.at(-1).steps.length, ordinal);
++                const selected = {
++                  journal: captured.nativeStageRecords.at(-1),
++                  resources: captured.nativeStageResources,
++                  body: captured.observation.body,
++                  stage: captured.observation.stage,
++                  executor: captured.observation.executor,
++                };
++                await assert.rejects(
++                  codec.deriveRecordedNativeStageKnownPrefix(selected),
++                  (error) => error.message === 'criteria-revision:native-stage-known-prefix'
++                );
++              }
++              assert.deepEqual(f.backend.effects, effects);
++              assert.deepEqual(f.backend.snapshot, snapshot);
++            }
+             const input = structuredClone({ header: journal.header, steps: journal.steps });
+             const bad = structuredClone(input);
+             bad.steps[17].intent.sid = 'foreign';
+             await assert.rejects(
+               codec.reconstructNativeStageTailCache(bad),
+               /criteria-revision:native-stage-tail-cache/
+             );
+             const lost = structuredClone(snapshot);
+             lost.nativeStageResources.local.activeTask = structuredClone(
+               beforeComment.nativeStageResources.local.activeTask
+diff --git a/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-known-prefix-boundary.test.mjs b/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-known-prefix-boundary.test.mjs
+new file mode 100644
+index 00000000..018af885
+--- /dev/null
++++ b/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-known-prefix-boundary.test.mjs
+@@ -0,0 +1,51 @@
++// @story #1915
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as codec from '../../../../../task-tracker/lib/criteria-revision/stage-execution.mjs';
++const fresh = () => ({
++  journal: {},
++  resources: {},
++  body: { bytes: 'source', version: 0 },
++  stage: 'develop',
++  executor: {},
++});
++for (const key of ['journal', 'resources', 'body', 'stage', 'executor'])
++  test(
++    'known-prefix DATA rejects ' + key + ' getter before reading any selected value',
++    async () => {
++      let gets = 0;
++      const input = fresh();
++      Object.defineProperty(input, key, {
++        enumerable: true,
++        get() {
++          gets++;
++          throw Error('unowned DATA getter');
++        },
++      });
++      await assert.rejects(
++        async () => codec.deriveRecordedNativeStageKnownPrefix(input),
++        /criteria-revision:native-stage-known-prefix/
++      );
++      assert.equal(gets, 0);
++    }
++  );
++for (const shape of ['prototype', 'hidden', 'symbol', 'extra', 'missing'])
++  test('known-prefix DATA refuses ' + shape + ' shape without recognition', async () => {
++    const input = fresh();
++    if (shape === 'prototype') Object.setPrototypeOf(input, { approved: true });
++    if (shape === 'hidden') Object.defineProperty(input, 'journal', { enumerable: false });
++    if (shape === 'symbol') input[Symbol('approved')] = true;
++    if (shape === 'extra') input.capability = {};
++    if (shape === 'missing') delete input.body;
++    await assert.rejects(
++      async () => codec.deriveRecordedNativeStageKnownPrefix(input),
++      /criteria-revision:native-stage-known-prefix/
++    );
++  });
++test('known-prefix DATA refuses null, scalar and incomplete roots', async () => {
++  for (const value of [null, undefined, 3, true, 'known', [], fresh()])
++    await assert.rejects(
++      async () => codec.deriveRecordedNativeStageKnownPrefix(value),
++      /criteria-revision:native-stage-known-prefix/
++    );
++});

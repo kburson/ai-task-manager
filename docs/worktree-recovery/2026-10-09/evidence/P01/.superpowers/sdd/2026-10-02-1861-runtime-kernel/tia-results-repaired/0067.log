@@ -1,0 +1,10 @@
+✔ verify-priority-p3 smoke: missing config → exits 1 with cannot-read guard (327.716625ms)
+✔ verify-priority-p3 smoke: config without priorityOptionP3 → exits 1 before any network call (278.695583ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 610.080125

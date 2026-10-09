@@ -1,0 +1,19 @@
+✔ exports the local-worktree environment inspector (0.507416ms)
+✔ prints package-lifecycle self-documentation for --help (62.800083ms)
+✔ accepts a complete Node 26 dogfood worktree without warnings (32.497ms)
+✔ accepts Node 24 with a Node 26 preference warning (21.997333ms)
+✔ rejects Node versions below 24 (20.877541ms)
+✔ reports every missing required command (24.902667ms)
+✔ reports missing tracked AITM configuration (19.547292ms)
+✔ rejects a dogfood link that resolves outside the current worktree (35.071792ms)
+✔ setup script installs, repairs, and verifies without binding task work (1.011875ms)
+✔ cloud setup enforces Node 24 and prefers Node 26 (0.418333ms)
+✔ operator guide is standalone for navigating Codex environment settings (0.737958ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 224.476042

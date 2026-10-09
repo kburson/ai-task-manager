@@ -1,0 +1,13 @@
+✔ buildMemoryIndexContext prefixes the recall instruction over the index body (16.241333ms)
+✔ buildMemoryIndexContext returns null when the index is missing or empty (21.021375ms)
+✔ runMemoryIndexHook emits additionalContext on SessionStart, only the index (17.677333ms)
+✔ runMemoryIndexHook is silent for non-SessionStart/PostCompact events (15.940375ms)
+✔ patchSettingsJson registers the index hook only when memoryIndexHook=true (17.784ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 95.345417

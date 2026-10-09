@@ -1,0 +1,17 @@
+save-draft: no-active-discover-bucket
+  Start a discovery session first: `/task discover`
+✖ scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs (205.961584ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 214.242792
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs (205.961584ms)
+  'test failed'

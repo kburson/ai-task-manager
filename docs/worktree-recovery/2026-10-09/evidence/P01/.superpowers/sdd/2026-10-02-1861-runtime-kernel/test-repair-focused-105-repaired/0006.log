@@ -1,0 +1,10 @@
+two-sessions-same-issue.test.mjs: all passed
+✔ scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs (3120.992041ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3126.161458

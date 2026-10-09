@@ -1,0 +1,33 @@
+✔ #1109 approval provenance conditions the Full-Auto audit row, default-deny (1.290708ms)
+✔ #1109 human-approved plan passes without a false Full-Auto audit comment (1.045667ms)
+✔ #1109 full-auto plan still requires the canonical Full-Auto audit (0.434375ms)
+✔ #1109 unknown plan still requires the canonical Full-Auto audit (0.129209ms)
+✔ passes when all five required comments are present (0.168084ms)
+✔ #1021 canonical generated plan-approval audit satisfies the required-comment contract (0.1355ms)
+✔ #1021 rejects a non-canonical or wrong-issue plan-approval audit (0.126666ms)
+✔ #1021 rejects a non-canonical or wrong-issue plan-approval audit (0.068708ms)
+✔ #1021 rejects a non-canonical or wrong-issue plan-approval audit (0.079792ms)
+✔ fails and names the missing 'Timing Log' comment (0.139042ms)
+✔ fails and names the missing 'Refine Estimate' comment (0.093042ms)
+✔ fails and names the missing 'Full-Auto plan-approval audit' comment (0.045541ms)
+✔ fails and names the missing 'Commits' comment (0.058834ms)
+✔ fails and names the missing 'New Automated Tests' comment (0.050959ms)
+✔ Refine Estimate marker WITHOUT a Planned Estimate block still fails (0.127542ms)
+✔ empty / absent comments context fails and names all five (0.0615ms)
+✔ a comment with no body string is tolerated (treated as empty) (0.056708ms)
+✔ #835 no-commit body: missing all five reports only the three always-required (0.164834ms)
+✔ #835 code-kind body (no marker): missing all five still reports all five (0.049958ms)
+✔ #835 no-commit body missing one always-required still reports it (0.1225ms)
+✔ #835 no-commit body with all three always-required present passes (0.057292ms)
+✔ #923/#940 docs-only body + docs-only diff: skips only New Automated Tests (0.113708ms)
+✔ #923/#940 docs-only body + docs-only diff + Commits + three always-required passes (0.0555ms)
+✔ #940 docs-only body + code-touching diff: NAT row is required (0.069208ms)
+✔ bootstrap registers the validator on the shared singleton (5.273292ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.539167

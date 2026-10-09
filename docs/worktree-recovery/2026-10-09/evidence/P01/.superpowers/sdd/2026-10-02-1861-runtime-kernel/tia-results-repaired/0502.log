@@ -1,0 +1,32 @@
+▶ current-schema User Story authoring
+  ✔ epic omission renders an empty leading User Story section (190.913417ms)
+  ✔ epic renders the supplied Connextra story without placeholders (188.021209ms)
+  ✔ sub-issue omission renders an empty leading User Story section (191.036917ms)
+  ✔ sub-issue renders the supplied Connextra story without placeholders (199.77725ms)
+  ✔ solo omission renders an empty leading User Story section (192.949958ms)
+  ✔ solo renders the supplied Connextra story without placeholders (235.858292ms)
+  ✔ defect omission renders an empty leading User Story section (209.289167ms)
+  ✔ defect renders the supplied Connextra story without placeholders (228.869458ms)
+  ✔ stub preserves its intentionally sparse body without a User Story section (213.045584ms)
+  ✔ exact canonical template survives intake unchanged (196.292875ms)
+  ✔ malformed and partially filled story fragments fail before rendering (1272.931125ms)
+✔ current-schema User Story authoring (3321.414459ms)
+▶ current-schema Acceptance Criterion verifier authoring
+  ✔ creation rejects legacy, empty, missing, and dangling verifier declarations (932.101584ms)
+  ✔ creation accepts resolvable vc-list citations and non-demonstrable ACs (383.443459ms)
+✔ current-schema Acceptance Criterion verifier authoring (1315.825541ms)
+▶ current-schema public authoring contract
+  ✔ create-issue --body-file --dry-run rejects missing stories and legacy AC verifiers (2833.112417ms)
+  ✔ create-issue and preflight help advertise --user-story-file (246.268708ms)
+  ✔ shared and provider guidance makes story input optional and retains vc-list AC citations (1.514708ms)
+  ✔ pickup, review, and workflow guidance expose only the current AC citation contract (3.611917ms)
+✔ current-schema public authoring contract (3084.957917ms)
+✔ create-issue forwards --user-story-file before the remaining non-stub fragments (0.599542ms)
+ℹ tests 18
+ℹ suites 3
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7725.493917

@@ -1,0 +1,21 @@
+✔ normalizes scattered markers — hoists state/version to top, gathers the rest under the anchor (1.794875ms)
+✔ preserves every marker — set-equality before and after (no marker lost) (0.721125ms)
+✔ is idempotent — re-running on the normalized body reports a clean pass with no further rewrite (0.149375ms)
+✔ does not move inline markers — AC vc-list, VC id, and DoD dod: stay on their content lines (0.106792ms)
+✔ fails when the AITM Progress Markers anchor heading is absent — names the reason, no normalized (0.100792ms)
+✔ an already-canonical body is a fixed point (pass, no normalized) (0.1045ms)
+✔ #994 — a bracketed aitm-review-failed block survives normalization intact, so clearReviewFailed removes the whole thing including its prose (6.980083ms)
+✔ an unterminated review-failed start keeps every following line opaque through EOF (0.076333ms)
+✔ #1111 keeps the #1109 plan-approved reproduction inside its backtick fence (0.235625ms)
+✔ #1111 ignores fenced anchor lookalikes and normalizes live markers after backtick and tilde fences (0.233042ms)
+✔ #1111 a fenced unterminated review-failure example cannot suppress later live normalization (0.081875ms)
+✔ existing marker-organization behavior for standalone (non-paired) aitm-* markers is unchanged (0.125792ms)
+✔ bootstrap registers the validator on the shared singleton (5.481583ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22.10275

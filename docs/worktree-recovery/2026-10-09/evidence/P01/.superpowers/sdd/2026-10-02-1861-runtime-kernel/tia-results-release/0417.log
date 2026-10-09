@@ -1,0 +1,15 @@
+✔ audit body clears develop→test with no audit-lane refusal (2.367208ms)
+✔ audit body clears test→review with no audit-lane refusal (0.557334ms)
+✔ audit body has no blocking pre-close checkboxes (clean path to Done) (0.462625ms)
+✔ contrast: a code-kind no-commit body IS refused at develop→test (378.929959ms)
+✔ #500 epic body clears develop→test with no no-commit-lane refusal (0.431791ms)
+✔ #500 epic body clears test→review with no no-commit-lane refusal (0.196708ms)
+✔ registry has the lane exit guards wired (0.077666ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 386.765459

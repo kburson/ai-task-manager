@@ -1,0 +1,25 @@
+✔ tracked invalid override refuses a read-only operational route before normal dispatch (397.486958ms)
+✔ invalid catalog refuses before GitHub, lock, or session effects without network skip (14113.436583ms)
+✔ dynamic issue-bind route cannot bypass admission (419.387167ms)
+✔ direct verb hub refuses invalid guidance before context construction (330.006875ms)
+✔ direct verb executables refuse invalid guidance before their own main paths (2206.634292ms)
+✔ direct verb help-shaped arguments cannot bypass admission (2100.532667ms)
+✔ unsupported direct-hub recovery words are admitted as operational (553.247167ms)
+✔ session annotation requires a durable issue write, not a zero-exit or local change (0.541917ms)
+✔ timing-post observation distinguishes durable issue writes from queued rows (0.19575ms)
+✔ package installer refuses invalid guidance before init writes (352.103959ms)
+✔ direct support-script path refuses invalid guidance before its own parser (328.044916ms)
+✔ guidance validation remains a routed recovery command (507.526959ms)
+✔ top-level help remains available while the selected catalog is invalid (345.129042ms)
+✔ command help, guidance source, and package version remain effect-free recovery routes (971.727417ms)
+✔ admission inventory accounts for every canonical command, alias, and classified executable (118.345416ms)
+✔ every registered operational token refuses an invalid catalog (19445.369416ms)
+✔ every supported direct operational entrypoint refuses an invalid catalog (11592.458709ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 54031.920083

@@ -1,0 +1,17 @@
+✔ terminal disposition predicate recognizes only terminal values (0.48775ms)
+✔ terminal helper writes the selected Disposition to the issue project item (0.619167ms)
+✔ terminal helper fails loud for missing field, project item, or option (0.425459ms)
+✔ terminal Done helper writes the configured Status option without option discovery (0.293666ms)
+✔ terminal Done helper surfaces every best-effort dependent reconciliation error (0.149333ms)
+✔ close-as retains the board item and writes matching terminal values (0.653125ms)
+✔ close-as reports sequence-significant timing rows retained for retry (1.076167ms)
+✔ supersede writes Replaced before its marker, Done bypass, and close (0.267792ms)
+✔ verified close declares a Delivered write before the terminal board move (0.43375ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.068708

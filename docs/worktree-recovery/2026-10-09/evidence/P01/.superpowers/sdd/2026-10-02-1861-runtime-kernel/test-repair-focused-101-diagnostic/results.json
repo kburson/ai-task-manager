@@ -1,0 +1,20 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+    "status": 0,
+    "durationMs": 7008,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-101-diagnostic/0000.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+    "status": 1,
+    "durationMs": 7355,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-101-diagnostic/0001.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+    "status": 1,
+    "durationMs": 6225,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-101-diagnostic/0002.log"
+  }
+]

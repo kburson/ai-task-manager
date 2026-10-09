@@ -1,0 +1,38 @@
+✔ findNextEligibleChild excludes a child whose blocker is not Done (0.660167ms)
+✔ findNextEligibleChild prefers a child that blocks a sibling (blocking-first) (0.091583ms)
+✔ findNextEligibleChild keeps rank-ascending tiebreak among equals (0.072667ms)
+✔ findNextEligibleChild makes a child eligible once its blocker is Done (0.078375ms)
+✔ enrichChildrenWithBlockedBy attaches native dependency readiness per child (0.520084ms)
+✔ enrichChildrenWithBlockedBy fails closed when evidence fetch fails (0.158084ms)
+✔ wipAdvanceDecision: allows first child out of R4P (no active sibling) (0.095958ms)
+✔ wipAdvanceDecision: refuses a second child while one already advances (0.1335ms)
+✔ wipAdvanceDecision: dependencies do not bypass the sequential local budget (0.202958ms)
+✔ wipAdvanceDecision: a blocked active sibling still consumes the local budget (0.134583ms)
+✔ wipAdvanceDecision: Done siblings never count as advancing (0.070958ms)
+✔ planRefineWipGate: solo issue (no parent) bypasses (0.169916ms)
+✔ planRefineWipGate: refuses when an epic sibling already advances (189.8435ms)
+✔ planRefineWipGate: fails closed when sibling fetch throws (0.141583ms)
+✔ childCreationAllowedAtEpicState admits the R4P lifecycle state (0.068958ms)
+✔ developEpicTestChildrenGate passes for non-epic (no children) (0.1075ms)
+✔ developEpicTestChildrenGate refuses when any child is at backlog (0.2245ms)
+✔ developEpicTestChildrenGate refuses when any child is at assigned (0.058292ms)
+✔ developEpicTestChildrenGate refuses when any child is at refine (0.041584ms)
+✔ developEpicTestChildrenGate refuses when any child is at plan (0.035833ms)
+✔ developEpicTestChildrenGate refuses when any child is at develop (0.060542ms)
+✔ developEpicTestChildrenGate refuses when any child is at test (0.050625ms)
+✔ developEpicTestChildrenGate passes when every child is done (0.059584ms)
+✔ developEpicTestChildrenGate refuses when every child is only at review (0.050625ms)
+✔ developEpicTestChildrenGate refuses a mix of review and terminal children (0.083208ms)
+✔ developEpicTestChildrenGate names every nonterminal offender, not just the first (0.082708ms)
+✔ developEpicTestChildrenGate refuses mixed-case "REVIEW" (0.048166ms)
+✔ developEpicTestChildrenGate surfaces fetch failure as blocker (0.107708ms)
+✔ developEpicTestChildrenGate accepts mixed-case "DONE" (0.040667ms)
+✔ developEpicTestChildrenGate requires cfg and issueNumber (0.252875ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 196.842

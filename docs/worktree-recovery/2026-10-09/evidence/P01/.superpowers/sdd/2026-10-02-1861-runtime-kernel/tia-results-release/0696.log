@@ -1,0 +1,18 @@
+✔ serialize → parse round-trips sid/jsonlPath/ts (1.120625ms)
+✔ serialize requires sid and ts (0.209833ms)
+✔ recordSessionRefOnChange appends the initial entry (AC1) (0.239417ms)
+✔ recordSessionRefOnChange is a no-op when sid+jsonlPath unchanged (AC2) (0.100125ms)
+✔ recordSessionRefOnChange appends on sid change, preserving prior (AC3) (0.121417ms)
+✔ recordSessionRefOnChange appends on jsonlPath change with same sid (AC3) (0.188792ms)
+✔ mostRecentSessionRef returns the last entry (or null) (0.086542ms)
+✔ falsy sid is a clean skip — no placeholder written (AC5) (0.0665ms)
+✔ appendSessionRef inserts before the aitm-fields trailer (0.130166ms)
+✔ findLostMarkers flags a dropped prior entry but passes when entries grow (AC6) (1.305917ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.680375

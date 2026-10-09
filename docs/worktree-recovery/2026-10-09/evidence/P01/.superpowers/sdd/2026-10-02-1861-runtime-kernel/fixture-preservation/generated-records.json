@@ -1,0 +1,14 @@
+[
+  {
+    "path": ".ai-task-manager/runtime/store/locks/issue-6561169.lock/holder.json",
+    "backup": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/fixture-preservation/generated-0.json",
+    "sha256": "19a1b1409d243f41672a0256775e8339631b52e343e94b2ee308dc349586bce5",
+    "retainedAtOriginalPath": true
+  },
+  {
+    "path": ".ai-task-manager/runtime/store/sessions/caller-sid/pending-pause.json",
+    "backup": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/fixture-preservation/generated-1.json",
+    "sha256": "825a95fda499eb613558d5c898c54cfbbc2a79d212ac4ae8b45feda5ed1d3444",
+    "retainedAtOriginalPath": true
+  }
+]

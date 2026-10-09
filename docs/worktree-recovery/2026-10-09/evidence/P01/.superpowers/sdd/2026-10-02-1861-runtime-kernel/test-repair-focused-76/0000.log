@@ -1,0 +1,230 @@
+coverage-close.test.mjs: defined
+✔ no active task (320.137167ms)
+✔ discover bucket → discarded (362.642958ms)
+✖ target adopted into empty state → Closed (378.529541ms)
+✖ convergence close-issue: board Done + issue OPEN → gh close (500.625083ms)
+✔ convergence close-issue: outcome failure leaves the issue OPEN and active (271.021ms)
+✔ convergence close-issue: disposition failure leaves issue OPEN and active (265.035666ms)
+✔ convergence close-issue: gh close fails → exit 1 (273.664583ms)
+✖ convergence noop + boardDrift: issue CLOSED, board behind → converge (277.621541ms)
+✔ convergence noop + boardDrift: move fails + board not Done → exit 1 (256.5525ms)
+✖ convergence noop, no drift: issue CLOSED + board Done → already closed (284.746125ms)
+✖ happy tail: approval marker present → emitted, Closed (270.087792ms)
+✖ happy tail: Full-Auto default records review approval without a prior marker (290.955958ms)
+✔ happy-tail candidate refuses close when terminal timing is only queued (261.180709ms)
+✔ final move non-benign failure + board not Done → exit 1 (249.931375ms)
+✔ offline final move cannot verify board Done → refuses non-benign failure (259.591541ms)
+✔ dirty + CI headless, no --answer → exit 5 (379.2205ms)
+✔ dirty + --answer cancel → left in Review (339.861875ms)
+✔ dirty + --answer yes → refuse, exit 6 (328.691833ms)
+✔ dirty + invalid --answer → exit 1 (321.548542ms)
+✔ dirty + interactive (no CI, no answer) → PROMPT_REQUIRED (324.476625ms)
+✔ dirty + --answer no → audit row, continues to Closed (743.174334ms)
+✔ gate-eval failure, no --force → fail-closed exit 3 (263.282167ms)
+✖ --force: gate-eval throw swallowed → cascade + close pipeline → Closed (301.70975ms)
+✔ cascade: disposition failure leaves child and parent OPEN and active (287.942875ms)
+✔ cascade: outcome failure leaves child in Review and parent OPEN and active (281.801333ms)
+✔ cascade: queued terminal timing leaves child in Review and retains evidence for retry (251.153083ms)
+✖ cascade: each child outcome uses its own resolved worktree (283.126958ms)
+✔ assertFieldsPersisted: aitm-fields marker missing → throws (275.492125ms)
+✔ assertFieldsPersisted: engagedTime null → throws (264.943125ms)
+✔ assertFieldsPersisted: body re-read fails → throws (272.749334ms)
+✔ tickLifecycleOnClose: ticks story-closed + timing-flushed via mutate (0.382167ms)
+⚠ lifecycle-tick best-effort failed: boom
+✔ tickLifecycleOnClose: mutate throws → best-effort swallow (1501.208667ms)
+✖ nested fixture state never reads or clears its isolated parent session (332.425875ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 24
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11614.447542
+
+✖ failing tests:
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ target adopted into empty state → Closed (378.529541ms)
+  AssertionError [ERR_ASSERTION]: ifError got unwanted exception: Partial runtime loss requires registered recovery
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:242:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:75:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:80:3)
+      at readFleet (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:110:17)
+      at collectBindingCandidateWorktrees (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:175:46)
+      at releaseIssueBindings (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:208:7)
+      at releaseTerminalIssueBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:228:71)
+      at releaseClosedBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/close.mjs:947:10)
+      at verbClose (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/close.mjs:4827:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: RuntimeRootError: Partial runtime loss requires registered recovery
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+        at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+        at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:75:3)
+        at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:80:3)
+        at readFleet (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:110:17)
+        at collectBindingCandidateWorktrees (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:175:46)
+        at releaseIssueBindings (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:208:7)
+        at releaseTerminalIssueBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:228:71)
+        at releaseClosedBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/close.mjs:947:10)
+        at verbClose (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/close.mjs:4827:5),
+    expected: null,
+    operator: 'ifError',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ convergence close-issue: board Done + issue OPEN → gh close (500.625083ms)
+  AssertionError [ERR_ASSERTION]: ifError got unwanted exception: Partial runtime loss requires registered recovery
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:271:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:75:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:80:3)
+      at readFleet (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:110:17)
+      at collectBindingCandidateWorktrees (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:175:46)
+      at releaseIssueBindings (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:208:7)
+      at releaseTerminalIssueBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:228:71)
+      at releaseClosedBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/close.mjs:947:10)
+      at verbClose (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/close.mjs:4827:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: RuntimeRootError: Partial runtime loss requires registered recovery
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+        at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+        at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:75:3)
+        at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:80:3)
+        at readFleet (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:110:17)
+        at collectBindingCandidateWorktrees (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:175:46)
+        at releaseIssueBindings (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:208:7)
+        at releaseTerminalIssueBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:228:71)
+        at releaseClosedBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/close.mjs:947:10)
+        at verbClose (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/close.mjs:4827:5),
+    expected: null,
+    operator: 'ifError',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ convergence noop + boardDrift: issue CLOSED, board behind → converge (277.621541ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /converged the board to Done/. Input:
+  
+  ''
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:360:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /converged the board to Done/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ convergence noop, no drift: issue CLOSED + board Done → already closed (284.746125ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /already fully closed/. Input:
+  
+  ''
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:400:10
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /already fully closed/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ happy tail: approval marker present → emitted, Closed (270.087792ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  ''
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:409:10
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ happy tail: Full-Auto default records review approval without a prior marker (290.955958ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  ''
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:420:10
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ --force: gate-eval throw swallowed → cascade + close pipeline → Closed (301.70975ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  '[task-tracker] Cascade closing 1 child issue(s)...'
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:551:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[task-tracker] Cascade closing 1 child issue(s)...',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ cascade: each child outcome uses its own resolved worktree (283.126958ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  '[task-tracker] Cascade closing 1 child issue(s)...'
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:755:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[task-tracker] Cascade closing 1 child issue(s)...',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:818:1
+✖ nested fixture state never reads or clears its isolated parent session (332.425875ms)
+  Error [RuntimeRootError]: Fresh inventory differs from approved plan
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-apply.mjs:35:9)
+      at applyRuntimeMigration (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-apply.mjs:215:5)
+      at async activateRuntimeRootFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/runtime-root-fixture.mjs:54:3)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:829:7)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_MIGRATION_PLAN_CHANGED'
+  }

@@ -1,0 +1,13 @@
+✔ dev root, no node_modules/ai-task-manager → missing-link (22.709625ms)
+✔ dev root, self-link resolves to root → seeded (20.389834ms)
+✔ dev root, link resolves OUTSIDE root → foreign-link (the trunk trap) (34.407125ms)
+✔ consumer root (no .git), nothing installed → deps-missing (21.1485ms)
+✔ consumer root, real install present → not-applicable (19.461583ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 121.770167

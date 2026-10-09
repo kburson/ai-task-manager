@@ -1,0 +1,24 @@
+[task-tracker] ✓ #1067 AC-reconciled: epic goals re-read against delivered children.
+[task-tracker] ✓ #1067 deliverable recorded: https://github.com/kburson/ai-task-manager/issues/1067#issuecomment-5227079541
+AC↔child bijection — epic #1067: no `**Cn · #NNN**` mapping declared on any AC. 1 AC(s) and 0 child(ren) are related only by convention, so neither drift direction can be detected here. Declaring the mapping is optional — knowing it is absent is not.
+[task-tracker] ✓ #1067 AC-reconciled: epic goals re-read against delivered children.
+[task-tracker] ✓ #1067 deliverable recorded: https://github.com/kburson/ai-task-manager/issues/1067#issuecomment-5227079541
+AC↔child bijection — epic #1067: no `**Cn · #NNN**` mapping declared on any AC. 1 AC(s) and 0 child(ren) are related only by convention, so neither drift direction can be detected here. Declaring the mapping is optional — knowing it is absent is not.
+[task-tracker] ✓ #1067 AC-reconciled: epic goals re-read against delivered children.
+AC↔child bijection — epic #1067: no `**Cn · #NNN**` mapping declared on any AC. 1 AC(s) and 0 child(ren) are related only by convention, so neither drift direction can be detected here. Declaring the mapping is optional — knowing it is absent is not.
+✔ setDeliverablePosted inserts one URL-bearing marker and retries byte-identically (1.026375ms)
+✔ setDeliverablePosted refuses to replace a different or provenance-free marker (1.336375ms)
+✔ validateEpicDeliverableComment accepts only a non-empty comment on the target issue (0.666833ms)
+✔ parseEpicReconcileArgs supports explicit and active targets and rejects malformed flags (0.240416ms)
+✔ verbEpicReconcile validates the comment before one combined versioned mutation (1.135875ms)
+✔ foreign deliverable fails before body mutation (0.155125ms)
+✔ production comment fetch reads the exact REST comment endpoint (0.392959ms)
+✔ no deliverable flag preserves reconciliation-only compatibility (0.171334ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.522459

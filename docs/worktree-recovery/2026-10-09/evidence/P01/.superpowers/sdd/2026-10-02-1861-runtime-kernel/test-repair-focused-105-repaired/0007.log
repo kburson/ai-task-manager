@@ -1,0 +1,33 @@
+✔ shaFreshGate: marker absent / HEAD unresolved → no-marker & no-head blockers (0.93675ms)
+✔ shaFreshGate: stale marker, commitsSince throws → best-effort blocker without extras (0.174459ms)
+✔ shaFreshGate: stale marker, >8 new commits → list truncates with +overflow (0.106541ms)
+✔ chainIntegrityGate: legacy grammar full chain → passes (1.13625ms)
+✔ issueDirtyGate: missing cfg / issueNumber throw (0.376709ms)
+✔ issueDirtyGate: listComments throws → close-dirty-comments-fetch-failed (0.093667ms)
+✔ issueDirtyGate: filesForSha throws for one sha → best-effort skip, still clean (0.36275ms)
+✔ issueDirtyGate: dirtyFiles throws → close-dirty-git-status-failed (0.258084ms)
+✔ commitsOnTrunkGate: missing cfg / issueNumber throw (0.22825ms)
+✔ commitsOnTrunkGate: no trail / empty marker → graceful skips (0.154375ms)
+✔ commitsOnTrunkGate: listComments throws → close-trunk-comments-fetch-failed (0.095292ms)
+✔ commitsOnTrunkGate: trunk ref unresolved → close-trunk-ref-unresolved (108.633833ms)
+✔ commitsOnTrunkGate: attributed commit on trunk → passes with trunkRef (58.967125ms)
+✔ commitsOnTrunkGate: no attributed commit on trunk → close-no-attributed-commit-on-trunk (52.390833ms)
+✔ commitsOnTrunkGate: attribution lookup throws → close-trunk-attribution-failed (51.998041ms)
+✔ runCloseGates: getHeadSha throws → close-head-resolve-failed in blockers (0.822167ms)
+✔ runCloseGates: chain hole → chainIntegrityGate blockers propagate (0.413542ms)
+✔ runCloseGates: no attributed commit on trunk blocks close (7.475833ms)
+✔ runCloseGates: lineageDoneGate throws → close-lineage-gate-error caught (3.199083ms)
+✔ runCloseGates: issueDirtyGate throws → close-dirty-gate-error caught (3.259083ms)
+✔ runCloseGates: dirty touched file blocks close; clean deps → ok (5.956584ms)
+✔ commitsOnTrunkGate: cfg.trunkRef short-circuits defaultResolveTrunkRef (132.892583ms)
+✔ commitsOnTrunkGate: default trunk-ref resolution + default attributingCommits (real git) (148.542875ms)
+✔ issueDirtyGate: default filesForSha + dirtyFiles (real git) on HEAD (137.5365ms)
+✔ runCloseGates: default getHeadSha (real git) resolves HEAD (55.560708ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 897.3675

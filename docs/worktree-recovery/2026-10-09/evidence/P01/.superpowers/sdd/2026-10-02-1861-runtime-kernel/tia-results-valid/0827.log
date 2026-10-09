@@ -1,0 +1,84 @@
+coverage-commit-trace.test.mjs: defined
+✔ runCommitTrace: happy path threads info through injected deps (19.15775ms)
+✔ runCommitTrace: strips leading # from issueNumber (3.995916ms)
+✔ runCommitTrace: throws without issueNumber (0.294583ms)
+✔ runCommitTrace: throws without cfg.repo (0.149125ms)
+✔ runCommitTrace: falls back to getProjectDir() when projectDir omitted (306.881ms)
+✖ verbCommitTrace: no target → usage, exit 1 (0.628375ms)
+✖ verbCommitTrace: discover bucket active + no positional → usage, exit 1 (0.189125ms)
+✖ verbCommitTrace: positional target but runCommitTrace throws → catch, exit 1 (0.238584ms)
+✖ verbCommitTrace: target resolved from state.active, then catch → exit 1 (0.27525ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 5
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 336.030167
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:136:1
+✖ verbCommitTrace: no target → usage, exit 1 (0.628375ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbCommitTrace (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/commit-trace.mjs:38:13)
+      at runVerb (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:50:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:137:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:146:1
+✖ verbCommitTrace: discover bucket active + no positional → usage, exit 1 (0.189125ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbCommitTrace (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/commit-trace.mjs:38:13)
+      at runVerb (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:50:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:147:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:156:1
+✖ verbCommitTrace: positional target but runCommitTrace throws → catch, exit 1 (0.238584ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbCommitTrace (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/commit-trace.mjs:38:13)
+      at runVerb (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:50:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:159:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:168:1
+✖ verbCommitTrace: target resolved from state.active, then catch → exit 1 (0.27525ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbCommitTrace (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/commit-trace.mjs:38:13)
+      at runVerb (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:50:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs:169:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
