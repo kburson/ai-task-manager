@@ -1445,7 +1445,9 @@ export function validateNativeStageJournal(journal) {
     if (
       id !== hashBytes(canonicalRecordJson(unsigned)) ||
       !Array.isArray(journal.steps) ||
-      ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(journal.steps.length)
+      ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(
+        journal.steps.length
+      )
     )
       throw new TypeError();
     if (Object.hasOwn(journal, 'compensation')) {
@@ -1748,7 +1750,7 @@ export function validateNativeStageJournal(journal) {
       // Full allocation, original markers, actor and census are derived by the
       // asynchronous complete-predecessor codec, never constructor authority.
     }
-    if (journal.steps.length === 17) {
+    if (journal.steps.length >= 17) {
       const step = journal.steps[16],
         previous = journal.steps[15];
       exactKeys(step, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
@@ -1762,6 +1764,26 @@ export function validateNativeStageJournal(journal) {
         throw new TypeError();
       if (step.readback !== null)
         exactKeys(step.readback, ['actions', 'resources', 'body', 'stage']);
+    }
+    if (journal.steps.length === 18) {
+      const step = journal.steps[17],
+        previous = journal.steps[16];
+      exactKeys(step, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
+      exactKeys(step.intent, ['file', 'sid', 'beforeBytes', 'bytes', 'operations']);
+      if (
+        previous.readback === null ||
+        step.ordinal !== 18 ||
+        step.kind !== 'tail-cache' ||
+        step.previous !== hashBytes(canonicalRecordJson(previous)) ||
+        typeof step.intent.file !== 'string' ||
+        typeof step.intent.sid !== 'string' ||
+        !(step.intent.beforeBytes === null || typeof step.intent.beforeBytes === 'string') ||
+        !(step.intent.bytes === null || typeof step.intent.bytes === 'string') ||
+        !Array.isArray(step.intent.operations)
+      )
+        throw new TypeError();
+      if (step.readback !== null)
+        exactKeys(step.readback, ['file', 'bytes', 'resources', 'body', 'stage']);
     }
     return journal;
   } catch {
@@ -2886,5 +2908,61 @@ export async function reconstructNativeStageCompensation(input) {
     };
   } catch {
     revisionError('native-stage-compensation');
+  }
+}
+
+// #1913 — closed original cache DATA, never execution or lock membership.
+export async function reconstructNativeStageTailCache(input) {
+  try {
+    const detached = JSON.parse(canonicalRecordJson(input));
+    exactKeys(detached, ['header', 'steps']);
+    const { header, steps } = detached;
+    if (steps.length !== 18) throw new TypeError();
+    validateNativeStageJournal({ schema: 'aitm.native-stage/v1', header, steps });
+    const before = await reconstructNativeStageTailDispatch({ header, steps: steps.slice(0, 17) });
+    if (!before.complete) throw new TypeError();
+    const { deriveRecordedNativeLocalTail } = await import('../move-state/cache-unpark.mjs');
+    const actor = header.original.actor;
+    const projected = deriveRecordedNativeLocalTail({
+      kind: 'refreshKanbanStateCache',
+      issue: String(header.scope.issue),
+      projectDir: header.original.observation.executor.worktree,
+      statePath: actor.capture.statePath,
+      identity: actor.identity,
+      boundAt: null,
+      local: before.resources.local,
+    });
+    const step = steps[17];
+    const { activeTaskPath } = await import('../../paths.mjs');
+    const file = activeTaskPath(actor.identity.sid, actor.capture.projectDir);
+    const intent = {
+      file,
+      sid: actor.identity.sid,
+      beforeBytes: before.resources.local.activeTask?.bytes ?? null,
+      bytes: projected.local.activeTask?.bytes ?? null,
+      operations: projected.operations,
+    };
+    if (!same(step.intent, intent)) throw new TypeError();
+    const afterResources = structuredClone(before.resources);
+    afterResources.local = structuredClone(projected.local);
+    const readback = {
+      file,
+      bytes: intent.bytes,
+      resources: afterResources,
+      body: before.body,
+      stage: before.stage,
+    };
+    if (step.readback !== null && !same(step.readback, readback)) throw new TypeError();
+    return freezeStageData({
+      beforeResources: before.resources,
+      afterResources,
+      body: before.body,
+      stage: before.stage,
+      intent,
+      readback,
+      complete: step.readback !== null,
+    });
+  } catch {
+    revisionError('native-stage-tail-cache');
   }
 }

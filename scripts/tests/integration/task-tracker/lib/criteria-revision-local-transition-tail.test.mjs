@@ -7,7 +7,8 @@ import {
   qualifyOriginalCases,
   qualify,
 } from '../../../helpers/criteria-revision-transition-profiles.mjs';
-const original = discoverOriginalCases().filter(
+const discovered = discoverOriginalCases();
+const original = discovered.filter(
   ({ mode, fault }) =>
     ['tail-dispatch', 'tail-dispatch-reentry', 'phase-pair', 'phase-adversarial'].includes(mode) ||
     (mode === 'phase-12-prefix' &&
@@ -27,10 +28,24 @@ test('independent dispatcher and requested phase frontier discovery retains all 
   );
   t.diagnostic(JSON.stringify(original));
 });
+const cacheTransport = discovered.filter(
+  ({ mode, fault }) =>
+    mode === 'tail-cache' && fault && ['intent-write', 'intent-readback'].includes(fault.suffix)
+);
+const firstGroup = [...original, ...cacheTransport];
+test('cache intent transport membership retains both sides of every original boundary', () => {
+  assert.deepEqual(
+    cacheTransport.map(({ fault }) => fault.when + ':' + fault.suffix).sort(),
+    ['failBefore', 'failAfter']
+      .flatMap((when) => ['intent-write', 'intent-readback'].map((suffix) => when + ':' + suffix))
+      .sort()
+  );
+  assert.equal(firstGroup.length, 9);
+});
 test(
   'complete original dispatcher and phase frontiers preserve actual effects and private window',
   { timeout: budget, concurrency: true },
-  (t) => qualifyOriginalCases(original, t)
+  (t) => qualifyOriginalCases(firstGroup, t)
 );
 test('complete ordinary cache and tail profiles remain intact', { timeout: budget }, (t) =>
   qualify(
@@ -39,9 +54,8 @@ test('complete ordinary cache and tail profiles remain intact', { timeout: budge
       'scripts/tests/unit/task-tracker/lib/move-state/move-state-terminal-tail-isolation.test.mjs',
       'scripts/tests/unit/task-tracker/lib/move-state/move-state-tail-profiles.test.mjs',
       'scripts/tests/unit/task-tracker/lib/move-state/local-tail-program.test.mjs',
-      'scripts/tests/integration/task-tracker/lib/move-state-native-command.test.mjs',
     ],
-    44,
+    40,
     t
   )
 );

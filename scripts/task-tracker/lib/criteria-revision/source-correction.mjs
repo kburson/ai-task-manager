@@ -791,6 +791,22 @@ async function replayNativeEpoch({
         expectedStageObservation.body = structuredClone(dispatch.body);
         expectedStageObservation.stage = dispatch.stage;
       }
+      if (j.steps.length === 18) {
+        const { reconstructNativeStageTailCache } = await import('./stage-execution.mjs');
+        const cache = await reconstructNativeStageTailCache({ header: j.header, steps: j.steps });
+        const after = equal(resources, cache.afterResources);
+        const before = !cache.complete && equal(resources, cache.beforeResources);
+        if (
+          (!after && !before) ||
+          !equal(observation.body, cache.body) ||
+          observation.stage !== cache.stage ||
+          !equal(resources, backend.snapshot.nativeStageResources)
+        )
+          revisionError('native-stage-tail-cache-prefix');
+        exactPrefix = true;
+        expectedStageObservation.body = structuredClone(cache.body);
+        expectedStageObservation.stage = cache.stage;
+      }
       if (
         !sameRevisionObservation(projected, expectedStageObservation) ||
         !exactPrefix ||

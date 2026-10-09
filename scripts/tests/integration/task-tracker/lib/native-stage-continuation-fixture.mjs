@@ -42,6 +42,7 @@ import {
 
 export function registerNativeStageCase(mode, entrypoint, fault = null) {
   const faultMode = mode;
+  const cacheMode = ['tail-cache', 'tail-cache-late-read', 'tail-cache-late-config'].includes(mode);
   const compensationMode = [
     'compensation',
     'compensation-audit',
@@ -67,6 +68,9 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       'recovery-from-comment',
       'tail-dispatch',
       'tail-dispatch-reentry',
+      'tail-cache',
+      'tail-cache-late-read',
+      'tail-cache-late-config',
     ].includes(mode);
   const consistencyCustody = {
     'consistency-response-accessor': 'response-accessor',
@@ -2488,9 +2492,22 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           'effect-write',
           'effect-readback',
         ].map((x) => 'native-stage-transition-' + x);
-        if (fault) f.backend[fault.when] = 'native-stage-transition-' + fault.suffix;
-        else if (!['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode))
+        if (fault)
+          f.backend[fault.when] =
+            (faultMode === 'tail-cache' ? 'native-stage-cache-' : 'native-stage-transition-') +
+            fault.suffix;
+        else if (
+          ![
+            'tail-dispatch',
+            'tail-dispatch-reentry',
+            'tail-cache',
+            'tail-cache-late-read',
+            'tail-cache-late-config',
+          ].includes(faultMode)
+        )
           f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
+        if (['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode))
+          f.backend.failBefore = 'native-stage-cache-intent-write';
         const filesystem = (await import('node:fs')).default;
         const { syncBuiltinESMExports } = await import('node:module');
         const originalRead = filesystem.readFileSync,
@@ -2740,14 +2757,120 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           return value;
         };
         syncBuiltinESMExports();
+        const originalStderr = process.stderr.write;
+        const originalDescriptor = Object.getOwnPropertyDescriptor;
+        let cacheReentryProbe = false,
+          cacheReentryError = null,
+          cacheLockError = null;
+        let cacheReentryPromise = null,
+          cacheLockPromise = null;
+        let cacheWarnings = '',
+          cacheLateInjected = false,
+          cacheLateGets = 0;
+        let cacheLateEffects = null,
+          cacheLateSnapshot = null;
+        if (cacheMode) {
+          process.stderr.write = function (chunk, ...args) {
+            cacheWarnings += String(chunk);
+            return Reflect.apply(originalStderr, this, [chunk, ...args]);
+          };
+        }
+        if (faultMode === 'tail-cache' && fault === null) {
+          const originalCache = (
+            await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs')
+          ).refreshKanbanStateCache;
+          Object.getOwnPropertyDescriptors = function (value) {
+            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
+            if (
+              !cacheReentryProbe &&
+              Reflect.ownKeys(descriptors).sort().join(',') ===
+                'backend,capability,context,invocation,token' &&
+              new Error().stack.includes('readMemoryNativeStageCache')
+            ) {
+              cacheReentryProbe = true;
+              const authority = Object.fromEntries(
+                Object.entries(descriptors).map(([key, d]) => [key, d.value])
+              );
+              queueMicrotask(() => {
+                cacheReentryPromise = originalCache(ctx, authority.invocation).catch((error) => {
+                  cacheReentryError = error;
+                });
+                cacheLockPromise = store.acquireMemoryNativeStageCache(authority).catch((error) => {
+                  cacheLockError = error;
+                });
+              });
+            }
+            return descriptors;
+          };
+        }
+        const cacheOriginalRepo = Object.getOwnPropertyDescriptor(cfg, 'repo');
+        if (faultMode === 'tail-cache-late-config') {
+          Object.getOwnPropertyDescriptors = function (value) {
+            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
+            if (
+              !cacheLateInjected &&
+              Reflect.ownKeys(descriptors).sort().join(',') ===
+                'backend,capability,context,invocation,token' &&
+              new Error().stack.includes('readMemoryNativeStageCache')
+            ) {
+              cacheLateInjected = true;
+              queueMicrotask(() => {
+                Object.defineProperty(cfg, 'repo', {
+                  enumerable: true,
+                  configurable: true,
+                  get() {
+                    cacheLateGets++;
+                    throw Error('late cache cfg getter');
+                  },
+                });
+                cacheLateEffects = f.backend.effects;
+                cacheLateSnapshot = f.backend.snapshot;
+              });
+            }
+            return descriptors;
+          };
+        }
+        if (faultMode === 'tail-cache-late-read') {
+          Object.getOwnPropertyDescriptor = function (value, key) {
+            const descriptor = Reflect.apply(originalDescriptor, this, arguments);
+            if (
+              !cacheLateInjected &&
+              key === 'issue' &&
+              descriptor &&
+              Object.hasOwn(value, 'boundAt') &&
+              new Error().stack.includes('assertOriginalNativeCacheRead')
+            ) {
+              cacheLateInjected = true;
+              queueMicrotask(() => {
+                Object.defineProperty(value, 'issue', {
+                  enumerable: true,
+                  configurable: true,
+                  get() {
+                    cacheLateGets++;
+                    return '#124';
+                  },
+                });
+                cacheLateEffects = f.backend.effects;
+                cacheLateSnapshot = f.backend.snapshot;
+              });
+            }
+            return descriptor;
+          };
+        }
         let result;
         try {
           result = await moveState(ctx);
           if (lockPromise) await lockPromise;
           if (reentryPromise) await reentryPromise;
+          if (cacheReentryPromise) await cacheReentryPromise;
+          if (cacheLockPromise) await cacheLockPromise;
         } finally {
           filesystem.readFileSync = originalRead;
           Object.getOwnPropertyDescriptors = originalDescriptors;
+          if (cacheMode) process.stderr.write = originalStderr;
+          Object.getOwnPropertyDescriptor = originalDescriptor;
+          if (faultMode === 'tail-cache-late-config')
+            Object.defineProperty(cfg, 'repo', cacheOriginalRepo);
           if (frozenProbe) Object.freeze = originalFreeze;
           syncBuiltinESMExports();
         }
@@ -2807,6 +2930,126 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           assert.equal(reentryChecks, 1);
           assert.equal(reentryError?.code, 'revision-authority-unavailable');
           assert.equal(reentryError?.preparationReason, 'original-tail-dispatch-window');
+        }
+        if (['tail-cache-late-read', 'tail-cache-late-config'].includes(faultMode)) {
+          assert.equal(
+            cacheLateInjected,
+            true,
+            'actual native active-task return reached late boundary'
+          );
+          assert.equal(cacheLateGets, 0, 'cache program never reads a post-await caller getter');
+          assert.deepEqual(
+            f.backend.effects,
+            cacheLateEffects,
+            'no effects after late return mutation'
+          );
+          assert.deepEqual(f.backend.snapshot, cacheLateSnapshot);
+          assert.equal(journal.steps.length, 17);
+          assert.equal(result.exit, 4);
+          return;
+        }
+        if (faultMode === 'tail-cache') {
+          if (fault === null) {
+            assert.equal(cacheReentryProbe, true, 'actual cache read selected under owned lock');
+            assert.equal(cacheReentryError?.preparationReason, 'original-cache-window');
+            assert.equal(
+              cacheLockError?.message,
+              'criteria-revision:native-stage-cache-lock-conflict'
+            );
+          }
+          const points = ['intent-write', 'intent-readback', 'effect-write', 'effect-readback'];
+          const end = fault
+            ? points.indexOf(fault.suffix) + (fault.when === 'failAfter' ? 1 : 0)
+            : 4;
+          assert.ok(end >= 0, 'cache fault descriptor belongs to original protocol');
+          if (fault)
+            assert.match(
+              cacheWarnings,
+              /kanbanState cache refresh failed:/,
+              'actual original cache warning branch runs'
+            );
+          assert.equal(
+            journal.steps.length,
+            end === 0 ? 17 : 18,
+            'actual original cache has exact durable prefix'
+          );
+          assert.ok(journal.steps.slice(0, 17).every((step) => step.readback !== null));
+          if (end > 0) {
+            assert.equal(journal.steps[17].kind, 'tail-cache');
+            assert.equal(journal.steps[17].readback !== null, end === 4);
+          }
+          assert.deepEqual(
+            f.backend.effects.filter((x) => x.startsWith('native-stage-cache-')),
+            points.slice(0, end).map((x) => 'native-stage-cache-' + x)
+          );
+          const beforeActive = JSON.parse(
+            beforeComment.nativeStageResources.local.activeTask.bytes
+          );
+          const expected = {
+            ...beforeActive,
+            kanbanState: end >= 3 ? 'test' : beforeActive.kanbanState,
+          };
+          assert.equal(
+            snapshot.nativeStageResources.local.activeTask.bytes,
+            end >= 3
+              ? JSON.stringify(expected, null, 2) + '\n'
+              : beforeComment.nativeStageResources.local.activeTask.bytes
+          );
+          for (const key of ['actorTiming', 'actorFlush', 'wordCursor', 'trackerState', 'queue'])
+            assert.deepEqual(
+              snapshot.nativeStageResources.local[key],
+              beforeComment.nativeStageResources.local[key]
+            );
+          assert.deepEqual(journal.steps.slice(0, 15), beforeComment.nativeStageRecords[0].steps);
+          assert.deepEqual(snapshot.observation, beforeComment.observation);
+          assert.equal(result.exit, 4, 'next original owner remains fenced');
+          assert.deepEqual(captureFiles(), files, 'actual cache effects never touch host state');
+          const observed = await observeRevision({
+            context: f.context,
+            deps: createRevisionMemory(snapshot),
+          });
+          assert.equal(observed.status, 'pending-native-stage');
+          assert.equal(observed.nativeHistoryApproved, false);
+          if (fault === null) {
+            const codec =
+              await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+            const input = structuredClone({ header: journal.header, steps: journal.steps });
+            const bad = structuredClone(input);
+            bad.steps[17].intent.sid = 'foreign';
+            await assert.rejects(
+              codec.reconstructNativeStageTailCache(bad),
+              /criteria-revision:native-stage-tail-cache/
+            );
+            const lost = structuredClone(snapshot);
+            lost.nativeStageResources.local.activeTask = structuredClone(
+              beforeComment.nativeStageResources.local.activeTask
+            );
+            const rejected = await observeRevision({
+              context: f.context,
+              deps: createRevisionMemory(lost),
+            });
+            assert.equal(rejected.status, 'indeterminate', 'verified cache delta cannot disappear');
+            let getter = 0;
+            const pending = codec.reconstructNativeStageTailCache(input);
+            const intent = input.steps[17].intent;
+            queueMicrotask(() =>
+              Object.defineProperty(input.steps[17], 'intent', {
+                enumerable: true,
+                get() {
+                  getter++;
+                  return intent;
+                },
+              })
+            );
+            assert.equal((await pending).complete, true);
+            assert.equal(getter, 0, 'cache DATA stays detached across awaits');
+            assert.deepEqual(
+              f.backend.snapshot,
+              snapshot,
+              'DATA copies never mutate actual execution'
+            );
+          }
+          return;
         }
         if (['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode)) {
           assert.equal(

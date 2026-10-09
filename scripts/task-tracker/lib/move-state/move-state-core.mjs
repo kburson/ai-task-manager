@@ -50,6 +50,9 @@ import {
 } from './post-commit-tail.mjs';
 import * as nativeTailCache from './cache-unpark.mjs';
 import * as nativeTailAudit from './audit-timing.mjs';
+import * as nativeCacheSession from '../../session-state.mjs';
+import * as nativeCacheWords from '../../word-counter.mjs';
+import { getProjectDir as nativeCacheRoot } from '../../paths.mjs';
 const originalTailDispatch = nativeTailCache.dispatchOnEnterActions;
 import { writeMoveCompleteMarker, readMoveCompleteMarker, isMoveComplete } from './sentinel.mjs';
 import {
@@ -1019,6 +1022,7 @@ function checkPreparation(record) {
         ...(record.sentinelPrefixes ?? []),
         ...(record.transitionCommentPrefixes ?? []),
         ...(record.tailPrefixes ?? []),
+        ...(record.cachePrefixes ?? []),
       ].includes(canonicalRecordJson(record.backend.snapshot)))
   )
     throw preparationRefusal('current-authority-drift');
@@ -2666,7 +2670,7 @@ function assertNativeStageTransitionContext(ctx) {
   // Tail records remain independently bound to full current snapshots; compare
   // original body/comment custody against its unchanged complete16 prefix.
   const journal =
-    record.tailInput && currentJournal.steps.length === 17
+    record.tailInput && [17, 18].includes(currentJournal.steps.length)
       ? { ...currentJournal, steps: currentJournal.steps.slice(0, 16) }
       : currentJournal;
   if (journal.steps.length === 15) {
@@ -4588,6 +4592,12 @@ function tailAuthority(record, invocation) {
 export async function runNativeStageTailStep(input, ctx, step) {
   const record = tailCurrent(input, ctx);
   if (
+    record.tailNext === 1 &&
+    step === DEFAULT_TAIL_STEPS[1] &&
+    step.fn === nativeTailCache.refreshKanbanStateCache
+  )
+    return runNativeStageCache(input, ctx, step);
+  if (
     !record.tailStarted ||
     record.tailLeaf ||
     record.tailNext !== 0 ||
@@ -5034,4 +5044,252 @@ export function readNativeStageCompensationAttemptNumber(token, backend, invocat
     record.compOperation
   );
   return record.compAttemptNumber;
+}
+
+// #1913 — original cache leaf, lexical operation window and current fixed sinks.
+function cacheLeaf(input, ctx) {
+  const leaf = tailLeafCurrent(input, ctx);
+  if (leaf.kind !== 'cache' || !['new', 'call', 'running', 'returned'].includes(leaf.phase))
+    throw preparationRefusal('original-cache-invocation');
+  return leaf;
+}
+export function beginNativeStageTailCache(input, ctx) {
+  const leaf = originalTailLeaves.get(input);
+  if (!leaf || leaf.kind !== 'cache' || leaf.ctx !== ctx || leaf.phase !== 'call')
+    throw preparationRefusal('original-cache-window');
+  leaf.phase = 'running';
+  cacheLeaf(input, ctx);
+}
+export function assertNativeStageTailCacheCurrent(input, ctx) {
+  cacheLeaf(input, ctx);
+}
+export function readNativeStageTailCacheIntent(token, backend, input) {
+  const leaf = originalTailLeaves.get(input);
+  if (!leaf) throw preparationRefusal('original-cache-invocation');
+  cacheLeaf(input, leaf.ctx);
+  if (leaf.record.stageToken !== token || leaf.record.backend !== backend)
+    throw preparationRefusal('original-cache-token');
+  return { header: structuredClone(leaf.record.header) };
+}
+function currentCacheOperation(input) {
+  const leaf = originalTailLeaves.get(input);
+  if (!leaf) throw preparationRefusal('original-cache-invocation');
+  cacheLeaf(input, leaf.ctx);
+  if (leaf.phase !== 'running' || !leaf.operation)
+    throw preparationRefusal('original-cache-operation');
+  nativeTailCache.assertOriginalNativeCacheOperation(input, leaf.ctx, leaf.operation);
+  return leaf;
+}
+export function assertNativeStageTailCacheRead(input) {
+  const leaf = currentCacheOperation(input);
+  if (!['active', 'set'].includes(leaf.operation.kind))
+    throw preparationRefusal('original-cache-read');
+}
+export function assertNativeStageTailCacheSet(input, operation) {
+  const leaf = currentCacheOperation(input);
+  if (
+    leaf.operation !== operation ||
+    operation.kind !== 'set' ||
+    operation.sid !== leaf.record.actorIdentity.sid ||
+    operation.projectDir !== leaf.record.context.executor.worktree ||
+    operation.stateArg !== 'test'
+  )
+    throw preparationRefusal('original-cache-set');
+}
+export async function readNativeStageTailCacheSource(input, operation) {
+  const leaf = currentCacheOperation(input);
+  if (
+    leaf.operation !== operation ||
+    !['active', 'set'].includes(operation.kind) ||
+    operation.sid !== leaf.record.actorIdentity.sid ||
+    operation.projectDir !== leaf.record.context.executor.worktree
+  )
+    throw preparationRefusal('original-cache-read');
+  const read = await leaf.store.readMemoryNativeStageCache(tailAuthority(leaf.record, input));
+  currentCacheOperation(input);
+  return {
+    beforeBytes: read.beforeBytes,
+    file: leaf.record.localPaths.activeTask,
+    sid: operation.sid,
+    projectDir: operation.projectDir,
+  };
+}
+export async function executeNativeStageCacheOperation(input, ctx, operation) {
+  const leaf = cacheLeaf(input, ctx);
+  nativeTailCache.assertOriginalNativeCacheOperation(input, ctx, operation);
+  if (leaf.operation) throw preparationRefusal('original-cache-operation-reentry');
+  leaf.operation = operation;
+  leaf.operations.push(JSON.parse(canonicalRecordJson(operation)));
+  try {
+    if (operation.kind === 'modules') {
+      if (canonicalRecordJson(operation.deps) !== '{}')
+        throw preparationRefusal('original-cache-modules');
+      const [session, words] = await Promise.all([
+        import('../../session-state.mjs'),
+        import('../../word-counter.mjs'),
+      ]);
+      currentCacheOperation(input);
+      if (session !== nativeCacheSession || words !== nativeCacheWords)
+        throw preparationRefusal('original-cache-modules');
+      leaf.modules = { session, words };
+      return;
+    }
+    if (!leaf.modules) throw preparationRefusal('original-cache-modules');
+    if (operation.kind === 'sid') {
+      const value = leaf.modules.words.currentSessionId();
+      currentCacheOperation(input);
+      if (value !== leaf.record.actorIdentity.sid)
+        throw preparationRefusal('original-cache-identity');
+      return value;
+    }
+    if (operation.kind === 'root') {
+      const value = nativeCacheRoot();
+      currentCacheOperation(input);
+      if (value !== leaf.record.context.executor.worktree)
+        throw preparationRefusal('original-cache-root');
+      return value;
+    }
+    if (operation.kind === 'active') {
+      const result = await leaf.modules.session.getNativeStageCachedTask(input, operation);
+      currentCacheOperation(input);
+      leaf.modules.session.assertOriginalNativeCacheRead(input, result);
+      return result;
+    }
+    if (operation.kind === 'set') {
+      const result = await leaf.modules.session.setNativeStageKanbanState(input, operation);
+      currentCacheOperation(input);
+      return result;
+    }
+    if (operation.kind === 'stderr') {
+      process.stderr.write(operation.bytes);
+      return;
+    }
+    throw preparationRefusal('original-cache-operation-kind');
+  } finally {
+    leaf.operation = null;
+  }
+}
+export function assertNativeStageTailCacheWrite(input, intent) {
+  const leaf = currentCacheOperation(input);
+  assertNativeStageTailCacheSet(input, leaf.operation);
+  if (!leaf.writeIntent) throw preparationRefusal('original-cache-write');
+  nativeCacheSession.assertOriginalNativeStageKanbanWrite(input, leaf.writeIntent);
+  if (intent !== undefined && canonicalRecordJson(intent) !== canonicalRecordJson(leaf.step.intent))
+    throw preparationRefusal('original-cache-write');
+}
+export async function persistNativeStageTailCache(input, intent) {
+  const leaf = currentCacheOperation(input);
+  assertNativeStageTailCacheSet(input, leaf.operation);
+  nativeCacheSession.assertOriginalNativeStageKanbanWrite(input, intent);
+  if (leaf.step) throw preparationRefusal('original-cache-write-reentry');
+  leaf.writeIntent = intent;
+  const snapshot = leaf.record.backend.snapshot,
+    journal = snapshot.nativeStageRecords.at(-1);
+  if (journal.steps.length !== 17) throw preparationRefusal('original-cache-prefix');
+  const step = {
+    ordinal: 18,
+    kind: 'tail-cache',
+    previous: hashNativeStep(journal.steps[16]),
+    intent: {
+      file: intent.file,
+      sid: leaf.record.actorIdentity.sid,
+      beforeBytes: intent.beforeBytes,
+      bytes: intent.bytes,
+      operations: structuredClone(leaf.operations),
+    },
+    readback: null,
+  };
+  const codec = await import('../criteria-revision/stage-execution.mjs');
+  currentCacheOperation(input);
+  const derived = await codec.reconstructNativeStageTailCache({
+    header: leaf.record.header,
+    steps: [...journal.steps, step],
+  });
+  currentCacheOperation(input);
+  if (
+    canonicalRecordJson(snapshot) !== canonicalRecordJson(leaf.record.backend.snapshot) ||
+    canonicalRecordJson(snapshot.nativeStageResources) !==
+      canonicalRecordJson(derived.beforeResources)
+  )
+    throw preparationRefusal('original-cache-before');
+  leaf.step = step;
+  const intended = structuredClone(snapshot);
+  intended.nativeStageRecords.at(-1).steps.push(step);
+  const effected = structuredClone(intended);
+  effected.nativeStageResources = structuredClone(derived.afterResources);
+  const completed = structuredClone(effected);
+  completed.nativeStageRecords.at(-1).steps[17].readback = structuredClone(derived.readback);
+  leaf.record.cachePrefixes = [intended, effected, completed].map(canonicalRecordJson);
+  await leaf.store.persistMemoryNativeStageCache({ ...tailAuthority(leaf.record, input), step });
+  currentCacheOperation(input);
+}
+export async function writeNativeStageTailCache(input) {
+  const leaf = currentCacheOperation(input);
+  assertNativeStageTailCacheWrite(input);
+  await leaf.store.writeMemoryNativeStageCache(tailAuthority(leaf.record, input));
+  currentCacheOperation(input);
+}
+export async function completeNativeStageTailCache(input) {
+  const leaf = currentCacheOperation(input);
+  assertNativeStageTailCacheWrite(input);
+  await leaf.store.completeMemoryNativeStageCache(tailAuthority(leaf.record, input));
+  currentCacheOperation(input);
+}
+async function runNativeStageCache(sequence, ctx, step) {
+  const record = tailCurrent(sequence, ctx);
+  if (record.tailNext !== 1 || record.tailLeaf || step !== DEFAULT_TAIL_STEPS[1])
+    throw preparationRefusal('original-cache-order');
+  const input = Object.freeze({});
+  const leaf = {
+    kind: 'cache',
+    record,
+    sequence,
+    ctx,
+    phase: 'new',
+    operations: [],
+    operation: null,
+  };
+  originalTailLeaves.set(input, leaf);
+  record.tailLeaf = input;
+  let acquired = false;
+  try {
+    cacheLeaf(input, ctx);
+    leaf.store = await import('../criteria-revision/store.mjs');
+    cacheLeaf(input, ctx);
+    await leaf.store.acquireMemoryNativeStageCache(tailAuthority(record, input));
+    acquired = true;
+    cacheLeaf(input, ctx);
+    leaf.phase = 'call';
+    const result = await nativeTailCache.refreshKanbanStateCache(ctx, input);
+    cacheLeaf(input, ctx);
+    nativeTailCache.assertOriginalNativeCacheReturn(input, ctx, result);
+    if (
+      leaf.phase !== 'running' ||
+      record.backend.snapshot.nativeStageRecords.at(-1).steps[17]?.readback == null
+    )
+      throw preparationRefusal('original-cache-return');
+    leaf.phase = 'returned';
+    record.tailNext = 2;
+  } finally {
+    if (acquired)
+      leaf.store.releaseMemoryNativeStageCache({
+        backend: record.backend,
+        token: record.stageToken,
+        invocation: input,
+      });
+    originalTailLeaves.delete(input);
+    record.tailLeaf = null;
+  }
+}
+
+// Comparison at the actual original generator's consumer boundary, after await.
+export function assertNativeStageCacheValue(input, ctx, operation, value) {
+  const leaf = cacheLeaf(input, ctx);
+  nativeTailCache.assertOriginalNativeCacheOperation(input, ctx, operation);
+  if (leaf.phase !== 'running') throw preparationRefusal('original-cache-value');
+  if (operation.kind === 'active') nativeCacheSession.assertOriginalNativeCacheRead(input, value);
+  else if (operation.kind === 'sid' && value !== leaf.record.actorIdentity.sid)
+    throw preparationRefusal('original-cache-value');
+  else if (operation.kind === 'root' && value !== leaf.record.context.executor.worktree)
+    throw preparationRefusal('original-cache-value');
 }

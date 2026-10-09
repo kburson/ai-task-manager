@@ -4398,3 +4398,184 @@ export async function writeMemoryNativeStageCompensationAudit(input) {
     validateNativeStageJournal(journal);
   });
 }
+
+// #1913 — original cache18 uses the SAME activeTask resource lock as checkpoints.
+const nativeCacheIntentReads = new WeakSet();
+const nativeCachePersisting = new WeakSet();
+const nativeCacheCompleting = new WeakSet();
+async function cacheAuthority(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+  ]);
+  const { backend, capability, context, token, invocation } = input;
+  assertMemoryCapability(backend, capability, context);
+  const core = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  const m = memory(backend),
+    journal = m.nativeStageRecords.at(-1);
+  const current = () => {
+    unchanged();
+    assertMemoryCapability(backend, capability, context);
+    const origin = core.readNativeStageTailCacheIntent(token, backend, invocation);
+    validateNativeOrder(m);
+    validateNativeStageJournal(journal);
+    if (
+      m.nativeStageRecords.at(-1) !== journal ||
+      canonicalRecordJson(journal.header) !== canonicalRecordJson(origin.header)
+    )
+      revisionError('native-stage-cache-authority');
+    return origin;
+  };
+  current();
+  return { m, journal, current, core };
+}
+function cacheLock(m, input) {
+  checkpointLock(m, input, 'activeTask');
+}
+export async function acquireMemoryNativeStageCache(input) {
+  const { m, current } = await cacheAuthority(input);
+  current();
+  if (m.nativeCheckpointResourceLocks.activeTask !== null)
+    revisionError('native-stage-cache-lock-conflict');
+  m.nativeCheckpointResourceLocks.activeTask = { token: input.token, invocation: input.invocation };
+}
+export function releaseMemoryNativeStageCache(input) {
+  assertCommentStoreKeys(input, ['backend', 'token', 'invocation']);
+  const m = memory(input.backend);
+  cacheLock(m, input);
+  m.nativeCheckpointResourceLocks.activeTask = null;
+}
+export async function readMemoryNativeStageCache(input) {
+  const { m, journal, current, core } = await cacheAuthority(input);
+  current();
+  cacheLock(m, input);
+  core.assertNativeStageTailCacheRead(input.invocation);
+  if (journal.steps.length !== 17 || journal.steps[16].readback === null)
+    revisionError('native-stage-cache-read-prefix');
+  return { beforeBytes: m.nativeStageResources.local.activeTask?.bytes ?? null };
+}
+export async function persistMemoryNativeStageCache(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+    'step',
+  ]);
+  const { step: supplied, ...authority } = input;
+  const step = JSON.parse(canonicalRecordJson(supplied));
+  const { m, journal, current: check, core } = await cacheAuthority(authority);
+  const current = () => {
+    unchanged();
+    check();
+    cacheLock(m, authority);
+    core.assertNativeStageTailCacheWrite(authority.invocation, step.intent);
+  };
+  current();
+  if (
+    journal.steps.length !== 17 ||
+    journal.steps[16].readback === null ||
+    step.readback !== null ||
+    nativeCachePersisting.has(authority.invocation)
+  )
+    revisionError('native-stage-cache-prefix');
+  nativeCachePersisting.add(authority.invocation);
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageTailCache({
+    header: journal.header,
+    steps: [...journal.steps, step],
+  });
+  current();
+  const before = () => {
+    if (
+      canonicalRecordJson(m.nativeStageResources) !==
+        canonicalRecordJson(derived.beforeResources) ||
+      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+      m.observation.stage !== derived.stage
+    )
+      revisionError('native-stage-cache-current');
+  };
+  before();
+  operation(m, 'native-stage-cache-intent-write', () => {
+    current();
+    before();
+    if (journal.steps.length !== 17) revisionError('native-stage-cache-prefix');
+    journal.steps.push(clone(step));
+  });
+  operation(m, 'native-stage-cache-intent-readback', () => {
+    current();
+    before();
+    if (canonicalRecordJson(journal.steps[17]) !== canonicalRecordJson(step))
+      revisionError('native-stage-cache-intent-readback');
+    nativeCacheIntentReads.add(journal.steps[17]);
+  });
+}
+export async function writeMemoryNativeStageCache(input) {
+  const { m, journal, current: check, core } = await cacheAuthority(input);
+  const current = () => {
+    check();
+    cacheLock(m, input);
+    core.assertNativeStageTailCacheWrite(input.invocation, journal.steps[17]?.intent);
+  };
+  current();
+  const step = journal.steps[17];
+  if (journal.steps.length !== 18 || step.readback !== null || !nativeCacheIntentReads.has(step))
+    revisionError('native-stage-cache-intent-unread');
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageTailCache({
+    header: journal.header,
+    steps: journal.steps,
+  });
+  current();
+  operation(m, 'native-stage-cache-effect-write', () => {
+    current();
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
+    )
+      revisionError('native-stage-cache-current');
+    m.nativeStageResources.local.activeTask = clone(derived.afterResources.local.activeTask);
+  });
+}
+export async function completeMemoryNativeStageCache(input) {
+  const { m, journal, current: check, core } = await cacheAuthority(input);
+  const current = () => {
+    check();
+    cacheLock(m, input);
+    core.assertNativeStageTailCacheWrite(input.invocation, journal.steps[17]?.intent);
+  };
+  current();
+  const step = journal.steps[17];
+  if (
+    journal.steps.length !== 18 ||
+    step.readback !== null ||
+    !nativeCacheIntentReads.has(step) ||
+    nativeCacheCompleting.has(input.invocation)
+  )
+    revisionError('native-stage-cache-return');
+  nativeCacheCompleting.add(input.invocation);
+  const codec = await import('./stage-execution.mjs');
+  current();
+  const derived = await codec.reconstructNativeStageTailCache({
+    header: journal.header,
+    steps: journal.steps,
+  });
+  current();
+  operation(m, 'native-stage-cache-effect-readback', () => {
+    current();
+    if (
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
+      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+      m.observation.stage !== derived.stage
+    )
+      revisionError('native-stage-cache-readback');
+    step.readback = clone(derived.readback);
+    validateNativeStageJournal(journal);
+  });
+}

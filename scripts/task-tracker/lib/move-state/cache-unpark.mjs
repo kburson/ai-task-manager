@@ -32,6 +32,10 @@ import path from 'node:path';
 import {
   beginNativeStageTailDispatch,
   assertNativeStageTailDispatchModule,
+  beginNativeStageTailCache,
+  executeNativeStageCacheOperation,
+  assertNativeStageTailCacheCurrent,
+  assertNativeStageCacheValue,
 } from './move-state-core.mjs';
 
 // Testable seam (#629): the helpers below resolve their gh-backed / session
@@ -122,45 +126,90 @@ function* kanbanRefreshProgram(ctx) {
   }
 }
 
-export async function refreshKanbanStateCache(ctx) {
-  assertRevisionStageHostEffect();
+const nativeCacheOperations = new WeakMap();
+const nativeCacheReturns = new WeakMap();
+export function assertOriginalNativeCacheOperation(input, ctx, operation) {
+  const original = nativeCacheOperations.get(input);
+  if (
+    !original ||
+    original.ctx !== ctx ||
+    original.operation !== operation ||
+    canonicalRecordJson(operation) !== original.bytes
+  )
+    throw new TypeError('native-cache-operation');
+}
+export function assertOriginalNativeCacheReturn(input, ctx, result) {
+  const original = nativeCacheReturns.get(input);
+  if (!original || original.ctx !== ctx || result !== undefined)
+    throw new TypeError('native-cache-return');
+  nativeCacheReturns.delete(input);
+}
+export async function refreshKanbanStateCache(ctx, nativeInput) {
+  const nativeMemory = isMemoryStageEffectScope();
+  if (nativeMemory) beginNativeStageTailCache(nativeInput, ctx);
+  else assertRevisionStageHostEffect();
   const program = kanbanRefreshProgram(ctx);
   let setSessionKanbanState, getActiveTask, currentSessionId;
+  let nativeFailure = null;
   let next = program.next();
   while (!next.done) {
     const operation = next.value;
     let value;
     try {
-      switch (operation.kind) {
-        case 'modules':
-          [{ setSessionKanbanState, getActiveTask }, { currentSessionId }] = await Promise.all([
-            importOr(operation.deps.sessionState, '../../session-state.mjs'),
-            importOr(operation.deps.wordCounter, '../../word-counter.mjs'),
-          ]);
-          break;
-        case 'sid':
-          value = currentSessionId();
-          break;
-        case 'root':
-          value = getProjectDir();
-          break;
-        case 'active':
-          value = getActiveTask(operation.sid, operation.projectDir);
-          break;
-        case 'set':
-          value = setSessionKanbanState(operation.sid, operation.stateArg, operation.projectDir);
-          break;
-        case 'stderr':
-          value = process.stderr.write(operation.bytes);
-          break;
-        default:
-          throw new TypeError('kanban-refresh-operation');
-      }
+      if (nativeMemory) {
+        nativeCacheOperations.set(nativeInput, {
+          ctx,
+          operation,
+          bytes: canonicalRecordJson(operation),
+        });
+        value = await executeNativeStageCacheOperation(nativeInput, ctx, operation);
+        assertNativeStageTailCacheCurrent(nativeInput, ctx);
+        assertNativeStageCacheValue(nativeInput, ctx, operation, value);
+      } else
+        switch (operation.kind) {
+          case 'modules':
+            [{ setSessionKanbanState, getActiveTask }, { currentSessionId }] = await Promise.all([
+              importOr(operation.deps.sessionState, '../../session-state.mjs'),
+              importOr(operation.deps.wordCounter, '../../word-counter.mjs'),
+            ]);
+            break;
+          case 'sid':
+            value = currentSessionId();
+            break;
+          case 'root':
+            value = getProjectDir();
+            break;
+          case 'active':
+            value = getActiveTask(operation.sid, operation.projectDir);
+            break;
+          case 'set':
+            value = setSessionKanbanState(operation.sid, operation.stateArg, operation.projectDir);
+            break;
+          case 'stderr':
+            value = process.stderr.write(operation.bytes);
+            break;
+          default:
+            throw new TypeError('kanban-refresh-operation');
+        }
     } catch (error) {
+      if (nativeMemory) {
+        // Run the same original generator catch/warning before surfacing the
+        // actual failed native callback to the pending transition boundary.
+        if (nativeFailure || operation.kind === 'stderr') {
+          nativeCacheOperations.delete(nativeInput);
+          throw error;
+        }
+        nativeFailure = error;
+      }
       next = program.throw(error);
       continue;
     }
     next = program.next(value);
+  }
+  if (nativeMemory) {
+    nativeCacheOperations.delete(nativeInput);
+    if (nativeFailure) throw nativeFailure;
+    nativeCacheReturns.set(nativeInput, { ctx });
   }
 }
 
