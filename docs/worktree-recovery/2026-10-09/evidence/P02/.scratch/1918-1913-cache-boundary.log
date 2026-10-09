@@ -1,0 +1,19 @@
+✔ acquireMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (1.096541ms)
+✔ readMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (0.2625ms)
+✔ persistMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (0.344875ms)
+✔ writeMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (0.369291ms)
+✔ completeMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (0.264583ms)
+✔ cache release rejects resource getters before selecting a lock (0.140958ms)
+✔ public refresh rejects unowned getter inputs before callback or field access (0.753708ms)
+✔ cache sequence rejects unowned getter inputs before callback or field access (0.117708ms)
+✔ operation driver rejects unowned getter inputs before callback or field access (0.188292ms)
+✔ original read rejects unowned getter inputs before callback or field access (0.649083ms)
+✔ original set rejects unowned getter inputs before callback or field access (0.182625ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 207.129791

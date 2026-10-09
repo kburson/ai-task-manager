@@ -1,0 +1,68 @@
+✔ all audit and late-source cases are classified independently (5.6005ms)
+ℹ [{"filename":"criteria-revision-compensation-audit-effect-readback-failAfter.test.mjs","mode":"compensation-audit","fault":{"when":"failAfter","suffix":"audit-effect-readback"}},{"filename":"criteria-revision-compensation-audit-effect-readback-failBefore.test.mjs","mode":"compensation-audit","fault":{"when":"failBefore","suffix":"audit-effect-readback"}},{"filename":"criteria-revision-compensation-audit-effect-write-failAfter.test.mjs","mode":"compensation-audit","fault":{"when":"failAfter","suffix":"audit-effect-write"}},{"filename":"criteria-revision-compensation-audit-effect-write-failBefore.test.mjs","mode":"compensation-audit","fault":{"when":"failBefore","suffix":"audit-effect-write"}},{"filename":"criteria-revision-compensation-audit-intent-readback-failAfter.test.mjs","mode":"compensation-audit","fault":{"when":"failAfter","suffix":"audit-intent-readback"}},{"filename":"criteria-revision-compensation-audit-intent-readback-failBefore.test.mjs","mode":"compensation-audit","fault":{"when":"failBefore","suffix":"audit-intent-readback"}},{"filename":"criteria-revision-compensation-audit-intent-write-failAfter.test.mjs","mode":"compensation-audit","fault":{"when":"failAfter","suffix":"audit-intent-write"}},{"filename":"criteria-revision-compensation-audit-intent-write-failBefore.test.mjs","mode":"compensation-audit","fault":{"when":"failBefore","suffix":"audit-intent-write"}},{"filename":"criteria-revision-compensation-audit-interrupted.test.mjs","mode":"compensation-audit","fault":{"when":"failAfter","suffix":"audit-effect-write"}},{"filename":"criteria-revision-compensation-audit.test.mjs","mode":"compensation-audit","fault":null},{"filename":"criteria-revision-compensation-late-config.test.mjs","mode":"compensation-late-config","fault":null},{"filename":"criteria-revision-compensation-late-read.test.mjs","mode":"compensation-late-read","fault":null}]
+✔ complete actual public compensation boundary profile (1812.741375ms)
+ℹ scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-compensation-boundary.test.mjs: 21 complete original cases
+▶ actual original audit and late custody cases preserve verified committed facts
+  ✔ criteria-revision-compensation-audit-effect-readback-failAfter.test.mjs (205637.321209ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-readback-failAfter.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-audit-effect-readback-failBefore.test.mjs (204892.690083ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-readback-failBefore.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-audit-effect-write-failAfter.test.mjs (203659.629875ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-write-failAfter.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-audit-effect-write-failBefore.test.mjs (203013.37575ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-write-failBefore.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-audit-intent-readback-failAfter.test.mjs (187860.905666ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-readback-failAfter.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-audit-intent-readback-failBefore.test.mjs (187615.049ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-readback-failBefore.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-audit-intent-write-failAfter.test.mjs (186433.857667ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-write-failAfter.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-audit-intent-write-failBefore.test.mjs (186804.329417ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-write-failBefore.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-audit-interrupted.test.mjs (178306.191542ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-interrupted.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-audit.test.mjs (179330.019084ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-late-config.test.mjs (157186.647042ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-late-config.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-late-read.test.mjs (158370.308625ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-late-read.test.mjs: 1 complete original cases
+✔ actual original audit and late custody cases preserve verified committed facts (570624.232833ms)
+[state-recording] issue #1916 marker write to "develop" FAILED after 2 attempts: original rollback write failed 2
+[state-recording] issue #1916 marker write to "develop" FAILED after 2 attempts: original rollback write failed 2
+✔ exhausted actual rollback reports failure when audit succeeds (558.223459ms)
+✔ exhausted actual rollback reports failure when audit fails (207.29825ms)
+✔ complete original recording retry, board readback and marker atomicity profiles (3621.423833ms)
+ℹ scripts/tests/unit/task-tracker/lib/coverage-state-recording.test.mjs, scripts/tests/unit/task-tracker/lib/marker-write-retry.test.mjs, scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs, scripts/tests/unit/task-tracker/lib/move-state/move-state-board-marker-atomicity.test.mjs: 31 complete original cases
+✔ independent compensation descriptors retain positive and all eight intent/body fault points (0.257958ms)
+ℹ [{"filename":"criteria-revision-compensation-body-effect-readback-failAfter.test.mjs","mode":"compensation","fault":{"when":"failAfter","suffix":"body-effect-readback"}},{"filename":"criteria-revision-compensation-body-effect-readback-failBefore.test.mjs","mode":"compensation","fault":{"when":"failBefore","suffix":"body-effect-readback"}},{"filename":"criteria-revision-compensation-body-effect-write-failAfter.test.mjs","mode":"compensation","fault":{"when":"failAfter","suffix":"body-effect-write"}},{"filename":"criteria-revision-compensation-body-effect-write-failBefore.test.mjs","mode":"compensation","fault":{"when":"failBefore","suffix":"body-effect-write"}},{"filename":"criteria-revision-compensation-intent-readback-failAfter.test.mjs","mode":"compensation","fault":{"when":"failAfter","suffix":"intent-readback"}},{"filename":"criteria-revision-compensation-intent-readback-failBefore.test.mjs","mode":"compensation","fault":{"when":"failBefore","suffix":"intent-readback"}},{"filename":"criteria-revision-compensation-intent-write-failAfter.test.mjs","mode":"compensation","fault":{"when":"failAfter","suffix":"intent-write"}},{"filename":"criteria-revision-compensation-intent-write-failBefore.test.mjs","mode":"compensation","fault":{"when":"failBefore","suffix":"intent-write"}},{"filename":"criteria-revision-compensation-native.test.mjs","mode":"compensation","fault":null},{"filename":"criteria-revision-compensation-return-custody.test.mjs","mode":"compensation-return-custody","fault":null}]
+▶ actual original exhausted board and complete bounded compensation fault matrix
+  ✔ criteria-revision-compensation-body-effect-readback-failAfter.test.mjs (181981.046458ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failAfter.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-body-effect-readback-failBefore.test.mjs (181668.841167ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failBefore.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-body-effect-write-failAfter.test.mjs (179964.666375ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-write-failAfter.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-body-effect-write-failBefore.test.mjs (179410.969208ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-write-failBefore.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-intent-readback-failAfter.test.mjs (162967.556375ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-readback-failAfter.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-intent-readback-failBefore.test.mjs (163455.474083ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-readback-failBefore.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-intent-write-failAfter.test.mjs (163110.091458ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failAfter.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-intent-write-failBefore.test.mjs (161621.550666ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failBefore.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-native.test.mjs (133796.918041ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-native.test.mjs: 1 complete original cases
+  ✔ criteria-revision-compensation-return-custody.test.mjs (133600.303416ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-return-custody.test.mjs: 1 complete original cases
+✔ actual original exhausted board and complete bounded compensation fault matrix (477030.749375ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1055742.966

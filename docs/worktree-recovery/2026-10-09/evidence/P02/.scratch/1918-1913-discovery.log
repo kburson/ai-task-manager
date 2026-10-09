@@ -1,0 +1,10 @@
+✔ independent dispatcher and requested phase frontier discovery retains all five originals (2.002833ms)
+ℹ [{"filename":"native-stage-phase-12-prefix-after-effect-readback.test.mjs","mode":"phase-12-prefix","fault":{"when":"failAfter","suffix":"effect-readback"}},{"filename":"native-stage-phase-adversarial.test.mjs","mode":"phase-adversarial","fault":null},{"filename":"native-stage-phase-pair.test.mjs","mode":"phase-pair","fault":null},{"filename":"native-stage-tail-dispatch-reentry.test.mjs","mode":"tail-dispatch-reentry","fault":null},{"filename":"native-stage-tail-dispatch.test.mjs","mode":"tail-dispatch","fault":null}]
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 510.583083

@@ -1,0 +1,136 @@
+intent-write-failBefore rejected
+file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs:1763
+      }
+      ^
+
+SyntaxError: Missing catch or finally after try
+    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:93:18)
+    at #translate (node:internal/modules/esm/loader:441:20)
+    at afterLoad (node:internal/modules/esm/loader:509:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)
+    at afterResolve (node:internal/modules/esm/loader:614:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17)
+
+Node.js v26.8.1
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failBefore.test.mjs (54.164916ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59.688458
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failBefore.test.mjs:1:1
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failBefore.test.mjs (54.164916ms)
+  'test failed'
+
+body-effect-readback-failAfter rejected
+file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs:1763
+      }
+      ^
+
+SyntaxError: Missing catch or finally after try
+    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:93:18)
+    at #translate (node:internal/modules/esm/loader:441:20)
+    at afterLoad (node:internal/modules/esm/loader:509:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)
+    at afterResolve (node:internal/modules/esm/loader:614:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17)
+
+Node.js v26.8.1
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failAfter.test.mjs (56.4335ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 61.580833
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failAfter.test.mjs:1:1
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failAfter.test.mjs (56.4335ms)
+  'test failed'
+
+audit rejected
+file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs:1763
+      }
+      ^
+
+SyntaxError: Missing catch or finally after try
+    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:93:18)
+    at #translate (node:internal/modules/esm/loader:441:20)
+    at afterLoad (node:internal/modules/esm/loader:509:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)
+    at afterResolve (node:internal/modules/esm/loader:614:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17)
+
+Node.js v26.8.1
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit.test.mjs (55.119375ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60.039792
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit.test.mjs:1:1
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit.test.mjs (55.119375ms)
+  'test failed'
+
+audit-interrupted rejected
+file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs:1763
+      }
+      ^
+
+SyntaxError: Missing catch or finally after try
+    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:93:18)
+    at #translate (node:internal/modules/esm/loader:441:20)
+    at afterLoad (node:internal/modules/esm/loader:509:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)
+    at afterResolve (node:internal/modules/esm/loader:614:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:389:17)
+
+Node.js v26.8.1
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-interrupted.test.mjs (55.686167ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 61.20975
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-interrupted.test.mjs:1:1
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-interrupted.test.mjs (55.686167ms)
+  'test failed'
+

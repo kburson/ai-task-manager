@@ -1,0 +1,27 @@
+✔ acquireMemoryNativeStageCompensation refuses all authority getters and non-data shapes (1.092709ms)
+✔ acquireMemoryNativeStageCompensation validates nested context before capability lookup (0.25275ms)
+✔ persistMemoryNativeStageCompensation refuses all authority getters and non-data shapes (0.324292ms)
+✔ persistMemoryNativeStageCompensation validates nested context before capability lookup (0.100917ms)
+✔ beginMemoryNativeStageCompensationAttempt refuses all authority getters and non-data shapes (0.464291ms)
+✔ beginMemoryNativeStageCompensationAttempt validates nested context before capability lookup (0.108791ms)
+✔ writeMemoryNativeStageCompensation refuses all authority getters and non-data shapes (0.255417ms)
+✔ writeMemoryNativeStageCompensation validates nested context before capability lookup (0.065334ms)
+✔ completeMemoryNativeStageCompensation refuses all authority getters and non-data shapes (0.238083ms)
+✔ completeMemoryNativeStageCompensation validates nested context before capability lookup (0.104292ms)
+✔ recordMemoryNativeStageCompensationFailure refuses all authority getters and non-data shapes (0.318333ms)
+✔ recordMemoryNativeStageCompensationFailure validates nested context before capability lookup (0.0775ms)
+✔ writeMemoryNativeStageCompensationAudit refuses all authority getters and non-data shapes (0.293042ms)
+✔ writeMemoryNativeStageCompensationAudit validates nested context before capability lookup (0.06075ms)
+✔ completeMemoryNativeStageCompensationResult refuses all authority getters and non-data shapes (0.226ms)
+✔ completeMemoryNativeStageCompensationResult validates nested context before capability lookup (0.052375ms)
+✔ unowned rollback refuses before original context or callback access (0.587667ms)
+✔ unowned recording refuses before original context or callback access (0.177041ms)
+✔ unowned core comparison refuses before original context or callback access (0.102667ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 198.6985
