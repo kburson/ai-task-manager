@@ -22,7 +22,7 @@ AITM draft base is `10237f2711dcfefc3c94ce5fa3a9de43b15f8dd6`. The specification
 
 Inspected seams include `metadata-section.mjs`, `plan-metadata.mjs`, `decomposition-policy.mjs`, `governed-plan-policy.mjs`, `user-story-quality.mjs`, `story-intent-source.mjs`, decomposition exit/coverage/readiness, both split-plan modules, `owned-comment.mjs`, `issue-body-mutate.mjs`, body invariants, runtime storage, capabilities, installed execution context and the canonical issue lock. Existing owned-comment discovery uses GraphQL node IDs; the new inventory must additionally capture correlated numeric REST comment IDs for stable URLs and exact-ID retirement.
 
-Standalone repository `kburson/ai-peer-review` was inspected at trunk commit `a3f05b87f20cea346e745ff4099b74cd7819efa8`. Its public API exports `applyReviewRecord`, `planReviewRecord`, `renderReviewHistory`, `statusReview` and phase manifest functions; it does not yet export the new publication envelope. Its repository version and the locally installed review runtime are separate facts. Pin the actual compatible producer deliverable and tarball digest at integration; do not infer compatibility from a version string or install an unreviewed moving branch.
+Standalone repository `kburson/ai-peer-review` was inspected at trunk commit `a3f05b87f20cea346e745ff4099b74cd7819efa8`. The #1592 independence contract and `scripts/tests/integration/review/peer-review-decommission.test.mjs` were inspected during XPR and remain unchanged. Its public API exports `applyReviewRecord`, `planReviewRecord`, `renderReviewHistory`, `statusReview` and phase manifest functions; it does not yet export the new publication envelope. Its repository version and the locally installed review runtime are separate facts. Pin the actual compatible producer deliverable and tarball digest at integration; do not infer compatibility from a version string or install an unreviewed moving branch.
 
 ## Global constraints
 
@@ -63,7 +63,7 @@ Standalone repository `kburson/ai-peer-review` was inspected at trunk commit `a3
 - **Estimate:** 127 joint hours proposed: 124 bounded-child hours plus 3 parent integration/orchestration hours; supersedes provisional 96 only after plan review and sanctioned estimate update.
 - **Labels:** enhancement
 - **Governing-spec:** docs/superpowers/specs/2026-10-09-1939-artifact-references-review-records-design.md
-- **Estimate basis:** Scope-based engineering estimate, not measured performance or elapsed forecast. The unconstrained dependency longest path is 100 child hours; at one-worker capacity all 124 child hours plus 3 parent hours are sequential effort. Waves describe dependencies, not guaranteed parallel speedup. Review/CI variability remains for the forecast gate.
+- **Estimate basis:** Scope-based engineering estimate, not measured performance or elapsed forecast. The unconstrained dependency longest path is 90 child hours; at one-worker capacity all 124 child hours plus 3 parent hours are sequential effort. Waves describe dependencies, not guaranteed parallel speedup. Review/CI variability remains for the forecast gate.
 
 ## Story Intent
 
@@ -71,6 +71,20 @@ Standalone repository `kburson/ai-peer-review` was inspected at trunk commit `a3
 - **Capability:** navigate concise artifact and review records while agents resolve the same authoritative evidence
 - **Need:** duplicated metadata and per-round issue comments obscure reviewed versions and clutter story histories
 - **Value or failure prevented:** assess readiness and review changes without losing durable evidence or breaking automated workflow consumers
+
+## Independence, retention and activation boundaries
+
+Retain #1592's shipped regression byte-for-byte: no review package dependency/import, wrapper or revived algorithm ownership; current operator docs keep artifact-review independence. Do not weaken the decommission test. The wire schema is a transparent canonical data asset at `templates/contracts/review-publication-v1.schema.json`, shipped by existing templates package inclusion. It visibly retains the accepted spec's exact schema identifier. A neutral production validator loads this bundled schema as data. No identifier concatenation, hidden import or test exception is allowed; explicit fixture checks prove the actual identifier, schema use, packaged asset and unchanged #1592 regression. Task 5 owns this asset and neutral client.
+
+Production uses an explicitly configured read-only external verifier executable, never a package import. `artifactRecords.verifier` binds absolute executable/argv, deployed runtime digest, verifier/schema versions and read-only capabilities. Validate authentic installed ownership, bind exact manifest/subject/request digest, reject replay or mismatched responses, and invoke argv without a shell. No provider launch, review orchestration or authority upgrade occurs. Missing/unsupported configuration refuses sealed acceptance. Tests keep a checksum-pinned tarball in `scripts/tests/fixtures/artifact-records/producer/`, install only into a disposable consumer outside AITM's manifest/lock, and call its real producer/export/verification CLI. This preserves independence without changing #1592 or the accepted wire identifier. Task 8 assembles the real client and tests the production path.
+
+Durable v1 links/backups require exact remote bytes plus retained reachability: configured trunk ancestry, or an explicitly configured protected append-only archive ref whose verified rules prohibit deletion/force updates and whose ancestry contains the evidence commit. Task 7's `artifact-retention.mjs` provides the proof. Task 8/9 require it before rendering or backup-published; Task 10 re-verifies immediately before each retirement. Remote branch-only objects refuse `artifact-retention-unanchored`; add real disposable-remote tests. Missing archive provisioning blocks with a diagnostic, and no code silently edits repository protection. Privileged external deletion remains outside the guarantee; detected loss refuses further effects.
+
+Preparation uses existing `aitm comment --key` and `aitm issue-body` with legacy bare-path/pin fields and immutable origin links. No v1 marker, Display- projection or future publication API is permitted. Already published #1939 summaries use stable keys in pre-v1 format: Task 6/12 preserve exact bodies/IDs/acquisition provenance as known-backheal fixtures and validate their actual evidence. Future ordinary publication diagnoses pre-v1 collisions without overwrite; conversion requires separately authorized preview/backup/effects. Preparation grants no migration authorization. Current feature-branch links are published legacy links, not assertions that the new retention precondition passed.
+
+Activation lives in `scripts/task-tracker/config.mjs` defaults and installed/project `artifactRecords` configuration, assembled by `artifact-reference-runtime.mjs`. Task 3 introduces default-false read support; Task 8 proves authentic assembly but does not flip defaults. Task 12 owns the eligibility-driven fresh-install default change to `readSupportEnabled: true` and `writerMode: dual-compatible`, including config/init/template mirrors. New writes choose v1 only with verified enrollment, compatibility and retention; otherwise legacy status remains explicit. Legacy reads work without external verifier configuration, but declared new sealed acceptance cannot fall back. Task 12 tests enabled-default installs, legacy config, unavailable verifier/anchor and retained disabled overrides. Historical apply stays independently default-disabled and explicitly authorized.
+
+Task 12 integrates on the role-typed parent branch returned by `aitm cut-epic-branch 1939`. Preserve all planning/review commits and bring them into integration history through sanctioned Git/PR workflow before implementation. Sequential child integration uses `aitm merge-back` and ordinary verification/review policy; Review status alone proves no integration. Every prerequisite delivery commit must be an ancestor of parent HEAD before Task 12's final gates. Run full gates at one clean parent SHA containing prerequisites and Task 12 changes; capture ancestry/receipts and let the parent reuse that exact evidence after Task 12 Review. No unapproved shipping merge is implied.
 
 ## File ownership and interfaces
 
@@ -120,9 +134,9 @@ Historical API proposal: `inventoryArtifactBackheal({ownerContext, targets, deps
 - [ ] Implement the bounded structural codec with escaped less-than/greater-than/ampersand; validate IDs, field grammar and immutable-reference shapes. Retain unknown values only in the documented non-authoritative extensions object.
 - [ ] Register marker protection and exact genesis/next/no-op advancement in both canonical invariant paths. Test loss, regression, same-revision divergence, invalid rebinding and preservation of unrelated lifecycle markers.
 - [ ] Implement the validated artifact-specific writer using the canonical fresh-base body transaction; measure the complete proposed next-version body before any reservation. Test multibyte/scalar limits and an oversized legacy body's unrelated timing write.
-- [ ] Record every operational reader/writer and its semantic role using repository searches plus existing gate/template inventory. Include enrollment-loss detection ownership and initial-default policy; commit with the actual child issue ID.
+- [ ] Record every operational reader/writer and its semantic role using repository searches plus existing gate/template inventory. Inventory actual emitter sources: AITM/standalone skills, adapters, templates, operator recipes and generic owned-comment callers. Record absent baseline production per-round emitters explicitly. Task 5 owns standalone capability guidance, Task 8 owns reserved-key routing, and Task 12 owns canonical AITM guidance/templates/recipe fixtures. Include enrollment-loss detection ownership and initial-default policy; commit with the actual child issue ID.
 
-**Interfaces:** Produces `validateArtifactRecord`, structural parse/serialize helpers, `writeArtifactReferences` with exact-base advancement and scoped budgets. The inventory is the checklist for Task 3 and Task 12; do not claim a repository-wide migration from a partial search.
+**Interfaces:** Produces `validateArtifactRecord`, structural parse/serialize helpers, `writeArtifactReferences` with exact-base advancement and scoped budgets. The inventory is the checklist for Task 3 and Task 12; do not claim a repository-wide migration from a partial search. No production verb/backfill/CLI can call the artifact writer before Task 8 admission and Task 12 activation; add a staged-call-graph guard fixture.
 
 **Verification Commands:**
 
@@ -168,7 +182,7 @@ node --test scripts/tests/unit/task-tracker/lib/artifact-reference-contract.test
 
 #### Delivery
 
-**Estimate:** 12 hours. **Dependencies:** Task 2. **Files:** Create `scripts/task-tracker/lib/artifact-reference-runtime.mjs` as the disabled production assembly shell; modify `scripts/task-tracker/lib/decomposition-policy.mjs`, `governed-plan-policy.mjs`, `user-story-quality.mjs`, `story-intent-source.mjs`, `decomposition-wbs-coverage.mjs`, `decomposition-plan-exit-guard.mjs`, `decomposition-delivery-readiness.mjs`, `split-plan.mjs`, `scripts/task-tracker/verbs/split-plan.mjs` and `scripts/task-tracker/backfill-plan-metadata.mjs`. Update the inventory and their existing named unit suites.
+**Estimate:** 12 hours. **Dependencies:** Task 2. **Files:** Stage artifactRecords configuration in `scripts/task-tracker/config.mjs` and `config-init.mjs`; create `scripts/task-tracker/lib/artifact-reference-runtime.mjs` as the disabled production assembly shell; modify `scripts/task-tracker/lib/decomposition-policy.mjs`, `governed-plan-policy.mjs`, `user-story-quality.mjs`, `story-intent-source.mjs`, `decomposition-wbs-coverage.mjs`, `decomposition-plan-exit-guard.mjs`, `decomposition-delivery-readiness.mjs`, `split-plan.mjs`, `scripts/task-tracker/verbs/split-plan.mjs` and `scripts/task-tracker/backfill-plan-metadata.mjs`. Update the inventory and their existing named unit suites.
 
 - [ ] Add a role-consumer matrix test using one raw pinned subject across legacy/mixed/v1 bodies. Assert consumer outputs reference the same branded observation rather than applying separate precedence.
 - [ ] Route active plan policy/approval and Story Intent to active role; preserve exact source task for WBS and inherited governing spec for child creation. Declared invalid spec blocks generic creation fallback.
@@ -181,7 +195,7 @@ node --test scripts/tests/unit/task-tracker/lib/artifact-reference-contract.test
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs scripts/tests/unit/task-tracker/lib/story-intent-source.test.mjs scripts/tests/unit/task-tracker/lib/decomposition-plan-exit-gate.test.mjs scripts/tests/unit/task-tracker/lib/decomposition-delivery-readiness.test.mjs scripts/tests/unit/task-tracker/lib/user-story-quality.test.mjs scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs scripts/tests/unit/task-tracker/core/backfill-plan-metadata.test.mjs scripts/tests/unit/task-tracker/core/coverage-backfill-plan-metadata.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs scripts/tests/unit/task-tracker/lib/story-intent-source.test.mjs scripts/tests/unit/task-tracker/lib/decomposition-plan-exit-gate.test.mjs scripts/tests/unit/task-tracker/lib/decomposition-delivery-readiness.test.mjs scripts/tests/unit/task-tracker/lib/user-story-quality.test.mjs scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs scripts/tests/unit/task-tracker/core/backfill-plan-metadata.test.mjs scripts/tests/unit/task-tracker/core/coverage-backfill-plan-metadata.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-parser-policy.test.mjs
 ```
 
 ### Task 4: Render grouped metadata and enroll only compatible issues
@@ -222,24 +236,24 @@ node --test scripts/tests/unit/task-tracker/lib/artifact-record-renderer.test.mj
 
 #### Delivery
 
-**Estimate:** 12 hours, including the coordinated standalone deliverable. **Dependencies:** Task 1. **AITM files:** Create `scripts/task-tracker/lib/peer-review-publication-adapter.mjs` and `scripts/tests/integration/task-tracker/lib/peer-review-producer-compatibility.test.mjs`.
+**Estimate:** 12 hours, including the coordinated standalone deliverable. **Dependencies:** Task 1. **AITM files:** Create `templates/contracts/review-publication-v1.schema.json`, `scripts/task-tracker/lib/peer-review-publication-adapter.mjs` as a neutral external-verifier client with no review-package import, the pinned producer tarball/provenance under `scripts/tests/fixtures/artifact-records/producer/`, and `scripts/tests/integration/task-tracker/lib/peer-review-producer-compatibility.test.mjs`.
 
 **Standalone deliverable:** During hydration enumerate existing related issues in `kburson/ai-peer-review`, then create or explicitly link one bounded repository-owned implementation issue using that repository's sanctioned workflow. This AITM child coordinates/accepts that artifact; it does not authorize editing a foreign checkout while bound to AITM. Record the foreign issue, reviewed PR/commit, package artifact and digest as native dependency evidence before this child's Develop admission. The foreign worker binds its own issue and uses its own elapsed clock; count the estimated work once in the parent rollup.
 
-**Standalone owned paths:** Add `src/publication/envelope.mjs`, `src/publication/verify.mjs`, `test/unit/review-publication.test.mjs` and `test/integration/review-publication.test.mjs`; modify `src/public-api.mjs`, `src/collateral/review-record-core.mjs`, `src/manifest/render.mjs` and protocol service only at existing finalized-authority boundaries. Verify these seams against the pinned trunk and refresh changed baselines before implementation. Preserve original event/manifest records; this envelope supplements their verifier interface.
+**Standalone owned paths:** Add `src/publication/envelope.mjs`, `src/publication/verify.mjs`, `test/unit/review-publication.test.mjs` and `test/integration/review-publication.test.mjs`; modify `src/public-api.mjs`, `src/cli/help-data.mjs`, `src/cli/run-core.mjs`, `skills/peer-review/SKILL.md`, `src/collateral/review-record-core.mjs`, `src/manifest/render.mjs` and protocol service only at existing finalized-authority boundaries. Verify these seams against the pinned trunk and refresh changed baselines before implementation. Preserve original event/manifest records; this envelope supplements their verifier interface.
 
-- [ ] Implement/export `buildReviewPublication` and `verifyReviewPublication` from the actual standalone package. Bind issue/kind/method, protocol instances, raw artifact revisions, finalized acceptance, complete dispositions and evidence sources to event authority.
+- [ ] Implement/export `buildReviewPublication` and `verifyReviewPublication` from the actual standalone package and expose its read-only `verify-publication` CLI. Bind issue/kind/method, protocol instances, raw artifact revisions, finalized acceptance, complete dispositions and evidence sources to event authority.
 - [ ] Add exact raw JSON previousRecord chain fixtures including different whitespace/newline bytes. Enforce closed shapes, caps, variant absence and raw prior-manifest digest, with no self-hash or semantic reserialization.
 - [ ] Cover nonterminal/failure/cancellation, supersession and uncommitted reviewedInput followed by later preservation. Reject retroactive source commits and unfinalized manifest assertions.
-- [ ] Implement AITM negotiation `compatible-v1`, `legacy-only`, `unsupported`; unsupported/opaque schema refuses new publication, legacy-only keeps prior emitters and operational fields.
-- [ ] Run the standalone unit/integration/package/smoke/lint/format checks in its own governed task; use its verified packed tarball in the AITM integration test to call the real exported producer/verifier. Do not replace the integration with a hand-authored envelope fixture.
+- [ ] Implement AITM negotiation `compatible-v1`, `legacy-only`, `unsupported`; unsupported/opaque schema refuses new publication, legacy-only keeps existing independent review/operator guidance and operational fields. Compatible-v1 standalone skill guidance hands the envelope to the configured publication boundary instead of prescribing separate round/manifest/acceptance comments; test both branches with generated guidance and actual CLI negotiation. There are no baseline AITM production per-round emitters to disable.
+- [ ] Run the standalone unit/integration/package/smoke/lint/format checks in its own governed task; use its checksum-pinned tarball fixture in a disposable isolated consumer to call the real producer/verifier and external CLI. Never add it to AITM dependencies or locks. Do not replace the integration with a hand-authored envelope fixture.
 
 **Interfaces:** The AITM bridge returns exact schema/verifier/capability versions and branded verifier result bound to subject/document digests. Compatibility alone proves no particular review acceptance. Pin the delivered package before rollout; no auto-publish or automatic registry release is part of preparation.
 
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/integration/task-tracker/lib/peer-review-producer-compatibility.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/peer-review-producer-compatibility.test.mjs scripts/tests/integration/review/peer-review-decommission.test.mjs
 ```
 
 ### Task 6: Validate manual evidence and render complete bounded review summaries
@@ -280,11 +294,11 @@ node --test scripts/tests/unit/task-tracker/lib/review-record-publication.test.m
 
 #### Delivery
 
-**Estimate:** 12 hours. **Dependencies:** Task 1. **Files:** Create `scripts/task-tracker/lib/artifact-publication-authority.mjs`, `artifact-publication-store.mjs`, `scripts/tests/integration/task-tracker/lib/artifact-publication-authority.test.mjs`; modify runtime-storage/path/capability assembly only for declared new storage paths, and `scripts/task-tracker/issue-mutator-lock.mjs` for held-process safety.
+**Estimate:** 12 hours. **Dependencies:** Task 1. **Files:** Create `scripts/task-tracker/lib/artifact-publication-authority.mjs`, `artifact-publication-store.mjs`, `artifact-retention.mjs`, `scripts/tests/integration/task-tracker/lib/artifact-publication-authority.test.mjs`; modify runtime-storage/path/capability assembly only for declared new storage paths, and `scripts/task-tracker/issue-mutator-lock.mjs` for held-process safety.
 
 - [ ] Prove existing installed context/runtime identity admission from genuine native authority, configured shared root and enrolled store. A caller-supplied host UUID, unavailable root or scratch-only store must refuse.
 - [ ] Add durable enrollment, forward cursor and pending-effect records with atomic storage under the resolved physical authority. Use canonical issue mutation locking, never a new independent lock namespace.
-- [ ] Write cross-worktree production-facade tests and correct lock reclamation so an authenticated live holder cannot be reclaimed solely because its mtime exceeds the backstop. Foreign-host ambiguity stays fenced pending explicit authority reconciliation.
+- [ ] Write cross-worktree production-facade tests and correct lock reclamation so an authenticated live holder cannot be reclaimed solely because its mtime exceeds the backstop. Capture and compare OS-observed process incarnation plus holder nonce: exact live incarnation cannot be reclaimed by age, while dead or positively mismatched recycled PID can be reclaimed. Unknown incarnation for an alive PID refuses reclamation. Test live-long-held, recycled-PID, unavailable observation, nesting and concurrent siblings. Foreign-host ambiguity stays fenced pending explicit authority reconciliation.
 - [ ] Reserve effect identity, expected before digest, proposed digest, revision and previous-record chain before transport; reject stale/divergent reuse. A verified identical effect is a live-read no-op.
 - [ ] Refuse new effect/host transfer until unresolved actions are reconciled and the old publisher is demonstrably terminated/fenced. Lease expiry alone is insufficient. Never import rehearsal journal-authority into production.
 
@@ -293,7 +307,7 @@ node --test scripts/tests/unit/task-tracker/lib/review-record-publication.test.m
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/integration/task-tracker/lib/artifact-publication-authority.test.mjs scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/artifact-publication-authority.test.mjs scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs
 ```
 
 ### Task 8: Publish one ordered summary and immutable body discovery record
@@ -309,19 +323,19 @@ node --test scripts/tests/integration/task-tracker/lib/artifact-publication-auth
 
 **Estimate:** 10 hours. **Dependencies:** Task 4, Task 6 and Task 7. **Files:** Create `scripts/task-tracker/lib/review-record-publication.mjs`; complete `artifact-reference-runtime.mjs` created by Task 3; modify `owned-comment.mjs`, `issue-body-mutate.mjs`, `scripts/task-tracker/verbs/comment.mjs` only through guarded optional publication preconditions. Create `scripts/tests/integration/task-tracker/lib/review-record-publication.test.mjs` and `scripts/tests/integration/task-tracker/lib/artifact-reference-production.test.mjs`; extend existing comment unit tests.
 
-- [ ] Complete the canonical production factory `createArtifactReferenceRuntime({ownerContext, config, producer, transport})` in `artifact-reference-runtime.mjs`: inject Task 6 branded exact-subject acceptance validation using Task 5's actual producer verifier, and Task 7 durable enrollment reads. Refuse absent, fixture-only, foreign or unsupported providers and leave read support disabled on failed assembly. Test canonical Plan approval and Story Intent routes with a real pinned producer package, finalized protocol fixture authority and real configured temporary shared runtime store; this is a production-factory test, not an injected fake acceptance result.
-- [ ] Verify every referenced record/blob against immutable origin before rendering; compare exact raw bytes from a disposable Git remote in tests. Successful push output alone is not durable evidence.
+- [ ] Complete the canonical production factory `createArtifactReferenceRuntime({ownerContext, config, externalVerifier, transport})` in `artifact-reference-runtime.mjs`: inject Task 6 branded exact-subject acceptance validation using Task 5's authenticated read-only external verifier client, and Task 7 durable enrollment reads. Refuse absent, fixture-only, foreign or unsupported providers and leave read support disabled on failed assembly. Test canonical Plan approval and Story Intent routes with a real producer executable installed only in a disposable consumer, finalized protocol fixture authority and real configured temporary shared runtime store; this is a production-factory test, not an injected fake acceptance result.
+- [ ] Verify every referenced record/blob against immutable origin and a Task 7 retention anchor before rendering; compare exact raw bytes from a disposable Git remote in tests. Successful push output alone is not durable evidence; a branch-only remote commit fails retention before any durable-link effect.
 - [ ] Extend canonical owned-comment transaction to bind expected numeric/node identity or explicit absence, expected prior body digest, proposed digest, publication revision and previousRecordDigest. Correlate both ID forms and exhaustively discover before/after transport.
 - [ ] Under Task 7 admission/lock, reserve the effect, create/update/no-op the one key, then exact-read-back and update body discovery through Task 1's validated writer. Journal verified partial completion across both objects.
 - [ ] Cover stale round 2 after round 3, two managed publishers, ambiguous create/restart, duplicates, external concurrent creation and human edit before/after write. Detect available drift, preserve observed originals/proposals and never claim multi-object/global CAS.
-- [ ] Cap guarded attempts at three per effect; reconcile uncertainty before another call. Activate replacement emitters only when the actual compatible producer and consumer handshake both pass. Preserve legacy emitters otherwise.
+- [ ] Cap guarded attempts at three per effect; reconcile uncertainty before another call. Route reserved review kind/method keys through the replacement API only when compatible producer/verifier and consumer admission both pass. Generic comment callers cannot claim v1 publication or create per-round reserved-key variants after activation. Legacy-only preserves independent review/operator guidance and legacy comment behavior without claiming replacement activation; tests observe key routing, effect counts and generated guidance.
 
 **Interfaces:** Produces `publishReviewRecord`. Ordinary comment/body callers keep current active-target/timer checks; publication preconditions tighten that boundary. Task 10 introduces a private alternative admission for historical metadata effects, never a public bypass flag. This child alone completes production acceptance/enrollment assembly; Tasks 2/3/4 are staged non-enabled components until its assembly regression passes. Task 12 authorizes default read/writer rollout only from the resulting eligibility report.
 
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/unit/task-tracker/verbs/comment.test.mjs scripts/tests/unit/task-tracker/lib/review-record-publication.test.mjs scripts/tests/integration/task-tracker/lib/review-record-publication.test.mjs scripts/tests/integration/task-tracker/lib/artifact-reference-production.test.mjs
+node --test scripts/tests/unit/task-tracker/verbs/comment.test.mjs scripts/tests/unit/task-tracker/lib/review-record-publication.test.mjs scripts/tests/integration/task-tracker/lib/review-record-publication.test.mjs scripts/tests/integration/task-tracker/lib/artifact-reference-production.test.mjs scripts/tests/integration/review/peer-review-decommission.test.mjs
 ```
 
 ### Task 9: Preview explicit historical scope and publish exact originals
@@ -340,7 +354,7 @@ node --test scripts/tests/unit/task-tracker/verbs/comment.test.mjs scripts/tests
 - [ ] Inventory only supplied issue IDs with complete pagination, exact body/version/digest, comment node/numeric IDs, timestamps/ownership/state and artifact sources. Keep unknown human content and missing/ambiguous authority as diagnostics.
 - [ ] Produce deterministic metadata/summary diffs and explicit effect/retirement IDs, stable operation ID and proposal digest. No discovery query implicitly expands apply scope.
 - [ ] Archive exact original bytes and source acquisition provenance for every affected body/comment and linked original being rewritten. Do not mistake derived reference fixtures for exact historical snapshots.
-- [ ] Commit and verify backup manifest/objects at immutable origin before marking backup-published; local scratch or push success does not permit mutation. Zero writes on source, pagination or hash failure.
+- [ ] Commit and verify backup manifest/objects at immutable origin and retention anchor before marking backup-published; local scratch or push success does not permit mutation. Zero writes on source, pagination or hash failure.
 - [ ] Store preview/backup state durably using Task 7 storage. Renewal of drifted scope creates a new proposal rather than silently rebasing an authorized one.
 
 **Interfaces:** Produces immutable inventory/proposal/backup identities for Task 10 admission and Task 11 saga. Proposal lists exact effects and protected originals; preview itself confers no capability.
@@ -364,10 +378,10 @@ node --test scripts/tests/unit/task-tracker/lib/artifact-backheal-preview.test.m
 
 **Estimate:** 10 hours. **Dependencies:** Task 9. **Files:** Create `scripts/task-tracker/lib/artifact-migration-admission.mjs`, `artifact-comment-retirement.mjs`, `scripts/tests/integration/task-tracker/lib/artifact-migration-admission.test.mjs`; modify canonical body/comment transaction admission internally and body/guard protection for the new authorization record.
 
-- [ ] Validate a fresh supported-host human transcript or authenticated human GitHub record against the printed exact owner task, target IDs, proposal, published backup, allowed effects/retirement IDs and deadline. Unsupported hosts, generic consent and Full-Auto cannot mint authorization.
+- [ ] Reuse `workflow-policy/authority-resolver.mjs` source validation/hash and `createCodexSessionSourceLoader` for the initially supported fresh Codex human transcript against the printed exact owner task, target IDs, proposal, published backup, allowed effects/retirement IDs and deadline. Claude maintenance and authenticated GitHub-record authorization loaders are not added in this child: they refuse as unsupported. Generic consent and Full-Auto cannot mint authorization.
 - [ ] Protect the durable authorization on the owning active maintenance task with authenticated issuer/receipt, status, expiry and effect consumption. Serialized records are evidence, not injectable capabilities.
 - [ ] Privately admit one effect against current owner session/worktree, authority, exact baseline and fresh authorization. Allow only metadata body changes, named summaries and separately listed retirement IDs.
-- [ ] Retire exact numeric/node-correlated comments only after verified preservation; refuse timing, transition, commit, review-approval, unknown content and incomplete originals. Record delete ambiguity and read-back receipts.
+- [ ] Retire exact numeric/node-correlated comments only after verified preservation and a fresh retained-anchor ancestry/protection check; refuse timing, transition, commit, review-approval, unknown content and incomplete originals. Record delete ambiguity and read-back receipts.
 - [ ] Test two closed targets under a different active maintenance task, ordinary wrong-target refusal, expiry/revocation/wrong scope/backup/proposal/retirement IDs and refusal to bind/tick/advance historical targets.
 
 **Interfaces:** Authorization validator remains private to service admission; canonical transaction cores accept branded migration effects only from this service. No public `--skip-session`, `allowInactive` or raw capability injection is introduced. Task 11 consumes verified effect receipts.
@@ -375,7 +389,7 @@ node --test scripts/tests/unit/task-tracker/lib/artifact-backheal-preview.test.m
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/integration/task-tracker/lib/artifact-migration-admission.test.mjs scripts/tests/unit/task-tracker/lib/gh-edit-guard-protected-comments.test.mjs scripts/tests/unit/task-tracker/lib/body-invariants.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/artifact-migration-admission.test.mjs scripts/tests/unit/task-tracker/lib/gh-edit-guard-protected-comments.test.mjs scripts/tests/unit/task-tracker/lib/body-invariants.test.mjs scripts/tests/unit/task-tracker/lib/gh-edit-guard-body.test.mjs
 ```
 
 ### Task 11: Execute resumable backheal and separately authorized rollback
@@ -389,7 +403,7 @@ node --test scripts/tests/integration/task-tracker/lib/artifact-migration-admiss
 
 #### Delivery
 
-**Estimate:** 12 hours. **Dependencies:** Task 10. **Files:** Create `scripts/task-tracker/lib/artifact-record-backheal.mjs`, `scripts/task-tracker/verbs/artifact-backheal.mjs` and `scripts/tests/integration/task-tracker/lib/artifact-record-backheal.test.mjs`; register the new governed verb/help through the current command catalog during implementation.
+**Estimate:** 12 hours. **Dependencies:** Task 10. **Files:** Create `scripts/task-tracker/lib/artifact-record-backheal.mjs`, `scripts/task-tracker/verbs/artifact-backheal.mjs` and `scripts/tests/integration/task-tracker/lib/artifact-record-backheal.test.mjs`; register verb/help in `scripts/task-tracker/lib/command-surface/catalog.mjs` and `bin/aitm-registry.mjs`, maintaining `scripts/task-tracker/task-tracker.mjs` dispatch parity.
 
 - [ ] Implement inventoried, previewed, backup-published, applying, applied, retiring, verified, complete, conflict, rollback-pending and rolled-back transitions under shared authority. Reserve before transport and persist exact after-state/created IDs only after read-back.
 - [ ] Freshly verify the entire live target baseline, protected evidence and closure/state before each effect. Advance expected baseline solely for verified own effects, including canonical body-version changes.
@@ -402,7 +416,7 @@ node --test scripts/tests/integration/task-tracker/lib/artifact-migration-admiss
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/integration/task-tracker/lib/artifact-record-backheal.test.mjs scripts/tests/unit/task-tracker/core/backfill-plan-metadata.test.mjs scripts/tests/unit/task-tracker/core/coverage-backfill-plan-metadata.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/artifact-record-backheal.test.mjs scripts/tests/unit/task-tracker/core/backfill-plan-metadata.test.mjs scripts/tests/unit/task-tracker/core/coverage-backfill-plan-metadata.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-parser-policy.test.mjs
 ```
 
 ### Task 12: Prove reference parity and roll out canonical future workflows
@@ -416,33 +430,33 @@ node --test scripts/tests/integration/task-tracker/lib/artifact-record-backheal.
 
 #### Delivery
 
-**Estimate:** 6 hours. **Dependencies:** Task 3, Task 4, Task 5, Task 8 and Task 11. **Files:** Create `scripts/tests/fixtures/artifact-records/1901/`, `scripts/tests/integration/task-tracker/lib/artifact-record-workflow.test.mjs`, `docs/design/1939-artifact-record-rollout.md`; update canonical `templates/`, mirrored `.ai-task-manager/templates/`, shared task guidance and supported `skill/adapters/codex/` and Claude adapters according to the inventory. Regenerate package-owned mirrors through existing install/setup flows rather than divergent local edits.
+**Estimate:** 6 hours. **Dependencies:** Task 3, Task 4, Task 5, Task 8 and Task 11. **Files:** Own the activation default flip in `scripts/task-tracker/config.mjs`, `scripts/task-tracker/config-init.mjs` and config-init authoring mirrors introduced by Task 3; create `scripts/tests/fixtures/artifact-records/1901/`, `scripts/tests/fixtures/artifact-records/1939-pre-v1/`, `scripts/tests/integration/task-tracker/lib/artifact-record-workflow.test.mjs`, `docs/design/1939-artifact-record-rollout.md`; update canonical `templates/`, mirrored `.ai-task-manager/templates/`, shared task guidance and supported `skill/adapters/codex/` and Claude adapters according to the inventory. Regenerate package-owned mirrors through existing install/setup flows rather than divergent local edits.
 
 - [ ] Capture reference index/consolidation inputs through GitHub at `5f35cf08c41bb8d9c482963e16a5313f44a973f6` and assert raw digests `42b09b9beab7860ef795f6f7b38fe953aa0ac7c3d212c194151d8a4b61b54214` and `53e8854c78bec8c8ea16e1590418bdb280cbcb668462ee60bb7ea04cd8a60a55`. Capture referenced archived inputs with identity/digest provenance; label all derived bodies as synthetic.
 - [ ] Run the complete offline fixture from discovery to grouped display and exactly four stable summaries, verifying every original round and predecessor acceptance remains reachable and substantive deep dive survives.
 - [ ] Exercise supported provider adapters and installed consumer setup with legacy-only, mixed and compatible-v1 producer paths. Update authoritative writers/schema validation first, then templates/guidance; local skill text alone is insufficient.
-- [ ] Record rollout stages: read support/conflict inventory, dual-compatible writers, all-reader parity and real producer handshake, then optional legacy-field removal. Historical apply remains disabled without a separate authorized pilot; no pilot is executed by this implementation fixture.
-- [ ] Run root integration, full unit/slow/lint/format gates once after prerequisite children reach Review and before this child enters Review; the parent verifies/reuses the resulting exact-SHA evidence once this child also reaches Review. Capture exact SHA/commands and unresolved limitations; do not repeat the full suite for each child.
+- [ ] Apply the named read-support/dual-compatible default flip only after production eligibility passes and assert enabled fresh-install behavior. Preserve #1592 current-doc independence; producer-specific instructions stay in its standalone skill or dedicated design guidance. Record rollout stages: read support/conflict inventory, dual-compatible writers, all-reader parity and real producer handshake, then optional legacy-field removal. Historical apply remains disabled without a separate authorized pilot; no pilot is executed by this implementation fixture.
+- [ ] Prove prerequisite delivery commits are ancestors of canonical parent integration HEAD, then run root integration, full unit/slow/lint/format gates once after prerequisite children reach Review and before this child enters Review; the parent verifies/reuses the resulting exact-SHA evidence once this child also reaches Review. Capture exact SHA/commands and unresolved limitations; do not repeat the full suite for each child.
 
 **Interfaces:** Produces reproducible raw-source fixture provenance and rollout eligibility report linked to the consumer inventory, verified producer package and final integration SHA. A rollout report cannot mint historical authorization.
 
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/integration/task-tracker/lib/artifact-record-workflow.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/artifact-record-workflow.test.mjs scripts/tests/integration/review/peer-review-decommission.test.mjs
 ```
 
 ## Cross-repository and estimate controls
 
 Task 5's dependency must be tracked in its owning standalone repository and linked before execution; hydrate no duplicate standalone issue. Its source deliverable runs `npm test`, `npm run test:integration`, `npm run test:packaging`, `npm run test:smoke`, lint and format checks in that repository. A paused live-broker test is not live proof. AITM's fixture consumes the delivered packed package and authentic protocol fixture authority; it does not need live paid providers or registry publishing for deterministic acceptance.
 
-The 124 child-hour sum includes that work exactly once. Parent orchestration/integration allowance is 3 hours. Dependencies define waves, but tasks sharing files remain sequential. The proposed dependency critical path is Task 1→2→3→4→8→9→10→11→12 = 100 hours; the Task 5/6 and Task 7 branches must also complete before Task 8. Use the longest path calculation in the forecast rather than subtracting parallel time from total joint effort. Estimates remain reviewable forecasts, not promises of elapsed execution.
+The 124 child-hour sum includes that work exactly once. Parent orchestration/integration allowance is 3 hours. Dependencies define waves, but tasks sharing files remain sequential. The proposed dependency critical path is Task 1→2→3→4→8→9→10→11→12 = 90 hours; the Task 5/6 and Task 7 branches must also complete before Task 8. Use the longest path calculation in the forecast rather than subtracting parallel time from total joint effort. Estimates remain reviewable forecasts, not promises of elapsed execution.
 
 ## Plan review and preparation recipe
 
 1. Commit this draft against #1939 after formatting and canonical task/story extraction checks; preserve generation start/end evidence without inventing elapsed intervals.
 2. Run distinct-session Astra plan SPR, then Claude plan XPR with actual requested selections and normal commit-mode provenance. Preserve every finding/disposition and acceptance subject. Material XPR changes require honest predecessor lineage rather than transferring SPR acceptance.
-3. Commit/publish full collateral and verify remote blobs. Update one stable plan SPR and one stable plan XPR summary and immutable accepted-plan metadata using governed writers; do not create per-round comments.
+3. Commit/publish full collateral and verify remote blobs. Use shipped `aitm comment --key` and `aitm issue-body` with legacy fields to update stable SPR/XPR summaries and immutable accepted-plan links. Treat #1939's current stable keys as pre-v1 known-backheal inputs described above. No v1 marker, Display- projection or future writer is available or permitted during preparation; no per-round comments are created.
 4. Conduct and post accepted-plan/spec repository deep dive, retain substantive body text, enumerate native children again, classify the parent appropriately and hydrate via sanctioned split-plan/create-issue. Capture the standalone dependency deliverable explicitly.
 5. Answer all seven semantic story questions for root and each child from source evidence. Refine children one step at a time to Ready for Planning with current ranks/dependencies, sizes and estimates; do not start their implementation.
 6. Reconcile reviewed WBS total/overhead, native child coverage, JIT forecast and exact source binding. Use current `plan-approve` and guarded promotion; no forged approval or state skip.
