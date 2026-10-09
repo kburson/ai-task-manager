@@ -1,0 +1,23 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/store/sessions/sess-1'
+- '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/tt-session-state-7gQV4e/.tmp/aitm/sessions/sess-1'
+
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/session-state.test.mjs:25:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/store/sessions/sess-1',
+  expected: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/tt-session-state-7gQV4e/.tmp/aitm/sessions/sess-1',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1

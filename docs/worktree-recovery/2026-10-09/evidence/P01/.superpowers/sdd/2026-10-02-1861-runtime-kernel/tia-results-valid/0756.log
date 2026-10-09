@@ -1,0 +1,13 @@
+✔ retires only the exact stage and receipt identity (3.031542ms)
+✔ is idempotent when the exact identity is already absent (0.852833ms)
+✔ fails closed on wrong issue, duplicate target, malformed claim, and missing identity (1.008208ms)
+✔ governed retirement mutates a fresh base and verifies write plus fresh read-back (0.520917ms)
+✔ governed retirement refuses failed writes and either read-back retaining the target (0.99975ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.870709

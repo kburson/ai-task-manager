@@ -1,0 +1,23 @@
+✔ assign claims an unassigned pre-Develop story without changing Status (1.250583ms)
+✔ assign transfers a locally-owned story to one different owner while preserving Status (0.177084ms)
+✔ assign refuses foreign and multiple ownership before mutation (0.220667ms)
+✔ assign treats a thrown add with a matching read-back as ambiguous and never compensates (0.155792ms)
+✔ assign never destructively compensates a successful but provenance-ambiguous add (0.135917ms)
+✔ transfer does not destructively compensate after the prior owner was removed (0.118458ms)
+✔ assign never mutates when the durable audit reservation fails (0.25625ms)
+✔ assign is idempotent for the requested singleton owner (0.099041ms)
+✔ assign retries a pending completion audit without repeating ownership mutation (0.355875ms)
+✔ assign reports audit-pending after verified mutation when completion write fails (0.183125ms)
+✔ transfer retry repairs completion audit from the original owner workstation (0.186ms)
+✔ audit retry correlates by transaction id instead of suppressing a newer identical intent (0.133291ms)
+✔ transfer retry never completes a pending transaction for a different requested target (0.075459ms)
+✔ ownership verb refusals give the operator a concrete recovery action (0.398583ms)
+✔ Done preserves final ownership and refuses transfer (0.135042ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.670459

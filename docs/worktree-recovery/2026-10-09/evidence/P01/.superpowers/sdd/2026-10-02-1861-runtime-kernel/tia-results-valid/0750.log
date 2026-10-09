@@ -1,0 +1,24 @@
+✔ citeCommands: reuses an existing VC entry position, no append (AC1) (0.886208ms)
+✔ citeCommands: appends an absent command and cites its new 1-based position (AC2) (0.081042ms)
+✔ citeCommands: multi-command mixes reuse + append into a citation run (AC4) (0.438792ms)
+✔ citeCommands: a command cited twice appends once and cites one position (0.134125ms)
+✔ buildEvidenceBackfill: cites an existing VC command without re-listing it (AC1) (1.557709ms)
+✔ buildEvidenceBackfill: appends an absent command and cites its new position (AC2) (0.182792ms)
+✔ buildEvidenceBackfill: no raw command is embedded in the AC markers (0.218375ms)
+✔ buildEvidenceBackfill: cited positions round-trip through the read-side resolver (0.20175ms)
+✔ buildEvidenceBackfill: citation-authored ACs pass the Refine→Plan demonstrability gate (0.811792ms)
+✔ buildEvidenceBackfill: parseEvidenceChecklist resolves the cited commands back to literals (0.178458ms)
+✔ buildEvidenceBackfill: second pass is a no-op (idempotent) (0.128292ms)
+✔ multi-command citation ticks only when every cited command passes (AC4) (0.5635ms)
+✔ multi-command citation stays unticked when one cited command fails (AC4) (0.115208ms)
+✔ legacy embedded command still resolves as evidence (AC5) (0.097417ms)
+✔ legacy embedded command remains demonstrable to the gate (AC5) (0.129958ms)
+✔ legacy embedded command still auto-ticks on green (AC5) (0.090792ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.952667

@@ -1,0 +1,63 @@
+close-strip-labels.test.mjs: ok
+✔ closeLabelRemoveArgs builds the expected gh args (0.819834ms)
+✖ convergence close-issue path strips only ToDo after gh close (60.08925ms)
+✖ main close path strips only ToDo after gh close (116.56325ms)
+✖ label-strip failure leaves close incomplete for a truthful retry (51.81125ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 1
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 238.465667
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs:140:1
+✖ convergence close-issue path strips only ToDo after gh close (60.08925ms)
+  AssertionError [ERR_ASSERTION]: expected an issue close call
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs:159:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs:169:1
+✖ main close path strips only ToDo after gh close (116.56325ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs:188:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs:199:1
+✖ label-strip failure leaves close incomplete for a truthful retry (51.81125ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /failed to strip ToDo label/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs:218:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /failed to strip ToDo label/,
+    operator: 'match',
+    diff: 'simple'
+  }

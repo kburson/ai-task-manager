@@ -1,0 +1,12 @@
+✔ runVerbTest: an allowlist-rejected VC alongside a passing VC yields status "passed", not "failed" (52.420417ms)
+✔ runVerbTest: an allowlist-rejected VC alone (no other commands) yields status "passed" (24.339125ms)
+✔ runVerbTest: a genuine nonzero-exit failure alongside a rejected VC still yields status "failed" (22.433542ms)
+✔ runVerbTest: a metacharacter/injection-vector rejection is NOT excluded from the gate — status stays "failed" (22.337375ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 129.220292

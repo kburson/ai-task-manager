@@ -1,0 +1,78 @@
+✖ runApprove in human mode posts notes with human source from stdin drivers (167.242709ms)
+✖ runApprove in full-auto mode posts notes with auto source and derived drivers (171.740958ms)
+✖ runApprove in human mode skips notes comment when no drivers entered (210.285208ms)
+✖ runApprove still ticks lifecycle even if notes-post fails (168.605917ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 0
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 725.479041
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:61:1
+✖ runApprove in human mode posts notes with human source from stdin drivers (167.242709ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runApprove (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/approve.mjs:323:10)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:63:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:78:1
+✖ runApprove in full-auto mode posts notes with auto source and derived drivers (171.740958ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runApprove (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/approve.mjs:323:10)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:80:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:94:1
+✖ runApprove in human mode skips notes comment when no drivers entered (210.285208ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runApprove (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/approve.mjs:323:10)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:96:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:106:1
+✖ runApprove still ticks lifecycle even if notes-post fails (168.605917ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runApprove (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/approve.mjs:323:10)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs:111:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }

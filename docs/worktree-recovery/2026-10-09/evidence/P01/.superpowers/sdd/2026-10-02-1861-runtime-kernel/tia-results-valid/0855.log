@@ -1,0 +1,153 @@
+ensure-checked.test.mjs: defined
+✔ setChecklistLine: ticks an unchecked line (changed) (0.877291ms)
+✔ setChecklistLine: already-checked is a byte-identical no-op (0.111125ms)
+✔ setChecklistLine: checked desired never unchecks a checked line (0.077334ms)
+✔ setChecklistLine: preserves trailing evidence markers on tick (0.088583ms)
+✔ setChecklistLine: not-found (0.10275ms)
+✔ setChecklistLine: ambiguous reports count (0.083834ms)
+✔ setChecklistLines: folds desired across labels, records per-label result (0.606292ms)
+✖ verbEnsureChecked: ticks a proof-bearing unchecked AC and writes [x] (0.606333ms)
+✖ verbEnsureChecked: idempotent re-run on already-checked is a no-op (0.212375ms)
+✖ verbEnsureChecked: never unchecks an already-checked AC (0.196125ms)
+✖ verbEnsureChecked: evidence gate fires on verifier-AC transition → exit 1 (0.156458ms)
+✖ verbEnsureChecked: --allow-unverified-ticks hatch ticks a proofless AC (0.143542ms)
+✖ verbEnsureChecked: --allow-unverified-ticks refused on an undeclared AC (no verifier, no marker) → exit 1 (0.17575ms)
+✖ verbEnsureChecked: --allow-unverified-ticks refused on verifier AC → exit 1 (0.140583ms)
+✖ verbEnsureChecked: special-label "deep dive complete" routes to ensureDeepDive (0.162625ms)
+✖ verbEnsureChecked: special-label "discussion complete" marks discussed (0.15075ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 7
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 36.470959
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:224:1
+✖ verbEnsureChecked: ticks a proof-bearing unchecked AC and writes [x] (0.606333ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:183:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:227:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:233:1
+✖ verbEnsureChecked: idempotent re-run on already-checked is a no-op (0.212375ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:183:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:236:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:247:1
+✖ verbEnsureChecked: never unchecks an already-checked AC (0.196125ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:183:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:251:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:260:1
+✖ verbEnsureChecked: evidence gate fires on verifier-AC transition → exit 1 (0.156458ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:183:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:263:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:269:1
+✖ verbEnsureChecked: --allow-unverified-ticks hatch ticks a proofless AC (0.143542ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:183:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:273:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:284:1
+✖ verbEnsureChecked: --allow-unverified-ticks refused on an undeclared AC (no verifier, no marker) → exit 1 (0.17575ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:183:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:288:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:297:1
+✖ verbEnsureChecked: --allow-unverified-ticks refused on verifier AC → exit 1 (0.140583ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:183:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:301:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:309:1
+✖ verbEnsureChecked: special-label "deep dive complete" routes to ensureDeepDive (0.162625ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:183:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:313:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:322:1
+✖ verbEnsureChecked: special-label "discussion complete" marks discussed (0.15075ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:183:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs:326:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
