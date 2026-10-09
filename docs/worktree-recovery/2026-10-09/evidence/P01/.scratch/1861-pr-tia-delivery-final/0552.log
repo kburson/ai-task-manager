@@ -1,0 +1,33 @@
+✔ planEpicDevelopChildrenGate passes for non-epic (no children) (0.610167ms)
+✔ planEpicDevelopChildrenGate refuses when any child is in backlog (0.181042ms)
+✔ planEpicDevelopChildrenGate passes when children are R4P or later with current evidence (0.163042ms)
+✔ planEpicDevelopChildrenGate passes when sole current child is at ready-for-plan (0.0755ms)
+✔ planEpicDevelopChildrenGate passes when sole current child is at plan (0.050334ms)
+✔ planEpicDevelopChildrenGate passes when sole current child is at develop (0.046458ms)
+✔ planEpicDevelopChildrenGate passes when sole current child is at test (0.0565ms)
+✔ planEpicDevelopChildrenGate passes when sole current child is at review (0.048291ms)
+✔ planEpicDevelopChildrenGate passes an accepted terminal child (0.082833ms)
+✔ planEpicDevelopChildrenGate refuses sole backlog child (#335 regression) (0.13275ms)
+✔ planEpicDevelopChildrenGate refuses children that are merely at refine (0.100917ms)
+✔ planEpicDevelopChildrenGate surfaces fetch failures as blockers (0.088958ms)
+✔ findNextEligibleChild returns lowest-rank R4P child (0.138125ms)
+✔ findNextEligibleChild skips children with null rank (0.062916ms)
+✔ findNextEligibleChild returns null when no R4P children (0.041375ms)
+✔ findNextEligibleChild returns null on empty list (0.032916ms)
+✔ fetchEpicChildren throws when cfg or parentEpicNumber missing (0.222792ms)
+✔ fetchEpicChildren refuses a malformed child collection (0.054833ms)
+✔ isPendingRecoveryPhase accepts only incomplete durable recovery phases (0.042084ms)
+✔ developEpicTestChildrenGate passes when a child was closed from Backlog (#947 — the #859 case) (0.519291ms)
+✔ planEpicDevelopChildrenGate passes with a child closed from Backlog (#947) (2.148875ms)
+✔ reviewEpicDoneChildrenGate passes with a child closed mid-flight (#947) (0.165208ms)
+✔ reviewEpicDoneChildrenGate still refuses an OPEN child parked mid-flight (#947 regression) (0.107583ms)
+✔ findNextEligibleChild never selects a child closed from Refine (#947) (0.222375ms)
+✔ wipAdvanceDecision does not count a child closed mid-flight against the budget (#947) (0.393541ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.870667

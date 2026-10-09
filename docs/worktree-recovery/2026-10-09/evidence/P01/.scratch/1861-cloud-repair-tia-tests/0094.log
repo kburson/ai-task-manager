@@ -1,0 +1,23 @@
+✔ auto both/review provide repeatable standing authority; off and reset revoke/re-evaluate it (3.669125ms)
+✔ approval evidence must be current-head and genuine human approval remains independent (0.138ms)
+✔ fresh Test and Agent Review cannot rebind an approval from an older head (1.42625ms)
+✔ stale Full-Auto body evidence cannot survive auto off or reset (0.142ms)
+✔ standing Full-Auto authorizes immutable A while a reused branch is observed at B (0.344709ms)
+✔ reconstructs intent authority only from an advanced merged historical delivery (0.326959ms)
+✔ historical reconstruction rejects an extra intent property at its exact-key boundary (0.087ms)
+✔ historical reconstruction refuses authority that is not an advanced, clean merged delivery (0.286167ms)
+✔ Full-Auto changes only review authorization; delivery safety gates still refuse independently (0.358875ms)
+✔ runApprove remains the audited producer of Full-Auto approval evidence (461.853875ms)
+✔ stale human approval cannot be silently rebound after head drift (248.744959ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 720.450333
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD

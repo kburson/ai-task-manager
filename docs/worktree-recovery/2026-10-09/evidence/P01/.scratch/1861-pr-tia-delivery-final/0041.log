@@ -1,0 +1,23 @@
+✔ poolConcurrency reserves one core and never drops below 1 (0.74325ms)
+✔ subprocessPoolConcurrency is capped at two and floored at one (0.150708ms)
+✔ slowPoolConcurrency is independently capped at two and floored at one (0.110125ms)
+✔ runPool honors the reduced subprocess cap and preserves input order (23.809042ms)
+✔ runPool keeps at most `concurrency` invocations in flight (64.306792ms)
+✔ runPool returns results in input order despite reversed completion (48.4625ms)
+✔ runPool handles an empty entry list (0.204375ms)
+✔ runPool caps concurrency at the entry count for tiny lists (11.78725ms)
+✔ runPool brackets every concurrent side effect (leak guard remains sound) (25.04775ms)
+✔ spawnTestChild shapes a clean exit like spawnSync (677.962084ms)
+✔ spawnTestChild reports a non-zero exit code (135.842042ms)
+✔ spawnTestChild timeout kills the child and surfaces ETIMEDOUT (226.830167ms)
+✔ spawnTestChild enforces maxBuffer and surfaces ENOBUFS (111.876375ms)
+✔ spawnTestChild propagates the caller-owned env policy to the child (138.416917ms)
+✔ spawnTestChild resolves (never rejects) on a spawn failure (0.262625ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1471.09

@@ -1,0 +1,40 @@
+✔ spawn timeout reports command arguments and both captured streams (2007.089792ms)
+✔ spawn buffer overflow reports command arguments and both captured streams (42.139625ms)
+✔ blocked script detection rejects npm 12 multiline postinstall (0.639042ms)
+✔ blocked script detection rejects multiline without npm log prefixes (0.14375ms)
+✔ blocked script detection rejects same-line warning (0.1095ms)
+✔ blocked script detection permits unrelated package (0.085875ms)
+✔ blocked script detection permits similar package name (0.058167ms)
+✔ blocked script detection permits AITM mentioned by another script (0.052708ms)
+✔ blocked script detection permits blocked text inside another script (0.071625ms)
+✔ blocked script detection permits AITM outside warning block (0.131083ms)
+✔ blocked script detection permits no blocked scripts (0.063125ms)
+✖ restrictive downstream tarball install runs CLI and generated provider hooks without an alias (16749.188875ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 11
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18806.050625
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs:162:1
+✖ restrictive downstream tarball install runs CLI and generated provider hooks without an alias (16749.188875ms)
+  AssertionError [ERR_ASSERTION]: memory seed selection must install the index hook
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs:349:14)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

@@ -1,0 +1,19 @@
+✔ epic omits an absent story argument and preserves a supplied file (0.893958ms)
+✔ solo omits an absent story argument and preserves a supplied file (0.10475ms)
+✔ sub-issue omits an absent story argument and preserves a supplied file (0.082833ms)
+✔ defect omits an absent story argument and preserves a supplied file (0.068709ms)
+✔ buildShapeFlags forwards --kind when args.kind is a non-empty string (0.101959ms)
+✔ buildShapeFlags omits --kind entirely when kind is absent (AC3) (0.066167ms)
+✔ buildShapeFlags omits --kind when kind is an empty string (0.058333ms)
+✔ buildShapeFlags omits --kind when kind is a non-string (0.056708ms)
+✔ created-issue recovery token is stable and machine-readable (0.292625ms)
+✔ buildShapeFlags still forwards --shape and seed fields alongside --kind (0.11775ms)
+✔ buildShapeFlags forwards section files for non-stub shapes without --kind by default (0.072041ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.842959

@@ -1,0 +1,156 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 14214,
+    "log": "0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/meta/package-test-corpus.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 8892,
+    "log": "0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 14441,
+    "log": "0002.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 5608,
+    "log": "0003.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 52596,
+    "log": "0004.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 35534,
+    "log": "0005.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 11882,
+    "log": "0006.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 13917,
+    "log": "0007.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 11573,
+    "log": "0008.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 4745,
+    "log": "0009.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 38765,
+    "log": "0010.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2592,
+    "log": "0011.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1076,
+    "log": "0012.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 8331,
+    "log": "0013.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1848,
+    "log": "0014.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-successor-timing.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1614,
+    "log": "0015.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 22678,
+    "log": "0016.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 3399,
+    "log": "0017.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1098,
+    "log": "0018.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 389,
+    "log": "0019.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 3276,
+    "log": "0020.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 264,
+    "log": "0021.log"
+  }
+]

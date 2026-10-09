@@ -1,0 +1,29 @@
+✔ prepare has a read-only first pass and a digest-bound filled pass without writes (187.281583ms)
+✔ filled prepare refuses a mapping whose complete receipt would exceed the comment limit (61.21525ms)
+✔ filled prepare refuses absent ids, invalid issue and expiry, bad mapping, and changed inventory (65.975583ms)
+✔ unsupported host refuses prepare and record even with a session name (56.022458ms)
+✔ record requires the exact filtered Codex user statement, readback, and is idempotent (68.339458ms)
+✔ agent, injection-only, wrong hash, and ordinary comment cannot authorize a record (75.293167ms)
+✔ show stays read-only on an unsupported host (54.668625ms)
+✔ edited grant blocks show and exact retry readback (69.877791ms)
+✔ argument parser requires one explicit positive issue (0.320875ms)
+✔ command help exposes the complete two-pass and revision workflow (0.311459ms)
+✔ revise and revoke require fresh user messages and append linked records (80.925042ms)
+✔ runtime writes to the parsed issue when the input file name is numeric (61.07925ms)
+✔ GraphQL second-precision comment timestamps survive grant readback (137.557291ms)
+✔ revoke readback refuses a competing valid revision appended at the same predecessor (66.050041ms)
+✔ transport ambiguity needs an exact appended comment on readback (66.16175ms)
+✔ an exact retry refuses a competing recorded chain instead of claiming activation (65.523916ms)
+✔ revision refuses a reused exception id before writing a poisoned chain (64.981333ms)
+✔ filled prepare refuses a candidate whose escaped rendered comment exceeds the bound (64.587208ms)
+✔ prepare refuses to open a waiver when every source commit is canonically attributed (61.931875ms)
+✔ prepare refuses a PR branch bound to another issue (75.240791ms)
+✔ prepare accepts an opaque branch when it exactly matches durable issue authority (59.924ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1447.70125

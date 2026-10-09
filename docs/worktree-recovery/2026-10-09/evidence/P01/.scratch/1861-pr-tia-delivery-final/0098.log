@@ -1,0 +1,17 @@
+✔ verification outcomes retain exact SHA and reuse lineage and only same-SHA reruns are waste (2.881875ms)
+✔ verification outcomes reject malformed claimed receipts and preserve distinct command identities (0.339541ms)
+✔ exact final SHA requires a complete canonical Test receipt and rejects an arbitrary green probe (0.675666ms)
+✔ same SHA command identity is waste even when display classifications differ (0.181833ms)
+✔ epic child outcome discovery paginates children and delegates full comment reads to the record store (4.037833ms)
+✔ mixed legacy/adaptive epics reference adaptive child outcomes and ignore forecast-free legacy children (1.438167ms)
+✔ an epic with only forecast-free legacy children writes an empty aggregation outcome (0.653334ms)
+✔ runtime threads explicit reopened-close correction authority into the immutable outcome chain (1.321542ms)
+✔ epic close fails closed when an adaptive child has a forecast but no outcome (0.221041ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15.95175
