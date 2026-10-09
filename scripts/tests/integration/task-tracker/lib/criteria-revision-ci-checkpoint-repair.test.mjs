@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { hashRevisionValue } from '../../../../task-tracker/lib/criteria-revision/schema.mjs';
 
 const repository = fileURLToPath(new URL('../../../../..', import.meta.url));
 const originalBudgetMs = 600_000;
@@ -46,6 +47,11 @@ test(
   'UTC phase publication and original actor arithmetic retain strict raw-zero refusal',
   { timeout: originalBudgetMs },
   (t) => {
+    assert.match(hashRevisionValue({ offsetMin: 0 }), /^sha256:[0-9a-f]{64}$/);
+    assert.throws(() => hashRevisionValue({ offsetMin: -0 }), {
+      name: 'TypeError',
+      message: 'canonical-json:invalid:number',
+    });
     qualify(['./native-actor-candidate-capture.test.mjs'], { timezone: 'UTC', minimumTests: 6 }, t);
   }
 );
