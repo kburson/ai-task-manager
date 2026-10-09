@@ -2747,9 +2747,9 @@ function validateNativeCompensationData(value, header, steps) {
 
 export async function reconstructNativeStageCompensation(input) {
   try {
-    canonicalRecordJson(input);
-    exactKeys(input, ['header', 'steps', 'compensation']);
-    const { header, steps, compensation: c } = input;
+    const detached = JSON.parse(canonicalRecordJson(input));
+    exactKeys(detached, ['header', 'steps', 'compensation']);
+    const { header, steps, compensation: c } = detached;
     validateNativeStageJournal({ schema: 'aitm.native-stage/v1', header, steps, compensation: c });
     const board = await reconstructNativeStageBoard({ header, steps });
     if (!board.beforeRecognized && !board.afterRecognized) throw new TypeError();
@@ -2781,7 +2781,7 @@ export async function reconstructNativeStageCompensation(input) {
       } else {
         if (
           attempt.after === null ||
-          (!same(attempt.after, beforeBody) && !same(attempt.after, afterBody)) ||
+          (!same(attempt.after, attempt.before) && !same(attempt.after, afterBody)) ||
           (attempt.write.kind === 'returned' && !same(attempt.after, afterBody))
         )
           throw new TypeError();

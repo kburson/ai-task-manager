@@ -718,8 +718,9 @@ async function replayNativeEpoch({
           compensation: j.compensation,
         });
         const body = comp.bodyPrefixes.find((candidate) => equal(observation.body, candidate));
+        const auditVerified = j.compensation.audit?.readback != null;
         const allowedResources =
-          equal(resources, comp.beforeResources) ||
+          (!auditVerified && equal(resources, comp.beforeResources)) ||
           (j.compensation.audit !== null && equal(resources, comp.afterResources));
         if (
           !body ||

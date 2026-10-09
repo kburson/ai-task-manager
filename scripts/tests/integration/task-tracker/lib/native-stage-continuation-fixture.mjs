@@ -1969,6 +1969,115 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             );
             assert.deepEqual(f.backend.snapshot, beforeDataChecks);
           }
+          if (mode === 'compensation' && fault === null) {
+            await t.test(
+              'landed compensation cannot move backward on its second attempt',
+              async () => {
+                const input = structuredClone({
+                  header: journal.header,
+                  steps: journal.steps,
+                  compensation: journal.compensation,
+                });
+                const first = input.compensation.attempts[0];
+                const originalBefore = structuredClone(first.before);
+                first.write = {
+                  kind: 'threw',
+                  name: 'Error',
+                  message: 'landed callback interrupted',
+                  code: null,
+                };
+                input.compensation.attempts.push({
+                  number: 2,
+                  request: structuredClone(first.request),
+                  before: structuredClone(first.after),
+                  write: {
+                    kind: 'threw',
+                    name: 'Error',
+                    message: 'second callback interrupted',
+                    code: null,
+                  },
+                  after: originalBefore,
+                });
+                input.compensation.readback = null;
+                input.compensation.result = null;
+                await assert.rejects(
+                  compensationCodec.reconstructNativeStageCompensation(input),
+                  /criteria-revision:native-stage-compensation/
+                );
+              }
+            );
+            await t.test(
+              'compensation DATA never reads a getter inserted during reconstruction',
+              async () => {
+                const input = structuredClone({
+                  header: journal.header,
+                  steps: journal.steps,
+                  compensation: journal.compensation,
+                });
+                const originalIntent = input.compensation.intent;
+                let gets = 0;
+                const pending = compensationCodec.reconstructNativeStageCompensation(input);
+                queueMicrotask(() => {
+                  Object.defineProperty(input.compensation, 'intent', {
+                    enumerable: true,
+                    configurable: true,
+                    get() {
+                      gets++;
+                      return originalIntent;
+                    },
+                  });
+                });
+                const result = await pending;
+                assert.equal(gets, 0, 'caller getter remains unread after the validation await');
+                assert.deepEqual(result.afterBody, f.backend.observation.body);
+              }
+            );
+            await t.test(
+              'compensation reconstruction retains its initial closed result across await',
+              async () => {
+                const input = structuredClone({
+                  header: journal.header,
+                  steps: journal.steps,
+                  compensation: journal.compensation,
+                });
+                const pending = compensationCodec.reconstructNativeStageCompensation(input);
+                queueMicrotask(() => {
+                  input.compensation.result.status = 'foreign';
+                });
+                const result = await pending;
+                assert.deepEqual(result.afterBody, f.backend.observation.body);
+              }
+            );
+          }
+          if (mode === 'compensation-audit' && journal.compensation.audit?.readback) {
+            await t.test(
+              'verified audit resource cannot disappear even when acknowledgment was interrupted',
+              async () => {
+                const snapshot = structuredClone(f.backend.snapshot);
+                const id = journal.compensation.audit.intent.id;
+                snapshot.nativeStageResources.comments =
+                  snapshot.nativeStageResources.comments.filter((comment) => comment.id !== id);
+                snapshot.comments = snapshot.comments.filter(
+                  (comment) => String(comment.id) !== id
+                );
+                const changed = await observeRevision({
+                  context: f.context,
+                  deps: createRevisionMemory(snapshot),
+                });
+                assert.equal(
+                  changed.status,
+                  'indeterminate',
+                  'lost verified audit is not an exact pending prefix'
+                );
+                assert.equal(changed.code, 'criteria-revision:native-stage-compensation-prefix');
+              }
+            );
+          }
+          assert.deepEqual(
+            f.backend.snapshot,
+            beforeDataChecks,
+            'all DATA probes leave actual execution unchanged'
+          );
           const restarted = createRevisionMemory(JSON.parse(JSON.stringify(f.backend.snapshot)));
           const observed = await observeRevision({ context: f.context, deps: restarted });
           assert.equal(observed.status, 'pending-native-stage');
