@@ -1,0 +1,66 @@
+{
+  "name": "ai-peer-review",
+  "version": "0.2.2",
+  "description": "A deterministic, provider-neutral peer review protocol for AI agents",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "ai-peer-review": "./bin/peer-review.mjs",
+    "peer-review": "./bin/peer-review.mjs",
+    "peer-review-mcp": "./bin/peer-review-mcp.mjs"
+  },
+  "exports": "./src/public-api.mjs",
+  "files": [
+    "bin/",
+    "src/",
+    "docs/",
+    "schemas/",
+    "templates/",
+    "skills/",
+    "provenance/",
+    "scripts/verify-extraction.mjs",
+    "scripts/verify-release.mjs",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "npm run test:unit && npm run test:golden",
+    "test:unit": "node --test \"test/unit/**/*.test.mjs\"",
+    "test:golden": "node --test \"test/golden/**/*.test.mjs\"",
+    "test:integration": "node --test \"test/integration/**/*.test.mjs\"",
+    "test:packaging": "node --test \"test/packaging/**/*.test.mjs\"",
+    "test:smoke": "node --test \"test/smoke/**/*.test.mjs\"",
+    "test:mcp": "node --test \"test/mcp/**/*.test.mjs\"",
+    "test:slow": "npm run test:integration && npm run test:mcp && npm run test:smoke",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . && markdownlint-cli2 \"**/*.md\" && cspell --no-progress \"**/*.{md,mjs,js,json}\""
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "4.6.2"
+  },
+  "devDependencies": {
+    "ai-task-manager": "file:vendors/kburson-ai-task-manager-1.0.0.tgz",
+    "cspell": "8.19.4",
+    "eslint": "9.39.4",
+    "markdownlint-cli2": "0.23.2",
+    "prettier": "3.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kburson/ai-peer-review.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kburson/ai-peer-review/issues"
+  },
+  "homepage": "https://github.com/kburson/ai-peer-review#readme"
+}

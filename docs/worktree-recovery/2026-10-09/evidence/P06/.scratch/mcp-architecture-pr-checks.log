@@ -1,0 +1,111 @@
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+Analyze (actions)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+npm 11.8.0 / Node 24 pack compatibility	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+npm 12.0.2 / Node 26 pack compatibility	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+Analyze (actions)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+npm 11.8.0 / Node 24 pack compatibility	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+npm 12.0.2 / Node 26 pack compatibility	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+CodeQL	skipping	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+Analyze (javascript-typescript)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+CodeQL	skipping	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+Analyze (javascript-typescript)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+CodeQL	pass	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pass	1m19s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+CodeQL	pass	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pass	1m19s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+CodeQL	pass	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pass	1m19s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+CodeQL	pass	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pass	1m19s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+CodeQL	pass	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pass	1m19s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+CodeQL	pass	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pass	1m19s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Refreshing checks status every 20 seconds. Press Ctrl+C to quit.
+
+CodeQL	pass	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+Fast lane (format, lint, unit + integration)	pending	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pass	1m19s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pass	1m19s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+CodeQL	pass	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+Fast lane (format, lint, unit + integration)	pass	3m34s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	
+Analyze (actions)	pass	43s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656519	
+Analyze (javascript-typescript)	pass	1m19s	https://github.com/kburson/ai-task-manager/actions/runs/35539203809/job/106153656610	
+CodeQL	pass	2s	https://github.com/kburson/ai-task-manager/runs/106153741959	
+Fast lane (format, lint, unit + integration)	pass	3m34s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657828	
+npm 11.8.0 / Node 24 pack compatibility	pass	29s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657984	
+npm 12.0.2 / Node 26 pack compatibility	pass	41s	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153657991	
+Slow lane (slow tests only)	skipping	0	https://github.com/kburson/ai-task-manager/actions/runs/35539204992/job/106153658563	

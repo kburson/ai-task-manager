@@ -1,0 +1,95 @@
+{
+  "schema": "ai-peer-review.relocation-receipt/v1",
+  "record_kind": "review-of-record-consolidation",
+  "created_at": "2026-09-13T00:09:14Z",
+  "artifact_path": "docs/design/2026-09-12-project-local-review-lifecycle-and-learning-design.md",
+  "archive_root": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review",
+  "canonical_review_id": "review-59ebd8e3c0181485b88b141d59dc9ae6",
+  "canonical_status": "accepted",
+  "relocations": [
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-853bbccf4ac330aae187dbb5415a02c8/author-startup.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/01-review-853b-author-startup.md",
+      "bytes": 1056,
+      "sha256": "cf843429517f33cd40dcba245f157506efda875f208fb5ea06d0f894ae009bc8"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-853bbccf4ac330aae187dbb5415a02c8/reviewer-invitation.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/02-review-853b-reviewer-invitation.md",
+      "bytes": 2759,
+      "sha256": "dc7adbee57e132f3c25adaabc6edbbeae11149bdc035fe2f360de7ddadc7c547"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-853bbccf4ac330aae187dbb5415a02c8/reviewer-response-1.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/03-review-853b-reviewer-response-1-revisions-requested.md",
+      "bytes": 7932,
+      "sha256": "ac78dfdae73ccbc4020a4c0b9885ef906272f5c7cde57b82c6926d3969219c96"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-853bbccf4ac330aae187dbb5415a02c8/author-response-1.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/04-review-853b-author-response-1.md",
+      "bytes": 3164,
+      "sha256": "735eacf2273b91790c95bf832ed726e814b2220e588d46a1420664826327b248"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-853bbccf4ac330aae187dbb5415a02c8/reviewer-response-2.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/05-review-853b-reviewer-response-2-acceptance-not-submitted.md",
+      "bytes": 2925,
+      "sha256": "469bc1d417fe49a1a8ee32869d6fbc1cf73ead51ebd4f7e64956542d4f308285"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-7e25eb3b042cddffce22259d099bbdc0/author-startup.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/06-review-7e25-author-startup.md",
+      "bytes": 1056,
+      "sha256": "150d12b4b5d4089ab976f817147bc3f95227625a72c2e6a125f491d6b09ddb5c"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-7e25eb3b042cddffce22259d099bbdc0/reviewer-invitation.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/07-review-7e25-reviewer-invitation.md",
+      "bytes": 2759,
+      "sha256": "5513265188b503dcce04703e593abe5e11a5788ed09cb1881f1848733f898f1c"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-7e25eb3b042cddffce22259d099bbdc0/reviewer-response-1.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/08-review-7e25-reviewer-response-1-revisions-requested.md",
+      "bytes": 6251,
+      "sha256": "bbcb7cdea39cc8d4edfb650c014c8bdeb05789899f05db412c1b2dbeefaa7961"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-7e25eb3b042cddffce22259d099bbdc0/author-response-1.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/09-review-7e25-author-response-1.md",
+      "bytes": 2736,
+      "sha256": "75f1bd73088c7f30cf89bf145dd2f4afc090b98654f8d6ecfe87a11976ba2984"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-7e25eb3b042cddffce22259d099bbdc0/reviewer-response-2.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/10-review-7e25-reviewer-response-2-not-completed.md",
+      "bytes": 1340,
+      "sha256": "b9b40f890ac7438c221ca9dc8de45d6e7b2b9bfcda73b587091ebaf6d452f4e5"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-59ebd8e3c0181485b88b141d59dc9ae6/author-startup.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/11-review-59eb-author-startup.md",
+      "bytes": 1056,
+      "sha256": "e268e03879866ea999ac41623bc38ca4091c90f241e587a3f7a3d720e33a5170"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-59ebd8e3c0181485b88b141d59dc9ae6/reviewer-invitation.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/12-review-59eb-reviewer-invitation.md",
+      "bytes": 2759,
+      "sha256": "5e935b54d39c3674f9da04197f0cb66e68205c82a18f02c335f586658017065c"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-59ebd8e3c0181485b88b141d59dc9ae6/reviewer-response-1.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/13-review-59eb-reviewer-response-1-accepted.md",
+      "bytes": 3689,
+      "sha256": "000cd3aa86c365a99c33dcdba58e48b7ce03633d5fda159555a19ba03977678b"
+    },
+    {
+      "source_path": "docs/peer-reviews/spec/2026-09-12-2026-09-12-project-local-review-lifecycle-and-learning-design-review-59ebd8e3c0181485b88b141d59dc9ae6/review-manifest.md",
+      "destination_path": "docs/peer-reviews/spec/2026-09-12-project-local-review-lifecycle-and-learning-design-review/14-review-59eb-author-finalization-manifest.md",
+      "bytes": 3287,
+      "sha256": "b352869fde153eade5bbe382cb18adf257806faf88e7ece70da5fba69063e95a"
+    }
+  ]
+}

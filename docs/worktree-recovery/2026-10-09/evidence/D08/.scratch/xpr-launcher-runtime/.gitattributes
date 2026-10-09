@@ -1,0 +1,3 @@
+* text=auto eol=lf
+docs/peer-reviews/**/*author-response-*.md whitespace=-blank-at-eof
+docs/peer-reviews/**/*reviewer-response-*.md whitespace=-blank-at-eof
