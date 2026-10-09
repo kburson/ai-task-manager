@@ -5310,6 +5310,11 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       ].includes(expectStage)
         ? captureFiles()
         : null;
+      // Phase-only profiles keep their requested original frontier once the
+      // next original entry route is implemented. This is an actual intent
+      // fault, not a skipped callback, reduced fixture or changed assertion.
+      if (['phase-pair', 'phase-adversarial'].includes(expectStage))
+        f.backend.failBefore = 'native-stage-body-intent-write';
       if (faultMode === 'entry-intent') f.backend.failBefore = 'native-stage-body-effect-write';
       if (['preparation', 'intent'].includes(expectStage))
         f.backend.failBefore = 'native-stage-actor-effect-write';
