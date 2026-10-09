@@ -1,0 +1,28 @@
+✔ observer is read-only and distinguishes modified, untracked, and unsafe artifacts (112.196958ms)
+✔ observer classifies a cyclic parent symlink as unsafe instead of missing (13.082834ms)
+✔ observer accepts a healthy relative symlink to the declared in-project package target (31.12075ms)
+✔ packed consumer verifies committed bootstrap after npm ci and reports drift read-only (155210.360416ms)
+
+Interrupted while running:
+
+⚠ scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs (scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs:1:1)
+✖ scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs (34520.275291ms)
+✖ scripts/tests/unit/task-tracker/core/package-boundary.test.mjs
+ℹ tests 6
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 2
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 190048.165625
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs (34520.275291ms)
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at scripts/tests/unit/task-tracker/core/package-boundary.test.mjs:1:1
+✖ scripts/tests/unit/task-tracker/core/package-boundary.test.mjs
+  'Promise resolution is still pending but the event loop has already resolved'

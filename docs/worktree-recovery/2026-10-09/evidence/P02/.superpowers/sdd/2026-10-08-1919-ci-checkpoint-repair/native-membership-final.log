@@ -1,0 +1,16 @@
+✔ canonical source registrations independently agree with exact semantic membership and complete three-shard union (121.461667ms)
+✔ real native source plan validates complete receipts and rejects reordered groups and saved pass (3.675833ms)
+✔ semantic serial planner keeps all exact phase intent members and ordinary cases in distinct bounded sections (11.17725ms)
+✔ semantic serial planner rejects unknown native membership and malformed or substituted registration data (0.592ms)
+✔ closed registration syntax rejects duplicate fault keys and executable or partial wrappers (3.592417ms)
+✔ actual scheduler executes semantic sections sequentially and records ordered measured section membership (0.456917ms)
+✔ native formatted fault literals retain the same closed registration as original JSON (0.432166ms)
+✔ native fault literal parsing rejects executable and ambiguous property forms (1.2075ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 217.18275

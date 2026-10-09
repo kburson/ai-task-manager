@@ -1,0 +1,114 @@
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ independent initializeIssueDirectory pending refuses before original callback or transport selection (112.876292ms)
+✔ independent initializeIssueDirectory stale refuses before original callback or transport selection (239.128083ms)
+✔ independent initializeIssueDirectory malformed refuses before original callback or transport selection (17.208958ms)
+✔ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (18.2075ms)
+✔ independent initializeIssueDirectory baseline retains its complete original algorithm (20.28575ms)
+✔ independent initializeIssueDirectory approved retains its complete original algorithm (355.692333ms)
+✔ independent repairIssueDirectory pending refuses before original callback or transport selection (70.369208ms)
+✔ independent repairIssueDirectory stale refuses before original callback or transport selection (221.438208ms)
+✔ independent repairIssueDirectory malformed refuses before original callback or transport selection (15.459417ms)
+✔ independent repairIssueDirectory unavailable refuses before original callback or transport selection (16.653083ms)
+✔ independent repairIssueDirectory baseline retains its complete original algorithm (17.295875ms)
+✔ independent repairIssueDirectory approved retains its complete original algorithm (395.456083ms)
+✔ independent createIssueComment pending refuses before original callback or transport selection (65.131084ms)
+✔ independent createIssueComment stale refuses before original callback or transport selection (208.500875ms)
+✔ independent createIssueComment malformed refuses before original callback or transport selection (15.562333ms)
+✔ independent createIssueComment unavailable refuses before original callback or transport selection (15.417ms)
+✔ independent createIssueComment baseline retains its complete original algorithm (16.093667ms)
+✔ independent createIssueComment approved retains its complete original algorithm (325.148792ms)
+✔ independent updateIssueComment pending refuses before original callback or transport selection (73.019208ms)
+✔ independent updateIssueComment stale refuses before original callback or transport selection (212.863208ms)
+✔ independent updateIssueComment malformed refuses before original callback or transport selection (15.962417ms)
+✔ independent updateIssueComment unavailable refuses before original callback or transport selection (16.754833ms)
+✔ independent updateIssueComment baseline retains its complete original algorithm (17.390584ms)
+✔ independent updateIssueComment approved retains its complete original algorithm (332.876292ms)
+✔ durable projection repair pending retains custody and rereads revision admission (97.089625ms)
+✔ durable projection repair stale retains custody and rereads revision admission (232.229583ms)
+✔ durable projection repair malformed retains custody and rereads revision admission (41.675208ms)
+✔ durable projection repair unavailable retains custody and rereads revision admission (43.861416ms)
+✔ durable projection repair baseline retains custody and rereads revision admission (38.277917ms)
+✔ durable projection repair approved retains custody and rereads revision admission (341.633333ms)
+✔ independent lifecycle append pending cannot reuse historical custody as current readiness (96.72975ms)
+✔ independent lifecycle append stale cannot reuse historical custody as current readiness (232.083917ms)
+✔ independent lifecycle append malformed cannot reuse historical custody as current readiness (46.756791ms)
+✔ independent lifecycle append unavailable cannot reuse historical custody as current readiness (38.746334ms)
+✔ independent lifecycle append baseline cannot reuse historical custody as current readiness (40.491583ms)
+✔ independent lifecycle append approved cannot reuse historical custody as current readiness (340.024833ms)
+✔ independent singleton convergence pending requires fresh admission before reads and writes (67.565166ms)
+✔ independent singleton convergence stale requires fresh admission before reads and writes (207.758333ms)
+✔ independent singleton convergence malformed requires fresh admission before reads and writes (16.000458ms)
+✔ independent singleton convergence unavailable requires fresh admission before reads and writes (15.34825ms)
+✔ independent singleton convergence baseline requires fresh admission before reads and writes (15.024042ms)
+✔ independent singleton convergence approved requires fresh admission before reads and writes (318.557917ms)
+✔ versionedWriteBody malformed authority refuses before original body callbacks (15.305167ms)
+✔ mutateIssueBody malformed authority refuses before original body callbacks (15.073834ms)
+✔ versionedWriteBody baseline retains its real read-transform-write-readback algorithm (15.247458ms)
+✔ versionedWriteBody approved retains its real read-transform-write-readback algorithm (318.547542ms)
+✖ independent source call graph accounts for every public writer in actual complete cases (14413.820416ms)
+ℹ [{"file":"scripts/task-tracker/lib/github-records/capsule-chain.mjs","name":"appendCapsule"},{"file":"scripts/task-tracker/lib/github-records/contract-write.mjs","name":"executeContractWrite"},{"file":"scripts/task-tracker/lib/github-records/contract-write.mjs","name":"writeDirectoryContractOperation"},{"file":"scripts/task-tracker/lib/github-records/github-comment-store.mjs","name":"createIssueComment"},{"file":"scripts/task-tracker/lib/github-records/github-comment-store.mjs","name":"updateIssueComment"},{"file":"scripts/task-tracker/lib/github-records/lifecycle-transition.mjs","name":"appendLifecycleTransition"},{"file":"scripts/task-tracker/lib/github-records/projection-repair.mjs","name":"repairIssueProjections"},{"file":"scripts/task-tracker/lib/github-records/singleton-initializer.mjs","name":"initializeIssueDirectory"},{"file":"scripts/task-tracker/lib/github-records/singleton-initializer.mjs","name":"repairIssueDirectory"},{"file":"scripts/task-tracker/lib/github-records/singleton-projections.mjs","name":"convergeSingletonProjections"},{"file":"scripts/task-tracker/lib/issue-body-mutate.mjs","name":"mutateIssueBody"},{"file":"scripts/task-tracker/lib/versioned-issue-write.mjs","name":"versionedWriteBody"}]
+ℹ tests 47
+ℹ suites 0
+ℹ pass 46
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20031.769125
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:490:1
+✖ independent source call graph accounts for every public writer in actual complete cases (14413.820416ms)
+  AssertionError [ERR_ASSERTION]: ifError got unwanted exception: Command failed: /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node --test --test-concurrency=1 --test-reporter=tap /Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/unit/task-tracker/lib/criteria-revision/policy.test.mjs /Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-interlock.test.mjs /Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-consumers-admission.test.mjs
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:526:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+      at genericNodeError (node:internal/errors:999:15)
+      at wrappedFn (node:internal/errors:544:14)
+      at ChildProcess.exithandler (node:child_process:417:12)
+      at ChildProcess.emit (node:events:514:20)
+      at maybeClose (node:internal/child_process:1125:16)
+      at Socket.<anonymous> (node:internal/child_process:497:11)
+      at Socket.emit (node:events:514:20)
+      at Pipe.<anonymous> (node:net:362:12) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: Error: Command failed: /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node --test --test-concurrency=1 --test-reporter=tap /Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/unit/task-tracker/lib/criteria-revision/policy.test.mjs /Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-interlock.test.mjs /Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-consumers-admission.test.mjs
+    
+        at genericNodeError (node:internal/errors:999:15)
+        at wrappedFn (node:internal/errors:544:14)
+        at ChildProcess.exithandler (node:child_process:417:12)
+        at ChildProcess.emit (node:events:514:20)
+        at maybeClose (node:internal/child_process:1125:16)
+        at Socket.<anonymous> (node:internal/child_process:497:11)
+        at Socket.emit (node:events:514:20)
+        at Pipe.<anonymous> (node:net:362:12),
+    expected: null,
+    operator: 'ifError',
+    diff: 'simple'
+  }
