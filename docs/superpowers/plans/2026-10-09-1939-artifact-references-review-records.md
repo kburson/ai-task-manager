@@ -63,7 +63,7 @@ Standalone repository `kburson/ai-peer-review` was inspected at trunk commit `a3
 - **Estimate:** 127 joint hours proposed: 124 bounded-child hours plus 3 parent integration/orchestration hours; supersedes provisional 96 only after plan review and sanctioned estimate update.
 - **Labels:** enhancement
 - **Governing-spec:** docs/superpowers/specs/2026-10-09-1939-artifact-references-review-records-design.md
-- **Estimate basis:** Scope-based engineering estimate, not measured performance or elapsed forecast. Sequential critical path is 100 child hours at one-worker capacity; waves describe dependencies, not guaranteed parallel speedup. Review/CI variability remains for the forecast gate.
+- **Estimate basis:** Scope-based engineering estimate, not measured performance or elapsed forecast. The unconstrained dependency longest path is 100 child hours; at one-worker capacity all 124 child hours plus 3 parent hours are sequential effort. Waves describe dependencies, not guaranteed parallel speedup. Review/CI variability remains for the forecast gate.
 
 ## Story Intent
 
@@ -91,9 +91,9 @@ All unqualified paths are in AITM. Existing lib paths below are relative to `scr
 | 11   |    12 | 10             |    8 | backheal apply/resume/rollback saga and CLI                                 |
 | 12   |     6 | 3, 4, 5, 8, 11 |    9 | reference fixtures, rollout policy, canonical docs/adapters and integration |
 
-Shared legacy files have sequential owners: Task 1 protects `body-invariants.mjs` and `gh-edit-guard.mjs`; Task 10 extends their protected authorization/retirement checks. Task 3 migrates consumers; Task 4 uses their new APIs. Task 7 owns generic lock hardening; Task 8 changes `owned-comment.mjs` and `issue-body-mutate.mjs` only after that seam is stable; Task 10 later adds the private migration admission path. Task 12 owns final canonical template/guidance changes. No concurrent branch edits to these shared files.
+Shared legacy files have sequential owners: Task 1 protects `body-invariants.mjs` and `gh-edit-guard.mjs`; Task 10 extends their protected authorization/retirement checks. Task 3 migrates consumers behind a disabled production activation switch and creates the runtime assembly shell; Task 8 completes that shell with real evidence services and proves the operational gate path before activation. Task 4 uses migrated APIs and additionally depends on Task 7 for durable enrollment. Task 7 owns generic lock hardening; Task 8 changes `owned-comment.mjs` and `issue-body-mutate.mjs` only after that seam is stable; Task 10 later adds the private migration admission path. Task 12 owns final canonical template/guidance changes. No concurrent branch edits to these shared files.
 
-Observation API proposal: `resolveArtifactReference({body, repository, issueNumber, role, projectDir, requireWorkingCopy, deps})` returns frozen `{ok, observation, diagnostics}`; successful observations live in a module-private WeakMap. `assertArtifactObservation(observation, context)` rejects reserialized/cross-body/cross-role values. `validateArtifactRecord(rawMarker)` returns a validated record or typed refusal. `renderArtifactMetadata({observations, reviewRecords, legacyFields, policy})` renders display only; it never mints authority.
+Observation API proposal: `resolveArtifactReference({body, repository, issueNumber, role, projectDir, requireWorkingCopy, evidenceServices, deps})` returns frozen `{ok, observation, diagnostics}`; successful observations live in a module-private WeakMap. `assertArtifactObservation(observation, context)` rejects reserialized/cross-body/cross-role values. `validateArtifactRecord(rawMarker)` returns a validated record or typed refusal. Task 2 defines injected `evidenceServices.resolveAcceptance({subject, reviewReferences})` and `evidenceServices.readEnrollment({repository, issueNumber})`; the former must return Task 6 branded verification, the latter Task 7 durable enrollment evidence. Their absence refuses acceptance/lost-authority-dependent resolution. Identity-only draft resolution needs no acceptance service. No fixture service is eligible for production activation. `renderArtifactMetadata({observations, reviewRecords, legacyFields, policy})` renders display only; it never mints authority.
 
 Publication API proposal: standalone `buildReviewPublication({authority, publicationContext})` and `verifyReviewPublication({envelope, authority})` produce an envelope and exact-subject verification result. AITM `validateReviewPublication({envelope, verifier, subject, deps})` returns a branded validated record. `renderReviewSummary(record, {budget})` returns `{body, tier, reachableDocuments}`. `publishReviewRecord({ownerContext, record, expectedRemote, deps})` requires authenticated admission, verified remote documents and an effect reservation.
 
@@ -147,9 +147,9 @@ node --test scripts/tests/unit/task-tracker/lib/artifact-reference-contract.test
 - [ ] Implement argument-array object reads, full/prefix commit resolution, blob mode and component-symlink checks, raw hashing and configured-repository immutable URL validation. Missing/ambiguous/non-commit pins and inline/separate mismatches must refuse.
 - [ ] Adapt recognized legacy fields losslessly; distinguish absent, legacy-unpinned, invalid and lost enrolled authority. Source-plan A plus Plan B reports former Source A selection and `legacy-precedence-conflict`; identical aliases preserve unambiguous behavior.
 - [ ] Brand successful observations to exact body/repository/role/selection/content; reject copied objects and wrong-context reuse. Working-copy drift is a separate explicit diagnostic; immutable historical reads need no checkout.
-- [ ] Validate recorded acceptance against its exact subject and assurance, with sealed verification delegated to Task 5/6. Keep operational review/approval policy independent and fail closed when authentic evidence is unavailable.
+- [ ] Define and unit-test the injected evidence-service boundary without implementing production acceptance or enrollment providers in this child. Exact-subject acceptance and enrolled-authority checks refuse when their required service is absent; pure identity/legacy resolution is independently complete. Task 8 owns production wiring and authentic approval/Story Intent integration using Tasks 5/6/7. Keep existing production legacy consumers unchanged until that activation gate passes.
 
-**Interfaces:** Produces the observation API defined above and a typed legacy diagnostic record including original inline abbreviation, full expansion and observed object inventory. Reads enrollment history through Task 7's injected read seam once production storage exists; initially a fixture seam never grants live authority.
+**Interfaces:** Produces the observation API defined above and a typed legacy diagnostic record including original inline abbreviation, full expansion and observed object inventory. Defines the explicit evidence-service injection contract above. This child finishes as a non-enabled identity/legacy component with refusal tests, not a claim that production accepted-artifact resolution works. Task 8 supplies and verifies the real providers; fixture seams never grant live authority.
 
 **Verification Commands:**
 
@@ -168,15 +168,15 @@ node --test scripts/tests/unit/task-tracker/lib/artifact-reference-contract.test
 
 #### Delivery
 
-**Estimate:** 12 hours. **Dependencies:** Task 2. **Files:** Modify `scripts/task-tracker/lib/decomposition-policy.mjs`, `governed-plan-policy.mjs`, `user-story-quality.mjs`, `story-intent-source.mjs`, `decomposition-wbs-coverage.mjs`, `decomposition-plan-exit-guard.mjs`, `decomposition-delivery-readiness.mjs`, `split-plan.mjs`, `scripts/task-tracker/verbs/split-plan.mjs` and `scripts/task-tracker/backfill-plan-metadata.mjs`. Update the inventory and their existing named unit suites.
+**Estimate:** 12 hours. **Dependencies:** Task 2. **Files:** Create `scripts/task-tracker/lib/artifact-reference-runtime.mjs` as the disabled production assembly shell; modify `scripts/task-tracker/lib/decomposition-policy.mjs`, `governed-plan-policy.mjs`, `user-story-quality.mjs`, `story-intent-source.mjs`, `decomposition-wbs-coverage.mjs`, `decomposition-plan-exit-guard.mjs`, `decomposition-delivery-readiness.mjs`, `split-plan.mjs`, `scripts/task-tracker/verbs/split-plan.mjs` and `scripts/task-tracker/backfill-plan-metadata.mjs`. Update the inventory and their existing named unit suites.
 
 - [ ] Add a role-consumer matrix test using one raw pinned subject across legacy/mixed/v1 bodies. Assert consumer outputs reference the same branded observation rather than applying separate precedence.
 - [ ] Route active plan policy/approval and Story Intent to active role; preserve exact source task for WBS and inherited governing spec for child creation. Declared invalid spec blocks generic creation fallback.
 - [ ] Require unique task heading/number and pinned plan content in split-plan; reject duplicate, renamed and missing tasks before any child creation. Preserve parent decomposition plan identity distinct from child active plan.
 - [ ] Add A/B/C root/epic/child fixtures and refusal diagnostics. Do not silently clear inherited selectors or create own-plan rebind semantics. Preserve legacy unpinned approval restrictions.
-- [ ] Replace every inventoried backfill/reader with observation consumption; test Display- fields in either order cannot affect legacy or v1 selection. Update inventory status only with exact tests/owned consumer evidence.
+- [ ] Prepare every inventoried backfill/reader to consume the observation through `artifact-reference-runtime.mjs`, with explicit `readSupportEnabled: false` by default and the existing legacy behavior retained while disabled. A v1 marker never bypasses missing services. Test Display- fields in either order cannot affect legacy or v1 selection. Mark consumer integration pending until Task 8 proves production approval/Story Intent with real evidence and enrollment providers.
 
-**Interfaces:** Existing public wrappers retain compatibility for unrelated callers but delegate authority selection to the common resolver. New consumers must accept only branded observations; no raw reference strings substitute for them. Task 4 depends on complete migrated reader coverage.
+**Interfaces:** Existing public wrappers retain compatibility for unrelated callers but delegate authority selection to the common resolver. New consumers must accept only branded observations; no raw reference strings substitute for them. Task 4 depends on complete component-level reader migration plus Task 7; production activation remains Task 8's bounded deliverable and Task 12's rollout decision.
 
 **Verification Commands:**
 
@@ -195,7 +195,7 @@ node --test scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs sc
 
 #### Delivery
 
-**Estimate:** 8 hours. **Dependencies:** Task 3. **Files:** Create `scripts/task-tracker/lib/artifact-record-renderer.mjs` and `scripts/task-tracker/lib/artifact-reference-enrollment.mjs`; modify `scripts/task-tracker/lib/plan-metadata.mjs`, `metadata-section.mjs` and `plan-exit-plan-metadata-guard.mjs`. Create `scripts/tests/unit/task-tracker/lib/artifact-record-renderer.test.mjs`; extend plan-metadata-lib, plan-metadata-exit-guard and agent-review body-sections suites.
+**Estimate:** 8 hours. **Dependencies:** Task 3 and Task 7. **Files:** Create `scripts/task-tracker/lib/artifact-record-renderer.mjs` and `scripts/task-tracker/lib/artifact-reference-enrollment.mjs`; modify `scripts/task-tracker/lib/plan-metadata.mjs`, `metadata-section.mjs` and `plan-exit-plan-metadata-guard.mjs`. Create `scripts/tests/unit/task-tracker/lib/artifact-record-renderer.test.mjs`; extend plan-metadata-lib, plan-metadata-exit-guard and agent-review body-sections suites.
 
 - [ ] Write exact flat-grammar fixtures with the three bold groups, actual review-first fields and immutable encoded links. Assert semantic identity determines sharing, while distinct role revisions remain labeled.
 - [ ] Implement reserved Display- fields, deliberate draft/unresolved status and projection-drift diagnostics. Decorative/reordered links never change authority; unknown prose survives transformation.
@@ -203,7 +203,7 @@ node --test scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs sc
 - [ ] Use Task 1's validated artifact writer and body budget; register durable enrollment in Task 7 before treating later marker absence as authority loss. Failure after reservation remains pending for reconciliation.
 - [ ] Test epic Display-Decomposition-plan plus bare Decomposition-plan in both orders, and a hand-edited Display- link. Gate acceptance must remain tied to real planning output, not fabricated projection fields.
 
-**Interfaces:** Produces `renderArtifactMetadata` and `prepareArtifactEnrollment({body, observations, compatibility})`; no renderer is an authority writer. Task 8 publishes the resulting body only with reserved production effects.
+**Interfaces:** Produces `renderArtifactMetadata` and `prepareArtifactEnrollment({body, observations, compatibility})`; no renderer is an authority writer. Rendering and enrollment-preview APIs can be verified without enabling production reads. Task 8 assembles authentic providers and publishes the resulting body only with reserved production effects; no v1 enrollment executes before that assembly gate passes.
 
 **Verification Commands:**
 
@@ -307,20 +307,21 @@ node --test scripts/tests/integration/task-tracker/lib/artifact-publication-auth
 
 #### Delivery
 
-**Estimate:** 10 hours. **Dependencies:** Task 4, Task 6 and Task 7. **Files:** Create `scripts/task-tracker/lib/review-record-publication.mjs`; modify `owned-comment.mjs`, `issue-body-mutate.mjs`, `scripts/task-tracker/verbs/comment.mjs` only through guarded optional publication preconditions. Create `scripts/tests/integration/task-tracker/lib/review-record-publication.test.mjs`; extend existing comment unit tests.
+**Estimate:** 10 hours. **Dependencies:** Task 4, Task 6 and Task 7. **Files:** Create `scripts/task-tracker/lib/review-record-publication.mjs`; complete `artifact-reference-runtime.mjs` created by Task 3; modify `owned-comment.mjs`, `issue-body-mutate.mjs`, `scripts/task-tracker/verbs/comment.mjs` only through guarded optional publication preconditions. Create `scripts/tests/integration/task-tracker/lib/review-record-publication.test.mjs` and `scripts/tests/integration/task-tracker/lib/artifact-reference-production.test.mjs`; extend existing comment unit tests.
 
+- [ ] Complete the canonical production factory `createArtifactReferenceRuntime({ownerContext, config, producer, transport})` in `artifact-reference-runtime.mjs`: inject Task 6 branded exact-subject acceptance validation using Task 5's actual producer verifier, and Task 7 durable enrollment reads. Refuse absent, fixture-only, foreign or unsupported providers and leave read support disabled on failed assembly. Test canonical Plan approval and Story Intent routes with a real pinned producer package, finalized protocol fixture authority and real configured temporary shared runtime store; this is a production-factory test, not an injected fake acceptance result.
 - [ ] Verify every referenced record/blob against immutable origin before rendering; compare exact raw bytes from a disposable Git remote in tests. Successful push output alone is not durable evidence.
 - [ ] Extend canonical owned-comment transaction to bind expected numeric/node identity or explicit absence, expected prior body digest, proposed digest, publication revision and previousRecordDigest. Correlate both ID forms and exhaustively discover before/after transport.
 - [ ] Under Task 7 admission/lock, reserve the effect, create/update/no-op the one key, then exact-read-back and update body discovery through Task 1's validated writer. Journal verified partial completion across both objects.
 - [ ] Cover stale round 2 after round 3, two managed publishers, ambiguous create/restart, duplicates, external concurrent creation and human edit before/after write. Detect available drift, preserve observed originals/proposals and never claim multi-object/global CAS.
 - [ ] Cap guarded attempts at three per effect; reconcile uncertainty before another call. Activate replacement emitters only when the actual compatible producer and consumer handshake both pass. Preserve legacy emitters otherwise.
 
-**Interfaces:** Produces `publishReviewRecord`. Ordinary comment/body callers keep current active-target/timer checks; publication preconditions tighten that boundary. Task 10 introduces a private alternative admission for historical metadata effects, never a public bypass flag.
+**Interfaces:** Produces `publishReviewRecord`. Ordinary comment/body callers keep current active-target/timer checks; publication preconditions tighten that boundary. Task 10 introduces a private alternative admission for historical metadata effects, never a public bypass flag. This child alone completes production acceptance/enrollment assembly; Tasks 2/3/4 are staged non-enabled components until its assembly regression passes. Task 12 authorizes default read/writer rollout only from the resulting eligibility report.
 
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/unit/task-tracker/verbs/comment.test.mjs scripts/tests/unit/task-tracker/lib/review-record-publication.test.mjs scripts/tests/integration/task-tracker/lib/review-record-publication.test.mjs
+node --test scripts/tests/unit/task-tracker/verbs/comment.test.mjs scripts/tests/unit/task-tracker/lib/review-record-publication.test.mjs scripts/tests/integration/task-tracker/lib/review-record-publication.test.mjs scripts/tests/integration/task-tracker/lib/artifact-reference-production.test.mjs
 ```
 
 ### Task 9: Preview explicit historical scope and publish exact originals
@@ -421,7 +422,7 @@ node --test scripts/tests/integration/task-tracker/lib/artifact-record-backheal.
 - [ ] Run the complete offline fixture from discovery to grouped display and exactly four stable summaries, verifying every original round and predecessor acceptance remains reachable and substantive deep dive survives.
 - [ ] Exercise supported provider adapters and installed consumer setup with legacy-only, mixed and compatible-v1 producer paths. Update authoritative writers/schema validation first, then templates/guidance; local skill text alone is insufficient.
 - [ ] Record rollout stages: read support/conflict inventory, dual-compatible writers, all-reader parity and real producer handshake, then optional legacy-field removal. Historical apply remains disabled without a separate authorized pilot; no pilot is executed by this implementation fixture.
-- [ ] Run root integration, full unit/slow/lint/format gates once for final parent evidence after all children reach Review. Capture exact SHA/commands and unresolved limitations; do not repeat the full suite for each child.
+- [ ] Run root integration, full unit/slow/lint/format gates once after prerequisite children reach Review and before this child enters Review; the parent verifies/reuses the resulting exact-SHA evidence once this child also reaches Review. Capture exact SHA/commands and unresolved limitations; do not repeat the full suite for each child.
 
 **Interfaces:** Produces reproducible raw-source fixture provenance and rollout eligibility report linked to the consumer inventory, verified producer package and final integration SHA. A rollout report cannot mint historical authorization.
 
