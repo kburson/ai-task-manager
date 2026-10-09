@@ -3000,3 +3000,93 @@ export async function deriveRecordedNativeStagePartialFacts(input) {
     transitionCommitId: transitionCommitPresent ? steps[15].intent.commentId : null,
   });
 }
+
+// @story #1915 — historical completed-prefix inputs only, never runtime admission.
+export async function deriveRecordedNativeStageKnownPrefix(input) {
+  try {
+    if (!input || Object.getPrototypeOf(input) !== Object.prototype)
+      revisionError('native-stage-known-prefix');
+    const keys = ['journal', 'resources', 'body', 'stage', 'executor'];
+    const descriptors = Object.getOwnPropertyDescriptors(input);
+    if (
+      Reflect.ownKeys(descriptors).length !== keys.length ||
+      keys.some(
+        (key) =>
+          !descriptors[key] ||
+          !Object.hasOwn(descriptors[key], 'value') ||
+          !descriptors[key].enumerable
+      )
+    )
+      revisionError('native-stage-known-prefix');
+    const detached = JSON.parse(canonicalRecordJson(input));
+    const { journal, resources, body, stage, executor } = detached;
+    validateNativeStageJournal(journal);
+    const { header, steps } = journal,
+      ordinal = steps.length;
+    if (
+      ordinal > 16 ||
+      Object.hasOwn(journal, 'compensation') ||
+      steps.some((step) => step.readback === null) ||
+      !same(executor, header.scope.executor)
+    )
+      revisionError('native-stage-known-prefix');
+    let expectedResources = structuredClone(header.original.resources);
+    let expectedBody = structuredClone(header.original.observation.body);
+    let expectedStage = header.original.observation.stage;
+    if (ordinal === 1) expectedResources.local.actorFlush = { bytes: steps[0].intent.journalBytes };
+    else if (ordinal === 2)
+      expectedResources = (
+        await reconstructNativeStageActorTiming({ header, first: steps[0], step: steps[1] })
+      ).afterResources;
+    else if (ordinal === 3)
+      expectedResources = (
+        await reconstructNativeStageActorCursor({
+          header,
+          first: steps[0],
+          second: steps[1],
+          step: steps[2],
+        })
+      ).afterResources;
+    else if ([4, 5, 6, 8, 9, 10].includes(ordinal))
+      expectedResources = (await reconstructNativeStageCheckpointSteps({ header, steps }))
+        .afterResources;
+    else if (ordinal === 7)
+      expectedResources = (await reconstructNativeStageActorRemoval({ header, steps }))
+        .afterResources;
+    else if ([11, 12].includes(ordinal))
+      expectedResources = (await reconstructNativeStagePhaseTiming({ header, steps }))
+        .afterResources;
+    else if (ordinal === 13) {
+      const entry = await reconstructNativeStageEntryBody({ header, steps });
+      expectedResources = entry.resources;
+      expectedBody = entry.afterBody;
+    } else if (ordinal === 14) {
+      const board = await reconstructNativeStageBoard({ header, steps });
+      if (!board.confirmed) revisionError('native-stage-known-prefix');
+      expectedResources = board.afterResources;
+      expectedBody = board.body;
+      expectedStage = board.afterStage;
+    } else if (ordinal === 15) {
+      const sentinel = await reconstructNativeStageSentinel({ header, steps });
+      expectedResources = sentinel.resources;
+      expectedBody = sentinel.afterBody;
+      expectedStage = sentinel.stage;
+    } else if (ordinal === 16) {
+      const comment = await reconstructNativeStageTransitionComment({ header, steps });
+      if (!comment.complete) revisionError('native-stage-known-prefix');
+      expectedResources = comment.afterResources;
+      expectedBody = comment.body;
+      expectedStage = comment.stage;
+    }
+    if (!same(resources, expectedResources) || !same(body, expectedBody) || stage !== expectedStage)
+      revisionError('native-stage-known-prefix');
+    return Object.freeze({
+      ordinal,
+      nextOrdinal: ordinal + 1,
+      transitionId: header.intent.transitionId,
+      actorClock: header.original.actor.capture.ts,
+    });
+  } catch {
+    revisionError('native-stage-known-prefix');
+  }
+}

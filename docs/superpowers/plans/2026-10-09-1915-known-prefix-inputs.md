@@ -23,7 +23,7 @@ This plan owns only the independently testable prefix-input delta, estimated2 of
 - Native1847→1855→1918→1915, existing feature/epic/1918/parent and active parent source sequencing exception; preserve ordinary states/edges.
 - Preserve all original algorithms, fixtures/assertions/tests, proof/approval/source guards and lock order. No authority cache, runtime brand from DATA, caller callbacks/after bytes, activation or lifecycle receipt.
 - Node/Markdown only; unchanged600000ms per file/semantic section,1200s focused command,45-minute sandbox, maximum four isolated native processes.
-- Reassess/split if prospective remaining effort reaches24h. No historical or passive walltime charged as productive estimate.
+- Reassess/split if prospective remaining effort reaches24h. No historical or passive wall time charged as productive estimate.
 - Retain the workspace while actual reentry and aggregate obligations remain pending; parent source integration is not child completion.
 
 ## Review Focus

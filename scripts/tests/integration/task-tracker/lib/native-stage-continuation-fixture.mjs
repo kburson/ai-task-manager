@@ -42,6 +42,7 @@ import {
 
 export function registerNativeStageCase(mode, entrypoint, fault = null) {
   const faultMode = mode;
+  const knownPrefixCapture = mode === 'known-prefix-inputs';
   const partialReporting = [
     'partial-reporting-14',
     'partial-reporting-15',
@@ -73,6 +74,7 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
   const transitionMode =
     transitionCustody ||
     partialReporting ||
+    knownPrefixCapture ||
     [
       'transition-comment',
       'transition-comment-prefix',
@@ -2714,8 +2716,26 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             }
             return value;
           };
+        const knownSnapshots = new Map();
+        let readingKnownSnapshot = false;
         Object.getOwnPropertyDescriptors = function (...args) {
           const descriptors = Reflect.apply(originalDescriptors, this, args);
+          if (knownPrefixCapture && !readingKnownSnapshot) {
+            readingKnownSnapshot = true;
+            try {
+              const snapshot = f.backend.snapshot,
+                journal = snapshot.nativeStageRecords?.at(-1);
+              if (
+                journal &&
+                journal.steps.length <= 16 &&
+                journal.steps.every((step) => step.readback !== null) &&
+                !knownSnapshots.has(journal.steps.length)
+              )
+                knownSnapshots.set(journal.steps.length, snapshot);
+            } finally {
+              readingKnownSnapshot = false;
+            }
+          }
           if (
             partialReporting &&
             !partialCaptures &&
@@ -3142,6 +3162,49 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
               'completed resource facts cannot disappear'
             );
           }
+          return;
+        }
+        if (knownPrefixCapture) {
+          assert.equal(journal.steps.length, 16);
+          assert.ok(journal.steps.every((step) => step.readback !== null));
+          assert.deepEqual(
+            [...knownSnapshots.keys()].sort((a, b) => a - b),
+            Array.from({ length: 16 }, (_, i) => i + 1),
+            'capture every actual original completed prefix'
+          );
+          assert.deepEqual(captureFiles(), files);
+          const codec =
+            await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+          const originalEffects = f.backend.effects;
+          for (const [ordinal, selected] of knownSnapshots) {
+            const input = {
+              journal: selected.nativeStageRecords.at(-1),
+              resources: selected.nativeStageResources,
+              body: selected.observation.body,
+              stage: selected.observation.stage,
+              executor: selected.observation.executor,
+            };
+            const known = await codec.deriveRecordedNativeStageKnownPrefix(input);
+            assert.equal(known.ordinal, ordinal);
+            assert.equal(known.nextOrdinal, ordinal + 1);
+            assert.equal(known.transitionId, input.journal.header.intent.transitionId);
+            assert.equal(known.actorClock, input.journal.header.original.actor.capture.ts);
+            assert.deepEqual(
+              Object.keys(known).sort(),
+              ['ordinal', 'nextOrdinal', 'transitionId', 'actorClock'].sort()
+            );
+          }
+          assert.deepEqual(
+            f.backend.effects,
+            originalEffects,
+            'recognition creates no effects or runtime membership'
+          );
+          assert.deepEqual(f.backend.snapshot, snapshot);
+          assert.equal(
+            (await observeRevision({ context: f.context, deps: createRevisionMemory(snapshot) }))
+              .status,
+            'pending-native-stage'
+          );
           return;
         }
         assert.ok(beforeComment, 'capture after actual completed15');
