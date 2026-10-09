@@ -318,3 +318,20 @@ test('conflicting repair modes refuse before reading or writing', async (t) => {
   assert.equal(state.reads, 0);
   assert.equal(state.writes.length, 0);
 });
+
+test('canonical source is checked after the last transcript await before publishing', async (t) => {
+  const { state, deps } = transport(t);
+  const dry = await runHeal({ ...options, deps });
+  const read = deps.readContinuityTranscript;
+  let reads = 0;
+  deps.readContinuityTranscript = async () => {
+    if (++reads === 2) state.body = body + '\nconcurrent edit during transcript observation';
+    return read();
+  };
+  await assert.rejects(
+    runHeal({ ...options, ...applyIdentity(dry), deps }),
+    /timing-continuity:source-drift/
+  );
+  assert.equal(state.writes.length, 0);
+  assert.match(state.body, /concurrent edit/);
+});

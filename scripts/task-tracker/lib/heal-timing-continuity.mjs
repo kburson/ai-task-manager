@@ -267,11 +267,8 @@ export async function recoverTimingContinuity({
     ],
   ])
     writeFileSync(path.join(evidenceDir, file), value, { flag: 'wx' });
-  const current = await observe();
-  if (current.commentNodeId !== source.commentNodeId || current.body !== source.body)
-    refuse('source-drift');
   const reread = await readTranscript(sessionId);
-  const fresh = planTimingContinuityRepair(current.body, {
+  const fresh = planTimingContinuityRepair(source.body, {
     sessionId,
     transcript: reread?.text,
     now: now(),
@@ -282,6 +279,9 @@ export async function recoverTimingContinuity({
     fresh.candidate !== plan.candidate
   )
     refuse('transcript-drift');
+  const current = await observe();
+  if (current.commentNodeId !== source.commentNodeId || current.body !== source.body)
+    refuse('source-drift');
   await updateTimingComment(source.commentNodeId, repo, plan.candidate);
   const readback = await observe();
   if (readback.commentNodeId !== source.commentNodeId || readback.body !== plan.candidate)
