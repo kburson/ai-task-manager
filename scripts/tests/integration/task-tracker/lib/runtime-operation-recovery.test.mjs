@@ -1,19 +1,27 @@
 // @story #1857
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { rmSync } from 'node:fs';
 import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
-import path from 'node:path';
+import {
+  withIssueLock,
+  ISSUE_LOCK_PROOF_ENV,
+} from '../../../../task-tracker/issue-mutator-lock.mjs';
+import { timingLockPath } from '../../../../task-tracker/paths.mjs';
 import { runtimeOperationKey } from '../../../../task-tracker/lib/runtime-writer.mjs';
 import * as coordination from '../../../../task-tracker/lib/runtime-migration-lock.mjs';
 
-const writerModule = new URL('../../../../task-tracker/lib/runtime-writer.mjs', import.meta.url)
+const issueModule = new URL('../../../../task-tracker/issue-mutator-lock.mjs', import.meta.url)
   .href;
+const locksModule = new URL('../../../../task-tracker/locks.mjs', import.meta.url).href;
+const coordModule = new URL(
+  '../../../../task-tracker/lib/runtime-migration-lock.mjs',
+  import.meta.url
+).href;
 const executable = fileURLToPath(new URL('../../../../../bin/aitm.mjs', import.meta.url));
 const cleanEnv = () =>
   Object.fromEntries(
@@ -29,15 +37,76 @@ const cleanEnv = () =>
     )
   );
 
+test('genuine child issue reentrancy validates its live ancestor and exact protected proof while siblings still contend', async () => {
+  const root = await createActivatedRuntimeRootFixture('operation-child-');
+  const opts = { issue: 1857, projDir: root, retries: 0, timeoutMs: 1 };
+  const code = [
+    'import { withIssueLock } from ' + JSON.stringify(issueModule) + ';',
+    'import { inspectRuntimeWriterLeases } from ' + JSON.stringify(coordModule) + ';',
+    'const root = process.argv[1];',
+    'await withIssueLock({issue:1857,projDir:root,retries:0,timeoutMs:1}, async () => {',
+    'process.stdout.write(JSON.stringify({ leases:inspectRuntimeWriterLeases({projectRoot:root,mainRoot:root}).length }));',
+    '});',
+  ].join('\n');
+  try {
+    let release;
+    let entered;
+    const hold = new Promise((resolve) => {
+      release = resolve;
+    });
+    const ready = new Promise((resolve) => {
+      entered = resolve;
+    });
+    const first = withIssueLock(opts, async () => {
+      entered();
+      await hold;
+    });
+    await ready;
+    try {
+      await assert.rejects(
+        withIssueLock(opts, async () => assert.fail('sibling must contend')),
+        { code: 'EISSUELOCKED' }
+      );
+      const child = spawnSync(process.execPath, ['--input-type=module', '-e', code, root], {
+        env: cleanEnv(),
+        encoding: 'utf8',
+        timeout: 10000,
+      });
+      assert.equal(child.status, 0, child.stderr);
+      assert.equal(JSON.parse(child.stdout).leases, 2);
+      const tampered = cleanEnv();
+      const proof = JSON.parse(tampered[ISSUE_LOCK_PROOF_ENV]);
+      proof.digest = 'sha256:' + 'f'.repeat(64);
+      tampered[ISSUE_LOCK_PROOF_ENV] = JSON.stringify(proof);
+      const refused = spawnSync(process.execPath, ['--input-type=module', '-e', code, root], {
+        env: tampered,
+        encoding: 'utf8',
+        timeout: 10000,
+      });
+      assert.notEqual(refused.status, 0);
+      assert.match(refused.stderr, /EISSUELOCKED/);
+    } finally {
+      release();
+      await first;
+    }
+    assert.equal(
+      coordination.inspectRuntimeWriterLeases({ projectRoot: root, mainRoot: root }).length,
+      0
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('registered bootstrap observes and recovers an exact SIGKILLed operation without age or manual lock edits', async () => {
   const root = await createActivatedRuntimeRootFixture('operation-killed-');
   const roots = { projectRoot: root, mainRoot: root };
-  const target = path.join(root, '.ai-task-manager/runtime/store/timing/issue-1857.lock');
+  const target = timingLockPath(1857, root);
   const recordKey = runtimeOperationKey(target);
   const code =
-    'import {withRuntimeOperation} from ' +
-    JSON.stringify(writerModule) +
-    '; setInterval(()=>{},1000); await withRuntimeOperation(process.argv[1], async()=>{process.stdout.write("HELD");await new Promise(()=>{});});';
+    'import {withLock} from ' +
+    JSON.stringify(locksModule) +
+    '; setInterval(()=>{},1000); await withLock(process.argv[1], async()=>{process.stdout.write("HELD");await new Promise(()=>{});});';
   const child = spawn(process.execPath, ['--input-type=module', '-e', code, target], {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: cleanEnv(),

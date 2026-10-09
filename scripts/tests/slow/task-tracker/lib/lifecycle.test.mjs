@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @story #309
-import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import {
   withUnitRuntimeRoot,
   unitRuntimeEntrypointArgs,
@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 
 await withUnitRuntimeRoot(async () => {
   async function lifecycleFixture(prefix) {
-    const root = await createCommittedLegacyRootFixture(prefix);
+    const root = await createCommittedRuntimeRootFixture(prefix);
     writeFileSync(path.join(root, '.git', 'info', 'exclude'), '.ai-task-manager/\n.tmp/\n');
     return root;
   }
@@ -47,7 +47,9 @@ await withUnitRuntimeRoot(async () => {
   });
   assert.doesNotMatch(r.stdout, /PROMPT_REQUIRED: review-approval/);
 
-  let state = loadState(path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
+  let state = loadState(
+    path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json')
+  );
   // A no-network probe has not completed agent Review, so it must not pause for
   // human approval. The issue stays bound and its timing segment remains open.
   assert.equal(state.active, '#321');
@@ -74,7 +76,16 @@ await withUnitRuntimeRoot(async () => {
     const env2 = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox2, TT_SKIP_NETWORK: '1' };
 
     await pexec('node', unitRuntimeEntrypointArgs(CLI, ['#385']), { env: env2, cwd: sandbox2 });
-    let st = loadState(path.join(sandbox2, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
+    let st = loadState(
+      path.join(
+        sandbox2,
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'state',
+        'task-tracker-state.json'
+      )
+    );
     assert.equal(st.active, '#385');
 
     let refusalErr = null;
@@ -90,7 +101,16 @@ await withUnitRuntimeRoot(async () => {
     assert.equal(refusalErr.code, 7, 'cross-close refusal must exit 7');
     assert.match(refusalErr.stdout, /PROMPT_REQUIRED: bind-mismatch #385:#386/);
 
-    st = loadState(path.join(sandbox2, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
+    st = loadState(
+      path.join(
+        sandbox2,
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'state',
+        'task-tracker-state.json'
+      )
+    );
     assert.equal(st.active, '#385', 'active session must remain #385 after refusal');
 
     rmSync(sandbox2, { recursive: true });
@@ -112,7 +132,16 @@ await withUnitRuntimeRoot(async () => {
     });
     assert.match(closeResult.stdout, /Closed #400/);
 
-    const st = loadState(path.join(sandbox3, '.tmp', 'aitm', 'state', 'task-tracker-state.json'));
+    const st = loadState(
+      path.join(
+        sandbox3,
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'state',
+        'task-tracker-state.json'
+      )
+    );
     assert.equal(st.active, null, 'active should be cleared when closing the only/active issue');
 
     rmSync(sandbox3, { recursive: true });

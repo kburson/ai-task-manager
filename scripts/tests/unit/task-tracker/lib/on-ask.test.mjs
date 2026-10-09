@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // @story #240
 // EPIC #238 / #240 — AskUserQuestion pause/resume bracket hooks.
-import { withUnitRuntimeRoot } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  withUnitRuntimeRoot,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { rmSync, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
@@ -19,7 +21,7 @@ import {
   lastRowIsRecentPause,
 } from '../../../../task-tracker/hooks/on-ask.mjs';
 
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-on-ask-'));
+const tmp = createActivatedUnitRuntimeRoot('tt-on-ask-');
 
 const priorSid = process.env.AI_TASK_MANAGER_SESSION_ID;
 const priorApp = process.env.AI_TASK_MANAGER_APP_NAME;
@@ -40,6 +42,7 @@ try {
 
       // Test 2: session present but nothing bound → no-op (AC3), no marker written.
       {
+        process.env.AI_TASK_MANAGER_SESSION_ID = 'unbound';
         const env = { CLAUDE_SESSION_ID: 'unbound', AI_TASK_MANAGER_PROJECT_DIR: tmp };
         const calls = [];
         const r = await recordAskPause({
@@ -67,14 +70,17 @@ try {
             lastWordMarker: 100,
             lastFullWordMarker: 200,
           },
-          path.join(tmp, '.tmp/aitm/state/task-tracker-state.json')
+          path.join(tmp, '.ai-task-manager/runtime/store/state/task-tracker-state.json')
         );
         const env = { CLAUDE_SESSION_ID: sid, AI_TASK_MANAGER_PROJECT_DIR: tmp };
         const posts = [];
         const deps = {
           context: {
             projectDir: tmp,
-            statePath: path.join(tmp, '.tmp/aitm/state/task-tracker-state.json'),
+            statePath: path.join(
+              tmp,
+              '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+            ),
             flushActiveToGH: async (state, event) => {
               const ts = new Date().toISOString();
               const row = buildRow({
@@ -132,7 +138,11 @@ try {
       {
         const sid = 'lonely-resume';
         process.env.AI_TASK_MANAGER_SESSION_ID = sid;
-        setActiveTask(sid, { issue: '#240', entryStartTs: 'x', wordsAtStart: 0 }, tmp);
+        setActiveTask(
+          sid,
+          { issue: '#240', entryStartTs: '2026-10-01T00:00:00Z', wordsAtStart: 0 },
+          tmp
+        );
         const env = { CLAUDE_SESSION_ID: sid, AI_TASK_MANAGER_PROJECT_DIR: tmp };
         const posts = [];
         const r = await finalizeAskResume({
@@ -151,7 +161,7 @@ try {
         setActiveTask(sid, { issue: '#240', entryStartTs: null, wordsAtStart: 0 }, tmp);
         saveState(
           { active: '#240', entryStartTs: null, paused: true },
-          path.join(tmp, '.tmp/aitm/state/task-tracker-state.json')
+          path.join(tmp, '.ai-task-manager/runtime/store/state/task-tracker-state.json')
         );
         const env = { CLAUDE_SESSION_ID: sid, AI_TASK_MANAGER_PROJECT_DIR: tmp };
         const now = new Date('2026-06-14T12:00:00.000Z');
@@ -169,7 +179,10 @@ try {
           deps: {
             context: {
               projectDir: tmp,
-              statePath: path.join(tmp, '.tmp/aitm/state/task-tracker-state.json'),
+              statePath: path.join(
+                tmp,
+                '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+              ),
               flushActiveToGH: async () => posts.push(body),
             },
           },
@@ -183,16 +196,24 @@ try {
       {
         const sid = 'mine';
         process.env.AI_TASK_MANAGER_SESSION_ID = sid;
-        setActiveTask(sid, { issue: '#240', entryStartTs: 'x', wordsAtStart: 0 }, tmp);
+        setActiveTask(
+          sid,
+          { issue: '#240', entryStartTs: '2026-10-01T00:00:00Z', wordsAtStart: 0 },
+          tmp
+        );
         // Write a marker stamped by another session.
         const env = { CLAUDE_SESSION_ID: sid, AI_TASK_MANAGER_PROJECT_DIR: tmp };
-        // First, create another session's marker under its own session dir.
-        await recordAskPause({
-          env: { CLAUDE_SESSION_ID: 'other', AI_TASK_MANAGER_PROJECT_DIR: tmp },
-          now: () => new Date(),
-          deps: { postTimingEvent: async () => {}, fetchTimingBody: async () => '' },
-        });
-        // 'other' wrote pending-ask under its own session dir; 'mine' has none.
+        // A caller cannot issue question operations as a different actor.
+        assert.throws(
+          () =>
+            recordAskPause({
+              env: { CLAUDE_SESSION_ID: 'other', AI_TASK_MANAGER_PROJECT_DIR: tmp },
+              now: () => new Date(),
+              deps: { postTimingEvent: async () => {}, fetchTimingBody: async () => '' },
+            }),
+          /ASK_ACTOR_MISMATCH/
+        );
+        assert.equal(existsSync(pendingAskPath('other', tmp)), false);
         const posts = [];
         const r = await finalizeAskResume({
           env,

@@ -9,7 +9,7 @@
 // Whole-operation writer leases and durable store activation are owned by the
 // coupled runtime migration; these producers do not activate new storage.
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, renameSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { getProjectDir, sessionDir } from '../paths.mjs';
 import { getActiveTask } from '../session-state.mjs';
@@ -17,7 +17,7 @@ import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { buildRow } from '../gh-timing-comment.mjs';
 import { currentSessionId, aiAppName } from '../word-counter.mjs';
 import { timingActorKey } from '../lib/timing-actor.mjs';
-import { parseTimingRow, timingTimestampToMs } from '../lib/timing-row-reader.mjs';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord, withRuntimeOperation } from '../lib/runtime-writer.mjs';
 
 // Window within which a freshly-landed manual `/task pause` row suppresses the
 // auto pause (AC4: "within the last 2s").
@@ -35,57 +35,30 @@ export function pendingAskPath(sid, projDir = getProjectDir()) {
   return path.join(sessionDir(sid, projDir), 'pending-ask.json');
 }
 
+function markerIdentity(p) {
+  return { provider: aiAppName(), sid: path.basename(path.dirname(p)) };
+}
 function readMarker(p) {
-  if (!existsSync(p)) return null;
-  try {
-    const marker = JSON.parse(readFileSync(p, 'utf8'));
-    if (
-      !marker ||
-      typeof marker !== 'object' ||
-      Array.isArray(marker) ||
-      typeof marker.issue !== 'string' ||
-      typeof marker.pausedAt !== 'string' ||
-      marker.schema !== 'aitm.pending-ask/v1' ||
-      Object.keys(marker).sort().join(',') !==
-        ['schema', 'actor', 'sessionId', 'issue', 'pausedAt', 'resumeRow'].sort().join(',') ||
-      marker.actor !== timingActorKey({ provider: aiAppName(), sid: marker.sessionId }) ||
-      !new RegExp('^#[1-9][0-9]*$').test(marker.issue) ||
-      !Number.isFinite(Date.parse(marker.pausedAt)) ||
-      (marker.resumeRow !== null &&
-        (typeof marker.resumeRow !== 'string' ||
-          parseTimingRow(marker.resumeRow)?.actorKey !== marker.actor))
-    )
-      throw new Error('invalid marker');
-    if (marker.resumeRow !== null) {
-      const row = parseTimingRow(marker.resumeRow);
-      const interval = row.engagement;
-      const timestamp = timingTimestampToMs(row.ts);
-      if (
-        row.event !== 'resume' ||
-        !interval ||
-        interval.startMs !== interval.endMs ||
-        interval.startMs < Date.parse(marker.pausedAt) ||
-        !Number.isFinite(timestamp) ||
-        Math.floor(interval.endMs / 1000) !== Math.floor(timestamp / 1000) ||
-        interval.activeEstimateSec !== null ||
-        [interval.wordStart, interval.wordEnd, interval.fullWordStart, interval.fullWordEnd].some(
-          (value) => value !== null
-        ) ||
-        row.cells[3] !== 'Unknown' ||
-        row.cells[4] !== 'Unknown'
-      )
-        throw new Error('invalid resume');
-    }
-    return marker;
-  } catch {
-    throw new Error('ASK_MARKER_INVALID');
-  }
+  return readRuntimeJsonRecord(p, { optional: true, actorIdentity: markerIdentity(p) });
 }
 function writeMarker(p, value) {
-  mkdirSync(path.dirname(p), { recursive: true });
-  const temporary = p + '.tmp.' + process.pid;
-  writeFileSync(temporary, JSON.stringify(value) + '\n');
-  renameSync(temporary, p);
+  return writeRuntimeJsonRecord(p, value, { actorIdentity: markerIdentity(p) });
+}
+
+function questionOperation(options, operation) {
+  const env = options.env ?? process.env;
+  const sid = currentSid(env);
+  if (!sid) return Promise.resolve({ status: 'no-session' });
+  if (sid !== currentSessionId()) throw new Error('ASK_ACTOR_MISMATCH');
+  const markerPath = pendingAskPath(sid, getProjectDir(env));
+  return withRuntimeOperation(markerPath + '.operation.lock', () => operation(options));
+}
+
+export function recordAskPause(options = {}) {
+  return questionOperation(options, recordAskPauseUnlocked);
+}
+export function finalizeAskResume(options = {}) {
+  return questionOperation(options, finalizeAskResumeUnlocked);
 }
 
 export function computeGapSeconds(pausedAt, nowMs = Date.now()) {
@@ -125,7 +98,7 @@ async function actorContext(deps) {
 
 // A question pauses only the genuine invoking actor; another actor's latest
 // row cannot suppress this boundary. Publication uses the shared flush journal.
-export async function recordAskPause({ env = process.env, deps = {} } = {}) {
+async function recordAskPauseUnlocked({ env = process.env, deps = {} } = {}) {
   const sid = currentSid(env);
   if (!sid) return { status: 'no-session' };
   const projDir = getProjectDir(env);
@@ -161,7 +134,7 @@ export async function recordAskPause({ env = process.env, deps = {} } = {}) {
 
 // Freeze the original reply row before publication. An ambiguous retry reuses
 // those bytes; the human wait never becomes an actor engagement interval.
-export async function finalizeAskResume({
+async function finalizeAskResumeUnlocked({
   env = process.env,
   now = () => new Date(),
   deps = {},

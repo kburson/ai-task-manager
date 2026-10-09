@@ -1,6 +1,6 @@
 // @story #1857
 // Session timing survives unbinding without becoming another actor's fallback.
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord } from './runtime-writer.mjs';
 import path from 'node:path';
 import { sessionDir } from '../paths.mjs';
 import { withLock } from '../fleet-registry.mjs';
@@ -78,13 +78,8 @@ export function validateActorTimingState(record, identity) {
 }
 export function readActorTimingState(identity, root) {
   const file = actorTimingStatePath(identity, root);
-  if (!existsSync(file)) return null;
-  let record;
-  try {
-    record = JSON.parse(readFileSync(file, 'utf8'));
-  } catch (error) {
-    invalid(error);
-  }
+  const record = readRuntimeJsonRecord(file, { optional: true, actorIdentity: identity });
+  if (record === null) return null;
   return validateActorTimingState(record, identity).state;
 }
 export function actorTimingStateRecord(identity, state) {
@@ -105,13 +100,10 @@ export function actorTimingStateRecord(identity, state) {
 }
 export function writeActorTimingState(identity, root, state) {
   const file = actorTimingStatePath(identity, root);
-  const record = actorTimingStateRecord(identity, state);
   return withLock(file, () => {
+    const record = actorTimingStateRecord(identity, state);
     readActorTimingState(identity, root);
-    mkdirSync(path.dirname(file), { recursive: true });
-    const temp = file + '.tmp.' + process.pid;
-    writeFileSync(temp, JSON.stringify(record, null, 2) + '\n');
-    renameSync(temp, file);
+    writeRuntimeJsonRecord(file, record, { actorIdentity: identity });
     return record.state;
   });
 }

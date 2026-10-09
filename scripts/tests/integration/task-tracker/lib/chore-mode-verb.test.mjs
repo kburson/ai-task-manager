@@ -16,8 +16,9 @@ initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
 import { after, before, beforeEach, test } from 'node:test';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import {
   createChoreModeFixture,
   destroyChoreModeFixture,
@@ -40,15 +41,20 @@ before(() => {
 beforeEach(() => resetChoreModeFixture(featureFixture));
 after(() => destroyChoreModeFixture(featureFixture));
 
-function createCaseRoot(prefix) {
-  const parent = path.join(featureFixture.root, '.tmp', 'cases');
-  mkdirSync(parent, { recursive: true });
-  return mkdtempSync(path.join(parent, prefix));
+async function createCaseRoot(prefix) {
+  return createActivatedRuntimeRootFixture(prefix);
 }
 
 function statePath(root) {
   // #573: the global ledger lives under `.tmp/aitm/state/`.
-  return path.join(root, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  return path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
 }
 
 function writeState(root, payload) {
@@ -88,7 +94,7 @@ test('formatStatus renders all fields', () => {
 });
 
 test('chore-mode on writes active=true with reason and previousIssue', async () => {
-  const root = createCaseRoot('chore-on-');
+  const root = await createCaseRoot('chore-on-');
   try {
     writeState(root, { active: '#999', lastActive: '#999', entryStartTs: null });
     const out = buf();
@@ -122,8 +128,8 @@ test('chore-mode on writes active=true with reason and previousIssue', async () 
 });
 
 test('chore-mode on stays local while another worktree agent is active', async () => {
-  const root = createCaseRoot('chore-on-parallel-');
-  const sibling = createCaseRoot('chore-sibling-');
+  const root = await createCaseRoot('chore-on-parallel-');
+  const sibling = await createCaseRoot('chore-sibling-');
   try {
     writeState(root, { active: null, lastActive: null });
     writeState(sibling, { active: '#888', lastActive: '#888' });
@@ -154,7 +160,7 @@ test('chore-mode on stays local while another worktree agent is active', async (
 });
 
 test('chore-mode on is idempotent when already on', async () => {
-  const root = createCaseRoot('chore-on-idem-');
+  const root = await createCaseRoot('chore-on-idem-');
   try {
     writeState(root, {
       active: null,
@@ -187,7 +193,7 @@ test('chore-mode on is idempotent when already on', async () => {
 });
 
 test('chore-mode off clears active without --resume', async () => {
-  const root = createCaseRoot('chore-off-');
+  const root = await createCaseRoot('chore-off-');
   try {
     writeState(root, {
       active: null,
@@ -224,7 +230,7 @@ test('chore-mode off clears active without --resume', async () => {
 });
 
 test('chore-mode off --resume invokes verbStart with previous issue context', async () => {
-  const root = createCaseRoot('chore-off-resume-');
+  const root = await createCaseRoot('chore-off-resume-');
   try {
     writeState(root, {
       active: null,
@@ -260,7 +266,7 @@ test('chore-mode off --resume invokes verbStart with previous issue context', as
 });
 
 test('chore-mode off is idempotent when already off', async () => {
-  const root = createCaseRoot('chore-off-idem-');
+  const root = await createCaseRoot('chore-off-idem-');
   try {
     writeState(root, { active: null, lastActive: null });
     const out = buf();
@@ -277,8 +283,8 @@ test('chore-mode off is idempotent when already off', async () => {
   }
 });
 
-test('chore-mode status reports off + defaults on fresh state', () => {
-  const root = createCaseRoot('chore-status-');
+test('chore-mode status reports off + defaults on fresh state', async () => {
+  const root = await createCaseRoot('chore-status-');
   try {
     const out = buf();
     const ctx = { statePath: statePath(root), projectDir: root, rest: ['status'] };

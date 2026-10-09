@@ -1,6 +1,21 @@
 // @story #939
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
+const fixtureRoot = createActivatedUnitRuntimeRoot('review-authorization-');
+const originalProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = fixtureRoot;
+after(() => {
+  if (originalProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = originalProjectDir;
+  rmSync(fixtureRoot, { recursive: true, force: true });
+});
 import '../../../fixtures/offline-gh-auto.mjs';
 
 import {
@@ -367,7 +382,7 @@ test('runApprove remains the audited producer of Full-Auto approval evidence', a
   const result = await runApprove({
     issueNumber: 939,
     cfg: { repo: 'o/r' },
-    projectDir: process.cwd(),
+    projectDir: fixtureRoot,
     deps: {
       assertBound: () => {},
       getBoardState: async () => 'review',
@@ -394,7 +409,7 @@ test('runApprove remains the audited producer of Full-Auto approval evidence', a
   const refreshed = await runApprove({
     issueNumber: 940,
     cfg: { repo: 'o/r' },
-    projectDir: process.cwd(),
+    projectDir: fixtureRoot,
     deps: {
       assertBound: () => {},
       getBoardState: async () => 'review',
@@ -431,7 +446,7 @@ test('stale human approval cannot be silently rebound after head drift', async (
     const result = await runApprove({
       issueNumber: human ? 942 : 941,
       cfg: { repo: 'o/r' },
-      projectDir: process.cwd(),
+      projectDir: fixtureRoot,
       human,
       deps: {
         assertBound: () => {},

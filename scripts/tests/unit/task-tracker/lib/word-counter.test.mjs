@@ -6,11 +6,10 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { writeFileSync, mkdtempSync, mkdirSync, rmSync, utimesSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { writeFileSync, mkdirSync, rmSync, utimesSync } from 'node:fs';
 import path from 'node:path';
 import {
-  createUnitRootFixture as createRuntimeRootFixture,
+  createActivatedUnitRuntimeRoot as createRuntimeRootFixture,
   withUnitRuntimeRoot,
 } from '../../../helpers/unit-runtime-root.mjs';
 import {
@@ -24,9 +23,10 @@ import {
 } from '../../../../task-tracker/word-counter.mjs';
 
 await withUnitRuntimeRoot(async () => {
-  const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-wc-'));
+  const tmp = createRuntimeRootFixture('tt-wc-');
   const sampleJsonlPath = path.join(tmp, 'session.jsonl');
-  const markerPath = path.join(tmp, 'session.json');
+  const markerPath = markerPathFor(process.env.AI_TASK_MANAGER_SESSION_ID, tmp);
+  mkdirSync(path.dirname(markerPath), { recursive: true });
 
   // Write a fake JSONL transcript
   const lines = [
@@ -58,7 +58,9 @@ await withUnitRuntimeRoot(async () => {
   assert.equal(m.wordsFull, 1000, 'wordsFull defaults to words for legacy 3-arg saveMarker');
 
   // Test 4: missing marker returns zeros
-  const m2 = loadMarker(path.join(tmp, 'nope.marker'));
+  const m2 = loadMarker(markerPathFor('missing-marker', tmp), {
+    identity: { provider: 'claude', sid: 'missing-marker' },
+  });
   assert.equal(m2.line, 0);
   assert.equal(m2.words, 0);
 
@@ -159,8 +161,16 @@ await withUnitRuntimeRoot(async () => {
     process.env.AI_TASK_MANAGER_PROJECT_DIR = sidTmp;
     process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
     delete process.env.CLAUDE_PROJECT_DIR;
-    // #573: the codex provider stateDir moved to `.tmp/aitm/app/codex`.
-    const sessionDir = path.join(sidTmp, '.tmp', 'aitm', 'app', 'codex', 'session-transcripts');
+    // #573: the codex provider stateDir moved to `.ai-task-manager/runtime/store/app/codex`.
+    const sessionDir = path.join(
+      sidTmp,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'app',
+      'codex',
+      'session-transcripts'
+    );
     mkdirSync(sessionDir, { recursive: true });
 
     // Path 1: env var set → returns env value verbatim, mtime not consulted.
@@ -229,7 +239,7 @@ await withUnitRuntimeRoot(async () => {
   }
 
   // Test 8: session paths live under the project-local provider stateDir
-  // (`.tmp/aitm/app/codex` since #573), not ~/.claude.
+  // (`.ai-task-manager/runtime/store/app/codex` since #573), not ~/.claude.
   const origAitmProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   const origClaudeProjectDir3 = process.env.CLAUDE_PROJECT_DIR;
   const origAppName3 = process.env.AI_TASK_MANAGER_APP_NAME;
@@ -253,8 +263,9 @@ await withUnitRuntimeRoot(async () => {
       markerPathFor('session-123'),
       path.join(
         markerProject,
-        '.tmp',
-        'aitm',
+        '.ai-task-manager',
+        'runtime',
+        'store',
         'app',
         'codex',
         'session-tracking',
@@ -267,8 +278,9 @@ await withUnitRuntimeRoot(async () => {
     // contract. Create it, then assert it is resolved.
     const managedDir = path.join(
       markerProject,
-      '.tmp',
-      'aitm',
+      '.ai-task-manager',
+      'runtime',
+      'store',
       'app',
       'codex',
       'session-transcripts'

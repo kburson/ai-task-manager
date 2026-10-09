@@ -6,30 +6,42 @@
 
 import { strict as assert } from 'node:assert';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const workerPath = path.join(__dirname, '../../helpers/worker.mjs');
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-int-diff-'));
+const tmp = await createActivatedRuntimeRootFixture('tt-int-diff-');
 const logPath = path.join(tmp, 'events.ndjson');
 writeFileSync(logPath, '');
 
+const enteredWorkers = [];
 function runWorker(issue, label, holdMs) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(process.execPath, [workerPath, tmp, issue, label, logPath, String(holdMs)], {
-      stdio: 'inherit',
+    const proc = spawn(
+      process.execPath,
+      [workerPath, tmp, issue, label, logPath, String(holdMs), 'overlap-barrier'],
+      {
+        stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+      }
+    );
+    proc.on('message', (message) => {
+      if (message.event !== 'entered') return;
+      enteredWorkers.push(proc);
+      if (enteredWorkers.length === 2) {
+        for (const worker of enteredWorkers) worker.send('release');
+      }
     });
+    proc.on('error', reject);
     proc.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`worker exit ${code}`))));
   });
 }
 
-// Fire two workers against different issues concurrently. Each holds the
-// lock for 200ms. If the per-issue lock granularity is correct, the two
-// critical sections OVERLAP; if a global lock were used by mistake, they
-// would serialize.
+// Each worker waits inside its acquired critical section until both have
+// entered. This proves independent locks without relying on startup timing.
+// A global lock cannot satisfy the barrier and fails with a bounded timeout.
 await Promise.all([runWorker('#A1', 'sess-A', 200), runWorker('#B2', 'sess-B', 200)]);
 
 assert.equal(existsSync(logPath), true);

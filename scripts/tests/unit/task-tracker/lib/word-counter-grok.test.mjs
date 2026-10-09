@@ -2,7 +2,7 @@
 // @story #1324
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   createUnitRootFixture as createRuntimeRootFixture,
@@ -10,11 +10,10 @@ import {
 } from '../../../helpers/unit-runtime-root.mjs';
 
 import { normalizeTranscriptRecord } from '../../../../providers/transcript-normalizer.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { countWords, jsonlPath } from '../../../../task-tracker/word-counter.mjs';
 
 await withUnitRuntimeRoot(async () => {
-  const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-wc-grok-'));
+  const tmp = createRuntimeRootFixture('tt-wc-grok-');
   const sid = 'grok-session-1';
 
   try {

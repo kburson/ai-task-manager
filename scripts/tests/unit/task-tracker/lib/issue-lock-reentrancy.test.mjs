@@ -35,7 +35,23 @@ import test from 'node:test';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import {
+  runtimeWriterRootsForPath,
+  runtimeOperationKey,
+} from '../../../../task-tracker/lib/runtime-writer.mjs';
+import { inspectRuntimeOperationLock } from '../../../../task-tracker/lib/runtime-migration-lock.mjs';
+import { currentSessionId } from '../../../../task-tracker/word-counter.mjs';
+initializeFixtureActor(import.meta.url);
+const fixtureRoots = [];
+test.after(() => fixtureRoots.forEach((root) => rmSync(root, { recursive: true, force: true })));
+function protectedLock(file) {
+  return inspectRuntimeOperationLock({
+    ...runtimeWriterRootsForPath(file),
+    recordKey: runtimeOperationKey(file),
+  });
+}
 import {
   ISSUE_LOCK_HELD_ENV,
   IssueLockError,
@@ -46,14 +62,10 @@ import {
   withIssueLock,
 } from '../../../../task-tracker/issue-mutator-lock.mjs';
 
-function freshProjDir(label) {
-  const dir = path.join(
-    projectScratchDir('inspect'),
-    `issue-lock-reentrancy-${label}-${process.pid}`
-  );
-  rmSync(dir, { recursive: true, force: true });
-  mkdirSync(dir, { recursive: true });
-  return dir;
+async function freshProjDir(label) {
+  const root = await createActivatedRuntimeRootFixture('issue-lock-' + label + '-');
+  fixtureRoots.push(root);
+  return root;
 }
 
 // Every test runs with the ambient flag scrubbed: this suite may itself execute
@@ -73,31 +85,35 @@ function withScrubbedEnv(fn) {
 
 test('nested same-issue acquisition runs the callback and creates no second lock', async () => {
   await withScrubbedEnv(async () => {
-    const projDir = freshProjDir('nested');
+    const projDir = await freshProjDir('nested');
     const lockPath = issueLockPath(1261, projDir);
     let innerRan = false;
 
     await withIssueLock({ issue: 1261, verb: 'promote', projDir }, async () => {
-      assert.equal(existsSync(lockPath), true, 'outer frame holds the lock dir');
+      assert.equal(protectedLock(lockPath).status, 'owned', 'outer frame holds the lock dir');
       // retries: 0 is exactly what the `test` delegate uses — the shape that
       // used to throw immediately.
       await withIssueLock({ issue: 1261, verb: 'test', projDir, retries: 0 }, async () => {
         innerRan = true;
-        assert.equal(existsSync(lockPath), true, 'the outer lock dir is untouched');
+        assert.equal(protectedLock(lockPath).status, 'owned', 'the outer lock dir is untouched');
       });
       assert.equal(innerRan, true, 'nested delegate body executed');
       // The nested frame must not run the teardown: if it had, the parent's
       // lock would already be gone here.
-      assert.equal(existsSync(lockPath), true, 'nested frame did not release the parent lock');
+      assert.equal(
+        protectedLock(lockPath).status,
+        'owned',
+        'nested frame did not release the parent lock'
+      );
     });
 
-    assert.equal(existsSync(lockPath), false, 'outer frame released the lock');
+    assert.equal(protectedLock(lockPath).status, 'absent', 'outer frame released the lock');
   });
 });
 
 test('the held flag names the issue and is restored after the frame exits', async () => {
   await withScrubbedEnv(async () => {
-    const projDir = freshProjDir('env');
+    const projDir = await freshProjDir('env');
     let seen;
     await withIssueLock({ issue: 1261, verb: 'promote', projDir }, async () => {
       seen = process.env[ISSUE_LOCK_HELD_ENV];
@@ -113,17 +129,17 @@ test('the held flag names the issue and is restored after the frame exits', asyn
 
 test('a nested acquisition for a different issue still takes its own lock', async () => {
   await withScrubbedEnv(async () => {
-    const projDir = freshProjDir('scoped');
+    const projDir = await freshProjDir('scoped');
     const outerLock = issueLockPath(1261, projDir);
     const otherLock = issueLockPath(871, projDir);
 
     await withIssueLock({ issue: 1261, verb: 'promote', projDir }, async () => {
       await withIssueLock({ issue: 871, verb: 'promote', projDir }, async () => {
-        assert.equal(existsSync(otherLock), true, '#871 acquired its own lock dir');
-        assert.equal(existsSync(outerLock), true, '#1261 still held');
+        assert.equal(protectedLock(otherLock).status, 'owned', '#871 acquired its own lock dir');
+        assert.equal(protectedLock(outerLock).status, 'owned', '#1261 still held');
         assert.equal(process.env[ISSUE_LOCK_HELD_ENV], '871', 'inner frame republished for #871');
       });
-      assert.equal(existsSync(otherLock), false, '#871 released its own lock');
+      assert.equal(protectedLock(otherLock).status, 'absent', '#871 released its own lock');
       assert.equal(
         process.env[ISSUE_LOCK_HELD_ENV],
         '1261',
@@ -135,7 +151,7 @@ test('a nested acquisition for a different issue still takes its own lock', asyn
 
 test('a foreign live holder still raises IssueLockError when the flag is absent', async () => {
   await withScrubbedEnv(async () => {
-    const projDir = freshProjDir('foreign');
+    const projDir = await freshProjDir('foreign');
     const lockPath = issueLockPath(1261, projDir);
     mkdirSync(lockPath, { recursive: true });
     // A live PID on this host that is not us: our own parent-of-record. Using
@@ -157,8 +173,8 @@ test('a foreign live holder still raises IssueLockError when the flag is absent'
     await assert.rejects(
       () => withIssueLock({ issue: 1261, verb: 'test', projDir, retries: 0 }, async () => 'ran'),
       (err) => {
-        assert.ok(err instanceof IssueLockError, 'cross-session contention still throws');
-        assert.match(err.message, /issue 1261 locked by session some-other-session \(held since /);
+        assert.equal(err.code, 'RUNTIME_LOCK_RECOVERY_REQUIRED');
+        assert.equal(existsSync(path.join(lockPath, 'holder.json')), true);
         return true;
       }
     );
@@ -169,21 +185,25 @@ test('a foreign live holder still raises IssueLockError when the flag is absent'
 
 test('an unnested retries:0 acquisition still takes the lock (#1169 entry interlock)', async () => {
   await withScrubbedEnv(async () => {
-    const projDir = freshProjDir('interlock');
+    const projDir = await freshProjDir('interlock');
     const lockPath = issueLockPath(1261, projDir);
     let ran = false;
     await withIssueLock({ issue: 1261, verb: 'test', projDir, retries: 0 }, async () => {
       ran = true;
-      assert.equal(existsSync(lockPath), true, 'a direct `aitm test` still acquires for real');
+      assert.equal(
+        protectedLock(lockPath).status,
+        'owned',
+        'a direct `aitm test` still acquires for real'
+      );
     });
     assert.equal(ran, true);
-    assert.equal(existsSync(lockPath), false, 'and releases on exit');
+    assert.equal(protectedLock(lockPath).status, 'absent', 'and releases on exit');
   });
 });
 
 test('two concurrent same-issue frames in one process still contend', async () => {
   await withScrubbedEnv(async () => {
-    const projDir = freshProjDir('concurrent');
+    const projDir = await freshProjDir('concurrent');
     let releaseFirst;
     const released = new Promise((r) => {
       releaseFirst = r;
@@ -211,7 +231,7 @@ test('two concurrent same-issue frames in one process still contend', async () =
       () => withIssueLock({ issue: 1261, verb: 'test', projDir, retries: 0 }, async () => 'second'),
       (err) => {
         assert.ok(err instanceof IssueLockError);
-        assert.match(err.message, /issue 1261 locked by session holder \(held since /);
+        assert.equal(err.holder.sessionId, currentSessionId());
         return true;
       }
     );
@@ -227,16 +247,16 @@ test('isIssueLockHeld token semantics', () => {
   assert.equal(issueLockToken(1261), '1261');
 
   const held = { [ISSUE_LOCK_HELD_ENV]: '1261' };
-  assert.equal(isIssueLockHeld(1261, held), true);
-  assert.equal(isIssueLockHeld('#1261', held), true);
+  assert.equal(isIssueLockHeld(1261, held), false);
+  assert.equal(isIssueLockHeld('#1261', held), false);
   assert.equal(isIssueLockHeld(871, held), false, 'issue-scoped: a different issue is not held');
-  assert.equal(isIssueLockHeld(undefined, held), true, 'issue-less query: any held frame counts');
+  assert.equal(isIssueLockHeld(undefined, held), false, 'issue-less query: any held frame counts');
 
   // Legacy unscoped value from a mixed-version process tree degrades to the
   // pre-#1261 behavior rather than double-acquiring.
   const legacy = { [ISSUE_LOCK_HELD_ENV]: '1' };
-  assert.equal(isIssueLockHeld(1261, legacy), true);
-  assert.equal(isIssueLockHeld(871, legacy), true);
+  assert.equal(isIssueLockHeld(1261, legacy), false);
+  assert.equal(isIssueLockHeld(871, legacy), false);
 
   assert.equal(isIssueLockHeld(1261, {}), false);
   assert.equal(isIssueLockHeld(1261, { [ISSUE_LOCK_HELD_ENV]: '' }), false);

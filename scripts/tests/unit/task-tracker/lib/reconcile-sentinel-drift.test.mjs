@@ -5,7 +5,22 @@
 // without minting lifecycle history or a replacement sentinel.
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
+const root = createActivatedUnitRuntimeRoot('reconcile-sentinel-');
+const priorRoot = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = root;
+after(() => {
+  if (priorRoot === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorRoot;
+  rmSync(root, { recursive: true, force: true });
+});
 
 import {
   defaultRunSentinelStatusWrite,

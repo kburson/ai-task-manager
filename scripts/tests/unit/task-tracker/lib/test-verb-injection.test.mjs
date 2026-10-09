@@ -16,20 +16,15 @@
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
-import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  unitRuntimeEntrypointArgs,
+  createActivatedUnitRuntimeRoot,
+  withUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  chmodSync,
-  rmSync,
-  existsSync,
-} from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync, existsSync } from 'node:fs';
 import { inspectTestDeclarations } from '../../../../task-tracker/lib/action-decision/test.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,10 +34,12 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
-const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-test-injection-'));
-saveState(
-  { active: '#999', entryStartTs: new Date().toISOString(), wordsAtEntryStart: 0 },
-  path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+const sandbox = createActivatedUnitRuntimeRoot('tt-test-injection-');
+withUnitRuntimeRoot(() =>
+  saveState(
+    { active: '#999', entryStartTs: new Date().toISOString(), wordsAtEntryStart: 0 },
+    path.join(sandbox, '.ai-task-manager/runtime/store/state/task-tracker-state.json')
+  )
 );
 try {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
@@ -65,7 +62,7 @@ try {
   writeFileSync(path.join(sandbox, '.ai-task-manager', 'definition-of-done.md'), '');
   mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
   writeFileSync(
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
+    path.join(sandbox, '.ai-task-manager/runtime/store/state/task-tracker-state.json'),
     JSON.stringify({ active: '#999', lastActive: '#999', entryStartTs: null, wordsAtEntryStart: 0 })
   );
   // Stage-aware Test now finalizes Develop and fingerprints both the outer

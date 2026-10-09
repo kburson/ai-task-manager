@@ -16,7 +16,13 @@
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
 import assert from 'node:assert/strict';
 
 import { verbReject } from '../../../../task-tracker/verbs/reject.mjs';
@@ -29,12 +35,20 @@ function bodyWith(rows) {
   return ['## ⏱ Timing Log', '', HEADER, SEP, ...rows, ''].join('\n') + '\n';
 }
 
+const roots = [];
+after(() => {
+  for (const root of roots) rmSync(root, { recursive: true, force: true });
+});
+
 function driveVerbReject() {
+  const root = createActivatedUnitRuntimeRoot('reject-audit-');
+  roots.push(root);
   const posted = [];
   const moves = [];
   const ctx = {
     cfg: { repo: 'kburson/ai-task-manager' },
-    statePath: '/nonexistent/state.json',
+    statePath: join(root, '.ai-task-manager/runtime/store/state/task-tracker-state.json'),
+    projectDir: root,
     rest: ['#996', '--reason', 'gate objection'],
     SKIP_NETWORK: true,
     pexec: async () => ({ stdout: '{}' }),

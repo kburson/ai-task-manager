@@ -5,7 +5,9 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
 
-import { mkdtempProjectIsolated } from '../../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 
 const claimModule = new URL(
   '../../../../../task-tracker/lib/estimation/record-claim.mjs',
@@ -31,7 +33,7 @@ function child(script, env) {
 }
 
 test('main-worktree authority claim serializes independent Node processes', async () => {
-  const projectDir = mkdtempProjectIsolated('estimation-record-claim-');
+  const projectDir = await mkdtempProjectIsolated('estimation-record-claim-');
   const eventsPath = path.join(projectDir, '.tmp', 'claim-events.log');
   const script = `
     import { appendFileSync, mkdirSync } from 'node:fs';

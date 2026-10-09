@@ -11,7 +11,7 @@
 
 import { strict as assert } from 'node:assert';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -46,7 +46,7 @@ function deepDiveAdequate() {
 }
 
 async function makeSandbox(body) {
-  const sandbox = await createLegacyRootFixture('move-state-gate-');
+  const sandbox = await createActivatedRuntimeRootFixture('move-state-gate-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),

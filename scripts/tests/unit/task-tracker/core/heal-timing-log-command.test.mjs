@@ -81,7 +81,7 @@ function sink() {
   const seen = { lockPath: null, run: null };
   await main(['1093', '--apply'], {
     loadConfig: async () => ({ repo: 'o/r' }),
-    getProjectDir: () => '/project',
+    getProjectDir: () => process.cwd(),
     withLock: async (lockPath, callback) => {
       seen.lockPath = lockPath;
       return callback();
@@ -116,7 +116,7 @@ function sink() {
   const seen = [];
   await main(['--sweep', '--scope', '1089,1093'], {
     loadConfig: async () => ({ repo: 'o/r', projectId: 'P' }),
-    getProjectDir: () => '/project',
+    getProjectDir: () => process.cwd(),
     withLock: async (_lockPath, callback) => callback(),
     runHeal: async ({ issueNumber }) => {
       seen.push(Number(issueNumber));
@@ -154,7 +154,7 @@ function sink() {
   const seen = [];
   await main(['--sweep', '--scope', '1089,1093', '--delay-ms', '250'], {
     loadConfig: async () => ({ repo: 'o/r', projectId: 'P' }),
-    getProjectDir: () => '/project',
+    getProjectDir: () => process.cwd(),
     withLock: async (_lockPath, callback) => callback(),
     sleep: async (ms) => sleeps.push(ms),
     runHeal: async ({ issueNumber }) => {
@@ -217,7 +217,7 @@ for (const scope of [
   let exitCode = null;
   await main(['--sweep', '--scope', '1093'], {
     loadConfig: async () => ({ repo: 'o/r', projectId: 'P' }),
-    getProjectDir: () => '/project',
+    getProjectDir: () => process.cwd(),
     withLock: async (_lockPath, callback) => callback(),
     runHeal: async () => {
       throw new Error('simulated GitHub read failure');

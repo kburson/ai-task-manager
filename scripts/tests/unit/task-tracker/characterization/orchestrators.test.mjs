@@ -25,16 +25,19 @@
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
-import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  unitRuntimeEntrypointArgs,
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 import {
   runPromote,
   spawnVerbTimeout,
@@ -58,7 +61,7 @@ const MOVE_STATE = path.resolve(__dir, '../../../helpers/move-state-cli.mjs');
 // board write, no marker stamp) and assert only on exit code + emitted text.
 
 function makeMoveStateSandbox() {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-char-ms-'));
+  const sandbox = createActivatedUnitRuntimeRoot('tt-char-ms-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -83,6 +86,8 @@ function moveStateEnv(sandbox, extra = {}) {
   return {
     PATH: process.env.PATH,
     HOME: process.env.HOME,
+    AI_TASK_MANAGER_APP_NAME: 'claude',
+    AI_TASK_MANAGER_SESSION_ID: 'fixture-characterization',
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
     TT_SKIP_NETWORK: '1',
     ...extra,
@@ -170,6 +175,8 @@ const PROMOTE_CFG = { repo: 'o/r', projectId: 'P_char' };
 function promoteDeps({ bodyState, liveState }) {
   const body = bodyState == null ? '# Issue\n' : writeLastKnownState('# Issue\n', bodyState);
   return {
+    migrationFreezeActive: () => false,
+    loadSession: () => null,
     assertBound: () => {},
     fetchIssueBody: async () => ({ body }),
     getLiveState: async () => liveState,
@@ -241,9 +248,9 @@ test('promote: delegate-timeout policy — test gets none, close gets a bounded 
 // and assert on the resulting event order — never on any internal helper name.
 
 function makeStatePath(state) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-char-close-'));
-  const p = path.join(dir, 'state.json');
-  writeFileSync(p, JSON.stringify(state));
+  const dir = createActivatedUnitRuntimeRoot('tt-char-close-');
+  const p = path.join(dir, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
+  saveState(state, p);
   return { statePath: p, dir };
 }
 
@@ -270,6 +277,8 @@ function makeCloseCtx({ statePath, dir, rest, boardState, sequence }) {
     statePath,
     projectDir: dir,
     // These tests exercise close ordering/labels, with terminal storage external.
+    loadCurrentSession: () => null,
+    inspectTerminalIssueBindingRelease: () => ({ status: 'released' }),
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},
     releaseBindingOccupancy: () => ({ released: [] }),

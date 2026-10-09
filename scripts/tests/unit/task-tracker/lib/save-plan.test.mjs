@@ -17,8 +17,11 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import {
+  withUnitRuntimeRoot,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import path from 'node:path';
 import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 
@@ -45,7 +48,7 @@ function makeCtx(dir, statePath, rest = []) {
 }
 
 async function runVerb(dir, stateData, rest) {
-  const statePath = path.join(dir, 'state.json');
+  const statePath = path.join(dir, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   saveState(stateData, statePath);
   const ctx = makeCtx(dir, statePath, rest);
 
@@ -85,105 +88,122 @@ async function runVerb(dir, stateData, rest) {
   return { exitCode, stderr: stderrOut, stdout: stdoutOut, state, threw };
 }
 
-const scratch = projectScratchDir('test');
-
-// --- Case 1: no active discover bucket ----------------------------------------
-{
-  const dir = mkdtempSync(path.join(scratch, 'sp-no-bucket-'));
-  const { exitCode, stderr } = await runVerb(dir, makeState({ active: '#1', bucket: false }), []);
-  assert.equal(exitCode, 1, 'should exit 1 when not in discover state');
-  assert.match(stderr, /no-active-discover-bucket/);
+const fixtureRoots = [];
+function freshRoot(prefix) {
+  const root = createActivatedUnitRuntimeRoot(prefix);
+  fixtureRoots.push(root);
+  return root;
 }
+try {
+  await withUnitRuntimeRoot(async () => {
+    // --- Case 1: no active discover bucket ----------------------------------------
+    {
+      const dir = freshRoot('sp-no-bucket-');
+      const { exitCode, stderr } = await runVerb(
+        dir,
+        makeState({ active: '#1', bucket: false }),
+        []
+      );
+      assert.equal(exitCode, 1, 'should exit 1 when not in discover state');
+      assert.match(stderr, /no-active-discover-bucket/);
+    }
 
-// --- Case 2: --from-file missing ----------------------------------------------
-{
-  const dir = mkdtempSync(path.join(scratch, 'sp-no-file-'));
-  const { exitCode, stderr } = await runVerb(dir, makeState(), []);
-  assert.equal(exitCode, 1, 'should exit 1 when --from-file is missing');
-  assert.match(stderr, /--from-file/);
+    // --- Case 2: --from-file missing ----------------------------------------------
+    {
+      const dir = freshRoot('sp-no-file-');
+      const { exitCode, stderr } = await runVerb(dir, makeState(), []);
+      assert.equal(exitCode, 1, 'should exit 1 when --from-file is missing');
+      assert.match(stderr, /--from-file/);
+    }
+
+    // --- Case 3: --from-file path does not exist ---------------------------------
+    {
+      const dir = freshRoot('sp-missing-file-');
+      const planPath = path.join(dir, 'nonexistent.md');
+      const { exitCode, stderr } = await runVerb(dir, makeState(), ['--from-file', planPath]);
+      assert.equal(exitCode, 1, 'should exit 1 when file not found');
+      assert.match(stderr, /cannot read --from-file/);
+    }
+
+    // --- Case 4: plan file fails validation (no H1) ------------------------------
+    {
+      const dir = freshRoot('sp-no-h1-');
+      const planPath = path.join(dir, 'bad.md');
+      writeFileSync(planPath, '## Scope\njust scope, no title\n', 'utf8');
+      const { exitCode, stderr } = await runVerb(dir, makeState(), ['--from-file', planPath]);
+      assert.equal(exitCode, 1, 'should exit 1 when H1 is missing');
+      assert.match(stderr, /invalid plan file/);
+    }
+
+    // --- Case 5: plan file fails validation (no ## Scope) ------------------------
+    {
+      const dir = freshRoot('sp-no-scope-');
+      const planPath = path.join(dir, 'bad.md');
+      writeFileSync(planPath, '# My Plan\n\nNo scope section here.\n', 'utf8');
+      const { exitCode, stderr } = await runVerb(dir, makeState(), ['--from-file', planPath]);
+      assert.equal(exitCode, 1, 'should exit 1 when ## Scope is missing');
+      assert.match(stderr, /invalid plan file/);
+    }
+
+    // --- Case 6: happy path -------------------------------------------------------
+    {
+      const dir = freshRoot('sp-happy-');
+      const planPath = path.join(dir, 'draft.md');
+      writeFileSync(planPath, VALID_PLAN, 'utf8');
+      const { exitCode, stdout, state } = await runVerb(dir, makeState(), [
+        '--from-file',
+        planPath,
+      ]);
+      assert.equal(exitCode, null, 'should not exit with error');
+      assert.match(stdout.trim(), /docs\/plans\/.*\.md/, 'should print saved path');
+      assert.ok(state?.discoverBucket?.savedPlanFile, 'savedPlanFile should be stamped in state');
+      assert.ok(existsSync(state.discoverBucket.savedPlanFile), 'saved file should exist on disk');
+      const saved = readFileSync(state.discoverBucket.savedPlanFile, 'utf8');
+      assert.equal(saved, VALID_PLAN, 'saved content should match input');
+    }
+
+    // --- Case 7: --title override changes slug -----------------------------------
+    {
+      const dir = freshRoot('sp-title-');
+      const planPath = path.join(dir, 'draft.md');
+      writeFileSync(planPath, VALID_PLAN, 'utf8');
+      const { exitCode, state } = await runVerb(dir, makeState(), [
+        '--from-file',
+        planPath,
+        '--title',
+        'Custom Title Here',
+      ]);
+      assert.equal(exitCode, null, 'should not exit with error');
+      assert.match(
+        state.discoverBucket.savedPlanFile,
+        /custom-title-here/,
+        'slug should reflect --title override'
+      );
+    }
+
+    // --- Case 8: collision appends -2 suffix -------------------------------------
+    {
+      const dir = freshRoot('sp-collision-');
+      const planPath = path.join(dir, 'draft.md');
+      writeFileSync(planPath, VALID_PLAN, 'utf8');
+
+      // First save
+      const { state: s1 } = await runVerb(dir, makeState(), ['--from-file', planPath]);
+      assert.ok(s1?.discoverBucket?.savedPlanFile, 'first save should work');
+
+      // Second save with same content (same slug same date) — restore state to discover
+      const { state: s2 } = await runVerb(dir, makeState(), ['--from-file', planPath]);
+      assert.ok(s2?.discoverBucket?.savedPlanFile, 'second save should work');
+      assert.notEqual(
+        s1.discoverBucket.savedPlanFile,
+        s2.discoverBucket.savedPlanFile,
+        'second path should differ'
+      );
+      assert.match(s2.discoverBucket.savedPlanFile, /-2\.md$/, 'collision suffix should be -2');
+    }
+
+    console.log('save-plan.test.mjs: all passed');
+  });
+} finally {
+  for (const root of fixtureRoots) rmSync(root, { recursive: true, force: true });
 }
-
-// --- Case 3: --from-file path does not exist ---------------------------------
-{
-  const dir = mkdtempSync(path.join(scratch, 'sp-missing-file-'));
-  const planPath = path.join(dir, 'nonexistent.md');
-  const { exitCode, stderr } = await runVerb(dir, makeState(), ['--from-file', planPath]);
-  assert.equal(exitCode, 1, 'should exit 1 when file not found');
-  assert.match(stderr, /cannot read --from-file/);
-}
-
-// --- Case 4: plan file fails validation (no H1) ------------------------------
-{
-  const dir = mkdtempSync(path.join(scratch, 'sp-no-h1-'));
-  const planPath = path.join(dir, 'bad.md');
-  writeFileSync(planPath, '## Scope\njust scope, no title\n', 'utf8');
-  const { exitCode, stderr } = await runVerb(dir, makeState(), ['--from-file', planPath]);
-  assert.equal(exitCode, 1, 'should exit 1 when H1 is missing');
-  assert.match(stderr, /invalid plan file/);
-}
-
-// --- Case 5: plan file fails validation (no ## Scope) ------------------------
-{
-  const dir = mkdtempSync(path.join(scratch, 'sp-no-scope-'));
-  const planPath = path.join(dir, 'bad.md');
-  writeFileSync(planPath, '# My Plan\n\nNo scope section here.\n', 'utf8');
-  const { exitCode, stderr } = await runVerb(dir, makeState(), ['--from-file', planPath]);
-  assert.equal(exitCode, 1, 'should exit 1 when ## Scope is missing');
-  assert.match(stderr, /invalid plan file/);
-}
-
-// --- Case 6: happy path -------------------------------------------------------
-{
-  const dir = mkdtempSync(path.join(scratch, 'sp-happy-'));
-  const planPath = path.join(dir, 'draft.md');
-  writeFileSync(planPath, VALID_PLAN, 'utf8');
-  const { exitCode, stdout, state } = await runVerb(dir, makeState(), ['--from-file', planPath]);
-  assert.equal(exitCode, null, 'should not exit with error');
-  assert.match(stdout.trim(), /docs\/plans\/.*\.md/, 'should print saved path');
-  assert.ok(state?.discoverBucket?.savedPlanFile, 'savedPlanFile should be stamped in state');
-  assert.ok(existsSync(state.discoverBucket.savedPlanFile), 'saved file should exist on disk');
-  const saved = readFileSync(state.discoverBucket.savedPlanFile, 'utf8');
-  assert.equal(saved, VALID_PLAN, 'saved content should match input');
-}
-
-// --- Case 7: --title override changes slug -----------------------------------
-{
-  const dir = mkdtempSync(path.join(scratch, 'sp-title-'));
-  const planPath = path.join(dir, 'draft.md');
-  writeFileSync(planPath, VALID_PLAN, 'utf8');
-  const { exitCode, state } = await runVerb(dir, makeState(), [
-    '--from-file',
-    planPath,
-    '--title',
-    'Custom Title Here',
-  ]);
-  assert.equal(exitCode, null, 'should not exit with error');
-  assert.match(
-    state.discoverBucket.savedPlanFile,
-    /custom-title-here/,
-    'slug should reflect --title override'
-  );
-}
-
-// --- Case 8: collision appends -2 suffix -------------------------------------
-{
-  const dir = mkdtempSync(path.join(scratch, 'sp-collision-'));
-  const planPath = path.join(dir, 'draft.md');
-  writeFileSync(planPath, VALID_PLAN, 'utf8');
-
-  // First save
-  const { state: s1 } = await runVerb(dir, makeState(), ['--from-file', planPath]);
-  assert.ok(s1?.discoverBucket?.savedPlanFile, 'first save should work');
-
-  // Second save with same content (same slug same date) — restore state to discover
-  const { state: s2 } = await runVerb(dir, makeState(), ['--from-file', planPath]);
-  assert.ok(s2?.discoverBucket?.savedPlanFile, 'second save should work');
-  assert.notEqual(
-    s1.discoverBucket.savedPlanFile,
-    s2.discoverBucket.savedPlanFile,
-    'second path should differ'
-  );
-  assert.match(s2.discoverBucket.savedPlanFile, /-2\.md$/, 'collision suffix should be -2');
-}
-
-console.log('save-plan.test.mjs: all passed');

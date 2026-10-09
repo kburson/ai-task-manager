@@ -6,13 +6,23 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 
-const projectDir = mkdtempProjectIsolated('tt-resume-fleet-refresh-');
+const projectDir = await createCommittedRuntimeRootFixture('tt-resume-fleet-refresh-');
 const sessionId = 'resume-fleet-refresh-1128';
 process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
 process.env.AI_TASK_MANAGER_SESSION_ID = sessionId;
-process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(projectDir, 'transcripts');
+process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+process.chdir(projectDir);
+process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+  projectDir,
+  '.ai-task-manager',
+  'runtime',
+  'store',
+  'app',
+  'claude',
+  'session-transcripts'
+);
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
 const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
@@ -23,7 +33,14 @@ const { setActiveTask } = await import('../../../../task-tracker/session-state.m
 test('same-issue resume refreshes a stale fleet workspace without timing side effects', async () => {
   const issue = '#1128';
   const staleWorktree = path.join(projectDir, '.worktrees', 'removed-child');
-  const statePath = path.join(projectDir, '.ai-task-manager', 'task-tracker-state.json');
+  const statePath = path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   mkdirSync(path.dirname(statePath), { recursive: true });
   writeFileSync(
     statePath,

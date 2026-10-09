@@ -14,7 +14,9 @@ import {
 } from '../../../../task-tracker/lib/worktree-binding-lifecycle.mjs';
 import { resolveCurrentSessionWorktreeBinding } from '../../../../task-tracker/lib/worktree-binding-guard.mjs';
 import { closedBindingsPath } from '../../../../task-tracker/paths.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 
 const CLOSED_AT = '2026-08-19T15:00:00.000Z';
 
@@ -25,8 +27,8 @@ function ledger(issue = '#1297', closedAt = CLOSED_AT) {
   };
 }
 
-test('terminal ledger persists atomically at the main fleet authority path', (t) => {
-  const root = mkdtempProjectIsolated('closed-binding-ledger-');
+test('terminal ledger persists atomically at the main fleet authority path', async (t) => {
+  const root = await mkdtempProjectIsolated('closed-binding-ledger-');
   t.after(() => rmSync(root, { recursive: true, force: true }));
   markClosedBinding({
     mainWorktreePath: root,
@@ -40,8 +42,8 @@ test('terminal ledger persists atomically at the main fleet authority path', (t)
   assert.deepEqual(readClosedBindingLedger(root), ledger());
 });
 
-test('malformed terminal entries fail closed instead of reviving a binding', (t) => {
-  const root = mkdtempProjectIsolated('closed-binding-invalid-');
+test('malformed terminal entries fail closed instead of reviving a binding', async (t) => {
+  const root = await mkdtempProjectIsolated('closed-binding-invalid-');
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const target = closedBindingsPath(root);
   const invalid = { schema: 1, sessions: { session: { '#1297': {} } } };
@@ -85,12 +87,12 @@ test('terminal timestamp closes only records that were bound before it', () => {
 
 test('terminal release observation accepts the ledger unless a newer binding exists', () => {
   const records = new Map([
-    ['/repo', null],
+    [process.cwd(), null],
     ['/repo/wt', { issue: '#1297', boundAt: '2026-08-19T14:00:00.000Z' }],
   ]);
   const deps = {
     sessionId: 'session',
-    resolveMain: () => '/repo',
+    resolveMain: () => process.cwd(),
     readLedger: () => ledger(),
     readOccupancy: () => ({}),
     collectCandidates: () => [...records.keys()],
@@ -137,7 +139,7 @@ test('terminal release resume reuses original ledger authority and clears only s
         issue: '#1297',
         deps: {
           sessionId: 'session',
-          resolveMain: () => '/repo',
+          resolveMain: () => process.cwd(),
           readLedger: () => ledger(),
           collectCandidates: () => [...records.keys()],
           compareAndClearActiveTask: (_sid, candidate, predicate) => {
@@ -167,7 +169,7 @@ test('terminal release resume reuses original ledger authority and clears only s
         issue: '#1297',
         deps: {
           sessionId: 'session',
-          resolveMain: () => '/repo',
+          resolveMain: () => process.cwd(),
           readLedger: () => ledger(),
           collectCandidates: () => [...records.keys()],
           compareAndClearActiveTask: () => ({ status: 'absent', record: null }),
@@ -188,7 +190,7 @@ test('terminal release resume reuses original ledger authority and clears only s
     issue: '#1297',
     deps: {
       sessionId: 'session',
-      resolveMain: () => '/repo',
+      resolveMain: () => process.cwd(),
       readLedger: () => ledger(),
       collectCandidates: () => [...records.keys()],
       compareAndClearActiveTask: (_sid, candidate, predicate) => {
@@ -213,7 +215,7 @@ function resolverFixture(records, closedLedger) {
   return {
     sessionId: 'session',
     pathExists: () => true,
-    findMain: () => '/repo',
+    findMain: () => process.cwd(),
     readFleet: () => ({
       '#1297': { worktreePath: '/repo/wt-closed' },
       '#1298': { worktreePath: '/repo/wt-live' },
@@ -242,7 +244,7 @@ test('closed candidate loses to a live binding even when the closed record is ne
   };
   assert.deepEqual(
     resolveCurrentSessionWorktreeBinding({
-      invokingDir: '/repo',
+      invokingDir: process.cwd(),
       deps: resolverFixture(records, ledger()),
     }),
     {
@@ -263,7 +265,7 @@ test('a closed-only candidate set resolves to null', () => {
   };
   assert.equal(
     resolveCurrentSessionWorktreeBinding({
-      invokingDir: '/repo',
+      invokingDir: process.cwd(),
       deps: resolverFixture(records, ledger()),
     }),
     null
@@ -272,7 +274,7 @@ test('a closed-only candidate set resolves to null', () => {
 
 test('release marks terminal authority then clears every matching worktree only', () => {
   const records = new Map([
-    ['/repo', { issue: '#1298', boundAt: '2026-08-19T14:00:00.000Z' }],
+    [process.cwd(), { issue: '#1298', boundAt: '2026-08-19T14:00:00.000Z' }],
     ['/repo/wt-a', { issue: '#1297', boundAt: '2026-08-19T14:10:00.000Z' }],
     ['/repo/wt-b', { issue: '#1297', boundAt: '2026-08-19T14:20:00.000Z' }],
   ]);
@@ -283,8 +285,8 @@ test('release marks terminal authority then clears every matching worktree only'
     sessionId: 'session',
     closedAt: CLOSED_AT,
     deps: {
-      findMain: () => '/repo',
-      collectCandidates: () => ['/repo', '/repo/wt-a', '/repo/wt-b'],
+      findMain: () => process.cwd(),
+      collectCandidates: () => [process.cwd(), '/repo/wt-a', '/repo/wt-b'],
       markClosedBinding: (input) => {
         order.push(`mark:${input.issue}`);
         return ledger();
@@ -300,7 +302,7 @@ test('release marks terminal authority then clears every matching worktree only'
   });
 
   assert.deepEqual(result.released, ['/repo/wt-a', '/repo/wt-b']);
-  assert.deepEqual(records.get('/repo'), {
+  assert.deepEqual(records.get(process.cwd()), {
     issue: '#1298',
     boundAt: '2026-08-19T14:00:00.000Z',
   });
@@ -321,7 +323,7 @@ test('release CAS preserves a concurrent rebind to another issue or a reopened i
     sessionId: 'session',
     closedAt: CLOSED_AT,
     deps: {
-      resolveMain: () => '/repo',
+      resolveMain: () => process.cwd(),
       collectCandidates: () => [...records.keys()],
       markClosedBinding: () => ledger(),
       compareAndClearActiveTask: (_sid, candidate, predicate) => {
@@ -348,7 +350,7 @@ test('clearing live B cannot resurrect terminal A', () => {
   const deps = resolverFixture(records, ledger());
   deps.readFleet = () => ({ '#1297': { worktreePath: '/repo/wt-a' } });
   assert.equal(
-    resolveCurrentSessionWorktreeBinding({ invokingDir: '/repo', deps }),
+    resolveCurrentSessionWorktreeBinding({ invokingDir: process.cwd(), deps }),
     null,
     'the old A record remains terminal after unrelated B disappears'
   );

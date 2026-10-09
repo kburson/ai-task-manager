@@ -5,75 +5,82 @@
 // holder runs at a time; the others retry within the timeout.
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { rmSync } from 'node:fs';
+import {
+  withUnitRuntimeRoot,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import path from 'node:path';
 import { withLock } from '../../../../task-tracker/locks.mjs';
 
-const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-flock-'));
-const lockPath = path.join(tmp, 'shared.lock');
+await withUnitRuntimeRoot(async () => {
+  const tmp = createActivatedUnitRuntimeRoot('tt-flock-');
+  const lockPath = path.join(tmp, '.ai-task-manager/runtime/store/locks/timing-shared.lock');
 
-// 1. Serial admission — N concurrent withLock calls never overlap.
-{
-  let inFlight = 0;
-  let maxInFlight = 0;
-  const N = 8;
-  const tasks = Array.from({ length: N }, (_, i) =>
-    withLock(
-      lockPath,
-      async () => {
-        inFlight += 1;
-        maxInFlight = Math.max(maxInFlight, inFlight);
-        // Hold the lock briefly so contenders queue.
-        await new Promise((r) => setTimeout(r, 15));
-        inFlight -= 1;
-        return i;
-      },
-      { timeoutMs: 5_000 }
-    )
-  );
-  const results = await Promise.all(tasks);
-  assert.equal(results.length, N);
-  assert.equal(maxInFlight, 1, 'withLock serializes; max concurrency must be 1');
-  assert.equal(inFlight, 0, 'all acquirers released');
-}
-
-// 2. Release-on-throw — a body that throws must still release the lock so
-//    the next acquirer can proceed without timing out.
-{
-  await assert.rejects(
-    () =>
+  // 1. Serial admission — N concurrent withLock calls never overlap.
+  {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const N = 8;
+    const tasks = Array.from({ length: N }, (_, i) =>
       withLock(
         lockPath,
         async () => {
-          throw new Error('boom');
+          inFlight += 1;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          // Hold the lock briefly so contenders queue.
+          await new Promise((r) => setTimeout(r, 15));
+          inFlight -= 1;
+          return i;
         },
-        { timeoutMs: 1_000 }
-      ),
-    /boom/
-  );
-  // If the prior call leaked the lock, this would time out.
-  const ok = await withLock(lockPath, async () => 'recovered', { timeoutMs: 1_000 });
-  assert.equal(ok, 'recovered', 'lock recovered after thrown body');
-}
+        { timeoutMs: 5_000 }
+      )
+    );
+    const results = await Promise.all(tasks);
+    assert.equal(results.length, N);
+    assert.equal(maxInFlight, 1, 'withLock serializes; max concurrency must be 1');
+    assert.equal(inFlight, 0, 'all acquirers released');
+  }
 
-// 3. Timeout — an acquirer that cannot enter within timeoutMs rejects.
-{
-  let release;
-  const holder = withLock(lockPath, async () => {
-    await new Promise((r) => {
-      release = r;
+  // 2. Release-on-throw — a body that throws must still release the lock so
+  //    the next acquirer can proceed without timing out.
+  {
+    await assert.rejects(
+      () =>
+        withLock(
+          lockPath,
+          async () => {
+            throw new Error('boom');
+          },
+          { timeoutMs: 1_000 }
+        ),
+      /boom/
+    );
+    // If the prior call leaked the lock, this would time out.
+    const ok = await withLock(lockPath, async () => 'recovered', { timeoutMs: 1_000 });
+    assert.equal(ok, 'recovered', 'lock recovered after thrown body');
+  }
+
+  // 3. Timeout — an acquirer that cannot enter within timeoutMs rejects.
+  {
+    let release;
+    const holder = withLock(lockPath, async () => {
+      await new Promise((r) => {
+        release = r;
+      });
     });
-  });
-  // Give holder a tick to acquire.
-  await new Promise((r) => setTimeout(r, 20));
-  await assert.rejects(
-    () => withLock(lockPath, async () => 'never', { timeoutMs: 150 }),
-    (err) => /timeout|acquiring/i.test(String(err && err.message))
-  );
-  release();
-  await holder;
-}
+    // Give holder a tick to acquire.
+    await new Promise((r) => setTimeout(r, 20));
+    await assert.rejects(
+      () => withLock(lockPath, async () => 'never', { timeoutMs: 150 }),
+      (err) => err.code === 'RUNTIME_MIGRATION_BUSY'
+    );
+    release();
+    await holder;
+  }
 
-rmSync(tmp, { recursive: true });
-console.log('flock-contention.test.mjs: all passed');
+  rmSync(tmp, { recursive: true });
+  console.log('flock-contention.test.mjs: all passed');
+});

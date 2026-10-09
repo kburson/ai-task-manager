@@ -1,22 +1,18 @@
 #!/usr/bin/env node
 // @story #656
 // cspell:ignore TOCTOU
-// PID-liveness staleness for the per-issue mutator lock.
-//
-// Regression coverage for #656: `tryReclaimStale` used to decide staleness
-// purely from mtime age vs a 30 s TTL, so a multi-minute *live* holder (e.g. a
-// `promote` develop→test sandbox running `npm ci` + `test:all`) aged past the
-// threshold and a peer forcibly reclaimed its live lock → concurrent runs.
-//
-// The fix inverts the predicate to "holder process dead ⇒ reclaim":
-//   - live same-host PID within the (raised) TTL  → NOT reclaimed (the bug)
-//   - dead same-host PID                          → reclaimed immediately
-//   - live PID whose start-token no longer matches → reclaimed (PID reuse)
-//   - cross-host holder                           → mtime TTL backstop only
+// PID probing remains diagnostic; compatibility helpers cannot retire legacy
+// locks. Only registered, exact observed recovery plus confirmed owner death
+// admits protected lock recovery (covered by runtime-operation-recovery tests).
+// These cases preserve live, dead, reused-PID and foreign-host evidence.
 
 import { strict as assert } from 'node:assert';
-import test from 'node:test';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, utimesSync } from 'node:fs';
+import test, { after } from 'node:test';
+const fixtureDirs = [];
+after(() => {
+  for (const dir of fixtureDirs) rmSync(dir, { recursive: true, force: true });
+});
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, utimesSync, rmSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 
@@ -33,6 +29,7 @@ const OLD_TTL_MS = 30_000; // the pre-#656 threshold the defect tripped over
 
 function makeLock({ holder, ageMs = 0 } = {}) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-lock-'));
+  fixtureDirs.push(dir);
   const lockPath = path.join(dir, 'issue-1.lock');
   mkdirSync(lockPath);
   if (holder) {
@@ -62,18 +59,18 @@ test('a live same-host holder aged past the OLD 30s TTL is NOT reclaimed', () =>
   assert.ok(existsSync(lockPath), 'live holder lock dir must survive');
 });
 
-test('a dead same-host holder is reclaimed immediately, no TTL wait', async () => {
+test('a dead legacy holder is preserved for explicit observed recovery', async () => {
   const pid = await deadPid();
   const lockPath = makeLock({
     holder: { pid, host: THIS_HOST, startToken: 'whatever', verb: 'test' },
     ageMs: 0, // fresh mtime — far inside any TTL
   });
   assert.ok(!isProcessAlive(pid), 'precondition: pid must be dead');
-  assert.equal(tryReclaimStale(lockPath), true);
-  assert.ok(!existsSync(lockPath), 'dead holder lock dir must be removed');
+  assert.equal(tryReclaimStale(lockPath), false);
+  assert.ok(existsSync(lockPath), 'dead legacy holder evidence remains');
 });
 
-test('PID reuse: a live PID whose start-token mismatches is reclaimed via the PID path', () => {
+test('PID reuse does not grant implicit reclamation authority', () => {
   const lockPath = makeLock({
     holder: { pid: process.pid, host: THIS_HOST, startToken: 'stale-incarnation', verb: 'test' },
     ageMs: 0, // fresh mtime: only the token-aware probe can justify reclaim
@@ -82,11 +79,11 @@ test('PID reuse: a live PID whose start-token mismatches is reclaimed via the PI
   // the recycled PID is alive, but its persisted token no longer matches the
   // live incarnation, so the probe reports it dead.
   const tokenAwareProbe = (pid, token) => pid === process.pid && token === PROCESS_START_TOKEN;
-  assert.equal(tryReclaimStale(lockPath, { isProcessAlive: tokenAwareProbe }), true);
-  assert.ok(!existsSync(lockPath), 'reused-PID lock dir must be removed');
+  assert.equal(tryReclaimStale(lockPath, { isProcessAlive: tokenAwareProbe }), false);
+  assert.ok(existsSync(lockPath), 'reused-PID legacy evidence remains');
 });
 
-test('a cross-host holder falls back to the mtime TTL backstop', () => {
+test('cross-host legacy ownership is preserved regardless of age', () => {
   const fresh = makeLock({
     holder: { pid: process.pid, host: 'some-other-host', startToken: 'x', verb: 'test' },
     ageMs: OLD_TTL_MS * 4, // old vs the legacy TTL, fresh vs the raised one
@@ -99,17 +96,17 @@ test('a cross-host holder falls back to the mtime TTL backstop', () => {
     holder: { pid: process.pid, host: 'some-other-host', startToken: 'x', verb: 'test' },
     ageMs: ISSUE_LOCK_STALE_MS + 60_000, // past the raised backstop → reclaim
   });
-  assert.equal(tryReclaimStale(ancient), true);
-  assert.ok(!existsSync(ancient));
+  assert.equal(tryReclaimStale(ancient), false);
+  assert.ok(existsSync(ancient));
 });
 
-test('TOCTOU recheck: a matching holder still reclaims (no false bail)', async () => {
+test('matching dead legacy ownership still requires explicit recovery', async () => {
   const pid = await deadPid();
   const holder = { pid, host: THIS_HOST, startToken: 'same', verb: 'test' };
   const lockPath = makeLock({ holder, ageMs: 0 });
   // Holder unchanged between the two reads → recheck passes → reclaim proceeds.
-  assert.equal(tryReclaimStale(lockPath), true);
-  assert.ok(!existsSync(lockPath));
+  assert.equal(tryReclaimStale(lockPath), false);
+  assert.ok(existsSync(lockPath));
 });
 
 test('isProcessAlive: true for self, false for a reaped child', async () => {

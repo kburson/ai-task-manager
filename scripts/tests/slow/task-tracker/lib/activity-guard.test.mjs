@@ -868,3 +868,19 @@ test('Plan runner does not bypass exact document binding', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// @story #1857
+test('missing required runtime state refuses even a read hook without pretending to be unbound', async () => {
+  const dir = await makeRepoNoState();
+  try {
+    rmSync(statePath(dir));
+    const result = runGuard({
+      cwd: dir,
+      payload: { tool_name: 'Bash', tool_input: { command: 'cat README.md' } },
+    });
+    assert.equal(result.decision?.decision, 'block');
+    assert.match(result.decision.reason, /RUNTIME_STATE_CORRUPT/);
+  } finally {
+    cleanup(dir);
+  }
+});

@@ -1,0 +1,2085 @@
+{
+  "story": 1861,
+  "originalStory": 1861,
+  "owner": "kburson",
+  "sourcePath": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager",
+  "sourceHead": "aaeaedfc11246a25828ffe0cf506ff35fdca8486",
+  "originalIndexSha256": "72c7258688d85682c180820bb913f4c993bfe0115e13fddfdf9a50edf168e3df",
+  "sourceIndexEntries": "R100\tscripts/tests/unit/task-tracker/lib/actor-flush-journal.test.mjs\tscripts/tests/integration/task-tracker/lib/actor-flush-journal.test.mjs\n",
+  "purpose": "Preserve the uncommitted runtime kernel and writer adoption work for #1861; review this delta before updating PR #1871.",
+  "captured": [
+    {
+      "path": ".ai-peer-review.json",
+      "blob": "c90ee33f6dd5fbaa2f6617d5039fb43ba24284f2",
+      "sha256": "e7073e177f33b360351719e4c1131bd6f11b0cf3d876253fa523f0d9ebf78692",
+      "bytes": 609
+    },
+    {
+      "path": ".claude/config.json",
+      "blob": "3f74465071337be303d368e45daeafc0ee6552a3",
+      "sha256": "1594b16455a1a6215d021f8995ba209bd910659da1b0e671f3eee34e772eeb95",
+      "bytes": 383
+    },
+    {
+      "path": ".claude/settings.json",
+      "blob": "a600a55304455f308bd65150ee215cac797fabdf",
+      "sha256": "98deaf2b341e3b91e339c1b2e86840cd742ff45de2550ef5221e23b3b143dca8",
+      "bytes": 12818
+    },
+    {
+      "path": ".claude/skills/peer-review/SKILL.md",
+      "blob": "ebf75ec91ec4d6d5beb4a86af9c354571b9c9b46",
+      "sha256": "2fde526ed55a718b17cc6fcefaf2e700af01b42448f41e4aa20fe414cc9f1875",
+      "bytes": 11031
+    },
+    {
+      "path": ".codex/config.json",
+      "blob": "3f74465071337be303d368e45daeafc0ee6552a3",
+      "sha256": "1594b16455a1a6215d021f8995ba209bd910659da1b0e671f3eee34e772eeb95",
+      "bytes": 383
+    },
+    {
+      "path": ".codex/hooks.json",
+      "blob": "a35e825783167a62791e965d66333cb1515b64b2",
+      "sha256": "689f5b2557eb2b71710a3e906e8083997d5675637456f0c48a3bd1f25d299124",
+      "bytes": 10057
+    },
+    {
+      "path": ".codex/skills/peer-review/SKILL.md",
+      "blob": "ebf75ec91ec4d6d5beb4a86af9c354571b9c9b46",
+      "sha256": "2fde526ed55a718b17cc6fcefaf2e700af01b42448f41e4aa20fe414cc9f1875",
+      "bytes": 11031
+    },
+    {
+      "path": "README.md",
+      "blob": "84daac03d52753a7a2eb0026871536bea33b412a",
+      "sha256": "f66baf168b214608a10733acb96632f5e5258b7cb3c33a57786c1b9509fab8a5",
+      "bytes": 49906
+    },
+    {
+      "path": "bin/aitm.mjs",
+      "blob": "85fd31143d4e3cf4d082045b5279b3c7f4a7e13b",
+      "sha256": "29d49bd9d7d12fd4b1e8ba76e3f617c570b937fbce9f4dc15b3a3d408a582b87",
+      "bytes": 8984
+    },
+    {
+      "path": "cspell-dictionary.txt",
+      "blob": "3ee090d8b911373bc1c341f12562b34c33b0c07c",
+      "sha256": "52325b3643bf65a583743c8a866f2a347cd43518771920a7b344fbdc8296f13d",
+      "bytes": 6215
+    },
+    {
+      "path": "docs/reviews/1857-remaining-work/2026-10-03-1861-delivery-snapshot.md",
+      "blob": "f2293239a94efbc6e0fd3811864f88c3d09c7ac8",
+      "sha256": "523362f5d110b617569c5e15d13dab4b6c087b2c9d4353c2882538299bb25b89",
+      "bytes": 3117
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-02-1861-runtime-kernel-design.md",
+      "blob": "901ebde25cd08fb64b85dc0c71405761f5620386",
+      "sha256": "f18463bfc4de17d30402230047dd77a5c2947a13941dd4a7336c191b4dca2480",
+      "bytes": 9052
+    },
+    {
+      "path": "guidance/admission.mjs",
+      "blob": "f2aa66285810cd1f3da33523bafeb142d91de6bc",
+      "sha256": "c33a15a8fcfbc878758ae010568ea53a5dd392a6b105a23848289ba915d2c746",
+      "bytes": 3355
+    },
+    {
+      "path": "guidance/documentation.mjs",
+      "blob": "c5fe417fe5200545ede507baae64bbed3aaab3da",
+      "sha256": "2f08845f4c685b3169f9f2c31d04029f3de53f510220729f346522d04d4dba97",
+      "bytes": 3234
+    },
+    {
+      "path": "instructions/aitm-guidance.release.json",
+      "blob": "ac246ec35450559b4f8b001e2c26ec4f5e3977d8",
+      "sha256": "c733607fbeaa286999f5d0e4aeef9d19cc21377e221d010fc12f15aff2815230",
+      "bytes": 430
+    },
+    {
+      "path": "instructions/aitm-guidance.yml",
+      "blob": "1e1fe690897db958ca853619122bb0b8681879d1",
+      "sha256": "9259bd36cb7802d3bf2bcfdc3563ebc7185c99b3e2bd187b07435619b3bf5e4a",
+      "bytes": 24018
+    },
+    {
+      "path": "package.json",
+      "blob": "fdf5a0f1aec5e2477a9944967f54fc38fe40c34a",
+      "sha256": "c9ef4764441db3272c63ae3e61eb59d468b328090b39d44d72b2381056873ccc",
+      "bytes": 5220
+    },
+    {
+      "path": "scripts/gh/move-state.mjs",
+      "blob": "07fdd007de9ea41047755f524d86a3d01e2458be",
+      "sha256": "bd85f0c491efc97fd7506c6c4f419b975d6253e301e52161e121ea5f5f1393b3",
+      "bytes": 20486
+    },
+    {
+      "path": "scripts/maintenance/capture-guidance-lifecycle.mjs",
+      "blob": "3f8e05775450704cc369231b0a632d721f0237fc",
+      "sha256": "e26fdc4ca671d84fe156fbf9980dac90315e8c24b9177a09d01b7d6521e89464",
+      "bytes": 36987
+    },
+    {
+      "path": "scripts/providers/claude.mjs",
+      "blob": "3249d998bed3a2a4de4e013c679c1989ac83ed2d",
+      "sha256": "181609e1599f8e44aed03bfd5568b10194776db34e21fbd40649d3cd770ddfa1",
+      "bytes": 1331
+    },
+    {
+      "path": "scripts/providers/codex.mjs",
+      "blob": "b350840598fab62d76c8c18344f083658e68ba48",
+      "sha256": "b3a7bb7ec76b482043364174b50d057365f603fbffd344337eff9f2ac40dadbb",
+      "bytes": 1283
+    },
+    {
+      "path": "scripts/providers/grok.mjs",
+      "blob": "2543ad7c5637eec7e043f69f225f043da4a547d0",
+      "sha256": "06d7507e432386d313a6fd4a6fccfd1bdc3c4b8b81ccc8bf9014cf8ed156630d",
+      "bytes": 971
+    },
+    {
+      "path": "scripts/task-tracker/action-capture-bin/gh",
+      "blob": "d390691b5cf6a964d17418634b8c53f576ad1cd2",
+      "sha256": "d90a946503be18fae222e56d6729c259b3d01290a1f1e62c44fbc644f9c3f751",
+      "bytes": 5210
+    },
+    {
+      "path": "scripts/task-tracker/activity-guard.mjs",
+      "blob": "5e1b77b4bf60d393e06e363e29667bdce7786beb",
+      "sha256": "4baa3ce610f186b3bda0792690b5778bc05b8961878355450eb6de4ec7eedf1a",
+      "bytes": 15787
+    },
+    {
+      "path": "scripts/task-tracker/agent-guard.mjs",
+      "blob": "71b4f5a202f048d4921abd2fd5b7c7747e284925",
+      "sha256": "a3c3926337f692ca9fbd91acd6894809c5901d29f723174038594aeccbd06340",
+      "bytes": 4169
+    },
+    {
+      "path": "scripts/task-tracker/commit-trail-handler.mjs",
+      "blob": "1108bb132932ecb6b626dc3e4b3ef9050fd2c52e",
+      "sha256": "5dbe29bfaa8b201028ab759e7ab30b3602ba9174e91eed8effae99bbc12b340c",
+      "bytes": 10308
+    },
+    {
+      "path": "scripts/task-tracker/draft-branch.mjs",
+      "blob": "24bc158bfc1a61e101d1275dd45a547590d65bb8",
+      "sha256": "0005f39534ce4706954a82e5a65808e0e1ed7a5f67a958842e553eda3ed516a0",
+      "bytes": 7446
+    },
+    {
+      "path": "scripts/task-tracker/fleet-registry.mjs",
+      "blob": "62d449727c205dbd7a6a253b65e24b7876e9fcd0",
+      "sha256": "c0182ce6b6566b206f5ef9218754ac8c65aeb4d7cee1061f754ff9f2105ce595",
+      "bytes": 8396
+    },
+    {
+      "path": "scripts/task-tracker/hooks/on-ask.mjs",
+      "blob": "b59f90368fb5a5666dc78e7d3108324348a17dad",
+      "sha256": "488cbc7752d97f2c71489e5ea73a242eb1dad3c2d8810a9c50e5dc12e26db39b",
+      "bytes": 9048
+    },
+    {
+      "path": "scripts/task-tracker/issue-mutator-lock.mjs",
+      "blob": "e6f3c671cf0eb556dc6460287b351c12027003d3",
+      "sha256": "93cbab0a851a86d762b729d72756ed5244085752dbfb2c687736691acf86c241",
+      "bytes": 7450
+    },
+    {
+      "path": "scripts/task-tracker/lib/action-capture.mjs",
+      "blob": "8f5051a3fff885ea423642ebf499bb6c5f1630d6",
+      "sha256": "979ff1a43eb86a064f71f1073c34ec82fc3d8331aa88d852a6a256395adc6bf3",
+      "bytes": 17425
+    },
+    {
+      "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+      "blob": "6ce9df9e6db37faec381c1e00139c949ced56cd9",
+      "sha256": "3cac42f43e364827ab77f6747d7ac356ec29f77231f9a4476767b662b967e3be",
+      "bytes": 39385
+    },
+    {
+      "path": "scripts/task-tracker/lib/actor-flush-journal.mjs",
+      "blob": "653cedf64150831a8d67fcff82c16dbbf2c47d5e",
+      "sha256": "6189b9df69b5639d7693fa5f40029e841aad89922f4cf4b8ed06ce811bbecf60",
+      "bytes": 6228
+    },
+    {
+      "path": "scripts/task-tracker/lib/actor-timing-state.mjs",
+      "blob": "7372fb33800642ffdd308286c9d87dd9a010da11",
+      "sha256": "309c953b58bc74e0081df9e4d8af5169c731ad790418f7360a365f517adda633",
+      "bytes": 3790
+    },
+    {
+      "path": "scripts/task-tracker/lib/artifact-write-policy.mjs",
+      "blob": "5a89f7eef76f5531ae54f4c09e0ef69a91910a71",
+      "sha256": "afe207236ca7b4354b12d769c7ee67f5cffe8a67063efe53e2e8637b66e45248",
+      "bytes": 6627
+    },
+    {
+      "path": "scripts/task-tracker/lib/command-surface/catalog.mjs",
+      "blob": "bff36c95924930bb7fc9894b925cfcec689af15b",
+      "sha256": "ca8d6cf7861af8b34c824b7fbec9f793fff568ca5beadb53f141864821d89c94",
+      "bytes": 55080
+    },
+    {
+      "path": "scripts/task-tracker/lib/evidence-runner.mjs",
+      "blob": "aa2523099b37f1c34d0ba21803a2ba4807b7842a",
+      "sha256": "a7fcd0d5421de331cb811c14d2632b69f76e8bed43f01fd195b357df6a40e3ef",
+      "bytes": 7407
+    },
+    {
+      "path": "scripts/task-tracker/lib/evidence-v2/runtime-adapter.mjs",
+      "blob": "ea73b2a300a7b5b0f30c2bb216847ef96f18497a",
+      "sha256": "443ee7c24bbc35962d2dadcc264b899d37568073fae130a1eee7f8952827d751",
+      "bytes": 7143
+    },
+    {
+      "path": "scripts/task-tracker/lib/hook-idempotency.mjs",
+      "blob": "b2f09845d372e3d6beafa1accbf990690523ac45",
+      "sha256": "d6b0a2ec127bb36006496ccc5a96d322db52e7edd3d1e4a9b0f293afe8a3586f",
+      "bytes": 1804
+    },
+    {
+      "path": "scripts/task-tracker/lib/occupancy.mjs",
+      "blob": "df647eec10abc95e9a6d1b14dcc05271339c0a2c",
+      "sha256": "913e21685dd0f2e83393808c0be955d43fd4439700998e1a9e87435d3670aa14",
+      "bytes": 7593
+    },
+    {
+      "path": "scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs",
+      "blob": "f16cfc7f4a5f11be444dc3652636b891b2130f4b",
+      "sha256": "c4dec95d1040fc6a9baad6a60daabb823e5d8cb7051989782383aea5681ee45e",
+      "bytes": 913
+    },
+    {
+      "path": "scripts/task-tracker/lib/ready-for-plan-migration.mjs",
+      "blob": "c1929119314513343888173e81a6cf79363f9e63",
+      "sha256": "fdedb01f0ccfd22b58a0a20a93a134b1ffab3ceb2b765e1406b2ed8a1cc422a8",
+      "bytes": 24950
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-batch.mjs",
+      "blob": "b193d4b6f1d22bb51907387952ed83e4b4f7f930",
+      "sha256": "aec006e296e9aefe57946fea6a44ecc75340edceb85108d91cbe125d67b36aa1",
+      "bytes": 13545
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-initialize.mjs",
+      "blob": "2a06db99b1a50f7b878d9297b279ea61b9d3f1a7",
+      "sha256": "f5b2ba6c7d1f80173cc0dd78a8ee9720aba1a5f860f276c9d933e7a8c0413487",
+      "bytes": 9503
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-migration-apply.mjs",
+      "blob": "fcb8cf0f54ac9a4a05308ec19e8c73bd202f104f",
+      "sha256": "3ed8841b3defea59b549285f3dad42fab0a7da47412fe2ab8388212c9f86a701",
+      "bytes": 21675
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-migration-plan.mjs",
+      "blob": "9111941100eac5940ba8deed3da3e7357de73f3a",
+      "sha256": "1c501c1c92f30e30c65655bed48f730fc077fed2f438c1312a271b7d8516825f",
+      "bytes": 9510
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-migration-timing.mjs",
+      "blob": "e7bedeb16750694d3113724943b3db1b4444ec77",
+      "sha256": "fabec995ee5cf0a32be55e0d976619fc6244adcaa9cc41a203a75587329f9773",
+      "bytes": 4030
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-process-census.mjs",
+      "blob": "3af80cc1598c2d6e29d604782d5841ad22ab449b",
+      "sha256": "afb541de6137acd3e7ab834a3701da57997d3c144cf0aed8e3bfd4285393842a",
+      "bytes": 5372
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-record-catalog.mjs",
+      "blob": "0658a02ab77c21da3fac65df4729d983b091b6e4",
+      "sha256": "3692aa0b6bec04424c74f223e14db6eb8357e4d1ae7393daf1869c876bb937e9",
+      "bytes": 9716
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-writer-census.mjs",
+      "blob": "1e34e3c81df2f2c9a882f6a8b875d6080f5baf33",
+      "sha256": "1196cb18e187df29ecfde949e8f1d5fa223ef03296f991b4d56eef450fbd3318",
+      "bytes": 5034
+    },
+    {
+      "path": "scripts/task-tracker/lib/scratch-dir.mjs",
+      "blob": "e3ceb43d421695d58fd9fd148c1013a712688f40",
+      "sha256": "858bde5a7331213ce0cf6d17f4305896c22c7bfde42ee746e9d9f5415e7b4d86",
+      "bytes": 7292
+    },
+    {
+      "path": "scripts/task-tracker/lib/session-store.mjs",
+      "blob": "889cf5bb489a3fae9dac677a7535e197b74b253d",
+      "sha256": "4b99a65c70a0c3245baf4bddc507721e673eb4eec1e4c3e3a3dce1fb06cd1344",
+      "bytes": 5230
+    },
+    {
+      "path": "scripts/task-tracker/lib/test-sandbox-reaper.mjs",
+      "blob": "8e69e876bdf1746fe506d41f3b39569bfecfa3a5",
+      "sha256": "66a83fc009ff27b6f0e767dfaeda7118606b228dc082ecd4b64a102eb3ea7a84",
+      "bytes": 3000
+    },
+    {
+      "path": "scripts/task-tracker/lib/verifier-cache.mjs",
+      "blob": "204bc814c10305900c5ebc1e13fb4c28833a9682",
+      "sha256": "843cebe151695f5ba75aabbb53ba7dab064562c6e01a227f49b4b3ca4d44f1fa",
+      "bytes": 4712
+    },
+    {
+      "path": "scripts/task-tracker/lib/worktree-binding-lifecycle.mjs",
+      "blob": "d9ad7c7b082b616720ec770b2c285ab1c880b5d9",
+      "sha256": "fd7f1002896c45ddf63ef045212a1d85047ddc2b39694e09d373d664d1b6a73a",
+      "bytes": 14073
+    },
+    {
+      "path": "scripts/task-tracker/locks.mjs",
+      "blob": "0965bbfd741695b09ea8a5b38101c829924feed5",
+      "sha256": "5ebab3f7588f13eec1ba0fff928fc7d37956947d31d90fa90cda96ad004abdd8",
+      "bytes": 2240
+    },
+    {
+      "path": "scripts/task-tracker/orchestrator-lock.mjs",
+      "blob": "43eef08b716077b1d4ffe03e3a490f1b1b7a7af8",
+      "sha256": "7d5dbdf2751a3250ba5e2655a40a8cbb715514eb36a0458da0548b990c951f48",
+      "bytes": 2868
+    },
+    {
+      "path": "scripts/task-tracker/paths.mjs",
+      "blob": "401f2ec26ac2588d4cb07be3f102e2dc0620f783",
+      "sha256": "6eb7373d2ce65da2b6cbb74a728741761722fbb7e343dfb53a504c8211d0da70",
+      "bytes": 12653
+    },
+    {
+      "path": "scripts/task-tracker/queue.mjs",
+      "blob": "c9904ae2d28412704a68e62d2652cb416f629dc3",
+      "sha256": "06f737d058e6f89c1452b65dba9eef2c62ce172541062c1b232a0e38ff789677",
+      "bytes": 5212
+    },
+    {
+      "path": "scripts/task-tracker/session-state.mjs",
+      "blob": "97c284dfb6076fa334394a68ed444eace29916c7",
+      "sha256": "a4970c9c215530b2defb2340a2abc89e897250374be55f27656e5148b3a0ae5c",
+      "bytes": 6030
+    },
+    {
+      "path": "scripts/task-tracker/source-edit-gate.mjs",
+      "blob": "35bba42e529c569e057e49a844797fcb23cad693",
+      "sha256": "ce5bd1ccb647a111befeb5cc2e75844d5c6139ddedcfd86df3fb3b099f6f9fa7",
+      "bytes": 25729
+    },
+    {
+      "path": "scripts/task-tracker/state.mjs",
+      "blob": "45dfc61b48a931a9122b6aefebbde5341629d6e7",
+      "sha256": "518bdf88d6e7082d3ac30fcba9cacfc306de437a71bb9c5910683e578c4db8a0",
+      "bytes": 13842
+    },
+    {
+      "path": "scripts/task-tracker/task-tracker.mjs",
+      "blob": "c4217bc1902f5e17deaf5494ab2b098c18d8b697",
+      "sha256": "a8dfd7e00afd32d79536987572acf78afe6ed3b16e3302d4c4a4da253da5aab6",
+      "bytes": 35054
+    },
+    {
+      "path": "scripts/task-tracker/verbs/help-data.mjs",
+      "blob": "1f5eca06be30e40d1f4be9800629755b0382b1dc",
+      "sha256": "439c4cecb9b3086ab084c54d6510178b50fb5c4e58c7f0c305059a02d82b58d9",
+      "bytes": 50854
+    },
+    {
+      "path": "scripts/task-tracker/verbs/migrate-runtime.mjs",
+      "blob": "0a861d074ab8092b4a09692c247426b204ed4e61",
+      "sha256": "d588963ce555ba13e05615d6f2f580a65f649304acb6c5c5dbeade3227d8ee7b",
+      "bytes": 9264
+    },
+    {
+      "path": "scripts/task-tracker/verbs/test.mjs",
+      "blob": "144e4ab8b1f9e9a9d2a083fadea264c1708be11d",
+      "sha256": "935396f10321ca2f25bed95adc8b8c942c93b7809a2f01ea105f8968dbfd18b0",
+      "bytes": 69920
+    },
+    {
+      "path": "scripts/task-tracker/word-counter.mjs",
+      "blob": "0304b2c4421b2c765a4d5a317738189f15298edf",
+      "sha256": "1c67de214aa3b2cc551651a90c75960a3ce2583e75b529582ad73a164a938d50",
+      "bytes": 14217
+    },
+    {
+      "path": "scripts/tests/fixtures/1558/admission-surface.json",
+      "blob": "a867975dce8ee422dbecfe71b36eb28060e1203d",
+      "sha256": "d2dbbab35a926ddb67ddc47825255c0307ac5e35eea6c0a3ff17acf06881a549",
+      "bytes": 94884
+    },
+    {
+      "path": "scripts/tests/fixtures/1558/rule-guidance-map.json",
+      "blob": "17fb555acf79416a5f8b1f744c7c4d54f8542435",
+      "sha256": "fc103b05488244900ec6866f01eb4474b01c171da4eb153ca8118561c515ff10",
+      "bytes": 19087
+    },
+    {
+      "path": "scripts/tests/fixtures/chore-mode/chore-mode-fixture.mjs",
+      "blob": "ea6953f3cfd4b53a9b68fc01bd9755fedc410a45",
+      "sha256": "4a4d578ca2d9e73d82db060b782b90fe560bd7282a1d376e3f092d3c0cf40e51",
+      "bytes": 2519
+    },
+    {
+      "path": "scripts/tests/helpers/action-authority-cost.mjs",
+      "blob": "9fb34bd62a26ad5dadb8a5846d48d6b727db2dba",
+      "sha256": "b23fe404ccbaba06a9a51f154582990eabc67efbcd8090873933226e914413c2",
+      "bytes": 9837
+    },
+    {
+      "path": "scripts/tests/helpers/action-early-promote-cases.mjs",
+      "blob": "6f18045b3578b1dcd4e0cd7712f72a15fe0e330e",
+      "sha256": "90959570e3aefdd05edd9dc779cb81b9beb6d26a28e572b4c2e212d74b8cf26e",
+      "bytes": 26433
+    },
+    {
+      "path": "scripts/tests/helpers/action-explanation-authority-cost.mjs",
+      "blob": "beff1a3c111f2af69b4acdc6dfc7ee5dd5a9564c",
+      "sha256": "b67317a5d0dcc1d62f378143e9ffdd55f11581ed101fb2d5e201309b9ef4e9ed",
+      "bytes": 10711
+    },
+    {
+      "path": "scripts/tests/helpers/action-navigation-cases.mjs",
+      "blob": "75590a5107e09e046f55b19d7456db188dc638e7",
+      "sha256": "51e2e0e972e48f8c0dc03c06abd2cd85d4f661da68de9bf8e68d9cc66a9b0faf",
+      "bytes": 18626
+    },
+    {
+      "path": "scripts/tests/helpers/action-session-executor-fixture.mjs",
+      "blob": "68b1fbb5af26f8fd0635884730e704169a353152",
+      "sha256": "04d7d91bc237edf5264fbd9422fc781506f52781359e776495b1ce36f286f92c",
+      "bytes": 2300
+    },
+    {
+      "path": "scripts/tests/helpers/activity-guard-fixture.mjs",
+      "blob": "e84f8ade49eb922007c347fa0dbed6ceab0da718",
+      "sha256": "3e9ce0e9740d30e6b96d2be82e8ec9df25f07ed13e184a2ac06fab1bb5bf0fa8",
+      "bytes": 801
+    },
+    {
+      "path": "scripts/tests/helpers/capture-guidance-release.mjs",
+      "blob": "79f6db9d905d8fc294ace55c39a7468329e0bc45",
+      "sha256": "5dc5207470d07cc94eb4fc086a5c7daeeca3404123d179f480123adf9a57e38a",
+      "bytes": 44535
+    },
+    {
+      "path": "scripts/tests/helpers/captured-commit-bytes.mjs",
+      "blob": "07e66af6c9bc13e8c6fb2843ac5cd30706d473a5",
+      "sha256": "eea4d201037f08a7cbe8a657bb5ad105b99f52359147361a2206f4f043155bfa",
+      "bytes": 2703
+    },
+    {
+      "path": "scripts/tests/helpers/chore-mode-state.cases.mjs",
+      "blob": "ef949d2f20f7dfa76d69300bb6f63b772cfd41eb",
+      "sha256": "83c605a8eb868e7f98e1517f0000e333fd0780cf9549d1cd42a51c1d75c37196",
+      "bytes": 3961
+    },
+    {
+      "path": "scripts/tests/helpers/close-convergence-wiring-helpers.mjs",
+      "blob": "a21803ce4ebd4ec4881e6dc728b159de31f65e89",
+      "sha256": "949755cf2e9b3688694f39b62c673687d974076d24dac8a26fb2a5ad635a5784",
+      "bytes": 17494
+    },
+    {
+      "path": "scripts/tests/helpers/close-state-fixture.mjs",
+      "blob": "8b86ee87db07fbfb942608d4dd05c3e742a95647",
+      "sha256": "ed7971f37f066ca3068150af342441f3fa60c8daf9c4c70e027a517fb3297dcc",
+      "bytes": 1161
+    },
+    {
+      "path": "scripts/tests/helpers/evidence-v2/process-bootstrap.mjs",
+      "blob": "e8c3492914ce8fbc8950878d99329a8472c75bba",
+      "sha256": "ecf8ed99b7a79093f84b7aed397094edaafff7b3ddcb229a8f0be641da1b7d31",
+      "bytes": 6148
+    },
+    {
+      "path": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "blob": "d9f8c91ed2f78980d00f3f34db1712cdef6d0ef0",
+      "sha256": "c6ba342d6ba66a3957a4a0be026e77d3ba91d721672f09ed47cb97bfe5d327fb",
+      "bytes": 8948
+    },
+    {
+      "path": "scripts/tests/helpers/fleet-registry-concurrent-helper.mjs",
+      "blob": "8dd2e7d203b35d5f054eb725128bbdab614b0c22",
+      "sha256": "56f50b08d19252c1ea26f4a6644f23983cb59e92456f66ac6412f101077040a1",
+      "bytes": 849
+    },
+    {
+      "path": "scripts/tests/helpers/guidance-capture-provenance.mjs",
+      "blob": "4fb8ace47fb43999536bf4964a76c72ccf7eb42a",
+      "sha256": "ad55852ea7d0d03936eb91163ee4be6991377274e22166dfab3ae3cccf3cf7b6",
+      "bytes": 1429
+    },
+    {
+      "path": "scripts/tests/helpers/guidance-paired-context.mjs",
+      "blob": "81c4c368966b30586f34c88f5be5af30b390f0eb",
+      "sha256": "f4f835d125428abf413cfd58a170f633661af27eac8c987579d2941557ce5d37",
+      "bytes": 15300
+    },
+    {
+      "path": "scripts/tests/helpers/runtime-root-fixture.mjs",
+      "blob": "bb9859dc34bffd37a41d816ab4016c23e621d6c4",
+      "sha256": "e7032e1b37d38f6409e47bc9e1f3719478f042feec82c1f0bc549f242aa8eacd",
+      "bytes": 3156
+    },
+    {
+      "path": "scripts/tests/helpers/worker.mjs",
+      "blob": "7d22153d2464f35bc757a121ddfc18acc25bd879",
+      "sha256": "2ead3a51a23fb0ab47141fcaac7d0adc2f3e7a2bf1bc238fc8117c8e79273907",
+      "bytes": 1804
+    },
+    {
+      "path": "scripts/tests/integration/meta/package-test-corpus.test.mjs",
+      "blob": "928d5c40dbd469a7a0542d18cedcd30c91fbe76b",
+      "sha256": "3f034fb8adc9687db1d35730a958bf26cf907232bf3e24e1fb5c56312059c2fb",
+      "bytes": 2667
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
+      "blob": "c2ccd5c5fc5e43b802dec4d66bdf2a50effd78f9",
+      "sha256": "727f7da1978f3a6f220c047d42f1784c28a06d5b438e03bb397fc55f8391e44c",
+      "bytes": 7507
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
+      "blob": "ccf7f530a320c946ef71e28ed7ae8064f5972731",
+      "sha256": "c7c43a0320c24a2ffcb85a5b4c1e7285e6ff412caa9ffea527f9b3f6b23c0f12",
+      "bytes": 17617
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs",
+      "blob": "50cf922ee8b7d5840fb2541b5e4712f1a16111d2",
+      "sha256": "a03c749834b25c7dea2c0ac78b1fa6bdd0d560a6639fdeda2942b0d8daae0502",
+      "bytes": 15052
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs",
+      "blob": "a346f55be34050afa647780ac4afcee59486c3ae",
+      "sha256": "60c3c8f391c2686690aad4e3fe67ec4bf583cbd5eee5d27d56f8bb76266f2bb1",
+      "bytes": 5747
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-parity.test.mjs",
+      "blob": "fc9972ef904aa3f60ac7e8f3b5809db2ffe0faa4",
+      "sha256": "729dd058fd98f7288f22f6f6f4108904ba9b24f772474b4768cf6588e6305466",
+      "bytes": 13407
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs",
+      "blob": "e701c3764ed666684a3d99b068fe514e7eb41122",
+      "sha256": "69f9b9e2c50f01eb250c57f6ec539a62971ec452d9c7101c9c7a8bcca38b20ae",
+      "bytes": 2158
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs",
+      "blob": "4a6bd55189466174216753a52a6604a75e11b186",
+      "sha256": "85ef28e39d2b48f5ce9ff32b9c9a010ef3caf35003f92f20adfade9228067912",
+      "bytes": 13292
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+      "blob": "ae31c0535f1d76411d0842ade80f01ce44d7bcbf",
+      "sha256": "db6c73012a9bf5ee55ec116df9de77d3d8f48fea174934a69f5f5c4089cf03fd",
+      "bytes": 23888
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+      "blob": "27659b1d89aaaf38015bb6c37a9702d2e408ccef",
+      "sha256": "cc666c87a5a212f5b80e3f6671c7c5e3ed9e3e3138bf0dfa4b87afe4e8f2377c",
+      "bytes": 31001
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs",
+      "blob": "bdc33aef500cd9c5270e3abfa4f697c77281fe23",
+      "sha256": "96e1faa38c655dbb664bc478a42ccffca563a5ddf0a27938e4186410c04b95dc",
+      "bytes": 27610
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/actor-flush-journal.test.mjs",
+      "blob": "8949640a7e919ff8fd72e7ca7bc4076c6c018477",
+      "sha256": "1e9e8e322b2a4ea03db131e3143d3e3473c6742ad081a98e989bd5f5c082cc50",
+      "bytes": 5641
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/artifact-write-policy.test.mjs",
+      "blob": "36b0424ed47ebd7c1dcd87e26122bdaa32ee077d",
+      "sha256": "f5b62d2f7cb2d60981acae2c956b1bea539192d3709c34a5e0bebf2fea907be5",
+      "bytes": 10719
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs",
+      "blob": "638bd86730d888c4fcaafcaa5934ae253a1c3434",
+      "sha256": "95846df2b1cfae5329629535dce846be6c13fcc58558cd3d69cc8fe9f061a4f2",
+      "bytes": 5850
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+      "blob": "761cd8555b24d4f70d1c3ac5810edea02ddc4515",
+      "sha256": "abd9f239525bbb6ffc9f79549e155aa493f022677dba6f3056bdcf51ef1af0dd",
+      "bytes": 8827
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs",
+      "blob": "3af71c88eb0b69010d110be88891fa66fd54449f",
+      "sha256": "e755d5dd4747a40a9a39b06eb5f7d8aeaca151b12c0edfcf1d45371625646a22",
+      "bytes": 7742
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
+      "blob": "8a07c86626c98bd7e853fa9672dfc0f4db84c06c",
+      "sha256": "5370e6ac0667389780e6523b024e1abe5bc30b2689b76d69a766d26e73e374b4",
+      "bytes": 8851
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs",
+      "blob": "635fbdf32d4ef06a2f9a2d55dfeca3f26b910c4c",
+      "sha256": "0e4c0e1f55a964d3c7fc9795190db5e7558f2fb24403b86ab26861829c36453b",
+      "bytes": 4030
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+      "blob": "3a18776c59f3b42cc760177d5a74fd3fb292c1a4",
+      "sha256": "672db5d5e2aed2f6c19fdce01d554eef4773209117ab9d9039a7eacae386f5a3",
+      "bytes": 9848
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs",
+      "blob": "fd3afda87cf53c1e4150a8dc7686a0df17ff9f10",
+      "sha256": "dc18ca203ce24b31a97b1dda54fe8f45767272b5b96397f1220d29ac71c71da2",
+      "bytes": 11326
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+      "blob": "f0df126895edff88d76f079899cb97a4cbc30744",
+      "sha256": "d0440b87ccb7196c986f69ffa95c3e5deaaca402ca25313df7a960ff8d2d4d03",
+      "bytes": 12955
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+      "blob": "3be877bf74c8f24636feb64571e87398c6704650",
+      "sha256": "15ac7ad46d3830d4e759f005514030b1b1fbbb063b5eb3410e43f6b5ff33be46",
+      "bytes": 6102
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+      "blob": "78fc7c579ca1b1512090e4166d71f606b87970cf",
+      "sha256": "0beb259b49536009b733932a849aa0244df2cb8351b6717dcc279c3c26bfe26c",
+      "bytes": 5766
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs",
+      "blob": "e41b3f6681d5a9b703e0168d5bb817a295a32c89",
+      "sha256": "21cbb32dee988db7c35f80fb3e8153002498af98bc2535a0dae12b24fe175d7a",
+      "bytes": 16754
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs",
+      "blob": "e8dbe21cdc857a51959149973285813c53e5f06b",
+      "sha256": "ed90fbb86a5ed508167ea817009b428c208cabe62723cf690d203b6e6c1a9233",
+      "bytes": 2602
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs",
+      "blob": "e2deb6fad1e1c80855566c4ccdb896515ec48180",
+      "sha256": "be244918f156d327bb2ceede263a979ff7cac40740e481ee6040bcd8f9b51931",
+      "bytes": 4059
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/evidence-v2/cli-contract.test.mjs",
+      "blob": "73c4d9be65605d1bdb2070718942e598e70ced4a",
+      "sha256": "c6990c2860d33249e1b57e5e7a3968812ea33ae9267765a33935ff7e2856397d",
+      "bytes": 3645
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs",
+      "blob": "adbb709ac6fb6d9c02343bcfdf97a47618653f1e",
+      "sha256": "27d0c68d647508c949d9b78c515bb750a2d4547ec9ef37cd2fa35b57bb8e873e",
+      "bytes": 6980
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs",
+      "blob": "5996dc7875672eea673fee4b2d2ba2b249591aad",
+      "sha256": "b237a98b15d7d3b08984b6bd42deda670dcc70127ccddb1c643c3dd14b1d9799",
+      "bytes": 1739
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs",
+      "blob": "ed949f2d65a84ed968f2f0ba4a0021f43dabe75f",
+      "sha256": "f37b014838eb72593392eac50da278ce89da537b82f3bb4298a6063bf22e4610",
+      "bytes": 4329
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs",
+      "blob": "57dd4453d28e6d1677dcc16658cede2fd400ae68",
+      "sha256": "0369ad6b41fcc8f5c047fd3e4a009c114c5f1a9caa423781b69394915bf8ef47",
+      "bytes": 2348
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+      "blob": "76f555520919d18d379a1ef4d0133686ed65c369",
+      "sha256": "61bd463c57ad455f5216fc75b833e83063221764c2f797d095668682483ff0ce",
+      "bytes": 4100
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs",
+      "blob": "b3a26b660cb3546a6d81347861a1fcf7f0213505",
+      "sha256": "32899b6a3c866f243e186609be065a7c5c272f6301bffe840582118ae6f54bde",
+      "bytes": 5203
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "blob": "9943ac3cfdc3d3b9a8ca5a6e304d90cfd881ab1e",
+      "sha256": "1514685b5d723c020cb589bf7baf8007b45b042a0d1305e961a2093fcd669041",
+      "bytes": 13585
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs",
+      "blob": "918be6d8987b1cd3c3960d5e1099985ecf63910b",
+      "sha256": "ec754393cfc4a905f510f9922b6b21b8caf4845bd99fc76c97424464dc1274f8",
+      "bytes": 14491
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs",
+      "blob": "b260952f48ad613509251da8e01d99f49d746407",
+      "sha256": "3ec363b689d91481f430fc43a2dacbd80fdf9b29d68553d624269b5bec402c2f",
+      "bytes": 10510
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs",
+      "blob": "695fb52871d68a1f48a6778eeccc096f27346cf7",
+      "sha256": "d9bfc9e6b9e7778d78f45873c510e54551f8717cc5b904f010e247797ffd5190",
+      "bytes": 10164
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+      "blob": "5da2ea55c792c340cf17b9fb4faab31f4695e439",
+      "sha256": "fd292cfc0b3e49aeb8acff3a8404ca332fbcc73da371d5df971d13d15766a021",
+      "bytes": 5055
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
+      "blob": "853ac05fd168ff15d81b60f32745557c18eab9b9",
+      "sha256": "27f5b97ddc610880dd1c99bef489641ad7998b79d85dc260cb1da4b9fa3f6c58",
+      "bytes": 2884
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
+      "blob": "ea9dbe76ffbc6f37fc8e92ac22b39c5a42c10822",
+      "sha256": "906abc133e66d50385aa5f2fbcf4023921f0e238ab4016b83fdb90f01760de3e",
+      "bytes": 6248
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
+      "blob": "0d30766c21ef27205b37e3c81747ace80a971d9f",
+      "sha256": "6250c69c931114ba805a59609f51b66d590ad48a333fd5a18c3831278aa38771",
+      "bytes": 5378
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs",
+      "blob": "c6c71898114a3e06e3244806d86dfb372ec7aee7",
+      "sha256": "1c7e2cc24dd8bb5994c1c432c84463733d779cb905c82670cd1903757f93ec44",
+      "bytes": 13209
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+      "blob": "31a922b45edb228f201a8a6800b216ab43015925",
+      "sha256": "b57979d42b2c7d6ab7ae5858bbd9272d372cec1ba6d0fced5983869b44116436",
+      "bytes": 4044
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+      "blob": "6a7483e63a9a865cf9377e96d377789f9728d3e1",
+      "sha256": "10ac5848cb880dd109b3301709d2e9b05c8fb22647a252306a70782125d9a35c",
+      "bytes": 7859
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+      "blob": "7fd0c0bcc7e0d5635bf1d3ef68e5b169a87d52e2",
+      "sha256": "02b7afd447b391e4921ed19bfa0344a63104620fe03376759f8535b76832f196",
+      "bytes": 8050
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+      "blob": "5521d4077e6e9ae427920f41e7770d00febf1ff5",
+      "sha256": "c1ddf71344f8d29a0d42035c4e840f3ff85f80d1f2157122e1e28358414b2785",
+      "bytes": 9238
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/reopened-close-binding-ownership.test.mjs",
+      "blob": "526da18784d6f557196bc96c2cd20a07f18c9f24",
+      "sha256": "13ad965e3f7de7f532b936768d950254706d75ff44b950e9b63aa0f05eedf18b",
+      "bytes": 11193
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+      "blob": "799ccb24fc25f5543f7df338c6c309e8a2d33d1b",
+      "sha256": "2e7f9930f584fc76dd8f98745cd11aabdab3df1d50bc2401d029076c50266218",
+      "bytes": 10999
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs",
+      "blob": "48bd87d96e46d53d27cffa0fd8a3aa8f425269c5",
+      "sha256": "ae3ddf87986a681dbc134342d1f7db756e93713754612b30a5eb69464e11007c",
+      "bytes": 3129
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
+      "blob": "48a81a0ea684eee02156e49fd30efbc92bacb0c1",
+      "sha256": "3a62ea03040c9c818119709455749cdb8b60401a3f73df8921284c429c2ebbce",
+      "bytes": 4591
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/resume-seed.test.mjs",
+      "blob": "fe0ee4d0da27b2434d080fd99fc8bbb4e48c0ba1",
+      "sha256": "bb9a1528caceb9d6122f730a5aa385009dc3406ba8b1d99a467283def67a8643",
+      "bytes": 8454
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+      "blob": "abedfa80c75d0681e41f04a7dc2153f4ee2e0d6e",
+      "sha256": "5429cd0a542a0150517ebfc409e30f52c7c34bd387f333da0f49cf0e65eedebe",
+      "bytes": 4726
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+      "blob": "e8dcab079759eed215ba379d8e5fb432b0f9af45",
+      "sha256": "35b3312b45776e5c41e47db6fef7ae2ad4b5fc44876bf6e29fc39c5db99bb9cb",
+      "bytes": 25931
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs",
+      "blob": "cec269772c85e050b72f572913e0f291d0295956",
+      "sha256": "8a4b1db39f1ab48e17bd27e95e98a5e30ad7bafff627395a3c835d2cc0a42920",
+      "bytes": 5668
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs",
+      "blob": "d89757dd323a272c95dd1d8eb282b340ed6f8de4",
+      "sha256": "583ebeb6e0e561e0f2d6573b67355615f2d64cb0437a26dd628ff92b37ab9ed5",
+      "bytes": 10717
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+      "blob": "b3ca0a55ac6ed822ea200754926ad46c0bbb68e5",
+      "sha256": "cb5511def62a99c355ae956b1124d64a8f3fcfc3ff6e2319a8d0aa0a299ba72b",
+      "bytes": 9384
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+      "blob": "cce7b01a13701189e62f3246cdd51f5bb3defc92",
+      "sha256": "46aa4913e8f407c5da125ba33a6b589bcdae301ea2ed3cad5bd2cdfaa9514006",
+      "bytes": 10510
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+      "blob": "c9932a8bc2ae1d7e0b1e4a05b5391b38aa000a74",
+      "sha256": "91efb4ab020d55d37b22a2d4df3a816bbca77c512ee554b0fdc30343a28f29bf",
+      "bytes": 7155
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+      "blob": "907b2603bcd255fee8dd5f2d325f931c6922ec84",
+      "sha256": "82400110a4fa387f7eb6990b089a0a187615323bb6bb1e24b6a3b1a510472e1b",
+      "bytes": 1934
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+      "blob": "7f8922a862baf84a54f9512f9f7a366972a28027",
+      "sha256": "23d164e04c1cd63f78ed1a728d4c1e22b17c765be849af400dedd35a41c58bdb",
+      "bytes": 9773
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+      "blob": "ab158896c5d8e242f0df0a9cc92182e753c1665f",
+      "sha256": "0dd29141e1d7a348780b695d853d2835f1bcd6ce78ac04d157805d7e00ea9f8e",
+      "bytes": 3451
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-migration-successor-timing.test.mjs",
+      "blob": "303ffb0ab093194c84a66fda435b85d68161023e",
+      "sha256": "d290a7fe708ec0b8e606905e7b00fbd50e48a468c594e4224c79dac10c84648e",
+      "bytes": 3832
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs",
+      "blob": "08fd481d2c2501053baff3b48c94ca234d07c354",
+      "sha256": "d0d49997a8af9da55f2cb436531780f7ec850554058bf29094b34be1663f6d3e",
+      "bytes": 30735
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs",
+      "blob": "e77f95f7b5bb40e9d41b46f5c7e781a561bc7152",
+      "sha256": "288720e5365fc6b60082dcd87a2c78989ce8eac90aff7355714c4fec74125f8b",
+      "bytes": 19700
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+      "blob": "527f1b3cafaf66a8ac61af6d46da04c507405b54",
+      "sha256": "c9af1a16cbf1b43376a1c95a11177b0d72cf5a0bbf402dca34ccdd39d61dc074",
+      "bytes": 6424
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+      "blob": "a1d5b1ff0805754be13074b55c5db89e8be30ad2",
+      "sha256": "1b6bf5fd14f46f9b3e1cfa876bc38ac81d6040ca4e6fcaa78d83b2f9555012de",
+      "bytes": 4218
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+      "blob": "7ea4c98114c7e7e021f3584492754aaac9c0ef5c",
+      "sha256": "f807268f5c778d83a2f39cb67a27ae4df2397c833a6c5b755cd73f6c91890637",
+      "bytes": 15676
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs",
+      "blob": "b307e68f4a8fe6a344db08cc12b927cf3d232b1e",
+      "sha256": "2a88809f2f4afaf996ecbd5a45d521a92245fdf6ddf46625a767b045492bace0",
+      "bytes": 2518
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/source-edit-gate-workflow-policy.test.mjs",
+      "blob": "4203619077a78840648e11760bfd0ad554eb686e",
+      "sha256": "f69feb38dd44be7111973d4f3724999298d2a38993239dd2c80d9fad76f42883",
+      "bytes": 2396
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs",
+      "blob": "4dfa70e440d226f4fe8d2c036201382210b85a15",
+      "sha256": "cba9e876d10489135ecc71e06835db5881b1c79030fdf65e72b92c469005127e",
+      "bytes": 19692
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs",
+      "blob": "fc0dda01e2a47db78016e2e0c908703706f7afba",
+      "sha256": "74a1ff5f12ebb2f664f4aa8d9d96fc78ac220b41e84be922dfb148ac36e7b20c",
+      "bytes": 4613
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs",
+      "blob": "d91ac5f783896f1faa78171002f2e8f25dac197a",
+      "sha256": "6e653a32f00e4995c927f99f0175d34868762a4f620843ea8dd448325f436657",
+      "bytes": 9288
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs",
+      "blob": "92578fda0135e753853e737c9065c1a8307419b6",
+      "sha256": "35c3547d6cc36b24129ad666d1becdcca22bb76a74b0092fcaf2fd128e0fd20a",
+      "bytes": 20645
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+      "blob": "e16b15a1b69726306611b2b89d203d62735088f7",
+      "sha256": "4b8c140da294d85ba639a05c32bf2abf675c3f7aea41e239839b9483856551f2",
+      "bytes": 7231
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+      "blob": "d10b78f93cdac4396c459df779c658fa0c5bb1c2",
+      "sha256": "029fb382819724c6a1c735d6132da6a32543ae55470b9b1b2f40278cbdf45170",
+      "bytes": 4870
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+      "blob": "4466acb215bb1392e638093aeb0481dd0632fbd6",
+      "sha256": "ca05de2388d0d8c92d39cca23a1daa9cad29a1691130019142f1657f75b62f08",
+      "bytes": 6250
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs",
+      "blob": "3e1dfb67774ec38e288aa4604c1fe9008a0d70bc",
+      "sha256": "d6ad0ce3103d44c58d39a4344b89059c832aed89019fa55bd81c2a26a9592263",
+      "bytes": 2725
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs",
+      "blob": "43ba22c14f06bca2f57de79e41761038b4e1d83f",
+      "sha256": "942d593b5c6d87f23496b2f840eaa0d8d55b3af4744a2b5deb4f4ab814b29c75",
+      "bytes": 2137
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
+      "blob": "9d3ec2e88c383328f0cac1daa3e48b30465b3159",
+      "sha256": "68b161671be14ff24bbed6085cfd6683376f67860685b2905dc0e2944cc17d7f",
+      "bytes": 14531
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs",
+      "blob": "f26cc001a67eb9a644d4c181ce9cb002afae99dc",
+      "sha256": "12def1c84abcd963ec38605b5c15a081625d118f691b04f25f22ee76b00259a6",
+      "bytes": 12189
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+      "blob": "d7688bce1e7fbd934ec5955ae938db627843d571",
+      "sha256": "eeb15bd5687de6df46ca4a3e1ea74b78d02936b7d7736cbe6db8a5233ba023dc",
+      "bytes": 15293
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/verbs/bind.test.mjs",
+      "blob": "663ea130d9eefad6338f6fed0c38ebecb09c6a77",
+      "sha256": "3d312d0b80ef462b6ce153f6c5b22b52152a80cd8f538fcc916a38d9b5e015c8",
+      "bytes": 6366
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs",
+      "blob": "d238a870ac712b5dff87fb025d151938577e0064",
+      "sha256": "abf32b2b317da5758368ed40309a88db62f0f10a372846b465fd5f4399edb7af",
+      "bytes": 15001
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs",
+      "blob": "bc03260e3bb161ae60eb35c02086aa8bd02b9295",
+      "sha256": "ca4bcf6fa748a464be1648f199e879da27031490fb45f615f768044744fe6201",
+      "bytes": 15059
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs",
+      "blob": "a13b8cc03515a8258dbc82f5774ba14d3418d1b8",
+      "sha256": "6354768d294b4766589c60c62d5d807441975ae0bc9579b8b7e6e5caf817b38a",
+      "bytes": 4161
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs",
+      "blob": "0b1ba01647e9af960a82f91e2decfa1960866b99",
+      "sha256": "cfa572ed2a403bb660b2387917ac7113e1cfa24a4124ce131e061ebe95b962c8",
+      "bytes": 6340
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs",
+      "blob": "516aeb48c3debbc5861db25c18cd60c5f6021071",
+      "sha256": "2bdbc375c130a025987db8f85f7a9ab84410afcec578b2b1bb063e6a9f0c0796",
+      "bytes": 6547
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+      "blob": "8fe0778e7b7d9e9e16c00fc4fa54e94c7388a7d3",
+      "sha256": "777e1e69abf3f7cb83838d3d5b415c9c780e3945f5290315951a576980039bc0",
+      "bytes": 9334
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs",
+      "blob": "f5249b4ea5537245e2c5d177b5f5a494d5115a54",
+      "sha256": "79c286d1043992233d0f98aca61d34230613be99a6f4a37ecc1e1dedb976820f",
+      "bytes": 30040
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs",
+      "blob": "b47a87ff89be6830c5d48e5e9da8d967f8b4d901",
+      "sha256": "415b01ab29fab05c16346f3134fd565e772e4d54e86964ffa943cb5349f1eb6b",
+      "bytes": 6523
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs",
+      "blob": "76357cbdee3981a09c275912f148bb8ab4b3f0c9",
+      "sha256": "d1aeadbd01f444a04d8e3e53f91696a13bcb410f47f7594f1717af5c5010022b",
+      "bytes": 11672
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs",
+      "blob": "4043f28c6a03ad98300c9186cba51960068622c7",
+      "sha256": "84e71bf5407fb8efff204e5b1b36788935aea42bc8831822736b9eed17d46158",
+      "bytes": 5632
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/cli.test.mjs",
+      "blob": "1da34a80a9a03d669654e29e71f3348a855af701",
+      "sha256": "87aa12f63c9ab65f9696c7aadea2508c610d2aaaf7bfafdb199e03cd5ce61680",
+      "bytes": 11547
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs",
+      "blob": "93e6cbd6fdc4d06a3622eeb35d0ff70ebf3c226a",
+      "sha256": "1c72fc251b3de5348ca1686de53aea060a44ff34a4cc44408352e369626e3c3c",
+      "bytes": 14104
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs",
+      "blob": "90d8b2ee1290f6c13207bb307fee7654a955644c",
+      "sha256": "ddc536e4c65f2a632001339bde2e1d81643a904c21f4fd5c85bebbb6ee959158",
+      "bytes": 15004
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs",
+      "blob": "1460dba72d976b843aa8e5fac47990b3bb4a9f96",
+      "sha256": "de6395b0c6b92bd5e9e514fb2efc9485eda1572a96412e9eaff0a7577ec181c7",
+      "bytes": 5398
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/create-issue.test.mjs",
+      "blob": "3b85f53332814a85084f6ccfba8d54cb862bcdfc",
+      "sha256": "b915aeb44f59d8903996678c9f0ffa488132252239bd424a7017d344d5359778",
+      "bytes": 13531
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs",
+      "blob": "a35b48e855501a50b9a86b1227becd96698d517e",
+      "sha256": "a6519fc304fa574781cf6ca58baa2a80bed8c5b78bfe35ba4533039c68369811",
+      "bytes": 9029
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs",
+      "blob": "aa209d2c9ef3fedd4ca4784b62f48fc08ac0f9cb",
+      "sha256": "39af7dde7cf664ab26729b056590ae3f0ca92f7618ba7576acccd0895e8c9a3e",
+      "bytes": 11026
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs",
+      "blob": "b461b3e7a3095dbc84f41356262e5e62cdae6ca9",
+      "sha256": "8b223560155d589f1496bff8dfb66dd5697a7deb37b1b99375e05b5554ddd21d",
+      "bytes": 8590
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs",
+      "blob": "0a29a734cdb060ed8e80ef3dd588fac1f365f164",
+      "sha256": "f78425caa0ff496fcc80b140f7a84677e6b32e3cdc1b879d2d04462648dee68b",
+      "bytes": 4240
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs",
+      "blob": "431ca7f8fd2e0ead369ed27016aaf05092864531",
+      "sha256": "27843dddfa22dc21de467fb33b99da35b74136d3032da50cee6e11e1c2e7839c",
+      "bytes": 16682
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/gates.test.mjs",
+      "blob": "74e04c011298ae5e229b7ec90c8d0f54533ce8d7",
+      "sha256": "33f7d6382b3b93e761aad64e685549c4fa1a03710b8385e7f54d7221ce761f12",
+      "bytes": 13140
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs",
+      "blob": "9db99f3564dcd3f0446a70dc95203f0cac0bc2e8",
+      "sha256": "761ee8352b3a56f8fd3de23361ee253c22532f2c3e3da744b77f3696d906aa64",
+      "bytes": 5625
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs",
+      "blob": "913b4ed263e8254781b48b05a0e49ee43da60ec6",
+      "sha256": "49502d2b1a380d4acb6f9bcc1fbd9e5b902ab4fede24bcb2e613bcc6723abee4",
+      "bytes": 8702
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs",
+      "blob": "beeca991b9240647a168804a9eb1356881e1f357",
+      "sha256": "81d02c3dc01fb81d29b01863953d4656c306676ef6b5e215166267865863a5e3",
+      "bytes": 18127
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs",
+      "blob": "8bc31c836348d9a5da45f78e9280b8386977e9db",
+      "sha256": "0c3eed610af0bbd268c5976503ee0d15e21c27ad4e39bfb18c8982c20ca41b00",
+      "bytes": 11715
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/move-state.test.mjs",
+      "blob": "408c81d91db5a2caae59b5e214dafea4d5b7b65c",
+      "sha256": "f30857f332e72953154d3b9936389a2df127edbf0e7eb5b3dd299c47a0494ffb",
+      "bytes": 5558
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs",
+      "blob": "a0aa3abdd3e3414d1b546edbc4336b7cdd3a1e2f",
+      "sha256": "31dbe78feadf71d6893abcf5fa6ca8be31e8ad3743e6a8db57566d9e9bd0443a",
+      "bytes": 7264
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs",
+      "blob": "3b39bfa68c8c976c1d8ee81f38142d06a1c2b766",
+      "sha256": "721c9f3cdf2f91d1f4e415255f1b9755a9c80700ad7ad2aa2696c7a10a7e64e6",
+      "bytes": 7685
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs",
+      "blob": "b7b88bf7570c43cba7c6030cd1f112b4987556b2",
+      "sha256": "37c4c3ddeb419da0098313b69875b304f0ae479784e9d53600835df7ee7462f9",
+      "bytes": 35154
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs",
+      "blob": "437b4dc944e1a2c727018bec1f875bd6fbb79a2c",
+      "sha256": "520e4e9d00a53b72bec7faebb74b2ca08fc12e4de7ad13bdb4190ad8c43e2034",
+      "bytes": 4910
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs",
+      "blob": "776b55ba0a57540399ddeb64aee1654cfdec3334",
+      "sha256": "2b18cb1c93db5c1e44277e3931c568b81f58697100830ea7a3d2bba8eab543fa",
+      "bytes": 4489
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs",
+      "blob": "7594bf744b80289a370a686a04d39510ed6be53c",
+      "sha256": "d11cda3f94faee232ccf7e6d67f61ee38ddaa4ee7bf9d492e96d1b1bc1820506",
+      "bytes": 38082
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs",
+      "blob": "5acbc5720be21e5c1e6decf40bce37aa582f0eeb",
+      "sha256": "6b841fd2f2427555c19308546911e7ac33d1aeaa336aeb36912924144781be01",
+      "bytes": 13248
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs",
+      "blob": "454c664c4fc14b3d12db7c5688de6ec21b832203",
+      "sha256": "7a40eb347a649e26f4e64a136f9421b0b4888e55ffc222396ecb42f2e2df7635",
+      "bytes": 9067
+    },
+    {
+      "path": "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs",
+      "blob": "d85f50b22ac69e78b1ea289f35c6b582fff04f89",
+      "sha256": "482d14a9ac23db93d9bfd39fa76b692b50ddf7d6d3ec5280c01d8c3edff5c8c5",
+      "bytes": 4005
+    },
+    {
+      "path": "scripts/tests/unit/providers/parity.test.mjs",
+      "blob": "a6228f35a55e1809dd649fec6f5b722fbfe59392",
+      "sha256": "b72ac5e6c923e4b05211180be87e1d59ecc778946032dc6405b07dfdcc2b3b77",
+      "bytes": 17653
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs",
+      "blob": "39940bb96e4c0531875d5bd51f90019b34c5da88",
+      "sha256": "42f81b44142d86686ad65d4885455ccf7d33f2f5c9375fbe62f1be38ee9dc085",
+      "bytes": 13716
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/actor-word-cursor.test.mjs",
+      "blob": "b9c48d415ee0df04dbc3a9d3452dfbbe2a3c2caa",
+      "sha256": "bddfa58f41c83f43d2b6dedd5bcd566b6a68a7b36aecb300af1b4cf2b157dc3e",
+      "bytes": 2823
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs",
+      "blob": "7f4a03c2d41237abba7d59671167048cab9bd373",
+      "sha256": "8b8348a448b19b74380cbe6e69439c26d5838afaeb9f934ee1528f74273aea2d",
+      "bytes": 16432
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts.test.mjs",
+      "blob": "58eb0bf700bcfc39fa161434e7d8b83f16efcded",
+      "sha256": "df2264c68f4c02a29c4307e71c366610b210fe19b7b5db906577d2c703e68ad7",
+      "bytes": 6616
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs",
+      "blob": "3bd8abaca33c235380240212b017f6e3f35d76d4",
+      "sha256": "989ff89342954c2deb434b668c4140a7269bbf2c85fafe2f95bee3252a3341c6",
+      "bytes": 16776
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs",
+      "blob": "d96929860a216795f402f900da8fa8b6178791bd",
+      "sha256": "63f0c3a2d1b86a2f9ca1413a0bfa7de3ac8e88d3b58d620e8c33b89c79fb0b4d",
+      "bytes": 7162
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/memory-seed-packaged.test.mjs",
+      "blob": "97d01f0e35d81b69882319624e96bf6ebb2d0227",
+      "sha256": "28ff6dcb6bb0a24c2dd2de91f55a1db3c461af655fbe6e460f44571b0b43c316",
+      "bytes": 2303
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/package-boundary.test.mjs",
+      "blob": "a3d4bfe4c0ae696bc9907d79d6758116ca9d6df0",
+      "sha256": "028caa97efb7069617fca1bfe593d632d8171c27329dd27997fc8a1b0a5dcc31",
+      "bytes": 23707
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/state-project-dir.test.mjs",
+      "blob": "c2e0d585e3fd1993673f19c8f402a07e2a51d7be",
+      "sha256": "94b8dabfcf0c10e5bf121d4ffc656a7aa16a8e3ae131b7aad630430a93ed023a",
+      "bytes": 2633
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs",
+      "blob": "1d228a4bef564963b445d6b1116cea156db89799",
+      "sha256": "5f1feb0709a87f55a03268fb58626774744499e7400772894039bb359211e12d",
+      "bytes": 6804
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs",
+      "blob": "40684d19a8f4adfd0de68d940825ffd4c4254c27",
+      "sha256": "43127c94996dd647876e75fd4f96cd310841cfaec6cb0af3a776e73b724652f3",
+      "bytes": 5070
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs",
+      "blob": "e6db11b851ff05af6eacc24cf7e666c506f4afe3",
+      "sha256": "76876ba69aa34873ac33c5a8f47ea47f2ea36d0da0af4ce32fdd66c4f22a4b99",
+      "bytes": 5825
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/action-authority-cost.test.mjs",
+      "blob": "ade043eb5ae995de09fb3b18bbd1b9752fd18f00",
+      "sha256": "19e774c32385a6417bccbfc00980e5811e386df43a1ec0bf8753254a18a433a7",
+      "bytes": 1540
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/actor-queue-isolation.test.mjs",
+      "blob": "ce12017e9e3e3fb2be4ff8d4902999385ae100f1",
+      "sha256": "6ccb273c7b349f9d71684b478ce167976e987b0b641e40f20b45174582fdb112",
+      "bytes": 2968
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs",
+      "blob": "b4d413e38be10c181d7ab3dab7a1032f32334058",
+      "sha256": "c11a1c2193f139385e75093b5ecb73c724f6a874c1f3564caceb5badd7ec6e05",
+      "bytes": 7582
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs",
+      "blob": "a95de7cabc798bf728e568886e93f6b74542f447",
+      "sha256": "2d4ebd3c1859df3be870cf773d2ed06f70b0b1276b3a58ec299ceb87eab0ac26",
+      "bytes": 27096
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs",
+      "blob": "26f51118adadcfbbe2f71c4aa9edf7fc0ad08769",
+      "sha256": "b4d09949959aecaf5b1a79b1e587c42ad414349ea5096b92d4024daee44969b1",
+      "bytes": 9345
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/auto-mode.test.mjs",
+      "blob": "6047693ac0d246a1fe0d97c4255a4eb1446c45ee",
+      "sha256": "f98b68e6ffa5472e204b8d34ed524c89f51eabc8c0e31c5becd7098e6954d81c",
+      "bytes": 9566
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/bind-context.test.mjs",
+      "blob": "b3ea690b5c6588a7988ef3aed0c90f09b3799733",
+      "sha256": "797fb67bf4c2b3713f20bd82d00abb6b17f353a9f1dddc88f9abba8d73777bda",
+      "bytes": 2991
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs",
+      "blob": "dfd921091b624003767539f346c7b8912e0200d4",
+      "sha256": "81a38831e85bcb94600d92f64b96644ae703042e6f1ded4e69364ff40bb40939",
+      "bytes": 3223
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/bound-state-session-authoritative.test.mjs",
+      "blob": "f33307809c39b256a089ae35056ade84a6a33126",
+      "sha256": "e71b8305ae397a0f7f0989d56dec911457de525bcffcc6027d1f2d571091964e",
+      "bytes": 4183
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/bound-worktree-project-dir.test.mjs",
+      "blob": "d13f031ccde14c615edf353b43be7c8803b60e08",
+      "sha256": "9a55b00a51a0ae7201cb0f70c0118605c7a7f55172dab44e168e07e8b9d2a078",
+      "bytes": 6363
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs",
+      "blob": "b7f43af1d7eec334765349e00d5093b7df02229f",
+      "sha256": "e84339bc65c8de033ce44c31acc677bb67007737eb46977fcf85e0b809bc0f83",
+      "bytes": 9109
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/close-drain.test.mjs",
+      "blob": "a3f1290d0c4152e4d1c335dadfc03f0d1e90bf47",
+      "sha256": "3a2b0a91419d7800d3e2f5672bdcb5bcd814b21c3657dd5d5e287bbc83ba1014",
+      "bytes": 5397
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/close-repair.test.mjs",
+      "blob": "715754bc36e576352ef181ff457c368b8d592325",
+      "sha256": "7444a4807b8a11e725a2f78d53655dd8b8f34f03f99d1dc69e1703f3f90aef15",
+      "bytes": 13322
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs",
+      "blob": "e465209339bb9a86b9548ea9403e1f6c30e9b303",
+      "sha256": "87ba3bfef575e970a23656d3a6c21973277fffc7e4ea1e3daa6bd76866450566",
+      "bytes": 4576
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs",
+      "blob": "8ab1ed57a16e1740de4249b54e9053c36b41333c",
+      "sha256": "9d23566a5e0ad11eba75ad938ceed29e1d924d52d9a348898feb924ce1a121b1",
+      "bytes": 16096
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs",
+      "blob": "12af3f61be2c56673b67f2e2ca6c7e46db4b0d87",
+      "sha256": "37e57911a314f430e3101931597b09ac7f1436a8bb5fcde3552841bc970ea997",
+      "bytes": 5616
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs",
+      "blob": "e25cbb4bef70f2c70607e3faffd764ccdc34c0d4",
+      "sha256": "e672353ab2dce18041263963f17b7369b44b066f426882825a0eff86ed0963c5",
+      "bytes": 16467
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs",
+      "blob": "127e5af1fee7dec08eff76109788e8df87f3e24f",
+      "sha256": "8aa2a2389b2c5e8d8199dcf77e12c5bd44a7da4290fab37cbae06ca24eeaa1a1",
+      "bytes": 18074
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs",
+      "blob": "3cb19ec443e0e6a1285332826a8e610bf02307ba",
+      "sha256": "306d417ad32d70133af7ffc9b7a2c52bfde08ab82de65fd14f226f07e563b25a",
+      "bytes": 12823
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs",
+      "blob": "ec48748b3eecc5a0f9fa49baa1665a5f1fe998a4",
+      "sha256": "ceb631dec3c29ffbb9c7fce9f0aa9912a5ce9e3abb1fbccbdc236f4c237f714d",
+      "bytes": 4525
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/coverage-verb-preflight.test.mjs",
+      "blob": "4533484a38a4dba2028c7c4b7c495b97af85a353",
+      "sha256": "b85b923a98210256015547397ef16033356b3a56958191b93911b8377979d02a",
+      "bytes": 11039
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/discover-cancel.test.mjs",
+      "blob": "b2372a8e892972a9f431fabbae69a4d999deaf5c",
+      "sha256": "2fbcb2c81e1b95fb549b271f452783a282488797452f99a5f8f49ecb192530d4",
+      "bytes": 2925
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/flock-contention.test.mjs",
+      "blob": "b5f1227c322a286dbc307c56ba656cb7bdc28794",
+      "sha256": "e783379b1cb3d1be3eff7d66174cf91e11afbb81cfdf4857425a7f71ae7c29d3",
+      "bytes": 2807
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+      "blob": "ee136a26e6120db71e5c64dc721a8026623cdd32",
+      "sha256": "52e632e33bb0ee77c2ea4c7d60e687aa5e6c8790131802166697c3cefd8ccce1",
+      "bytes": 20446
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs",
+      "blob": "782cf2a18a26c1688d1a28cfb21a12cfb0aeaa87",
+      "sha256": "87d3926d2ff5cc0aeb55f62c0a929f8e8d958e0509cebe39ac61c8418d3bbc16",
+      "bytes": 13626
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs",
+      "blob": "29677bd84431f11f46636fb16da6852860beb835",
+      "sha256": "696ab9d0a681849bdb060ef0330756bd0338dd3c310f41ea159a72250d94cb29",
+      "bytes": 5997
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs",
+      "blob": "2e5a0f39c2407e67a9779c88112e37de8ce3bc7d",
+      "sha256": "0095e08ba37fbb4af0a46df2ddfac0308c063b5058f53c095a49863052e02a76",
+      "bytes": 10828
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/locks.test.mjs",
+      "blob": "0adac7be435d7ef152084050b1d6d0e7d8d070b6",
+      "sha256": "ac8f2dc7abb58a9e242ab290d04cbf1b933fbbe5c80739970bf6fe98f10667f0",
+      "bytes": 4430
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/move-state-internal-gate.test.mjs",
+      "blob": "dfeab5ad986264f93fced29677ca35b0dee9f201",
+      "sha256": "4a86fd985a711eb3532c98ba266bde4705cadbb8047a75d874c0f8954b39bbd7",
+      "bytes": 5646
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs",
+      "blob": "35c54e32bb5c752f138a9be51c77012e8acade7a",
+      "sha256": "d17195351eacc8480258987147ca5246a86759db2baf19ee1c988807625380ce",
+      "bytes": 17874
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs",
+      "blob": "a359eef247803ad369585c279988ad8c71de2afc",
+      "sha256": "1635d90ce7c716a971d69965879e250a00b87c583d205deb78936e539f547a76",
+      "bytes": 9338
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/occupancy.test.mjs",
+      "blob": "e24da8c0f44eba4545e7186c80fd0c2264bdb628",
+      "sha256": "730064a211a43a23070770e8bb8a0ee9edea8359ad2f6c0624127740e4b1097c",
+      "bytes": 6752
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/on-ask.test.mjs",
+      "blob": "beac884120d17fdaf420c8659d229df5713468b2",
+      "sha256": "d517c552df0da1019f891fe74910db0c3319590a41dd465764abee2dffffe526",
+      "bytes": 10696
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/on-stop.test.mjs",
+      "blob": "cdd1dcd3669317139ec99c5294e347d324e82e5a",
+      "sha256": "ae9fbb58f57ed3bac4329325ff21385612a13c4830872d338524793e4b7e2aa6",
+      "bytes": 2555
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/paths.test.mjs",
+      "blob": "d8e923e08488a5341dd2887b2bf2348c4651fcdb",
+      "sha256": "6673afec206d430befc1622cbcefc30902d7f4cee966241fa6c3c5358ada67ba",
+      "bytes": 7800
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/queue.test.mjs",
+      "blob": "bdeddc768e92afa2c53fb3ba9f9c3eed4943ce87",
+      "sha256": "fc89935cc7b9af4c401af5a65f6cb515fc298c829d9115a90332c9d5f089f7e1",
+      "bytes": 6035
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/ready-for-plan-migration.test.mjs",
+      "blob": "d8cb6d040c5ed43d817c3f93df0a1bd9855fdaf0",
+      "sha256": "7683073bd7f281709b19bc7b63bdb7072ecf88a6c04b6277c6032aa455e68553",
+      "bytes": 17164
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/reconcile-no-drift-seed.test.mjs",
+      "blob": "d84bda0afa08820d2d0117289bff0de08b794b2c",
+      "sha256": "db49505448e0646959e1cb3612f643bd678c5f34a0d296d8e9818edf3bad7797",
+      "bytes": 3227
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs",
+      "blob": "66abf145a612e19c1662a06738360023fae313cf",
+      "sha256": "6f4b141413efb63b6ae436f9dbb17750b428b329d0e196483cd587298f29a526",
+      "bytes": 10203
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs",
+      "blob": "4519c9efc2a7a82ccff756cabb46317423224421",
+      "sha256": "9b863d056040cc81ad31775dee43fca330f2128ebbe3010cc13256488b222bb3",
+      "bytes": 6817
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs",
+      "blob": "d03455ba95b6c6907c17e54120f5a2514f1990eb",
+      "sha256": "e1af54423fbecb9860897bcd7d9473577904595e60b871d79dace4bdb469bc53",
+      "bytes": 18842
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/runtime-capture-catalog.test.mjs",
+      "blob": "57eb83f14aae206c8d5d4fb1a6ec1748bfca38de",
+      "sha256": "9d2067df8c4635f986e2185953b7d16dac4b945dc3e10210b7499b044b437c38",
+      "bytes": 4167
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/runtime-migration-timing.test.mjs",
+      "blob": "bd665838854869893eba55cb596f056580c8c4ad",
+      "sha256": "4660a6197082cb0642ffc231d8cb37fdc626ec76f64e9aba64efee3aa5c147b0",
+      "bytes": 4329
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+      "blob": "039a006d8d517825101073f019931ab4bea24721",
+      "sha256": "322ce9abd5294ef16c1188a9aba9cbecd44c9e564fe747e0deadfc45cb1b75e6",
+      "bytes": 3343
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/runtime-record-catalog.test.mjs",
+      "blob": "3ceb8b556119def8183ea35b4d718f0663144f6a",
+      "sha256": "450dcd693b3af4c9c235f83c10b73e5ebb843ba51df8f79761ed9ca0378ec06b",
+      "bytes": 7257
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/runtime-writer-census.test.mjs",
+      "blob": "688d161eccadc45060f921ddb2d9a3bcf58f44ca",
+      "sha256": "f9ab6c1dbea05f86abe1e0a0c3429614befc60a0ba6aff692b5d28baa2f123bf",
+      "bytes": 3454
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/save-plan.test.mjs",
+      "blob": "a069468218c5d0b5ef333c8449080cbd53985124",
+      "sha256": "5d57a58edcd05a663a04536aa39c8ce01b0d2a5028ffecbaf99e948819886ebd",
+      "bytes": 7638
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/scratch-dir.test.mjs",
+      "blob": "95c41fd5524a2c4d383c7205450c1c5af4aa0ee7",
+      "sha256": "7eb9d02c87828348299d4c4a6d76ef4fe12bd2e5609ad0036fa092dcbca643c2",
+      "bytes": 3239
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/seed-kanban-cache.test.mjs",
+      "blob": "cc83c2a79121f167aa0a84e1a480cd55872ce78c",
+      "sha256": "c956cb2f88043d8aa504f97382f7df803f392f705158d6ed0729b7ea1b171337",
+      "bytes": 4037
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/session-state.test.mjs",
+      "blob": "970601428223a8e597858db014f2f92ad02dae23",
+      "sha256": "d84201c39969bbe77737c149dce625d98cfe39ec48e8e2a7cf849f5a4f8fa66d",
+      "bytes": 7215
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs",
+      "blob": "f1784c67d554667032e5b8a820348245cb69f7b6",
+      "sha256": "958bf4f67431de886260f24bfd3c6748581a9995b849a74619b6644bdb5c3601",
+      "bytes": 9746
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/state.test.mjs",
+      "blob": "af29ba7ae0e2d7e19e1ab5e9c3b2d8a57a1ff7f6",
+      "sha256": "c38933907c8192e514b08e8f09f55d41b8834ed122619ecddb92d8ce987b11f5",
+      "bytes": 10825
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/test-407-binding-survives.test.mjs",
+      "blob": "effc188efb7ee2b1a339dd954b604d9e93060a80",
+      "sha256": "ace136fe14a34cba59ab83ffe98171ee1f1bf698919a52a8b65df8c60317c056",
+      "bytes": 4039
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/test-sandbox-reaper.test.mjs",
+      "blob": "a1730ebf7eb4de1155c934ecaf18c2301bb311a2",
+      "sha256": "d2f8c791b1295d0f7c91264e8fd6855bdfc222c89267ccfa99e7d6ae699abe2e",
+      "bytes": 3940
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs",
+      "blob": "0fc32576d3260daf2d88ac457546ebdc2c61a8b6",
+      "sha256": "7a3795abafd01dc633badc5c20d92da706f685dfa4050e3296565abcd62ec505",
+      "bytes": 10132
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/timing-queue-retention.test.mjs",
+      "blob": "5ce83b4f40ef60c18f6a762f3f52795779d9d236",
+      "sha256": "6e9f800d6456da87e09f0293406c67796360810d21d1289d2db8d0c0b2dbd015",
+      "bytes": 2542
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/verb-pipeline-enforcement.test.mjs",
+      "blob": "aa6098af9456e7bc9d6dd1f1671ea3606a63087c",
+      "sha256": "f871f01ace30f36dcc2d46f75ec114d37f043b81a23f6e67efaac190300210c5",
+      "bytes": 5110
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/verb-preflight.test.mjs",
+      "blob": "55aa55a4e0be1109e3650a97e715db97f0b11195",
+      "sha256": "220d409559c0e27d79d8dda6934ee0bd721669b5cfd605c5b4597d7786eb3548",
+      "bytes": 15641
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/verifier-cache.test.mjs",
+      "blob": "19cf0cad3717323e704d0354bd1d82ce9591be93",
+      "sha256": "31054354a05b92e46ab36f6cddf28f5e95fa50de75c7784b6a9169137a009962",
+      "bytes": 13659
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/word-counter-full-expansion.test.mjs",
+      "blob": "d41c7cb1bfbcfd0bdbeac827a4f3c53d9262fd46",
+      "sha256": "773d199e83fe0f4152e928f506fcf5f099bd5218cf2d1a565106351de22956f5",
+      "bytes": 6098
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs",
+      "blob": "aa9a01325df53124b303aaa0232425f25ae32c71",
+      "sha256": "1003b49464856d4c5c48cb31f427de10f404cb5d324e6fa8a038283def333196",
+      "bytes": 4764
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/word-counter.test.mjs",
+      "blob": "78d337d6a01f6e6820970d863fbe757d5e50028b",
+      "sha256": "498e3bb246a929ecb78b29860a2786c8e3ad6e2ba12e1e85bdd91ae296e18e5c",
+      "bytes": 15150
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/word-marker-compaction.test.mjs",
+      "blob": "a8f98b98c016d110255219b549089910b913880a",
+      "sha256": "62d246930bbd216b46b9a0449f39c059c2c5b5b066dfe186164e1eafed3a4b89",
+      "bytes": 2503
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/maintenance/heal-timing-interval-cli.test.mjs",
+      "blob": "f76f1e5fe008a80ef08a1157db4ca8674293fd08",
+      "sha256": "b69ea368dbaa12cfd45d43dca9bff5ece1bcdcdfcf1d76ef5781987b9000bd4f",
+      "bytes": 8199
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs",
+      "blob": "930022552a70b7671c8e2fb07100e89de8e4cd6b",
+      "sha256": "166c7de8dcd3b0b13892c20261d51de918300899397ebea6ecc83357f5f48d45",
+      "bytes": 9839
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs",
+      "blob": "48b1a3c6abaf74e06a3e5d2ba6504fa9eb95ccd9",
+      "sha256": "1a46ea5863e5ea24bd070aa70088daebda5caa82ea371fb62f4a8198ded848f4",
+      "bytes": 12842
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs",
+      "blob": "007e488b5617cc717eb37637c46e2b0332ff7888",
+      "sha256": "ad9aa94f317f2263a7b263bf4d87d7e74d0b3110c0ea2ce41945be5f04c0ddc4",
+      "bytes": 5283
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs",
+      "blob": "825e0e1f6418ada9ea2e6564a3d221df1f2332cc",
+      "sha256": "f3f4f5913709508181b6a3694a0436f8acf1f8f55c48deb0f815d865d4520483",
+      "bytes": 15374
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/check-verb-migration.test.mjs",
+      "blob": "6f3d2d1d928936f705fd2fa47d26905f700f6b94",
+      "sha256": "e0a03a53c3b092e6e7210974d4ed663507500649d8dca7d38b6ed4a05b2b3328",
+      "bytes": 7174
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs",
+      "blob": "097fd90a1b67b7f4661cfe7a3dc3e27729f9c5c1",
+      "sha256": "4b8df5293416a74ee6dafcfb6a66715b6127f5116c9ab073342dd19b36129f5e",
+      "bytes": 7747
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs",
+      "blob": "d050ab992d543473d5633bfc27c167eb8b5b0c6f",
+      "sha256": "f214db5978415017bcf5d770cc2d29e25355e394c6cda2aa1496368a211ada7e",
+      "bytes": 16421
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs",
+      "blob": "3712e22e6ee3195e229a3f8d9a96f77302ba9d5e",
+      "sha256": "f1279b023dbe2981ce03de95242f014003c0dc869f537140cae881093a8572ae",
+      "bytes": 10806
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/close-review-authority-wiring.test.mjs",
+      "blob": "962d4ba41f529ee96aa7e6b3adfab28b45c63a2a",
+      "sha256": "798ef27d0e6053a56c3912ea27f21544d680a9255226ded7667ad8d7eb757db3",
+      "bytes": 5168
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs",
+      "blob": "59a0ab17de8e90f28f276283374ee6416d15a2a5",
+      "sha256": "af9b5097c657a4b3fdc9b550c3e7b585aa01ec000fa14acbb500bafb932966db",
+      "bytes": 8516
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs",
+      "blob": "a1d3a610aded820aa949c8fbaabd103ce62f0218",
+      "sha256": "2492645cdb6fe8a18ff7392c6fbdf89438770e1182bc0656a2b74fa55e59909b",
+      "bytes": 6370
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs",
+      "blob": "11aec977006cc9f6a2a6544608f28d294b8486ea",
+      "sha256": "7e0ece6f3ef4b6147c2c703f12866f8375bf254b88c04a804686ee37f3a04bf6",
+      "bytes": 12014
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs",
+      "blob": "4255a00eb8ada3ba6ea65227741a676346bb1616",
+      "sha256": "13f288333ee7cc80854c4ea6949c974abf18dc7d0e22965483c4c7fd22d7886e",
+      "bytes": 5743
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs",
+      "blob": "bbe41ac796fea718769d577a17e310d98c7cd507",
+      "sha256": "4242f5fe68a594b763b9c67f3165335094fc47aba0da6c368a943b5850513900",
+      "bytes": 6909
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/coverage-fleet.test.mjs",
+      "blob": "59697bda7ec9ac460f873d4712f90c726b4692c2",
+      "sha256": "b55f952ee436619f823c049ec6da10ddb751e103c85076deed47f963bac15eec",
+      "bytes": 4777
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs",
+      "blob": "8842b4c666e0f64d1bb6c2e06ea4ac4d565d0b17",
+      "sha256": "44e842cce870252c3fb28e79264f4180a94ce27d2a9954958d3cd631554fd126",
+      "bytes": 8590
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs",
+      "blob": "ee220affeacb826ab58c87388406aceb137d3fb3",
+      "sha256": "980ff0fe0a4ae5a36099148dff3f3924691905a757601cd677823104a5cb96d6",
+      "bytes": 6047
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs",
+      "blob": "db72b5da0739170668e649686f4bdab0c6823c97",
+      "sha256": "68ae57084a152737dd82eaaabf88f9f76d2963797b811b37bb5ed9c2b8ae0bf9",
+      "bytes": 22710
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/coverage-update.test.mjs",
+      "blob": "040b97ee9c3bb02d9e008060192a9fe0df8666f5",
+      "sha256": "b2947302a056b9d00942a70401ee145ffdd1b3c502e2aac4d9b53e5a10503189",
+      "bytes": 5276
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs",
+      "blob": "cf281537d3ea090e3ccc1874775ad8596a3af3af",
+      "sha256": "2c933002b97fdaf3b85737bc2ae2ea1b52bee2f0c4a10c314540df7d0d9eef4e",
+      "bytes": 14620
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs",
+      "blob": "c501eaa928360ff8dae2637f75ef293adee49333",
+      "sha256": "1f9bbb112d8676131fc6dac3430f037256d5038958dfdb833a8a9bc82f62a6a1",
+      "bytes": 11633
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs",
+      "blob": "4af614e209e6d4d2e890a750b4f117ddb48a1df3",
+      "sha256": "de3925127368ace023af2b5d42826aadb5be0082ca3ad275a25486bb09b92d59",
+      "bytes": 8649
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs",
+      "blob": "dc8ff3b48261d1948146d0a3a71fcf8fd9d3345b",
+      "sha256": "0fc6f75d238427276cf1af2f0ad506434b0cce864bf71f3fbf5cc752e4154cb2",
+      "bytes": 11084
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs",
+      "blob": "1a51e6cea37681948379237c15c068d6ec43f81e",
+      "sha256": "927fe5a09cef5196c76f5d213e6fcca484626e826e6d116008542fa39a955b4a",
+      "bytes": 3587
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs",
+      "blob": "d242ed9e21e1264238e20f139745feb97aa9c78c",
+      "sha256": "58edbc553be90ae3996b47fdb3be9a247e1cd51f63bfbfc075225064e347a046",
+      "bytes": 4665
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs",
+      "blob": "d287d9844e2ccc056dd600a875f4093eee51246f",
+      "sha256": "fd21003c6799a241a08209a5648cc23d188ad96add76dc206471e44d7a58c5dc",
+      "bytes": 5326
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs",
+      "blob": "402d252c47845c51e0c03ca09b487e634f8c112d",
+      "sha256": "fea4a0f1e457959ea240593398614d070eab391bb2d62c11f95f21fe1acab0fa",
+      "bytes": 12424
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs",
+      "blob": "02ac773bea7f33a9f2a4bf428d62f1c7fd4a6327",
+      "sha256": "09094b88ac8a63f59cee53ef5bf0bb558b270bdd72acff178b64e9f897990d34",
+      "bytes": 16868
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs",
+      "blob": "fbc482b967f4e4f3e261059325ddbbffb1e0141c",
+      "sha256": "32b992789729a2d305c9e067a6a244e68606c6c323169f49c1974cd37510f6e6",
+      "bytes": 10609
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/verbs/reject.test.mjs",
+      "blob": "ad1f6f682a69d97e05e3f3acf8e69c33de65ab77",
+      "sha256": "a678079c3c931564d70a93d9c8762e483a83ee996251c6432833c7e6d9fd56c5",
+      "bytes": 3966
+    },
+    {
+      "path": "skill/SKILL.md",
+      "blob": "a5cf5721866b63a00748327be5f18567f009ec05",
+      "sha256": "d213477161ed0c4d81b8c92bc1fdf2cf38f3bfa01d9f93a5f614bc6f427c384a",
+      "bytes": 1732
+    },
+    {
+      "path": "skill/shared/references/state-walk-detail.md",
+      "blob": "9d4cc34528b93dd48aa3edd98d6d10c9c0e191ba",
+      "sha256": "118a9a5be1a7e41b549677200648fcdd8660deb47ebafdfab4adcf511c166779",
+      "bytes": 7698
+    },
+    {
+      "path": "skill/shared/router.md",
+      "blob": "6bdc1c27172596d5213894b3455590813b29bdba",
+      "sha256": "2a09860784a87eeed7f41b028655c18e061d8b5564e3d648b1f29899c1f6b8a0",
+      "bytes": 4792
+    },
+    {
+      "path": "skill/shared/rules/deliver.md",
+      "blob": "112aaeaf31387421c232a17e8539fa5a0b1c5d8c",
+      "sha256": "d219f848d3b4c374631eaec97d484d74da5409515415041b8e22d5085bc30a8d",
+      "bytes": 7087
+    },
+    {
+      "path": "skill/shared/rules/plan-mode-backlog.md",
+      "blob": "8db023fa8150f3ce48a174950706dbbae5298247",
+      "sha256": "42a8bff941e031346871b0cb74af8cb6061ef180bcd63c105a2cdaaad1a6b13a",
+      "bytes": 8427
+    },
+    {
+      "path": "templates/worker-report.md",
+      "blob": "fcb15e35801b839dab4f777d57f5292795d96596",
+      "sha256": "c843a4cf122bfd6e62734d0a8befcc802946d3a26078664e8175af3ee55649e1",
+      "bytes": 1340
+    },
+    {
+      "path": ".ai-peer-review.json.bak",
+      "blob": "558c5dc982352b63ed22fac42a7fc26084280d12",
+      "sha256": "a379bcf8d830a53e7497c35c8d800058db14f48f514a0e545f51004cf3ca10ad",
+      "bytes": 1136
+    },
+    {
+      "path": ".claude/config.json.bak",
+      "blob": "e6e3bf79e56ba38ad2fdb6d6c413dea0dea99c4c",
+      "sha256": "06f3f2508c4ee72f18ce1fa4a4514fb7d51887db3e1e1a4444e76dca9324682b",
+      "bytes": 601
+    },
+    {
+      "path": ".claude/settings.json.bak",
+      "blob": "41c30f736cd1e50d28780e5802f218ade3c9e4f8",
+      "sha256": "d4ce3dca24d36cf01a24b2b32bc8c984ea72bb89da07810c541cdbc52daa5848",
+      "bytes": 12995
+    },
+    {
+      "path": ".claude/skills/peer-review/SKILL.md.bak",
+      "blob": "618e04ccdd2f97fc7e2e6f260d6df0a4aa79a3b5",
+      "sha256": "96fe5a4991fd4119f617cef4d3bc7e6c85657273ec4e5d4c26736fc1bccb2265",
+      "bytes": 10909
+    },
+    {
+      "path": ".codex/config.json.bak",
+      "blob": "e6e3bf79e56ba38ad2fdb6d6c413dea0dea99c4c",
+      "sha256": "06f3f2508c4ee72f18ce1fa4a4514fb7d51887db3e1e1a4444e76dca9324682b",
+      "bytes": 601
+    },
+    {
+      "path": ".codex/hooks.json.bak",
+      "blob": "9c2b4d58a1f294dafaca1d622ccf6f9a7b263b19",
+      "sha256": "913575a4801e3b1df32b4382d11af72458e9a0f595c49e9afdc54259c2328a50",
+      "bytes": 10261
+    },
+    {
+      "path": ".codex/skills/peer-review/SKILL.md.bak",
+      "blob": "618e04ccdd2f97fc7e2e6f260d6df0a4aa79a3b5",
+      "sha256": "96fe5a4991fd4119f617cef4d3bc7e6c85657273ec4e5d4c26736fc1bccb2265",
+      "bytes": 10909
+    },
+    {
+      "path": "=",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/reviews/1857-remaining-work/1861-kernel-verification.md",
+      "blob": "0d27052a92782d2718ff216667a39cc31940163d",
+      "sha256": "95c43d5f1b71cb7280f7f077520f2b500d1ffc2871fb78266e9d792f525f7392",
+      "bytes": 6192
+    },
+    {
+      "path": "docs/reviews/1857-remaining-work/1861-plan-review.md",
+      "blob": "3fce675c2a937eb55d9ac5a3329bcecda0d00d11",
+      "sha256": "4287dcd72fd502b4ebf7caba13bd5163866ec0b800e8fc38a96c483f9c0632d4",
+      "bytes": 11221
+    },
+    {
+      "path": "docs/reviews/1857-remaining-work/2026-10-04-1861-post1872-rebase-preflight.md",
+      "blob": "d2e83682d339c4c89d8db8c1f0c0da3130f2b11e",
+      "sha256": "f1d822244db823ac5c95daf8beb63b535683a144199cc467bbd3c2aa15baa32c",
+      "bytes": 29313
+    },
+    {
+      "path": "docs/superpowers/reviews/1861-empty-runtime-amendment-xpr/spec/2026-10-03-2026-10-02-1861-explicit-empty-runtime-design-review-f977a983ac4c88bc6d28ace380504db4/review-f977a983ac4c88bc6d28ace380504db4-author-startup.md",
+      "blob": "07d1415bcba2e40e3067eabffc25f838c72c47a2",
+      "sha256": "7540c457c09adb461b2369298613793fb2d8234be9319d5381842d9e42179797",
+      "bytes": 3131
+    },
+    {
+      "path": "docs/superpowers/reviews/1861-empty-runtime-amendment-xpr/spec/2026-10-03-2026-10-02-1861-explicit-empty-runtime-design-review-f977a983ac4c88bc6d28ace380504db4/review-f977a983ac4c88bc6d28ace380504db4-reviewer-invitation.md",
+      "blob": "4efbbc9f197bbde984cc409dd2b17b3dd0b2826f",
+      "sha256": "8d8f770f340ff5c59a4baf90de253b3b65126a61a1280b937f116e14d0763730",
+      "bytes": 5046
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-actor-writer.test.mjs",
+      "blob": "b6157ce449d6ad5d522e0c8d190e8f596c2f3ad5",
+      "sha256": "f3e14d6ef9a5b5aacd6a16f0f84fd061aee8548116e7ca2cd429fdbc8c042ea0",
+      "bytes": 4276
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-capture-writer.test.mjs",
+      "blob": "5b663f399f100033cc93084d10c7c70dc2faf6ed",
+      "sha256": "0285967154d9265f38f34ded36802f8f4a4abdf585add82f48bd39aa1345f90e",
+      "bytes": 7560
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-evidence-authority.test.mjs",
+      "blob": "bae8227ded214502c9b901257b5ce570b4b8ef8c",
+      "sha256": "0d6eeeab135396c880c0f5f7a6548b8deef18331fea07c2e7bcf36e8b92638fa",
+      "bytes": 1885
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-hook-stamp.test.mjs",
+      "blob": "5c92a182b28de077a92d634fdf31af358b771178",
+      "sha256": "04dce4d1eda80555bd3b793e85cb9153df9f507501ebbf212560a533cd70d0b8",
+      "bytes": 1886
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-operation-lock.test.mjs",
+      "blob": "85e6057323549a2c35950de71269a9b8f2779e15",
+      "sha256": "8099a178995c1ecbf0a0ff0a3bb9211170d99ed9bd4ce0c2f1adb99d06416ed0",
+      "bytes": 2498
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-orchestrator-writer.test.mjs",
+      "blob": "2a78a09e78fd217402b0b25ad5075425bf0278cd",
+      "sha256": "04cc5f80a5ea550b3e1ee34ba174fdeeef0cedd5e77a93a8007e6e526bebf820",
+      "bytes": 4300
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-question-writer.test.mjs",
+      "blob": "9d47bec7fb96039c2799ffc4a6a287e6364041ae",
+      "sha256": "120b8fa1e9bf270a7281e7f6c21073f64f5a8d2786f4cef499d53fa7c7133fe0",
+      "bytes": 3426
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-queue-writer.test.mjs",
+      "blob": "37084933e458437e9de54edbf552f8e92076010c",
+      "sha256": "85383446db4318080cfb964767efb3d3b5ecaf5dd4dc19aa07477764ade3a8eb",
+      "bytes": 10992
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-ready-journal.test.mjs",
+      "blob": "0d80242bf2ee58c40ef9adf6b0b6f70777ef31df",
+      "sha256": "180e6012e156c72709d423f345ea2a1daecaaf01b568fd807cf6b2906b2c63fe",
+      "bytes": 2658
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-terminal-ledger.test.mjs",
+      "blob": "37984abca7375267e2452b7323140f83b7d7bd57",
+      "sha256": "de04bc8f4adebe321f7f7047f437473ff485601369a86c6a214a4aa3ff8a143f",
+      "bytes": 1680
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-test-worktree.test.mjs",
+      "blob": "0151ad9381d074b86bf17b3fb9ce84d3353837e3",
+      "sha256": "eee16f9774104bb937aa7f2d04c334705a2bd2d9642de0d0a0ed0a0a65425e17",
+      "bytes": 2250
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-transcript-provenance.test.mjs",
+      "blob": "9848fdb55ddd176dc6b4218c2630d60661826a8e",
+      "sha256": "181aa9c86f2597f7e8b18bd70d71565db049eca260ee654fc72c3df97a19c672",
+      "bytes": 2275
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/verifier-cache-durable-head.test.mjs",
+      "blob": "608c9207b2ee17f329aea92b9cd4ac81fa1fc217",
+      "sha256": "ad8930737a2f85c82aea0b04a70b47e7b2e248841b96085c7f3cf76a6f2c1b86",
+      "bytes": 2418
+    }
+  ],
+  "excludedRuntimeFixtures": [
+    ".ai-task-manager/runtime/store/locks/issue-1261.lock/holder.json",
+    ".ai-task-manager/runtime/store/locks/issue-6561169.lock/holder.json",
+    ".ai-task-manager/runtime/store/sessions/caller-sid/pending-pause.json",
+    ".ai-task-manager/runtime/store/sessions/corrupt/pending-pause.json",
+    ".ai-task-manager/runtime/store/sessions/fresh/pending-pause.json",
+    ".ai-task-manager/runtime/store/sessions/mine/pending-pause.json"
+  ],
+  "validation": "Content preservation only. No current functional test, lint, peer review or merge readiness claim."
+}

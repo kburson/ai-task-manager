@@ -9,9 +9,12 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync } from 'node:fs';
+import { rmSync } from 'node:fs';
+import {
+  withUnitRuntimeRoot,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { loadState, saveState } from '../../../../task-tracker/state.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
 import { verbCancel } from '../../../../task-tracker/verbs/cancel.mjs';
 
@@ -31,43 +34,52 @@ function makeCtx(statePath, dir, rows) {
   };
 }
 
-// --- Case 1: active discovery bucket is cleared, no timing rows posted ------
-{
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-cancel-active-'));
-  const statePath = path.join(dir, 'state.json');
-  const startedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  saveState(
-    {
-      active: 'discover',
-      lastActive: null,
-      discoverBucket: {
-        startedAt,
-        wordsAtStart: 10,
-        entries: [{ ts: startedAt, event: 'discover-start', deltaMin: null, deltaWords: null }],
+await withUnitRuntimeRoot(async () => {
+  // --- Case 1: active discovery bucket is cleared, no timing rows posted ------
+  {
+    const dir = createActivatedUnitRuntimeRoot('aitm-cancel-active-');
+    const statePath = path.join(
+      dir,
+      '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+    );
+    const startedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    saveState(
+      {
+        active: 'discover',
+        lastActive: null,
+        discoverBucket: {
+          startedAt,
+          wordsAtStart: 10,
+          entries: [{ ts: startedAt, event: 'discover-start', deltaMin: null, deltaWords: null }],
+        },
       },
-    },
-    statePath
-  );
+      statePath
+    );
 
-  const rows = [];
-  await verbCancel(makeCtx(statePath, dir, rows));
+    const rows = [];
+    await verbCancel(makeCtx(statePath, dir, rows));
 
-  const after = loadState(statePath);
-  assert.equal(after.active, null, 'active should be cleared');
-  assert.equal(after.discoverBucket, null, 'discoverBucket should be cleared');
-  assert.equal(rows.length, 0, 'cancel must emit zero timing rows');
-}
+    const after = loadState(statePath);
+    assert.equal(after.active, null, 'active should be cleared');
+    assert.equal(after.discoverBucket, null, 'discoverBucket should be cleared');
+    assert.equal(rows.length, 0, 'cancel must emit zero timing rows');
+    rmSync(dir, { recursive: true, force: true });
+  }
 
-// --- Case 2: no active bucket — clean no-op, no throw, no rows --------------
-{
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-cancel-noop-'));
-  const statePath = path.join(dir, 'state.json');
-  saveState({ active: null, lastActive: null, discoverBucket: null }, statePath);
+  // --- Case 2: no active bucket — clean no-op, no throw, no rows --------------
+  {
+    const dir = createActivatedUnitRuntimeRoot('aitm-cancel-noop-');
+    const statePath = path.join(
+      dir,
+      '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+    );
+    saveState({ active: null, lastActive: null, discoverBucket: null }, statePath);
 
-  const rows = [];
-  // Must not throw.
-  await verbCancel(makeCtx(statePath, dir, rows));
-  assert.equal(rows.length, 0, 'no-op cancel must emit zero timing rows');
-}
-
+    const rows = [];
+    // Must not throw.
+    await verbCancel(makeCtx(statePath, dir, rows));
+    assert.equal(rows.length, 0, 'no-op cancel must emit zero timing rows');
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 console.log('discover-cancel.test.mjs: all passed');

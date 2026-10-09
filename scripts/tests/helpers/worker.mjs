@@ -5,16 +5,19 @@
 // behavior. No network I/O.
 
 import { appendFileSync } from 'node:fs';
-import path from 'node:path';
+import { timingLockPath } from '../../task-tracker/paths.mjs';
 import { withLock } from '../../task-tracker/locks.mjs';
 
-const [projDir, issue, sessionLabel, logPath, holdMsRaw] = process.argv.slice(2);
+const [projDir, issue, sessionLabel, logPath, holdMsRaw, barrier] = process.argv.slice(2);
 const holdMs = Number(holdMsRaw) || 50;
 
 function safe(n) {
   return String(n).replace(/[^A-Za-z0-9_-]/g, '_');
 }
-const lockPath = path.join(projDir, '.ai-task-manager', 'locks', `timing-${safe(issue)}.lock`);
+process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+process.env.AI_TASK_MANAGER_SESSION_ID = sessionLabel;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = projDir;
+const lockPath = timingLockPath(safe(issue), projDir);
 
 function log(event) {
   appendFileSync(
@@ -28,6 +31,20 @@ try {
     lockPath,
     async () => {
       log('start');
+      if (barrier === 'overlap-barrier') {
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(
+            () => reject(new Error('peer never entered its critical section')),
+            10_000
+          );
+          process.once('message', (message) => {
+            clearTimeout(timeout);
+            if (message === 'release') resolve();
+            else reject(new Error('unexpected overlap barrier message'));
+          });
+          process.send({ event: 'entered' });
+        });
+      }
       await new Promise((r) => setTimeout(r, holdMs));
       log('end');
     },

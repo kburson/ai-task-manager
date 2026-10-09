@@ -4,8 +4,13 @@
 // converge exactly one chronologically placed `review:approved` row.
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { test } from 'node:test';
+import { rmSync } from 'node:fs';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 
 import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
 import {
@@ -15,7 +20,6 @@ import {
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
 import { computeActiveByPhaseSpans } from '../../../../task-tracker/lib/timing-rows.mjs';
 import { parseTimingRows, rollupTotals } from '../../../../task-tracker/timing-rollup.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const REVIEW_STARTED = '2026-08-06T05:56:41Z';
 const APPROVED = '2026-08-06T05:58:36Z';
@@ -280,7 +284,7 @@ function approveDeps({ initialBody, reconciliations }) {
 }
 
 test('runApprove reconciles timing after first approval and on an already-approved retry', async () => {
-  const projectDir = mkdtempSync(`${projectScratchDir('test')}/aitm-1133-`);
+  const projectDir = createActivatedUnitRuntimeRoot('aitm-1133-');
   const baseBody = `## Definition of Done\n\n### Lifecycle (verified at Review)\n\n- [ ] Final Review Passed\n${AGENT_REVIEW_PASSED}\n`;
   const firstCalls = [];
   const retryCalls = [];
@@ -313,7 +317,7 @@ test('runApprove reconciles timing after first approval and on an already-approv
 
 // @story #1161
 test('runApprove refreshes stale Full-Auto approval carriers after lifecycle invalidation', async () => {
-  const projectDir = mkdtempSync(`${projectScratchDir('test')}/aitm-1161-`);
+  const projectDir = createActivatedUnitRuntimeRoot('aitm-1161-');
   const staleMarker = `<!-- aitm-review-approved ts="${STALE_APPROVED}" full-auto="yes" signals="env=1" -->`;
   const staleFootnote = [
     '<!-- aitm-full-auto-footnote:start -->',
@@ -362,7 +366,7 @@ test('runApprove refreshes stale Full-Auto approval carriers after lifecycle inv
 
 // @story #1172
 test('runApprove removes a legacy unbounded Full-Auto footnote during stale re-approval', async () => {
-  const projectDir = mkdtempSync(`${projectScratchDir('test')}/aitm-1172-`);
+  const projectDir = createActivatedUnitRuntimeRoot('aitm-1172-');
   const staleMarker = `<!-- aitm-review-approved ts="${STALE_APPROVED}" full-auto="yes" signals="env=1" -->`;
   const staleLegacyFootnote = [
     '> ⚙️ **Full-Auto mode enabled: human review skipped.**',

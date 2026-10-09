@@ -4,11 +4,11 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 initializeFixtureActor(import.meta.url);
-const defaultRoot = await createLegacyRootFixture('move-state-usage-');
+const defaultRoot = await createActivatedRuntimeRootFixture('move-state-usage-');
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -73,7 +73,7 @@ for (const state of [
   'review',
   'done',
 ]) {
-  const sandbox = await createLegacyRootFixture(`tt-ms-${state}-`);
+  const sandbox = await createActivatedRuntimeRootFixture(`tt-ms-${state}-`);
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -107,7 +107,7 @@ for (const state of [
 // data is on disk, move-state must not preserve or rewrite it — the issue
 // body `aitm-last-known-state` marker is the single source of truth.
 {
-  const sandbox = await createLegacyRootFixture('tt-ms-state-write-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-ms-state-write-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -125,7 +125,14 @@ for (const state of [
   );
   // #573: the global ledger lives under `.tmp/aitm/state/`. Seed there so the
   // CLI reads what we wrote and we read back what it wrote.
-  const sp = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  const sp = path.join(
+    sandbox,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   mkdirSync(path.dirname(sp), { recursive: true });
   // Seed with legacy `state` field to verify it gets stripped on next write.
   saveState({ active: '#777', lastActive: '#777' }, sp);

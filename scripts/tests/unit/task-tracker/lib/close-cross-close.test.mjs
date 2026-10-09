@@ -17,16 +17,23 @@
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
-import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  unitRuntimeEntrypointArgs,
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
-import { readFileSync, mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { after } from 'node:test';
+const roots = [];
+after(() => {
+  for (const root of roots) rmSync(root, { recursive: true, force: true });
+});
 
 import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
 
@@ -141,8 +148,9 @@ async function runCloseAndCaptureExit(ctx) {
 // Easiest path: write a real temp state file and point statePath at it.
 
 function withRealStateFile({ active }) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cross-close-'));
-  const statePath = path.join(dir, 'state.json');
+  const dir = createActivatedUnitRuntimeRoot('tt-cross-close-');
+  roots.push(dir);
+  const statePath = path.join(dir, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   writeFileSync(
     statePath,
     JSON.stringify({
@@ -160,14 +168,15 @@ function withRealStateFile({ active }) {
 }
 
 function makeDispatcherSandbox({ active }) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cross-close-cli-'));
+  const dir = createActivatedUnitRuntimeRoot('tt-cross-close-cli-');
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(dir, '.ai-task-manager', 'task-tracker.json'),
     JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
   );
   // #573: the global ledger the dispatcher preflight reads lives under `.tmp/aitm/state/`.
-  const stateDir = path.join(dir, '.tmp', 'aitm', 'state');
+  roots.push(dir);
+  const stateDir = path.join(dir, '.ai-task-manager', 'runtime', 'store', 'state');
   mkdirSync(stateDir, { recursive: true });
   writeFileSync(
     path.join(stateDir, 'task-tracker-state.json'),

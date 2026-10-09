@@ -34,6 +34,7 @@ function depsOf({
   currentUser = 'kburson',
 } = {}) {
   return {
+    migrationFreezeActive: () => false,
     fetchLive: async () => live,
     fetchLastKnownState: async () => marker,
     fetchLastStatusActor: async () => null,
@@ -213,6 +214,7 @@ async function capturePreflightVerb(opts) {
     target: '#769',
     cfg: { ...CFG, preferences: { gateAssigneeMatch: false } },
     deps: {
+      migrationFreezeActive: () => false,
       fetchLive: async () => 'develop',
       fetchLastKnownState: async () => 'develop',
       fetchAssignees: async () => {
@@ -239,6 +241,7 @@ async function capturePreflightVerb(opts) {
     cfg: CFG,
     verb: 'promote',
     deps: {
+      migrationFreezeActive: () => false,
       env: { TT_FULL_AUTO: '1' },
       fetchLive: async () => 'develop',
       fetchLastKnownState: async () => 'develop',

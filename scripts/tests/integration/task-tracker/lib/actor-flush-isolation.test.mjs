@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import { mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import {
+  createRuntimeRootFixture,
+  createActivatedRuntimeRootFixture,
+} from '../../../helpers/runtime-root-fixture.mjs';
 import { buildContext } from '../../../../task-tracker/runtime.mjs';
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
 import { timingActorKey } from '../../../../task-tracker/lib/timing-actor.mjs';
@@ -121,7 +124,7 @@ test('question marker cannot substitute another event for the frozen resume', as
     ctx.safePostTiming = async () => {
       throw new Error('must not publish');
     };
-    await assert.rejects(finalizeAskResume({ deps }), /ASK_MARKER_INVALID/);
+    await assert.rejects(finalizeAskResume({ deps }), { code: 'RUNTIME_STATE_CORRUPT' });
     assert.equal(readFileSync(markerPath, 'utf8'), corrupted);
     assert.equal(rows.length, 1);
     assert.equal(loadState(ctx.statePath).entryStartTs, null);
@@ -137,7 +140,7 @@ test('question hook respects its own manual pause without creating a resume mark
   }));
 
 async function fixture(operation) {
-  const root = createRuntimeRootFixture('actor-flush-');
+  const root = await createActivatedRuntimeRootFixture('actor-flush-');
   const keys = [
     'AI_TASK_MANAGER_PROJECT_DIR',
     'CLAUDE_PROJECT_DIR',
@@ -155,11 +158,19 @@ async function fixture(operation) {
     process.env.AI_TASK_MANAGER_PROJECT_DIR = root;
     process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-flush-a';
     process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
-    process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(root, 'transcripts');
+    process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+      root,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'app',
+      'claude',
+      'session-transcripts'
+    );
     process.env.TT_SKIP_NETWORK = '1';
     process.env.TT_SKIP_FIELD_SELF_CHECK = '1';
     mkdirSync(path.join(root, '.ai-task-manager'), { recursive: true });
-    mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR);
+    mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
     writeFileSync(
       path.join(root, '.ai-task-manager', 'task-tracker.json'),
       JSON.stringify({ repo: 'fixture/repository' })
@@ -212,7 +223,16 @@ test('flush preserves genuine own wall interval and unknown estimate despite ano
 test('first attributed interruption retains observed cursor delta without a fabricated opener', async () =>
   fixture(async ({ ctx, rows, root }) => {
     writeFileSync(
-      path.join(root, 'transcripts', 'fixture-flush-a.jsonl'),
+      path.join(
+        root,
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'app',
+        'claude',
+        'session-transcripts',
+        'fixture-flush-a.jsonl'
+      ),
       JSON.stringify({ type: 'assistant', message: { content: 'one two three' } }) + '\n'
     );
     ctx.safeReadLastRow = async () => null;
@@ -250,7 +270,16 @@ test('first attributed interruption retains observed cursor delta without a fabr
 test('update preserves cumulative actor cursor and unknown total after an unavailable estimate', async () =>
   fixture(async ({ ctx, root }) => {
     writeFileSync(
-      path.join(root, 'transcripts', 'fixture-flush-a.jsonl'),
+      path.join(
+        root,
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'app',
+        'claude',
+        'session-transcripts',
+        'fixture-flush-a.jsonl'
+      ),
       JSON.stringify({ type: 'assistant', message: { content: 'one two three' } }) + '\n'
     );
     ctx.safeReadLastRow = async () => null;
@@ -483,7 +512,7 @@ test('session tracking initializes a versioned own cursor and refuses corrupt ex
     assert.equal(record.schema, 'aitm.word-cursor/v1');
     assert.equal(record.actor, timingActorKey({ provider: 'claude', sid }));
     writeFileSync(file, '{broken');
-    assert.throws(() => ensureSessionTracking(sid), { code: 'WORD_CURSOR_INVALID' });
+    assert.throws(() => ensureSessionTracking(sid), { code: 'RUNTIME_STATE_CORRUPT' });
     assert.equal(readFileSync(file, 'utf8'), '{broken');
   }));
 
@@ -491,7 +520,16 @@ test('failed publication retains original row and cursor, then exact replay prec
   fixture(async ({ ctx, root }) => {
     const identity = { provider: 'claude', sid: 'fixture-flush-a' };
     writeFileSync(
-      path.join(root, 'transcripts', identity.sid + '.jsonl'),
+      path.join(
+        root,
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'app',
+        'claude',
+        'session-transcripts',
+        identity.sid + '.jsonl'
+      ),
       JSON.stringify({ type: 'assistant', message: { content: 'one two three' } }) +
         String.fromCharCode(10)
     );
@@ -683,7 +721,16 @@ test('actual idle SessionStart preserves cumulative actor word evidence', async 
     );
     saveMarker(markerPathFor(sid), 0, 10, '#1857', 20);
     writeFileSync(
-      path.join(root, 'transcripts', sid + '.jsonl'),
+      path.join(
+        root,
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'app',
+        'claude',
+        'session-transcripts',
+        sid + '.jsonl'
+      ),
       JSON.stringify({ type: 'assistant', message: { content: 'idle session record' } }) +
         String.fromCharCode(10)
     );

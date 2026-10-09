@@ -110,7 +110,7 @@ process.exit(0);
         entryStartTs: new Date().toISOString(),
         wordsAtEntryStart: 0,
       },
-      path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+      path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json')
     );
   }
 
@@ -256,11 +256,11 @@ process.exit(0);
       chmodSync(shim, 0o755);
       // Write fleet registry pointing #206 to altWorktree. #573: the fleet
       // registry is main-anchored under `.tmp/aitm/fleet/`.
-      mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'fleet'), {
+      mkdirSync(path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'fleet'), {
         recursive: true,
       });
       writeFileSync(
-        path.join(sandbox, '.tmp', 'aitm', 'fleet', 'task-fleet.json'),
+        path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'fleet', 'task-fleet.json'),
         JSON.stringify({
           '#206': {
             worktreePath: altWorktree,

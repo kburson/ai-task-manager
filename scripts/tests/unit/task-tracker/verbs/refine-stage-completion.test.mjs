@@ -41,6 +41,8 @@ function bodyWithState(state) {
     },
     cfg: baseCfg,
     deps: {
+      migrationFreezeActive: () => false,
+      loadSession: () => null,
       projectDir: process.cwd(),
       assertBound: () => {},
       tetherIssueToProject: async () => ({ itemId: 'X' }),
@@ -110,6 +112,8 @@ function bodyWithState(state) {
     args: { issueNumber: 702, size: 'S', estimate: '2', priority: 'p1', reason: 'stamp it' },
     cfg: baseCfg,
     deps: {
+      migrationFreezeActive: () => false,
+      loadSession: () => null,
       projectDir: process.cwd(),
       assertBound: () => {},
       tetherIssueToProject: async () => ({ itemId: 'X' }),
@@ -148,6 +152,8 @@ function bodyWithState(state) {
     issueNumber: 703,
     cfg: baseCfg,
     deps: {
+      migrationFreezeActive: () => false,
+      loadSession: () => null,
       projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
@@ -172,6 +178,8 @@ function bodyWithState(state) {
     issueNumber: 704,
     cfg: baseCfg,
     deps: {
+      migrationFreezeActive: () => false,
+      loadSession: () => null,
       projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
@@ -200,6 +208,8 @@ function bodyWithState(state) {
       issueNumber: 705,
       cfg: baseCfg,
       deps: {
+        migrationFreezeActive: () => false,
+        loadSession: () => null,
         projectDir: process.cwd(),
         assertBound: () => {},
         fetchIssueBody: async () => ({ body: bodyWithState('refine') }),
@@ -226,6 +236,8 @@ function bodyWithState(state) {
       issueNumber: 706,
       cfg: baseCfg,
       deps: {
+        migrationFreezeActive: () => false,
+        loadSession: () => null,
         projectDir: process.cwd(),
         assertBound: () => {},
         fetchIssueBody: async () => ({

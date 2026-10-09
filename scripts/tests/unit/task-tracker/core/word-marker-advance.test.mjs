@@ -22,16 +22,18 @@
 // @story #1857
 // Fixture: this fixture owns its actor instead of using ambient session state.
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
+const fixtureActor = initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
-import { mkdtempSync, writeFileSync, appendFileSync, rmSync } from 'node:fs';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { mkdirSync, writeFileSync, appendFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 import { countWords, saveMarker, loadMarker } from '../../../../task-tracker/word-counter.mjs';
 import { advanceWordMarker } from '../../../../task-tracker/state.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 // Build a JSONL line carrying `n` reader-visible words (a real assistant turn,
 // so `countWords` includes it: type assistant, non-meta, text content block).
@@ -43,9 +45,29 @@ function turn(n) {
 }
 
 function withFixtures(fn) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'wm-advance-'));
-  const jsonl = path.join(dir, 'session.jsonl');
-  const marker = path.join(dir, 'session.json');
+  const dir = createActivatedUnitRuntimeRoot('wm-advance-');
+  const jsonl = path.join(
+    dir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    fixtureActor.provider,
+    'session-transcripts',
+    `${fixtureActor.sid}.jsonl`
+  );
+  const marker = path.join(
+    dir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    fixtureActor.provider,
+    'session-tracking',
+    `${fixtureActor.sid}.json`
+  );
+  mkdirSync(path.dirname(jsonl), { recursive: true });
+  mkdirSync(path.dirname(marker), { recursive: true });
   try {
     return fn({ jsonl, marker });
   } finally {

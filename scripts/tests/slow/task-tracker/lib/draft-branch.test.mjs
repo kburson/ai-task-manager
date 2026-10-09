@@ -2,15 +2,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { writeFileSync, rmSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { planRuntimeInitialization, applyRuntimeInitialization } from '../../../../task-tracker/lib/runtime-initialize.mjs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
-function makeRepoNoState() {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'draft-branch-'));
-  execFileSync('git', ['init', '-q', dir]);
-  return dir;
-}
 function cleanup(dir) {
   rmSync(dir, { recursive: true, force: true });
 }
@@ -18,11 +14,11 @@ function cleanup(dir) {
 test('draft bootstrap creates only the issue branch and verifies renewed binding', async () => {
   const module = await import('../../../../task-tracker/draft-branch.mjs').catch(() => ({}));
   assert.equal(typeof module.createDraftBranch, 'function');
-  const root = makeRepoNoState();
+  const root = await createActivatedRuntimeRootFixture('draft-branch-');
   const child = root + '-draft';
   const git = (cwd, ...args) => execFileSync('g' + 'it', args, { cwd, encoding: 'utf8' }).trim();
   try {
-    writeFileSync(path.join(root, '.gitignore'), '.tmp/\n.scratch/\n');
+    writeFileSync(path.join(root, '.gitignore'), '.tmp/\n.scratch/\n.ai-task-manager/runtime/\n');
     writeFileSync(path.join(root, 'initial'), 'initial');
     git(root, 'add', '.');
     git(
@@ -36,6 +32,12 @@ test('draft bootstrap creates only the issue branch and verifies renewed binding
       'initial'
     );
     git(root, 'worktree', 'add', '--detach', child, 'HEAD');
+    const initialization = planRuntimeInitialization({ projectRoot: child, mainRoot: root });
+    await applyRuntimeInitialization({
+      plan: initialization,
+      approvedPlanDigest: initialization.digest,
+      adapters: { identity: () => ({ provider: 'fixture', sid: 'draft-initializer', pid: process.pid, processToken: 'draft-initializer' }) },
+    });
     const sid = 'draft-bootstrap-1848';
     const initial = git(child, 'rev-parse', 'HEAD');
     const bind = (branch = 'HEAD', issue = '#1848') =>
@@ -80,6 +82,9 @@ test('draft bootstrap creates only the issue branch and verifies renewed binding
     assert.equal(git(child, 'branch', '--show-current'), 'codex/1848-draft');
     const result = await module.createDraftBranch(options);
     assert.equal(result.branch, 'codex/1848-draft');
+    const journal = JSON.parse(readFileSync(path.join(child, '.ai-task-manager', 'runtime', 'store', 'draft-branch', '1848.json'), 'utf8'));
+    assert.equal(journal.head, initial);
+    assert.equal(journal.sessionId, sid);
     assert.equal(git(child, 'rev-parse', 'HEAD'), initial);
     assert.equal(readFileSync(path.join(child, 'initial'), 'utf8'), 'initial');
     assert.deepEqual(await module.createDraftBranch(options), result);

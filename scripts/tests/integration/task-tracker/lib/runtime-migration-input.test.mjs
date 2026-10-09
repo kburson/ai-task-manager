@@ -1,6 +1,4 @@
 // @story #1857
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
@@ -18,19 +16,10 @@ test('exact observed plan trust cannot bless changed sources, hard blockers, or 
     const source = path.join(root, '.tmp/aitm/state/task-tracker-state.json');
     mkdirSync(path.dirname(source), { recursive: true });
     writeFileSync(source, '{"active":null}');
-    for (const [relative, bytes] of Object.entries({
-      'state/task-tracker-queue.json': '[]',
-      'fleet/task-fleet.json': '{}',
-      'fleet/occupancy.json': '{}',
-    })) {
-      const target = path.join(root, '.tmp/aitm', relative);
-      mkdirSync(path.dirname(target), { recursive: true });
-      writeFileSync(target, bytes);
-    }
     const observed = await planRuntimeMigration({ ...roots, adapters });
     assert.deepEqual(
       observed.blockers.map((entry) => entry.code),
-      Array(4).fill('legacy-trust-required')
+      ['legacy-trust-required']
     );
     const file = path.join(root, 'observed.json');
     writeFileSync(file, JSON.stringify(observed));

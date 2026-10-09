@@ -27,12 +27,14 @@ initializeFixtureActor(import.meta.url);
 const fixtureOriginalCwd = process.cwd();
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { statePath } from '../../../../task-tracker/paths.mjs';
 import {
   dispatchOnEnterActions,
@@ -284,7 +286,7 @@ test('unparkDoneDependents: enforcement catch absorbs a throw', async () => {
 // --- syncTrackerState -------------------------------------------------------
 
 test('syncTrackerState: syncs the tracker ledger for the new state', () => {
-  const sandbox = mkdtempProjectIsolated('cache-unpark-');
+  const sandbox = createActivatedUnitRuntimeRoot('cache-unpark-');
   const savedProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
   process.chdir(sandbox);
@@ -295,6 +297,8 @@ test('syncTrackerState: syncs the tracker ledger for the new state', () => {
     syncTrackerState({ stateArg: 'test' });
     assert.ok(existsSync(statePath(sandbox)), 'tracker ledger was written');
   } finally {
+    process.chdir(fixtureOriginalCwd);
+    rmSync(sandbox, { recursive: true, force: true });
     if (savedProjectDir !== undefined) process.env.AI_TASK_MANAGER_PROJECT_DIR = savedProjectDir;
     else delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
   }

@@ -6,18 +6,27 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { test } from 'node:test';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { parseArgs, runUnblock, verbUnblock } from '../../../../task-tracker/verbs/unblock.mjs';
 
 const CFG = { repo: 'o/r' };
 
 function tmpState(state) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'unblock-state-'));
-  const statePath = join(dir, 'state.json');
+  const dir = createActivatedUnitRuntimeRoot('unblock-state-');
+  const statePath = join(
+    dir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   writeFileSync(statePath, JSON.stringify(state));
   return statePath;
 }

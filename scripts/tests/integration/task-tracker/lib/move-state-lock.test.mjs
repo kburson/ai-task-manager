@@ -17,17 +17,19 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import '../../../fixtures/offline-gh-auto.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
-import {
-  projectScratchDir,
-  mkdtempProjectIsolated,
-} from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { issueLockPath, withIssueLock } from '../../../../task-tracker/issue-mutator-lock.mjs';
+import {
+  issueLockPath,
+  withIssueLock,
+  readIssueLockHolder,
+} from '../../../../task-tracker/issue-mutator-lock.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 // #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
@@ -44,6 +46,7 @@ function runMoveState(args, envOverrides = {}) {
   // flag explicitly to exercise the short-circuit path on purpose.
   const baseEnv = { ...process.env };
   delete baseEnv.AITM_ISSUE_LOCK_HELD;
+  delete baseEnv.AITM_ISSUE_LOCK_PROOF;
   const env = {
     ...baseEnv,
     TT_SKIP_NETWORK: '1',
@@ -63,7 +66,7 @@ function runMoveState(args, envOverrides = {}) {
 // Always isolate the project dir so the local state-file write inside
 // move-state.mjs cannot clobber the repo's tracker state cache.
 {
-  const projDir = mkdtempProjectIsolated('tt-isolated-');
+  const projDir = await createActivatedRuntimeRootFixture('tt-isolated-');
   mkdirSync(path.join(projDir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(projDir, '.ai-task-manager/task-tracker.json'),
@@ -79,27 +82,26 @@ function runMoveState(args, envOverrides = {}) {
 
 // Test 2: holder payload is written inside the lock dir during critical section
 {
-  const projDir = mkdtempProjectIsolated('tt-issue-lock-');
+  const projDir = await createActivatedRuntimeRootFixture('tt-issue-lock-');
   const issue = 4242;
   let holderSeen = null;
   await withIssueLock({ issue, verb: 'unit-test', projDir, sessionId: 'sess-xyz' }, async () => {
     const lockPath = issueLockPath(issue, projDir);
-    assert.ok(existsSync(lockPath), 'lock dir present during critical section');
-    holderSeen = JSON.parse(readFileSync(path.join(lockPath, 'holder.json'), 'utf8'));
+    holderSeen = readIssueLockHolder(lockPath);
+    assert.ok(holderSeen, 'protected ownership present during critical section');
   });
-  assert.equal(holderSeen.sessionId, 'sess-xyz');
-  assert.equal(holderSeen.verb, 'unit-test');
+  assert.equal(holderSeen.sessionId, process.env.AI_TASK_MANAGER_SESSION_ID);
   assert.equal(typeof holderSeen.pid, 'number');
-  assert.match(holderSeen.acquiredAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(holderSeen.digest, /^sha256:/);
   // Released after fn returns
-  assert.equal(existsSync(issueLockPath(issue, projDir)), false);
+  assert.equal(readIssueLockHolder(issueLockPath(issue, projDir)), null);
   rmSync(projDir, { recursive: true, force: true });
 }
 
 // Test 3: contention — hold the production lock while move-state runs in a
 // child process, then expect a non-zero exit and locked-by stderr.
 {
-  const projDir = mkdtempProjectIsolated('tt-issue-lock-');
+  const projDir = await createActivatedRuntimeRootFixture('tt-issue-lock-');
   const issue = 7777;
   // Build a minimal config so loadConfig doesn't barf — copy the real one.
   const cfgDir = path.join(projDir, '.ai-task-manager');
@@ -123,7 +125,7 @@ function runMoveState(args, envOverrides = {}) {
   assert.notEqual(res.status, 0, 'expected non-zero exit on contention');
   assert.match(
     res.stderr,
-    /issue 7777 locked by session other-sess \(held since \d{4}-\d{2}-\d{2}T/,
+    /issue 7777 locked by session .+ \(held since unknown\)/,
     `stderr did not match contention pattern:\n${res.stderr}`
   );
   // Cleanup

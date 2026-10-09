@@ -8,11 +8,8 @@ import { inspectRuntimeWriterLeases } from './runtime-migration-lock.mjs';
 const digest = (bytes) => 'sha256:' + createHash('sha256').update(bytes).digest('hex');
 const object = (value) => value && typeof value === 'object' && !Array.isArray(value);
 const issueKey = (value) => String(value ?? '').replace(/^#/, '');
-const active = (value) =>
-  object(value) &&
-  value.paused !== true &&
-  Boolean(value.issue || value.active) &&
-  typeof value.entryStartTs === 'string' &&
+const active = (value) => object(value) && value.paused !== true &&
+  Boolean(value.issue || value.active) && typeof value.entryStartTs === 'string' &&
   Number.isFinite(Date.parse(value.entryStartTs));
 
 export function observeRuntimeWriterCensus(input, adapters = {}) {
@@ -23,12 +20,8 @@ export function observeRuntimeWriterCensus(input, adapters = {}) {
   const readBytes = adapters.readBytes || readFileSync;
   for (const file of input.files) {
     if (!['sessions', 'state', 'occupancy'].includes(file.family)) continue;
-    if (
-      file.family === 'sessions' &&
-      !file.source.endsWith('/active-task.json') &&
-      !new RegExp('/sessions/[^/]+/timing/[^/]+[.]json$').test(file.source)
-    )
-      continue;
+    if (file.family === 'sessions' && !file.source.endsWith('/active-task.json') &&
+        !new RegExp('/sessions/[^/]+/timing/[^/]+[.]json$').test(file.source)) continue;
     try {
       const bytes = readBytes(file.source);
       if (!Buffer.isBuffer(bytes) || digest(bytes) !== file.digest)
@@ -39,13 +32,8 @@ export function observeRuntimeWriterCensus(input, adapters = {}) {
         for (const entry of Object.values(value)) {
           if (!object(entry) || typeof entry.sid !== 'string' || typeof entry.provider !== 'string')
             throw new Error('Unsupported occupancy claim');
-          claims.push({
-            provider: entry.provider,
-            sid: entry.sid,
-            projectRoot: file.root,
-            issue: issueKey(entry.issue),
-            reason: 'occupancy',
-          });
+          claims.push({ provider: entry.provider, sid: entry.sid, projectRoot: file.root,
+            issue: issueKey(entry.issue), reason: 'occupancy' });
         }
       } else if (file.family === 'state') {
         if (active(value)) globals.push({ value, root: file.root });
@@ -59,19 +47,10 @@ export function observeRuntimeWriterCensus(input, adapters = {}) {
         const state = actor ? value.state : value;
         if (actor && (value.sid !== sid || typeof value.provider !== 'string'))
           throw new Error('Conflicting actor identity');
-        if (active(state))
-          sessions.push({
-            provider: actor
-              ? value.provider
-              : sid === input.owner.sid
-                ? input.owner.provider
-                : null,
-            sid,
-            projectRoot: file.root,
-            issue: issueKey(state.issue || state.active),
-            entryStartTs: state.entryStartTs,
-            reason: actor ? 'actor-engagement' : 'session-binding',
-          });
+        if (active(state)) sessions.push({ provider: actor ? value.provider :
+          sid === input.owner.sid ? input.owner.provider : null,
+          sid, projectRoot: file.root, issue: issueKey(state.issue || state.active),
+          entryStartTs: state.entryStartTs, reason: actor ? 'actor-engagement' : 'session-binding' });
       }
     } catch {
       unknown.push({ reason: 'claim-observation-unavailable', source: file.source });
@@ -79,57 +58,33 @@ export function observeRuntimeWriterCensus(input, adapters = {}) {
   }
   claims.push(...sessions);
   for (const entry of globals) {
-    const matches = sessions.filter(
-      (session) =>
-        session.projectRoot === entry.root &&
-        session.issue === issueKey(entry.value.active || entry.value.issue) &&
-        session.entryStartTs === entry.value.entryStartTs
-    );
+    const matches = sessions.filter((session) => session.projectRoot === entry.root &&
+      session.issue === issueKey(entry.value.active || entry.value.issue) &&
+      session.entryStartTs === entry.value.entryStartTs);
     const identities = new Set(matches.map((match) => match.provider + ':' + match.sid));
-    if (identities.size !== 1)
-      claims.push({
-        provider: null,
-        sid: null,
-        projectRoot: entry.root,
-        issue: issueKey(entry.value.active || entry.value.issue),
-        reason: 'unattributed-active-state',
-      });
+    if (identities.size !== 1) claims.push({ provider: null, sid: null,
+      projectRoot: entry.root, issue: issueKey(entry.value.active || entry.value.issue),
+      reason: 'unattributed-active-state' });
   }
   let leases = [];
   let observed = { complete: false, processes: [], unknown: [] };
-  try {
-    leases = (adapters.inspectLeases || inspectRuntimeWriterLeases)(input);
-  } catch {
-    unknown.push({ reason: 'lease-observation-unavailable' });
-  }
-  try {
-    observed = (adapters.observeProcesses || observeRuntimeProcesses)(input);
-  } catch {
-    unknown.push({ reason: 'process-observation-unavailable' });
-  }
+  try { leases = (adapters.inspectLeases || inspectRuntimeWriterLeases)(input); }
+  catch { unknown.push({ reason: 'lease-observation-unavailable' }); }
+  try { observed = (adapters.observeProcesses || observeRuntimeProcesses)(input); }
+  catch { unknown.push({ reason: 'process-observation-unavailable' }); }
   if (!observed || observed.complete !== true || !Array.isArray(observed.processes))
     unknown.push({ reason: 'process-observation-incomplete' });
   unknown.push(...(observed?.unknown || []));
   const writers = (observed?.processes || []).map((process) => {
-    const matching = leases.filter(
-      ({ record }) => record.owner.pid === process.pid && record.projectRoot === process.projectRoot
-    );
-    return matching.length === 1
-      ? { ...process, ...matching[0].record.owner, cooperative: true }
-      : { ...process, cooperative: false };
+    const matching = leases.filter(({ record }) => record.owner.pid === process.pid &&
+      record.projectRoot === process.projectRoot);
+    return matching.length === 1 ? { ...process, ...matching[0].record.owner, cooperative: true } :
+      { ...process, cooperative: false };
   });
   for (const { record } of leases) {
-    if (
-      !writers.some(
-        (writer) => writer.pid === record.owner.pid && writer.projectRoot === record.projectRoot
-      )
-    )
-      writers.push({
-        ...record.owner,
-        projectRoot: record.projectRoot,
-        cooperative: false,
-        reason: 'unresolved-writer-lease',
-      });
+    if (!writers.some((writer) => writer.pid === record.owner.pid && writer.projectRoot === record.projectRoot))
+      writers.push({ ...record.owner, projectRoot: record.projectRoot, cooperative: false,
+        reason: 'unresolved-writer-lease' });
   }
   return { complete: unknown.length === 0, writers, claims, unknown };
 }

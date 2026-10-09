@@ -51,7 +51,7 @@ import {
   bindingMatches,
 } from './lib/mutation-context.mjs';
 import { readWorktreeIdentity } from './lib/worktree-binding-guard.mjs';
-import { artifactPathPolicy } from './lib/artifact-write-policy.mjs';
+import { artifactPathPolicy, isProtectedRuntimePath } from './lib/artifact-write-policy.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 import {
   createGithubWorkflowBoundaryRuntime,
@@ -133,6 +133,11 @@ export function decideSourceEdit({
     };
   }
 
+  if (isProtectedRuntimePath(relPath))
+    return {
+      decision: 'block', code: 'source-edit-runtime',
+      reason: 'Runtime authority requires a registered runtime operation.',
+    };
   const artifact = artifactPathPolicy(relPath);
   if (artifact === 'block')
     return {
@@ -521,23 +526,35 @@ export async function runHook(payload, deps = {}) {
     })
   );
   const forbiddenArtifact = artifactDecisions.find(
-    (result) => result.code === 'source-edit-docs-script'
+    (result) => ['source-edit-docs-script', 'source-edit-runtime'].includes(result.code)
   );
   if (forbiddenArtifact) return forbiddenArtifact;
   if (artifactDecisions.length && artifactDecisions.every((result) => result.decision === 'allow'))
     return artifactDecisions[0];
 
-  const choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);
-  const exactBinding = (deps.readExactSessionBinding || readExactSessionBinding)(projectDir, {
-    sessionId: payload?.session_id,
-  });
-  const boundIssue = deps.loadBoundIssue
-    ? deps.loadBoundIssue(projectDir)
-    : exactBinding
-      ? `#${exactBinding.issueNumber}`
-      : payload?.session_id !== undefined
-        ? null
-        : loadBoundIssue(projectDir);
+  let choreModeActive;
+  let boundIssue;
+  let exactBinding;
+  try {
+    choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);
+    exactBinding = (deps.readExactSessionBinding || readExactSessionBinding)(projectDir, {
+      sessionId: payload?.session_id,
+    });
+    boundIssue = deps.loadBoundIssue
+      ? deps.loadBoundIssue(projectDir)
+      : exactBinding
+        ? `#${exactBinding.issueNumber}`
+        : payload?.session_id !== undefined
+          ? null
+          : loadBoundIssue(projectDir);
+  } catch (error) {
+    return {
+      decision: 'block',
+      code: 'source-edit-runtime-unavailable',
+      reason: '[task-tracker] Runtime authority unavailable (' + (error.code || 'read-failed') +
+        '): ' + error.message + '; inspect registered migrate-runtime status.',
+    };
+  }
 
   let signals = { state: 'unknown', hasPostedMarker: false, hasCompleteMarker: false };
   if (!choreModeActive && boundIssue) {

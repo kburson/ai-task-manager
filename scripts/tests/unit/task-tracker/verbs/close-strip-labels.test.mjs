@@ -14,14 +14,17 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import '../../../fixtures/offline-gh-auto.mjs';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
 import { closeLabelRemoveArgs } from '../../../../task-tracker/lib/close-labels.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
 
 const APPROVED_BODY =
   '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" full-auto="yes" -->\n<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->\n';
@@ -35,9 +38,9 @@ const baseState = (active = '#5') => ({
 });
 
 function tmpState(state) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-705-'));
-  const statePath = join(dir, 'state.json');
-  writeFileSync(statePath, JSON.stringify(state));
+  const dir = createActivatedUnitRuntimeRoot('aitm-705-');
+  const statePath = join(dir, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
+  saveState(state, statePath);
   return { statePath, dir };
 }
 
@@ -48,6 +51,7 @@ function makeCtx(statePath, dir, over = {}) {
     statePath,
     projectDir: dir,
     // These tests exercise close ordering/labels, with terminal storage external.
+    loadCurrentSession: () => null,
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},
     releaseBindingOccupancy: () => ({ released: [] }),

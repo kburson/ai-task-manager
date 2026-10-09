@@ -5,7 +5,6 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { assertCapturedCommitSources } from './guidance-capture-provenance.mjs';
-import { capturedCommitBytes } from './captured-commit-bytes.mjs';
 
 import {
   measureAgentVisible,
@@ -274,19 +273,16 @@ export function buildPairedContext({
   }
   const current = measureAgentVisible({
     staticFiles: proposedFiles.map(({ sourcePath, sha256 }) => {
-      // Reports measure the exact immutable sources certified by the capture.
-      // Candidate changes cannot alter historical token accounting; live-source
-      // certification remains the separate assertCurrentCaptureSources contract.
+      // Pre-slim captures describe fixed historical bytes. Current release
+      // captures still require exact correspondence with the live sources.
       const historical = final
         ? null
         : JSON.parse(read(`${FIXTURES}/pre-slim-static/manifest.json`)).files.find(
             (file) => file.sourcePath === sourcePath && file.sha256 === sha256
           );
-      const bytes = final
-        ? capturedCommitBytes(ROOT, currentSourceCommit, sourcePath)
-        : historical
-          ? Buffer.from(read(historical.snapshotPath).toString('utf8').trim(), 'base64')
-          : read(sourcePath);
+      const bytes = historical
+        ? Buffer.from(read(historical.snapshotPath).toString('utf8').trim(), 'base64')
+        : read(sourcePath);
       if (digest(bytes) !== sha256) {
         throw new Error(`paired context: proposed static drift: ${sourcePath}`);
       }

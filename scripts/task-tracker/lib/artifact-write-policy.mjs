@@ -29,6 +29,10 @@ export const DOC_SCRIPT_EXTENSIONS = Object.freeze([
   '.cmd',
 ]);
 
+export function isProtectedRuntimePath(relative) {
+  return typeof relative === 'string' && /^\.ai-task-manager\/runtime(?:\/|$)/.test(relative);
+}
+
 export function artifactPathPolicy(relative) {
   if (
     typeof relative !== 'string' ||
@@ -143,6 +147,9 @@ export function resolveArtifactShell(command, invocationDir, projectRoot) {
   // Non-artifact commands retain their original binding and path guards.
   const candidate = targets.some(
     (target) =>
+      isProtectedRuntimePath(
+        path.relative(projectRoot, path.resolve(invocationDir, target)).split(path.sep).join('/')
+      ) ||
       artifactPathPolicy(
         path.relative(projectRoot, path.resolve(invocationDir, target)).split(path.sep).join('/')
       ) !== 'other'
@@ -152,6 +159,12 @@ export function resolveArtifactShell(command, invocationDir, projectRoot) {
     const resolved = targets.map((target) =>
       resolveMutationTarget(target.replace(/^(?:\.\/)+/, ''), invocationDir, projectRoot)
     );
+    if (resolved.some((target) => isProtectedRuntimePath(target.relative)))
+      return {
+        status: 'block',
+        targets,
+        reason: 'Runtime authority requires a registered runtime operation.',
+      };
     const policies = resolved.map((target) => artifactPathPolicy(target.relative));
     if (
       targets.some(

@@ -1,16 +1,26 @@
 // @story #1857
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { createUnitRootFixture } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { enqueue, peek, drain, drainMatching } from '../../../../task-tracker/queue.mjs';
 import { buildRow } from '../../../../task-tracker/gh-timing-comment.mjs';
 import { timingActorKey } from '../../../../task-tracker/lib/timing-actor.mjs';
 
 test('drain cannot erase a concurrently enqueued actor row and replay preserves original bytes', async () => {
-  const root = createUnitRootFixture('actor-queue-');
-  const file = path.join(root, 'queue.json');
+  const root = createActivatedUnitRuntimeRoot('actor-queue-');
+  const file = path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-queue.json'
+  );
   try {
     const row = buildRow({
       ts: new Date().toISOString(),
@@ -33,7 +43,10 @@ test('drain cannot erase a concurrently enqueued actor row and replay preserves 
     enqueue({ kind: 'timing', issue: '#1857', row }, file);
     await drain(async (event) => {
       assert.equal(event.row, row);
-      enqueue({ kind: 'timing', issue: '#2000', row: 'new concurrent evidence' }, file);
+      enqueue(
+        { kind: 'timing', issue: '#2000', row: row.replace('pause:other', 'pause:question') },
+        file
+      );
     }, file);
     assert.equal(peek(file).length, 1);
     assert.equal(peek(file)[0].issue, '#2000');
@@ -53,17 +66,24 @@ test('drain cannot erase a concurrently enqueued actor row and replay preserves 
 });
 
 test('queue corruption and unsupported schema refuse without erasing evidence', async () => {
-  const root = createUnitRootFixture('actor-queue-invalid-');
-  const file = path.join(root, 'queue.json');
+  const root = createActivatedUnitRuntimeRoot('actor-queue-invalid-');
+  const file = path.join(
+    root,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-queue.json'
+  );
   try {
     for (const bytes of ['{broken', JSON.stringify({ schema: 'future', items: [] })]) {
       writeFileSync(file, bytes);
       assert.throws(() => enqueue({ kind: 'timing', issue: '#1857', row: 'new' }, file), {
-        code: 'TIMING_QUEUE_INVALID',
+        code: 'RUNTIME_STATE_CORRUPT',
       });
       await assert.rejects(
         drain(async () => {}, file),
-        { code: 'TIMING_QUEUE_INVALID' }
+        { code: 'RUNTIME_STATE_CORRUPT' }
       );
       assert.equal(readFileSync(file, 'utf8'), bytes);
     }

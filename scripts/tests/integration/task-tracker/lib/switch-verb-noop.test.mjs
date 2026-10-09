@@ -30,15 +30,23 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 
 // Project-isolated scratch tree (under <repo>/.scratch/test/, gitignored) so the
 // word-counter side effects redirected below never touch the real project and
 // the lint:tmp guard stays green — no system temp dir.
-const base = mkdtempProjectIsolated('switch-noop-');
+const base = await mkdtempProjectIsolated('switch-noop-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = base;
 process.chdir(base);
-process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(base, 'transcript');
+process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+  base,
+  '.ai-task-manager',
+  'runtime',
+  'store',
+  'app',
+  'claude',
+  'session-transcripts'
+);
 
 // Import AFTER the env is set so word-counter path resolution honours the temp tree.
 const { verbSwitch } = await import('../../../../task-tracker/verbs/switch.mjs');
@@ -46,7 +54,14 @@ const { saveState, loadState } = await import('../../../../task-tracker/state.mj
 
 // Build a ctx whose flush/post hooks record their calls instead of hitting GH.
 function makeCtx(caseDir) {
-  const statePath = path.join(caseDir, '.ai-task-manager', 'task-tracker-state.json');
+  const statePath = path.join(
+    caseDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   const flushCalls = [];
   const postCalls = [];
   const ctx = {
@@ -70,7 +85,18 @@ function makeCtx(caseDir) {
 }
 
 test('self-bind to an active, never-paused issue is a true no-op (zero rows, span intact)', async () => {
-  const caseDir = path.join(base, 'a-self-bind');
+  const caseDir = await mkdtempProjectIsolated('switch-noop-a-self-bind-');
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = caseDir;
+  process.chdir(caseDir);
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+    caseDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
   const { ctx, statePath, flushCalls, postCalls } = makeCtx(caseDir);
   const seed = {
     active: '#833',
@@ -94,7 +120,18 @@ test('self-bind to an active, never-paused issue is a true no-op (zero rows, spa
 });
 
 test('resume-after-pause (active:null, paused:true) posts exactly one bind row', async () => {
-  const caseDir = path.join(base, 'b-resume');
+  const caseDir = await mkdtempProjectIsolated('switch-noop-b-resume-');
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = caseDir;
+  process.chdir(caseDir);
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+    caseDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
   const { ctx, statePath, flushCalls, postCalls } = makeCtx(caseDir);
   // pause.mjs clears active and sets paused — the self-bind guard never fires.
   saveState({ active: null, lastActive: '#833', paused: true, lastWordMarker: 500 }, statePath);
@@ -107,7 +144,18 @@ test('resume-after-pause (active:null, paused:true) posts exactly one bind row',
 });
 
 test('cross-issue switch flushes switch-out on the outgoing issue plus one incoming bind row', async () => {
-  const caseDir = path.join(base, 'c-cross');
+  const caseDir = await mkdtempProjectIsolated('switch-noop-c-cross-');
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = caseDir;
+  process.chdir(caseDir);
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+    caseDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
   const { ctx, statePath, flushCalls, postCalls } = makeCtx(caseDir);
   saveState(
     {
@@ -133,7 +181,18 @@ test('cross-issue switch flushes switch-out on the outgoing issue plus one incom
 });
 
 test('a post-save switch failure restores both prior state and occupancy', async () => {
-  const caseDir = path.join(base, 'd-rollback');
+  const caseDir = await mkdtempProjectIsolated('switch-noop-d-rollback-');
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = caseDir;
+  process.chdir(caseDir);
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+    caseDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
   const { ctx, statePath } = makeCtx(caseDir);
   const seed = {
     active: '#700',
@@ -161,7 +220,18 @@ test('a post-save switch failure restores both prior state and occupancy', async
 });
 
 test('a superseded occupancy rollback preserves the target state to avoid split authority', async () => {
-  const caseDir = path.join(base, 'e-superseded');
+  const caseDir = await mkdtempProjectIsolated('switch-noop-e-superseded-');
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = caseDir;
+  process.chdir(caseDir);
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+    caseDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
   const { ctx, statePath } = makeCtx(caseDir);
   saveState({ active: '#700', lastActive: '#700', lastWordMarker: 700 }, statePath);
   ctx.claimBindingOccupancy = () => ({ status: 'moved' });

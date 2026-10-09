@@ -2,7 +2,22 @@
 // Approve verb posts a `### 📝 Review Notes` comment with the right source
 // tag in each mode.
 
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { rmSync } from 'node:fs';
+initializeFixtureActor(import.meta.url);
+const fixtureRoot = createActivatedUnitRuntimeRoot('review-authorization-');
+const originalProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+process.env.AI_TASK_MANAGER_PROJECT_DIR = fixtureRoot;
+after(() => {
+  if (originalProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  else process.env.AI_TASK_MANAGER_PROJECT_DIR = originalProjectDir;
+  rmSync(fixtureRoot, { recursive: true, force: true });
+});
 import assert from 'node:assert/strict';
 import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
 
@@ -63,7 +78,7 @@ test('runApprove in human mode posts notes with human source from stdin drivers'
   const result = await runApprove({
     issueNumber: 999,
     cfg: { repo: 'o/r' },
-    projectDir: '.',
+    projectDir: fixtureRoot,
     deps,
   });
   assert.equal(result.status, 'approved');
@@ -80,7 +95,7 @@ test('runApprove in full-auto mode posts notes with auto source and derived driv
   const result = await runApprove({
     issueNumber: 999,
     cfg: { repo: 'o/r' },
-    projectDir: '.',
+    projectDir: fixtureRoot,
     deps,
   });
   assert.equal(result.status, 'approved');
@@ -96,7 +111,7 @@ test('runApprove in human mode skips notes comment when no drivers entered', asy
   const result = await runApprove({
     issueNumber: 999,
     cfg: { repo: 'o/r' },
-    projectDir: '.',
+    projectDir: fixtureRoot,
     deps,
   });
   assert.equal(result.status, 'approved');
@@ -111,7 +126,7 @@ test('runApprove still ticks lifecycle even if notes-post fails', async () => {
   const result = await runApprove({
     issueNumber: 999,
     cfg: { repo: 'o/r' },
-    projectDir: '.',
+    projectDir: fixtureRoot,
     deps,
   });
   assert.equal(result.status, 'approved');

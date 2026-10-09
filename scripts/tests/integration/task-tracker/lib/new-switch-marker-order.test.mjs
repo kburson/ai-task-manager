@@ -10,14 +10,22 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import { bankTranscriptTail, loadState, saveState } from '../../../../task-tracker/state.mjs';
 import { loadMarker, markerPathFor, saveMarker } from '../../../../task-tracker/word-counter.mjs';
 import { verbNew } from '../../../../task-tracker/verbs/new.mjs';
 import { verbSwitch } from '../../../../task-tracker/verbs/switch.mjs';
 
-const base = mkdtempProjectIsolated('new-switch-order-1142-', 'test');
-const transcriptDir = path.join(base, 'transcripts');
+const base = await mkdtempProjectIsolated('new-switch-order-1142-', 'test');
+const transcriptDir = path.join(
+  base,
+  '.ai-task-manager',
+  'runtime',
+  'store',
+  'app',
+  'claude',
+  'session-transcripts'
+);
 const sid = `new-switch-order-${process.pid}`;
 const savedEnv = {
   projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
@@ -39,7 +47,10 @@ process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
 process.env.AI_TASK_MANAGER_SESSION_ID = sid;
 
 function makeState(caseDir) {
-  const statePath = path.join(caseDir, '.tmp/aitm/state/task-tracker-state.json');
+  const statePath = path.join(
+    caseDir,
+    '.ai-task-manager/runtime/store/state/task-tracker-state.json'
+  );
   saveState(
     {
       active: '#700',
@@ -75,7 +86,7 @@ function baseCtx(caseDir, statePath, observed) {
 }
 
 test('new and switch both flush the outgoing issue before reseeding the cursor for the target', async () => {
-  const newDir = path.join(base, 'new-case');
+  const newDir = base;
   const newObserved = [];
   const newStatePath = makeState(newDir);
   process.env.TT_FAKE_NEW_ISSUE = '#1142';
@@ -95,7 +106,7 @@ test('new and switch both flush the outgoing issue before reseeding the cursor f
   assert.equal(loadState(newStatePath).lastWordMarker, 103);
   assert.equal(loadState(newStatePath).lastFullWordMarker, 203);
 
-  const switchDir = path.join(base, 'switch-case');
+  const switchDir = base;
   const switchObserved = [];
   const switchStatePath = makeState(switchDir);
   await verbSwitch(

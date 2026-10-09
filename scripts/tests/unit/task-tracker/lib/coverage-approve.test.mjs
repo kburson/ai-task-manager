@@ -11,7 +11,10 @@
 // seam. The default fetch/comment/project/prompt helpers are exercised through a
 // fake `gh` on PATH so no real network is touched.
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { mkdtempSync, writeFileSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -34,7 +37,7 @@ const APPROVED_SHA = 'a'.repeat(40);
 
 // Isolated project dir so withIssueLock writes its lock under scratch, not the
 // live worktree.
-const PROJ = mkdtempSync(join(projectScratchDir('test'), 'approve-proj-'));
+const PROJ = createActivatedUnitRuntimeRoot('approve-proj-');
 
 // A fake `gh` on PATH so the default fetch/comment helpers run offline. It
 // answers a GraphQL body query, an `issue view --json comments` query, and any
@@ -306,6 +309,8 @@ test('detectFullAuto: fired via CI', () => {
 
 // --- verbApprove: process.exit + stdout/stderr trapped, deps injected ---
 function runVerb(rest, deps) {
+  const previousProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = PROJ;
   const realExit = process.exit;
   const realErr = process.stderr.write.bind(process.stderr);
   const realOut = process.stdout.write.bind(process.stdout);
@@ -319,6 +324,8 @@ function runVerb(rest, deps) {
   process.stderr.write = (s) => (errOut.push(String(s)), true);
   process.stdout.write = (s) => (outOut.push(String(s)), true);
   const restore = () => {
+    if (previousProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = previousProjectDir;
     process.exit = realExit;
     process.stderr.write = realErr;
     process.stdout.write = realOut;

@@ -4,20 +4,24 @@
 // of refusing with `no-drift-refused`. Refusing forces users to fabricate
 // drift to recover, which was the exact wedge #273 reports.
 
-import { unitTest as test } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { rmSync } from 'node:fs';
+import { after } from 'node:test';
 
 import { runReconcile } from '../../../../task-tracker/verbs/reconcile.mjs';
 import { setActiveTask, getActiveTask } from '../../../../task-tracker/session-state.mjs';
 
+const fixtureRoots = [];
+after(() => {
+  for (const root of fixtureRoots) rmSync(root, { recursive: true, force: true });
+});
 function makeProjDir() {
-  const root = mkdtempSync(
-    path.join(projectScratchDir('test', process.cwd()), 'reconcile-no-seed-')
-  );
-  mkdirSync(path.join(root, '.ai-task-manager', 'sessions'), { recursive: true });
+  const root = createActivatedUnitRuntimeRoot('reconcile-no-seed-');
+  fixtureRoots.push(root);
   return root;
 }
 

@@ -1,3 +1,6 @@
+// @story #1857
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 // @story #1295
 // cspell:ignore FWYYERKWZZZ
 import assert from 'node:assert/strict';
@@ -17,16 +20,16 @@ import {
   setActionCaptureEnabled,
   summarizeActionCorpus,
 } from '../../../../task-tracker/lib/action-capture.mjs';
-import { createRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import { runCaptureActions } from '../../../../task-tracker/capture-actions.mjs';
 
 const classify = (args, input = '') => classifyGhCall(args, Buffer.from(input));
 
-test('action capture exposes one stable schema identifier', () => {
+test('action capture exposes one stable schema identifier', async () => {
   assert.equal(ACTION_CAPTURE_SCHEMA, 'aitm.github-action-capture/v1');
 });
 
-test('classifies governed issue mutation families', () => {
+test('classifies governed issue mutation families', async () => {
   const cases = [
     { args: ['issue', 'create', '--title', 'Story'], kind: 'issue-create' },
     { args: ['issue', 'edit', '42', '--body-file', '-'], kind: 'issue-body' },
@@ -48,7 +51,7 @@ test('classifies governed issue mutation families', () => {
   }
 });
 
-test('classifies project, GraphQL, and REST mutations', () => {
+test('classifies project, GraphQL, and REST mutations', async () => {
   assert.deepEqual(classify(['project', 'item-edit', '--id', 'PVTI_x']), {
     operationClass: 'mutation',
     mutationKind: 'project',
@@ -73,7 +76,7 @@ test('classifies project, GraphQL, and REST mutations', () => {
   });
 });
 
-test('classifies GitHub reads without inventing a mutation kind', () => {
+test('classifies GitHub reads without inventing a mutation kind', async () => {
   for (const args of [
     ['issue', 'view', '42', '--json', 'body'],
     ['issue', 'list', '--state', 'open'],
@@ -104,14 +107,14 @@ function fixedDeps(mainDir) {
   };
 }
 
-test('enablement and issue storage are anchored in the main worktree', () => {
-  const linkedDir = sandbox();
-  const mainDir = sandbox();
+test('enablement and issue storage are anchored in the main worktree', async () => {
+  const linkedDir = await sandbox();
+  const mainDir = await sandbox();
   const deps = fixedDeps(mainDir);
 
   assert.equal(
     actionCaptureRoot(linkedDir, deps),
-    path.join(mainDir, '.tmp', 'aitm', 'action-capture')
+    path.join(mainDir, '.ai-task-manager', 'runtime', 'store', 'action-capture')
   );
   assert.equal(
     isActionCaptureEnabled({ projectDir: linkedDir, repository: 'o/r', issue: 42 }, deps),
@@ -128,7 +131,16 @@ test('enablement and issue storage are anchored in the main worktree', () => {
   );
   assert.equal(
     captureIssueDir({ projectDir: linkedDir, repository: 'o/r', issue: 42 }, deps),
-    path.join(mainDir, '.tmp', 'aitm', 'action-capture', 'repositories', 'o__r', 'issue-42')
+    path.join(
+      mainDir,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'action-capture',
+      'repositories',
+      'o__r',
+      'issue-42'
+    )
   );
 
   setActionCaptureEnabled(
@@ -141,8 +153,8 @@ test('enablement and issue storage are anchored in the main worktree', () => {
   );
 });
 
-test('writes an ordered intent before a separate outcome without changing exact safe bytes', () => {
-  const projectDir = sandbox();
+test('writes an ordered intent before a separate outcome without changing exact safe bytes', async () => {
+  const projectDir = await sandbox();
   const deps = fixedDeps(projectDir);
   const markdown = Buffer.from('First line\n\n- exact Markdown  \n');
   const handle = beginCapturedAction(
@@ -195,8 +207,8 @@ test('writes an ordered intent before a separate outcome without changing exact 
   );
 });
 
-test('stores exact request files alongside argv and stdin metadata', () => {
-  const projectDir = sandbox();
+test('stores exact request files alongside argv and stdin metadata', async () => {
+  const projectDir = await sandbox();
   const deps = fixedDeps(projectDir);
   const markdown = Buffer.from('# Exact body\n\nTrailing spaces stay.  \n');
   const handle = beginCapturedAction(
@@ -226,8 +238,8 @@ test('stores exact request files alongside argv and stdin metadata', () => {
   assert.deepEqual(readFileSync(path.join(handle.actionDir, 'request-01.bin')), markdown);
 });
 
-test('keeps hashes and sizes but omits credential-bearing request and response bytes', () => {
-  const projectDir = sandbox();
+test('keeps hashes and sizes but omits credential-bearing request and response bytes', async () => {
+  const projectDir = await sandbox();
   const deps = fixedDeps(projectDir);
   const handle = beginCapturedAction(
     {
@@ -264,8 +276,8 @@ test('keeps hashes and sizes but omits credential-bearing request and response b
   assert.equal(outcome.stderr.redacted, true);
 });
 
-test('isolates issues and repositories while allocating stable unique sequences', () => {
-  const projectDir = sandbox();
+test('isolates issues and repositories while allocating stable unique sequences', async () => {
+  const projectDir = await sandbox();
   const deps = fixedDeps(projectDir);
   const contexts = [
     { repository: 'o/r', issue: 42 },
@@ -293,21 +305,30 @@ test('isolates issues and repositories while allocating stable unique sequences'
   assert.equal(new Set(handles.map((handle) => handle.actionDir)).size, 4);
 });
 
-test('prepares a shim environment only for an enabled active issue', () => {
-  const projectDir = sandbox();
+test('prepares a shim environment only for an enabled active issue', async () => {
+  const projectDir = await sandbox();
   const deps = {
     ...fixedDeps(projectDir),
     resolveGh: () => '/usr/local/bin/gh-real',
     shimDir: '/package/action-capture-bin',
   };
   mkdirSync(path.join(projectDir, '.ai-task-manager'), { recursive: true });
-  mkdirSync(path.join(projectDir, '.tmp', 'aitm', 'state'), { recursive: true });
+  mkdirSync(path.join(projectDir, '.ai-task-manager', 'runtime', 'store', 'state'), {
+    recursive: true,
+  });
   writeFileSync(
     path.join(projectDir, '.ai-task-manager', 'task-tracker.json'),
     `${JSON.stringify({ repo: 'o/r' })}\n`
   );
   writeFileSync(
-    path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
+    path.join(
+      projectDir,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'state',
+      'task-tracker-state.json'
+    ),
     `${JSON.stringify({ active: '#42' })}\n`
   );
   const original = { PATH: '/usr/local/bin:/usr/bin', KEEP: 'yes' };
@@ -331,16 +352,25 @@ test('prepares a shim environment only for an enabled active issue', () => {
   assert.match(prepared.AITM_CAPTURE_INVOCATION_ID, /^[0-9A-HJKMNP-TV-Z]{26}$/);
 });
 
-test('operator control enables, reports, summarizes, and disables the active issue corpus', () => {
-  const projectDir = sandbox();
+test('operator control enables, reports, summarizes, and disables the active issue corpus', async () => {
+  const projectDir = await sandbox();
   mkdirSync(path.join(projectDir, '.ai-task-manager'), { recursive: true });
-  mkdirSync(path.join(projectDir, '.tmp', 'aitm', 'state'), { recursive: true });
+  mkdirSync(path.join(projectDir, '.ai-task-manager', 'runtime', 'store', 'state'), {
+    recursive: true,
+  });
   writeFileSync(
     path.join(projectDir, '.ai-task-manager', 'task-tracker.json'),
     `${JSON.stringify({ repo: 'o/r' })}\n`
   );
   writeFileSync(
-    path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
+    path.join(
+      projectDir,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'state',
+      'task-tracker-state.json'
+    ),
     `${JSON.stringify({ active: '#42' })}\n`
   );
   const output = [];
@@ -368,8 +398,8 @@ test('operator control enables, reports, summarizes, and disables the active iss
   assert.equal(isActionCaptureEnabled({ projectDir, repository: 'o/r', issue: 42 }), false);
 });
 
-test('summarizes complete and incomplete actions, serialized bytes, payload bytes, and largest action', () => {
-  const projectDir = sandbox();
+test('summarizes complete and incomplete actions, serialized bytes, payload bytes, and largest action', async () => {
+  const projectDir = await sandbox();
   const deps = fixedDeps(projectDir);
   const largeMarkdown = 'a much larger Markdown payload\n'.repeat(200);
   const first = beginCapturedAction(

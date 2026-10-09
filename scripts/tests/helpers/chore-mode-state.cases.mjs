@@ -24,7 +24,14 @@ import {
 
 function statePath(projectDir) {
   // #573: the global ledger lives under `.tmp/aitm/state/`.
-  return path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  return path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
 }
 
 export function registerChoreModeStateCases(getFixture) {

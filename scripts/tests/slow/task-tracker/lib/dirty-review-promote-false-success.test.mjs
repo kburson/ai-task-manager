@@ -97,7 +97,7 @@ async function setActive(sandbox, issue) {
         entryStartTs: new Date().toISOString(),
         wordsAtEntryStart: 0,
       },
-      path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+      path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json')
     )
   );
 }

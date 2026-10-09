@@ -62,3 +62,27 @@ export function createRuntimeRootFixture(prefix = 'runtime-test-') {
   execFileSync('git', ['init', '-q', root]);
   return root;
 }
+
+// Binding fixtures need a real HEAD as well as admitted durable runtime state.
+export async function createCommittedRuntimeRootFixture(prefix = 'runtime-bound-test-') {
+  const root = await createActivatedRuntimeRootFixture(prefix);
+  try {
+    execFileSync('git', ['-C', root, 'branch', '-M', 'trunk']);
+    execFileSync('git', [
+      '-C',
+      root,
+      '-c',
+      'user.name=fixture',
+      '-c',
+      'user.email=fixture@example.test',
+      'commit',
+      '--allow-empty',
+      '-qm',
+      'fixture',
+    ]);
+    return root;
+  } catch (error) {
+    rmSync(root, { recursive: true, force: true });
+    throw error;
+  }
+}

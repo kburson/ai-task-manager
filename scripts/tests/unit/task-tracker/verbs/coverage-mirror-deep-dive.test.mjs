@@ -18,20 +18,23 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test, before, after } from 'node:test';
+import { before, after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbMirrorDeepDive } from '../../../../task-tracker/verbs/mirror-deep-dive.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 let tmpRoot;
 let fakeBin;
 let savedPath;
 
 before(() => {
-  tmpRoot = mkdtempSync(path.join(projectScratchDir('test'), 'mirror-dd-cov-'));
+  tmpRoot = createActivatedUnitRuntimeRoot('mirror-dd-cov-');
   fakeBin = path.join(tmpRoot, 'bin');
   mkdirSync(fakeBin, { recursive: true });
   const ghPath = path.join(fakeBin, 'gh');
@@ -68,14 +71,9 @@ after(() => {
 });
 
 function stateFile(active) {
-  const p = path.join(tmpRoot, `state-${Math.abs(hashish(String(active)))}.json`);
+  const p = path.join(tmpRoot, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   saveState({ active, lastActive: active }, p);
   return p;
-}
-function hashish(s) {
-  let h = 0;
-  for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0;
-  return h;
 }
 
 class ExitError extends Error {
@@ -140,7 +138,7 @@ test('no target and no active binding → exit 2', async () => {
   const r = await runVerb({
     cfg: { repo: 'o/r' },
     rest: ['--from-comment', '777'],
-    statePath: stateFile(''),
+    statePath: stateFile(null),
   });
   assert.equal(r.exitCode, 2);
 });

@@ -22,7 +22,7 @@
 // is recorded in the Full-Auto audit comment.
 
 import { strict as assert } from 'node:assert';
-import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -193,13 +193,16 @@ function git(cwd, ...args) {
 }
 
 test('AC (#572): main-anchored resolvers use an actual owning root', async () => {
-  const root = await createCommittedLegacyRootFixture('main-path-');
-  const other = await createCommittedLegacyRootFixture('other-path-');
+  const root = await createCommittedRuntimeRootFixture('main-path-');
+  const other = await createCommittedRuntimeRootFixture('other-path-');
   try {
-    assert.equal(fleetPath(root), path.join(root, '.tmp', 'aitm', 'fleet', 'task-fleet.json'));
+    assert.equal(
+      fleetPath(root),
+      path.join(root, '.ai-task-manager', 'runtime', 'store', 'fleet', 'task-fleet.json')
+    );
     assert.equal(
       orchestratorLockPath(root),
-      path.join(root, '.tmp', 'aitm', 'fleet', 'orchestrator.lock')
+      path.join(root, '.ai-task-manager', 'runtime', 'store', 'fleet', 'orchestrator.lock')
     );
     assert.notEqual(fleetPath(other), fleetPath(root));
   } finally {
@@ -233,7 +236,17 @@ test('AC (#572): findMainWorktreePath anchors fleet/lock to MAIN from a sibling 
 
     // fleet-registry's path resolves under MAIN, not the sibling worktree.
     const reg = fleetRegistryPath(resolvedMain);
-    assert.equal(reg, path.join(path.resolve(mainWt), '.tmp', 'aitm', 'fleet', 'task-fleet.json'));
+    assert.equal(
+      reg,
+      path.join(
+        path.resolve(mainWt),
+        '.ai-task-manager',
+        'runtime',
+        'store',
+        'fleet',
+        'task-fleet.json'
+      )
+    );
     assert.ok(!reg.startsWith(path.resolve(siblingWt)), 'must not anchor to the sibling worktree');
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -295,8 +308,8 @@ test('AC (#574): relocated .ai-task-manager/templates survive a fresh worktree c
 });
 
 test('AC (#572): getProjectDir verifies every alias against the physical invoking root', async () => {
-  const root = await createCommittedLegacyRootFixture('project-alias-');
-  const other = await createCommittedLegacyRootFixture('foreign-alias-');
+  const root = await createCommittedRuntimeRootFixture('project-alias-');
+  const other = await createCommittedRuntimeRootFixture('foreign-alias-');
   try {
     assert.equal(
       getProjectDir({ AI_TASK_MANAGER_PROJECT_DIR: root, CLAUDE_PROJECT_DIR: root }, root),

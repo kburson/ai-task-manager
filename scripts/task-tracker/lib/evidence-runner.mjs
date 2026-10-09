@@ -98,9 +98,9 @@ export function nowIso(deps) {
 // is disabled for the whole invocation (fail-safe — never a false reuse).
 async function treeIdentity(pexec, cwd) {
   try {
-    const { stdout: shaOut } = await pexec('git', ['rev-parse', '--short', 'HEAD'], { cwd });
+    const { stdout: shaOut } = await pexec('git', ['rev-parse', 'HEAD'], { cwd });
     const sha = String(shaOut || '').trim();
-    if (!sha) return { sha: 'unknown', clean: false };
+    if (!/^[a-f0-9]{40}$/.test(sha)) return { sha: 'unknown', clean: false };
     const { stdout: statusOut } = await pexec('git', ['status', '--porcelain'], { cwd });
     const clean = String(statusOut || '').trim() === '';
     return { sha, clean };

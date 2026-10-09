@@ -11,13 +11,13 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 
 const ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../../..');
 const GUARD = path.join(ROOT, 'scripts/task-tracker/bash-guard.mjs');
 
-function makeFixture() {
-  const dir = mkdtempProjectIsolated('aitm-1212-commit-guard-');
+async function makeFixture() {
+  const dir = await createActivatedRuntimeRootFixture('aitm-1212-commit-guard-');
   const bin = path.join(dir, '.tmp', 'bin');
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   mkdirSync(bin, { recursive: true });
@@ -48,6 +48,8 @@ function runGuard(fixture, command, { expectDecision = true } = {}) {
       PATH: `${fixture.bin}:${process.env.PATH}`,
       AITM_GH_TEST_DOUBLE_BIN: fixture.bin,
       AI_TASK_MANAGER_SESSION_ID: 'commit-ownership-message-sources',
+      AI_TASK_MANAGER_APP_NAME: 'claude',
+      AI_TASK_MANAGER_PROJECT_DIR: fixture.dir,
     },
     // The governed unit lane runs hundreds of files concurrently; cold Node
     // startup plus guard dependency loading can exceed 10s under host pressure.
@@ -69,8 +71,8 @@ function runGuard(fixture, command, { expectDecision = true } = {}) {
   return { result, payload };
 }
 
-test('indirect and globally-configured attributed commits enforce ownership', () => {
-  const fixture = makeFixture();
+test('indirect and globally-configured attributed commits enforce ownership', async () => {
+  const fixture = await makeFixture();
   try {
     const messagePath = path.join(fixture.dir, '.tmp', 'message.txt');
     writeFileSync(messagePath, '[#1212] indirect attribution\n');
@@ -97,8 +99,8 @@ test('indirect and globally-configured attributed commits enforce ownership', ()
   }
 });
 
-test('attributed commits fail closed when repository ownership config is unreadable', () => {
-  const fixture = makeFixture();
+test('attributed commits fail closed when repository ownership config is unreadable', async () => {
+  const fixture = await makeFixture();
   try {
     rmSync(path.join(fixture.dir, '.ai-task-manager', 'task-tracker.json'));
     const { payload } = runGuard(fixture, 'git commit -m "[#1212] missing config"');
@@ -109,8 +111,8 @@ test('attributed commits fail closed when repository ownership config is unreada
   }
 });
 
-test('indirect tokenless chore message remains the explicit escape hatch', () => {
-  const fixture = makeFixture();
+test('indirect tokenless chore message remains the explicit escape hatch', async () => {
+  const fixture = await makeFixture();
   try {
     writeFileSync(path.join(fixture.dir, '.tmp', 'message.txt'), 'chore: local maintenance\n');
     const { payload } = runGuard(fixture, 'git commit -F .tmp/message.txt', {
@@ -122,8 +124,8 @@ test('indirect tokenless chore message remains the explicit escape hatch', () =>
   }
 });
 
-test('dynamic and nested commit messages cannot bypass attribution inspection', () => {
-  const fixture = makeFixture();
+test('dynamic and nested commit messages cannot bypass attribution inspection', async () => {
+  const fixture = await makeFixture();
   try {
     for (const command of [
       'MSG="[#1212] hidden"; git commit -m "$MSG"',
@@ -158,8 +160,8 @@ test('dynamic and nested commit messages cannot bypass attribution inspection', 
   }
 });
 
-test('persistently configured commit aliases enforce ownership', () => {
-  const fixture = makeFixture();
+test('persistently configured commit aliases enforce ownership', async () => {
+  const fixture = await makeFixture();
   try {
     spawnSync('git', ['config', 'alias.ci', '!f() { git commit "$@"; }; f'], {
       cwd: fixture.dir,
@@ -217,8 +219,8 @@ test('persistently configured commit aliases enforce ownership', () => {
   }
 });
 
-test('the word eval outside shell-builtin command position remains harmless', () => {
-  const fixture = makeFixture();
+test('the word eval outside shell-builtin command position remains harmless', async () => {
+  const fixture = await makeFixture();
   try {
     for (const command of [
       'rg -n eval scripts/task-tracker/bash-guard.mjs',

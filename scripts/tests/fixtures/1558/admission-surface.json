@@ -1536,7 +1536,15 @@
       "path": "scripts/task-tracker/agent-guard.mjs",
       "classification": "internal-hook-or-guard",
       "command": null,
-      "staticImports": ["node:fs", "node:path", "./fleet-registry.mjs", "./paths.mjs"],
+      "staticImports": [
+        "node:fs",
+        "node:path",
+        "./fleet-registry.mjs",
+        "./paths.mjs",
+        "./lib/runtime-writer.mjs",
+        "./word-counter.mjs",
+        "./lib/timing-actor.mjs"
+      ],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
@@ -1679,7 +1687,8 @@
         "./lib/process-timeouts.mjs",
         "./lib/chore-mode.mjs",
         "./lib/commit-attribution-format.mjs",
-        "./paths.mjs"
+        "./paths.mjs",
+        "./state.mjs"
       ],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
@@ -1759,6 +1768,8 @@
         "./session-state.mjs",
         "./word-counter.mjs",
         "./issue-mutator-lock.mjs",
+        "./paths.mjs",
+        "./lib/runtime-writer.mjs",
         "./activity-policy.mjs",
         "./config.mjs",
         "../lib/self-doc.mjs"
@@ -2162,7 +2173,7 @@
         "../gh-timing-comment.mjs",
         "../word-counter.mjs",
         "../lib/timing-actor.mjs",
-        "../lib/timing-row-reader.mjs"
+        "../lib/runtime-writer.mjs"
       ],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
@@ -2306,7 +2317,14 @@
       "path": "scripts/task-tracker/orchestrator-lock.mjs",
       "classification": "internal-library-or-orchestration",
       "command": null,
-      "staticImports": ["node:fs", "node:path", "./fleet-registry.mjs", "./paths.mjs"],
+      "staticImports": [
+        "node:fs",
+        "./fleet-registry.mjs",
+        "./paths.mjs",
+        "./word-counter.mjs",
+        "./lib/timing-actor.mjs",
+        "./lib/runtime-writer.mjs"
+      ],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
@@ -2561,8 +2579,6 @@
         "../lib/runtime-initialize.mjs",
         "../lib/runtime-initialization-record.mjs",
         "../lib/runtime-migration-apply.mjs",
-        "../lib/runtime-empty-initialize.mjs",
-        "../lib/runtime-empty-record.mjs",
         "../lib/runtime-batch.mjs"
       ],
       "firstPotentialEffect": "internal invocation",

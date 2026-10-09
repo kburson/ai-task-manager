@@ -16,7 +16,7 @@ import '../../../fixtures/offline-gh-auto.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 import { loadState } from '../../../../task-tracker/state.mjs';
 import { statePath } from '../../../../task-tracker/paths.mjs';
@@ -29,7 +29,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
 async function makeSandbox(prefix) {
-  const dir = await createCommittedLegacyRootFixture(prefix);
+  const dir = await createCommittedRuntimeRootFixture(prefix);
   writeFileSync(path.join(dir, '.git/info/exclude'), '.ai-task-manager/\n.tmp/\n');
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(

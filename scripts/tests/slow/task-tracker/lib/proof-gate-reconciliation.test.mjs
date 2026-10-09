@@ -25,7 +25,7 @@ import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync } from 'node:fs';
-import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 initializeFixtureActor(import.meta.url);
@@ -74,7 +74,7 @@ function writeState(sandbox, issueNum) {
       entryStartTs: null,
       wordsAtEntryStart: 0,
     },
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+    path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json')
   );
 }
 
@@ -145,7 +145,7 @@ async function run(sandbox, binDir, args) {
 
 // ─── Real-write: stamped AC tick persists `- [x]` through the write path ─────
 {
-  const sandbox = await createLegacyRootFixture('tt-proof-gate-383-');
+  const sandbox = await createActivatedRuntimeRootFixture('tt-proof-gate-383-');
   try {
     writeConfig(sandbox);
     writeState(sandbox, 383);

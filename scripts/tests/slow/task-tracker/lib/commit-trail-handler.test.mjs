@@ -15,6 +15,10 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
+initializeFixtureActor(import.meta.url);
 import { postCommitTrail } from '../../../../task-tracker/commit-trail-handler.mjs';
 import { TRAIL_HEADING } from '../../../../task-tracker/lib/commit-trail.mjs';
 import { GH_API_TIMEOUT_MS } from '../../../../task-tracker/lib/process-timeouts.mjs';
@@ -143,24 +147,17 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
 
 // --- Full handler E2E via spawn ---
 
-function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
-  const sandbox = mkdtempProjectIsolated('aitm-trail-');
+async function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
+  const sandbox = await createActivatedRuntimeRootFixture('aitm-trail-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
     JSON.stringify({ repo })
   );
   if (active) {
-    // #573: the global ledger lives under `.tmp/aitm/state/`.
-    mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'state'), { recursive: true });
-    writeFileSync(
-      path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
-      JSON.stringify({
-        active,
-        lastActive: active,
-        entryStartTs: new Date().toISOString(),
-        wordsAtEntryStart: 0,
-      })
+    await saveState(
+      { active, lastActive: active, entryStartTs: new Date().toISOString(), wordsAtEntryStart: 0 },
+      path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json')
     );
   }
   return sandbox;
@@ -259,7 +256,7 @@ const cleanups = [];
 try {
   // E2E-1: successful git commit → triggers git + gh calls
   {
-    const sandbox = setupSandbox();
+    const sandbox = await setupSandbox();
     cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox, {
       gitOutputs: {
@@ -287,7 +284,7 @@ try {
 
   // E2E-2: exit_code != 0 → no git/gh calls
   {
-    const sandbox = setupSandbox();
+    const sandbox = await setupSandbox();
     cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {
@@ -302,7 +299,7 @@ try {
 
   // E2E-3: --amend → no git/gh calls
   {
-    const sandbox = setupSandbox();
+    const sandbox = await setupSandbox();
     cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {
@@ -317,7 +314,7 @@ try {
 
   // E2E-4: no active issue → no git/gh calls
   {
-    const sandbox = setupSandbox({ active: null });
+    const sandbox = await setupSandbox({ active: null });
     cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {
@@ -332,7 +329,7 @@ try {
 
   // E2E-5: non-Bash tool → no calls
   {
-    const sandbox = setupSandbox();
+    const sandbox = await setupSandbox();
     cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {
@@ -347,7 +344,7 @@ try {
 
   // E2E-6: gh failure → handler reports the failure but still exits 0
   {
-    const sandbox = setupSandbox();
+    const sandbox = await setupSandbox();
     cleanups.push(sandbox);
     const { binDir } = makeShim(sandbox, {
       gitOutputs: {
@@ -373,7 +370,7 @@ try {
 
   // E2E-7: not a git commit → no calls
   {
-    const sandbox = setupSandbox();
+    const sandbox = await setupSandbox();
     cleanups.push(sandbox);
     const { binDir, logPath } = makeShim(sandbox);
     const payload = {

@@ -1,144 +1,151 @@
 #!/usr/bin/env node
-// @story #1295
-
+// @story #1295 #1857
+// Capture is a whole runtime writer from durable intent through child exit and
+// outcome publication. Unavailable authority refuses before launching the child.
 import { spawn } from 'node:child_process';
+import path from 'node:path';
 import { resolveRuntimeRoot } from '../lib/runtime-storage.mjs';
-
+import { withRuntimeWrite } from '../lib/runtime-writer.mjs';
+import { withLock } from '../locks.mjs';
 import {
   beginCapturedAction,
+  captureIssueDir,
   collectGhRequestFiles,
   completeCapturedAction,
 } from '../lib/action-capture.mjs';
 
-function warning(message) {
-  process.stderr.write(
-    `[aitm] action capture unavailable; continuing without capture: ${message}\n`
+function requiredEnvironment(name) {
+  const value = process.env[name];
+  if (!value) throw new Error('missing ' + name);
+  return value;
+}
+function expectsPipedStdin(args) {
+  return args.some((argument, index) =>
+    ['--input', '--body-file'].includes(argument)
+      ? args[index + 1] === '-'
+      : argument === '--input=-' || argument === '--body-file=-'
   );
 }
-
-function expectsPipedStdin(args) {
-  return args.some((argument, index) => {
-    if (['--input', '--body-file'].includes(argument)) return args[index + 1] === '-';
-    return argument === '--input=-' || argument === '--body-file=-';
-  });
-}
-
 async function readPipedStdin(args) {
   if (process.stdin.isTTY || !expectsPipedStdin(args)) return null;
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks);
 }
-
-function requiredEnvironment(name) {
-  const value = process.env[name];
-  if (!value) throw new Error(`missing ${name}`);
-  return value;
-}
-
-function startCapture(args, stdin) {
-  const projectDir = resolveRuntimeRoot().projectRoot;
-  try {
-    return beginCapturedAction({
-      projectDir,
-      repository: requiredEnvironment('AITM_CAPTURE_REPOSITORY'),
-      issue: requiredEnvironment('AITM_CAPTURE_ISSUE'),
-      invocationId: requiredEnvironment('AITM_CAPTURE_INVOCATION_ID'),
-      command: process.env.AITM_CAPTURE_COMMAND || '',
-      args,
-      stdin: stdin || Buffer.alloc(0),
-      files: collectGhRequestFiles(args, projectDir),
-    });
-  } catch (error) {
-    warning(error.message);
-    return null;
-  }
-}
-
-function finishCapture(handle, result) {
-  if (!handle) return;
-  try {
-    completeCapturedAction(handle, result);
-  } catch (error) {
-    warning(error.message);
-  }
-}
-
-async function run() {
-  const args = process.argv.slice(2);
-  const stdin = await readPipedStdin(args);
-  const handle = startCapture(args, stdin);
-  const realGh = requiredEnvironment('AITM_CAPTURE_REAL_GH');
-  const child = spawn(realGh, args, {
-    cwd: process.cwd(),
-    env: process.env,
-    stdio: [stdin === null ? 'inherit' : 'pipe', 'pipe', 'pipe'],
-  });
-  if (stdin !== null) child.stdin.end(stdin);
-
-  const stdout = [];
-  const stderr = [];
-  child.stdout.on('data', (chunk) => {
-    const bytes = Buffer.from(chunk);
-    stdout.push(bytes);
-    process.stdout.write(bytes);
-  });
-  child.stderr.on('data', (chunk) => {
-    const bytes = Buffer.from(chunk);
-    stderr.push(bytes);
-    process.stderr.write(bytes);
-  });
-
-  const forwardedSignals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
-  const signalHandlers = new Map(
-    forwardedSignals.map((signal) => [
-      signal,
-      () => {
-        if (child.exitCode === null && child.signalCode === null) child.kill(signal);
-      },
-    ])
+function unresolved(error) {
+  process.stderr.write(
+    '[aitm] action capture unresolved: ' +
+      (error.code || 'capture-failed') +
+      ': ' +
+      error.message +
+      '\n'
   );
-  for (const [signal, handler] of signalHandlers) process.on(signal, handler);
-  const removeSignalHandlers = () => {
-    for (const [signal, handler] of signalHandlers) process.removeListener(signal, handler);
-  };
-
-  return new Promise((resolve) => {
-    let settled = false;
-    child.on('error', (error) => {
-      if (settled) return;
-      settled = true;
-      removeSignalHandlers();
-      finishCapture(handle, {
-        exitCode: null,
-        signal: null,
-        stdout: Buffer.concat(stdout),
-        stderr: Buffer.concat(stderr),
-      });
-      warning(`failed to launch gh: ${error.message}`);
-      resolve(1);
-    });
-    child.on('close', (code, signal) => {
-      if (settled) return;
-      settled = true;
-      removeSignalHandlers();
-      finishCapture(handle, {
-        exitCode: code,
-        signal,
-        stdout: Buffer.concat(stdout),
-        stderr: Buffer.concat(stderr),
-      });
-      if (signal) {
-        try {
-          process.kill(process.pid, signal);
-          return;
-        } catch (error) {
-          warning(`could not preserve gh signal ${signal}: ${error.message}`);
-        }
-      }
-      resolve(Number.isInteger(code) ? code : 1);
-    });
-  });
 }
-
-process.exitCode = await run();
+async function admitWriter(target, operation) {
+  const deadline = Date.now() + 30_000;
+  for (;;) {
+    let admitted = false;
+    try {
+      return await withRuntimeWrite(target, () => {
+        admitted = true;
+        return operation();
+      });
+    } catch (error) {
+      if (admitted || error.code !== 'RUNTIME_MIGRATION_BUSY' || Date.now() >= deadline)
+        throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+}
+async function run() {
+  const projectDir = resolveRuntimeRoot().projectRoot;
+  const context = {
+    projectDir,
+    repository: requiredEnvironment('AITM_CAPTURE_REPOSITORY'),
+    issue: requiredEnvironment('AITM_CAPTURE_ISSUE'),
+    invocationId: requiredEnvironment('AITM_CAPTURE_INVOCATION_ID'),
+    command: process.env.AITM_CAPTURE_COMMAND || '',
+  };
+  const target = path.join(captureIssueDir(context), '.sequence');
+  // Serialize admission before intent or external effects; a busy completion
+  // must never encourage callers to replay a possibly executed request.
+  return admitWriter(target, () =>
+    withLock(
+      target + '.operation.lock',
+      async () => {
+        const args = process.argv.slice(2);
+        const stdin = await readPipedStdin(args);
+        const handle = beginCapturedAction({
+          ...context,
+          args,
+          stdin: stdin || Buffer.alloc(0),
+          files: collectGhRequestFiles(args, projectDir),
+        });
+        const child = spawn(requiredEnvironment('AITM_CAPTURE_REAL_GH'), args, {
+          cwd: process.cwd(),
+          env: process.env,
+          stdio: [stdin === null ? 'inherit' : 'pipe', 'pipe', 'pipe'],
+        });
+        if (stdin !== null) child.stdin.end(stdin);
+        const stdout = [];
+        const stderr = [];
+        child.stdout.on('data', (chunk) => {
+          const bytes = Buffer.from(chunk);
+          stdout.push(bytes);
+          process.stdout.write(bytes);
+        });
+        child.stderr.on('data', (chunk) => {
+          const bytes = Buffer.from(chunk);
+          stderr.push(bytes);
+          process.stderr.write(bytes);
+        });
+        const signalHandlers = new Map(
+          ['SIGINT', 'SIGTERM', 'SIGHUP'].map((signal) => [
+            signal,
+            () => {
+              if (child.exitCode === null && child.signalCode === null) child.kill(signal);
+            },
+          ])
+        );
+        for (const [signal, handler] of signalHandlers) process.on(signal, handler);
+        return new Promise((resolve) => {
+          let settled = false;
+          const finish = (code, signal, launchError) => {
+            if (settled) return;
+            settled = true;
+            for (const [name, handler] of signalHandlers) process.removeListener(name, handler);
+            let captureFailed = false;
+            try {
+              completeCapturedAction(handle, {
+                exitCode: code,
+                signal,
+                stdout: Buffer.concat(stdout),
+                stderr: Buffer.concat(stderr),
+              });
+            } catch (error) {
+              captureFailed = true;
+              unresolved(error);
+            }
+            if (launchError) unresolved(launchError);
+            resolve({
+              code: captureFailed || launchError ? 1 : Number.isInteger(code) ? code : 1,
+              signal,
+            });
+          };
+          child.on('error', (error) => finish(null, null, error));
+          child.on('close', (code, signal) => finish(code, signal, null));
+        });
+      },
+      { timeoutMs: 30_000 }
+    )
+  );
+}
+try {
+  const result = await run();
+  process.exitCode = result.code;
+  // Preserve the child's signal only after the runtime lease has been released.
+  if (result.signal) process.kill(process.pid, result.signal);
+} catch (error) {
+  unresolved(error);
+  process.exitCode = 1;
+}

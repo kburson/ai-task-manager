@@ -25,6 +25,7 @@ import * as realFs from 'node:fs';
 import path from 'node:path';
 
 import { gatesDir } from '../paths.mjs';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord, withRuntimeRecordLockSync } from './runtime-writer.mjs';
 
 // #682 — the default gate-store directory is resolved LAZILY via `gatesDir()`
 // (paths.mjs), so `AI_TASK_MANAGER_PROJECT_DIR` isolates the session store the
@@ -53,6 +54,9 @@ function freshState(sessionId) {
 export function loadSession(sessionId, { fs = realFs, dir = gatesDir() } = {}) {
   if (!sessionId) return freshState('');
   const p = sessionFilePath(sessionId, dir);
+  if (fs === realFs) return readRuntimeJsonRecord(p, { optional: true }) ?? freshState(sessionId);
+  // Explicit in-memory filesystem injection remains a unit-test seam; no
+  // production command or environment option selects it.
   try {
     if (!fs.existsSync(p)) return freshState(sessionId);
     const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -70,6 +74,10 @@ export function loadSession(sessionId, { fs = realFs, dir = gatesDir() } = {}) {
 export function saveSession(state, { fs = realFs, dir = gatesDir(), now = () => new Date() } = {}) {
   if (!state?.sessionId) return;
   const p = sessionFilePath(state.sessionId, dir);
+  if (fs === realFs) return withRuntimeRecordLockSync(p, () => {
+    const next = { ...state, updatedAt: now().toISOString() };
+    return writeRuntimeJsonRecord(p, next);
+  });
   const next = { ...state, updatedAt: now().toISOString() };
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(p, JSON.stringify(next, null, 2) + '\n', 'utf8');
@@ -117,28 +125,8 @@ export function applyChoice(state, choice, { parent = null } = {}) {
   };
 }
 
-// Orphan GC — delete session files older than maxAgeMs. Returns count deleted.
-export function sweepOrphans({ now = Date.now(), maxAgeMs, fs = realFs, dir = gatesDir() } = {}) {
-  if (!Number.isFinite(maxAgeMs) || maxAgeMs <= 0) return 0;
-  let names;
-  try {
-    names = fs.readdirSync(dir);
-  } catch {
-    return 0;
-  }
-  let count = 0;
-  for (const n of names) {
-    if (!n.startsWith(FILE_PREFIX) || !n.endsWith(FILE_SUFFIX)) continue;
-    const p = path.join(dir, n);
-    try {
-      const st = fs.statSync(p);
-      if (now - st.mtimeMs > maxAgeMs) {
-        fs.unlinkSync(p);
-        count++;
-      }
-    } catch {
-      /* best-effort: cleanup; failure is non-fatal */
-    }
-  }
-  return count;
+// Historical automatic age-only GC has no authority to retire gate policy.
+// Keep the numeric return contract; typed reviewed cleanup owns actual removal.
+export function sweepOrphans() {
+  return 0;
 }

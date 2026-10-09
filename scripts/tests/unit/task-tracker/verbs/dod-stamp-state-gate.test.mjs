@@ -18,14 +18,17 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { after, afterEach, before, test } from 'node:test';
+import { after, afterEach, before } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 import { verbDodStamp } from '../../../../task-tracker/verbs/dod-stamp.mjs';
 import { verbAcStamp } from '../../../../task-tracker/verbs/ac-stamp.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { pexecGithubBodyStore } from '../../../helpers/pexec-body-store.mjs';
 import {
   createVerificationReceipt,
@@ -62,7 +65,7 @@ let fakeBin;
 let savedPath;
 
 before(() => {
-  tmpRoot = mkdtempSync(path.join(projectScratchDir('test'), 'stamp-state-gate-'));
+  tmpRoot = createActivatedUnitRuntimeRoot('stamp-state-gate-');
   fakeBin = path.join(tmpRoot, 'bin');
   mkdirSync(fakeBin, { recursive: true });
   const ghPath = path.join(fakeBin, 'gh');
@@ -97,14 +100,9 @@ afterEach(() => {
 });
 
 function stateFile(active) {
-  const p = path.join(tmpRoot, `state-${Math.abs(hashish(active))}.json`);
+  const p = path.join(tmpRoot, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   saveState({ active, lastActive: active }, p);
   return p;
-}
-function hashish(s) {
-  let h = 0;
-  for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0;
-  return h;
 }
 
 const RECEIPT_SHA = 'a'.repeat(40);
@@ -146,7 +144,7 @@ function greenTestReceipt({ issueNumber = 778, executionContext } = {}) {
   });
 }
 
-function makePexec({ body, verifierCalled, headSha = 'abc1234' }) {
+function makePexec({ body, verifierCalled, headSha = 'b'.repeat(40) }) {
   return async (bin, args = [], options = {}) => {
     const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
     if (gh) return gh;
@@ -258,7 +256,7 @@ test('ac-stamp: proceeds normally once in test state', async () => {
   // Isolated projectDir → isolated verifier-run cache, so this doesn't hit
   // the cache entry the dod-stamp "test state" case above just populated for
   // the same (cmd, sha) pair.
-  const isolatedProjectDir = mkdtempSync(path.join(tmpRoot, 'ac-cache-'));
+  const isolatedProjectDir = createActivatedUnitRuntimeRoot('ac-cache-');
   const verifierCalled = {};
   const r = await runVerb(
     verbAcStamp,

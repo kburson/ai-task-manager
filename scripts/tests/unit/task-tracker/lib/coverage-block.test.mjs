@@ -8,7 +8,10 @@ initializeFixtureActor(import.meta.url);
 import { strict as assert } from 'node:assert';
 import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { test } from 'node:test';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import {
@@ -37,8 +40,15 @@ process.env.PATH = `${FAKE_GH_DIR}:${process.env.PATH}`;
 process.env.AITM_GH_TEST_DOUBLE_BIN = FAKE_GH_DIR;
 
 function tmpState(state) {
-  const dir = mkdtempSync(join(projectScratchDir('test'), 'block-state-'));
-  const statePath = join(dir, 'state.json');
+  const dir = createActivatedUnitRuntimeRoot('block-state-');
+  const statePath = join(
+    dir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   writeFileSync(statePath, JSON.stringify(state));
   return statePath;
 }

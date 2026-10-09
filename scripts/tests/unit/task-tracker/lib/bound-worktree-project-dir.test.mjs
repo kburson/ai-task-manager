@@ -3,7 +3,9 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -150,7 +152,6 @@ test('all governed projectDir call sites delegate and retain no bare cwd fallbac
     'scripts/task-tracker/lib/bind-context.mjs',
     'scripts/task-tracker/lib/develop-exit-commit-trail-head-guard.mjs',
     'scripts/task-tracker/lib/guard-entrypoint.mjs',
-    'scripts/task-tracker/lib/scratch-dir.mjs',
   ];
   for (const file of files) {
     const source = readFileSync(path.join(ROOT, file), 'utf8');
@@ -160,5 +161,25 @@ test('all governed projectDir call sites delegate and retain no bare cwd fallbac
       /projectDir[^\n=]*=\s*[^\n;]*process\.cwd\(\)/,
       `${file} has no projectDir cwd fallback`
     );
+  }
+});
+
+// Scratch is an artifact location, resolved through physical runtime identity
+// rather than an active issue binding. A stale alias must never redirect it.
+test('scratch follows its genuine physical root and refuses a stale override', () => {
+  const root = createRuntimeRootFixture('bound-scratch-');
+  const originalCwd = process.cwd();
+  const originalAlias = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  try {
+    process.chdir(root);
+    process.env.AI_TASK_MANAGER_PROJECT_DIR = root;
+    assert.equal(projectScratchDir('inspect'), path.join(root, '.scratch/inspect'));
+    process.env.AI_TASK_MANAGER_PROJECT_DIR = path.join(root, 'missing');
+    assert.throws(() => projectScratchDir('inspect'), { code: 'ROOT_IDENTITY_MISMATCH' });
+  } finally {
+    process.chdir(originalCwd);
+    if (originalAlias === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = originalAlias;
+    rmSync(root, { recursive: true, force: true });
   }
 });

@@ -10,7 +10,7 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { createLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 import { spawnSync } from 'node:child_process';
@@ -55,7 +55,7 @@ function canonicalBody(scope) {
 }
 
 async function setup({ withProjectId = true, tetherExitCode = 0, ghCreateOverride = null } = {}) {
-  const temp = await createLegacyRootFixture('aitm-create-');
+  const temp = await createActivatedRuntimeRootFixture('aitm-create-');
   const binDir = join(temp, 'bin');
   mkdirSync(binDir, { recursive: true });
   mkdirSync(join(temp, '.ai-task-manager'), { recursive: true });

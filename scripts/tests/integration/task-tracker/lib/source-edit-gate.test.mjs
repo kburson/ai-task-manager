@@ -271,6 +271,7 @@ test('runHook blocks in backlog state via injected signal resolver', async () =>
     {
       projectDir: PROJECT_DIR,
       isChoreModeActive: () => false,
+      readExactSessionBinding: () => null,
       loadBoundIssue: () => '#42',
       resolveIssueSignals: async () => ({
         state: 'backlog',
@@ -290,6 +291,7 @@ test('runHook bypasses entire signal fetch when chore-mode is active', async () 
     {
       projectDir: PROJECT_DIR,
       isChoreModeActive: () => true,
+      readExactSessionBinding: () => null,
       loadBoundIssue: () => null,
       resolveIssueSignals: async () => {
         fetched = true;
@@ -308,6 +310,7 @@ test('runHook tolerates signal fetch failure (falls through to decide)', async (
     {
       projectDir: PROJECT_DIR,
       isChoreModeActive: () => false,
+      readExactSessionBinding: () => null,
       loadBoundIssue: () => '#42',
       resolveIssueSignals: async () => {
         throw new Error('gh exploded');
@@ -326,6 +329,7 @@ test('runHook allowlists scratch without needing a bound issue or signals', asyn
     {
       projectDir: PROJECT_DIR,
       isChoreModeActive: () => false,
+      readExactSessionBinding: () => null,
       loadBoundIssue: () => {
         touched = true;
         return null;
@@ -353,6 +357,7 @@ test('native apply_patch envelope classifies every target with ordinary source-e
     {
       projectDir: PROJECT_DIR,
       isChoreModeActive: () => false,
+      readExactSessionBinding: () => null,
       loadBoundIssue: () => null,
     }
   );
@@ -367,6 +372,7 @@ test('malformed native apply_patch envelope fails closed before ordinary allowan
     {
       projectDir: PROJECT_DIR,
       isChoreModeActive: () => true,
+      readExactSessionBinding: () => null,
       loadBoundIssue: () => null,
     }
   );

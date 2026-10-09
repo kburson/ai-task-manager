@@ -1,6 +1,4 @@
 // @story #1857
-import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-initializeFixtureActor(import.meta.url);
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { classifyRuntimeRecord } from '../../../../task-tracker/lib/runtime-record-catalog.mjs';

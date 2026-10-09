@@ -9,7 +9,7 @@ const fixtureOriginalCwd = process.cwd();
 import { strict as assert } from 'node:assert';
 import '../../../fixtures/offline-gh-auto.mjs';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import path from 'node:path';
 import {
   getActiveTask,
@@ -27,22 +27,36 @@ import { loadState, saveState } from '../../../../task-tracker/state.mjs';
 // #442 — verbResume registers a fleet entry; the sandbox must be git-isolated
 // (mkdtempProjectIsolated git-inits it) so registerTask cannot escape into the
 // live .ai-task-manager/task-fleet.json.
-const tmp = mkdtempProjectIsolated('tt-resume-seed-');
+const tmp = await mkdtempProjectIsolated('tt-resume-seed-');
 
 // Isolate every AITM path writer (markerDir, transcriptDir, fleet registry,
 // session records) under the tmp project so the test never touches real state.
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
 process.chdir(tmp);
-process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
+process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+  tmp,
+  '.ai-task-manager',
+  'runtime',
+  'store',
+  'app',
+  'claude',
+  'session-transcripts'
+);
 mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
 // Import AFTER env is set so path resolution honors the tmp project.
 const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
 
-let stateSeq = 0;
 function writeState(obj) {
   // Distinct file per test so global-ledger fields don't leak across cases.
-  const p = path.join(tmp, '.tmp', 'aitm', 'state', `state-${stateSeq++}.json`);
+  const p = path.join(
+    tmp,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   saveState(obj, p);
   return p;
 }

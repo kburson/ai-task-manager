@@ -1,8 +1,12 @@
 // @story #449 — assertBoundToIssue guard: missing bind, mismatch, and match cases.
 
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  createActivatedUnitRuntimeRoot,
+  unitTest as test,
+} from '../../../helpers/unit-runtime-root.mjs';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -10,12 +14,16 @@ import {
   BindMissingError,
   BindMismatchError,
 } from '../../../../task-tracker/lib/bind-context.mjs';
-import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
+const fixtureRoots = [];
+after(() => {
+  for (const root of fixtureRoots) rmSync(root, { recursive: true, force: true });
+});
 
 function makeProjectDir(active) {
-  const root = mkdtempOutsideRepo('aitm-test-');
+  const root = createActivatedUnitRuntimeRoot('aitm-test-');
+  fixtureRoots.push(root);
   // #573: the global ledger lives under `.tmp/aitm/state/`.
-  const dir = path.join(root, '.tmp', 'aitm', 'state');
+  const dir = path.join(root, '.ai-task-manager', 'runtime', 'store', 'state');
   mkdirSync(dir, { recursive: true });
   const state = active === undefined ? {} : { active };
   writeFileSync(path.join(dir, 'task-tracker-state.json'), JSON.stringify(state));
@@ -33,7 +41,7 @@ test('throws BindMissingError when no active bind in state file', () => {
 test('throws BindMissingError when state file is empty object', () => {
   const projectDir = makeProjectDir(null);
   // null active means the file exists but active is not a string
-  const dir = path.join(projectDir, '.tmp', 'aitm', 'state');
+  const dir = path.join(projectDir, '.ai-task-manager', 'runtime', 'store', 'state');
   writeFileSync(path.join(dir, 'task-tracker-state.json'), JSON.stringify({ active: null }));
   assert.throws(
     () => assertBoundToIssue(449, { projectDir }),

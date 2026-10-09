@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { resolveRuntimeRootOverride } from './runtime-storage.mjs';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord } from './runtime-writer.mjs';
 
 import { deregisterTask, fleetRegistryPath, readFleet, withLock } from '../fleet-registry.mjs';
 import { closedBindingsPath, occupancyPath } from '../paths.mjs';
@@ -41,6 +42,8 @@ function timestamp(value, label, { allowMissing = false } = {}) {
 
 export function readClosedBindingLedger(mainWorktreePath, deps = {}) {
   const ledgerPath = (deps.closedBindingsPath || closedBindingsPath)(mainWorktreePath);
+  if (!deps.pathExists && !deps.readFile && !deps.closedBindingsPath)
+    return readRuntimeJsonRecord(ledgerPath, { optional: true }) ?? emptyLedger();
   const pathExists = deps.pathExists || existsSync;
   if (!pathExists(ledgerPath)) return emptyLedger();
   const readFile = deps.readFile || readFileSync;
@@ -75,6 +78,8 @@ export function validateClosedBindingLedger(value) {
 
 function writeClosedBindingLedger(mainWorktreePath, ledger, deps = {}) {
   const ledgerPath = (deps.closedBindingsPath || closedBindingsPath)(mainWorktreePath);
+  if (!deps.mkdir && !deps.writeFile && !deps.rename && !deps.closedBindingsPath)
+    return writeRuntimeJsonRecord(ledgerPath, ledger);
   const makeDir = deps.mkdir || mkdirSync;
   const writeFile = deps.writeFile || writeFileSync;
   const renameFile = deps.rename || renameSync;

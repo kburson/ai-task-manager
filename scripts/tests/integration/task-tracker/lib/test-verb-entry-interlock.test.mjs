@@ -2,9 +2,10 @@
 // cspell:ignore EISSUELOCKED
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { after, test } from 'node:test';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -12,7 +13,6 @@ import {
   THIS_HOST,
   withIssueLock,
 } from '../../../../task-tracker/issue-mutator-lock.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const testVerbModule = await import('../../../../task-tracker/verbs/test.mjs');
 const testFile = fileURLToPath(import.meta.url);
@@ -36,14 +36,10 @@ function deferred() {
   return { promise, resolve };
 }
 
-function makeProject() {
-  const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'test-entry-lock-'));
+async function makeProject() {
+  const projectDir = await createActivatedRuntimeRootFixture('test-entry-lock-');
   scratchProjects.push(projectDir);
   return projectDir;
-}
-
-function acquireAs(sessionId) {
-  return (options, work) => withIssueLock({ ...options, sessionId }, work);
 }
 
 function reapedPid() {
@@ -65,7 +61,7 @@ test('takes the issue interlock before the receipt path and serializes an exact-
   const result = await runTestWithEntryInterlock({
     cfg: { repo: 'o/r' },
     issueNumber: 1169,
-    projectDir: makeProject(),
+    projectDir: await makeProject(),
     deps: {
       acquireIssueLock: async (options, work) => {
         events.push(`lock:${options.issue}:${options.verb}`);
@@ -83,7 +79,9 @@ test('takes the issue interlock before the receipt path and serializes an exact-
 });
 
 test('a second invocation for the same issue refuses and names the holding run', async () => {
-  const projectDir = makeProject();
+  const projectDir = await makeProject();
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'holding-test-run';
+  process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
   const entered = deferred();
   const release = deferred();
   const first = runTestWithEntryInterlock({
@@ -91,7 +89,6 @@ test('a second invocation for the same issue refuses and names the holding run',
     issueNumber: 1169,
     projectDir,
     deps: {
-      acquireIssueLock: acquireAs('holding-test-run'),
       runVerbTest: async () => {
         entered.resolve();
         await release.promise;
@@ -101,22 +98,37 @@ test('a second invocation for the same issue refuses and names the holding run',
   });
   await entered.promise;
 
-  await assert.rejects(
-    runTestWithEntryInterlock({
-      cfg: { repo: 'o/r' },
-      issueNumber: 1169,
-      projectDir,
-      deps: {
-        acquireIssueLock: acquireAs('contending-test-run'),
-        runVerbTest: async () => ({ status: 'unexpected-entry' }),
-      },
-    }),
-    (error) => {
-      assert.equal(error.code, 'EISSUELOCKED');
-      assert.match(error.message, /issue 1169 locked by session holding-test-run \(held since /);
-      return true;
-    }
-  );
+  // Use a genuine second OS process without an inherited ownership proof.
+  const env = {
+    ...process.env,
+    AI_TASK_MANAGER_PROJECT_DIR: projectDir,
+    AI_TASK_MANAGER_SESSION_ID: 'contending-test-run',
+    AI_TASK_MANAGER_APP_NAME: 'claude',
+  };
+  delete env.AITM_ISSUE_LOCK_HELD;
+  delete env.AITM_ISSUE_LOCK_PROOF;
+  const moduleUrl = new URL('../../../../task-tracker/verbs/test.mjs', import.meta.url).href;
+  const source = `import {runTestWithEntryInterlock} from ${JSON.stringify(moduleUrl)};
+    try { await runTestWithEntryInterlock({cfg:{repo:'o/r'}, issueNumber:1169,
+      projectDir:${JSON.stringify(projectDir)}, deps:{runVerbTest:async()=>{throw Error('unexpected-entry')}}});
+      process.exitCode=2; } catch(e) { console.log(JSON.stringify({code:e.code,message:e.message})); }`;
+  const output = await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['--input-type=module', '-e', source], {
+      cwd: projectDir,
+      env,
+    });
+    let stdout = '',
+      stderr = '';
+    child.stdout.on('data', (data) => (stdout += data));
+    child.stderr.on('data', (data) => (stderr += data));
+    child.once('error', reject);
+    child.once('close', (code) =>
+      code === 0 ? resolve(stdout) : reject(Error(stderr || `child exit ${code}`))
+    );
+  });
+  const refusal = JSON.parse(output);
+  assert.equal(refusal.code, 'EISSUELOCKED');
+  assert.ok(refusal.message.includes('issue 1169 locked by session holding-test-run (held since '));
 
   release.resolve();
   assert.equal((await first).status, 'passed');
@@ -133,8 +145,8 @@ test('the Test entry interlock has no force, environment, or config bypass', () 
   assert.doesNotMatch(wrapper, /process\.env|config|override|bypass|force/i);
 });
 
-test('a dead same-host holder is reclaimed through the #656 liveness path', async () => {
-  const projectDir = makeProject();
+test('a dead same-host legacy holder requires explicit observed recovery', async () => {
+  const projectDir = await makeProject();
   const issueNumber = 6561169;
   const lockPath = issueLockPath(issueNumber, projectDir);
   const pid = await reapedPid();
@@ -152,24 +164,28 @@ test('a dead same-host holder is reclaimed through the #656 liveness path', asyn
   );
 
   let entered = false;
-  const result = await runTestWithEntryInterlock({
-    cfg: { repo: 'o/r' },
-    issueNumber,
-    projectDir,
-    deps: {
-      runVerbTest: async () => {
-        entered = true;
-        return { status: 'already-verified' };
+  const holderPath = path.join(lockPath, 'holder.json');
+  const before = readFileSync(holderPath, 'utf8');
+  await assert.rejects(
+    runTestWithEntryInterlock({
+      cfg: { repo: 'o/r' },
+      issueNumber,
+      projectDir,
+      deps: {
+        runVerbTest: async () => {
+          entered = true;
+          return { status: 'already-verified' };
+        },
       },
-    },
-  });
-
-  assert.equal(result.status, 'already-verified');
-  assert.equal(entered, true);
+    }),
+    { code: 'RUNTIME_LOCK_RECOVERY_REQUIRED' }
+  );
+  assert.equal(entered, false);
+  assert.equal(readFileSync(holderPath, 'utf8'), before);
 });
 
 test('different issues can both hold their Test entry interlocks concurrently', async () => {
-  const projectDir = makeProject();
+  const projectDir = await makeProject();
   const release = deferred();
   const bothEntered = deferred();
   const entered = new Set();
@@ -180,7 +196,6 @@ test('different issues can both hold their Test entry interlocks concurrently', 
       issueNumber,
       projectDir,
       deps: {
-        acquireIssueLock: acquireAs(`run-${issueNumber}`),
         runVerbTest: async () => {
           entered.add(issueNumber);
           if (entered.size === 2) bothEntered.resolve();

@@ -11,10 +11,18 @@ import path from 'node:path';
 import test, { after } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 
-const sandbox = mkdtempProjectIsolated('terminal-review-handoff-');
-const transcriptDir = path.join(sandbox, 'transcripts');
+const sandbox = await mkdtempProjectIsolated('terminal-review-handoff-');
+const transcriptDir = path.join(
+  sandbox,
+  '.ai-task-manager',
+  'runtime',
+  'store',
+  'app',
+  'codex',
+  'session-transcripts'
+);
 mkdirSync(transcriptDir, { recursive: true });
 
 process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
@@ -156,7 +164,14 @@ function captureLog(fn) {
 }
 
 test('stop keeps a stale worktree bound after durable review:passed', async () => {
-  const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  const statePath = path.join(
+    sandbox,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   saveState(
     {
       ...EMPTY_STATE,
@@ -219,7 +234,14 @@ test('stop keeps a stale worktree bound after durable review:passed', async () =
 });
 
 test('numbered start reopens one local span after terminal Review handoff', async () => {
-  const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'resume-review-state.json');
+  const statePath = path.join(
+    sandbox,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   saveState(
     {
       ...EMPTY_STATE,
@@ -515,7 +537,14 @@ test('locked append carries durable markers and derives delta without changing e
 });
 
 test('explicit non-terminal stop retains its existing flush and unbind behavior', async () => {
-  const statePath = path.join(sandbox, '.tmp', 'aitm', 'state', 'non-terminal-state.json');
+  const statePath = path.join(
+    sandbox,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   saveState(
     {
       ...EMPTY_STATE,
@@ -552,10 +581,11 @@ test('explicit non-terminal stop retains its existing flush and unbind behavior'
 
   const unreadableStatePath = path.join(
     sandbox,
-    '.tmp',
-    'aitm',
+    '.ai-task-manager',
+    'runtime',
+    'store',
     'state',
-    'unreadable-timing-state.json'
+    'task-tracker-state.json'
   );
   saveState(
     {

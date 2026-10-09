@@ -16,15 +16,18 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { test, before, after } from 'node:test';
+import { before, after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import { setSessionKanbanState } from '../../../../task-tracker/session-state.mjs';
 import { currentSessionId } from '../../../../task-tracker/word-counter.mjs';
 import path from 'node:path';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbCheck } from '../../../../task-tracker/verbs/check.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { pexecGithubBodyStore } from '../../../helpers/pexec-body-store.mjs';
 import { statePath as resolveStatePath } from '../../../../task-tracker/paths.mjs';
 
@@ -69,7 +72,7 @@ let savedPath;
 let storeFile;
 
 before(() => {
-  tmpRoot = mkdtempSync(path.join(projectScratchDir('test'), 'check-cov-'));
+  tmpRoot = createActivatedUnitRuntimeRoot('check-cov-');
   fakeBin = path.join(tmpRoot, 'bin');
   mkdirSync(fakeBin, { recursive: true });
   // Stateful fake gh: `view` cats the body store; `edit --body-file -` writes
@@ -110,11 +113,10 @@ after(() => {
   }
 });
 
-let stateCounter = 0;
 // Write a state file with the given `active`. `legacyState` (optional) writes a
 // legacy `state` field that `readBoundState` surfaces for the stage-bound gate.
 function stateFile(active, legacyState) {
-  const p = path.join(tmpRoot, `state-${stateCounter++}.json`);
+  const p = path.join(tmpRoot, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
   const obj = { active, lastActive: active };
   if (legacyState) obj.state = legacyState;
   saveState(obj, p);
@@ -357,7 +359,7 @@ test('verbCheck: "deep dive complete" outside Refine → ensureDeepDive, no exit
 
 test('verbCheck: "deep dive complete" while bound in Refine → refuse, exit 1', async () => {
   // The own binding carries the observed Refine state in this isolated fixture.
-  const refineDir = path.join(tmpRoot, 'refine-proj');
+  const refineDir = createActivatedUnitRuntimeRoot('check-refine-');
   const sp = resolveStatePath(refineDir);
   mkdirSync(path.dirname(sp), { recursive: true });
   saveState({ active: '#777' }, sp);
@@ -365,7 +367,7 @@ test('verbCheck: "deep dive complete" while bound in Refine → refuse, exit 1',
   const r = await runVerb(
     baseCtx({
       projectDir: refineDir,
-      statePath: stateFile('#777'),
+      statePath: sp,
       rest: ['deep dive complete'],
       pexec: makePexec(fixtureBody()),
     })

@@ -4,7 +4,9 @@
 // readFleet, fleet prune, and back-compat path-inference migration.
 import { strict as assert } from 'node:assert';
 import { rmSync } from 'node:fs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import {
   fleetRegistryPath,
   findMainWorktreePath,
@@ -19,7 +21,7 @@ import {
   STALE_MS_DEFAULT,
 } from '../../../../task-tracker/fleet-registry.mjs';
 
-const tmp = mkdtempProjectIsolated('tt-fleet-gc-');
+const tmp = await createCommittedRuntimeRootFixture('tt-fleet-gc-');
 
 try {
   const mainPath = findMainWorktreePath(tmp);
@@ -168,18 +170,21 @@ try {
       kind: 'main',
       worktreePath: mainPath,
       status: 'active',
+      branch: 'fixture',
       startedAt: '2026-06-17T11:59:00Z',
     },
     '#9': {
       kind: 'main',
       worktreePath: mainPath,
       status: 'active',
+      branch: 'fixture',
       startedAt: '2026-06-17T11:59:00Z',
     },
     '#2': {
       kind: 'worktree',
       worktreePath: '/wt/gone',
       status: 'active',
+      branch: 'fixture',
       startedAt: '2026-06-17T11:59:00Z',
     },
   };

@@ -5,9 +5,12 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { readyForPlanMigrationJournalPath } from '../../../../task-tracker/lib/ready-for-plan-migration-freeze.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import { SELF_DOC } from '../../../../lib/self-doc.mjs';
 import { EXECUTABLE_ENTRYPOINTS } from '../../../../task-tracker/lib/command-surface/entrypoints.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import {
   applyReadyForPlanMigration,
   inspectReadyForPlanMigration,
@@ -68,7 +71,7 @@ test('migration command rejects unknown arguments before any GitHub access', () 
 });
 
 test('production GraphQL and filesystem adapters resume a landed response and verify the full cutover', async () => {
-  const sandbox = mkdtempProjectIsolated('r4p-live-');
+  const sandbox = await createActivatedRuntimeRootFixture('r4p-live-');
   try {
     const cfg = {
       projectId: 'P1',
@@ -77,7 +80,7 @@ test('production GraphQL and filesystem adapters resume a landed response and ve
       kanbanOptionAssigned: 'O_ASSIGNED',
     };
     const configDir = path.join(sandbox, '.ai-task-manager');
-    const journalPath = path.join(sandbox, '.db', 'aitm', 'ready-for-plan-migration.json');
+    const journalPath = readyForPlanMigrationJournalPath(sandbox);
     mkdirSync(configDir, { recursive: true });
     writeFileSync(path.join(configDir, 'task-tracker.json'), `${JSON.stringify(cfg, null, 2)}\n`);
 

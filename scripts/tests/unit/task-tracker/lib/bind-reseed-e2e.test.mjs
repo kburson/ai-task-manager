@@ -5,11 +5,20 @@
 // .jsonl basename; the resulting "wedged" session is impossible to recover
 // without a manual JSON patch.
 
-import { test } from 'node:test';
+import { after } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
+const roots = [];
+after(() => {
+  for (const root of roots) rmSync(root, { recursive: true, force: true });
+});
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, existsSync } from 'node:fs';
+import { mkdirSync, existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 import {
   setActiveTask,
@@ -20,8 +29,11 @@ import { activeTaskPath } from '../../../../task-tracker/paths.mjs';
 import { resolveSessionId } from '../../../../task-tracker/lib/session-id.mjs';
 
 function makeProjDir() {
-  const root = mkdtempSync(path.join(projectScratchDir('test'), 'bind-reseed-'));
-  mkdirSync(path.join(root, '.ai-task-manager', 'sessions'), { recursive: true });
+  const root = createActivatedUnitRuntimeRoot('bind-reseed-');
+  roots.push(root);
+  mkdirSync(path.join(root, '.ai-task-manager', 'runtime', 'store', 'sessions'), {
+    recursive: true,
+  });
   return root;
 }
 

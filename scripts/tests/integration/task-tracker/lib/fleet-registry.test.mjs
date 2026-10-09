@@ -2,10 +2,9 @@
 // @story #309
 import { strict as assert } from 'node:assert';
 import { existsSync, rmSync } from 'node:fs';
-import {
-  projectScratchDir,
-  mkdtempProjectIsolated,
-} from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 import path from 'node:path';
 import {
   fleetRegistryPath,
@@ -16,16 +15,26 @@ import {
   setTaskStatus,
 } from '../../../../task-tracker/fleet-registry.mjs';
 
-const tmp = mkdtempProjectIsolated('tt-fleet-');
+const tmp = await createCommittedRuntimeRootFixture('tt-fleet-');
 
 try {
   const preferred = fleetRegistryPath(tmp);
 
   // #573: the fleet registry is main-anchored under `.tmp/aitm/fleet/`. Hard
   // cut — no legacy `.claude`/SHARED_DIR read-fallback.
-  assert.equal(preferred, path.join(tmp, '.tmp', 'aitm', 'fleet', 'task-fleet.json'));
+  assert.equal(
+    preferred,
+    path.join(tmp, '.ai-task-manager', 'runtime', 'store', 'fleet', 'task-fleet.json')
+  );
 
-  writeFleet(preferred, { '#2': { status: 'active' } });
+  writeFleet(preferred, {
+    '#2': {
+      status: 'active',
+      worktreePath: tmp,
+      branch: 'trunk',
+      startedAt: '2026-06-17T11:59:00Z',
+    },
+  });
   assert.ok(existsSync(preferred), 'fleet should write to preferred path');
   let fleet = readFleet(preferred);
   assert.equal(fleet['#2'].status, 'active');

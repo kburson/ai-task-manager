@@ -233,6 +233,8 @@ test('bootstrap policy resolves live state and refuses a missing board item', as
     issueNumber: 1007,
     cfg: TEST_CFG,
     deps: {
+      migrationFreezeActive: () => false,
+      loadSession: () => null,
       projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body: bodyWithRecordedState(null) }),
@@ -249,6 +251,8 @@ test('bootstrap policy resolves live state and refuses a missing board item', as
     issueNumber: 1007,
     cfg: TEST_CFG,
     deps: {
+      migrationFreezeActive: () => false,
+      loadSession: () => null,
       projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body: bodyWithRecordedState(null) }),

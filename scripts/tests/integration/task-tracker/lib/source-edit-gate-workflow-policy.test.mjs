@@ -37,6 +37,7 @@ test('runHook revalidates policy for every edit so revocation blocks the next bo
     projectDir,
     isChoreModeActive: () => false,
     loadBoundIssue: () => '#1628',
+    readExactSessionBinding: () => null,
     cfg: { repo: 'kburson/ai-task-manager' },
     gh: async () =>
       JSON.stringify({ body: '## User Story\nA\n## Scope\nS\n## Acceptance Criteria\n- [ ] A' }),

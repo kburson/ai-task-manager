@@ -31,6 +31,7 @@ import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { lintCommitSubject } from './lib/commit-attribution-format.mjs';
 import { statePath as resolveStatePath } from './paths.mjs';
+import { loadState } from './state.mjs';
 
 // #327 — chore-mode commit-subject gate.
 //
@@ -80,7 +81,7 @@ function loadActiveIssue(projectDir) {
   const statePath = resolveStatePath(projectDir); // #573: `.tmp/aitm/state/`
   if (!existsSync(statePath)) return null;
   try {
-    const s = JSON.parse(readFileSync(statePath, 'utf8'));
+    const s = loadState(statePath);
     const active = s.active;
     if (!active || active === 'discover' || active === 'plan') return null;
     const m = String(active).match(/^#?(\d+)$/);

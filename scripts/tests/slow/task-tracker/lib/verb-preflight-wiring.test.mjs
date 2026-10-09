@@ -5,7 +5,7 @@
 
 import { strict as assert } from 'node:assert';
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
-import { createCommittedLegacyRootFixture } from '../../../helpers/legacy-runtime-root-fixture.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 initializeFixtureActor(import.meta.url);
 import { execFile } from 'node:child_process';
@@ -22,7 +22,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '../../../task-tracker/task-tracker.mjs');
 
 async function makeSandbox(active) {
-  const sandbox = await createCommittedLegacyRootFixture('tt-preflight-');
+  const sandbox = await createCommittedRuntimeRootFixture('tt-preflight-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -36,7 +36,7 @@ async function makeSandbox(active) {
       wordsAtEntryStart: 0,
       discoverBucket: null,
     },
-    path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json')
+    path.join(sandbox, '.ai-task-manager', 'runtime', 'store', 'state', 'task-tracker-state.json')
   );
   return sandbox;
 }

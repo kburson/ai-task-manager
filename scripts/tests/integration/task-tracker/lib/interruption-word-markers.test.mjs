@@ -16,7 +16,7 @@ import {
 } from '../../../../task-tracker/gh-timing-comment.mjs';
 import { computePhaseCloseDelta } from '../../../../task-tracker/lib/timing-rows.mjs';
 import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import { bankTranscriptTail, loadState, saveState } from '../../../../task-tracker/state.mjs';
 import { markerPathFor, saveMarker } from '../../../../task-tracker/word-counter.mjs';
 import { verbResume } from '../../../../task-tracker/verbs/resume.mjs';
@@ -75,8 +75,16 @@ test('departure-to-resume marker growth is excluded from own-issue phase words',
 });
 
 test('real pause and switch-out flushes preserve both markers while away growth stays excluded', async () => {
-  const projectDir = mkdtempProjectIsolated('interruption-runtime-1142-', 'test');
-  const transcriptDir = path.join(projectDir, 'transcripts');
+  const projectDir = await mkdtempProjectIsolated('interruption-runtime-1142-', 'test');
+  const transcriptDir = path.join(
+    projectDir,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'app',
+    'claude',
+    'session-transcripts'
+  );
   const sid = `interruption-runtime-${process.pid}`;
   const transcriptPath = path.join(transcriptDir, `${sid}.jsonl`);
   const savedEnv = {
@@ -95,7 +103,10 @@ test('real pause and switch-out flushes preserve both markers while away growth 
     mkdirSync(path.join(projectDir, '.ai-task-manager'), { recursive: true });
     writeFileSync(
       path.join(projectDir, '.ai-task-manager/task-tracker.json'),
-      JSON.stringify({ repo: '', statePath: '.tmp/aitm/state/task-tracker-state.json' }),
+      JSON.stringify({
+        repo: '',
+        statePath: '.ai-task-manager/runtime/store/state/task-tracker-state.json',
+      }),
       'utf8'
     );
     writeFileSync(transcriptPath, message('one two three'), 'utf8');

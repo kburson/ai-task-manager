@@ -159,6 +159,7 @@ export async function measureFixedExplanationAuthorityReads() {
             cfg: { repo: REPOSITORY },
             projectDir: process.cwd(),
             runGuards: readyGuards,
+            loadSession: () => null,
           },
         })
       ),
@@ -250,6 +251,7 @@ export async function measureFixedExplanationAuthorityReads() {
               projectDir: process.cwd(),
               head: HEAD,
               runGuards: readyGuards,
+              loadSession: () => null,
             },
           }),
         ({ issueBody }) => ({

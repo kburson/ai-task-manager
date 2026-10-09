@@ -25,10 +25,18 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
 import { strict as assert } from 'node:assert';
-import { after, before, test } from 'node:test';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { after, before } from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
+const roots = [];
+after(() => {
+  for (const root of roots) rmSync(root, { recursive: true, force: true });
+});
 
 import { installStubGh } from '../../../fixtures/stub-gh.mjs';
 import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
@@ -61,17 +69,18 @@ const CLOSE_BODY = [
 ].join('\n');
 
 function withRealStateFile({ active }) {
-  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'tt-close-repair-'));
-  const statePath = path.join(dir, 'state.json');
-  writeFileSync(
-    statePath,
-    JSON.stringify({
+  const dir = createActivatedUnitRuntimeRoot('tt-close-repair-');
+  roots.push(dir);
+  const statePath = path.join(dir, '.ai-task-manager/runtime/store/state/task-tracker-state.json');
+  saveState(
+    {
       active,
       lastActive: active,
       entryStartTs: '2026-07-05T12:00:00Z',
       wordsAtEntryStart: 0,
       lastWordMarker: 0,
-    })
+    },
+    statePath
   );
   return statePath;
 }
@@ -93,7 +102,8 @@ function buildCtx({ statePath, rest, sideEffects }) {
   return {
     cfg: { repo: 'o/r' },
     statePath,
-    projectDir: path.dirname(statePath),
+    projectDir: path.resolve(statePath, '../../../../..'),
+    loadCurrentSession: () => null,
     rest,
     SKIP_NETWORK: false,
     pexec,

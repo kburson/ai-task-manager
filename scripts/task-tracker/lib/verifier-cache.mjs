@@ -20,8 +20,8 @@
 // `exit === 0` results at a clean tree are ever recorded; a non-zero result is
 // never cached. Dirty tree, changed sha, or any uncertainty ⇒ miss ⇒ real run.
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { readRuntimeJsonRecord, writeRuntimeJsonRecord, withRuntimeRecordLockSync } from './runtime-writer.mjs';
 
 export const STORE_VERSION = 1;
 
@@ -60,18 +60,9 @@ function storePath(dir) {
   return path.join(dir, 'cache', 'verifier-results.json');
 }
 
-// Read the store, tolerating a missing/corrupt file (fail-safe → empty store).
+// Missing optional cache means no reusable evidence. Corruption remains explicit.
 export function readStore(dir) {
-  try {
-    const raw = readFileSync(storePath(dir), 'utf8');
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || typeof parsed.entries !== 'object') {
-      return { version: STORE_VERSION, entries: {} };
-    }
-    return { version: STORE_VERSION, entries: parsed.entries || {} };
-  } catch {
-    return { version: STORE_VERSION, entries: {} };
-  }
+  return readRuntimeJsonRecord(storePath(dir), { optional: true }) ?? { version: STORE_VERSION, entries: {} };
 }
 
 // Look up a cached green result for `cmd` at `sha`. Returns the recorded entry
@@ -99,6 +90,7 @@ export function record({ dir, cmd, sha, exit, ts }) {
   if (!dir || !sha || sha === 'unknown') return false;
   if (!isCacheEligible(cmd)) return false;
   if (exit !== 0) return false;
+  return withRuntimeRecordLockSync(storePath(dir), () => {
   const store = readStore(dir);
   const pruned = {};
   for (const [k, v] of Object.entries(store.entries)) {
@@ -107,7 +99,7 @@ export function record({ dir, cmd, sha, exit, ts }) {
   pruned[cacheKey(cmd, sha)] = { cmd: normalizeCommand(cmd), sha, exit: 0, ts };
   const next = { version: STORE_VERSION, entries: pruned };
   const file = storePath(dir);
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(next, null, 2)}\n`);
+  writeRuntimeJsonRecord(file, next);
   return true;
+  });
 }

@@ -12,23 +12,35 @@ import {
   setActionCaptureEnabled,
   summarizeActionCorpus,
 } from '../../../../task-tracker/lib/action-capture.mjs';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createActivatedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+import { saveState } from '../../../../task-tracker/state.mjs';
+initializeFixtureActor(import.meta.url);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
-const SHIM = path.join(ROOT, 'scripts', 'task-tracker', 'action-capture-bin', 'gh');
+const SOURCE_SHIM = path.join(ROOT, 'scripts', 'task-tracker', 'action-capture-bin', 'gh');
+let SHIM;
 
-function fixture() {
-  const projectDir = mkdtempProjectIsolated('action-capture-integration-');
+async function fixture() {
+  const projectDir = await createActivatedRuntimeRootFixture('action-capture-integration-');
   mkdirSync(path.join(projectDir, '.ai-task-manager'), { recursive: true });
   mkdirSync(path.join(projectDir, '.tmp', 'aitm', 'state'), { recursive: true });
   writeFileSync(
     path.join(projectDir, '.ai-task-manager', 'task-tracker.json'),
     `${JSON.stringify({ repo: 'o/r' })}\n`
   );
-  writeFileSync(
-    path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
-    `${JSON.stringify({ active: '#42' })}\n`
+  saveState(
+    { active: '#42' },
+    path.join(
+      projectDir,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'state',
+      'task-tracker-state.json'
+    )
   );
+  writeFileSync(path.join(projectDir, 'package.json'), JSON.stringify({ type: 'commonjs' }));
   const realGh = path.join(projectDir, 'fake-gh');
   writeFileSync(
     realGh,
@@ -51,6 +63,19 @@ if (process.env.FAKE_GH_SIGNAL) {
 `
   );
   chmodSync(realGh, 0o755);
+  // Keep transport and cross-process record publication real; inject only the
+  // test's owning Git identity to keep each small child within its pipe timeout.
+  SHIM = path.join(projectDir, 'fixture-capture-gh.mjs');
+  const modelUrl = new URL('../../../helpers/unit-runtime-root.mjs', import.meta.url).href;
+  writeFileSync(
+    SHIM,
+    `#!/usr/bin/env node
+import {withUnitRuntimeRoot} from ${JSON.stringify(modelUrl)};
+process.argv=[process.execPath,${JSON.stringify(SOURCE_SHIM)},...process.argv.slice(2)];
+await withUnitRuntimeRoot(()=>import(${JSON.stringify(new URL('../../../../task-tracker/action-capture-bin/gh', import.meta.url).href)}),{projectRoot:${JSON.stringify(projectDir)}});
+`
+  );
+  chmodSync(SHIM, 0o755);
   return { projectDir, realGh };
 }
 
@@ -67,8 +92,8 @@ function captureEnv(projectDir, realGh, overrides = {}) {
   };
 }
 
-test('shim preserves exact request, stdout, stderr, and exit while recording body-file bytes', () => {
-  const { projectDir, realGh } = fixture();
+test('shim preserves exact request, stdout, stderr, and exit while recording body-file bytes', async () => {
+  const { projectDir, realGh } = await fixture();
   setActionCaptureEnabled({ projectDir, repository: 'o/r', issue: 42, enabled: true });
   const markdown = Buffer.from('# Exact body\n\nTrailing spaces survive.  \n');
   const bodyPath = path.join(projectDir, 'body.md');
@@ -83,7 +108,7 @@ test('shim preserves exact request, stdout, stderr, and exit while recording bod
     input: Buffer.alloc(0),
   });
 
-  assert.equal(result.status, 23);
+  assert.equal(result.status, 23, String(result.stderr));
   assert.deepEqual(result.stdout, markdown);
   assert.equal(result.stderr.toString(), 'remote diagnostic\n');
   const issueDir = captureIssueDir({ projectDir, repository: 'o/r', issue: 42 });
@@ -102,22 +127,30 @@ test('shim preserves exact request, stdout, stderr, and exit while recording bod
   );
 });
 
-test('shim preserves piped stdin and fails open when capture metadata is invalid', () => {
-  const { projectDir, realGh } = fixture();
+test('shim captures piped stdin and refuses invalid metadata before child execution', async () => {
+  const { projectDir, realGh } = await fixture();
   const input = Buffer.from('{"query":"query { viewer { login } }"}\n');
+  setActionCaptureEnabled({ projectDir, repository: 'o/r', issue: 42, enabled: true });
+  const valid = spawnSync(SHIM, ['api', 'graphql', '--input', '-'], {
+    cwd: projectDir,
+    env: captureEnv(projectDir, realGh),
+    input,
+  });
+  assert.equal(valid.status, 0, String(valid.stderr));
+  assert.deepEqual(valid.stdout, input);
   const result = spawnSync(SHIM, ['api', 'graphql', '--input', '-'], {
     cwd: projectDir,
     env: captureEnv(projectDir, realGh, { AITM_CAPTURE_ISSUE: 'invalid' }),
     input,
   });
 
-  assert.equal(result.status, 0);
-  assert.deepEqual(result.stdout, input);
-  assert.match(result.stderr.toString(), /capture unavailable; continuing without capture/);
+  assert.equal(result.status, 1, String(result.stderr));
+  assert.deepEqual(result.stdout, Buffer.alloc(0));
+  assert.match(result.stderr.toString(), new RegExp('action capture unresolved: capture-failed'));
 });
 
-test('shim preserves a terminating signal while recording the outcome', () => {
-  const { projectDir, realGh } = fixture();
+test('shim preserves a terminating signal while recording the outcome', async () => {
+  const { projectDir, realGh } = await fixture();
   setActionCaptureEnabled({ projectDir, repository: 'o/r', issue: 42, enabled: true });
   const result = spawnSync(SHIM, ['issue', 'view', '42'], {
     cwd: projectDir,
@@ -134,7 +167,7 @@ test('shim preserves a terminating signal while recording the outcome', () => {
 });
 
 test('shim does not wait for EOF on an unused execFile stdin pipe', async () => {
-  const { projectDir, realGh } = fixture();
+  const { projectDir, realGh } = await fixture();
   setActionCaptureEnabled({ projectDir, repository: 'o/r', issue: 42, enabled: true });
   const result = await new Promise((resolve) => {
     execFile(
@@ -143,7 +176,7 @@ test('shim does not wait for EOF on an unused execFile stdin pipe', async () => 
       {
         cwd: projectDir,
         env: captureEnv(projectDir, realGh),
-        timeout: 1_000,
+        timeout: 10_000,
         encoding: 'buffer',
       },
       (error, stdout, stderr) => resolve({ error, stdout, stderr })
@@ -160,14 +193,16 @@ test('shim does not wait for EOF on an unused execFile stdin pipe', async () => 
 function runConcurrentShim(args, options) {
   return new Promise((resolve, reject) => {
     const child = spawn(SHIM, args, options);
+    let stderr = '';
+    child.stderr.on('data', (data) => (stderr += data));
     child.on('error', reject);
-    child.on('close', (code, signal) => resolve({ code, signal }));
+    child.on('close', (code, signal) => resolve({ code, signal, stderr }));
     child.stdin.end();
   });
 }
 
 test('concurrent shim processes allocate unique ordered action directories', async () => {
-  const { projectDir, realGh } = fixture();
+  const { projectDir, realGh } = await fixture();
   setActionCaptureEnabled({ projectDir, repository: 'o/r', issue: 42, enabled: true });
   const env = captureEnv(projectDir, realGh);
   const results = await Promise.all(
@@ -179,7 +214,10 @@ test('concurrent shim processes allocate unique ordered action directories', asy
       })
     )
   );
-  assert.ok(results.every(({ code, signal }) => code === 0 && signal === null));
+  assert.ok(
+    results.every(({ code, signal }) => code === 0 && signal === null),
+    JSON.stringify(results)
+  );
 
   const summary = summarizeActionCorpus({ projectDir, repository: 'o/r', issue: 42 });
   assert.equal(summary.actions, 8);

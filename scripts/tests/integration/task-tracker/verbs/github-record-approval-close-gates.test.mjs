@@ -4,7 +4,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { rmSync } from 'node:fs';
+import { after } from 'node:test';
 import path from 'node:path';
 
 import {
@@ -16,10 +17,19 @@ import { reviewExitReviewApprovedGuard } from '../../../../task-tracker/lib/revi
 import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
 import { createDefaultDeliverDeps, runDeliver } from '../../../../task-tracker/verbs/deliver.mjs';
 import { resolveCloseLifecycleEvidence } from '../../../../task-tracker/verbs/close.mjs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url);
 
 const SHA = 'a'.repeat(40);
-const PROJECT_DIR = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-approval-close-1144-'));
+const PROJECT_DIR = await createCommittedRuntimeRootFixture('aitm-approval-close-1144-');
+process.env.AI_TASK_MANAGER_PROJECT_DIR = PROJECT_DIR;
+const approvalOriginalCwd = process.cwd();
+process.chdir(PROJECT_DIR);
+after(() => {
+  process.chdir(approvalOriginalCwd);
+  rmSync(PROJECT_DIR, { recursive: true, force: true });
+});
 const AUTHORITY = Object.freeze({
   contractEpoch: 3,
   coordinatorGrantId: 'grant-3',

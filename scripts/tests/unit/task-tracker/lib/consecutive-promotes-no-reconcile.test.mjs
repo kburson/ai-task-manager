@@ -13,12 +13,14 @@
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 
-import { unitRuntimeEntrypointArgs } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  unitRuntimeEntrypointArgs,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -36,7 +38,7 @@ async function runMoveState(args, env) {
 }
 
 function setupSandbox() {
-  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-i210-'));
+  const sandbox = createActivatedUnitRuntimeRoot('tt-i210-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -56,8 +58,15 @@ function setupSandbox() {
 }
 
 function writeState(sandbox, state) {
-  // #573: the global ledger lives under `.tmp/aitm/state/`.
-  const sp = path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
+  // Seed legacy fields in this fixture's admitted durable ledger.
+  const sp = path.join(
+    sandbox,
+    '.ai-task-manager',
+    'runtime',
+    'store',
+    'state',
+    'task-tracker-state.json'
+  );
   mkdirSync(path.dirname(sp), { recursive: true });
   writeFileSync(sp, JSON.stringify(state, null, 2));
   return sp;

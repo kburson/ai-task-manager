@@ -1,10 +1,11 @@
 // @story #1325
-import test from 'node:test';
+import {
+  unitTest as test,
+  createActivatedUnitRuntimeRoot,
+} from '../../../helpers/unit-runtime-root.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-
-import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 import {
   claimOccupancy,
@@ -18,8 +19,8 @@ import {
 } from '../../../../task-tracker/lib/occupancy.mjs';
 
 function fixture() {
-  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-occupancy-'));
-  const file = path.join(root, '.tmp', 'aitm', 'fleet', 'occupancy.json');
+  const root = createActivatedUnitRuntimeRoot('aitm-occupancy-');
+  const file = path.join(root, '.ai-task-manager', 'runtime', 'store', 'fleet', 'occupancy.json');
   const now = (() => {
     let tick = 0;
     return () => `2026-08-19T00:00:${String(tick++).padStart(2, '0')}.000Z`;
@@ -100,8 +101,8 @@ test('corrupt authority data fails closed', () => {
   const { file, claim } = fixture();
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, '{broken', 'utf8');
-  assert.throws(() => readOccupancy(file), /occupancy: unreadable authority store/);
-  assert.throws(() => claim(), /occupancy: unreadable authority store/);
+  assert.throws(() => readOccupancy(file), { code: 'RUNTIME_STATE_CORRUPT' });
+  assert.throws(() => claim(), { code: 'RUNTIME_STATE_CORRUPT' });
 });
 
 test('heartbeat updates only an exact session claim', () => {
@@ -207,7 +208,12 @@ test('rollback cannot erase a later valid claim', () => {
   const { file, claim } = fixture();
   claim();
   const moved = claim({ issue: 1326 });
-  heartbeatOccupancy({ occupancyFile: file, issue: 1326, sid: 'codex-a', now: () => 'later' });
+  heartbeatOccupancy({
+    occupancyFile: file,
+    issue: 1326,
+    sid: 'codex-a',
+    now: () => '2026-08-19T00:01:00.000Z',
+  });
   assert.equal(rollbackOccupancyClaim(moved).status, 'superseded');
   assert.deepEqual(Object.keys(readOccupancy(file)), ['1326']);
 });

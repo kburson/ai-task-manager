@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createCommittedRuntimeRootFixture as mkdtempProjectIsolated } from '../../../helpers/runtime-root-fixture.mjs';
 import {
   classifyEvent,
   lastOpenInterruption,
@@ -124,14 +124,29 @@ test('pause, switch-out, and stop are recorded departures that still need resume
 
 const { verbResume } = await import('../../../../task-tracker/verbs/resume.mjs');
 test('fresh worktree binds locally but posts no row over an already-active live span', async () => {
-  const tmp = mkdtempProjectIsolated('tt-cross-worktree-bind-');
+  const tmp = await mkdtempProjectIsolated('tt-cross-worktree-bind-');
   try {
     process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
     process.chdir(tmp);
-    process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
+    process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(
+      tmp,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'app',
+      'claude',
+      'session-transcripts'
+    );
     process.env.AI_TASK_MANAGER_SESSION_ID = 'cross-worktree-active-tail-1018';
     mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
-    const statePath = path.join(tmp, '.tmp', 'aitm', 'state', 'state.json');
+    const statePath = path.join(
+      tmp,
+      '.ai-task-manager',
+      'runtime',
+      'store',
+      'state',
+      'task-tracker-state.json'
+    );
     mkdirSync(path.dirname(statePath), { recursive: true });
     writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }), 'utf8');
     const posts = [];
