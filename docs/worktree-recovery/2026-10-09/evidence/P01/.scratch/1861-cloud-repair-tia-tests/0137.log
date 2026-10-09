@@ -1,0 +1,35 @@
+coverage-reconcile.test.mjs: defined
+✔ runReconcile: throws without issueNumber (1.140333ms)
+✔ runReconcile: throws without cfg (0.114917ms)
+✔ runReconcile: missing mode → error status (0.1855ms)
+✔ runReconcile: unknown mode → error status (0.084917ms)
+✔ runReconcile: no live and no recorded → error (0.293042ms)
+✔ runReconcile: backfill with no holes → no-holes (0.373167ms)
+✔ runReconcile: backfill fills a hole → backfilled (0.896833ms)
+✔ runReconcile: recorded === live and no cache gap → no-drift-refused (45.38775ms)
+✔ runReconcile: accept-live with no live → error (0.219667ms)
+✔ runReconcile: accept-live reconciled (external-mutation reason) (0.394291ms)
+✔ runReconcile: accept-live reason from recording-failure comment (0.288625ms)
+✔ runReconcile: accept-live tolerates listComments throwing (0.170833ms)
+✔ runReconcile: accept-live tolerates audit-marker write throwing (0.105041ms)
+✔ runReconcile: revert with no recorded → error (0.054958ms)
+✔ runReconcile: revert transition-failed when move-state non-zero (0.090375ms)
+✔ runReconcile: revert reconciled when move-state succeeds (0.109166ms)
+✔ runReconcile: revert tolerates audit-marker write throwing (0.075542ms)
+✔ runReconcile: revert refuses when recorded is BEHIND live (wrong-direction, #740) (0.058166ms)
+✔ runReconcile: default persistTrackerState runs without a session (89.093334ms)
+✔ verbReconcile: missing issue number → usage, exit 1 (0.41575ms)
+✔ verbReconcile: missing mode → usage, exit 1 (0.141667ms)
+✔ verbReconcile: fetch failure → generic error, exit 1 (22.872667ms)
+✔ verbReconcile: no drift → refused, exit 4 (81.321834ms)
+✔ verbReconcile: backfill with no holes → stdout, no exit (16.271959ms)
+✔ verbReconcile: revert wrong-direction → exit 5, names accept-live (#740) (16.41275ms)
+✔ runReconcile: default read helpers fetch body + live state via gh (348.535125ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 697.928375

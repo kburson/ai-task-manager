@@ -1,0 +1,59 @@
+✔ every public direct entry point exits safely for --help and -h (15981.203209ms)
+✔ every package bin emits detailed help through an install-style symlink (683.141333ms)
+✔ every package lifecycle subcommand help exits before mutation (997.659917ms)
+✔ help probes do not consume option values and run before subprocess work (1069.51075ms)
+✔ every routed verb supports help, ?, --help, and -h (123326.835833ms)
+✔ equivalent direct, routed, and package-bin forms render the same contract (1835.072208ms)
+✔ direct task help forms exit before project configuration is read (389.397291ms)
+✖ routed task wrappers propagate command return codes (844.568833ms)
+✔ unknown commands return usage error with compact ANSI-free aggregate help (454.718292ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 145587.01625
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs:273:1
+✖ routed task wrappers propagate command return codes (844.568833ms)
+  AssertionError [ERR_ASSERTION]: [task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/test/aitm-task-exit-IHiJ1y for the active issue
+  [task-tracker] Board features unavailable: project not configured (projectId missing).
+    Run: npx ai-task-manager init   or   /task config init
+  file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/timing-actor.mjs:8
+    const error = new TypeError('Invalid timing actor identity or marker');
+                  ^
+  
+  TypeError: Invalid timing actor identity or marker
+      at invalid (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/timing-actor.mjs:8:17)
+      at timingActorKey (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/timing-actor.mjs:22:5)
+      at actorTimingStatePath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/actor-timing-state.mjs:34:15)
+      at readActorTimingState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/actor-timing-state.mjs:80:16)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/state.mjs:256:21)
+      at runVerbPreflight (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/task-tracker.mjs:298:23)
+      at async file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/task-tracker.mjs:578:5 {
+    code: 'TIMING_ACTOR_INVALID'
+  }
+  
+  Node.js v26.8.1
+  
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs:292:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

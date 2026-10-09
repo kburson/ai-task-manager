@@ -1,0 +1,14 @@
+✔ indirect and globally-configured attributed commits enforce ownership (2207.953583ms)
+✔ attributed commits fail closed when repository ownership config is unreadable (233.168875ms)
+✔ indirect tokenless chore message remains the explicit escape hatch (2171.2265ms)
+✔ dynamic and nested commit messages cannot bypass attribution inspection (3678.225583ms)
+✔ persistently configured commit aliases enforce ownership (1662.465167ms)
+✔ the word eval outside shell-builtin command position remains harmless (420.700958ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10380.352625

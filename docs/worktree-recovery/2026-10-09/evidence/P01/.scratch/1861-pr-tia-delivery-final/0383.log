@@ -1,0 +1,31 @@
+✔ gh: no input uses execFile and returns stdout (1.169834ms)
+✔ gh: with input spawns, feeds stdin, resolves stdout on close 0 (0.290834ms)
+✔ gh: with input rejects with stderr on nonzero close (0.371709ms)
+✔ gh: with input rejects on child error event (0.127708ms)
+✔ gh: ignores stdin EPIPE when the child closes successfully (0.1595ms)
+✔ gh: rejects non-EPIPE stdin errors (0.419541ms)
+✔ gql: parses data payload (0.396959ms)
+✔ gql: throws joined message when API returns errors (0.174625ms)
+✔ splitRepo: valid owner/repo (0.086875ms)
+✔ splitRepo: invalid throws (0.113208ms)
+✔ projectItemForIssue: returns matching item id (0.17175ms)
+✔ projectItemForIssue: no matching project → empty itemId (0.109333ms)
+✔ addIssueToProject: returns new item id (0.091667ms)
+✔ fieldOptionMap: builds map, skips nodes lacking id or options (0.139834ms)
+✔ projectValuesForIssue: returns {} when cfg missing repo/projectId (0.09025ms)
+✔ projectValuesForIssue: maps number/date/text/name field values (0.158791ms)
+✔ projectValuesForIssue: returns {} when no item matches project (0.098125ms)
+✔ writeProjectFieldValue: number value (0.111084ms)
+✔ writeProjectFieldValue: date value (0.06575ms)
+✔ writeProjectFieldValue: text value (0.058167ms)
+✔ writeProjectFieldValue: single-select resolves option id (0.075542ms)
+✔ writeProjectFieldValue: single-select missing option → false, no write (0.064833ms)
+✔ clearProjectFieldValue: uses the canonical ProjectV2 clear mutation (0.103541ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.336417

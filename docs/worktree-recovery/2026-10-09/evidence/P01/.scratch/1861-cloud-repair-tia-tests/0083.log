@@ -1,0 +1,16 @@
+✔ routing identities contain only canonical verb and dispatch metadata (1.116541ms)
+✔ catalog owns alias resolution and resolves each route identity (0.188166ms)
+✔ registry and grouped help consume the catalog verb-name query (8.805041ms)
+✔ catalog verb names equal the dispatch switch case labels (0.624042ms)
+✔ deliver is a directly routed target-required verb (0.119042ms)
+✔ incident-ledger is a directly routed target-required evidence verb (0.065792ms)
+✔ migrate-dependencies is globally routed without issue preflight (0.068291ms)
+✔ workflow-exception prepare is public and has no binding preflight (0.065333ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21.059708

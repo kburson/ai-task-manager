@@ -1,0 +1,21 @@
+✓ #91016 reconciled (revert-to-sentinel): develop → plan
+✔ #1016 restores board=recorded drift to the saga-verified sentinel (3.406ms)
+✔ #1016 missing sentinel refuses before any write (0.19325ms)
+✔ #1016 unknown sentinel state refuses before any write (0.113375ms)
+✔ #1016 aligned board and sentinel is a no-drift refusal (0.143792ms)
+✔ #1016 failed sentinel Status write leaves body and cache untouched (0.159458ms)
+✔ #1016 body-write exhaustion is a nonzero partial-recovery result (0.274209ms)
+✔ #1016 partial board success can retry marker repair without another Status write (0.346ms)
+✔ #1016 closure-based state repair preserves a concurrent body edit (0.141542ms)
+✔ #1016 fresh-body sentinel mismatch fails instead of overwriting provenance (0.29ms)
+✔ #1016 default adapter selects the sentinel option and confirmed Status-only seam (0.2585ms)
+✔ #1016 public reconcile help lists the accepted sentinel mode (0.115583ms)
+✔ #1016 invariant diagnostic recommends a mode the public verb accepts (19.087292ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32.6675

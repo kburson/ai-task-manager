@@ -1,0 +1,2 @@
+project-fields.test.mjs: all passed
+[task-tracker] WARN: required project field "fieldMissing" (cfg.fieldMissing) is not configured — field sync skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist field ids.

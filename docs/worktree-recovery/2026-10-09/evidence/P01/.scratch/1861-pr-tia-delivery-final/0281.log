@@ -1,0 +1,13 @@
+✔ project root resolution permits only the read-only rev-parse query (0.799333ms)
+✔ evaluator exposes a closed status matrix with deterministic recovery (0.379083ms)
+✔ unsafe path facts take precedence over missing and invalid symlinks stay invalid (0.141708ms)
+✔ optional host observations are explicit but do not make installation unhealthy (0.09225ms)
+✔ missing or invalid manifests do not infer provider artifacts (0.411875ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.883125

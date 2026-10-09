@@ -1,0 +1,2 @@
+PASS: prose-quoted heading text does not fool the anchor
+backfill-vc-sections.test.mjs: ok

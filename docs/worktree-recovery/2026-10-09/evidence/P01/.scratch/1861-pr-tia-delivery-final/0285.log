@@ -1,0 +1,15 @@
+✔ parseCheckArgs recognizes --allow-unverified-ticks (1.001667ms)
+✔ classifyUnverifiedTick admits a proofless AC (1.239542ms)
+✔ classifyUnverifiedTick refuses a verifier-bearing AC (1.097292ms)
+✔ classifyUnverifiedTick refuses a Functional DoD item (0.459ms)
+✔ appendUnverifiedTickAudit records a non-proof audit marker, idempotently (0.118083ms)
+✔ runReviewPreflight exempts an AC tagged invalid — non-demonstrable (1.145458ms)
+✔ runReviewPreflight still flags a proofless AC that is NOT tagged non-demonstrable (0.42575ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.984333

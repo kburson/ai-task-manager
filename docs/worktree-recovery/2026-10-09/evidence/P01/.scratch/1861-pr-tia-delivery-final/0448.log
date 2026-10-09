@@ -1,0 +1,22 @@
+close-convergence.test.mjs: all passed
+✔ REGRESSION: board=Done + issue OPEN → close the issue (the #425 drift) (0.826292ms)
+✔ issue CLOSED + board Done → clean no-op, no board drift (0.070292ms)
+✔ issue CLOSED + board NOT Done → no-op but converge the lagging board (0.063541ms)
+✔ issue OPEN + board not Done → proceed with the full close pipeline (0.055875ms)
+✔ issueClosed unknown (null) → always proceed, never a blind no-op (0.06ms)
+✔ no args / empty object → proceed (safe default) (0.062458ms)
+✔ #708 AC1: repair=true → proceed for EVERY board/issue combination (0.095542ms)
+✔ #708 AC3: repair falsy → noop/close-issue branches are unchanged (0.103042ms)
+✔ move succeeded (ok) → never surface (0.088458ms)
+✔ move already classified benign → never surface (regardless of board) (0.086875ms)
+✔ CAPTURED RACE: move failed but board is verifiably Done → swallow (#435 Defect B) (0.05775ms)
+✔ GENUINE FAILURE: move failed and board NOT Done → surface + exit non-zero (0.050958ms)
+✔ decideBoardMoveFailure: no args / missing moveResult → surface (safe default) (0.053667ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.906042
