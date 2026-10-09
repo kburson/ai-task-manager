@@ -50,7 +50,7 @@ process.stdin.on('end', () => {
     fs.appendFileSync(process.env.MUTATION_LOG, 'link-write\\n');
     data = { linkProjectV2ToRepository: { repository: { nameWithOwner: 'o/r' } } };
   } else if (query.includes('repository(owner:') && query.includes('issue(number:')) {
-    data = { repository: { id: 'R1', issue: { id: 'I42', number: 42, title: 'Issue', url: 'u', projectItems: { nodes: [{ id: 'ITEM', project: { id: 'P1', title: 'Board', url: 'p' } }] } } } };
+    data = { repository: { id: 'R1', issue: { id: 'I42', number: 42, title: 'Issue', url: 'u', assignees: { nodes: mode === 'present' ? [{ login: 'alice' }] : [] }, projectItems: { nodes: [{ id: 'ITEM', project: { id: 'P1', title: 'Board', url: 'p' } }], pageInfo: { hasNextPage: false, endCursor: null } } } } };
   } else if (query.includes('updateProjectV2ItemFieldValue')) {
     fs.appendFileSync(process.env.MUTATION_LOG, 'status-write\\n');
     data = { updateProjectV2ItemFieldValue: { projectV2Item: { id: 'ITEM' } } };
@@ -117,7 +117,7 @@ test('public project-tether Assigned route writes under the guard when an assign
   try {
     const result = await runPublicTether(harness, 'present');
     assert.equal(result.exitCode, 0, result.stderr);
-    assert.deepEqual(writes(harness), ['link-write', 'status-write']);
+    assert.deepEqual(writes(harness), ['status-write']);
   } finally {
     rmSync(harness.root, { recursive: true, force: true });
   }

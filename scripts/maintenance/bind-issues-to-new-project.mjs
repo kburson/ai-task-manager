@@ -69,29 +69,33 @@ export function statusForIssue(body, state) {
   return VALID_STATES.has(markerState) ? statusName(markerState) : null;
 }
 
-async function main() {
-  const { dryRun, repo: repoArg, project: projectArg } = parseArgs(process.argv.slice(2));
-  const cfg = loadConfig();
-  const repo = repoArg || cfg.repo;
-  const projectId = projectArg || cfg.projectId;
+export async function runBindIssuesToNewProject(
+  { cfg, dryRun = false, repo: repoArg, projectId: projectArg } = {},
+  deps = {}
+) {
+  const repo = repoArg || cfg?.repo;
+  const projectId = projectArg || cfg?.projectId;
   if (!repo || !projectId) {
-    process.stderr.write('error: need repo + projectId (cfg or --repo / --project)\n');
-    process.exit(2);
+    throw new Error('need repo + projectId (cfg or --repo / --project)');
   }
 
-  if (!cfg.kanbanFieldId) {
-    process.stderr.write('error: cfg.kanbanFieldId missing — re-run init to refresh config\n');
-    process.exit(2);
-  }
+  if (!cfg?.kanbanFieldId) throw new Error('cfg.kanbanFieldId missing — re-run init');
 
-  const fieldDefs = loadProjectFieldDefs();
-  const optionMap = await fieldOptionMap(projectId);
+  const getFieldDefs = deps.loadProjectFieldDefs || loadProjectFieldDefs;
+  const getOptionMap = deps.fieldOptionMap || fieldOptionMap;
+  const getIssues = deps.listAllIssues || listAllIssues;
+  const getProjectItem = deps.projectItemForIssue || projectItemForIssue;
+  const addProjectItem = deps.addIssueToProject || addIssueToProject;
+  const getBody = deps.fetchIssueBody || fetchIssueBody;
+  const writeFieldValue = deps.writeProjectFieldValue || writeProjectFieldValue;
+  const out = deps.out || process.stdout;
+  const errorOut = deps.err || process.stderr;
+  const fieldDefs = getFieldDefs();
+  const optionMap = await getOptionMap(projectId);
 
-  process.stdout.write(
-    `Binding issues to ${projectId} on ${repo} (${dryRun ? 'DRY-RUN' : 'APPLY'})...\n`
-  );
-  const issues = await listAllIssues(repo);
-  process.stdout.write(`  found ${issues.length} issues (open + closed)\n`);
+  out.write(`Binding issues to ${projectId} on ${repo} (${dryRun ? 'DRY-RUN' : 'APPLY'})...\n`);
+  const issues = await getIssues(repo);
+  out.write(`  found ${issues.length} issues (open + closed)\n`);
 
   let added = 0;
   let alreadyOn = 0;
@@ -102,7 +106,7 @@ async function main() {
 
   for (const issue of issues) {
     try {
-      const { issueId, itemId: existingItemId } = await projectItemForIssue({
+      const { issueId, itemId: existingItemId } = await getProjectItem({
         repo,
         projectId,
         issueNumber: issue.number,
@@ -111,44 +115,49 @@ async function main() {
       let itemId = existingItemId;
       if (!itemId) {
         if (dryRun) {
-          process.stdout.write(`  [dry-run] #${issue.number}: would add to project\n`);
+          out.write(`  [dry-run] #${issue.number}: would add to project\n`);
           added++;
         } else {
-          itemId = await addIssueToProject(projectId, issueId);
+          itemId = await addProjectItem(projectId, issueId);
           added++;
-          process.stdout.write(`  + #${issue.number}: added (item ${itemId})\n`);
+          out.write(`  + #${issue.number}: added (item ${itemId})\n`);
         }
       } else {
         alreadyOn++;
       }
 
-      const body = await fetchIssueBody(repo, issue.number);
+      const body = await getBody(repo, issue.number);
       const status = statusForIssue(body, issue.state);
 
       if (status && (itemId || dryRun)) {
         if (dryRun) {
-          process.stdout.write(`  [dry-run] #${issue.number}: Status → ${status}\n`);
+          out.write(`  [dry-run] #${issue.number}: Status → ${status}\n`);
           statusSet++;
         } else {
-          const ok = await writeProjectFieldValue({
+          const ok = await writeFieldValue({
+            repo,
+            issueNumber: issue.number,
             projectId,
             itemId,
             fieldId: cfg.kanbanFieldId,
+            statusFieldId: cfg.kanbanFieldId,
             value: { singleSelectOptionName: status },
             optionMap,
+            gqlFn: deps.gqlFn,
+            withIssueLockFn: deps.withIssueLockFn,
+            projectDir: deps.projectDir,
+            env: deps.env,
           });
           if (ok) {
             statusSet++;
-            process.stdout.write(`  ✓ #${issue.number}: Status=${status}\n`);
+            out.write(`  ✓ #${issue.number}: Status=${status}\n`);
           } else {
             errors++;
-            process.stderr.write(
-              `  ⚠ #${issue.number}: option '${status}' not found on new board\n`
-            );
+            errorOut.write(`  ⚠ #${issue.number}: option '${status}' not found on new board\n`);
           }
         }
       } else if (!status) {
-        process.stdout.write(`  · #${issue.number}: no Status (no aitm-last-known-state marker)\n`);
+        out.write(`  · #${issue.number}: no Status (no aitm-last-known-state marker)\n`);
       }
 
       const parsed = parseIssueFieldDb(body);
@@ -161,36 +170,58 @@ async function main() {
       const plan = buildFieldSyncPlan({ cfg, fieldDefs, values });
       for (const step of plan) {
         if (dryRun) {
-          process.stdout.write(
-            `  [dry-run] #${issue.number}: ${step.key} → ${JSON.stringify(step.value)}\n`
-          );
+          out.write(`  [dry-run] #${issue.number}: ${step.key} → ${JSON.stringify(step.value)}\n`);
           fieldsSet++;
           continue;
         }
         try {
-          await writeProjectFieldValue({
+          await writeFieldValue({
             projectId,
             itemId,
             fieldId: step.fieldId,
+            statusFieldId: cfg.kanbanFieldId,
             value: step.value,
             optionMap,
+            gqlFn: deps.gqlFn,
           });
           fieldsSet++;
-        } catch (err) {
+        } catch (error) {
           errors++;
-          process.stderr.write(`  ⚠ #${issue.number}: write ${step.key} failed: ${err.message}\n`);
+          errorOut.write(`  ⚠ #${issue.number}: write ${step.key} failed: ${error.message}\n`);
         }
       }
-    } catch (err) {
+    } catch (error) {
       errors++;
-      process.stderr.write(`  ⚠ #${issue.number}: ${err.message}\n`);
+      errorOut.write(`  ⚠ #${issue.number}: ${error.message}\n`);
     }
   }
 
-  process.stdout.write(
+  out.write(
     `\nSummary: ${added} added, ${alreadyOn} already on board, ${statusSet} status writes, ${fieldsSet} field writes, ${noFieldDb} without aitm-fields, ${errors} errors.\n`
   );
-  process.exit(errors > 0 ? 1 : 0);
+  return { added, alreadyOn, statusSet, fieldsSet, noFieldDb, errors };
+}
+
+async function main() {
+  const { dryRun, repo: repoArg, project: projectArg } = parseArgs(process.argv.slice(2));
+  const cfg = loadConfig();
+  const repo = repoArg || cfg.repo;
+  const projectId = projectArg || cfg.projectId;
+  if (!repo || !projectId) {
+    process.stderr.write('error: need repo + projectId (cfg or --repo / --project)\n');
+    process.exit(2);
+  }
+  if (!cfg.kanbanFieldId) {
+    process.stderr.write('error: cfg.kanbanFieldId missing — re-run init to refresh config\n');
+    process.exit(2);
+  }
+  const result = await runBindIssuesToNewProject({
+    cfg,
+    dryRun,
+    repo,
+    projectId,
+  });
+  process.exit(result.errors > 0 ? 1 : 0);
 }
 
 const isDirect =

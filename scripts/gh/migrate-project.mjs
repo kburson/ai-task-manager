@@ -143,6 +143,7 @@ async function main() {
         projectId: cfg.projectId,
         itemId,
         fieldId: item.fieldId,
+        statusFieldId: cfg.kanbanFieldId,
         value: item.value,
         optionMap,
       });

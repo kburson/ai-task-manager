@@ -1,10 +1,18 @@
-import { gql, splitRepo } from './github-projects.mjs';
+import {
+  fetchConfiguredProjectIssue,
+  gql,
+  splitRepo,
+  withAssignedStatusMutationGuard,
+} from './github-projects.mjs';
 import { ensureParentEpicTitle } from './epic-retitle.mjs';
 import { stateConfigKey, stateIds } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 import { ceilEstimateHours } from '../../task-tracker/lib/estimation/estimate-granularity.mjs';
+import { getProjectDir } from '../../task-tracker/paths.mjs';
+import { withIssueLock } from '../../task-tracker/issue-mutator-lock.mjs';
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RETRY_DELAY_MS = 1500;
+const DEFAULT_PROJECT_SCAN_MAX_PAGES = 1000;
 
 export const STATUS_CONFIG_KEYS = Object.freeze(
   Object.fromEntries(stateIds().map((state) => [state, stateConfigKey(state)]))
@@ -32,10 +40,6 @@ function normalizeSize(size) {
   return size ? String(size).toUpperCase() : '';
 }
 
-function issueSideProjectItems(issue, projectId) {
-  return (issue?.projectItems?.nodes || []).filter((item) => item.project?.id === projectId);
-}
-
 async function fetchIssue({ cfg, issueNumber, runGql }) {
   const { owner, repoName } = splitRepo(cfg.repo);
   const data = await runGql(
@@ -48,12 +52,6 @@ async function fetchIssue({ cfg, issueNumber, runGql }) {
           number
           title
           url
-          projectItems(first: 50) {
-            nodes {
-              id
-              project { id title url }
-            }
-          }
         }
       }
     }`,
@@ -82,10 +80,19 @@ async function ensureProjectLinked({ cfg, repositoryId, runGql }) {
   }
 }
 
-async function projectItemForIssue({ cfg, issueNumber, runGql }) {
+async function projectItemForIssue({
+  cfg,
+  issueNumber,
+  runGql,
+  maxPages = DEFAULT_PROJECT_SCAN_MAX_PAGES,
+}) {
+  if (!Number.isInteger(maxPages) || maxPages <= 0) {
+    throw new Error('project membership pagination maxPages must be a positive integer');
+  }
   let after = null;
   let projectInfo = null;
-  do {
+  const seenCursors = new Set();
+  for (let page = 1; page <= maxPages; page += 1) {
     const data = await runGql(
       `
       query($project: ID!, $after: String) {
@@ -104,6 +111,7 @@ async function projectItemForIssue({ cfg, issueNumber, runGql }) {
                     number
                     title
                     url
+                    repository { nameWithOwner }
                   }
                 }
               }
@@ -114,14 +122,36 @@ async function projectItemForIssue({ cfg, issueNumber, runGql }) {
       { project: cfg.projectId, after }
     );
     const project = data.node;
+    const items = project?.items;
+    if (!items || !Array.isArray(items.nodes) || !items.pageInfo) {
+      throw new Error('project membership payload is invalid');
+    }
     projectInfo = project;
-    const item = (project?.items?.nodes || []).find(
-      (node) => !node.isArchived && Number(node.content?.number) === Number(issueNumber)
+    const item = items.nodes.find(
+      (node) =>
+        !node.isArchived &&
+        Number(node.content?.number) === Number(issueNumber) &&
+        String(node.content?.repository?.nameWithOwner || '').toLowerCase() ===
+          String(cfg.repo).toLowerCase()
     );
     if (item) return { project, item };
-    after = project?.items?.pageInfo?.hasNextPage ? project.items.pageInfo.endCursor : null;
-  } while (after);
-  return { project: projectInfo, item: null };
+    if (!items.pageInfo.hasNextPage) return { project: projectInfo, item: null };
+    const nextCursor = items.pageInfo.endCursor;
+    if (typeof nextCursor !== 'string' || !nextCursor.trim()) {
+      throw new Error('project membership pagination hasNextPage but endCursor is missing');
+    }
+    if (nextCursor === after || seenCursors.has(nextCursor)) {
+      throw new Error(`project membership pagination cursor did not progress: ${nextCursor}`);
+    }
+    if (page === maxPages) {
+      throw new Error(
+        `project membership pagination safety limit (${maxPages} pages) reached; partial scan refused`
+      );
+    }
+    seenCursors.add(nextCursor);
+    after = nextCursor;
+  }
+  throw new Error('project membership pagination ended without an exhaustive result');
 }
 
 async function addIssueToProject({ cfg, issueId, runGql }) {
@@ -190,16 +220,46 @@ async function writeField({ cfg, itemId, fieldId, value, runGql }) {
   }
 }
 
-async function writeFields({ cfg, itemId, status, priority, size, estimate, rank, runGql }) {
+async function writeFields({
+  cfg,
+  issueNumber,
+  itemId,
+  status,
+  priority,
+  size,
+  estimate,
+  rank,
+  runGql,
+  withIssueLockFn,
+  projectDir,
+  env,
+}) {
   const statusKey = STATUS_CONFIG_KEYS[String(status || '').toLowerCase()];
   if (statusKey) {
-    await writeField({
-      cfg,
-      itemId,
-      fieldId: cfg.kanbanFieldId,
-      value: { singleSelectOptionId: cfg[statusKey] },
-      runGql,
-    });
+    const writeStatus = () =>
+      writeField({
+        cfg,
+        itemId,
+        fieldId: cfg.kanbanFieldId,
+        value: { singleSelectOptionId: cfg[statusKey] },
+        runGql,
+      });
+    if (String(status).trim().toLowerCase() === 'assigned') {
+      await withAssignedStatusMutationGuard(
+        {
+          repo: cfg.repo,
+          issueNumber,
+          projectId: cfg.projectId,
+          gqlFn: runGql,
+          withIssueLockFn,
+          projectDir,
+          env,
+        },
+        writeStatus
+      );
+    } else {
+      await writeStatus();
+    }
   }
 
   const priorityKey = PRIORITY_CONFIG_KEYS[normalizePriority(priority)];
@@ -323,7 +383,12 @@ export async function tetherIssueToProject({
   rank,
   maxAttempts = DEFAULT_MAX_ATTEMPTS,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
+  membershipMaxPages,
+  projectScanMaxPages = DEFAULT_PROJECT_SCAN_MAX_PAGES,
   runGql = defaultRunGql,
+  withIssueLockFn = withIssueLock,
+  projectDir = getProjectDir(),
+  env = process.env,
   reconcileEpicMetadata,
   sleep: sleepFn = sleep,
 } = {}) {
@@ -334,7 +399,6 @@ export async function tetherIssueToProject({
   const initial = await fetchIssue({ cfg, issueNumber, runGql });
   const repositoryId = initial.repositoryId;
   let issue = initial.issue;
-  await ensureProjectLinked({ cfg, repositoryId, runGql });
 
   let lastProject = null;
   let added = false;
@@ -346,15 +410,21 @@ export async function tetherIssueToProject({
       issue = (await fetchIssue({ cfg, issueNumber, runGql })).issue;
     }
 
-    // PRIMARY, authoritative lookup: `repository.issue(N).projectItems` is
-    // returned from the issue node itself, so it cannot miss an item that is
-    // genuinely linked. Use it directly — never delete it as a "phantom".
-    const sideItems = issueSideProjectItems(issue, cfg.projectId);
-    if (sideItems.length > 0) {
-      const item = sideItems[0];
+    // PRIMARY, authoritative lookup: exhaust the issue-side projectItems
+    // connection through the repository-qualified shared resolver.
+    const snapshot = await fetchConfiguredProjectIssue({
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      issueNumber,
+      gqlFn: runGql,
+      ...(membershipMaxPages == null ? {} : { maxPages: membershipMaxPages }),
+    });
+    if (snapshot.projectItem) {
+      const item = snapshot.projectItem;
       lastProject = item.project || lastProject;
       await writeFields({
         cfg,
+        issueNumber,
         itemId: item.id,
         status,
         priority,
@@ -362,6 +432,9 @@ export async function tetherIssueToProject({
         estimate,
         rank,
         runGql,
+        withIssueLockFn,
+        projectDir,
+        env,
       });
       if (parentIssueNumber) {
         const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
@@ -384,11 +457,17 @@ export async function tetherIssueToProject({
 
     // FALLBACK: the reverse lookup is empty (issue may genuinely not be linked
     // yet). Scan `ProjectV2.items` forward pagination as a secondary check.
-    const verified = await projectItemForIssue({ cfg, issueNumber, runGql });
+    const verified = await projectItemForIssue({
+      cfg,
+      issueNumber,
+      runGql,
+      maxPages: projectScanMaxPages,
+    });
     lastProject = verified.project || lastProject;
     if (verified.item?.id) {
       await writeFields({
         cfg,
+        issueNumber,
         itemId: verified.item.id,
         status,
         priority,
@@ -396,6 +475,9 @@ export async function tetherIssueToProject({
         estimate,
         rank,
         runGql,
+        withIssueLockFn,
+        projectDir,
+        env,
       });
       if (parentIssueNumber) {
         const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
@@ -420,6 +502,7 @@ export async function tetherIssueToProject({
     // retry. The next attempt re-fetches the issue node and the authoritative
     // reverse lookup should then surface the newly-added item.
     if (!added) {
+      await ensureProjectLinked({ cfg, repositoryId, runGql });
       await addIssueToProject({ cfg, issueId: issue.id, runGql });
       added = true;
     }

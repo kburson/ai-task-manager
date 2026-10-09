@@ -2,6 +2,9 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from '../../task-tracker/lib/process-timeouts.mjs';
+import { getProjectDir } from '../../task-tracker/paths.mjs';
+import { ISSUE_LOCK_HELD_ENV, withIssueLock } from '../../task-tracker/issue-mutator-lock.mjs';
+import { parseAssigneeLogins } from '../../task-tracker/lib/assigned-assignee-invariant.mjs';
 
 // Injectable child_process seam (#645): production wiring defaults to the real
 // node:child_process bindings; tests override `deps.execFile`/`deps.spawn` to
@@ -260,15 +263,64 @@ export async function projectValuesForIssue({ cfg, fieldDefs, issueNumber }) {
   return values;
 }
 
+export async function withAssignedStatusMutationGuard(
+  {
+    repo,
+    issueNumber,
+    projectId,
+    gqlFn = gql,
+    withIssueLockFn = withIssueLock,
+    projectDir = getProjectDir(),
+    env = process.env,
+  } = {},
+  mutate
+) {
+  if (!repo) throw new Error('Assigned Status mutation requires repo');
+  if (!Number.isInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
+    throw new Error('Assigned Status mutation requires a positive issue number');
+  }
+  if (typeof mutate !== 'function')
+    throw new Error('Assigned Status mutation callback is required');
+
+  const guardedMutation = async () => {
+    const snapshot = await fetchConfiguredProjectIssue({
+      repo,
+      projectId,
+      issueNumber,
+      gqlFn,
+    });
+    const assignees = parseAssigneeLogins(snapshot.assignees);
+    if (assignees.length === 0) {
+      throw new Error(
+        `refusing Assigned Status mutation for #${issueNumber}: at least one live GitHub assignee is required`
+      );
+    }
+    return mutate();
+  };
+
+  if (env?.[ISSUE_LOCK_HELD_ENV] === '1') return guardedMutation();
+  return withIssueLockFn(
+    { issue: issueNumber, verb: 'project-status-assigned', projDir: projectDir },
+    guardedMutation
+  );
+}
+
 export async function writeProjectFieldValue({
+  repo,
+  issueNumber,
   projectId,
   itemId,
   fieldId,
+  statusFieldId,
   value,
   optionMap = {},
+  gqlFn = gql,
+  withIssueLockFn = withIssueLock,
+  projectDir = getProjectDir(),
+  env = process.env,
 }) {
   if (value.number !== undefined) {
-    await gql(
+    await gqlFn(
       `
       mutation($project: ID!, $item: ID!, $field: ID!, $val: Float!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { number: $val } }) { projectV2Item { id } }
@@ -276,7 +328,7 @@ export async function writeProjectFieldValue({
       { project: projectId, item: itemId, field: fieldId, val: value.number }
     );
   } else if (value.date !== undefined) {
-    await gql(
+    await gqlFn(
       `
       mutation($project: ID!, $item: ID!, $field: ID!, $val: Date!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { date: $val } }) { projectV2Item { id } }
@@ -284,7 +336,7 @@ export async function writeProjectFieldValue({
       { project: projectId, item: itemId, field: fieldId, val: value.date }
     );
   } else if (value.text !== undefined) {
-    await gql(
+    await gqlFn(
       `
       mutation($project: ID!, $item: ID!, $field: ID!, $val: String!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { text: $val } }) { projectV2Item { id } }
@@ -294,13 +346,33 @@ export async function writeProjectFieldValue({
   } else if (value.singleSelectOptionName !== undefined) {
     const optionId = optionMap[fieldId]?.[value.singleSelectOptionName];
     if (!optionId) return false;
-    await gql(
-      `
-      mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
-        updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option } }) { projectV2Item { id } }
-      }`,
-      { project: projectId, item: itemId, field: fieldId, option: optionId }
-    );
+    const writeSingleSelect = () =>
+      gqlFn(
+        `
+        mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+          updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option } }) { projectV2Item { id } }
+        }`,
+        { project: projectId, item: itemId, field: fieldId, option: optionId }
+      );
+    const isAssignedOption =
+      String(value.singleSelectOptionName).trim().toLowerCase() === 'assigned';
+    const isExplicitlyNonStatus = statusFieldId && fieldId !== statusFieldId;
+    if (isAssignedOption && !isExplicitlyNonStatus) {
+      await withAssignedStatusMutationGuard(
+        {
+          repo,
+          issueNumber,
+          projectId,
+          gqlFn,
+          withIssueLockFn,
+          projectDir,
+          env,
+        },
+        writeSingleSelect
+      );
+    } else {
+      await writeSingleSelect();
+    }
   }
   return true;
 }

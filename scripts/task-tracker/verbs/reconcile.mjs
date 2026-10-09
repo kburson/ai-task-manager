@@ -126,6 +126,24 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
   );
 }
 
+export async function fetchAssignedInvariantSnapshot(
+  { issueNumber, cfg },
+  { fetchConfiguredProjectIssueFn = fetchConfiguredProjectIssue } = {}
+) {
+  const snapshot = await fetchConfiguredProjectIssueFn({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+  });
+  return {
+    state: resolveConfiguredProjectState(
+      snapshot.projectItem ? [snapshot.projectItem] : [],
+      cfg.projectId
+    ),
+    assignees: parseAssigneeLogins(snapshot.assignees),
+  };
+}
+
 // #764 — push the board back to the recorded state in-process (was: spawn
 // `node scripts/gh/move-state.mjs <n> <target>`). Mirrors demote/supersede's
 // migrated helper: runMoveStateHost returns the same numeric exit code the child
@@ -201,15 +219,16 @@ export async function runAssignedInvariantReconcile({
     throw new Error('reconcile assigned-invariant: issue# must be a positive integer');
   }
   if (!cfg?.repo) throw new Error('reconcile assigned-invariant: cfg.repo is required');
-  const getLiveState = deps.getLiveState || defaultGetLiveState;
-  const fetchAssignees = deps.fetchAssignees || fetchAssignedInvariantAssignees;
+  const fetchInvariantSnapshot =
+    deps.fetchInvariantSnapshot || ((args) => fetchAssignedInvariantSnapshot(args));
   const runMoveState = deps.runMoveState || defaultRunMoveState;
   try {
-    const state = await getLiveState({ issueNumber, cfg });
+    const initial = await fetchInvariantSnapshot({ issueNumber, cfg });
+    const state = initial?.state;
     if (!stateIds().includes(state)) {
       throw new Error('live project state is missing or unrecognized');
     }
-    const assignees = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
+    const assignees = parseAssigneeLogins(initial?.assignees);
     const drift = classifyAssignedAssigneeDrift({ state, assignees });
     if (drift.kind === 'none' || drift.kind === 'out-of-scope') {
       return {
@@ -254,13 +273,12 @@ export async function runAssignedInvariantReconcile({
         applied: true,
       };
     }
-    const postState = await getLiveState({ issueNumber, cfg });
+    const post = await fetchInvariantSnapshot({ issueNumber, cfg });
+    const postState = post?.state;
     if (!stateIds().includes(postState)) {
       throw new Error('postcondition live project state is missing or unrecognized');
     }
-    const postAssignees = parseAssigneeLogins(
-      await fetchAssignees({ issueNumber, repo: cfg.repo })
-    );
+    const postAssignees = parseAssigneeLogins(post?.assignees);
     const postDrift = classifyAssignedAssigneeDrift({
       state: postState,
       assignees: postAssignees,

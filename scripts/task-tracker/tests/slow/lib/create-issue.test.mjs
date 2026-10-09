@@ -193,6 +193,9 @@ test('explicit --assignee is forwarded to gh issue create', () => {
   const ghCalls = readLines(ctx.ghCallsLog);
   assert.match(ghCalls[0], /issue create/);
   assert.match(ghCalls[0], /--assignee octocat/);
+  const tetherCalls = readLines(ctx.tetherLog);
+  assert.equal(tetherCalls.length, 1);
+  assert.match(tetherCalls[0], /--status assigned/);
 });
 
 test('missing projectId: exits non-zero before calling gh', () => {

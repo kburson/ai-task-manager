@@ -16,7 +16,8 @@ function makeRunGql({ itemId = 'PVTI_test' } = {}) {
             number: vars.issue,
             title: 't',
             url: 'u',
-            projectItems: { nodes: [] },
+            assignees: { nodes: [{ login: 'alice' }] },
+            projectItems: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
           },
         },
       };
@@ -34,7 +35,12 @@ function makeRunGql({ itemId = 'PVTI_test' } = {}) {
               {
                 id: itemId,
                 isArchived: false,
-                content: { number: vars.project ? 222 : 222, title: 't', url: 'u' },
+                content: {
+                  number: vars.project ? 222 : 222,
+                  title: 't',
+                  url: 'u',
+                  repository: { nameWithOwner: 'kburson/ai-task-manager' },
+                },
               },
             ],
           },

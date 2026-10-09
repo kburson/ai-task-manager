@@ -49,7 +49,16 @@ process.stdin.on('end', () => {
     process.stdout.write(JSON.stringify({ data: { repository: {
       id: 'REPO_x',
       issue: { id: 'ISSUE_x', number: 807, title: 't', url: 'u',
-        projectItems: { nodes: [ { id: ${JSON.stringify(itemId)}, project: { id: ${JSON.stringify(projectId)} } } ] } },
+        assignees: { nodes: [] },
+        projectItems: {
+          nodes: [ {
+            id: ${JSON.stringify(itemId)},
+            project: { id: ${JSON.stringify(projectId)} },
+            fieldValueByName: { name: 'Backlog', optionId: 'OPT_BACKLOG' },
+            fieldValues: { nodes: [] },
+          } ],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        } },
     } } }));
   } else if (/updateProjectV2ItemFieldValue/.test(q)) {
     process.stdout.write(JSON.stringify({ data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: ${JSON.stringify(itemId)} } } } }));

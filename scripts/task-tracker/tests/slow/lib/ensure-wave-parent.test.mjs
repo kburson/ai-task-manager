@@ -152,8 +152,26 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
     ] } } } }));
     process.exit(0);
   }
-  // project-tether: fetchIssue — query($owner,$repo,$issue) { repository { id issue { id ... projectItems } } }
-  if (/repository\\(owner:.*\\)\\s*\\{\\s*id\\s*issue/.test(stdinBody)) {
+  // project-tether: authoritative issue-side configured-project membership.
+  if (/assignees\\(first: 100\\)/.test(stdinBody) && /projectItems\\(first:/.test(stdinBody)) {
+    const body = JSON.parse(stdinBody);
+    const n = Number(body.variables.issue);
+    const st = loadState();
+    const nodes = st.added ? [{
+      id: 'PVTI_new',
+      project: { id: 'PVT_test', title: 'Test Project', url: 'https://github.com/test' },
+      fieldValueByName: { name: 'Backlog', optionId: 'OPT_backlog' },
+      fieldValues: { nodes: [] },
+    }] : [];
+    fs.writeSync(1,JSON.stringify({ data: { repository: { issue: {
+      id: 'ISS_' + n,
+      assignees: { nodes: [] },
+      projectItems: { nodes, pageInfo: { hasNextPage: false, endCursor: null } },
+    } } } }));
+    process.exit(0);
+  }
+  // project-tether: fetchIssue — query($owner,$repo,$issue) { repository { id issue { id } } }
+  if (/repository\\(owner:/.test(stdinBody) && /issue\\(number: \\$issue\\)/.test(stdinBody)) {
     const body = JSON.parse(stdinBody);
     const n = Number(body.variables.issue);
     fs.writeSync(1,JSON.stringify({ data: { repository: { id: 'REPO_test', issue: { id: 'ISS_' + n, number: n, title: 't', url: 'u', projectItems: { nodes: [] } } } } }));
@@ -163,7 +181,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
   if (/node\\(id: \\$project\\)/.test(stdinBody) && /items\\(first:/.test(stdinBody)) {
     const body = JSON.parse(stdinBody);
     const st = loadState();
-    const nodes = st.added ? [{ id: 'PVTI_new', isArchived: false, content: { number: fx.newIssueNumber || 500, title: 't', url: 'u' } }] : [];
+    const nodes = st.added ? [{ id: 'PVTI_new', isArchived: false, content: { number: fx.newIssueNumber || 500, title: 't', url: 'u', repository: { nameWithOwner: 'test-owner/test-repo' } } }] : [];
     fs.writeSync(1,JSON.stringify({ data: { node: {
       title: 'Test Project', url: 'https://github.com/test',
       items: { totalCount: nodes.length, pageInfo: { hasNextPage: false, endCursor: null }, nodes }

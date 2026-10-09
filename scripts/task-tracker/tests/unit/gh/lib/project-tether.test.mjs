@@ -53,7 +53,11 @@ function makeRunner({
             id: issueNumber === 99 ? parentIssueId : `ISSUE_${issueNumber}`,
             number: issueNumber,
             url: `https://github.com/${cfg.repo}/issues/${issueNumber}`,
-            projectItems: { nodes: issueSideItems },
+            assignees: { nodes: [{ login: 'alice' }] },
+            projectItems: {
+              nodes: issueSideItems,
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
           },
         },
       };
@@ -80,7 +84,11 @@ function makeRunner({
           node: {
             title: 'AITM Board',
             url: 'https://github.com/users/kburson/projects/1',
-            items: { totalCount: 0, nodes: [] },
+            items: {
+              totalCount: 0,
+              nodes: [],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
           },
         };
       }
@@ -93,7 +101,16 @@ function makeRunner({
             totalCount: visible ? 1 : 0,
             pageInfo: { hasNextPage: false, endCursor: null },
             nodes: visible
-              ? [{ id: 'VISIBLE_ITEM', content: { number: currentIssueNumber, title: 'Task' } }]
+              ? [
+                  {
+                    id: 'VISIBLE_ITEM',
+                    content: {
+                      number: currentIssueNumber,
+                      title: 'Task',
+                      repository: { nameWithOwner: cfg.repo },
+                    },
+                  },
+                ]
               : [],
           },
         },
@@ -211,7 +228,11 @@ async function testProjectSideItemIsAuthoritativeAndReused() {
   );
   // Forward pagination not consulted — reverse lookup short-circuited it.
   assert.equal(
-    calls.some((c) => c.query.includes('... on ProjectV2')),
+    calls.some(
+      (c) =>
+        c.query.includes('node(id: $project)') &&
+        c.query.includes('items(first: 100, after: $after)')
+    ),
     false
   );
 }
@@ -243,7 +264,11 @@ async function testEventualConsistencyResolvesViaReverseLookup() {
             id: `ISSUE_${variables.issue}`,
             number: Number(variables.issue),
             url: `https://github.com/${cfg.repo}/issues/${variables.issue}`,
-            projectItems: { nodes },
+            assignees: { nodes: [{ login: 'alice' }] },
+            projectItems: {
+              nodes,
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
           },
         },
       };
@@ -320,7 +345,10 @@ async function testParentLinksAfterProjectVerification() {
   assert.equal(subIssueCall.variables.parent, 'PARENT_1');
   assert.equal(subIssueCall.variables.child, 'ISSUE_16');
   const subIssueIndex = calls.findIndex((c) => c.query.includes('addSubIssue'));
-  const projectVerifyIndex = calls.findIndex((c) => c.query.includes('... on ProjectV2'));
+  const projectVerifyIndex = calls.findIndex(
+    (c) =>
+      c.query.includes('node(id: $project)') && c.query.includes('items(first: 100, after: $after)')
+  );
   assert.ok(subIssueIndex > projectVerifyIndex);
   assert.deepEqual(
     reconciliations.map(({ issueNumber, repo, forceEpic }) => ({ issueNumber, repo, forceEpic })),

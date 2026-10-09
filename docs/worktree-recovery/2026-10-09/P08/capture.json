@@ -1,0 +1,104 @@
+{
+  "story": 1953,
+  "originalStory": 1207,
+  "owner": "kburson",
+  "sourcePath": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1207-assignee-state",
+  "sourceHead": "c0697158c880be8ca60b46839a38aa82d6886cbb",
+  "originalIndexSha256": "564f86bdaf50432538c8dd5eeaa8ee4779c94ab287339c5650d74f5d19d95d59",
+  "sourceIndexEntries": "",
+  "purpose": "Recover the assignment invariant implementation and 15 uncommitted project-tether repairs associated with closed story #1207. Requires reconciliation against current trunk before any integration.",
+  "captured": [
+    {
+      "path": "scripts/gh/lib/github-projects.mjs",
+      "blob": "fecfc7bd1455ac1325487b15d6fa18539b3b384c",
+      "sha256": "ce60c32ab482aa4c9693982499accce0c7c796f21eb8ce667b0e0e5960d28c97",
+      "bytes": 13315
+    },
+    {
+      "path": "scripts/gh/lib/project-tether.mjs",
+      "blob": "46f237bfb28cc78f0275cb15d1e19e86512de130",
+      "sha256": "33cb934aef1cf38d2aea24b424044301466017dbaaeecc451445e016130e26ce",
+      "bytes": 15496
+    },
+    {
+      "path": "scripts/gh/migrate-project.mjs",
+      "blob": "9b36440bbe0e0e41d7ff02f6ac2506c3005d676b",
+      "sha256": "f52e50ae68dd1d28bcc8abe68387556e2c249ce5b82ebdcf3446ad8b4cf020c9",
+      "bytes": 5458
+    },
+    {
+      "path": "scripts/maintenance/bind-issues-to-new-project.mjs",
+      "blob": "7bf1c10e27d7e858b28d8ef026025d0568f46b91",
+      "sha256": "e988658626911e118ea652743818af1139e6e8d9efe744f5711c3ea5f4d39a3e",
+      "bytes": 8024
+    },
+    {
+      "path": "scripts/task-tracker/tests/slow/lib/create-issue.test.mjs",
+      "blob": "5436ab2a78d28f8f05db80a6938963c88da0c676",
+      "sha256": "5691f4d66ce19379ec94780a7336aeb87a42d247dd5ac685c728d94344fbdae2",
+      "bytes": 13004
+    },
+    {
+      "path": "scripts/task-tracker/tests/slow/lib/ensure-wave-parent.test.mjs",
+      "blob": "d6991e47b500a4dd0bda22464689879969f00fd3",
+      "sha256": "5e2b4a99ecd85bfab2d41df3b91bf581edede444eb035326646176efea1e4819",
+      "bytes": 17459
+    },
+    {
+      "path": "scripts/task-tracker/tests/unit/gh/lib/project-tether.test.mjs",
+      "blob": "fd8cf7aa792048caac5f61cc763586101ba36584",
+      "sha256": "1cfa36cbf60fcdb48913bca013912363c27850895180bbbf895d89035fab1cf0",
+      "bytes": 15001
+    },
+    {
+      "path": "scripts/task-tracker/tests/unit/gh/lib/tether-rank-write.test.mjs",
+      "blob": "26b04829095e72f853bfce055d1f44a9b12c818d",
+      "sha256": "5e24d131d9c073b7f7e1dcce53ff2a65d45562d1d7327af08a0e6da81fa17b1c",
+      "bytes": 3102
+    },
+    {
+      "path": "scripts/task-tracker/tests/unit/gh/project-tether-assigned-invariant.test.mjs",
+      "blob": "eb06a572f31df705e8f6df81c37bac3b7f2fd1a1",
+      "sha256": "6c411900b1cf32c73eea96c3773aa20fa441b0429dd04e19b8d47de7ab074cd3",
+      "bytes": 4516
+    },
+    {
+      "path": "scripts/task-tracker/tests/unit/lib/set-rank.test.mjs",
+      "blob": "260374025af50b2cb1a9b23eadd5129821cdea4a",
+      "sha256": "bfb0032b164460d41de3af6514c24b1c6255ffae81e30cf16ef44531e0bbc75b",
+      "bytes": 6924
+    },
+    {
+      "path": "scripts/task-tracker/tests/unit/verbs/reconcile-assigned-invariant.test.mjs",
+      "blob": "981b0d27eecc9909581fcfb496c92aa1521a5db2",
+      "sha256": "eb6df2444479617de384b53a031ff449d9e280841f45846c0538d4e7eabd3322",
+      "bytes": 9065
+    },
+    {
+      "path": "scripts/task-tracker/verbs/reconcile.mjs",
+      "blob": "5af49500cba57af4389cefe7938c6edf1d766a68",
+      "sha256": "70d791f45821013170eee1e511fbd69f88b2c80e909114dd054c939b22155abf",
+      "bytes": 32499
+    },
+    {
+      "path": "scripts/task-tracker/tests/unit/gh/maintenance-project-bind-assigned.test.mjs",
+      "blob": "7629cf7ad4ede9914fbcae526262a6aab291cfec",
+      "sha256": "33b107191ae9a963485ec9e52ed7c4c0c51ae629739bf57551da71112f643290",
+      "bytes": 3222
+    },
+    {
+      "path": "scripts/task-tracker/tests/unit/gh/project-tether-library-guard.test.mjs",
+      "blob": "7dcc2dfd41e8d5fd10a581497c787e4438618602",
+      "sha256": "48bc5b07b227398e14022a76ad53b97458bcf22afaa87c4759e18bc3fab93ef1",
+      "bytes": 9153
+    },
+    {
+      "path": "scripts/task-tracker/tests/unit/gh/project-tether-resolver.test.mjs",
+      "blob": "30b2542b2af7dad18223ce3c24ccf37eda6cc8af",
+      "sha256": "001bb8680a810d89d5a12b58c0c9ecb6ed0f1d24ce9029ccf92f18d53016d1df",
+      "bytes": 7517
+    }
+  ],
+  "excludedRuntimeFixtures": [],
+  "validation": "Content preservation only. No current functional test, lint, peer review or merge readiness claim."
+}
