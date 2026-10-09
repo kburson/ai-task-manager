@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+const r3 = fs.readFileSync('.scratch/inspect/1558-r3/wbs-r3.md','utf8');
+const base = fs.readFileSync('.scratch/inspect/1558-r3/baseline.md','utf8');
+const RE = /^- \[ \] .*vc-list="([^"]+)"/gm;
+function split(s){const p=s.split(/^### Task (\d+): (.+)$/m);const m=new Map();for(let i=1;i<p.length;i+=3)m.set(Number(p[i]),p[i+2]);return m;}
+const R=split(r3), B=split(base);
+const map={8:null,9:2,24:15,25:16,26:17};
+for(const [w,b] of Object.entries(map)){
+  const acs=[...R.get(Number(w)).matchAll(RE)].map(m=>m[1]);
+  console.log('WBS',w,'r3 citations:',JSON.stringify(acs));
+  if(b){const ba=[...B.get(b).matchAll(RE)].map(m=>m[1]);console.log('   baseline Task',b,'citations:',JSON.stringify(ba));}
+}
+// every retained child: baseline citation count must equal r3 citation count
+const retained={9:2,10:3,11:4,12:5,13:6,14:7,15:8,16:9,19:11,22:13,23:14,24:15,25:16,26:17};
+let mismatch=0;
+for(const [w,b] of Object.entries(retained)){
+  const a=[...R.get(Number(w)).matchAll(RE)].length, c=[...B.get(b).matchAll(RE)].length;
+  if(a!==c){mismatch++;console.log('AC COUNT DRIFT WBS',w,'r3',a,'baseline',c);}
+}
+console.log('retained AC-count drift:',mismatch);

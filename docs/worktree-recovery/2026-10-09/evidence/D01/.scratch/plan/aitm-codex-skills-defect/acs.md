@@ -1,0 +1,3 @@
+- [ ] Codex Bash guard permits read-only commands that target files under ~/.codex/skills. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] The guard's outside-scope refusal text lists ~/.codex/skills/ as an allowed read scope. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Existing protections still block writes outside the project root and writes to provider homes such as ~/.claude. <!-- aitm-verified vc-list="vc:1" -->

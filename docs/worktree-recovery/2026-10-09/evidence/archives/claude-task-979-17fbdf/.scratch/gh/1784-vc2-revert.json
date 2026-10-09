@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `node -e 'const c=require(\"crypto\"),f=require(\"fs\");const h=c.createHash(\"sha256\").update(f.readFileSync(process.argv[1])).digest(\"hex\");console.log(h);process.exit(h===\"3a7e022fa7c1bc11c61e894d04b68658b78b287dfd917ea12a9736cfbebe9993\"?0:1)' docs/peer-reviews/spec/2026-09-22-2026-09-22-1755-delivery-attribution-exception-design-review-cc015b243c3fe236325ac37f5899783f/review-cc015b243c3fe236325ac37f5899783f-reviewer-response-3.md` <!-- id=2 -->",
+  "replacement": "- [ ] `shasum -a 256 docs/peer-reviews/spec/2026-09-22-2026-09-22-1755-delivery-attribution-exception-design-review-cc015b243c3fe236325ac37f5899783f/review-cc015b243c3fe236325ac37f5899783f-reviewer-response-3.md` <!-- id=2 -->"
+}

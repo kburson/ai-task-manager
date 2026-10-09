@@ -1,0 +1,2 @@
+- [ ] Delivery explanation covers full current authorization across supported lanes without invoking a provider or writing records. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Execution still binds current exact-HEAD authority and refuses changes after explanation. <!-- aitm-verified vc-list="vc:1" -->

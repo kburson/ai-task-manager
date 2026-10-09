@@ -1,0 +1,3 @@
+- [ ] Both adapter/router/pickup and full captured lifecycle fixtures meet fixed ceilings with >=20% unused headroom, including repeat/change/compaction and required diagnostics, and demonstrate lower complete total cost than the equivalent preserved Markdown baseline. <!-- aitm-verified vc-list="vc:1 vc:2 vc:3 vc:4 vc:5 vc:6" -->
+- [ ] Minimal protocol preserves hard boundary protections, query schedule, receipt invalidation, and distinct workflow-preflight semantics. <!-- aitm-verified vc-list="vc:1 vc:2 vc:3 vc:4 vc:5 vc:6" -->
+- [ ] Production package, invalid admission, full lifecycle parity, cache certification, and context/authority regression gates pass together before consumer release. <!-- aitm-verified vc-list="vc:1 vc:2 vc:3 vc:4 vc:5 vc:6" -->

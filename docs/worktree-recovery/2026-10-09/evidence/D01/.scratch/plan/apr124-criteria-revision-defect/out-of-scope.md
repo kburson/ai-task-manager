@@ -1,0 +1,1 @@
+ai-peer-review code/package work; AITM #1841 review records; automatic replacement of live downstream criteria; evidence fabrication; generic invariant-disabling escape hatches; lifecycle stage skips; unrelated refactors. No AITM source implementation is authorized in the filing session.

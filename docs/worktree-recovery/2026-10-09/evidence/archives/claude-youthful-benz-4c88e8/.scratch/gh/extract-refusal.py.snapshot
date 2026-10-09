@@ -1,0 +1,32 @@
+p = 'scripts/task-tracker/verbs/close.mjs'
+s = open(p).read()
+
+marker = 'reconcile it with '
+old_start = s.index('        `[task-tracker] ⛔ Refusing to close ${closeTarget}')
+old_end = s.index('`.\'', old_start) + len('`.\'')
+old = s[old_start:old_end]
+assert marker in old, 'expected the reconciliation guidance in the block'
+
+s = s[:old_start] + '        buildDeliveryGateRefusal(closeTarget, error.message)' + s[old_end:]
+
+anchor = '  const refuseDeliveryGate = async (options) => {'
+helper = (
+    '// #1562 - a pull request merged with a method the configuration does not\n'
+    '// declare can never satisfy `delivery-verification`, and `--force` does not\n'
+    '// reach this gate (`refuseDeliveryGate` below never consults it). Name the\n'
+    '// reconciliation lane in the refusal itself so it is discoverable from the\n'
+    '// message rather than only from the source. Exported so a test pins it.\n'
+    'export function buildDeliveryGateRefusal(closeTarget, reason) {\n'
+    '  return (\n'
+    '    `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${reason}. ` +\n'
+    "    'Run `" + "/task deliver` until a verified exact-head receipt exists, then retry. ' +\n"
+    "    'If the pull request was merged with a method this project does not declare ' +\n"
+    "    '(`delivery-verification:merge-method`), reconcile it with ' +\n"
+    '    \'`' + '/task deliver <N> --reconcile-merge-method <merge|squash|rebase> --reason "<why>"`.\'\n'
+    '  );\n'
+    '}\n\n'
+)
+assert anchor in s
+s = s.replace(anchor, helper + anchor, 1)
+open(p, 'w').write(s)
+print('ok')

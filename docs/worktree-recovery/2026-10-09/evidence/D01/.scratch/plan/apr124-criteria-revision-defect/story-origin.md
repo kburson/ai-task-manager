@@ -1,0 +1,6 @@
+- **kind**: code
+- **discovered-during**: User-authorized continuation of kburson/ai-peer-review #124 and PR #125 on 2026-09-29 America/Chicago.
+- **root-cause-surface**: `scripts/task-tracker/verbs/issue-body.mjs::preserveAitmMarkers`; confirmed in the installed consumer package and current AITM source.
+- **related**: https://github.com/kburson/ai-peer-review/issues/124 and https://github.com/kburson/ai-peer-review/pull/125.
+- **classification**: defect in the governed scope-correction workflow, not an internal-only refactor or weakening of evidence protections.
+- **authorization**: User requested filing this defect and will start a separate agent to plan and execute.

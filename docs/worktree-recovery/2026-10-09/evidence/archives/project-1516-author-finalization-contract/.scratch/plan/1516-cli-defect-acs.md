@@ -1,0 +1,3 @@
+- [ ] A successful ordinary `peer-review finalize <workspace>` invocation returns exit zero and renders an accepted terminal result without dereferencing a null next action. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] An identical registered-author retry also returns exit zero without creating a second commit or terminal event. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] AITM pins the released fixed package and its host parity test exercises the installed CLI rather than private package internals. <!-- aitm-verified vc-list="vc:1" -->

@@ -1,0 +1,3 @@
+Align delivery preflight with the existing workflow-exception semantics used by Review. When Review records `review:waived` under a current explicit GitHub-native exception for the semantic-review requirement, delivery must accept that distinct waived outcome as sufficient review authority for the exact issue and accepted head.
+
+Preserve fail-closed behavior. Delivery must reject absent, stale, malformed, revoked, scope-mismatched, or head-mismatched waiver authority, and must continue to require every unrelated delivery predicate such as accepted Test evidence, approval authority, hosted CI, pull-request identity, merge authority, and receipt verification.

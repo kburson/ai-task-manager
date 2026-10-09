@@ -1,0 +1,11 @@
+{
+  "artifact_kind": "spec",
+  "artifact_name": "2026-09-12-1219-tiered-test-execution-design",
+  "issue": 1219,
+  "repository_root": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager",
+  "review_date": "2026-09-12",
+  "review_id": "review-03ff5087c2d09fdb34d6bf44fdb2928a",
+  "review_path_template": "<issue>/<kind>",
+  "reviews_root": "docs/superpowers/reviews",
+  "schema": "ai-peer-review.context/v1"
+}

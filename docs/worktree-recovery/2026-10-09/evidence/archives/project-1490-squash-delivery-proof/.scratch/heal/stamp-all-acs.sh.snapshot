@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Stamp and check every #1490 acceptance criterion, one governed call per label.
+set -u
+COUNT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('./.scratch/gh/ac-labels.json','utf8')).length)")
+for i in $(seq 0 $((COUNT - 1))); do
+  LABEL=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('./.scratch/gh/ac-labels.json','utf8'))[$i])")
+  echo "--- AC $((i + 1))/$COUNT ---"
+  npx aitm ac-stamp "$LABEL" 2>&1 | tail -1
+  npx aitm ensureChecked "$LABEL" 2>&1 | tail -1
+done

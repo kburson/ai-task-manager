@@ -1,0 +1,17 @@
+npm notice run @kburson/ai-peer-review@0.3.0 test:packaging
+npm notice run node --test "test/packaging/**/*.test.mjs"
+✔ active release pins and packaged build contract match the selected minor (5.165542ms)
+✔ README zero-install start is a complete invocation for the released grammar (1.147125ms)
+✔ published tarball is closed and exact-pins its audited production dependency (2325.590542ms)
+✔ published tarball retains the participant communication policy (1096.699791ms)
+✔ README and NOTICE bind the exact source, filtered tip, bootstrap, and license split (0.465292ms)
+✔ public exports and command guidance remain narrow and installation-aware (2.22925ms)
+✔ workflows retain complete platform and release safety gates (4.615375ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3520.969167

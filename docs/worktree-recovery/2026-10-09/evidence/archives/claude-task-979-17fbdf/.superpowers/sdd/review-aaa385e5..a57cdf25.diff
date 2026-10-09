@@ -1,0 +1,680 @@
+# Review package: aaa385e5302a9878e5f22b2a7dc2c110fbfe78f7..a57cdf255dbd5d21d5e2dd8e76d44ad2fcce28fc
+
+## Commits
+a57cdf25 [#1408] test(close): install the offline gh double in close-repair
+bc98e4fc [#1411] test(residue): exempt generated research artifacts from the audit
+57044c9c [#1408] test(gh): keep the lint:tmp guard happy in the double
+79bec1c9 [#1408] test(gh): two-layer offline gh double for stubbed suites
+
+## Files changed
+ scripts/tests/fixtures/stub-gh.mjs                 | 206 +++++++++++++++++++++
+ .../unit/gh/stub-gh-helper.test.mjs.json           |   4 +
+ .../core/residue-audit-scope.test.mjs.json         |   4 +
+ scripts/tests/lib/residue-audit-scope.mjs          |  37 ++++
+ .../slow/task-tracker/verbs/promote-verb.test.mjs  |  21 ++-
+ scripts/tests/unit/gh/stub-gh-helper.test.mjs      | 161 ++++++++++++++++
+ .../core/assigned-state-residue.test.mjs           |   3 +
+ .../task-tracker/core/residue-audit-scope.test.mjs |  64 +++++++
+ .../unit/task-tracker/lib/close-repair.test.mjs    |  20 +-
+ 9 files changed, 518 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/scripts/tests/fixtures/stub-gh.mjs b/scripts/tests/fixtures/stub-gh.mjs
+new file mode 100644
+index 00000000..730a80d1
+--- /dev/null
++++ b/scripts/tests/fixtures/stub-gh.mjs
+@@ -0,0 +1,206 @@
++// @story #1408
++/**
++ * Offline `gh` test double (#1408 / rung 1 of #1407).
++ *
++ * Tests across the unit, integration, and slow lanes document themselves as
++ * fully stubbed while still issuing live `gh` calls. A census of
++ * `scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs` counted 49 real
++ * invocations from one test process; every one is a network round-trip against
++ * a fixture repo (`o/r`) that does not exist, and the resulting failures are
++ * swallowed as non-fatal.
++ *
++ * The 49 split in two, and that split is why this helper has two layers:
++ *
++ *   - 32 are `gh api graphql --input -`, issued through the `#645` injectable
++ *     seam `deps = { execFile, spawn }` in `scripts/gh/lib/github-projects.mjs`.
++ *     Layer 1 overrides that seam in-process, so those calls never spawn at all.
++ *   - 17 are `gh issue view …`, issued from module-level `const pexec =
++ *     promisify(execFile)` bindings that no seam override can reach (see
++ *     `lib/review-derive-rescan.mjs` and `lib/issue-body-push.mjs`). Layer 2
++ *     prepends an offline `gh` executable to `PATH`, which intercepts every
++ *     remaining child process regardless of which module spawned it.
++ *
++ * Layer 2 is what makes the double complete without touching production code.
++ * Retiring those hardcoded bindings is #1409's job; failing closed on them is
++ * #1410's. This helper only has to stop paying for them.
++ *
++ * Both layers default to **refusing**: exit 1 with `stub-gh: refused <argv>` on
++ * stderr. That is deliberate. Those calls already fail today against the
++ * nonexistent fixture repo, and callers already swallow the failure, so
++ * refusing reproduces current observed behaviour exactly — no assertion changes
++ * meaning — while paying nothing for it. Callers that need a real answer
++ * register a response (layer 1 only; see `responses` below).
++ */
++
++import { EventEmitter } from 'node:events';
++import {
++  chmodSync,
++  existsSync,
++  mkdirSync,
++  mkdtempSync,
++  readFileSync,
++  rmSync,
++  writeFileSync,
++} from 'node:fs';
++import path from 'node:path';
++import { promisify } from 'node:util';
++import { Readable } from 'node:stream';
++
++import { deps as githubProjectsDeps } from '../../gh/lib/github-projects.mjs';
++import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
++
++/** The refusal every unmatched invocation produces, on both layers. */
++export function refusalFor(argv) {
++  return {
++    code: 1,
++    stdout: '',
++    stderr: `stub-gh: refused ${argv.join(' ')}\n`,
++  };
++}
++
++// A response matches when its `match` is a predicate that returns true, or an
++// argv prefix (array or whitespace-joined string) that the invocation starts
++// with. A response with no `match` matches everything, so it reads as a
++// catch-all default.
++function matches(response, argv) {
++  const { match } = response;
++  if (match === undefined) return true;
++  if (typeof match === 'function') return Boolean(match(argv));
++  const prefix = Array.isArray(match) ? match : String(match).trim().split(/\s+/);
++  return prefix.every((token, index) => argv[index] === token);
++}
++
++function resolveResponse(responses, argv) {
++  const hit = responses.find((response) => matches(response, argv));
++  if (!hit) return refusalFor(argv);
++  return {
++    code: hit.code ?? 0,
++    stdout: hit.stdout ?? '',
++    stderr: hit.stderr ?? '',
++  };
++}
++
++function spawnError(argv, { code, stderr, stdout }) {
++  const err = new Error(`gh exited ${code}: ${stderr}`);
++  err.code = code;
++  err.stderr = stderr;
++  err.stdout = stdout;
++  return err;
++}
++
++/**
++ * Install the offline double.
++ *
++ * @param {object} [options]
++ * @param {Array<{match?: Function|string|string[], stdout?: string, stderr?: string, code?: number}>} [options.responses]
++ *   Layer-1 responses, first match wins. Unmatched invocations refuse.
++ *   Layer 2 always refuses — a `PATH` shim cannot consult these without paying
++ *   for a Node process per call, which is the cost this helper exists to avoid.
++ * @param {{execFile: Function, spawn: Function}} [options.seam]
++ *   The seam to override. Defaults to the live `github-projects` seam.
++ * @param {NodeJS.ProcessEnv} [options.env] Environment whose `PATH` is shimmed.
++ * @returns {{calls: Function, count: Function, restore: Function, binDir: string}}
++ */
++export function installStubGh({
++  responses = [],
++  seam = githubProjectsDeps,
++  env = process.env,
++} = {}) {
++  const intercepted = [];
++
++  // Layer 2 — the PATH shim. Materialized under the project scratch dir, never
++  // the system temp directory (see `rules/scratch-dirs.md`, enforced by
++  // `lint:tmp`); `/bin/sh` rather than Node so a call costs no interpreter
++  // start-up.
++  const dir = mkdtempSync(path.join(projectScratchDir('test'), 'stub-gh-'));
++  const binDir = path.join(dir, 'bin');
++  mkdirSync(binDir, { recursive: true });
++  const logPath = path.join(dir, 'calls.log');
++  writeFileSync(logPath, '');
++  const shimPath = path.join(binDir, 'gh');
++  writeFileSync(
++    shimPath,
++    [
++      '#!/bin/sh',
++      `printf '%s\\n' "$*" >> '${logPath}'`,
++      `printf 'stub-gh: refused %s\\n' "$*" >&2`,
++      'exit 1',
++      '',
++    ].join('\n')
++  );
++  chmodSync(shimPath, 0o755);
++
++  const previousPath = env.PATH;
++  env.PATH = `${binDir}${path.delimiter}${previousPath ?? ''}`;
++
++  // Layer 1 — the in-process seam override.
++  const previousExecFile = seam.execFile;
++  const previousSpawn = seam.spawn;
++
++  const stubExecFile = (file, args = [], options, callback) => {
++    const done = typeof options === 'function' ? options : callback;
++    const argv = [file, ...args];
++    intercepted.push(argv.join(' '));
++    const result = resolveResponse(responses, argv);
++    queueMicrotask(() => {
++      if (result.code === 0) done(null, result.stdout, result.stderr);
++      else done(spawnError(argv, result), result.stdout, result.stderr);
++    });
++    return new EventEmitter();
++  };
++
++  // `gh()` calls `promisify(deps.execFile)(...)` and destructures `{ stdout }`.
++  // The real `child_process.execFile` carries a `promisify.custom` that resolves
++  // to `{ stdout, stderr }`; without it promisify resolves to the bare stdout
++  // string and the destructure yields undefined. Carry the same symbol so the
++  // double is substitutable for the real binding, not merely similar to it.
++  stubExecFile[promisify.custom] = (file, args = [], options) =>
++    new Promise((resolve, reject) => {
++      stubExecFile(file, args, options, (error, stdout, stderr) => {
++        if (error) {
++          error.stdout = stdout;
++          error.stderr = stderr;
++          reject(error);
++        } else resolve({ stdout, stderr });
++      });
++    });
++
++  seam.execFile = stubExecFile;
++
++  seam.spawn = (file, args = []) => {
++    const argv = [file, ...args];
++    intercepted.push(argv.join(' '));
++    const result = resolveResponse(responses, argv);
++    const child = new EventEmitter();
++    child.stdout = Readable.from(result.stdout ? [result.stdout] : []);
++    child.stderr = Readable.from(result.stderr ? [result.stderr] : []);
++    // `gh()` writes the graphql payload to stdin and ends it; swallow both.
++    child.stdin = { write() {}, end() {} };
++    // Let the caller attach its own listeners before the streams drain.
++    setImmediate(() => child.emit('close', result.code));
++    return child;
++  };
++
++  const pathLayerCalls = () => {
++    if (!existsSync(logPath)) return [];
++    return readFileSync(logPath, 'utf8')
++      .split('\n')
++      .filter((line) => line !== '')
++      .map((line) => `gh ${line}`);
++  };
++
++  return {
++    binDir,
++    /** Every argv this double intercepted, seam layer first then PATH layer. */
++    calls: () => [...intercepted, ...pathLayerCalls()],
++    /** How many invocations the double absorbed across both layers. */
++    count: () => intercepted.length + pathLayerCalls().length,
++    restore: () => {
++      seam.execFile = previousExecFile;
++      seam.spawn = previousSpawn;
++      if (previousPath === undefined) delete env.PATH;
++      else env.PATH = previousPath;
++      rmSync(dir, { recursive: true, force: true });
++    },
++  };
++}
+diff --git a/scripts/tests/fixtures/test-corpus-post-snapshot/unit/gh/stub-gh-helper.test.mjs.json b/scripts/tests/fixtures/test-corpus-post-snapshot/unit/gh/stub-gh-helper.test.mjs.json
+new file mode 100644
+index 00000000..7e33512c
+--- /dev/null
++++ b/scripts/tests/fixtures/test-corpus-post-snapshot/unit/gh/stub-gh-helper.test.mjs.json
+@@ -0,0 +1,4 @@
++{
++  "schema": 1,
++  "path": "scripts/tests/unit/gh/stub-gh-helper.test.mjs"
++}
+diff --git a/scripts/tests/fixtures/test-corpus-post-snapshot/unit/task-tracker/core/residue-audit-scope.test.mjs.json b/scripts/tests/fixtures/test-corpus-post-snapshot/unit/task-tracker/core/residue-audit-scope.test.mjs.json
+new file mode 100644
+index 00000000..1d176665
+--- /dev/null
++++ b/scripts/tests/fixtures/test-corpus-post-snapshot/unit/task-tracker/core/residue-audit-scope.test.mjs.json
+@@ -0,0 +1,4 @@
++{
++  "schema": 1,
++  "path": "scripts/tests/unit/task-tracker/core/residue-audit-scope.test.mjs"
++}
+diff --git a/scripts/tests/lib/residue-audit-scope.mjs b/scripts/tests/lib/residue-audit-scope.mjs
+new file mode 100644
+index 00000000..75395d0c
+--- /dev/null
++++ b/scripts/tests/lib/residue-audit-scope.mjs
+@@ -0,0 +1,37 @@
++// @story #1411
++/**
++ * Scope rule for the legacy state-vocabulary residue audit (#1206).
++ *
++ * Research dumps under `docs/research/` include machine-generated inventories of
++ * the repo: import graphs, overlap matrices, timing tables. Those name modules,
++ * and one of the modules is the legacy-rename migration CLI — so a generated
++ * file reports a match without any legacy vocabulary having survived anywhere in
++ * the product. That is the audit asserting about its own evidence.
++ *
++ * Only the GENERATED DATA is exempt. Authored prose under `docs/research/` stays
++ * on the audited path, matching how `docs/migration-history.md` and the other
++ * historical records are handled — allowlisted with an exact count, not waved
++ * through. A human who reintroduces the vocabulary in a research narrative is
++ * still caught; a tool that inventories module paths is not.
++ *
++ * The alternative — an exact-count allowlist entry for the artifact — was
++ * rejected: it hardcodes a generated file's current match count into a test, so
++ * regenerating the dump or landing the next one breaks the lane again.
++ *
++ * Lives here rather than inside the audit's own test file so the boundary tests
++ * can import the predicate without executing the audit as a side effect.
++ */
++
++const RESEARCH_ROOT = 'docs/research/';
++const GENERATED_DATA_EXTENSIONS = ['.json', '.txt', '.csv', '.ndjson'];
++
++/**
++ * @param {string} file repo-relative path
++ * @returns {boolean} true when the path is a generated research artifact and so
++ *   is exempt from the residue walk
++ */
++export function isGeneratedResearchArtifact(file) {
++  const normalized = String(file).replaceAll('\\', '/');
++  if (!normalized.startsWith(RESEARCH_ROOT)) return false;
++  return GENERATED_DATA_EXTENSIONS.some((ext) => normalized.endsWith(ext));
++}
+diff --git a/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs b/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs
+index b52a5b8c..390a2e1b 100644
+--- a/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs
++++ b/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs
+@@ -1,24 +1,43 @@
+ #!/usr/bin/env node
+ // @story #68
+ // Unit tests for scripts/task-tracker/verbs/promote.mjs.
+ //
+ // All cases drive runPromote with stubbed deps — no network, no spawn.
+ 
+ import { strict as assert } from 'node:assert';
+-import { test } from 'node:test';
++import { after, before, test } from 'node:test';
+ 
++import { installStubGh } from '../../../fixtures/stub-gh.mjs';
+ import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
+ import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
+ 
+ const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
+ 
++// #1408 — the header above claims "no network, no spawn", and until now that was
++// aspiration rather than fact: a census counted 49 live `gh` invocations from
++// this file, 32 through the `github-projects` seam and 17 from hardcoded
++// module-level `pexec` bindings. Every one round-tripped to GitHub, failed
++// against the nonexistent fixture repo `o/r`, and was swallowed as non-fatal —
++// 14.7s of waiting for answers no assertion here reads.
++//
++// The double refuses both layers, which is exactly what the network already did,
++// so no case below changes meaning. Installed from before/after so teardown runs
++// even when a case throws.
++let stubGh;
++before(() => {
++  stubGh = installStubGh();
++});
++after(() => {
++  stubGh?.restore();
++});
++
+ function makeDeps({
+   body = '',
+   live = null,
+   liveAfter,
+   liveThrowsAfter = false,
+   spawnCode = 0,
+   moveCode = 0,
+   fetchSecondBody,
+ } = {}) {
+   let secondFetch = false;
+diff --git a/scripts/tests/unit/gh/stub-gh-helper.test.mjs b/scripts/tests/unit/gh/stub-gh-helper.test.mjs
+new file mode 100644
+index 00000000..ca4e688c
+--- /dev/null
++++ b/scripts/tests/unit/gh/stub-gh-helper.test.mjs
+@@ -0,0 +1,161 @@
++#!/usr/bin/env node
++// @story #1408
++// Contract tests for the offline `gh` double in scripts/tests/fixtures/stub-gh.mjs.
++//
++// The double is what every other suite will lean on to stop paying for live
++// `gh` traffic, so its own guarantees — both layers intercept, the census is
++// accurate, the default refuses, registered responses win, and restore is
++// complete — need to be pinned here rather than inferred from a caller.
++
++import { strict as assert } from 'node:assert';
++import { execFile } from 'node:child_process';
++import { test } from 'node:test';
++import { promisify } from 'node:util';
++
++import { gh, gql, deps as liveSeam } from '../../../gh/lib/github-projects.mjs';
++import { installStubGh, refusalFor } from '../../fixtures/stub-gh.mjs';
++
++const pexec = promisify(execFile);
++
++test('layer 1 intercepts seam execFile traffic without spawning', async () => {
++  const stub = installStubGh({ responses: [{ match: 'gh issue view', stdout: 'body-text' }] });
++  try {
++    const out = await gh(['issue', 'view', '42', '-R', 'o/r', '--json', 'body']);
++    assert.equal(out, 'body-text');
++    assert.deepEqual(stub.calls(), ['gh issue view 42 -R o/r --json body']);
++    assert.equal(stub.count(), 1);
++  } finally {
++    stub.restore();
++  }
++});
++
++test('layer 1 intercepts seam spawn traffic (the graphql path)', async () => {
++  const payload = JSON.stringify({ data: { viewer: { login: 'octocat' } } });
++  const stub = installStubGh({ responses: [{ match: 'gh api graphql', stdout: payload }] });
++  try {
++    const data = await gql('query { viewer { login } }', {});
++    assert.deepEqual(data, { viewer: { login: 'octocat' } });
++    assert.deepEqual(stub.calls(), ['gh api graphql --input -']);
++  } finally {
++    stub.restore();
++  }
++});
++
++test('layer 2 intercepts a gh child process the seam cannot reach', async () => {
++  // This is the shape of the two confirmed leak sites: a module-level
++  // `promisify(execFile)` that spawns `gh` directly, bypassing the seam.
++  const stub = installStubGh();
++  try {
++    await assert.rejects(
++      () => pexec('gh', ['issue', 'view', '111', '-R', 'o/r', '--json', 'body']),
++      (err) => {
++        assert.match(err.stderr, /stub-gh: refused issue view 111/);
++        return true;
++      }
++    );
++    assert.deepEqual(stub.calls(), ['gh issue view 111 -R o/r --json body']);
++    assert.equal(stub.count(), 1);
++  } finally {
++    stub.restore();
++  }
++});
++
++test('the census counts both layers together', async () => {
++  const stub = installStubGh({ responses: [{ match: 'gh issue view', stdout: 'seam' }] });
++  try {
++    await gh(['issue', 'view', '1']);
++    await pexec('gh', ['issue', 'view', '2']).catch(() => {});
++    assert.equal(stub.count(), 2);
++    assert.deepEqual(stub.calls(), ['gh issue view 1', 'gh issue view 2']);
++  } finally {
++    stub.restore();
++  }
++});
++
++test('an unmatched invocation refuses rather than reaching the network', async () => {
++  const stub = installStubGh();
++  try {
++    await assert.rejects(
++      () => gh(['issue', 'view', '99']),
++      (err) => {
++        assert.match(err.message, /gh exited 1/);
++        assert.match(err.stderr, /stub-gh: refused gh issue view 99/);
++        return true;
++      }
++    );
++  } finally {
++    stub.restore();
++  }
++});
++
++test('refusalFor is the shared refusal shape', () => {
++  assert.deepEqual(refusalFor(['gh', 'issue', 'view', '7']), {
++    code: 1,
++    stdout: '',
++    stderr: 'stub-gh: refused gh issue view 7\n',
++  });
++});
++
++test('the first matching response wins and a match-less entry is a catch-all', async () => {
++  const stub = installStubGh({
++    responses: [
++      { match: ['gh', 'issue', 'view', '5'], stdout: 'specific' },
++      { stdout: 'catch-all' },
++    ],
++  });
++  try {
++    assert.equal(await gh(['issue', 'view', '5']), 'specific');
++    assert.equal(await gh(['issue', 'view', '6']), 'catch-all');
++    assert.equal(await gh(['pr', 'list']), 'catch-all');
++  } finally {
++    stub.restore();
++  }
++});
++
++test('a response may declare a nonzero exit code', async () => {
++  const stub = installStubGh({ responses: [{ code: 4, stderr: 'boom' }] });
++  try {
++    await assert.rejects(
++      () => gh(['issue', 'view', '8']),
++      (err) => {
++        assert.equal(err.code, 4);
++        assert.equal(err.stderr, 'boom');
++        return true;
++      }
++    );
++  } finally {
++    stub.restore();
++  }
++});
++
++test('restore puts the seam and PATH back and removes the shim', async () => {
++  const seamExecFile = liveSeam.execFile;
++  const seamSpawn = liveSeam.spawn;
++  const originalPath = process.env.PATH;
++
++  const stub = installStubGh();
++  assert.notEqual(liveSeam.execFile, seamExecFile);
++  assert.notEqual(liveSeam.spawn, seamSpawn);
++  assert.ok(process.env.PATH.startsWith(stub.binDir));
++
++  stub.restore();
++
++  assert.equal(liveSeam.execFile, seamExecFile);
++  assert.equal(liveSeam.spawn, seamSpawn);
++  assert.equal(process.env.PATH, originalPath);
++  const { existsSync } = await import('node:fs');
++  assert.equal(existsSync(stub.binDir), false);
++});
++
++test('an isolated seam object can be stubbed instead of the live one', async () => {
++  const seam = { execFile: null, spawn: null };
++  const stub = installStubGh({ seam, responses: [{ stdout: 'ok' }] });
++  try {
++    assert.equal(typeof seam.execFile, 'function');
++    // The live seam is untouched when an explicit one is supplied.
++    assert.notEqual(liveSeam.execFile, seam.execFile);
++  } finally {
++    stub.restore();
++  }
++  assert.equal(seam.execFile, null);
++});
+diff --git a/scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs b/scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs
+index ca592e1c..f01819d9 100644
+--- a/scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs
++++ b/scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs
+@@ -1,16 +1,18 @@
+ // @story #1206
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+ import { readFileSync } from 'node:fs';
+ import { execFileSync } from 'node:child_process';
+ 
++import { isGeneratedResearchArtifact } from '../../../lib/residue-audit-scope.mjs';
++
+ const LEGACY_TOKEN = /on[- _]?deck/i;
+ const SPLIT_LEGACY_TOKEN = /on[ \t]*\r?\n[ \t]*(?:(?:\/\/|#|\*)[ \t]*)?deck/gi;
+ const SELF = 'scripts/tests/unit/task-tracker/core/assigned-state-residue.test.mjs';
+ 
+ // Exact path + matching-line counts are intentional compatibility surface.
+ // Any new file, removed compatibility seam, or extra occurrence in an allowed
+ // file fails this test and requires an explicit audit.  Reasons are retained
+ // alongside the counts so this list remains an architectural allowlist rather
+ // than a blanket exception for tests or migration code.
+ const ALLOWLIST = new Map(
+@@ -193,20 +195,21 @@ test('legacy On Deck vocabulary exists only in the audited compatibility allowli
+   const files = execFileSync(
+     'git',
+     ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+     { encoding: 'utf8' }
+   )
+     .split('\0')
+     .filter(Boolean);
+   const residue = new Map();
+   for (const file of files) {
+     if (file === SELF) continue;
++    if (isGeneratedResearchArtifact(file)) continue;
+     let source;
+     try {
+       source = readFileSync(file, 'utf8');
+     } catch {
+       continue;
+     }
+     const matches = legacyMatches(source);
+     if (matches.length > 0) residue.set(file, matches);
+   }
+ 
+diff --git a/scripts/tests/unit/task-tracker/core/residue-audit-scope.test.mjs b/scripts/tests/unit/task-tracker/core/residue-audit-scope.test.mjs
+new file mode 100644
+index 00000000..469c1bc2
+--- /dev/null
++++ b/scripts/tests/unit/task-tracker/core/residue-audit-scope.test.mjs
+@@ -0,0 +1,64 @@
++// @story #1411
++// Boundary tests for the generated-research-artifact exemption in the legacy
++// state-vocabulary residue audit (#1206, amended by #1411).
++//
++// The exemption exists because machine-generated research dumps inventory the
++// repo's module paths, and one of those paths names the legacy-rename migration
++// CLI — so the audit was failing on its own evidence rather than on residue.
++// The danger of any such exemption is that it quietly widens until it exempts
++// everything, so these cases pin all three edges: what is skipped, what is still
++// audited inside the same directory, and what is still audited outside it.
++//
++// AC2 of #1411 rests on the negative cases here. They are the direct evidence
++// that the audit still fails on genuine product-code residue.
++
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import { isGeneratedResearchArtifact } from '../../../lib/residue-audit-scope.mjs';
++
++test('generated data under docs/research is exempt', () => {
++  assert.equal(
++    isGeneratedResearchArtifact(
++      'docs/research/2026-08-24-test-suite-performance-audit/overlap.json'
++    ),
++    true
++  );
++  assert.equal(isGeneratedResearchArtifact('docs/research/anything/timings.txt'), true);
++  assert.equal(isGeneratedResearchArtifact('docs/research/anything/rows.csv'), true);
++  assert.equal(isGeneratedResearchArtifact('docs/research/anything/events.ndjson'), true);
++});
++
++test('authored prose under docs/research is still audited', () => {
++  // The whole point of the narrow rule: a human writing the legacy vocabulary
++  // into a research narrative must still be caught.
++  assert.equal(
++    isGeneratedResearchArtifact('docs/research/2026-08-24-test-suite-performance-audit/README.md'),
++    false
++  );
++  assert.equal(isGeneratedResearchArtifact('docs/research/notes.md'), false);
++});
++
++test('executable analysis scripts under docs/research are still audited', () => {
++  // These sit beside the dumps and are authored, not generated.
++  assert.equal(
++    isGeneratedResearchArtifact('docs/research/2026-08-24-test-suite-performance-audit/graph.mjs'),
++    false
++  );
++});
++
++test('generated-looking files outside docs/research are still audited', () => {
++  assert.equal(isGeneratedResearchArtifact('package.json'), false);
++  assert.equal(
++    isGeneratedResearchArtifact('scripts/tests/fixtures/test-corpus-pre-move.json'),
++    false
++  );
++  assert.equal(isGeneratedResearchArtifact('docs/migration-history.md'), false);
++  // A path that merely contains the research segment deeper down does not match;
++  // the prefix is anchored.
++  assert.equal(isGeneratedResearchArtifact('scripts/docs/research/thing.json'), false);
++});
++
++test('backslash-separated paths normalize before the prefix check', () => {
++  assert.equal(isGeneratedResearchArtifact('docs\\research\\audit\\overlap.json'), true);
++});
+diff --git a/scripts/tests/unit/task-tracker/lib/close-repair.test.mjs b/scripts/tests/unit/task-tracker/lib/close-repair.test.mjs
+index e55ab86f..2c443f4b 100644
+--- a/scripts/tests/unit/task-tracker/lib/close-repair.test.mjs
++++ b/scripts/tests/unit/task-tracker/lib/close-repair.test.mjs
+@@ -13,29 +13,47 @@
+ // `decideCloseConvergence`, which then forces `proceed` regardless of
+ // board/issue state so the full pipeline replays. These tests exercise the verb
+ // end-to-end (offline, injected collaborators) to prove the two observable
+ // halves of the contract:
+ //   AC2 — with --repair the noop short-circuit is bypassed and the full atomic
+ //         close runs (timing flush + audit rows + terminal board move + close);
+ //         without it, the same board/issue state still short-circuits (the bug).
+ //   AC4 — `--repair` is documented in the `close` verb help output.
+ 
+ import { strict as assert } from 'node:assert';
+-import { test } from 'node:test';
++import { after, before, test } from 'node:test';
+ import { mkdtempSync, writeFileSync } from 'node:fs';
+ import path from 'node:path';
+ import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+ 
++import { installStubGh } from '../../../fixtures/stub-gh.mjs';
+ import { verbClose } from '../../../../task-tracker/verbs/close.mjs';
+ import { verbHelp } from '../../../../task-tracker/verbs/help.mjs';
+ import { mutateIssueBody } from '../../../../task-tracker/lib/issue-body-mutate.mjs';
+ 
++// #1408 — "offline, injected collaborators" above was aspiration, not fact. A
++// census counted 12 live `gh` invocations from this file. They already fail
++// (fixture repo `o/r` does not exist) and the verb already swallows them, so
++// they buy nothing — but they are not free, and they are not reliable: under
++// sandbox load the AC2 baseline case burned its full 10s timeout waiting on one
++// and produced no stdout at all, failing an assertion that passes in 0.6s when
++// the network happens to answer quickly. The double refuses instantly, which is
++// what the nonexistent repo did anyway, so the cases keep their meaning and
++// stop depending on network weather.
++let stubGh;
++before(() => {
++  stubGh = installStubGh();
++});
++after(() => {
++  stubGh?.restore();
++});
++
+ // A body that satisfies assertFieldsPersisted (engagedTime non-null) so the
+ // full-pipeline path reaches its terminal "Closed" line offline.
+ const CLOSE_BODY = [
+   '# A closed issue',
+   '',
+   '<!-- aitm-fields: {"engagedTime":42,"idleTime":0} -->',
+   '',
+ ].join('\n');
+ 
+ function withRealStateFile({ active }) {

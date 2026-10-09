@@ -1,0 +1,1 @@
+- [ ] The registered child integration runner uses configured project verification, rejects failed evidence before integration, and retains the child checkout when preservation is selected; default verification and strict graph safeguards remain tested. <!-- aitm-verified vc-list="vc:1" -->

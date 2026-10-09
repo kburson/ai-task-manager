@@ -1,0 +1,92 @@
+import fs from 'node:fs';
+import { extractPlanTasks } from '../../../scripts/task-tracker/lib/decomposition-policy.mjs';
+
+const base = extractPlanTasks(
+  fs.readFileSync(
+    'docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-replacement.md',
+    'utf8'
+  )
+);
+const r2 = extractPlanTasks(fs.readFileSync('.scratch/inspect/1558-r2/r2.md', 'utf8'));
+
+// r2 -> baseline mapping for the 14 retained bodies
+const retained = new Map([
+  [9, 2],
+  [10, 3],
+  [11, 4],
+  [12, 5],
+  [13, 6],
+  [14, 7],
+  [15, 8],
+  [16, 9],
+  [19, 11],
+  [22, 13],
+  [23, 14],
+  [24, 15],
+  [25, 16],
+  [26, 17],
+]);
+
+const byNum = (list) => new Map(list.map((t) => [t.number, t]));
+const B = byNum(base);
+const R = byNum(r2);
+
+// Strip the r2-only header block (Baseline-plan-section line) and the
+// r2-only trailing "Verification Commands" block, then compare the rest.
+function normalize(text) {
+  const lines = text.split('\n');
+  const out = [];
+  let skippingVc = false;
+  for (const line of lines) {
+    if (line.startsWith('**Baseline-plan-section:**')) continue;
+    if (line.startsWith('**Verification Commands:**')) skippingVc = true;
+    if (skippingVc) continue;
+    out.push(line);
+  }
+  return out.join('\n').trim();
+}
+
+let identical = 0;
+for (const [rNum, bNum] of retained) {
+  const r = normalize(R.get(rNum).body);
+  const b = normalize(B.get(bNum).body);
+  if (r === b) {
+    identical += 1;
+    continue;
+  }
+  console.log(`DIFF r2 Task ${rNum} vs baseline Task ${bNum}`);
+  const rl = r.split('\n');
+  const bl = b.split('\n');
+  for (let i = 0; i < Math.max(rl.length, bl.length); i += 1) {
+    if (rl[i] !== bl[i]) {
+      console.log(`  line ${i}:`);
+      console.log(`    baseline: ${JSON.stringify((bl[i] || '').slice(0, 120))}`);
+      console.log(`    r2      : ${JSON.stringify((rl[i] || '').slice(0, 120))}`);
+    }
+  }
+}
+console.log(`retained bodies byte-identical after normalization: ${identical}/${retained.size}`);
+
+// Title equality for retained tasks
+for (const [rNum, bNum] of retained) {
+  if (R.get(rNum).title !== B.get(bNum).title) {
+    console.log(
+      `TITLE-DIFF r2 ${rNum} ${JSON.stringify(R.get(rNum).title)} != baseline ${bNum} ${JSON.stringify(B.get(bNum).title)}`
+    );
+  }
+}
+
+// AC vc-list citations per r2 task vs local VC ordinal
+const CITE = /vc-list="([^"]+)"/g;
+for (const t of r2) {
+  const cites = [...t.body.matchAll(CITE)].map((m) => m[1]);
+  const runs = [...t.body.matchAll(/^Run: `/gm)].length;
+  const ids = [...new Set(cites.flatMap((c) => c.split(/\s+/)))].sort();
+  const localIds = Array.from({ length: runs }, (_, i) => `vc:${i + 1}`);
+  const unresolvable = ids.filter((id) => !localIds.includes(id));
+  if (unresolvable.length) {
+    console.log(
+      `CITE-MISMATCH Task ${String(t.number).padStart(2)} cites ${ids.join(',')} | local ids would be ${localIds.join(',')} | unresolvable: ${unresolvable.join(',')}`
+    );
+  }
+}
