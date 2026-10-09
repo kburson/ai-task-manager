@@ -1,0 +1,150 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "task-1",
+      "description": "Protect the versioned artifact contract and inventory its readers",
+      "baseHumanHours": 10,
+      "signals": {
+        "modules": ["artifact-contract", "body-invariants"],
+        "dependencies": []
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-2",
+      "description": "Resolve immutable artifact roles and explicit legacy conflicts",
+      "baseHumanHours": 12,
+      "signals": {
+        "modules": ["artifact-resolver", "legacy-adapter"],
+        "dependencies": ["task-1"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-3",
+      "description": "Migrate operational consumers and bounded split-plan provenance",
+      "baseHumanHours": 12,
+      "signals": {
+        "modules": ["decomposition", "story-intent", "split-plan", "backfill"],
+        "dependencies": ["task-2"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-4",
+      "description": "Render grouped metadata and enroll only compatible issues",
+      "baseHumanHours": 8,
+      "signals": {
+        "modules": ["metadata-rendering", "enrollment"],
+        "dependencies": ["task-3", "task-7"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-5",
+      "description": "Deliver the standalone producer contract and verify its AITM bridge",
+      "baseHumanHours": 12,
+      "signals": {
+        "modules": ["standalone-producer", "external-verifier"],
+        "dependencies": ["task-1"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-6",
+      "description": "Validate manual evidence and render complete bounded review summaries",
+      "baseHumanHours": 10,
+      "signals": {
+        "modules": ["review-envelope", "summary-rendering"],
+        "dependencies": ["task-2", "task-5"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-7",
+      "description": "Establish production publication authority and durable effect fencing",
+      "baseHumanHours": 12,
+      "signals": {
+        "modules": ["runtime-authority", "issue-lock", "effect-journal", "retention"],
+        "dependencies": ["task-1"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-8",
+      "description": "Publish one ordered summary and immutable body discovery record",
+      "baseHumanHours": 10,
+      "signals": {
+        "modules": ["publication-transaction", "owned-comments", "body-discovery"],
+        "dependencies": ["task-4", "task-6", "task-7"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-9",
+      "description": "Preview explicit historical scope and publish exact originals",
+      "baseHumanHours": 10,
+      "signals": {
+        "modules": ["inventory-preview", "backups"],
+        "dependencies": ["task-7", "task-8"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-10",
+      "description": "Admit authenticated historical effects and preserved exact-ID retirement",
+      "baseHumanHours": 10,
+      "signals": {
+        "modules": ["migration-admission", "exact-id-retirement"],
+        "dependencies": ["task-9"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-11",
+      "description": "Execute resumable backheal and separately authorized rollback",
+      "baseHumanHours": 12,
+      "signals": {
+        "modules": ["backheal-saga", "command-surface"],
+        "dependencies": ["task-10"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-12",
+      "description": "Prove reference parity and roll out canonical future workflows",
+      "baseHumanHours": 6,
+      "signals": {
+        "modules": ["reference-fixtures", "installed-adapters", "templates", "config-rollout"],
+        "dependencies": ["task-3", "task-4", "task-5", "task-8", "task-11"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "parent-orchestration",
+      "description": "Integrate exact child delivery evidence and publish parent handoff",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": ["orchestration"],
+        "dependencies": ["task-12"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow", "packaging", "smoke"],
+    "isolation": "Disposable Git remotes, isolated GitHub transports and packed-producer consumer; exact-SHA final repository/CI gates",
+    "expectedMinutes": 60
+  },
+  "risks": [
+    "Task 7 strict recovery scope is within a provisional 12-hour baseline and supports Codex human sources only; retain calibration uncertainty.",
+    "Standalone producer issue kburson/ai-peer-review#197 must deliver verified commit/package/digest before consumer Develop; no cross-repository blocked-by injection.",
+    "Protected append-only retention provisioning and real native authority/OS incarnation may refuse unsupported hosts.",
+    "Managed serialization cannot supply global multi-object CAS against arbitrary external edits.",
+    "Legacy precedence/consumer inventory and full-body budgets can refuse enrollment; no protected prose truncation.",
+    "Scope baselines include normal implementation/verification/review; rubric breadth and unavoidable repository cost produce a separately calibrated human Plan estimate, not measured execution or the AI forecast.",
+    "The 60-minute execution allowance is a conservative planning assumption across new integration/packed-consumer/final checks, not a benchmark result."
+  ],
+  "comparableIssueIds": []
+}

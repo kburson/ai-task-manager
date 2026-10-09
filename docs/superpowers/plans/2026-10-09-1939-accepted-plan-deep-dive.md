@@ -1,0 +1,45 @@
+# Issue 1939 accepted-plan deep dive
+
+Archived planning input posted at [the governed deep-dive comment](https://github.com/kburson/ai-task-manager/issues/1939#issuecomment-6087081812) and mirrored in the issue body. Statements of next steps describe that historical point; current GitHub and AITM records govern execution.
+
+### Accepted sources and current stage
+
+Issue #1939 has an accepted specification at 108de3369e9ba93c2d314f747d44b3bcb4099aab, raw SHA-256 d0ef19327c13690f2aa4345d4d635cf430973a728271738abbd7f5fbe982d1bc. The final implementation-plan XPR accepted 2a06a6a4f94ee8a2e61f1c528f585a8638509f8d, raw SHA-256 6f48a829a2d8ecf657585416def0f972215ffa1915410021c65d187b6340e5a0. Full specification and plan review records are committed and exact remote blobs were verified. Earlier SAR and plan SPR remain accepted only on their respective predecessors; their outcome does not move to later bytes. These are reviewer consensuses, distinct from current AITM Plan approval.
+
+The parent completed Refine into Ready for Planning and entered Plan through sanctioned single-edge verbs. This preparation ends at parent Develop with bounded children Ready for Planning. It does not implement feature code or apply historical formatting. The current issue is the scope/acceptance authority; the accepted spec and plan are the exact design/decomposition sources. Existing substantive deep-dive prose is required and retained in this body.
+
+### Repository findings and authority mapping
+
+The flat metadata parser preserves useful display grammar but does not itself parse a protected artifact comment. Current decomposition-policy selects Implementation-plan, Source-plan and Plan independently; governed-plan-policy brands successful reads; user-story-quality and Story Intent select inherited task scope; WBS and split-plan directly consume provenance fields. The twelve-task plan migrates every listed operational reader to common verified observations and retains unambiguous legacy behavior. A/B/C child conflicts remain errors rather than implicit own-plan switching.
+
+Body invariants are already invoked by the canonical issue-body mutation path. Marker codec/protection therefore ships as a bounded component before production activation. Limits remain scoped: 16 KiB serialized marker and 57,344-byte/scalar enrollment/backheal bodies cannot become a ceiling on unrelated existing lifecycle/timing writers. Display- fields are non-authoritative and operational legacy fields stay until every consumer is migrated. No v1 marker or generated Display- projection has been hand-written during preparation.
+
+The #1592 decommission regression is an actual standing repository constraint. Its unchanged current suite passed seven tests, zero failures during plan revision. The accepted implementation boundary preserves independence: no AITM review package dependency/import, CLI wrapper or revived algorithm ownership. A transparent bundled public wire-schema data asset and an authenticated configured read-only external verifier implement the accepted publication contract. The schema is package-relative and not a consumer mirror; existing template mirror scope remains unchanged. The accepted plan explicitly identifies this interpretation for its Plan-approval audit. No decommission test, dependency manifest or current operator documentation was altered to pass review.
+
+Standalone ai-peer-review is a real cross-repository deliverable, not an AITM skill-only edit. Its current public API and exact source tree were inspected. The corresponding issue must be enumerated/linked or created through its own governed workflow; implementation in that repository needs its own bound task. Task 5 coordinates its verified package/tarball/verifier artifact and AITM consumer tests without double-counting effort or using an unreviewed moving dependency.
+
+### Publication, retention and historical repair
+
+Existing owned-comment writers supply exhaustive marker discovery and exact read-back, but lack the new publication revision/digest/pending-effect admission. The plan assigns those changes to a designated authority facade at the existing shared physical runtime root and canonical mutation lock. The existing evidence-v2 journal-authority is rehearsal-only and is not a live authority substitute. Task 8 alone completes real acceptance/enrollment provider assembly; early components remain disabled until its proof and Task 12 rollout eligibility.
+
+Publication and backups require exact remote bytes plus retained ancestry to configured trunk or a verified protected append-only archive ref. A merely available feature-branch commit is not enough for future irreversible retirement. Current preparation links are explicitly pre-v1 published legacy links, not retention-anchor receipts. #1939's own stable summaries are known backheal inputs: future publication detects collision and requires a separately authorized conversion rather than silently overwriting them.
+
+Strict long-held lock safety is scoped to admitted publication/migration holders. Ordinary legacy timing/state/body writers keep their existing TTL/PID behavior. New strict holders need observed process incarnation; unsupported observation refuses acquisition before effects. Uncertainty uses an explicit diagnostic and a bounded, audited recover-lock control requiring genuine owner termination/fencing and reconciled pending effects. Initial human-source verification is Codex-only; unsupported Claude/GitHub authorization loaders refuse. A human statement cannot by itself declare a live owner dead.
+
+Historical inventory/preview/backup, exact-ID retirement admission and the apply/resume/rollback saga are separate later units. An owning open maintenance task accrues timing; closed targets never bind, reopen, demote or advance. Every effect binds exact proposal/backup/baseline and fresh human authorization. Recreated deleted comments retain honest old/new identity. This preparation performs none of those live effects and grants no pilot authorization.
+
+### Decomposition, sequencing and ownership
+
+The accepted plan has twelve canonical numbered tasks with valid task-specific Story Intent and executable verification groups. Canonical split-proposal construction passes without GitHub side effects. The proposed child effort totals 124 hours with a 3-hour parent allowance; the unconstrained dependency longest path is 90 hours. These are scope estimates, not measured performance or the machine forecast. The JIT estimation packet must retain standalone integration, recovery scope growth and unavoidable verification costs; board human estimates and AI forecasts have separate meanings.
+
+Dependencies are 1→2→3, 3/7→4, 1→5, 2/5→6, 1→7, 4/6/7→8, 7/8→9, 9→10, 10→11 and 3/4/5/8/11→12. Disjoint module ownership supports these waves; shared body/comment/config/catalog surfaces have sequential integration owners. Native children must be enumerated again immediately before hydration. No existing child set is presumed or replaced.
+
+Final XPR optional R3-F001 is accepted for hydration: Task 7's child declares the verb/catalog/registry/dispatch paths already named by its source step and adds the two existing catalog policy suites to its verification command. This is an explicit execution-surface clarification, not new algorithm scope, and it leaves the reviewed plan unchanged. Optional R3-F002 is recorded as a forecast/rollout limitation: Task 7's proposed 12-hour authority baseline includes newly explicit recovery work, and only supported Codex human sources can recover strict uncertainty.
+
+### Story quality, verification and handoff
+
+The root actor is the workspace operator assessing planned and historical records; capability, need and counterfactual value match the accepted spec. Each task names a distinct behavior/safeguard and operational beneficiary. All seven semantic questions were reviewed for the root and task stories: real stakeholder, substantive capability, explicit need, meaningful counterfactual, source grounding, sibling distinctness and standalone readability. Hydration retains the selected task as authority and validates rendered child prose before creation.
+
+Preparation verification covers exact review subjects, committed and remote evidence, formatting/Markdown, twelve-task extraction, governed-plan content and split proposals. The decommission test is a baseline constraint check only; none of the new artifact, publication or backheal suites is claimed to exist or pass. Future children run their owned tests and normal AITM lifecycle verification. Final integration uses a clean canonical parent epic SHA with every prerequisite delivery proven an ancestor, not merely a set of Review-state stories.
+
+Next steps are governed hydration, child refinement/rank/dependencies to Ready for Planning, current estimation/source/forecast convergence, actual Plan approval and guarded parent promotion. AC/VC/DoD implementation boxes remain unchecked. A ready preparation handoff is separate from delivery completion, review approval or authorization to mutate historical stories.

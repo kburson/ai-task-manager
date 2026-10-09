@@ -1,0 +1,1981 @@
+{
+  "authority": {
+    "actor": "aitm/plan-estimate",
+    "epoch": 1,
+    "grantId": "01M4H33K682FRDSMD3KYPC066M"
+  },
+  "createdAt": "2026-10-09T19:44:11.464Z",
+  "issue": 1939,
+  "payload": {
+    "ai": {
+      "p50EngagedHours": 26.5,
+      "p80EngagedHours": 29,
+      "stages": {
+        "develop": 18,
+        "plan": 2.5,
+        "review": 1,
+        "test": 5
+      }
+    },
+    "comparableIssues": [
+      {
+        "issue": 1389,
+        "outcomeRecordId": "01M14ZEW8PBZAPR8HRVM62GW04",
+        "weight": 0.5755
+      },
+      {
+        "issue": 1206,
+        "outcomeRecordId": "01KZR93E508GJVJGYN7PJ5GA5E",
+        "weight": 0.5
+      },
+      {
+        "issue": 1381,
+        "outcomeRecordId": "01M14H8MYVN8FGHXHBRJ3E8ZDK",
+        "weight": 0.4479
+      },
+      {
+        "issue": 1557,
+        "outcomeRecordId": "01M22KT2YSRZB96AEXNP5H72XS",
+        "weight": 0.3906
+      },
+      {
+        "issue": 1211,
+        "outcomeRecordId": "01KZVA4H8WMY6BWPPJHP3JAWCG",
+        "weight": 0.3792
+      },
+      {
+        "issue": 1180,
+        "outcomeRecordId": "01M1DVK8Q17WQERJQHBEVDM0ET",
+        "weight": 0.3484
+      },
+      {
+        "issue": 1673,
+        "outcomeRecordId": "01M34TFNSYWXC3S6EAXC6JBGBR",
+        "weight": 0.3427
+      },
+      {
+        "issue": 1413,
+        "outcomeRecordId": "01M0X6JMMNNBXEWMN5GVTTHXBS",
+        "weight": 0.3378
+      },
+      {
+        "issue": 1216,
+        "outcomeRecordId": "01KZWENW5VQ40MVHVKEM2SJ12A",
+        "weight": 0.337
+      },
+      {
+        "issue": 1143,
+        "outcomeRecordId": "01KZGCZZG8TQS71S6NC9TS3ABY",
+        "weight": 0.3167
+      },
+      {
+        "issue": 1410,
+        "outcomeRecordId": "01M19MY2PYMP9RBK451XFA7487",
+        "weight": 0.3089
+      },
+      {
+        "issue": 1406,
+        "outcomeRecordId": "01M0W5QDXBXPDHQ9ZHFC0S6FDH",
+        "weight": 0.3063
+      },
+      {
+        "issue": 1630,
+        "outcomeRecordId": "01M2HSEEK43X0K4GGB3AGC61VN",
+        "weight": 0.3052
+      },
+      {
+        "issue": 1694,
+        "outcomeRecordId": "01M2TXA5AV2A0XRF7XF274M0VC",
+        "weight": 0.2974
+      },
+      {
+        "issue": 1830,
+        "outcomeRecordId": "01M3K5CQ9G91VZV5MQD7DZ3595",
+        "weight": 0.2693
+      },
+      {
+        "issue": 1706,
+        "outcomeRecordId": "01M2W35XG1EVA466NC9MQASNA9",
+        "weight": 0.2667
+      },
+      {
+        "issue": 1774,
+        "outcomeRecordId": "01M3825NX7FSTNA0M5ZQ55J7D6",
+        "weight": 0.2635
+      },
+      {
+        "issue": 1671,
+        "outcomeRecordId": "01M33SFSRTAEFPKSHHS3WBS66X",
+        "weight": 0.2557
+      },
+      {
+        "issue": 1324,
+        "outcomeRecordId": "01M0CF5GDEBR7BD73WMRKX9E5P",
+        "weight": 0.2484
+      },
+      {
+        "issue": 1212,
+        "outcomeRecordId": "01KZV9XZ6XFD68RZK9DMSBDJ33",
+        "weight": 0.2448
+      },
+      {
+        "issue": 1512,
+        "outcomeRecordId": "01M1Q6FZNMNKMZAA3GH4BWME34",
+        "weight": 0.2375
+      },
+      {
+        "issue": 1579,
+        "outcomeRecordId": "01M29AV9DEQ5TWWX8QVJ4XAB5E",
+        "weight": 0.2328
+      },
+      {
+        "issue": 1181,
+        "outcomeRecordId": "01M1DXEZEKBV5CZQCWVDC2WKY9",
+        "weight": 0.2318
+      },
+      {
+        "issue": 1631,
+        "outcomeRecordId": "01M2KZ2EKNSQE3QFX4R7RH7TBG",
+        "weight": 0.2266
+      },
+      {
+        "issue": 1773,
+        "outcomeRecordId": "01M37V441PNTWWYH45EFTQ2B2T",
+        "weight": 0.2219
+      },
+      {
+        "issue": 1615,
+        "outcomeRecordId": "01M2GHM38RX8YHECA8M95J482J",
+        "weight": 0.2188
+      },
+      {
+        "issue": 1713,
+        "outcomeRecordId": "01M2XGBMAEWYXWHX71BVKJJV2Y",
+        "weight": 0.2172
+      },
+      {
+        "issue": 1674,
+        "outcomeRecordId": "01M357CSFE8QRHXGMQKEBZPADG",
+        "weight": 0.2156
+      },
+      {
+        "issue": 1619,
+        "outcomeRecordId": "01M2G8DQXR0HE9RQF0M6441A3P",
+        "weight": 0.2135
+      },
+      {
+        "issue": 1099,
+        "outcomeRecordId": "01KZ8130FBJ2MHCP9PE9JKEPEQ",
+        "weight": 0.2125
+      },
+      {
+        "issue": 1675,
+        "outcomeRecordId": "01M35K6VMXDMXJB35KNC44YVQM",
+        "weight": 0.212
+      },
+      {
+        "issue": 1729,
+        "outcomeRecordId": "01M31WBR9E7Y2KH1PMD7ERJD1V",
+        "weight": 0.2089
+      },
+      {
+        "issue": 1250,
+        "outcomeRecordId": "01M1EENCMHWNZ46Z8KQAK605E8",
+        "weight": 0.2078
+      },
+      {
+        "issue": 1710,
+        "outcomeRecordId": "01M2WZJ017KWTCHAQYV9VKHM1E",
+        "weight": 0.2073
+      },
+      {
+        "issue": 1170,
+        "outcomeRecordId": "01KZXWYCMJ1E3K24T8MDRQY4RZ",
+        "weight": 0.2057
+      },
+      {
+        "issue": 1676,
+        "outcomeRecordId": "01M365QE5W79C10T7NMNM9B187",
+        "weight": 0.2057
+      },
+      {
+        "issue": 1132,
+        "outcomeRecordId": "01KZC426P3Z46E4SQCZKGEJTGV",
+        "weight": 0.2031
+      },
+      {
+        "issue": 1293,
+        "outcomeRecordId": "01M1ADNB81MZBMGSG9HM2NH5AB",
+        "weight": 0.2031
+      },
+      {
+        "issue": 1848,
+        "outcomeRecordId": "01M3RE1SCSZAT7VSE7YWKSD9QR",
+        "weight": 0.2026
+      },
+      {
+        "issue": 1131,
+        "outcomeRecordId": "01KZBZM0NRFW4XTFECM3AJFE8X",
+        "weight": 0.2
+      },
+      {
+        "issue": 1669,
+        "outcomeRecordId": "01M33G47HK32AYX6ZKQW4KAHHG",
+        "weight": 0.1964
+      },
+      {
+        "issue": 1336,
+        "outcomeRecordId": "01M0H954Y5WRA2RZX3G8X3TV81",
+        "weight": 0.1958
+      },
+      {
+        "issue": 1354,
+        "outcomeRecordId": "01M0H5NJ4XSN3M2DNRX790SAXF",
+        "weight": 0.1958
+      },
+      {
+        "issue": 1490,
+        "outcomeRecordId": "01M1PEKMVXZ738TSP51S70CKYT",
+        "weight": 0.1958
+      },
+      {
+        "issue": 1325,
+        "outcomeRecordId": "01M0CTTDAM7277BMTR8H9KF09X",
+        "weight": 0.1953
+      },
+      {
+        "issue": 1218,
+        "outcomeRecordId": "01M1EHH75JEXA22RGYWDWXZE2M",
+        "weight": 0.1948
+      },
+      {
+        "issue": 1661,
+        "outcomeRecordId": "01M2ZZ68RJFKV87KK1VFN6CGGZ",
+        "weight": 0.1917
+      },
+      {
+        "issue": 1500,
+        "outcomeRecordId": "01M1MD6GXH87TSD5RQ3RNKBDMD",
+        "weight": 0.1911
+      },
+      {
+        "issue": 1628,
+        "outcomeRecordId": "01M2HJH1R55Q42BCN28R16X4A9",
+        "weight": 0.1896
+      },
+      {
+        "issue": 1121,
+        "outcomeRecordId": "01KZAFA2FT474FX3XSH8P9TNDD",
+        "weight": 0.1891
+      },
+      {
+        "issue": 1656,
+        "outcomeRecordId": "01M2RHNR5050XAY50Q7PF2J0JJ",
+        "weight": 0.1875
+      },
+      {
+        "issue": 1618,
+        "outcomeRecordId": "01M2GDN2EK8WRB1Z32FZ2SZQDN",
+        "weight": 0.187
+      },
+      {
+        "issue": 1693,
+        "outcomeRecordId": "01M2TQ243KKXQ4C7PRZ72F29YW",
+        "weight": 0.187
+      },
+      {
+        "issue": 1124,
+        "outcomeRecordId": "01KZAD3YRASJ6QW04PDP93XRW3",
+        "weight": 0.1859
+      },
+      {
+        "issue": 1837,
+        "outcomeRecordId": "01M3MJD8P9KMGZHEZERX0K722R",
+        "weight": 0.1833
+      },
+      {
+        "issue": 1720,
+        "outcomeRecordId": "01M2YE14ZN7BKRHFV7YHYZ512K",
+        "weight": 0.1802
+      },
+      {
+        "issue": 1481,
+        "outcomeRecordId": "01M1FT9RG4J3AMH22FNRB608SD",
+        "weight": 0.1797
+      },
+      {
+        "issue": 1142,
+        "outcomeRecordId": "01KZQR4E1V03V3FM8T3FM3H68W",
+        "weight": 0.176
+      },
+      {
+        "issue": 1210,
+        "outcomeRecordId": "01KZVA29TB6CYPPYE750V8A8FD",
+        "weight": 0.1755
+      },
+      {
+        "issue": 1732,
+        "outcomeRecordId": "01M3276BK757E2ATMRF2RBM158",
+        "weight": 0.1708
+      },
+      {
+        "issue": 1295,
+        "outcomeRecordId": "01M08V3XKHHBKZQ63P549YCJXM",
+        "weight": 0.1693
+      },
+      {
+        "issue": 1215,
+        "outcomeRecordId": "01KZW1584RHKY8CAHVWZ2DFE03",
+        "weight": 0.1688
+      },
+      {
+        "issue": 1497,
+        "outcomeRecordId": "01M1M54SYCGECYGA19VRB3E85T",
+        "weight": 0.1688
+      },
+      {
+        "issue": 1800,
+        "outcomeRecordId": "01M3CPG5XNCXQKXHNBJ4E342XX",
+        "weight": 0.1672
+      },
+      {
+        "issue": 1463,
+        "outcomeRecordId": "01M1DKFS08R8H408FTBY00MRS0",
+        "weight": 0.1641
+      },
+      {
+        "issue": 1081,
+        "outcomeRecordId": "01KZA78M0PJ985S1FE3N64RFHH",
+        "weight": 0.1635
+      },
+      {
+        "issue": 1546,
+        "outcomeRecordId": "01M27KNWM4N0X50CMPTEG4Q838",
+        "weight": 0.1615
+      },
+      {
+        "issue": 1120,
+        "outcomeRecordId": "01KZA545P1NN5QQ79BK6CPF3QF",
+        "weight": 0.1604
+      },
+      {
+        "issue": 1114,
+        "outcomeRecordId": "01KZ966Y41VQNTE1PSSVWBGKVF",
+        "weight": 0.1573
+      },
+      {
+        "issue": 1115,
+        "outcomeRecordId": "01KZ94V1BAVBYGZKVA6PWA8E5Y",
+        "weight": 0.1573
+      },
+      {
+        "issue": 1581,
+        "outcomeRecordId": "01M29DJY06WZWDFADC9D17XY2M",
+        "weight": 0.1552
+      },
+      {
+        "issue": 1683,
+        "outcomeRecordId": "01M2SJBM1XD2HCPGJ0JVHVWR0Z",
+        "weight": 0.1547
+      },
+      {
+        "issue": 1213,
+        "outcomeRecordId": "01KZVMSSE74R7ZG74KM7S77NES",
+        "weight": 0.1542
+      },
+      {
+        "issue": 1297,
+        "outcomeRecordId": "01M0DH3NEXDVN12384137K816V",
+        "weight": 0.1531
+      },
+      {
+        "issue": 1341,
+        "outcomeRecordId": "01M0F2M82JAWYPB49DFNEGCV0R",
+        "weight": 0.1531
+      },
+      {
+        "issue": 1692,
+        "outcomeRecordId": "01M2TJ14CVFP36BP0XVPFVT0KA",
+        "weight": 0.1531
+      },
+      {
+        "issue": 1767,
+        "outcomeRecordId": "01M36SXEKJRXNP6518GJZTDJNT",
+        "weight": 0.1531
+      },
+      {
+        "issue": 1164,
+        "outcomeRecordId": "01KZGCXE5D60FPFSNAXPCGTZ9N",
+        "weight": 0.1526
+      },
+      {
+        "issue": 1369,
+        "outcomeRecordId": "01M0K42PTFH20JD67MH4FQG3YN",
+        "weight": 0.1516
+      },
+      {
+        "issue": 1668,
+        "outcomeRecordId": "01M33BMQB41TPERT7JQC4VNKC9",
+        "weight": 0.1516
+      },
+      {
+        "issue": 1827,
+        "outcomeRecordId": "01M3F315WV4PW6H81C6QAFSMF5",
+        "weight": 0.1516
+      },
+      {
+        "issue": 1079,
+        "outcomeRecordId": "01KZ8YZZ94DAXNPYV26VGXR9KR",
+        "weight": 0.151
+      },
+      {
+        "issue": 1292,
+        "outcomeRecordId": "01M094NY4CFGJ4MJGNB0AKN2AR",
+        "weight": 0.15
+      },
+      {
+        "issue": 1356,
+        "outcomeRecordId": "01M0H41Y9XRFP6H2GV3D3B586D",
+        "weight": 0.15
+      },
+      {
+        "issue": 1499,
+        "outcomeRecordId": "01M1M9T0RFSQGPDGWSK4VSNRPA",
+        "weight": 0.15
+      },
+      {
+        "issue": 1826,
+        "outcomeRecordId": "01M3EXFY1YCPZENQQFDHSZW16X",
+        "weight": 0.15
+      },
+      {
+        "issue": 1217,
+        "outcomeRecordId": "01KZWN114C6EEW9AJ19ZP8KCFH",
+        "weight": 0.1469
+      },
+      {
+        "issue": 1667,
+        "outcomeRecordId": "01M332HSCNMZB1SCTCEHR8SM3Y",
+        "weight": 0.1469
+      },
+      {
+        "issue": 1750,
+        "outcomeRecordId": "01M32EFQ5W7JA0KMHMVJ04CV67",
+        "weight": 0.1469
+      },
+      {
+        "issue": 1825,
+        "outcomeRecordId": "01M3EQMWSPZFX0BXHPRJ5BDGFZ",
+        "weight": 0.1469
+      },
+      {
+        "issue": 1629,
+        "outcomeRecordId": "01M2HNSBGB3CA70J59RKAFRSSY",
+        "weight": 0.1464
+      },
+      {
+        "issue": 1711,
+        "outcomeRecordId": "01M2X4HGS79D14EZHFCE8J72WF",
+        "weight": 0.1448
+      },
+      {
+        "issue": 1632,
+        "outcomeRecordId": "01M2JNQNYVDCCR0EFGKFKD9GDA",
+        "weight": 0.1437
+      },
+      {
+        "issue": 1666,
+        "outcomeRecordId": "01M32W4NP6BK13N7MMBXR4521X",
+        "weight": 0.1437
+      },
+      {
+        "issue": 1113,
+        "outcomeRecordId": "01KZ8VWFGD6G91T5XZ834Z188S",
+        "weight": 0.1432
+      },
+      {
+        "issue": 1498,
+        "outcomeRecordId": "01M1M7C6QEV3JC0YBDK62V5CGT",
+        "weight": 0.1422
+      },
+      {
+        "issue": 1591,
+        "outcomeRecordId": "01M28M1EFY873Q3VQN45C6G69Z",
+        "weight": 0.1422
+      },
+      {
+        "issue": 1077,
+        "outcomeRecordId": "01KZ6CJ8DFR7DKDC2SBR5Z1BWZ",
+        "weight": 0.1417
+      },
+      {
+        "issue": 1249,
+        "outcomeRecordId": "01KZXDDRTXMN6FPMKZP1AQRR9J",
+        "weight": 0.1406
+      },
+      {
+        "issue": 1343,
+        "outcomeRecordId": "01M0FFQ2HVJX516GYDCFPJJ5BP",
+        "weight": 0.1406
+      },
+      {
+        "issue": 1670,
+        "outcomeRecordId": "01M33NAGSEC1XR788QW0D4TC63",
+        "weight": 0.1406
+      },
+      {
+        "issue": 1714,
+        "outcomeRecordId": "01M2XMF0YVP7S8K189A0GBG5JZ",
+        "weight": 0.1406
+      },
+      {
+        "issue": 1752,
+        "outcomeRecordId": "01M32NKB8WPXFMRXJ4HV5592FQ",
+        "weight": 0.1406
+      },
+      {
+        "issue": 1782,
+        "outcomeRecordId": "01M3AGBV4RC1MJHX139ENQCSG4",
+        "weight": 0.1406
+      },
+      {
+        "issue": 1836,
+        "outcomeRecordId": "01M3KJ6BE02DS1WE1CANW02PW8",
+        "weight": 0.1406
+      },
+      {
+        "issue": 1635,
+        "outcomeRecordId": "01M2KPVXN0NA9QF6V5FMAPQT7W",
+        "weight": 0.1385
+      },
+      {
+        "issue": 1485,
+        "outcomeRecordId": "01M1PZK589TEYC8C5EF7CVTAYX",
+        "weight": 0.1359
+      },
+      {
+        "issue": 1813,
+        "outcomeRecordId": "01M3E4WBEVYS5MZ8ATMQ05EGMX",
+        "weight": 0.1359
+      },
+      {
+        "issue": 1690,
+        "outcomeRecordId": "01M2TK9QCZTF6J22Y4MVTPFH3D",
+        "weight": 0.1354
+      },
+      {
+        "issue": 1409,
+        "outcomeRecordId": "01M17NNF72K7B66WSPXTRNKYN3",
+        "weight": 0.1349
+      },
+      {
+        "issue": 1601,
+        "outcomeRecordId": "01M28ZT1Y0WQNSJ619Q48XSE38",
+        "weight": 0.1344
+      },
+      {
+        "issue": 1751,
+        "outcomeRecordId": "01M32JWC31E3680TA24DG25JX9",
+        "weight": 0.1344
+      },
+      {
+        "issue": 1811,
+        "outcomeRecordId": "01M3DXY4MRHFSFHNP42B1VEY2V",
+        "weight": 0.1344
+      },
+      {
+        "issue": 1411,
+        "outcomeRecordId": "01M16XQ6AYE9WWA2GZ2CZWY0WQ",
+        "weight": 0.1328
+      },
+      {
+        "issue": 1691,
+        "outcomeRecordId": "01M38YDZ9XY4G5WM2QMH9XBQMY",
+        "weight": 0.1328
+      },
+      {
+        "issue": 1580,
+        "outcomeRecordId": "01M27F3CY11WGADD3MFFNV4WS7",
+        "weight": 0.1313
+      },
+      {
+        "issue": 1355,
+        "outcomeRecordId": "01M0GA9GG96B6AEC16MWZ7Q76S",
+        "weight": 0.1312
+      },
+      {
+        "issue": 937,
+        "outcomeRecordId": "01M1DPYXHZKRNHRCAQ2E9QXTA3",
+        "weight": 0.1302
+      },
+      {
+        "issue": 763,
+        "outcomeRecordId": "01KZN7CAADFP2MN18TPQSQZ25T",
+        "weight": 0.1292
+      },
+      {
+        "issue": 1460,
+        "outcomeRecordId": "01M1CDBWNFNKDDMTA1BFXF72EN",
+        "weight": 0.1292
+      },
+      {
+        "issue": 1075,
+        "outcomeRecordId": "01KZ51K4H1780M27TJ44SP5YFK",
+        "weight": 0.126
+      },
+      {
+        "issue": 1795,
+        "outcomeRecordId": "01M3BX17BF39TKS7BRXNJK5P09",
+        "weight": 0.126
+      },
+      {
+        "issue": 1165,
+        "outcomeRecordId": "01KZKVBPTNW5ZCTF758W9Q01W7",
+        "weight": 0.1229
+      },
+      {
+        "issue": 1179,
+        "outcomeRecordId": "01M1DS417HT2W5XS9F69EDAMM2",
+        "weight": 0.1229
+      },
+      {
+        "issue": 1331,
+        "outcomeRecordId": "01M1A30DQQ88FB6VWWF900E00P",
+        "weight": 0.1229
+      },
+      {
+        "issue": 1073,
+        "outcomeRecordId": "01KZ4SFZPZ5A1H6M7ZHNGYQKAQ",
+        "weight": 0.1214
+      },
+      {
+        "issue": 1626,
+        "outcomeRecordId": "01M2H729N7HXCYKFA9GYGPPDM9",
+        "weight": 0.1214
+      },
+      {
+        "issue": 1101,
+        "outcomeRecordId": "01KZ7J12Z1TN5X8KXX5Q4EHX44",
+        "weight": 0.1198
+      },
+      {
+        "issue": 1317,
+        "outcomeRecordId": "01M0BN4BQT6R19AC5N1SXY9VFH",
+        "weight": 0.1198
+      },
+      {
+        "issue": 1794,
+        "outcomeRecordId": "01M3BRBGCE6WN39VX2ZV3N81B8",
+        "weight": 0.1198
+      },
+      {
+        "issue": 1200,
+        "outcomeRecordId": "01KZN3CG8M8QV5C344GPV1B33C",
+        "weight": 0.1182
+      },
+      {
+        "issue": 1284,
+        "outcomeRecordId": "01M064GY709ZJAATJS6FFF2CX1",
+        "weight": 0.1182
+      },
+      {
+        "issue": 1627,
+        "outcomeRecordId": "01M2HADXHZ9ZMBSEFK2ZAD4ZX6",
+        "weight": 0.1182
+      },
+      {
+        "issue": 1734,
+        "outcomeRecordId": "01M3ACXE4M6PEG2GYCCRPT9BR8",
+        "weight": 0.1182
+      },
+      {
+        "issue": 1578,
+        "outcomeRecordId": "01M27HTQEWMHRZPMJ5R4165Q6K",
+        "weight": 0.1177
+      },
+      {
+        "issue": 1072,
+        "outcomeRecordId": "01KZ4MWNTP6MF7FZ65XD6JFGST",
+        "weight": 0.1167
+      },
+      {
+        "issue": 1144,
+        "outcomeRecordId": "01KZGHD7116YD9CYFDMNY0DC1M",
+        "weight": 0.1167
+      },
+      {
+        "issue": 1276,
+        "outcomeRecordId": "01M09E4RX6GHE6BMX4XZKKBRV8",
+        "weight": 0.1167
+      },
+      {
+        "issue": 1779,
+        "outcomeRecordId": "01M3A45DA59TF0FAMY2H56F4FV",
+        "weight": 0.1167
+      },
+      {
+        "issue": 1823,
+        "outcomeRecordId": "01M3EE120Y1FT4J1YQNH5J4AJP",
+        "weight": 0.1167
+      },
+      {
+        "issue": 1129,
+        "outcomeRecordId": "01KZC6FJHHPFTDJW1BADBPHB1T",
+        "weight": 0.1151
+      },
+      {
+        "issue": 1759,
+        "outcomeRecordId": "01M36MW59TEGTHYVCNXFFBGWQB",
+        "weight": 0.1151
+      },
+      {
+        "issue": 1781,
+        "outcomeRecordId": "01M3CT61Y38W214MAD9353WA5D",
+        "weight": 0.1151
+      },
+      {
+        "issue": 1796,
+        "outcomeRecordId": "01M3C3TQM2B35N1X57Y2DZWCFP",
+        "weight": 0.1151
+      },
+      {
+        "issue": 1760,
+        "outcomeRecordId": "01M36QMMCCD7ZZQDGYGQY0JS51",
+        "weight": 0.1135
+      },
+      {
+        "issue": 1761,
+        "outcomeRecordId": "01M36T1CD50AP49ANAGB62DDGW",
+        "weight": 0.1135
+      },
+      {
+        "issue": 1762,
+        "outcomeRecordId": "01M36WMYMD71KPTC9KQ6B1SVV0",
+        "weight": 0.1135
+      },
+      {
+        "issue": 1793,
+        "outcomeRecordId": "01M3BP2SQW5KRJ3ST1F82PTVKW",
+        "weight": 0.1135
+      },
+      {
+        "issue": 1549,
+        "outcomeRecordId": "01M282DP39WC9AD16S5WXFJ8AZ",
+        "weight": 0.112
+      },
+      {
+        "issue": 1654,
+        "outcomeRecordId": "01M2RBYGZD1MW58HCZZVY55CCD",
+        "weight": 0.112
+      },
+      {
+        "issue": 1765,
+        "outcomeRecordId": "01M36CB6PWVKA96B43SSJK0FVA",
+        "weight": 0.112
+      },
+      {
+        "issue": 1772,
+        "outcomeRecordId": "01M37MN69FKEX34TPN471EXF34",
+        "weight": 0.112
+      },
+      {
+        "issue": 1799,
+        "outcomeRecordId": "01M3CFV1C5B0R8NDH7DKFAF1A7",
+        "weight": 0.112
+      },
+      {
+        "issue": 1801,
+        "outcomeRecordId": "01M3CTT6Z7K9CW08QC2QJRK6SX",
+        "weight": 0.112
+      },
+      {
+        "issue": 1071,
+        "outcomeRecordId": "01KZ4GK6SGK9BNHZABTJY8HNMH",
+        "weight": 0.1104
+      },
+      {
+        "issue": 1159,
+        "outcomeRecordId": "01KZNGFRGSMCCXV110QCTRP28R",
+        "weight": 0.1104
+      },
+      {
+        "issue": 1554,
+        "outcomeRecordId": "01M20TTV22R4223D1DV7X0THXW",
+        "weight": 0.1104
+      },
+      {
+        "issue": 1160,
+        "outcomeRecordId": "01KZF0ZBJXFWY782ZM3TQ3R5CN",
+        "weight": 0.1089
+      },
+      {
+        "issue": 1296,
+        "outcomeRecordId": "01M19ZM818T5F7XQK8QTP278CS",
+        "weight": 0.1089
+      },
+      {
+        "issue": 1685,
+        "outcomeRecordId": "01M2SD202K8F8W7YY0FEY1SXBZ",
+        "weight": 0.1089
+      },
+      {
+        "issue": 1496,
+        "outcomeRecordId": "01M1M1T6GCBRSC38XE20HCQBN6",
+        "weight": 0.1083
+      },
+      {
+        "issue": 1208,
+        "outcomeRecordId": "01M06R80WPAFDM4ZN55XB3D9WM",
+        "weight": 0.1068
+      },
+      {
+        "issue": 1339,
+        "outcomeRecordId": "01M0EJBMS0F6FWFNXEANZCEKBS",
+        "weight": 0.1068
+      },
+      {
+        "issue": 1486,
+        "outcomeRecordId": "01M296VJE0QCSE0XX079TJ6K68",
+        "weight": 0.1068
+      },
+      {
+        "issue": 1831,
+        "outcomeRecordId": "01M3K5K2J2V1DR2QV6CMHRQJ0E",
+        "weight": 0.1052
+      },
+      {
+        "issue": 1266,
+        "outcomeRecordId": "01M01XMJ6CHHRHGC4S4ZV0J2PB",
+        "weight": 0.1036
+      },
+      {
+        "issue": 1365,
+        "outcomeRecordId": "01M0JK40HFXV86QR50QZDRVHKM",
+        "weight": 0.1036
+      },
+      {
+        "issue": 1466,
+        "outcomeRecordId": "01M1CYJKQDWP1VPD1DN0BA4MFH",
+        "weight": 0.1021
+      },
+      {
+        "issue": 1574,
+        "outcomeRecordId": "01M25PTG1PY8QRWFW45DRRCBTY",
+        "weight": 0.1005
+      },
+      {
+        "issue": 1269,
+        "outcomeRecordId": "01M0AHN0QR469NARYZNCMBF4D2",
+        "weight": 0.099
+      },
+      {
+        "issue": 1272,
+        "outcomeRecordId": "01M0APS1HZSZYZMCSMCG7DED1F",
+        "weight": 0.099
+      },
+      {
+        "issue": 1374,
+        "outcomeRecordId": "01M0M4VZ2DXGPF3WRZG0SFNTJ6",
+        "weight": 0.099
+      },
+      {
+        "issue": 1439,
+        "outcomeRecordId": "01M19RX4C40A5DWQ60RTA9CQPB",
+        "weight": 0.099
+      },
+      {
+        "issue": 1261,
+        "outcomeRecordId": "01M00TGHEMCQJ45H9R53XB8FB5",
+        "weight": 0.0974
+      },
+      {
+        "issue": 1344,
+        "outcomeRecordId": "01M0FD2XYP0PYGPPRXMPF9AQE6",
+        "weight": 0.0974
+      },
+      {
+        "issue": 1468,
+        "outcomeRecordId": "01M1D9CVBBRM19YZ9DZCAPA0N2",
+        "weight": 0.0974
+      },
+      {
+        "issue": 1835,
+        "outcomeRecordId": "01M3KDQ75BRAEHV6Q1H0CBQ45J",
+        "weight": 0.0974
+      },
+      {
+        "issue": 1104,
+        "outcomeRecordId": "01KZ7VDKR64YJ3VJMGRFWY544S",
+        "weight": 0.0958
+      },
+      {
+        "issue": 1279,
+        "outcomeRecordId": "01M04ES32V6H22RRN3C45N7GRX",
+        "weight": 0.0958
+      },
+      {
+        "issue": 1367,
+        "outcomeRecordId": "01M0JSB6Q8YGVVB7W814WGPZ3Y",
+        "weight": 0.0958
+      },
+      {
+        "issue": 1392,
+        "outcomeRecordId": "01M14Z9NGKYECXQ0TFPTEPQQW8",
+        "weight": 0.0958
+      },
+      {
+        "issue": 1625,
+        "outcomeRecordId": "01M2H3KSVT3N6HTR40GPW8WQVW",
+        "weight": 0.0958
+      },
+      {
+        "issue": 1659,
+        "outcomeRecordId": "01M2Y7RESDTA0CW36FDHZJFMS0",
+        "weight": 0.0958
+      },
+      {
+        "issue": 1182,
+        "outcomeRecordId": "01KZH83P04GA139EJX6Q8H8220",
+        "weight": 0.0943
+      },
+      {
+        "issue": 1281,
+        "outcomeRecordId": "01M059QTBJY3TPY8MRN9BNCF7M",
+        "weight": 0.0943
+      },
+      {
+        "issue": 1322,
+        "outcomeRecordId": "01M0D9X355S5NV3ZNABNQTESHP",
+        "weight": 0.0943
+      },
+      {
+        "issue": 1421,
+        "outcomeRecordId": "01M17H8HX2DKGKXSGKJ8QCXKQV",
+        "weight": 0.0943
+      },
+      {
+        "issue": 1769,
+        "outcomeRecordId": "01M372YQJ52EH60X52GCPJHCCA",
+        "weight": 0.0943
+      },
+      {
+        "issue": 871,
+        "outcomeRecordId": "01M010X3P7KFYCPE6HZ53JGWTD",
+        "weight": 0.0927
+      },
+      {
+        "issue": 876,
+        "outcomeRecordId": "01KZZGSVWKWJK3NY14G44YDY1C",
+        "weight": 0.0927
+      },
+      {
+        "issue": 1119,
+        "outcomeRecordId": "01KZE5M9MDW5TWZHS7ZJBDT42M",
+        "weight": 0.0927
+      },
+      {
+        "issue": 1314,
+        "outcomeRecordId": "01M0D2FYSDCV2ZKWFNG8KQK1A0",
+        "weight": 0.0927
+      },
+      {
+        "issue": 1393,
+        "outcomeRecordId": "01M14Z5XKH0J97YY4M2K5P95C5",
+        "weight": 0.0927
+      },
+      {
+        "issue": 1397,
+        "outcomeRecordId": "01M14YXM0V7WXDQQ7WTKTTGY9B",
+        "weight": 0.0927
+      },
+      {
+        "issue": 1412,
+        "outcomeRecordId": "01M160KT33XXACXG7PNRJ9W390",
+        "weight": 0.0927
+      },
+      {
+        "issue": 1662,
+        "outcomeRecordId": "01M317NGVYD0CZ1WGYECQ932Y6",
+        "weight": 0.0927
+      },
+      {
+        "issue": 1712,
+        "outcomeRecordId": "01M2X9QZJ7TVMPK55YKAJ07YR3",
+        "weight": 0.0927
+      },
+      {
+        "issue": 1824,
+        "outcomeRecordId": "01M3EH8J9AR1S2EMEV406SBF6A",
+        "weight": 0.0927
+      },
+      {
+        "issue": 1372,
+        "outcomeRecordId": "01M0KCVZ3KE60T5JPBBP4B4EYR",
+        "weight": 0.0911
+      },
+      {
+        "issue": 1399,
+        "outcomeRecordId": "01M0Q1TFW5DDW4TFRE2QKXJTAH",
+        "weight": 0.0911
+      },
+      {
+        "issue": 1573,
+        "outcomeRecordId": "01M2888FY8SJRP1C41799VNVKP",
+        "weight": 0.0911
+      },
+      {
+        "issue": 1583,
+        "outcomeRecordId": "01M27DCR6Q82BY30RQGF1880CC",
+        "weight": 0.0911
+      },
+      {
+        "issue": 1633,
+        "outcomeRecordId": "01M2JW73HQDK3HGD2FQS1GCV5V",
+        "weight": 0.0911
+      },
+      {
+        "issue": 1083,
+        "outcomeRecordId": "01KZFFEHGTJJ7P10SFCMVV6H8W",
+        "weight": 0.0896
+      },
+      {
+        "issue": 1087,
+        "outcomeRecordId": "01KZGX7CWGWKF4G6ADQ9EVXYFH",
+        "weight": 0.0896
+      },
+      {
+        "issue": 1395,
+        "outcomeRecordId": "01M14Z1XSHWEFSTYA5GKG1YTJ0",
+        "weight": 0.0896
+      },
+      {
+        "issue": 1401,
+        "outcomeRecordId": "01M0Q3NX8PM4FRJDBBWYNDG3WS",
+        "weight": 0.0896
+      },
+      {
+        "issue": 1419,
+        "outcomeRecordId": "01M10NMD6SE6D6QPZ5TD73Q60R",
+        "weight": 0.0896
+      },
+      {
+        "issue": 1603,
+        "outcomeRecordId": "01M292TWN8TCBZ80X6JYE5B2S3",
+        "weight": 0.0896
+      },
+      {
+        "issue": 1611,
+        "outcomeRecordId": "01M29NTPQG315R54C5W82DXA1H",
+        "weight": 0.0896
+      },
+      {
+        "issue": 1660,
+        "outcomeRecordId": "01M2YDW092FBD87KEJ5FWFRVJ0",
+        "weight": 0.0896
+      },
+      {
+        "issue": 1470,
+        "outcomeRecordId": "01M1DBYXGZ0YCP05NZ96MTC7ZW",
+        "weight": 0.088
+      },
+      {
+        "issue": 1504,
+        "outcomeRecordId": "01M1MJCC94QTC5N3KZQ44G622P",
+        "weight": 0.088
+      },
+      {
+        "issue": 1577,
+        "outcomeRecordId": "01M27JQYSRA32QR3RNGGSHCTMC",
+        "weight": 0.088
+      },
+      {
+        "issue": 1595,
+        "outcomeRecordId": "01M28RH6PPKYVNSX87TNBB9SFX",
+        "weight": 0.088
+      },
+      {
+        "issue": 1597,
+        "outcomeRecordId": "01M28TMFZZJYQARYF6PGA6XVFK",
+        "weight": 0.088
+      },
+      {
+        "issue": 1599,
+        "outcomeRecordId": "01M290EH9G6RKAXM5FBPTFKGKR",
+        "weight": 0.088
+      },
+      {
+        "issue": 1451,
+        "outcomeRecordId": "01M1B1MN1AKW0G3WQT18WFYDA6",
+        "weight": 0.0875
+      },
+      {
+        "issue": 1696,
+        "outcomeRecordId": "01M2TF4GKMBKD6KJS4YVWKM52J",
+        "weight": 0.0865
+      },
+      {
+        "issue": 1458,
+        "outcomeRecordId": "01M1C3ZZSGHTS9WD75Q4P79FWR",
+        "weight": 0.0844
+      },
+      {
+        "issue": 1461,
+        "outcomeRecordId": "01M1CZD8QAR0WTMW3DF9CZJJDJ",
+        "weight": 0.0844
+      },
+      {
+        "issue": 1658,
+        "outcomeRecordId": "01M2STBQVWREGZKJ2X94RDEKAN",
+        "weight": 0.0844
+      },
+      {
+        "issue": 1455,
+        "outcomeRecordId": "01M1B6XH4JW5FJKPZCPCQGD4J6",
+        "weight": 0.0828
+      },
+      {
+        "issue": 1167,
+        "outcomeRecordId": "01KZMB2Q9FTZ8BMD8323D7D8S8",
+        "weight": 0.0812
+      },
+      {
+        "issue": 1294,
+        "outcomeRecordId": "01M1AKT6YAQ0QWBDVXB1JT3M66",
+        "weight": 0.0812
+      },
+      {
+        "issue": 1867,
+        "outcomeRecordId": "01M3YN9Y6JVXCMWM7EGM4N0NH2",
+        "weight": 0.0812
+      },
+      {
+        "issue": 1262,
+        "outcomeRecordId": "01M0BT30QQGMAFW8AYEHMAAPDZ",
+        "weight": 0.0797
+      },
+      {
+        "issue": 1562,
+        "outcomeRecordId": "01M24TY0ZJ3GW1YKHDV19DCDWM",
+        "weight": 0.0797
+      },
+      {
+        "issue": 1709,
+        "outcomeRecordId": "01M2WWWGJ87XPCW6MBYB66JMYK",
+        "weight": 0.0797
+      },
+      {
+        "issue": 1770,
+        "outcomeRecordId": "01M376NDKAARTJSVHX3DP10ARD",
+        "weight": 0.0797
+      },
+      {
+        "issue": 1812,
+        "outcomeRecordId": "01M3E1HTRPB2TJ2B3AT9V3ZJXS",
+        "weight": 0.0797
+      },
+      {
+        "issue": 1084,
+        "outcomeRecordId": "01KZGMD725Y8DK1HNEHA8P7JE1",
+        "weight": 0.0781
+      },
+      {
+        "issue": 1802,
+        "outcomeRecordId": "01M3CMM6WGA26Z7DZFAYQ7EVXC",
+        "weight": 0.0781
+      },
+      {
+        "issue": 1191,
+        "outcomeRecordId": "01KZMN2GP0S8554WH8HTT5HCE0",
+        "weight": 0.0766
+      },
+      {
+        "issue": 1462,
+        "outcomeRecordId": "01M1DFPZFJVVNSGR19W9J6QB7A",
+        "weight": 0.0766
+      },
+      {
+        "issue": 1086,
+        "outcomeRecordId": "01KZGTYCNMHS6CR1AG6C6THAR3",
+        "weight": 0.075
+      },
+      {
+        "issue": 1163,
+        "outcomeRecordId": "01KZG806PX60RYW5TJ9HD5H17T",
+        "weight": 0.0734
+      },
+      {
+        "issue": 1166,
+        "outcomeRecordId": "01KZM245QM5SJ8XCFGZXFP8JF6",
+        "weight": 0.0734
+      },
+      {
+        "issue": 1168,
+        "outcomeRecordId": "01KZMF41GE2QBKKBQK9BH1GFDE",
+        "weight": 0.0734
+      },
+      {
+        "issue": 1183,
+        "outcomeRecordId": "01KZHE8023JFR8JR7K45A4K783",
+        "weight": 0.0734
+      },
+      {
+        "issue": 1277,
+        "outcomeRecordId": "01M09HTRF8D4FQ0F3JS6BZQZ5T",
+        "weight": 0.0734
+      },
+      {
+        "issue": 1287,
+        "outcomeRecordId": "01M1AV7FCBP990SSXG2PCPCTVM",
+        "weight": 0.0734
+      },
+      {
+        "issue": 1459,
+        "outcomeRecordId": "01M1CB3Q8R7M42QZBZF9ZWGYW8",
+        "weight": 0.0734
+      },
+      {
+        "issue": 1716,
+        "outcomeRecordId": "01M2XQ8C3NE7R14CC258YJQC3H",
+        "weight": 0.0734
+      },
+      {
+        "issue": 1171,
+        "outcomeRecordId": "01KZY14AVTPGH99AEP7BEA0C16",
+        "weight": 0.0719
+      },
+      {
+        "issue": 1187,
+        "outcomeRecordId": "01KZJDV883428MDB2DT86SVS49",
+        "weight": 0.0719
+      },
+      {
+        "issue": 1454,
+        "outcomeRecordId": "01M1B5BQ68SQJGQBSY8Y44JZRF",
+        "weight": 0.0719
+      },
+      {
+        "issue": 1733,
+        "outcomeRecordId": "01M3A9JTSTN3FDABTAGVDJG64V",
+        "weight": 0.0719
+      },
+      {
+        "issue": 1085,
+        "outcomeRecordId": "01KZGQ57YPZF45VWEPNGX5VDSN",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1161,
+        "outcomeRecordId": "01KZF8QJ6KW2GW9Q6E7H5TR997",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1172,
+        "outcomeRecordId": "01KZFEARSXK61C9MQNA4ADBVP8",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1184,
+        "outcomeRecordId": "01KZHAPZPWTGE59ZK96TXXERDW",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1205,
+        "outcomeRecordId": "01KZPYRN7N1FGQHEXW0AT91TY4",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1278,
+        "outcomeRecordId": "01M0A2XDVJY57QMK6S4SKX8RNG",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1442,
+        "outcomeRecordId": "01M19YB7EEX087CYQK5N36H2G1",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1453,
+        "outcomeRecordId": "01M1B47YMC5KATQNZ0M1X9QZBM",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1655,
+        "outcomeRecordId": "01M2REJN2RFCKMYF1RNK5AA27N",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1756,
+        "outcomeRecordId": "01M36D9WWAGMF9MKCRVXQA49T3",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1797,
+        "outcomeRecordId": "01M3C6KPA0F2RJYHN3JD5J68FG",
+        "weight": 0.0703
+      },
+      {
+        "issue": 1196,
+        "outcomeRecordId": "01KZKJAD87E4S605F3B51MNEKM",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1275,
+        "outcomeRecordId": "01M06TKCHSZPS7DRCZ1K617D73",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1349,
+        "outcomeRecordId": "01M0FZYS0HMV0SDBR2H1JSQZ64",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1488,
+        "outcomeRecordId": "01M1PZ0T6NSNRVV2JA7F62VQJD",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1653,
+        "outcomeRecordId": "01M2R93XHDHDS9WQ4FT4V4JTAC",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1657,
+        "outcomeRecordId": "01M2RVFNCJHEZ283AXSHKT9BG6",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1731,
+        "outcomeRecordId": "01M322H1J1AGM3RDVBSM38GHEV",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1757,
+        "outcomeRecordId": "01M36F0PDYTHKDCWW456B7VZCW",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1792,
+        "outcomeRecordId": "01M3BKZZ68PRX03TNEKVDY7VDA",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1798,
+        "outcomeRecordId": "01M3C9YN18CP7SFXP1JDQPXGAK",
+        "weight": 0.0688
+      },
+      {
+        "issue": 1123,
+        "outcomeRecordId": "01KZCV6R7SMGYB1053EPM1A5N1",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1127,
+        "outcomeRecordId": "01KZBKRCN6246592SY664XQPCE",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1128,
+        "outcomeRecordId": "01KZCAJQSGX040WKBSV90GQYB9",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1156,
+        "outcomeRecordId": "01KZEDPDBNC0BVQE2WMGBXSW2A",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1157,
+        "outcomeRecordId": "01KZEXAN4W4VBKZEBMQZN0W5MQ",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1176,
+        "outcomeRecordId": "01KZNMSPNRGMJR91MNA6B19B3F",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1185,
+        "outcomeRecordId": "01KZJ5A56XGVEXRXAE071S20RY",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1193,
+        "outcomeRecordId": "01KZKKAA90YCGE8N1JQYK24QWD",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1254,
+        "outcomeRecordId": "01KZZCT9G2MM3WZEVZTCFZTB2M",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1450,
+        "outcomeRecordId": "01M1B0KJHVJVK28X17CYP3KJ1M",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1456,
+        "outcomeRecordId": "01M1BV5P89T7XRGK2AQKESRC4V",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1457,
+        "outcomeRecordId": "01M1BWPWABAD5S09MVDHMQCZ1Y",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1728,
+        "outcomeRecordId": "01M31PQGDH5DPZ25K3NB93WGDG",
+        "weight": 0.0672
+      },
+      {
+        "issue": 1758,
+        "outcomeRecordId": "01M36GQDP7TCE0F1ZVC6SHHVZD",
+        "weight": 0.0672
+      },
+      {
+        "issue": 689,
+        "outcomeRecordId": "01KZXDB93BRMKR60WDRRAPJDW0",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1125,
+        "outcomeRecordId": "01KZBKR8PFD58WQG5WCFQSAQ5F",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1135,
+        "outcomeRecordId": "01KZCF0XR8ND3K19ARVH8EDHCB",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1169,
+        "outcomeRecordId": "01KZQANDPP5YH1J2F4X8CSZRV5",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1177,
+        "outcomeRecordId": "01KZH04SSA89WVVX4296GJ10YT",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1189,
+        "outcomeRecordId": "01KZJFS337GGTWRBM1JFKNF9W2",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1195,
+        "outcomeRecordId": "01KZKM9X5HJXKEJDFYS5MGDN0P",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1199,
+        "outcomeRecordId": "01KZNBF406SAYDPMEYC9FR016W",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1202,
+        "outcomeRecordId": "01KZMV2JVCKQ2QJN5H0K2SA6F9",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1203,
+        "outcomeRecordId": "01KZQ4PW5DZARR5W4FG2ZD690Y",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1260,
+        "outcomeRecordId": "01M1ASEBZHAQECREN8PJR6JQQS",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1319,
+        "outcomeRecordId": "01M0BRNW8Q3RR32YRJ2NW9NQEQ",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1334,
+        "outcomeRecordId": "01M0FRJH453PWZ4AZT9GCDV4QD",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1335,
+        "outcomeRecordId": "01M0G1BYF2TXP1VBQJ9SWC7E5J",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1337,
+        "outcomeRecordId": "01M0HD55C9ANSRV3GA6XRGV5YA",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1452,
+        "outcomeRecordId": "01M1B2WA1FT1XSDK0V356GVXCJ",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1464,
+        "outcomeRecordId": "01M1DCX3BSXKB2WV8ZRMD7QDQS",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1552,
+        "outcomeRecordId": "01M20QT8EWSHJSJ3F5PS60D314",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1702,
+        "outcomeRecordId": "01M2V4Y943DMXZFSCKH011EASM",
+        "weight": 0.0656
+      },
+      {
+        "issue": 1126,
+        "outcomeRecordId": "01KZBKRANWSXHAFCKMV5YK5YEZ",
+        "weight": 0.0641
+      },
+      {
+        "issue": 1201,
+        "outcomeRecordId": "01KZM70623R2HAS1RYVRFBTK3H",
+        "weight": 0.0641
+      },
+      {
+        "issue": 1204,
+        "outcomeRecordId": "01KZP6YZW3NHYVC8MS02R04QPD",
+        "weight": 0.0641
+      },
+      {
+        "issue": 1550,
+        "outcomeRecordId": "01M20JAY625FSQ8ZHWKX6V27BK",
+        "weight": 0.0641
+      },
+      {
+        "issue": 1672,
+        "outcomeRecordId": "01M33WW3T9VY5XBJXK5G6J5QB7",
+        "weight": 0.0641
+      },
+      {
+        "issue": 1791,
+        "outcomeRecordId": "01M3BH1QEVM9NRC3GJAT0K3K5E",
+        "weight": 0.0641
+      },
+      {
+        "issue": 1102,
+        "outcomeRecordId": "01KZ844WT7HPPPWDBMC95FDJE8",
+        "weight": 0.0479
+      },
+      {
+        "issue": 1137,
+        "outcomeRecordId": "01KZCR0PAVVEVFMCJYG0CVQ82F",
+        "weight": 0.0464
+      },
+      {
+        "issue": 680,
+        "outcomeRecordId": "01M25PN9B6N9EV7N34PQZ7C7J9",
+        "weight": 0.0448
+      },
+      {
+        "issue": 1274,
+        "outcomeRecordId": "01M067XVKWY19M0VS2P0V1ZTA6",
+        "weight": 0.0302
+      },
+      {
+        "issue": 1088,
+        "outcomeRecordId": "01KZH4FMXY75MWWN3020MPCWG8",
+        "weight": 0.0286
+      },
+      {
+        "issue": 1483,
+        "outcomeRecordId": "01M1FXHJHECZVGZMAH8AQB228E",
+        "weight": 0.0255
+      },
+      {
+        "issue": 1136,
+        "outcomeRecordId": "01KZCK1CXR3V92PM40Z90DYJ12",
+        "weight": 0.024
+      },
+      {
+        "issue": 1359,
+        "outcomeRecordId": "01M0GWRD9R19S3BZZ51MA92J1M",
+        "weight": 0.024
+      },
+      {
+        "issue": 1540,
+        "outcomeRecordId": "01M224SEGP85YZCRH0TYZ72HZ6",
+        "weight": 0.024
+      },
+      {
+        "issue": 1569,
+        "outcomeRecordId": "01M24MK173W0W6W78BE8B12Y98",
+        "weight": 0.024
+      },
+      {
+        "issue": 1307,
+        "outcomeRecordId": "01M09ZQG7J6BGZC64PFQ0KK677",
+        "weight": 0.0224
+      },
+      {
+        "issue": 1338,
+        "outcomeRecordId": "01M0HJ2X52EWYR2B7E6KSWZJ0P",
+        "weight": 0.0224
+      },
+      {
+        "issue": 1545,
+        "outcomeRecordId": "01M24PWHWK4JG3VVSX90S5RT5W",
+        "weight": 0.0224
+      },
+      {
+        "issue": 1547,
+        "outcomeRecordId": "01M27SMTF6RHDF3VDFBY4GHBDX",
+        "weight": 0.0224
+      },
+      {
+        "issue": 1548,
+        "outcomeRecordId": "01M27ZWMMNXF4V26W9WNR6GCCA",
+        "weight": 0.0224
+      },
+      {
+        "issue": 1784,
+        "outcomeRecordId": "01M3E6RF8XST13V753XA4WCMDE",
+        "weight": 0.0224
+      },
+      {
+        "issue": 982,
+        "outcomeRecordId": "01KZ3SN1D2G7BZ1X379K9S0RZD",
+        "weight": 0
+      },
+      {
+        "issue": 1051,
+        "outcomeRecordId": "01KZHM5038BZ063DNZSG4D9BJ1",
+        "weight": 0
+      },
+      {
+        "issue": 1052,
+        "outcomeRecordId": "01KZ45NHPMXJTDAMD0STESNFWN",
+        "weight": 0
+      },
+      {
+        "issue": 1091,
+        "outcomeRecordId": "01KZ2TKP1PVS9JQBE7RWNHMF87",
+        "weight": 0
+      },
+      {
+        "issue": 1094,
+        "outcomeRecordId": "01KZ3NVNSDJ2KG8M311PF72ZGV",
+        "weight": 0
+      },
+      {
+        "issue": 1095,
+        "outcomeRecordId": "01KZ6GDQK2TGKQVYDSTXX6MT0X",
+        "weight": 0
+      },
+      {
+        "issue": 1096,
+        "outcomeRecordId": "01KZ6MEKR1W0G94SKB0A51AJRC",
+        "weight": 0
+      },
+      {
+        "issue": 1097,
+        "outcomeRecordId": "01KZ6V80P9P6Y1D3RPHRM9AVXW",
+        "weight": 0
+      },
+      {
+        "issue": 1098,
+        "outcomeRecordId": "01KZ7414E0WSVS1EGJAJ5YEA1H",
+        "weight": 0
+      },
+      {
+        "issue": 1107,
+        "outcomeRecordId": "01KZ8CE69FFK5Q29ZZTAM2QQKY",
+        "weight": 0
+      },
+      {
+        "issue": 1109,
+        "outcomeRecordId": "01KZ8GC08TZA806FX6WKP1R15T",
+        "weight": 0
+      },
+      {
+        "issue": 1110,
+        "outcomeRecordId": "01KZ8P0QZZ3F4FHTMD6JV7AXTK",
+        "weight": 0
+      },
+      {
+        "issue": 1111,
+        "outcomeRecordId": "01KZ8JPFMATK9VSM7M4RV913FH",
+        "weight": 0
+      },
+      {
+        "issue": 1112,
+        "outcomeRecordId": "01KZ8QSD0C3SBNGM6CCH5D0G5E",
+        "weight": 0
+      },
+      {
+        "issue": 1130,
+        "outcomeRecordId": "01KZD4EDGAGK7HJEX85VRHQXH4",
+        "weight": 0
+      },
+      {
+        "issue": 1133,
+        "outcomeRecordId": "01KZDN4NNZ34GAF7A5HR3JA3ED",
+        "weight": 0
+      },
+      {
+        "issue": 1134,
+        "outcomeRecordId": "01KZDTB8HBQ6B4XTNBA95PWN5D",
+        "weight": 0
+      },
+      {
+        "issue": 1138,
+        "outcomeRecordId": "01KZDN07NR940RZX48KWHMGQPD",
+        "weight": 0
+      },
+      {
+        "issue": 1139,
+        "outcomeRecordId": "01KZDKZ3317KYVQBP650G7JJPR",
+        "weight": 0
+      },
+      {
+        "issue": 1140,
+        "outcomeRecordId": "01KZDKNS5GVG5BDFSXRH2X84VS",
+        "weight": 0
+      },
+      {
+        "issue": 1141,
+        "outcomeRecordId": "01KZDZ3Q03XPDJD7QJFB1GE03D",
+        "weight": 0
+      },
+      {
+        "issue": 1158,
+        "outcomeRecordId": "01KZFS3KEFNB13BH3EWYPVHANX",
+        "weight": 0
+      },
+      {
+        "issue": 1273,
+        "outcomeRecordId": "01M05SS1CN7M944WY8Z3C0S62B",
+        "weight": 0
+      },
+      {
+        "issue": 1408,
+        "outcomeRecordId": "01M17CXGWE1WG7VYCCP25TZZ4Y",
+        "weight": 0
+      },
+      {
+        "issue": 1532,
+        "outcomeRecordId": "01M20VMY9Z5CBYPGSDRTWGKC15",
+        "weight": 0
+      },
+      {
+        "issue": 1533,
+        "outcomeRecordId": "01M20YM1YNPH0C5GAKYNF8GEY4",
+        "weight": 0
+      },
+      {
+        "issue": 1534,
+        "outcomeRecordId": "01M21153GJHHK49KGXHFTM638T",
+        "weight": 0
+      },
+      {
+        "issue": 1535,
+        "outcomeRecordId": "01M215Z862S6JD582B9NG4BJ3Q",
+        "weight": 0
+      },
+      {
+        "issue": 1536,
+        "outcomeRecordId": "01M2191X85P60EV6YSKZFYPHV2",
+        "weight": 0
+      },
+      {
+        "issue": 1537,
+        "outcomeRecordId": "01M21F28MKWDXBBWBK7Q1SJXJK",
+        "weight": 0
+      },
+      {
+        "issue": 1538,
+        "outcomeRecordId": "01M21M3MQSGTQQW1W9NH0G2XC0",
+        "weight": 0
+      },
+      {
+        "issue": 1539,
+        "outcomeRecordId": "01M21WD4WRAS8Q2NGMHDVSRHA7",
+        "weight": 0
+      },
+      {
+        "issue": 1541,
+        "outcomeRecordId": "01M2295S6PZ32JWK818ZE47NE2",
+        "weight": 0
+      },
+      {
+        "issue": 1542,
+        "outcomeRecordId": "01M22DHEYBZ11CPSBY3NJ0SC1Y",
+        "weight": 0
+      },
+      {
+        "issue": 1543,
+        "outcomeRecordId": "01M22JBX3AXRARCNBFRYZQRGA6",
+        "weight": 0
+      },
+      {
+        "issue": 1544,
+        "outcomeRecordId": "01M22QN8HD6ZWTE4B95MKBZ9KW",
+        "weight": 0
+      },
+      {
+        "issue": 1565,
+        "outcomeRecordId": "01M237GAF574AES9DF0WMFYZ5J",
+        "weight": 0
+      },
+      {
+        "issue": 1567,
+        "outcomeRecordId": "01M244YHWTCXJ9HGG86SWYBEHP",
+        "weight": 0
+      }
+    ],
+    "issue": 1939,
+    "lifecycleState": "plan",
+    "plan": {
+      "deltaHours": 52.5,
+      "humanHours": 148.5,
+      "rationale": "Detailed WBS plus unavoidable repository execution cost.",
+      "size": "XL"
+    },
+    "recommendation": {
+      "action": "split",
+      "reason": "dependency breadth 12 exceeds 8"
+    },
+    "refine": {
+      "humanHours": 96,
+      "size": "XL"
+    },
+    "risks": [
+      "Task 7 strict recovery scope is within a provisional 12-hour baseline and supports Codex human sources only; retain calibration uncertainty.",
+      "Standalone producer issue kburson/ai-peer-review#197 must deliver verified commit/package/digest before consumer Develop; no cross-repository blocked-by injection.",
+      "Protected append-only retention provisioning and real native authority/OS incarnation may refuse unsupported hosts.",
+      "Managed serialization cannot supply global multi-object CAS against arbitrary external edits.",
+      "Legacy precedence/consumer inventory and full-body budgets can refuse enrollment; no protected prose truncation.",
+      "Scope baselines include normal implementation/verification/review; rubric breadth and unavoidable repository cost produce a separately calibrated human Plan estimate, not measured execution or the AI forecast.",
+      "The 60-minute execution allowance is a conservative planning assumption across new integration/packed-consumer/final checks, not a benchmark result."
+    ],
+    "rubric": {
+      "cohortSize": 50,
+      "confidence": 0.7667,
+      "recordId": "01M3ZCCKBVEY3HYS94J584FKX4",
+      "version": 289
+    },
+    "schema": "aitm.estimation-forecast/v2",
+    "supersedesForecastRecordId": null,
+    "testPlan": {
+      "expectedMinutes": 60,
+      "impactedLanes": ["unit", "integration", "slow", "packaging", "smoke"],
+      "isolation": "Disposable Git remotes, isolated GitHub transports and packed-producer consumer; exact-SHA final repository/CI gates"
+    },
+    "wbs": [
+      {
+        "description": "Protect the versioned artifact contract and inventory its readers",
+        "humanHours": 11,
+        "id": "task-1",
+        "signals": ["artifact-contract", "body-invariants"]
+      },
+      {
+        "description": "Resolve immutable artifact roles and explicit legacy conflicts",
+        "humanHours": 13.5,
+        "id": "task-2",
+        "signals": ["artifact-resolver", "legacy-adapter", "task-1"]
+      },
+      {
+        "description": "Migrate operational consumers and bounded split-plan provenance",
+        "humanHours": 14,
+        "id": "task-3",
+        "signals": ["decomposition", "story-intent", "split-plan", "backfill", "task-2"]
+      },
+      {
+        "description": "Render grouped metadata and enroll only compatible issues",
+        "humanHours": 10,
+        "id": "task-4",
+        "signals": ["metadata-rendering", "enrollment", "task-3", "task-7"]
+      },
+      {
+        "description": "Deliver the standalone producer contract and verify its AITM bridge",
+        "humanHours": 13,
+        "id": "task-5",
+        "signals": ["standalone-producer", "external-verifier", "task-1"]
+      },
+      {
+        "description": "Validate manual evidence and render complete bounded review summaries",
+        "humanHours": 11.5,
+        "id": "task-6",
+        "signals": ["review-envelope", "summary-rendering", "task-2", "task-5"]
+      },
+      {
+        "description": "Establish production publication authority and durable effect fencing",
+        "humanHours": 13.5,
+        "id": "task-7",
+        "signals": ["runtime-authority", "issue-lock", "effect-journal", "retention", "task-1"]
+      },
+      {
+        "description": "Publish one ordered summary and immutable body discovery record",
+        "humanHours": 12.5,
+        "id": "task-8",
+        "signals": [
+          "publication-transaction",
+          "owned-comments",
+          "body-discovery",
+          "task-4",
+          "task-6",
+          "task-7"
+        ]
+      },
+      {
+        "description": "Preview explicit historical scope and publish exact originals",
+        "humanHours": 11.5,
+        "id": "task-9",
+        "signals": ["inventory-preview", "backups", "task-7", "task-8"]
+      },
+      {
+        "description": "Admit authenticated historical effects and preserved exact-ID retirement",
+        "humanHours": 11.5,
+        "id": "task-10",
+        "signals": ["migration-admission", "exact-id-retirement", "task-9"]
+      },
+      {
+        "description": "Execute resumable backheal and separately authorized rollback",
+        "humanHours": 13.5,
+        "id": "task-11",
+        "signals": ["backheal-saga", "command-surface", "task-10"]
+      },
+      {
+        "description": "Prove reference parity and roll out canonical future workflows",
+        "humanHours": 8,
+        "id": "task-12",
+        "signals": [
+          "reference-fixtures",
+          "installed-adapters",
+          "templates",
+          "config-rollout",
+          "task-3",
+          "task-4",
+          "task-5",
+          "task-8",
+          "task-11"
+        ]
+      },
+      {
+        "description": "Integrate exact child delivery evidence and publish parent handoff",
+        "humanHours": 4,
+        "id": "parent-orchestration",
+        "signals": ["orchestration", "task-12"]
+      },
+      {
+        "description": "Run unavoidable isolated repository verification",
+        "humanHours": 1,
+        "id": "repository-execution",
+        "signals": ["test:unit", "test:integration", "test:slow", "test:packaging", "test:smoke"]
+      }
+    ]
+  },
+  "payloadHash": "sha256:a4ec146de3138b6c0a82d8f1b959ceb4226933b1d9db5c8c5492a1424b60d965",
+  "predecessor": null,
+  "recordId": "01M4H33K68DM5DWSVGF4219DDV",
+  "recordType": "estimation-forecast",
+  "repository": "kburson/ai-task-manager",
+  "schema": "aitm.record/v1",
+  "supersedes": null
+}
