@@ -4580,6 +4580,17 @@ export async function completeMemoryNativeStageCache(input) {
   });
 }
 
+const nativeStagePartialResults = new WeakMap();
+// Actual returned DATA retains private snapshot provenance until its consumer
+// validates synchronously. Copies/getters never gain this membership.
+export function assertMemoryNativeStagePartialResult(input, result) {
+  const held = nativeStagePartialResults.get(result);
+  if (!held || held.input !== input) revisionError('native-stage-partial-result');
+  held.current();
+  if (canonicalRecordJson(result) !== held.bytes)
+    revisionError('native-stage-partial-result-changed');
+}
+
 // @story #1924 — only the actual cancelled/joined facade may ask for current facts.
 export async function readMemoryNativeStagePartialFacts(input) {
   const keys = ['backend', 'capability', 'context', 'holder'];
@@ -4631,6 +4642,7 @@ export async function readMemoryNativeStagePartialFacts(input) {
     unchanged();
     core.assertNativeStagePartialHolder(input);
     assertMemoryCapability(backend, capability, context);
+    readMemoryAuthority(backend, context);
     if (canonicalRecordJson(backend.snapshot) !== snapshot)
       revisionError('native-stage-partial-current-changed');
   };
@@ -4642,5 +4654,11 @@ export async function readMemoryNativeStagePartialFacts(input) {
   stable();
   const facts = await codec.deriveRecordedNativeStagePartialFacts({ journal });
   stable();
-  return Object.freeze({ ...facts, progressVerified: true });
+  const result = Object.freeze({ ...facts, progressVerified: true });
+  nativeStagePartialResults.set(result, {
+    input,
+    current: stable,
+    bytes: canonicalRecordJson(result),
+  });
+  return result;
 }

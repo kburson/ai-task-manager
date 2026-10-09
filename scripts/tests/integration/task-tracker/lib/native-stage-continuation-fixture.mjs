@@ -51,6 +51,8 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
     'partial-reporting-late-source',
     'partial-reporting-late-input',
     'partial-reporting-late-authority',
+    'partial-reporting-final-source',
+    'partial-reporting-final-authority',
   ].includes(mode);
   const cacheMode = ['tail-cache', 'tail-cache-late-read', 'tail-cache-late-config'].includes(mode);
   const compensationMode = [
@@ -2687,6 +2689,31 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           partialInjectedEffects = null;
         const partialConfigFile = path.join(f.projectDir, '.ai-task-manager/task-tracker.json');
         const partialConfigBytes = readFileSync(partialConfigFile, 'utf8');
+        const partialFinal = faultMode.startsWith('partial-reporting-final-');
+        let partialFinalCaptures = 0;
+        if (partialFinal)
+          Object.freeze = function (...args) {
+            const value = Reflect.apply(originalFreeze, this, args);
+            if (
+              !partialFinalCaptures &&
+              Object.hasOwn(value, 'progressVerified') &&
+              value.progressVerified === true &&
+              new Error().stack.includes('readMemoryNativeStagePartialFacts')
+            ) {
+              partialFinalCaptures++;
+              queueMicrotask(() => {
+                if (faultMode === 'partial-reporting-final-source')
+                  writeFileSync(
+                    partialConfigFile,
+                    JSON.stringify({ ...cfg, kanbanOptionTest: 'OPTION_foreign' })
+                  );
+                else f.backend.lifecycleTransition = true;
+                partialInjectedSnapshot = f.backend.snapshot;
+                partialInjectedEffects = f.backend.effects;
+              });
+            }
+            return value;
+          };
         Object.getOwnPropertyDescriptors = function (...args) {
           const descriptors = Reflect.apply(originalDescriptors, this, args);
           if (
@@ -2945,7 +2972,7 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           Object.getOwnPropertyDescriptor = originalDescriptor;
           if (faultMode === 'tail-cache-late-config')
             Object.defineProperty(cfg, 'repo', cacheOriginalRepo);
-          if (frozenProbe) Object.freeze = originalFreeze;
+          if (frozenProbe || partialFinal) Object.freeze = originalFreeze;
           syncBuiltinESMExports();
         }
         if (frozenProbe) {
@@ -2977,7 +3004,7 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           })
         );
         if (partialReporting) {
-          const late = faultMode.startsWith('partial-reporting-late-');
+          const late = faultMode.startsWith('partial-reporting-late-') || partialFinal;
           const cancelled = faultMode === 'partial-reporting-cancel';
           const completed =
             {
@@ -3006,6 +3033,15 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
               .status,
             'pending-native-stage'
           );
+          if (partialFinal) {
+            assert.equal(partialFinalCaptures, 1, 'actual Store final return was captured');
+            assert.ok(partialInjectedSnapshot, 'final return injected before Core continuation');
+            t.diagnostic(
+              JSON.stringify({
+                partialFinal: { mode: faultMode, captures: partialFinalCaptures, result },
+              })
+            );
+          }
           assert.equal(result.exit, 4);
           assert.equal(result.itemId, !late && !cancelled ? 'PVTI_subject' : '');
           assert.equal(result.boardMoved, !late && !cancelled);
@@ -3017,6 +3053,7 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           );
           assert.equal(result.progressVerified, !late);
           assert.equal(partialCaptures, 1);
+          if (partialFinal) assert.equal(partialFinalCaptures, 1);
           assert.equal(partialGets, 0);
           assert.equal(partialCopyError?.preparationReason, 'original-partial-report-input');
           if (late) {

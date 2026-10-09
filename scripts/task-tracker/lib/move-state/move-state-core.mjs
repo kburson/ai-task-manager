@@ -4448,6 +4448,7 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
       record.stageToken = token;
       record.release();
       await running;
+      record.originalEmitterJoined = true;
       checkPreparation(record);
       checkOriginalStageSources(record);
       const completed = record.backend.snapshot.nativeStageRecords.at(-1);
@@ -4485,6 +4486,7 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
       record.cancelled = true;
       record.cancel(preparationRefusal('preparation-cancelled'));
       if (running) await running.catch(() => {});
+      record.originalEmitterJoined = true;
     }
     let partial = {
       itemId: '',
@@ -4505,9 +4507,20 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
       nativeStagePartialInputs.set(input, record);
       try {
         const store = await import('../criteria-revision/store.mjs');
-        partial = await store.readMemoryNativeStagePartialFacts(input);
+        const reported = await store.readMemoryNativeStagePartialFacts(input);
+        store.assertMemoryNativeStagePartialResult(input, reported);
+        partial = reported;
       } catch {
-        partial.progressVerified = false;
+        // Successful Store facts are frozen; a refused consumer comparison must
+        // produce fresh unverified DATA rather than mutate a stale report.
+        partial = {
+          itemId: '',
+          boardMoved: false,
+          sentinelPresent: false,
+          transitionCommitPresent: false,
+          transitionCommitId: null,
+          progressVerified: false,
+        };
       } finally {
         nativeStagePartialInputs.delete(input);
         record.partialInput = null;
@@ -4525,7 +4538,7 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
     if (record) {
       record.cancelled = true;
       record.cancel(preparationRefusal('preparation-cancelled'));
-      if (running) await running.catch(() => {});
+      if (running && !record.originalEmitterJoined) await running.catch(() => {});
       nativeStagePreparations.delete(record.identity);
     }
   }

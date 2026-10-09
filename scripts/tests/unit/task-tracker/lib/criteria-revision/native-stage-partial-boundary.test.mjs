@@ -78,3 +78,24 @@ test('partial report refuses null and primitive roots without selecting state', 
       /criteria-revision:native-stage-partial/
     );
 });
+
+test('unowned report results cannot execute getters or borrow consumer validation', () => {
+  let gets = 0;
+  const result = {};
+  Object.defineProperty(result, 'progressVerified', {
+    enumerable: true,
+    get() {
+      gets++;
+      throw Error('unowned result getter');
+    },
+  });
+  for (const value of [
+    result,
+    Object.freeze({ itemId: 'PVTI_subject', boardMoved: true, progressVerified: true }),
+  ])
+    assert.throws(
+      () => store.assertMemoryNativeStagePartialResult(fresh(), value),
+      /criteria-revision:native-stage-partial-result/
+    );
+  assert.equal(gets, 0);
+});

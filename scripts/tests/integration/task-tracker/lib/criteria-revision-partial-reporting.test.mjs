@@ -37,12 +37,14 @@ test('partial reporting retains all genuine verified, interrupted, cancellation 
       'partial-reporting-late-source',
       'partial-reporting-late-input',
       'partial-reporting-late-authority',
+      'partial-reporting-final-source',
+      'partial-reporting-final-authority',
     ].sort()
   );
   assert.equal(base.length, 4);
-  assert.equal(current.length, 4);
+  assert.equal(current.length, 6);
   assert.deepEqual(originals.map(({ filename }) => filename).sort(), originalNames.sort());
-  assert.equal(new Set([...reports, ...originals].map(({ filename }) => filename)).size, 12);
+  assert.equal(new Set([...reports, ...originals].map(({ filename }) => filename)).size, 14);
 });
 test(
   'actual original failure reports verified committed facts after joined work',
@@ -69,7 +71,7 @@ test(
         'scripts/tests/unit/task-tracker/lib/move-state/move-state-policy.test.mjs',
         'scripts/tests/unit/task-tracker/lib/move-state/move-state-tail-error-diagnostics.test.mjs',
       ],
-      64,
+      65,
       t
     )
 );
