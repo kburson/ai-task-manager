@@ -25,7 +25,10 @@ import {
   buildRow as nativeBuildRow,
   postTimingEvent as nativePostTimingEvent,
 } from '../../gh-timing-comment.mjs';
-import { isMemoryStageEffectScope, assertRevisionStageHostEffect } from '../criteria-revision/transport-quarantine.mjs';
+import {
+  isMemoryStageEffectScope,
+  assertRevisionStageHostEffect,
+} from '../criteria-revision/transport-quarantine.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 

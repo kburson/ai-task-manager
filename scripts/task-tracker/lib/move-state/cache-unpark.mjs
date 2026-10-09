@@ -18,7 +18,10 @@
 // Runtime values, `cfg`, and the I/O primitives arrive via the shared `ctx`;
 // stateless helpers + node builtins are imported directly here.
 
-import { assertRevisionStageHostEffect, isMemoryStageEffectScope } from '../criteria-revision/transport-quarantine.mjs';
+import {
+  assertRevisionStageHostEffect,
+  isMemoryStageEffectScope,
+} from '../criteria-revision/transport-quarantine.mjs';
 import { loadState, saveState } from '../../state.mjs';
 import { getProjectDir, statePath as resolveStatePath } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS, LOCAL_FAST_TIMEOUT_MS } from '../process-timeouts.mjs';
@@ -26,7 +29,10 @@ import { STAGES } from '../stage-entry-markers.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
-import { beginNativeStageTailDispatch, assertNativeStageTailDispatchModule } from './move-state-core.mjs';
+import {
+  beginNativeStageTailDispatch,
+  assertNativeStageTailDispatchModule,
+} from './move-state-core.mjs';
 
 // Testable seam (#629): the helpers below resolve their gh-backed / session
 // collaborator modules through `ctx.deps`. Production assembles `ctx` without a
@@ -45,7 +51,8 @@ async function importOr(dep, spec) {
 const originalNativeDispatchReturns = new WeakMap();
 export function assertOriginalNativeTailDispatchReturn(input, ctx, result) {
   const original = originalNativeDispatchReturns.get(input);
-  if (!original || original.ctx !== ctx || !original.returned || result !== undefined) throw new TypeError('native-tail-dispatch:original-return');
+  if (!original || original.ctx !== ctx || !original.returned || result !== undefined)
+    throw new TypeError('native-tail-dispatch:original-return');
   originalNativeDispatchReturns.delete(input);
 }
 export async function dispatchOnEnterActions(ctx, nativeInput) {
@@ -81,7 +88,10 @@ export async function dispatchOnEnterActions(ctx, nativeInput) {
     }
     if (nativeMemory) originalNativeDispatchReturns.get(nativeInput).returned = true;
   } catch (err) {
-    if (nativeMemory) { originalNativeDispatchReturns.delete(nativeInput); throw err; }
+    if (nativeMemory) {
+      originalNativeDispatchReturns.delete(nativeInput);
+      throw err;
+    }
     process.stderr.write(`[move-state] #${issueArg}: onEnter dispatch failed: ${err.message}\n`);
   }
 }
@@ -128,14 +138,23 @@ export async function refreshKanbanStateCache(ctx) {
             importOr(operation.deps.wordCounter, '../../word-counter.mjs'),
           ]);
           break;
-        case 'sid': value = currentSessionId(); break;
-        case 'root': value = getProjectDir(); break;
-        case 'active': value = getActiveTask(operation.sid, operation.projectDir); break;
+        case 'sid':
+          value = currentSessionId();
+          break;
+        case 'root':
+          value = getProjectDir();
+          break;
+        case 'active':
+          value = getActiveTask(operation.sid, operation.projectDir);
+          break;
         case 'set':
           value = setSessionKanbanState(operation.sid, operation.stateArg, operation.projectDir);
           break;
-        case 'stderr': value = process.stderr.write(operation.bytes); break;
-        default: throw new TypeError('kanban-refresh-operation');
+        case 'stderr':
+          value = process.stderr.write(operation.bytes);
+          break;
+        default:
+          throw new TypeError('kanban-refresh-operation');
       }
     } catch (error) {
       next = program.throw(error);
@@ -204,11 +223,20 @@ export function syncTrackerState(ctx) {
     let value;
     try {
       switch (operation.kind) {
-        case 'root': value = getProjectDir(); break;
-        case 'path': value = resolveStatePath(operation.projectDir); break;
-        case 'load': value = loadState(operation.file); break;
-        case 'save': value = saveState(operation.state, operation.file); break;
-        default: throw new TypeError('tracker-sync-operation');
+        case 'root':
+          value = getProjectDir();
+          break;
+        case 'path':
+          value = resolveStatePath(operation.projectDir);
+          break;
+        case 'load':
+          value = loadState(operation.file);
+          break;
+        case 'save':
+          value = saveState(operation.state, operation.file);
+          break;
+        default:
+          throw new TypeError('tracker-sync-operation');
       }
     } catch (error) {
       next = program.throw(error);
@@ -269,54 +297,132 @@ import { deriveRecordedActiveTaskRead, deriveRecordedSessionKanban } from '../..
 import { deriveRecordedState, deriveRecordedStateSaveProgram } from '../../state.mjs';
 import { validateWordCursor } from '../../word-counter.mjs';
 export function deriveRecordedNativeLocalTail(input) {
-  const invalid = () => { throw new TypeError('native-local-tail-data'); };
+  const invalid = () => {
+    throw new TypeError('native-local-tail-data');
+  };
   try {
     const source = JSON.parse(canonicalRecordJson(input));
     const keys = (value, expected) => {
-      if (!value || Object.getPrototypeOf(value) !== Object.prototype || Object.keys(value).sort().join(',') !== expected.slice().sort().join(',')) invalid();
+      if (
+        !value ||
+        Object.getPrototypeOf(value) !== Object.prototype ||
+        Object.keys(value).sort().join(',') !== expected.slice().sort().join(',')
+      )
+        invalid();
     };
     keys(source, ['kind', 'issue', 'projectDir', 'statePath', 'identity', 'boundAt', 'local']);
     keys(source.identity, ['provider', 'sid']);
-    keys(source.local, ['activeTask', 'actorTiming', 'actorFlush', 'wordCursor', 'trackerState', 'queue']);
-    if (!['refreshKanbanStateCache', 'syncTrackerState'].includes(source.kind) || typeof source.issue !== 'string' || !Number.isSafeInteger(Number(source.issue)) || Number(source.issue) < 1 || String(Number(source.issue)) !== source.issue || typeof source.projectDir !== 'string' || !path.isAbsolute(source.projectDir) || path.normalize(source.projectDir) !== source.projectDir || source.projectDir.includes('\0') || typeof source.statePath !== 'string' || !path.isAbsolute(source.statePath) || typeof source.identity.sid !== 'string' || !source.identity.sid) invalid();
-    for (const resource of Object.values(source.local)) if (resource !== null) { keys(resource, ['bytes']); if (typeof resource.bytes !== 'string') invalid(); }
-    const local = structuredClone(source.local), operations = [];
+    keys(source.local, [
+      'activeTask',
+      'actorTiming',
+      'actorFlush',
+      'wordCursor',
+      'trackerState',
+      'queue',
+    ]);
+    if (
+      !['refreshKanbanStateCache', 'syncTrackerState'].includes(source.kind) ||
+      typeof source.issue !== 'string' ||
+      !Number.isSafeInteger(Number(source.issue)) ||
+      Number(source.issue) < 1 ||
+      String(Number(source.issue)) !== source.issue ||
+      typeof source.projectDir !== 'string' ||
+      !path.isAbsolute(source.projectDir) ||
+      path.normalize(source.projectDir) !== source.projectDir ||
+      source.projectDir.includes('\0') ||
+      typeof source.statePath !== 'string' ||
+      !path.isAbsolute(source.statePath) ||
+      typeof source.identity.sid !== 'string' ||
+      !source.identity.sid
+    )
+      invalid();
+    for (const resource of Object.values(source.local))
+      if (resource !== null) {
+        keys(resource, ['bytes']);
+        if (typeof resource.bytes !== 'string') invalid();
+      }
+    const local = structuredClone(source.local),
+      operations = [];
     let stateSave = null;
     const ctx = { issueArg: source.issue, stateArg: 'test' };
-    const program = source.kind === 'refreshKanbanStateCache' ? kanbanRefreshProgram(ctx) : trackerSyncProgram(ctx);
+    const program =
+      source.kind === 'refreshKanbanStateCache'
+        ? kanbanRefreshProgram(ctx)
+        : trackerSyncProgram(ctx);
     let next = program.next();
     while (!next.done) {
       const operation = next.value;
       operations.push(structuredClone(operation));
       let value;
       switch (operation.kind) {
-        case 'modules': break;
-        case 'sid': value = source.identity.sid; break;
-        case 'root': value = source.projectDir; break;
-        case 'path': value = source.statePath; break;
-        case 'active': value = deriveRecordedActiveTaskRead({ bytes: local.activeTask?.bytes ?? null }); break;
+        case 'modules':
+          break;
+        case 'sid':
+          value = source.identity.sid;
+          break;
+        case 'root':
+          value = source.projectDir;
+          break;
+        case 'path':
+          value = source.statePath;
+          break;
+        case 'active':
+          value = deriveRecordedActiveTaskRead({ bytes: local.activeTask?.bytes ?? null });
+          break;
         case 'set': {
-          const derived = deriveRecordedSessionKanban({ existingBytes: local.activeTask?.bytes ?? null, state: operation.stateArg });
+          const derived = deriveRecordedSessionKanban({
+            existingBytes: local.activeTask?.bytes ?? null,
+            state: operation.stateArg,
+          });
           local.activeTask = derived.bytes === null ? null : { bytes: derived.bytes };
           value = derived.payload;
           break;
         }
         case 'load': {
-          const marker = local.actorTiming !== null || local.wordCursor === null ? { words: 0, wordsFull: 0 } : validateWordCursor(JSON.parse(local.wordCursor.bytes), source.identity);
-          value = deriveRecordedState({ sharedBytes: local.trackerState?.bytes ?? null, identity: source.identity, actorBytes: local.actorTiming?.bytes ?? null, activeBytes: local.activeTask?.bytes ?? null, cursor: local.actorTiming === null ? { words: marker.words, wordsFull: marker.wordsFull } : null });
+          const marker =
+            local.actorTiming !== null || local.wordCursor === null
+              ? { words: 0, wordsFull: 0 }
+              : validateWordCursor(JSON.parse(local.wordCursor.bytes), source.identity);
+          value = deriveRecordedState({
+            sharedBytes: local.trackerState?.bytes ?? null,
+            identity: source.identity,
+            actorBytes: local.actorTiming?.bytes ?? null,
+            activeBytes: local.activeTask?.bytes ?? null,
+            cursor:
+              local.actorTiming === null
+                ? { words: marker.words, wordsFull: marker.wordsFull }
+                : null,
+          });
           break;
         }
         case 'save':
-          stateSave = deriveRecordedStateSaveProgram({ identity: source.identity, stateBytes: JSON.stringify(operation.state), statePath: operation.file, actorBytes: local.actorTiming?.bytes ?? null, activeBytes: local.activeTask?.bytes ?? null, sharedBytes: local.trackerState?.bytes ?? null, boundAt: source.boundAt });
+          stateSave = deriveRecordedStateSaveProgram({
+            identity: source.identity,
+            stateBytes: JSON.stringify(operation.state),
+            statePath: operation.file,
+            actorBytes: local.actorTiming?.bytes ?? null,
+            activeBytes: local.activeTask?.bytes ?? null,
+            sharedBytes: local.trackerState?.bytes ?? null,
+            boundAt: source.boundAt,
+          });
           Object.assign(local, structuredClone(stateSave.resources));
           break;
-        default: invalid();
+        default:
+          invalid();
       }
       next = program.next(value);
     }
     if (source.kind === 'refreshKanbanStateCache' && source.boundAt !== null) invalid();
     const result = JSON.parse(canonicalRecordJson({ operations, stateSave, local }));
-    const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
+    const freeze = (value) => {
+      if (value && typeof value === 'object') {
+        Object.values(value).forEach(freeze);
+        Object.freeze(value);
+      }
+      return value;
+    };
     return freeze(result);
-  } catch { invalid(); }
+  } catch {
+    invalid();
+  }
 }

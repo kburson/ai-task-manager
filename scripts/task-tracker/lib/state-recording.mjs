@@ -68,10 +68,16 @@ function* legacyRecordingProgram({ issueNumber, repo, body, bodyBefore, target }
   }
   try {
     yield { kind: 'write-body', input: { issueNumber, repo, body } };
-    yield { kind: 'warn', message: `[state-recording] issue #${issueNumber} marker write to "${target}" succeeded on retry` };
+    yield {
+      kind: 'warn',
+      message: `[state-recording] issue #${issueNumber} marker write to "${target}" succeeded on retry`,
+    };
     return { status: 'ok', attempts: 2 };
   } catch (err) {
-    yield { kind: 'warn', message: `[state-recording] issue #${issueNumber} marker write to "${target}" FAILED after 2 attempts: ${err.message}` };
+    yield {
+      kind: 'warn',
+      message: `[state-recording] issue #${issueNumber} marker write to "${target}" FAILED after 2 attempts: ${err.message}`,
+    };
     let auditPosted = false;
     try {
       const auditBody = [
@@ -95,21 +101,21 @@ function* legacyRecordingProgram({ issueNumber, repo, body, bodyBefore, target }
 export async function writeIssueBodyWithRetry(input = {}) {
   assertRevisionStageHostEffect();
   const {
-  issueNumber,
-  repo,
-  // legacy snapshot body (commit-2 callers); ignored when `mutate` is supplied
-  body,
-  // legacy noop check
-  bodyBefore,
-  target,
-  // legacy direct-write hook — preserved so unmigrated verbs/tests still work
-  writeIssueBody,
-  postComment,
-  warn = (msg) => process.stderr.write(`${msg}\n`),
-  // post-#295 injection seam: closure derives the next body from the fresh base
-  mutate: mutateFn,
-  deps = {},
-} = input;
+    issueNumber,
+    repo,
+    // legacy snapshot body (commit-2 callers); ignored when `mutate` is supplied
+    body,
+    // legacy noop check
+    bodyBefore,
+    target,
+    // legacy direct-write hook — preserved so unmigrated verbs/tests still work
+    writeIssueBody,
+    postComment,
+    warn = (msg) => process.stderr.write(`${msg}\n`),
+    // post-#295 injection seam: closure derives the next body from the fresh base
+    mutate: mutateFn,
+    deps = {},
+  } = input;
   if (!target) throw new Error('writeIssueBodyWithRetry: target is required');
   const post = postComment || defaultPostComment;
 

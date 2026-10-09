@@ -8,7 +8,7 @@ The user confirmed the current hierarchy on October 8, 2026: #1847 → #1855 →
 
 The next session should orchestrate #1918 and pick up **#1919 first**, then #1909. Follow current AITM guidance, bind with the correct role, query fresh Explain, and use the normal parent and child Plan/approval/state progression before code. Parent1918 has not been admitted to Develop; do not skip its gates just to start a child. Do not reopen completed #1851–#1854.
 
-Current authoritative schedule: https://github.com/kburson/ai-task-manager/issues/1918#issuecomment-6069978884
+Current authoritative schedule: [published wave schedule](https://github.com/kburson/ai-task-manager/issues/1918#issuecomment-6069978884)
 
 ## Pickup waves
 
@@ -53,7 +53,7 @@ Any story re-estimated at or above24h must be flagged and decomposed again in an
 
 ## Retained history and estimates
 
-#1855 retains its historical work/timeline and original unchecked whole-contract obligations, with56h estimate (52 historical human-equivalent scope +4 future reconciliation); it is blocked by #1918. Draft PR1907 remains the historical published checkpoint with failing CI until aggregate repairs pass. #1856 waits for the complete capability. Remaining repairs1918 total144h; outer1847 rollup250.5h. These are estimates, not measured productive time; do not double-count existing work.
+Original #1855 retains its historical work/timeline and original unchecked whole-contract obligations, with56h estimate (52 historical human-equivalent scope +4 future reconciliation); it is blocked by #1918. Draft PR1907 remains the historical published checkpoint with failing CI until aggregate repairs pass. #1856 waits for the complete capability. Remaining repairs1918 total144h; outer1847 rollup250.5h. These are estimates, not measured productive time; do not double-count existing work.
 
 ## Authority and recovery
 

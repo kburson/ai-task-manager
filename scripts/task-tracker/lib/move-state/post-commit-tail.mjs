@@ -34,9 +34,16 @@ import {
 } from './cache-unpark.mjs';
 import { selectTailSteps } from './tail-profiles.mjs';
 import { repairTransitionCommit } from './transition-commit.mjs';
-import { assertRevisionStageHostEffect, isMemoryStageEffectScope } from '../criteria-revision/transport-quarantine.mjs';
+import {
+  assertRevisionStageHostEffect,
+  isMemoryStageEffectScope,
+} from '../criteria-revision/transport-quarantine.mjs';
 
-import { beginNativeStageTailSequence, runNativeStageTailStep, assertNativeStageTailSequenceCurrent } from './move-state-core.mjs';
+import {
+  beginNativeStageTailSequence,
+  runNativeStageTailStep,
+  assertNativeStageTailSequenceCurrent,
+} from './move-state-core.mjs';
 
 // The canonical post-commit tail, in the exact order the pre-#714 mutation
 // block invoked it. Each entry is `{ name, scope, fn }` where `fn(ctx)` is the
@@ -77,7 +84,11 @@ export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS, nativeI
     scope: 'issue',
     fn: (stepCtx) => (stepCtx.repairTransitionCommit || repairTransitionCommit)(stepCtx),
   };
-  const eligibleSteps = nativeMemory ? steps : ctx.transitionCommitRepairRequested ? [replayRepairStep, ...steps] : steps;
+  const eligibleSteps = nativeMemory
+    ? steps
+    : ctx.transitionCommitRepairRequested
+      ? [replayRepairStep, ...steps]
+      : steps;
   const selectedSteps = selectTailSteps(eligibleSteps, ctx.tailProfile);
   for (const step of selectedSteps) {
     try {

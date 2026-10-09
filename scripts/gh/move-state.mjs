@@ -27,10 +27,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { gh, projectItemForIssue } from './lib/github-projects.mjs';
-import { statusOptionFromData, STATUS_NAME_QUERY, statusNameFromData } from '../task-tracker/lib/move-state/github-mutation.mjs';
+import {
+  statusOptionFromData,
+  STATUS_NAME_QUERY,
+  statusNameFromData,
+} from '../task-tracker/lib/move-state/github-mutation.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
-import { normalizeStateId } from '../task-tracker/lib/lifecycle-policy/index.mjs';
 import { getProjectDir, configPath } from '../task-tracker/paths.mjs';
 import { withRevisionConsumer } from '../task-tracker/lib/criteria-revision/policy.mjs';
 import { withIssueLock, IssueLockError } from '../task-tracker/issue-mutator-lock.mjs';
@@ -219,10 +222,11 @@ export async function runMoveStateHost({
         try {
           const { gql, splitRepo } = await import('./lib/github-projects.mjs');
           const { owner, repoName } = splitRepo(cfg.repo);
-          const data = await gql(
-            STATUS_NAME_QUERY,
-            { owner, repo: repoName, issue: Number(issueNumber) }
-          );
+          const data = await gql(STATUS_NAME_QUERY, {
+            owner,
+            repo: repoName,
+            issue: Number(issueNumber),
+          });
           return statusNameFromData(data, cfg);
         } catch {
           return '';
