@@ -1739,10 +1739,19 @@ export function validateNativeStageJournal(journal) {
       // asynchronous complete-predecessor codec, never constructor authority.
     }
     if (journal.steps.length === 17) {
-      const step = journal.steps[16], previous = journal.steps[15];
+      const step = journal.steps[16],
+        previous = journal.steps[15];
       exactKeys(step, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
-      if (previous.readback === null || step.ordinal !== 17 || step.kind !== 'tail-dispatch' || step.previous !== hashBytes(canonicalRecordJson(previous)) || !same(step.intent, { target: 'test', actions: [] })) throw new TypeError();
-      if (step.readback !== null) exactKeys(step.readback, ['actions', 'resources', 'body', 'stage']);
+      if (
+        previous.readback === null ||
+        step.ordinal !== 17 ||
+        step.kind !== 'tail-dispatch' ||
+        step.previous !== hashBytes(canonicalRecordJson(previous)) ||
+        !same(step.intent, { target: 'test', actions: [] })
+      )
+        throw new TypeError();
+      if (step.readback !== null)
+        exactKeys(step.readback, ['actions', 'resources', 'body', 'stage']);
     }
     return journal;
   } catch {
@@ -2628,9 +2637,18 @@ export async function reconstructNativeStageTailDispatch(input) {
   const { header, steps } = detached;
   if (steps.length !== 17) revisionError('native-stage-tail-dispatch-prefix');
   validateNativeStageJournal({ schema: 'aitm.native-stage/v1', header, steps });
-  const predecessor = await reconstructNativeStageTransitionComment({ header, steps: steps.slice(0, 16) });
+  const predecessor = await reconstructNativeStageTransitionComment({
+    header,
+    steps: steps.slice(0, 16),
+  });
   if (!predecessor.complete) revisionError('native-stage-tail-dispatch-predecessor');
-  const readback = { actions: [], resources: predecessor.afterResources, body: predecessor.body, stage: predecessor.stage };
-  if (steps[16].readback !== null && !same(steps[16].readback, readback)) revisionError('native-stage-tail-dispatch-readback');
+  const readback = {
+    actions: [],
+    resources: predecessor.afterResources,
+    body: predecessor.body,
+    stage: predecessor.stage,
+  };
+  if (steps[16].readback !== null && !same(steps[16].readback, readback))
+    revisionError('native-stage-tail-dispatch-readback');
   return freezeStageData({ ...readback, complete: steps[16].readback !== null });
 }

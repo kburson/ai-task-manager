@@ -753,8 +753,17 @@ async function replayNativeEpoch({
       }
       if (j.steps.length === 17) {
         const { reconstructNativeStageTailDispatch } = await import('./stage-execution.mjs');
-        const dispatch = await reconstructNativeStageTailDispatch({ header: j.header, steps: j.steps });
-        if (!equal(resources, dispatch.resources) || !equal(observation.body, dispatch.body) || observation.stage !== dispatch.stage || !equal(resources, backend.snapshot.nativeStageResources)) revisionError('native-stage-tail-dispatch-prefix');
+        const dispatch = await reconstructNativeStageTailDispatch({
+          header: j.header,
+          steps: j.steps,
+        });
+        if (
+          !equal(resources, dispatch.resources) ||
+          !equal(observation.body, dispatch.body) ||
+          observation.stage !== dispatch.stage ||
+          !equal(resources, backend.snapshot.nativeStageResources)
+        )
+          revisionError('native-stage-tail-dispatch-prefix');
         exactPrefix = true;
         expectedStageObservation.body = structuredClone(dispatch.body);
         expectedStageObservation.stage = dispatch.stage;

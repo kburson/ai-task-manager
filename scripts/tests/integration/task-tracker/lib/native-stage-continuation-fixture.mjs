@@ -1,4 +1,4 @@
-// cspell:words rechain
+// cspell:words rechain rechained
 import { STATUS_OPTION_QUERY } from '../../../../task-tracker/lib/move-state/github-mutation.mjs';
 // @story #1855
 import {
@@ -253,7 +253,14 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
         try {
           output = execFileSync(process.execPath, ['--test', fileURLToPath(entrypoint)], {
             cwd: isolation.context.sourceRoot,
-            env: { ...isolation.env, AITM_NATIVE_STAGE_CONTEXT: '1' },
+            env: {
+              ...isolation.env,
+              AITM_NATIVE_STAGE_CONTEXT: '1',
+              ...(process.env.TZ ? { TZ: process.env.TZ } : {}),
+              ...(process.env.AITM_NATIVE_STAGE_EXPECTED_TZ
+                ? { AITM_NATIVE_STAGE_EXPECTED_TZ: process.env.AITM_NATIVE_STAGE_EXPECTED_TZ }
+                : {}),
+            },
             encoding: 'utf8',
             timeout: 590000,
           });
@@ -267,6 +274,17 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       } finally {
         isolation.dispose();
       }
+    }
+    const expectedTimezone = process.env.AITM_NATIVE_STAGE_EXPECTED_TZ;
+    if (expectedTimezone) {
+      assert.equal(
+        process.env.TZ,
+        expectedTimezone,
+        'requested native timezone reaches executing case'
+      );
+      assert.equal(new Intl.DateTimeFormat().resolvedOptions().timeZone, expectedTimezone);
+      assert.equal(new Date().getTimezoneOffset() !== 0, expectedTimezone !== 'UTC');
+      t.diagnostic('executing native timezone: ' + expectedTimezone);
     }
     const f = await nativeFinalFixture({
       bodyStages: ['backlog', 'refine', 'plan', 'develop'],
@@ -2009,7 +2027,8 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           'effect-readback',
         ].map((x) => 'native-stage-transition-' + x);
         if (fault) f.backend[fault.when] = 'native-stage-transition-' + fault.suffix;
-        else if (!['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode)) f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
+        else if (!['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode))
+          f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
         const filesystem = (await import('node:fs')).default;
         const { syncBuiltinESMExports } = await import('node:module');
         const originalRead = filesystem.readFileSync,
@@ -2025,8 +2044,15 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           ? await import('../../../../task-tracker/lib/move-state/transition-commit.mjs')
           : null;
         const reentryProbe = faultMode === 'tail-dispatch-reentry';
-        const originalDispatch = reentryProbe ? (await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs')).dispatchOnEnterActions : null;
-        let reentryCaptures = 0, reentryChecks = 0, reentryPromise = null, reentryError = null, reentryFixtureError = null;
+        const originalDispatch = reentryProbe
+          ? (await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs'))
+              .dispatchOnEnterActions
+          : null;
+        let reentryCaptures = 0,
+          reentryChecks = 0,
+          reentryPromise = null,
+          reentryError = null,
+          reentryFixtureError = null;
         const originalFreeze = Object.freeze;
         let originalInput,
           capturedResult,
@@ -2201,24 +2227,45 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
               }
             });
           }
-          const leafCandidate = reentryProbe && !reentryCaptures && Reflect.ownKeys(descriptors).sort().join(',') === 'backend,capability,context,invocation,token';
+          const leafCandidate =
+            reentryProbe &&
+            !reentryCaptures &&
+            Reflect.ownKeys(descriptors).sort().join(',') ===
+              'backend,capability,context,invocation,token';
           const leafStack = leafCandidate ? new Error().stack : '';
           if (leafCandidate && leafStack.includes('stageTailDispatchAuthority')) {
             reentryCaptures++;
             const actualInput = descriptors.invocation.value;
             queueMicrotask(() => {
               try {
-                const snapshot = f.backend.snapshot, effects = [...f.backend.effects], host = captureFiles();
+                const snapshot = f.backend.snapshot,
+                  effects = [...f.backend.effects],
+                  host = captureFiles();
                 assert.equal(snapshot.nativeStageRecords[0].steps.length, 16);
-                assert.equal(snapshot.nativeStageRecords[0].steps.every(step => step.readback !== null), true);
-                assert.deepEqual(effects.filter(op => op.startsWith('native-stage-tail-')), []);
+                assert.equal(
+                  snapshot.nativeStageRecords[0].steps.every((step) => step.readback !== null),
+                  true
+                );
+                assert.deepEqual(
+                  effects.filter((op) => op.startsWith('native-stage-tail-')),
+                  []
+                );
                 const actual = originalDispatch(ctx, actualInput);
                 assert.deepEqual(f.backend.snapshot, snapshot);
                 assert.deepEqual(f.backend.effects, effects);
                 assert.deepEqual(captureFiles(), host);
                 reentryChecks++;
-                reentryPromise = actual.then(() => { reentryError = null; }, error => { reentryError = error; });
-              } catch (error) { reentryFixtureError = error; }
+                reentryPromise = actual.then(
+                  () => {
+                    reentryError = null;
+                  },
+                  (error) => {
+                    reentryError = error;
+                  }
+                );
+              } catch (error) {
+                reentryFixtureError = error;
+              }
             });
           }
           return descriptors;
@@ -2277,7 +2324,22 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
         );
         assert.equal(beforeComment.nativeStageRecords[0].steps[13].outcome.kind, 'confirmed');
         if (reentryProbe) {
-          t.diagnostic(JSON.stringify({ tailPreIntentReentry: { captures: reentryCaptures, checks: reentryChecks, fixtureError: reentryFixtureError?.message ?? null, error: reentryError ? { name: reentryError.name, code: reentryError.code, preparationReason: reentryError.preparationReason ?? null } : null } }));
+          t.diagnostic(
+            JSON.stringify({
+              tailPreIntentReentry: {
+                captures: reentryCaptures,
+                checks: reentryChecks,
+                fixtureError: reentryFixtureError?.message ?? null,
+                error: reentryError
+                  ? {
+                      name: reentryError.name,
+                      code: reentryError.code,
+                      preparationReason: reentryError.preparationReason ?? null,
+                    }
+                  : null,
+              },
+            })
+          );
           assert.equal(reentryFixtureError, null);
           assert.equal(reentryCaptures, 1);
           assert.equal(reentryChecks, 1);
@@ -2285,22 +2347,47 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           assert.equal(reentryError?.preparationReason, 'original-tail-dispatch-window');
         }
         if (['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode)) {
-          assert.equal(journal.steps.slice(0, 16).every(step => step.readback !== null), true);
+          assert.equal(
+            journal.steps.slice(0, 16).every((step) => step.readback !== null),
+            true
+          );
           assert.equal(ctx.transitionCommit.verified, true);
-          assert.equal(journal.steps.length, 17, 'original first tail has durable intent and readback');
-          const predecessor = await (await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs')).reconstructNativeStageTransitionComment({ header: journal.header, steps: journal.steps.slice(0, 16) });
+          assert.equal(
+            journal.steps.length,
+            17,
+            'original first tail has durable intent and readback'
+          );
+          const predecessor = await (
+            await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs')
+          ).reconstructNativeStageTransitionComment({
+            header: journal.header,
+            steps: journal.steps.slice(0, 16),
+          });
           assert.equal(predecessor.complete, true);
           const step = journal.steps[16];
           assert.equal(step.ordinal, 17);
           assert.equal(step.kind, 'tail-dispatch');
           assert.deepEqual(step.intent, { target: 'test', actions: [] });
-          assert.deepEqual(step.readback, { actions: [], resources: predecessor.afterResources, body: predecessor.body, stage: predecessor.stage });
+          assert.deepEqual(step.readback, {
+            actions: [],
+            resources: predecessor.afterResources,
+            body: predecessor.body,
+            stage: predecessor.stage,
+          });
           assert.deepEqual(snapshot.nativeStageResources, predecessor.afterResources);
           assert.deepEqual(snapshot.observation.body, predecessor.body);
           assert.deepEqual(journal.header, beforeComment.nativeStageRecords[0].header);
           assert.deepEqual(journal.steps.slice(0, 15), beforeComment.nativeStageRecords[0].steps);
           assert.deepEqual(snapshot.comments, beforeComment.comments);
-          assert.deepEqual(f.backend.effects.filter(op => op.startsWith('native-stage-tail-dispatch-')), ['native-stage-tail-dispatch-intent-write', 'native-stage-tail-dispatch-intent-readback', 'native-stage-tail-dispatch-execution', 'native-stage-tail-dispatch-readback']);
+          assert.deepEqual(
+            f.backend.effects.filter((op) => op.startsWith('native-stage-tail-dispatch-')),
+            [
+              'native-stage-tail-dispatch-intent-write',
+              'native-stage-tail-dispatch-intent-readback',
+              'native-stage-tail-dispatch-execution',
+              'native-stage-tail-dispatch-readback',
+            ]
+          );
           assert.equal(result.exit, 4, 'next original leaf remains fenced');
           assert.equal(result.code, 'revision-authority-unavailable');
           assert.deepEqual(captureFiles(), files);
@@ -2309,7 +2396,21 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           assert.equal(observed.status, 'pending-native-stage', JSON.stringify(observed));
           assert.equal(observed.nativeHistoryApproved, false);
           let called = 0;
-          await assert.rejects(withRevisionConsumer({ repository: f.context.repository, issue: f.context.issue, activity: 'stage-write', backend: restarted, projectDir: f.projectDir }, () => { called++; }), error => error.code === 'revision-pending');
+          await assert.rejects(
+            withRevisionConsumer(
+              {
+                repository: f.context.repository,
+                issue: f.context.issue,
+                activity: 'stage-write',
+                backend: restarted,
+                projectDir: f.projectDir,
+              },
+              () => {
+                called++;
+              }
+            ),
+            (error) => error.code === 'revision-pending'
+          );
           assert.equal(called, 0);
           assert.deepEqual(restarted.snapshot, snapshot);
           return;
@@ -2497,32 +2598,59 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           } catch (error) {
             retryError = error;
           }
-          t.diagnostic(JSON.stringify({
-            originalNativeRetry: {
-              result: retried ?? null,
-              error: retryError ? {
-                name: retryError.name,
-                code: retryError.code ?? null,
-                message: retryError.message,
-                preparationReason: retryError.preparationReason ?? null,
-              } : null,
-              operations: restarted.effects,
-            },
-          }));
-          assert.equal(retryError, undefined, 'actual fresh original move must resume its durable prefix');
+          t.diagnostic(
+            JSON.stringify({
+              originalNativeRetry: {
+                result: retried ?? null,
+                error: retryError
+                  ? {
+                      name: retryError.name,
+                      code: retryError.code ?? null,
+                      message: retryError.message,
+                      preparationReason: retryError.preparationReason ?? null,
+                    }
+                  : null,
+                operations: restarted.effects,
+              },
+            })
+          );
+          assert.equal(
+            retryError,
+            undefined,
+            'actual fresh original move must resume its durable prefix'
+          );
           assert.equal(retried.exit, null);
           assert.equal(retried.boardMoved, true);
           assert.equal(retried.sentinelPresent, true);
           assert.equal(retried.phase, 'complete');
           const final = restarted.snapshot;
           assert.deepEqual(final.nativeStageRecords.at(-1).header, retainedPrefix.header);
-          assert.deepEqual(final.nativeStageRecords.at(-1).steps.slice(0, 16), retainedPrefix.steps);
+          assert.deepEqual(
+            final.nativeStageRecords.at(-1).steps.slice(0, 16),
+            retainedPrefix.steps
+          );
           assert.deepEqual(final.comments, snapshot.comments);
-          assert.deepEqual(final.nativeStageResources.comments, snapshot.nativeStageResources.comments);
-          assert.deepEqual(final.nativeStageResources.membership, snapshot.nativeStageResources.membership);
-          assert.equal(restarted.effects.filter((name) => name === 'native-stage-transition-effect-write').length, 0);
-          assert.equal(restarted.effects.filter((name) => name === 'native-stage-board-effect-write').length, 0);
-          assert.equal(restarted.effects.filter((name) => name === 'native-stage-timing-effect-write').length, 0);
+          assert.deepEqual(
+            final.nativeStageResources.comments,
+            snapshot.nativeStageResources.comments
+          );
+          assert.deepEqual(
+            final.nativeStageResources.membership,
+            snapshot.nativeStageResources.membership
+          );
+          assert.equal(
+            restarted.effects.filter((name) => name === 'native-stage-transition-effect-write')
+              .length,
+            0
+          );
+          assert.equal(
+            restarted.effects.filter((name) => name === 'native-stage-board-effect-write').length,
+            0
+          );
+          assert.equal(
+            restarted.effects.filter((name) => name === 'native-stage-timing-effect-write').length,
+            0
+          );
           assert.deepEqual(captureFiles(), files);
         }
         if (faultMode === 'transition-history') {
