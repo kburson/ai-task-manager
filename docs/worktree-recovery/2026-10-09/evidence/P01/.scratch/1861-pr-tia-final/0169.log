@@ -1,0 +1,48 @@
+✔ Shelve preserves immutable lifecycle timing while invalidating current R4P eligibility (13.366084ms)
+✔ Shelve runs the ordered journal, preserves classifications, and verifies exact final state (2.280042ms)
+✔ Shelve explicitly removes the sole owner only when requested (2.767792ms)
+✔ a verified Shelve cycle does not block a later legitimate re-refinement cycle (4.5465ms)
+✔ Shelve rebuilds history from the fresh complete source snapshot before append (4.037583ms)
+✔ source drift after the fresh snapshot is journaled but blocks every destructive phase (1.118625ms)
+✔ body CAS refuses a changed mutation base instead of appending stale history (0.72675ms)
+✔ Shelve enforces the shared ownership decision from its fetched snapshot (0.166292ms)
+✔ a resumable journal cannot bypass a new foreign-owner decision (1.7775ms)
+✔ the transaction authority refuses production calls outside the issue lock (0.529667ms)
+✔ Shelve refuses backlog before the first write (0.334084ms)
+✔ Shelve refuses plan before the first write (0.173709ms)
+✔ Shelve refuses develop before the first write (0.096167ms)
+✔ Shelve refuses test before the first write (0.09975ms)
+✔ Shelve refuses review before the first write (0.068458ms)
+✔ Shelve refuses done before the first write (0.07225ms)
+✔ Shelve refuses a closed issue before the first write (0.279041ms)
+✔ a partial failure remains journaled and an identical retry resumes without duplicate history (3.08025ms)
+✔ a landed active-evidence write with a lost response resumes from its exact durable transform (1.829333ms)
+✔ unrelated drift after a landed active-evidence write still blocks later phases (2.319291ms)
+✔ a lost response after landed board field clear remains idempotently resumable (1.230209ms)
+✔ a lost response after landed body field clear remains idempotently resumable (1.092291ms)
+✔ a lost response after landed Status move remains idempotently resumable (1.181875ms)
+✔ a lost response after landed owner removal remains idempotently resumable (1.121625ms)
+✔ an ambiguous response after snapshot-recorded resumes from durable read-back (1.053459ms)
+✔ an ambiguous response after active-evidence-cleared resumes from durable read-back (0.972875ms)
+✔ an ambiguous response after fields-cleared resumes from durable read-back (0.946875ms)
+✔ an ambiguous response after status-backlog resumes from durable read-back (0.945ms)
+✔ an ambiguous response after owner-updated resumes from durable read-back (1.616458ms)
+✔ an ambiguous response after verified resumes from durable read-back (1.110542ms)
+✔ a retry with different reason or remove-owner intent refuses without further writes (0.904375ms)
+✔ Shelve refreshes the exact legacy blocker-only snapshot and retains every blocker carrier (2.902708ms)
+✔ legacy blocker refresh retries a #1335-style failed move without duplicating history or losing carriers (1.607292ms)
+✔ legacy blocker refresh refuses a Refine source before history or mutation (0.160291ms)
+✔ legacy blocker refresh refuses a Refine source before resuming its journal (1.129916ms)
+✔ legacy blocker refresh resumes a landed Backlog status phase after its journal response is lost (1.289834ms)
+✔ legacy blocker refresh refuses every divergent carrier before it records history (0.780083ms)
+✔ legacy blocker refresh refuses a lowercase noncanonical BLOCKED label before history (0.216917ms)
+✔ Shelve refuses a retry that changes the legacy blocker refresh intent (1.342542ms)
+✔ unreadable or missing configured-project state fails closed before mutation (0.18725ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.794

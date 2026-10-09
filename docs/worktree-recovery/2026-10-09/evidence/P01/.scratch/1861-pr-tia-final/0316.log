@@ -1,0 +1,12 @@
+✔ auto help exposes Full-Auto default plus independent manual review choices (0.532666ms)
+✔ shared Full-Auto policy translates the three exact user phrases (1.244458ms)
+✔ all provider adapters point at the canonical Full-Auto policy (0.26275ms)
+✔ workflow and settings document the three default-auto gates and reviewer config (1.042417ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.226

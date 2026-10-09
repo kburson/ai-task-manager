@@ -1,0 +1,14 @@
+✔ AC1/AC4: dropped board-field write fails loudly and never prints success (1203.891417ms)
+✔ AC2: a write that confirms on read-back proceeds normally (0.555417ms)
+✔ AC2: read-back recovers after an initial dropped write (retry succeeds) (400.59225ms)
+✔ AC1: a persistently empty/unreadable read-back fails closed (#747 supersedes #711 soft-proceed) (1201.73ms)
+✔ SKIP_NETWORK short-circuits the read-back entirely (0.177208ms)
+✔ AC3: the drift-refusal message names a dropped/failed board-field write (0.354875ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2811.532625

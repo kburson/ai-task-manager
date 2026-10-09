@@ -1,0 +1,27 @@
+✔ fresh Cursor converges after before-genesis (14.77025ms)
+✔ fresh Cursor converges after after-genesis (2.954083ms)
+✔ fresh Cursor converges after before-intent (1.473208ms)
+✔ fresh Cursor converges after after-intent (1.423958ms)
+✔ fresh Cursor converges after before-provider-submission (1.385333ms)
+✔ fresh Cursor converges after after-provider-submission (1.16275ms)
+✔ fresh Cursor converges after before-resolved (1.174291ms)
+✔ fresh Cursor converges after after-resolved (1.428541ms)
+✔ fresh Cursor converges after before-body-head-advance (2.876792ms)
+✔ fresh Cursor converges after after-body-head-advance (1.292167ms)
+✔ fresh Cursor converges after before-spill-write (4.906708ms)
+✔ fresh Cursor converges after after-spill-write (4.286709ms)
+✔ fresh runner converges after before-waiting (1.646416ms)
+✔ fresh runner converges after after-waiting (1.093125ms)
+✔ fresh runner converges after before-failed (2.057125ms)
+✔ fresh runner converges after after-failed (1.929583ms)
+✔ fresh Cursor converges after after-confirmed-move (1.119625ms)
+✔ fresh Cursor converges after before-target-hydration (0.802ms)
+✔ fresh Cursor converges after before-first-target-action (0.807333ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60.456542

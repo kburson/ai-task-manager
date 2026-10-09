@@ -1,0 +1,12 @@
+✔ #221: default (no --status) stamps aitm-entered-backlog on the posted body (786.982875ms)
+✔ #272: --status flag is rejected (all issues born in backlog) (287.240375ms)
+✔ #272: --status develop is rejected (no backdoor to other stages on create) (254.533958ms)
+✔ #221: stampEntryMarker is idempotent — pre-existing marker is not duplicated (16.472208ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1348.186458

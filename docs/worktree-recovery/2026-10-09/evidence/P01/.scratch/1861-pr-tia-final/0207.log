@@ -1,0 +1,18 @@
+✔ legacy approval keeps the marker lane while directory approval consumes accepted evidence (8.975375ms)
+✔ human and Full-Auto approval provenance are explicit and non-interchangeable (1.216ms)
+✔ directory Review and Approval predicates reject stale SHA, epoch, and authority (0.195833ms)
+✔ manual lifecycle checkbox edits cannot satisfy directory-governed close (0.434209ms)
+✔ close resolves current directory evidence but leaves legacy bodies on the existing lane (0.308625ms)
+✔ close fails closed when accepted directory Review or Approval evidence is absent (0.346667ms)
+✔ deliver resolves marker-free exact-head directory approval authority (78.3255ms)
+✔ runDeliver consumes marker-free exact-head directory Review and Approval evidence (245.778333ms)
+✔ runDeliver refuses directory authority without accepted exact-head Review evidence (0.562625ms)
+✔ runDeliver never hybridizes directory Review with legacy body Approval (43.811125ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 391.059875

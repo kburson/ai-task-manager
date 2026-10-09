@@ -1,0 +1,14 @@
+✔ SeederGraphQLError carries cause and a tagged message (0.443625ms)
+✔ SeederMarkerMissingError names the issue and points to reconcile (0.191125ms)
+✔ SeederGraphQLError is distinguishable from SeederMarkerMissingError (0.07675ms)
+✔ #519 backlog-only body (no last-known-state marker) seeds backlog, no throw (110.385625ms)
+✔ #519 body with no entry markers at all seeds backlog, no throw (84.709708ms)
+✔ #519 body advanced past backlog (entered-develop) with no marker still throws (55.5995ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 254.939167

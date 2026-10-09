@@ -1,0 +1,33 @@
+✔ moveState runs guard → rows → markers → status → sentinel → commit → tail (2.020333ms)
+✔ atomic core order: rows + markers land before Status, sentinel before tail (0.440209ms)
+✔ transition commit failure warns without failing a confirmed move (0.61125ms)
+✔ moveState fails closed when the sentinel does not verify (0.147458ms)
+✔ moveState halts on guard refusal and never writes status (0.133042ms)
+✔ moveState prefers the public pre-evaluated guard over the legacy test seam (0.128708ms)
+✔ pre-mutation guard consumes the locked snapshot body without a second issue fetch (397.353042ms)
+✔ pre-mutation boundary reloads policy only after a waivable guard refusal (78.79675ms)
+✔ Plan → Develop exposes the exact successful guard decision for durable authority (24.846917ms)
+✔ Plan → Develop verifies authority after replay probe and before mutation (0.390459ms)
+✔ Plan → Develop authority failure is fail-closed before every mutation (0.272792ms)
+✔ Plan → Develop scope drift after authority write fails before lifecycle mutation (0.156333ms)
+✔ Plan → Develop scope drift at entry stamping returns the typed authority refusal (0.132042ms)
+✔ moveState halts on status exit and never runs tail (0.079958ms)
+✔ AC5: a throwing tail step is logged and never fails-reports or reverts the move (0.293084ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 510.164125
+[move-state:warn] #999: transition commit provenance missing: github unavailable
+
+⛔ Refusing to move #1462 to test:
+   BLOCKED: contiguity-hole — missing prior-stage entry marker(s): aitm-entered-backlog, aitm-entered-refine, aitm-entered-plan, aitm-entered-develop. The board shows develop but the body never recorded entry into: backlog, refine, plan, develop
+
+A forward move may not enter a new stage while an earlier stage in the chain is unrecorded.
+Recovery:
+   • Run `/task reconcile backfill 1462` to fill the missing entry marker(s) if the stage(s) genuinely ran, then retry.
+   • Only if the board and recorded body state have actually drifted (not merely a missing historical marker), run `/task reconcile accept-live 1462` instead.
+

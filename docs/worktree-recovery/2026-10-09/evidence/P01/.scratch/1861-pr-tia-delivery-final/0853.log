@@ -1,0 +1,32 @@
+ensure-unchecked.test.mjs: defined
+[task-tracker] ✓ Unchecked "verified ac checked" on #777
+[task-tracker] ✓ "plain ac no verifier" already unchecked on #777 (no-op)
+[task-tracker] ✓ "plain ac no verifier" already unchecked on #777 (no-op)
+[task-tracker] ✓ Unchecked "verified ac checked" on #777
+✔ setChecklistLine: unchecks a checked line (changed) (0.852042ms)
+✔ setChecklistLine: already-unchecked is a byte-identical no-op (0.09675ms)
+✔ setChecklistLine: unchecked desired never checks an unchecked line (0.064833ms)
+✔ setChecklistLine: preserves trailing evidence markers on untick (0.081292ms)
+✔ setChecklistLines: folds untick across labels with per-label results (0.463458ms)
+✔ verbEnsureUnchecked: unchecks a checked AC and writes [ ] (9.26225ms)
+✔ verbEnsureUnchecked: idempotent re-run on already-unchecked is a no-op (2.211ms)
+✔ verbEnsureUnchecked: never checks an unchecked AC (1.397208ms)
+✔ verbEnsureUnchecked: runs NO evidence gate when un-ticking a verifier AC (2.700208ms)
+✔ verbEnsureUnchecked: "deep dive complete" is ordinary text, not the marker route (1.503583ms)
+✔ verbEnsureUnchecked: "discussion complete" is ordinary text, not the discuss route (1.157583ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 51.781541
+[task-tracker] checkbox "deep dive complete" not found in #777
+Checkboxes found:
+  "plain ac no verifier"
+  "verified ac checked <!-- aitm-verified cmd="`echo ok`" -->"
+[task-tracker] checkbox "discussion complete" not found in #777
+Checkboxes found:
+  "plain ac no verifier"
+  "verified ac checked <!-- aitm-verified cmd="`echo ok`" -->"

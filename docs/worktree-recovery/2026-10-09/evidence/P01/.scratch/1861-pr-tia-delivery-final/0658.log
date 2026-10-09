@@ -1,0 +1,2 @@
+orphan-finalize.test.mjs: all passed
+[task] refusing to consume pending-pause.json from foreign session someone-else

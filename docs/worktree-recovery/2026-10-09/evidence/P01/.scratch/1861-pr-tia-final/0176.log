@@ -1,0 +1,19 @@
+Active: #833 (already bound; no-op).
+Active: #833.
+Active: #833. Previous: #700 ended (+1 min, +2 words).
+✔ self-bind to an active, never-paused issue is a true no-op (zero rows, span intact) (59.066ms)
+✔ resume-after-pause (active:null, paused:true) posts exactly one bind row (145.179041ms)
+✔ cross-issue switch flushes switch-out on the outgoing issue plus one incoming bind row (129.219167ms)
+✔ a post-save switch failure restores both prior state and occupancy (125.823ms)
+✔ a superseded occupancy rollback preserves the target state to avoid split authority (113.079791ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 584.554625
+[dependency-disposition] #833: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #833: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #833: binding remains active; retry dependency projection (dependency-disposition:config)

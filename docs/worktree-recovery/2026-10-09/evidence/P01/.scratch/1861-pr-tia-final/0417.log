@@ -1,0 +1,18 @@
+✔ passes a well-formed generator-built comment (files + nested names) (1.121166ms)
+✔ fails a heading-only comment — lists no test files (0.168125ms)
+✔ fails a heading + footer with no bullets — lists no test files (0.108834ms)
+✔ fails a placeholder `- none` body — not a backtick-wrapped file bullet (0.075916ms)
+✔ fails a placeholder `_No new tests_` italic body (0.078875ms)
+✔ fails a file bullet with zero nested test names — lists files but no test names (0.071708ms)
+✔ absence of the comment defers to V2 → passes (0.0575ms)
+✔ tolerates a missing / non-array comments context (defers to V2) (0.07725ms)
+✔ a single well-formed file with one nested name passes (0.093416ms)
+✔ bootstrap registers the validator on the shared singleton (11.116833ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.591125

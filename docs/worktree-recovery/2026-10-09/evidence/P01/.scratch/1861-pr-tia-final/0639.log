@@ -1,0 +1,14 @@
+✔ re-run of a complete move is a no-op (no rows/markers/status/sentinel rewrite) (1.15225ms)
+✔ partial move (sentinel absent) rolls forward through the saga (0.349833ms)
+✔ same-target replay repairs a post-Status partial move with the existing transition ID (0.2145ms)
+✔ same-target replay without a recoverable partial move remains a strict no-op (0.113666ms)
+✔ production completion probe recovers only the latest fully-evidenced entry identity (90.858125ms)
+✔ production completion probe recovers a demotion with target-bound timing evidence (38.458292ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 139.116125

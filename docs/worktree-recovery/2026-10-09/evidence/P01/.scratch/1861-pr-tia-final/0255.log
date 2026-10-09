@@ -1,0 +1,41 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 0 (reconciled gate); stdout:
+
+stderr:
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/test/tt-proof-gate-383-asmX5E for the active issue
+[task-tracker] Board features unavailable: project not configured (projectId missing).
+  Run: npx ai-task-manager init   or   /task config init
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/timing-actor.mjs:8
+  const error = new TypeError('Invalid timing actor identity or marker');
+                ^
+
+TypeError: Invalid timing actor identity or marker
+    at invalid (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/timing-actor.mjs:8:17)
+    at timingActorKey (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/timing-actor.mjs:22:5)
+    at actorTimingStatePath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/actor-timing-state.mjs:34:15)
+    at readActorTimingState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/actor-timing-state.mjs:80:16)
+    at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/state.mjs:256:21)
+    at runVerbPreflight (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/task-tracker.mjs:298:23)
+    at async file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/task-tracker.mjs:578:5 {
+  code: 'TIMING_ACTOR_INVALID'
+}
+
+Node.js v26.8.1
+
+
+1 !== 0
+
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs:157:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
