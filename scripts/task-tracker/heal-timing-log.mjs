@@ -28,6 +28,7 @@ import {
   findTimingComment as realFindTimingComment,
   updateTimingComment as realUpdateTimingComment,
 } from './gh-timing-comment.mjs';
+import { recoverTimingContinuity } from './lib/heal-timing-continuity.mjs';
 import { recoverActorOpenerReplays } from './lib/heal-actor-opener-replays.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
@@ -56,14 +57,34 @@ export async function runHeal({
   repo,
   apply = false,
   actorOpenerReplays = false,
+  continuitySession,
+  expectedTranscriptSha,
   expectedSourceSha,
   expectedCommentId,
   deps = {},
 } = {}) {
   if (issueNumber == null) throw new Error('runHeal: issueNumber is required');
   if (!repo) throw new Error('runHeal: repo is required');
+  if (continuitySession && actorOpenerReplays)
+    throw new TypeError('timing-continuity:conflicting-modes');
   const findTimingComment = deps.findTimingComment || realFindTimingComment;
   const updateTimingComment = deps.updateTimingComment || realUpdateTimingComment;
+
+  if (continuitySession)
+    return recoverTimingContinuity({
+      issueNumber,
+      repo,
+      sessionId: continuitySession,
+      apply,
+      expectedSourceSha,
+      expectedCommentId,
+      expectedTranscriptSha,
+      readCanonicalTimingSource: deps.readCanonicalTimingSource || realReadCanonicalTimingSource,
+      updateTimingComment,
+      projectDir: deps.getProjectDir?.() || getProjectDir(),
+      readTranscript: deps.readContinuityTranscript,
+      now: deps.now,
+    });
 
   if (actorOpenerReplays)
     return recoverActorOpenerReplays({
@@ -155,12 +176,20 @@ export function parseArgs(argv) {
     yes: false,
     delayMs: 0,
     actorOpenerReplays: false,
+    continuitySession: null,
+    expectedTranscriptSha: null,
     expectedSourceSha: null,
     expectedCommentId: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--actor-opener-replays') out.actorOpenerReplays = true;
+    if (a === '--continuity-session') out.continuitySession = argv[++i];
+    else if (a.startsWith('--continuity-session='))
+      out.continuitySession = a.slice('--continuity-session='.length);
+    else if (a === '--expected-transcript-sha') out.expectedTranscriptSha = argv[++i];
+    else if (a.startsWith('--expected-transcript-sha='))
+      out.expectedTranscriptSha = a.slice('--expected-transcript-sha='.length);
+    else if (a === '--actor-opener-replays') out.actorOpenerReplays = true;
     else if (a === '--expected-source-sha') out.expectedSourceSha = argv[++i];
     else if (a.startsWith('--expected-source-sha='))
       out.expectedSourceSha = a.slice('--expected-source-sha='.length);
@@ -189,6 +218,7 @@ export function printUsage(out = process.stdout) {
       '  node scripts/task-tracker/heal-timing-log.mjs <issue#> [--apply | --check-only]\n' +
       '  node scripts/task-tracker/heal-timing-log.mjs --sweep [--state open|closed|all] [--apply] [--scope N,N,...] [--delay-ms N] [--yes]\n' +
       '  Actor replays: <issue#> --actor-opener-replays [--apply --expected-source-sha SHA --expected-comment-id ID]\n' +
+      '  Continuous session: <issue#> --continuity-session SID [--apply --expected-source-sha SHA --expected-comment-id ID --expected-transcript-sha SHA]\n' +
       '  Default: dry-run (read-only). --apply writes. Sweep default --state all.\n' +
       '  --delay-ms N  wait N milliseconds between issue reads (0-60000; default 0)\n' +
       '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply sweep\n'
@@ -245,6 +275,8 @@ async function healUnderLock({
   repo,
   apply,
   actorOpenerReplays,
+  continuitySession,
+  expectedTranscriptSha,
   expectedSourceSha,
   expectedCommentId,
   deps,
@@ -261,6 +293,8 @@ async function healUnderLock({
         repo,
         apply,
         actorOpenerReplays,
+        continuitySession,
+        expectedTranscriptSha,
         expectedSourceSha,
         expectedCommentId,
         deps,
@@ -274,7 +308,7 @@ async function healUnderLock({
 
 async function runPerIssue(args, { repo, out, deps }) {
   const res = await healUnderLock({ ...args, issueNumber: args.issue, repo, deps });
-  if (args.actorOpenerReplays) {
+  if (args.actorOpenerReplays || args.continuitySession) {
     out.write(JSON.stringify(res) + '\n');
     return;
   }
@@ -379,6 +413,8 @@ export async function main(argv, deps = {}) {
         '--state',
         '--scope',
         '--delay-ms',
+        '--continuity-session',
+        '--expected-transcript-sha',
         '--expected-source-sha',
         '--expected-comment-id',
       ],
@@ -397,7 +433,9 @@ export async function main(argv, deps = {}) {
   }
   if (
     (args.actorOpenerReplays && args.sweep) ||
-    (!args.actorOpenerReplays && (args.expectedSourceSha || args.expectedCommentId))
+    (!args.actorOpenerReplays &&
+      !args.continuitySession &&
+      (args.expectedSourceSha || args.expectedCommentId))
   ) {
     err.write(
       'actor replay recovery is per-issue only; identity flags require --actor-opener-replays\n'
@@ -411,6 +449,22 @@ export async function main(argv, deps = {}) {
   ) {
     err.write(
       'actor replay apply requires --expected-source-sha and --expected-comment-id from dry-run\n'
+    );
+    return exit(2);
+  }
+  if (
+    (args.continuitySession && (args.actorOpenerReplays || args.sweep)) ||
+    (!args.continuitySession && args.expectedTranscriptSha) ||
+    (args.continuitySession &&
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(args.continuitySession)) ||
+    (args.continuitySession &&
+      args.apply &&
+      (!/^[a-f0-9]{64}$/.test(args.expectedSourceSha ?? '') ||
+        !args.expectedCommentId?.trim() ||
+        !/^[a-f0-9]{64}$/.test(args.expectedTranscriptSha ?? '')))
+  ) {
+    err.write(
+      'continuity recovery is a separate per-issue mode; apply requires source, comment and transcript identities from dry-run\n'
     );
     return exit(2);
   }

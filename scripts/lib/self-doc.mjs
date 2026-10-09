@@ -1311,9 +1311,10 @@ const DIRECT_SELF_DOC = Object.freeze({
     group: 'Maintenance',
     path: 'scripts/task-tracker/heal-timing-log.mjs',
     classification: 'live-maintenance-or-migration',
-    synopsis: 'Audit or heal historical Timing Log rows and proven actor opener replays.',
+    synopsis:
+      'Audit or heal historical Timing Log rows, proven actor opener replays and continuous session checkpoints.',
     usage:
-      'heal-timing-log (<issue#> [--actor-opener-replays] [--apply|--check-only] [--expected-source-sha SHA --expected-comment-id ID] | --sweep [--state open|closed|all] [--scope N,N] [--apply]) [--yes]',
+      'heal-timing-log (<issue#> [--actor-opener-replays|--continuity-session SID] [--apply|--check-only] [--expected-source-sha SHA --expected-comment-id ID --expected-transcript-sha SHA] | --sweep [--state open|closed|all] [--scope N,N] [--apply]) [--yes]',
     arguments: [
       argument('<issue#>|--sweep', 'Single issue or corpus mode.'),
       argument('--state/--scope', 'Sweep filters.'),
@@ -1324,8 +1325,16 @@ const DIRECT_SELF_DOC = Object.freeze({
         'Per-issue dry-run of proven redundant actor openers; refuses conflicting evidence.'
       ),
       argument(
+        '--continuity-session SID',
+        'Recover neutral observations from the native Codex transcript; refuses interrupted or unexplained windows and preserves accounting.'
+      ),
+      argument(
+        '--expected-transcript-sha SHA',
+        'Continuity apply also requires the completed transcript prefix hash from dry-run.'
+      ),
+      argument(
         '--expected-source-sha SHA/--expected-comment-id ID',
-        'Actor replay apply requires both identities from dry-run.'
+        'Actor replay and continuity apply require both identities from dry-run.'
       ),
     ],
     preconditions: ['Configured repository and timing-comment access are required.'],
