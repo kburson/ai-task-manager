@@ -32,6 +32,8 @@ Before reducing issue content, the exact bodies of all 22 owned preparation/revi
 
 ## Current AITM presentation constraints
 
+The operational Governing-spec, Source-plan, and Source-plan-commit fields were restored on #1901 after the user's readability edits, preserving the visible grouping and review-before-acceptance order. [Feature #1939](https://github.com/kburson/ai-task-manager/issues/1939) tracks the shared artifact-reference contract, removal of duplicate operational fields from visible Markdown, consolidated review publication, safe historical backhealing, and enforcement for future stories. Its [durable intake record](2026-10-09-1939-artifact-record-feature-request.md) preserves the complete filed requirements.
+
 AITM reads repository-relative operational keys such as Source-plan and Decomposition-plan; Accepted-plan is not a recognized alias and Markdown URLs are not resolved as local plan paths. The human's latest Design Specification / Implementation Plan / Backlog Hydration Plan ordering is retained.
 
 AITM also requires substantive deep-dive prose inside the issue body. Its size-tiered content gate currently does not accept a link-only section. The body therefore retains its required deep dive, lifecycle evidence, acceptance criteria, and verification declarations. The separately owned deep-dive comment can be reduced to a summary and origin link. Supporting link-only deep-dive authority or consolidating duplicate artifact labels requires a separate tooling change.
