@@ -1,0 +1,54 @@
+{
+  "owner": "kburson",
+  "recoveryStory": 1953,
+  "originalStory": 1514,
+  "originalStoryAssignees": [],
+  "sourceHead": "477a0bf30756dee0e93008e76c7e9a85245b261c",
+  "sourceBranch": "codex/feature-1514-externalize-forecast-comparables",
+  "priorPlanningPR": 1515,
+  "purpose": "Preserve seven local planning/acceptance-criteria operator fragments for the open forecast-comparables story. These records are not proof that an operation ran or that implementation is approved.",
+  "files": [
+    {
+      "original": ".scratch/gh/1514-ac-evidence-map.json",
+      "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-ac-evidence-map.json",
+      "blob": "fffcba5b41cd4be63a1724fdd69963667832f19d",
+      "sha256": "d89642abbc14501aba79221074bdd9634dec4a6955d5a384c902c74286bd7709"
+    },
+    {
+      "original": ".scratch/gh/1514-acs-operation.json",
+      "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-acs-operation.json",
+      "blob": "0964a146e4d5e51026d6cdad2692c926582f248c",
+      "sha256": "c50d42f028eba437efb1924a91589554e06c4ed65afa2085a42b7189813e2b39"
+    },
+    {
+      "original": ".scratch/gh/1514-compact-link-ac-operation.json",
+      "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-compact-link-ac-operation.json",
+      "blob": "640414b348dd040e68581675c679bbf2a9f596e7",
+      "sha256": "b684db752217f9fa6321e2abf05f1fdde81d40b149022dec5e33f4f77703c87b"
+    },
+    {
+      "original": ".scratch/gh/1514-plan-metadata-operation.json",
+      "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-plan-metadata-operation.json",
+      "blob": "b85170df127ed8c30acc9e178f208a2550fdb00c",
+      "sha256": "c6614ef21e4cf912c6b41d21ea3263f337c2dcf45beb2b254df1143a86a11408"
+    },
+    {
+      "original": ".scratch/gh/1514-planning-pr-body.md",
+      "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-planning-pr-body.md",
+      "blob": "33588ee0436a86da6552cdb960203536a46f241f",
+      "sha256": "cbbdaa5a30c05bc184ce4ed7d2b4bdc37942bd2d0321f8581fe85079f29daeae"
+    },
+    {
+      "original": ".scratch/gh/1514-scope-operation.json",
+      "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-scope-operation.json",
+      "blob": "c3da896715e74b411f02414ccab4ca48b9593a70",
+      "sha256": "4d55931847f98e1220277c45cf8fcc1d5c8cfeadf78f57859e1c1dc58960c211"
+    },
+    {
+      "original": ".scratch/gh/1514-verification-operation.json",
+      "storedPath": "docs/worktree-recovery/2026-10-09/evidence/D10/.scratch/gh/1514-verification-operation.json",
+      "blob": "66cb1aee681cd9a5adfb815c10327539cb92d91c",
+      "sha256": "3d933657b7534ac8bd3c9c212e7fcf8054c1f81790dad93f08287767b378d02f"
+    }
+  ]
+}
