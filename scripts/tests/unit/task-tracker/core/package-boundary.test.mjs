@@ -1,3 +1,4 @@
+// @story #1926
 // @story #1904
 // @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
@@ -243,6 +244,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #1876 adds exactly one shipped constrained actor-replay recovery module.
   assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-opener-replays.mjs'));
   const actorReplayRecoveryAllowance = 1;
+  // #1926 ships exactly one neutral continuity recovery module; test evidence stays excluded.
+  assert.ok(files.includes('scripts/task-tracker/lib/heal-timing-continuity.mjs'));
+  const continuityRecoveryAllowance = 1;
   // #1857 adds the independently reviewed shared runtime-root validator.
   assert.ok(files.includes('scripts/task-tracker/lib/runtime-storage.mjs'));
   const runtimeRootAllowance = 1;
@@ -411,6 +415,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     draftBranchAllowance +
     artifactPolicyAllowance +
     actorReplayRecoveryAllowance +
+    continuityRecoveryAllowance +
     runtimeRootAllowance +
     actorRuntimeEntries.length +
     8 + // #1859: six reviewed-scope modules, readiness guard and operator guide.
