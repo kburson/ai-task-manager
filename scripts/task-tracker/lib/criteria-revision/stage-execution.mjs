@@ -3030,6 +3030,68 @@ export async function deriveRecordedNativeStageKnownPrefix(input) {
       !same(executor, header.scope.executor)
     )
       revisionError('native-stage-known-prefix');
+    const origin = header.original.observation;
+    validateRevisionObservation(origin);
+    exactKeys(
+      header.scope,
+      ['repository', 'issue', 'domain', 'executor'],
+      'native-stage-known-prefix'
+    );
+    exactKeys(
+      header.intent,
+      [
+        'source',
+        'target',
+        'transitionId',
+        'actor',
+        'provider',
+        'sessionId',
+        'projectId',
+        'itemId',
+        'statusFieldId',
+        'sourceOptionId',
+        'targetOptionId',
+        'tailProfile',
+      ],
+      'native-stage-known-prefix'
+    );
+    const moveId = new RegExp(
+      '^move:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    );
+    const actor = header.original.actor;
+    if (
+      origin.sourceKind !== 'legacy-body' ||
+      origin.stage !== 'develop' ||
+      origin.issueState !== 'open' ||
+      !same(header.scope, {
+        repository: origin.repository,
+        issue: origin.issue,
+        domain: origin.writerDomain,
+        executor: origin.executor,
+      }) ||
+      header.intent.source !== 'develop' ||
+      header.intent.target !== 'test' ||
+      header.intent.tailProfile !== 'task-owner' ||
+      typeof header.intent.transitionId !== 'string' ||
+      !moveId.test(header.intent.transitionId) ||
+      typeof actor.capture.ts !== 'string' ||
+      !Number.isFinite(Date.parse(actor.capture.ts)) ||
+      new Date(actor.capture.ts).toISOString() !== actor.capture.ts ||
+      header.intent.provider !== actor.identity.provider ||
+      header.intent.sessionId !== actor.identity.sid ||
+      actor.identity.sid !== origin.executor.sessionId ||
+      [
+        'actor',
+        'provider',
+        'sessionId',
+        'projectId',
+        'itemId',
+        'statusFieldId',
+        'sourceOptionId',
+        'targetOptionId',
+      ].some((key) => typeof header.intent[key] !== 'string' || !header.intent[key])
+    )
+      revisionError('native-stage-known-prefix');
     let expectedResources = structuredClone(header.original.resources);
     let expectedBody = structuredClone(header.original.observation.body);
     let expectedStage = header.original.observation.stage;

@@ -41,6 +41,8 @@ import {
 } from './native-continuation-fixtures.mjs';
 
 export function registerNativeStageCase(mode, entrypoint, fault = null) {
+  const knownPrefixLater = mode === 'known-prefix-later';
+  if (knownPrefixLater) mode = 'tail-cache';
   const faultMode = mode;
   const knownPrefixCapture = mode === 'known-prefix-inputs';
   const partialReporting = [
@@ -2720,14 +2722,14 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
         let readingKnownSnapshot = false;
         Object.getOwnPropertyDescriptors = function (...args) {
           const descriptors = Reflect.apply(originalDescriptors, this, args);
-          if (knownPrefixCapture && !readingKnownSnapshot) {
+          if ((knownPrefixCapture || knownPrefixLater) && !readingKnownSnapshot) {
             readingKnownSnapshot = true;
             try {
               const snapshot = f.backend.snapshot,
                 journal = snapshot.nativeStageRecords?.at(-1);
               if (
                 journal &&
-                journal.steps.length <= 16 &&
+                journal.steps.length <= 18 &&
                 journal.steps.every((step) => step.readback !== null) &&
                 !knownSnapshots.has(journal.steps.length)
               )
@@ -2895,8 +2897,11 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           const originalCache = (
             await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs')
           ).refreshKanbanStateCache;
+          const cachePriorObserver = knownPrefixLater
+            ? Object.getOwnPropertyDescriptors
+            : originalDescriptors;
           Object.getOwnPropertyDescriptors = function (value) {
-            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
+            const descriptors = Reflect.apply(cachePriorObserver, this, arguments);
             if (
               !cacheReentryProbe &&
               Reflect.ownKeys(descriptors).sort().join(',') ===
@@ -3189,9 +3194,98 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             assert.equal(known.nextOrdinal, ordinal + 1);
             assert.equal(known.transitionId, input.journal.header.intent.transitionId);
             assert.equal(known.actorClock, input.journal.header.original.actor.capture.ts);
+            for (const [label, change] of [
+              [
+                'completed resource',
+                (value) => {
+                  value.resources.local.activeTask.bytes += ' ';
+                },
+              ],
+              [
+                'body',
+                (value) => {
+                  value.body.bytes += '\n';
+                },
+              ],
+              [
+                'body version',
+                (value) => {
+                  value.body.version += 1;
+                },
+              ],
+              [
+                'stage',
+                (value) => {
+                  value.stage = 'review';
+                },
+              ],
+              [
+                'executor',
+                (value) => {
+                  value.executor.sessionId += '-foreign';
+                },
+              ],
+              [
+                'incomplete readback',
+                (value) => {
+                  value.journal.steps.at(-1).readback = null;
+                },
+              ],
+              [
+                'compensation',
+                (value) => {
+                  value.journal.compensation = {};
+                },
+              ],
+            ]) {
+              const changed = structuredClone(input);
+              change(changed);
+              await assert.rejects(
+                codec.deriveRecordedNativeStageKnownPrefix(changed),
+                (error) => error.message === 'criteria-revision:native-stage-known-prefix',
+                ordinal + ':' + label
+              );
+            }
+            const detached = structuredClone(input),
+              retained = detached.resources;
+            let gets = 0;
+            const pending = codec.deriveRecordedNativeStageKnownPrefix(detached);
+            queueMicrotask(() =>
+              Object.defineProperty(detached, 'resources', {
+                enumerable: true,
+                get() {
+                  gets++;
+                  return retained;
+                },
+              })
+            );
+            assert.deepEqual(await pending, known);
+            assert.equal(gets, 0, 'caller DATA detached across recognition await');
             assert.deepEqual(
               Object.keys(known).sort(),
               ['ordinal', 'nextOrdinal', 'transitionId', 'actorClock'].sort()
+            );
+          }
+          const { canonicalRecordJson } =
+            await import('../../../../task-tracker/lib/github-records/canonical-json.mjs');
+          const first = knownSnapshots.get(1);
+          for (const key of ['transitionId', 'actorClock']) {
+            const changed = {
+              journal: structuredClone(first.nativeStageRecords.at(-1)),
+              resources: structuredClone(first.nativeStageResources),
+              body: structuredClone(first.observation.body),
+              stage: first.observation.stage,
+              executor: structuredClone(first.observation.executor),
+            };
+            if (key === 'transitionId') delete changed.journal.header.intent.transitionId;
+            else delete changed.journal.header.original.actor.capture.ts;
+            const { id, ...unsigned } = changed.journal.header;
+            changed.journal.header.id = hashBytes(canonicalRecordJson(unsigned));
+            changed.journal.steps[0].previous = changed.journal.header.id;
+            await assert.rejects(
+              codec.deriveRecordedNativeStageKnownPrefix(changed),
+              (error) => error.message === 'criteria-revision:native-stage-known-prefix',
+              'missing recognized scalar: ' + key
             );
           }
           assert.deepEqual(
@@ -3200,6 +3294,34 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             'recognition creates no effects or runtime membership'
           );
           assert.deepEqual(f.backend.snapshot, snapshot);
+          const calls = [];
+          const restarted = createRevisionMemory(snapshot);
+          await assert.rejects(
+            withRevisionConsumer(
+              {
+                repository: f.context.repository,
+                issue: f.context.issue,
+                activity: 'stage-write',
+                backend: restarted,
+                projectDir: f.projectDir,
+              },
+              () => calls.push('stage')
+            ),
+            (error) => error.code === 'revision-pending'
+          );
+          await assert.rejects(
+            mutateIssueBody({
+              issueNumber: f.context.issue,
+              repo: f.context.repository,
+              mutate: (body) => {
+                calls.push('body');
+                return body;
+              },
+              deps: { revisionBackend: restarted, pexec: async () => calls.push('transport') },
+            }),
+            (error) => error.code === 'revision-pending'
+          );
+          assert.deepEqual(calls, []);
           assert.equal(
             (await observeRevision({ context: f.context, deps: createRevisionMemory(snapshot) }))
               .status,
@@ -3318,6 +3440,27 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           if (fault === null) {
             const codec =
               await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+            if (knownPrefixLater) {
+              const effects = f.backend.effects;
+              for (const ordinal of [17, 18]) {
+                const captured = knownSnapshots.get(ordinal);
+                assert.ok(captured, 'actual later original prefix captured: ' + ordinal);
+                assert.equal(captured.nativeStageRecords.at(-1).steps.length, ordinal);
+                const selected = {
+                  journal: captured.nativeStageRecords.at(-1),
+                  resources: captured.nativeStageResources,
+                  body: captured.observation.body,
+                  stage: captured.observation.stage,
+                  executor: captured.observation.executor,
+                };
+                await assert.rejects(
+                  codec.deriveRecordedNativeStageKnownPrefix(selected),
+                  (error) => error.message === 'criteria-revision:native-stage-known-prefix'
+                );
+              }
+              assert.deepEqual(f.backend.effects, effects);
+              assert.deepEqual(f.backend.snapshot, snapshot);
+            }
             const input = structuredClone({ header: journal.header, steps: journal.steps });
             const bad = structuredClone(input);
             bad.steps[17].intent.sid = 'foreign';
