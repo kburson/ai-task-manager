@@ -1,0 +1,20 @@
+{
+  "story": 1953,
+  "originalStory": 1558,
+  "owner": "kburson",
+  "sourcePath": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1558-ask-the-script-review-r1",
+  "sourceHead": "a650be5a090f28325e03f47a22b7495674cf5011",
+  "originalIndexSha256": "58a5d8c4e1165da06813184c0d399dd79e36cd1069e218f30e48a9a07fba4aee",
+  "sourceIndexEntries": "",
+  "purpose": "Recover the uncommitted manual Opus reviewer invitation for the already-delivered #1558 Ask-the-Script design. Historical collateral, not an implementation approval.",
+  "captured": [
+    {
+      "path": "docs/superpowers/reviews/1558/spec/manual-astra-opus/round-1-opus-invitation.md",
+      "blob": "dacd1a96899148368b787f98d5de5fa3b625cff0",
+      "sha256": "08bb8988ecb0bedb2eebca09b43d68648de3a79ea7e108177a4c50831b54cde5",
+      "bytes": 16761
+    }
+  ],
+  "excludedRuntimeFixtures": [],
+  "validation": "Content preservation only. No current functional test, lint, peer review or merge readiness claim."
+}
