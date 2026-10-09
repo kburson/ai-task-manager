@@ -203,7 +203,7 @@ import {
   projectionBody,
 } from '../../../helpers/github-record-lifecycle-fixtures.mjs';
 
-async function historicalProjection(context) {
+async function historicalProjection(context, { durable = true } = {}) {
   const oldGrant = activeAuthority().grant;
   const grant = {
     ...oldGrant,
@@ -243,6 +243,7 @@ async function historicalProjection(context) {
       return [...records];
     },
     createIssueComment: async ({ body }) => {
+      effects.push('capsule-create');
       const parsed = parseAitmRecord({
         commentNodeId: 'IC_transition_original',
         body,
@@ -253,7 +254,10 @@ async function historicalProjection(context) {
       records.push(record);
       return record;
     },
-    readBackComment: async () => records[0],
+    readBackComment: async () => {
+      effects.push('capsule-readback');
+      return records[0];
+    },
     readProjection: async ({ commentNodeId }) => {
       effects.push('projection-read');
       return structuredClone(projections.get(commentNodeId));
@@ -274,6 +278,11 @@ async function historicalProjection(context) {
     contract: sealedContract(),
     records,
   };
+  if (!durable)
+    return {
+      effects,
+      input: { ...input, transitionAuthority: validateTransitionAuthority(input), deps },
+    };
   // Use the original append/readback path to obtain an actual durable capability.
   // A hand-built object or serialized observation cannot replace this proof.
   const appended = await appendLifecycleTransition({
@@ -637,3 +646,43 @@ test('unidentified ordinary convergence remains compatible and an enabled real f
   if (result.error) t.diagnostic(result.stdout + result.stderr);
   assert.ifError(result.error);
 });
+
+for (const state of ['pending', 'stale', 'malformed', 'unavailable', 'baseline', 'approved']) {
+  test(`fresh lifecycle append ${state} qualifies its original nested capsule path`, async () => {
+    const f = state === 'approved' ? await approvedFixture() : await fixture(state);
+    if (state === 'malformed')
+      f.backend.addComment({
+        id: 'bad',
+        body: '<!-- aitm.criteria-revision-event/v1 {broken} -->',
+      });
+    const p = await historicalProjection(f.context, { durable: false });
+    const input = {
+      ...p.input,
+      recordId: id(200),
+      createdAt: '2026-08-05T11:00:00.000Z',
+      deps: { ...p.input.deps, revisionBackend: f.backend },
+    };
+    if (['baseline', 'approved'].includes(state)) {
+      const result = await appendLifecycleTransition(input);
+      assert.equal(result.replayed, false);
+      assert.equal(result.record.envelope.recordType, 'lifecycle-transition');
+      assert.equal(p.effects.filter((x) => x === 'capsule-create').length, 1);
+      assert.ok(p.effects.includes('capsule-readback'));
+      const retry = await appendLifecycleTransition(input);
+      assert.equal(retry.replayed, true);
+      assert.equal(p.effects.filter((x) => x === 'capsule-create').length, 1);
+    } else {
+      await assert.rejects(
+        appendLifecycleTransition(input),
+        (error) =>
+          error.code ===
+          (state === 'pending'
+            ? 'revision-pending'
+            : state === 'stale'
+              ? 'revision-approval-stale'
+              : 'revision-authority-unavailable')
+      );
+      assert.deepEqual(p.effects, []);
+    }
+  });
+}
