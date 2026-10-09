@@ -1,0 +1,12 @@
+{
+  "status": 1,
+  "signal": null,
+  "output": [
+    null,
+    "",
+    "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' comment 1902 --key code-review.root-exact-head --body-file .scratch/1902/root-independent-code-review.md\ntask-tracker error: issue-body:session: an open timing session is required\n"
+  ],
+  "pid": 17260,
+  "stdout": "",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' comment 1902 --key code-review.root-exact-head --body-file .scratch/1902/root-independent-code-review.md\ntask-tracker error: issue-body:session: an open timing session is required\n"
+}

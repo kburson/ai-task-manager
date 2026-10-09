@@ -1,0 +1,20 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "user-story",
+    "1904",
+    "--as",
+    "release operators delivering issues whose Scope embeds accepted requirements",
+    "--want",
+    "evaluate the formal acceptance criteria because embedded source headings currently shadow the governed checklist",
+    "--so-that",
+    "false completion refusals and skipped verifier checks are prevented while approved requirements stay immutable"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T14:42:32.537Z",
+  "end": "2026-10-06T14:42:39.945Z",
+  "exitCode": 0,
+  "stdout": "[task-tracker] ✓ #1904 User Story written\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' user-story 1904 --as release operators delivering issues whose Scope embeds accepted requirements --want evaluate the formal acceptance criteria because embedded source headings currently shadow the governed checklist --so-that false completion refusals and skipped verifier checks are prevented while approved requirements stay immutable\n"
+}

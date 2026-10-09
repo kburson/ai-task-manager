@@ -1,0 +1,15 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "occupancy",
+    "--release",
+    "1904"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T15:18:56.262Z",
+  "end": "2026-10-06T15:18:57.675Z",
+  "exitCode": 0,
+  "stdout": "Occupancy #1904: no claim found.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' occupancy --release 1904\n"
+}

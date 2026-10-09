@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "[task-tracker] ✓ \"Regression coverage preserves legacy supported headings and existing malformed/duplicate canonical body refusals.\" already checked on #1904 (no-op)\n",
+    ""
+  ],
+  "pid": 96943,
+  "stdout": "[task-tracker] ✓ \"Regression coverage preserves legacy supported headings and existing malformed/duplicate canonical body refusals.\" already checked on #1904 (no-op)\n",
+  "stderr": ""
+}
