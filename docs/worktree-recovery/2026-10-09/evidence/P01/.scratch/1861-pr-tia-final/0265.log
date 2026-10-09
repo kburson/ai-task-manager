@@ -1,0 +1,34 @@
+[task-tracker] ✓ #501 removed native blockers #999
+✔ AC4: runDemote succeeds on a marker-heavy body (write path is not fragile) (4.374125ms)
+✔ AC4: runUnblock clears a native blocker without rewriting a marker-heavy body (0.577208ms)
+✔ AC4: backward demote exit guard fires while a blocker is open (confirmed contract) (0.436042ms)
+✔ AC (#572): main-anchored resolvers build under the passed main path regardless of cwd (0.124042ms)
+✔ AC (#572): findMainWorktreePath anchors fleet/lock to MAIN from a sibling worktree cwd (156.691458ms)
+✔ AC (#574): relocated .ai-task-manager/templates survive a fresh worktree checkout (126.759041ms)
+✖ AC (#572): getProjectDir precedence — AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd (0.617375ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 6
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 296.849958
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs:291:1
+✖ AC (#572): getProjectDir precedence — AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd (0.617375ms)
+  RuntimeRootError: Project root does not exist: /c
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at physical (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:39:12)
+      at readPhysicalRuntimeIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:114:16)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:188:20)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs:293:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'ROOT_IDENTITY_MISMATCH'
+  }

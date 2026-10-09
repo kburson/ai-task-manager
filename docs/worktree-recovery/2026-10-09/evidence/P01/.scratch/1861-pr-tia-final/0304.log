@@ -1,0 +1,24 @@
+coverage-backfill-timing-logs.test.mjs: ok
+✔ parseArgs: --issue N / --apply / --cap-hours (0.663042ms)
+✔ parseArgs: --issue=N / --cap-hours=H equals forms (0.134584ms)
+✔ parseArgs: --all-open and --help (0.071458ms)
+✔ printUsage: writes usage banner to injected sink (0.120041ms)
+✔ fetchOpenIssueNumbers: maps gh json to numbers (0.469083ms)
+✔ fetchOpenIssueNumbers: bad json → [] (0.085791ms)
+✔ printDiff: emits - / + only for differing lines (0.129583ms)
+✔ processIssue: no timing comment → skipped line (0.145542ms)
+✔ processIssue: no change (already clean body) → no-change line (0.202333ms)
+✔ processIssue: dry-run backfill → summary + diff, no write (0.798041ms)
+✔ processIssue: --apply → backup written + comment updated (0.285458ms)
+✔ main: --help prints usage and exits 0 (1.204ms)
+✔ main: no issue selector → usage + exit 2 (0.06825ms)
+✔ main: missing repo → err + exit 2 (0.072125ms)
+✔ main: --all-open loops issues + captures per-issue errors + dry-run footer (0.21625ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.12175

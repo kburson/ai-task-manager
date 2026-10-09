@@ -1,0 +1,19 @@
+✔ clean triple (board == recorded == sentinel) ⇒ ok, no drift (#758 AC1) (0.526458ms)
+✔ Status changed with no matching sentinel ⇒ out-of-band, names board vs sentinel (#758 AC1) (0.106875ms)
+✔ board disagrees but NO sentinel present at all ⇒ indeterminate, report-only (#758 AC1) (0.055625ms)
+✔ auditMoveInvariants composes injected readers into the classifier (#758 AC2) (0.202458ms)
+✔ auditMoveInvariants on a clean issue reports ok and a clean readout (#758 AC2) (0.098542ms)
+✔ planReconcile on out-of-band emits set-status→sentinel and NO sentinel write (#758 AC3) (0.4595ms)
+✔ planReconcile never emits a sentinel-writing op for ANY verdict (#758 AC3) (0.146083ms)
+✔ planReconcile on report-only / clean yields no ops (#758 AC3) (0.091625ms)
+✔ runMoveInvariantAudit warns on drift, stays silent on clean (#758 AC2) (0.231792ms)
+✔ runMoveInvariantAudit is a no-op without repo, and never throws (#758 AC2) (0.171042ms)
+✔ board == sentinel with a LAGGING recordedState ⇒ ok, not flagged (#758 AC4) (0.062417ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.122041

@@ -1,0 +1,15 @@
+✔ nested same-issue acquisition runs the callback and creates no second lock (51.778334ms)
+✔ the held flag names the issue and is restored after the frame exits (44.815ms)
+✔ a nested acquisition for a different issue still takes its own lock (47.123542ms)
+✔ a foreign live holder still raises IssueLockError when the flag is absent (44.559667ms)
+✔ an unnested retries:0 acquisition still takes the lock (#1169 entry interlock) (47.8605ms)
+✔ two concurrent same-issue frames in one process still contend (45.205417ms)
+✔ isIssueLockHeld token semantics (0.15425ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 285.001

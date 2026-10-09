@@ -1,0 +1,15 @@
+✔ missing config file → err + exit 1 (0.98975ms)
+✔ config missing projectId/kanbanFieldId → err + exit 1 (0.154416ms)
+✔ all kanbanOption* already populated → early return, no write (0.208584ms)
+✔ network path: fetches options, fills every empty key, writes config (0.199042ms)
+✔ skipNetwork with fakeOptions: partial match logs Already set + Unmatched (0.165958ms)
+✔ skipNetwork with no options → nothing filled, no write (0.100042ms)
+✔ fetchStatusOptions matches by field id, else by name "status" (0.139417ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.102792

@@ -1,0 +1,21 @@
+✔ classifyEdit: code globs (1.693375ms)
+✔ classifyEdit: codeGlobExcludes honored when configured (0.136166ms)
+✔ classifyEdit: codeGlobReincludes carve-out for tests under excluded paths (0.087084ms)
+✔ classifyEdit: doc globs (0.169375ms)
+✔ classifyEdit: WRITE_ISSUE for .github issue templates (0.061708ms)
+✔ classifyEdit: doc-glob precedence over code-glob (0.0585ms)
+✔ classifyEdit: fallthrough (0.338291ms)
+✔ classifyEdit: configGlobs — repo-root tooling config classifies as WRITE_CODE (0.5475ms)
+✔ classifyEdit: deployGlobs — repo-root container/deploy files classify as WRITE_CODE (0.832958ms)
+✔ classifyEdit: deployGlobs in DEFAULT_POLICY (0.185208ms)
+✔ classifyEdit: doc precedence still wins over deployGlobs (0.064125ms)
+✔ loadPolicy: configGlobs override propagates from project-local file (62.214333ms)
+✔ loadPolicy: missing configGlobs falls back to defaults (52.125ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 122.977667

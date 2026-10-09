@@ -1,0 +1,10 @@
+✔ package inventory is sorted and digests exact shipped bytes (12.684083ms)
+✔ pickup directive digest is stable across install-time version stamping (2.211208ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19.621917

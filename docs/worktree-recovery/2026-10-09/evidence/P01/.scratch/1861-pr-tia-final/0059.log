@@ -1,0 +1,43 @@
+✔ open-PR delivery explanation shares actual preflight and performs no effects (26.906834ms)
+✔ stale PR head is blocked by the same exact-head preflight as execution (13.455333ms)
+✔ missing provider capability blocks without shell merge guidance (9.090709ms)
+✔ an unreadable delivery authority observation is indeterminate (8.230542ms)
+✔ simultaneous unreadable sources retain both typed causes (6.322417ms)
+✔ merged PR without a delivery receipt cannot claim ready from PR state alone (6.303667ms)
+✔ merged PR reconstruction does not infer a provider action (8.01375ms)
+✔ merged PR with a live intent and exact read-only trunk proof is explainable (91.297834ms)
+✔ merged PR without an intent is explainable when read-only external proof succeeds (1.705334ms)
+✔ merged external proof retains source-attribution metadata warnings (2.55325ms)
+✔ merged PR with a matching receipt remains explainable without new records (32.510833ms)
+✔ default merged proof ports observe remote and local trunk without fetching refs (1.849833ms)
+✔ default delivery dependency advertises only the configured provider-action capability (0.320791ms)
+✔ a stale local trunk mirror cannot prove merged delivery readiness (12.316084ms)
+✔ merged intent cannot explain ready after configured method diverges (15.388417ms)
+✔ issue-resident no-commit delivery is explainable without a merge provider (7.270042ms)
+✔ production reader selects the current head among historical branch PRs (6.385167ms)
+✔ production reader reports an unavailable initial issue without throwing or effects (2.82325ms)
+✔ delivery body drift between observed issue and preflight snapshot is indeterminate (8.376125ms)
+✔ delivery snapshot cannot claim ready at a different observed worktree HEAD (1.590958ms)
+✔ missing exact-head human PR approval is a typed request, not ready (6.056917ms)
+✔ ineligible manual code reviewer blocks rather than becoming indeterminate (7.259833ms)
+✔ missing complete delivery-record inventory cannot explain ready (3.607291ms)
+✔ historical recovery is not silently offered as a ready default delivery (6.0785ms)
+✔ malformed v2 evidence marker cannot fall through to v1 delivery readiness (1.195625ms)
+✔ an existing intent whose authorized merge method diverges cannot explain ready (1.021292ms)
+✔ a prior-head intent may be superseded by fresh exact-head execution (5.278375ms)
+✔ an existing no-commit delivery record with a different accepted head blocks readiness (9.582041ms)
+✔ execution refuses a changed PR head after a prior ready explanation (10.754916ms)
+✔ execution refuses revoked review authorization after a prior ready explanation (3.155583ms)
+✔ execution refuses withdrawn exact-head human PR approval after explanation (1.27325ms)
+✔ execution refuses changed CI after a prior ready explanation (5.990209ms)
+✔ execution refuses changed ledger after a prior ready explanation (10.522791ms)
+✔ execution refreshes PR head after preflight and before posting an intent (2.23825ms)
+✔ execution refreshes lineage before posting an intent (1.785041ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 402.792375

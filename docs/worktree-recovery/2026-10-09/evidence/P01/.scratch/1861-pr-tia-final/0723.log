@@ -1,0 +1,23 @@
+▶ preflight Story Origin authoring (#892)
+  ✔ renders a solo shape without plan metadata input (349.743833ms)
+  ✔ preserves optional early planning input (224.909167ms)
+  ✔ rejects empty and prose-only Story Origin fragments (788.908583ms)
+  ✔ renders a populated stub origin and an empty plan section (254.644167ms)
+  ✔ uses the resolved issue kind in a stub origin (219.159667ms)
+  ✔ derives a non-stub render kind from Story Origin (301.146125ms)
+  ✔ rejects an explicit kind that conflicts with Story Origin (387.917584ms)
+  ✔ records a sub-issue parent inside Story Origin (438.296583ms)
+✔ preflight Story Origin authoring (#892) (2967.337667ms)
+▶ create-issue shaped flag forwarding (#892)
+  ✔ forwards Story Origin and omits absent Plan Metadata (0.950875ms)
+  ✔ still forwards optional early Plan Metadata (0.293542ms)
+  ✔ forwards optional exact verification commands (0.104334ms)
+✔ create-issue shaped flag forwarding (#892) (1.626583ms)
+ℹ tests 11
+ℹ suites 2
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2972.991375

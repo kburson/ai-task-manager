@@ -1,0 +1,16 @@
+✔ syncEpic rebases the epic onto origin/trunk (default) then force-with-lease pushes (1.171125ms)
+✔ syncEpic skips the push when noPushToOrigin is set (rebase-only) (0.113375ms)
+✔ #927 — syncEpic rebases onto the injected resolved ref, and it equals the ancestor-check ref (0.114583ms)
+✔ syncEpic surfaces a rebase conflict rather than pushing a bad state (0.273958ms)
+✔ syncEpic refuses a non-epic issue (0.098125ms)
+✔ epicNeedsSync: true when origin/trunk is NOT yet an ancestor of the epic (0.066041ms)
+✔ epicNeedsSync: false when the epic already contains origin/trunk (0.055583ms)
+✔ requires an issue and injected git (0.11375ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.462125

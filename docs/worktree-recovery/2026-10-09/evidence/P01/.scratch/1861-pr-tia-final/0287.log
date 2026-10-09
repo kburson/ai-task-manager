@@ -1,0 +1,11 @@
+✔ another actor history cannot turn a first genuine bind into resume or suppress it (14.391917ms)
+✔ own paused history pairs independently of another currently working actor (0.67575ms)
+✔ actor history cannot authorize a fabricated historical departure for an unobserved gap (0.178417ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18.733541

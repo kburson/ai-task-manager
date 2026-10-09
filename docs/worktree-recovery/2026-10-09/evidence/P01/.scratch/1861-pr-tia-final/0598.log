@@ -1,0 +1,10 @@
+✔ heal-entry-markers.planStageHeal and lib safeBackfillTs agree on the hole ts (2.071541ms)
+✔ reconcile backfill stamps the same ts heal-entry-markers would compute for the hole (58.789709ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67.955167

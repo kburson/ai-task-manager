@@ -1,0 +1,97 @@
+✔ claude static pickup and captured lifecycle use the same router-plus-pickup budget (10.688958ms)
+✔ claude static lifecycle and captured lifecycle use the same full-lifecycle budget (6.503916ms)
+✔ codex static pickup and captured lifecycle use the same router-plus-pickup budget (7.436708ms)
+✔ codex static lifecycle and captured lifecycle use the same full-lifecycle budget (5.29425ms)
+✔ pre-slim public CLI capture cannot certify the final installed adapter release (847.614459ms)
+✖ final release requires a complete installed-byte and public-CLI capture (7.285458ms)
+✖ final package and public-CLI capture regenerate byte for byte (43086.104ms)
+✔ fixed release measurement refuses a missing required instruction file (7.560083ms)
+✔ claude aggregate CLI labels fixed release scenarios and exits on any breach (373.996542ms)
+✔ codex aggregate CLI labels fixed release scenarios and exits on any breach (205.828333ms)
+✔ accepted final archive stays intact and cannot certify changed current sources (9.733375ms)
+✔ internally consistent dirty installed guidance cannot inherit a committed source identity (4603.292167ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 10
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 49177.59675
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:93:1
+✖ final release requires a complete installed-byte and public-CLI capture (7.285458ms)
+  Error: paired context: final capture identity drift
+      at buildPairedContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/helpers/guidance-paired-context.mjs:216:13)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/measure-guidance-context.mjs:355:7
+      at Array.map (<anonymous>)
+      at buildGuidanceContextReport (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/measure-guidance-context.mjs:353:25)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:97:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:154:1
+✖ final package and public-CLI capture regenerate byte for byte (43086.104ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  ... Skipped lines
+  
+    '{\n' +
+      '  "schema": "aitm.guidance-lifecycle-capture/v1",\n' +
+      '  "captureKind": "actual-public-cli-and-installed-static-with-deterministic-authority",\n' +
+      '  "authority": "deterministic-fixture",\n' +
+      '  "limitation": "Fixture state and evidence transitions are injected between read-only CLI queries; no lifecycle action, approval, or merge was executed. Action readiness is reported exactly as observed and does not authorize a delivery GO.",\n' +
+  ...
+      '          "path": "bin/aitm.mjs",\n' +
+  +   '          "sha256": "sha256:a2ddcf4d7e0ec31c1c314c3bcc9e0e6edb7b5a2d7d11361e2a9dad4dece746d4"\n' +
+  -   '          "sha256": "sha256:adc4accf281f1cd3a749b59c5a5c30c593219747dc94ca3e042acc0700c48c32"\n' +
+      '        },\n' +
+      '        {\n' +
+      '          "path": "skill/SKILL.md",\n' +
+      '          "sha256": "sha256:d213477161ed0c4d81b8c92bc1fdf2cf38f3bfa01d9f93a5f614bc6f427c384a"\n' +
+      '        },\n' +
+  ...
+      '      ],\n' +
+  +   '      "filesSha256": "sha256:1d072a771e3a5010bd04f3524d5f872f114e30cfa06b690ab4cabad69a89b969"\n' +
+  -   '      "filesSha256": "sha256:93987155e1f7cdaf968cd34c0fbc47feae9eac6959e93d3cddd46f1566063efe"\n' +
+      '    },\n' +
+      '    "implementationFiles": [\n' +
+      '      {\n' +
+      '        "path": "bin/aitm.mjs",\n' +
+  +   '        "sha256": "sha256:a2ddcf4d7e0ec31c1c314c3bcc9e0e6edb7b5a2d7d11361e2a9dad4dece746d4"\n' +
+  -   '        "sha256": "sha256:adc4accf281f1cd3a749b59c5a5c30c593219747dc94ca3e042acc0700c48c32"\n' +
+      '      },\n' +
+      '      {\n' +
+      '        "path": "scripts/task-tracker/verbs/explain.mjs",\n' +
+      '        "sha256": "sha256:958f31fcf1fca9633b7df3a836f13002842978ba93122d1c531c8335b21e7d6e"\n' +
+      '      },\n' +
+  ...
+      '    "transcriptSha256": "sha256:ff0aabfd6dca104869d33e8434b74435148d053b8dab83ce57e81896335a4653",\n' +
+  +   '    "sourceInputsSha256": "sha256:5265a5389e2a2f93b4bf54131a6709643331978039f1812ccbefff64d7836a0a"\n' +
+  -   '    "sourceInputsSha256": "sha256:dffdc9283979e46b1d884fbdfa9f2d529ba6396a056052d3d67733aa12017a2e"\n' +
+      '  },\n' +
+      '  "events": [\n' +
+      '    {\n' +
+      '      "kind": "query",\n' +
+      '      "name": "ready-first-load",\n' +
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:159:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '{\n  "schema": "aitm.guidance-lifecycle-capture/v1",\n  "captureKind": "actual-public-cli-and-installed-static-with-deterministic-authority",\n  "authority": "deterministic-fixture",\n  "limitation": "Fixture state and evidence transitions are injected between read-only CLI queries; no lifecycle action, approval, or merge was executed. Action readiness is reported exactly as observed and does not authorize a delivery GO.",\n  "capturedAt": null,\n  "fixtureClock": "2026-09-23T00:00:00.000Z",\n  "captureTimestampPolicy": "commit-is-publication-time",\n  "identity": {\n    "mode": "final",\n...',
+    expected: '{\n  "schema": "aitm.guidance-lifecycle-capture/v1",\n  "captureKind": "actual-public-cli-and-installed-static-with-deterministic-authority",\n  "authority": "deterministic-fixture",\n  "limitation": "Fixture state and evidence transitions are injected between read-only CLI queries; no lifecycle action, approval, or merge was executed. Action readiness is reported exactly as observed and does not authorize a delivery GO.",\n  "capturedAt": null,\n  "fixtureClock": "2026-09-23T00:00:00.000Z",\n  "captureTimestampPolicy": "commit-is-publication-time",\n  "identity": {\n    "mode": "final",\n...',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+From /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate
+ * branch              e545522e467e484bd96db3b327fc8ccd0047c086 -> FETCH_HEAD

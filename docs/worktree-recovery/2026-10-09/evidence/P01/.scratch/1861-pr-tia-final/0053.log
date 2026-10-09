@@ -1,0 +1,12 @@
+✔ completed local-trunk receipt makes advisory close ready without effects (4.043375ms)
+✔ completed receipt still refuses when fresh trunk and PR proof drifts (0.932708ms)
+✔ unconsumed local grant stays blocked in advisory close (0.526834ms)
+✔ production local receipt reader verifies exact journal and comment without writes (3.7725ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15.978417

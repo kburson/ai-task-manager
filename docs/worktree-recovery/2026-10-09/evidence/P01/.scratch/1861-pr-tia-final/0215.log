@@ -1,0 +1,22 @@
+✔ delivery prepare accepts one issue and preserves ordinary command grammar (2.092375ms)
+✔ delivery preparation returns an exact draft without authority or comment effects (6.761625ms)
+✔ delivery record, revise, and revoke consume separately prepared exact statements (14.132792ms)
+✔ delivery write refuses changed live head after preparation before appending (0.589083ms)
+✔ ordinary exception and two delivery operations retain isolated histories (4.934834ms)
+✔ argument and request parsers enforce explicit actions, issues, and closed shapes (0.443292ms)
+✔ authority resolution preserves a host-verified user message and rejects agent-authored evidence (0.202292ms)
+✔ Codex source loading excludes host-injected blocks from the preserved user statement (104.518292ms)
+✔ record writes one exact-readback capsule and an identical retry is idempotent (1.453958ms)
+✔ changed policy requires revise, which appends revision two and preserves revision one (3.693125ms)
+✔ revoke appends a terminal revision and show reports immutable history (1.974292ms)
+✔ a lost response reconciles the exact operation while partial series reports every issue (2.249958ms)
+✔ post-write resolution reports a concurrent active fork instead of claiming creation (9.810084ms)
+✔ human and JSON formatters expose the same per-issue disposition without success inflation (4.504334ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 165.026917

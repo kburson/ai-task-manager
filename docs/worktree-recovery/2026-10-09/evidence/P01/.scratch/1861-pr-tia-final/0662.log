@@ -1,0 +1,13 @@
+✔ repair audit records prior evidence and the current human actor without Full-Auto declaration (1.3395ms)
+✔ repair audit retries recognize issue, timestamp and digests and report unavailable history honestly (0.807875ms)
+✔ known prior evidence cannot be suppressed by a different or unavailable prior payload (0.383459ms)
+✔ an evidence key without the matching approved payload does not suppress repair (0.138125ms)
+✔ both listing and posting failures retain known prior and new approval evidence (0.659208ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.545083

@@ -1,0 +1,13 @@
+✔ delivery grant requires the genuine exact Codex user statement and scope (186.588792ms)
+✔ wrong issue, pull request, base, and operation never select authority (114.594ms)
+✔ unreadable host source is indeterminate (28.447375ms)
+✔ stored delivery grant with a placeholder reason never resolves (31.229125ms)
+✔ expired and body-stale delivery grant accepts an exact revocation (68.916125ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 433.759084
