@@ -41,6 +41,8 @@ import {
 } from './native-continuation-fixtures.mjs';
 
 export function registerNativeStageCase(mode, entrypoint, fault = null) {
+  const knownPrefixEntry = mode === 'known-prefix-entry';
+  if (knownPrefixEntry) mode = 'known-prefix-inputs';
   const knownPrefixLater = mode === 'known-prefix-later';
   if (knownPrefixLater) mode = 'tail-cache';
   const faultMode = mode;
@@ -2499,7 +2501,8 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
         return;
       }
       if (transitionMode) {
-        const originalRetryContext = faultMode === 'recovery-from-comment' ? { ...ctx } : null;
+        const originalRetryContext =
+          faultMode === 'recovery-from-comment' || knownPrefixEntry ? { ...ctx } : null;
         assert.equal(Object.hasOwn(ctx, 'transitionCommit'), false);
         assert.equal(Object.hasOwn(ctx, 'deps'), false);
         const files = captureFiles();
@@ -3322,6 +3325,31 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             (error) => error.code === 'revision-pending'
           );
           assert.deepEqual(calls, []);
+          if (knownPrefixEntry) {
+            assert.equal(Object.hasOwn(originalRetryContext, 'transitionId'), false);
+            for (const [ordinal, selected] of knownSnapshots) {
+              const backend = createRevisionMemory(selected);
+              const result = await moveState({ ...originalRetryContext, revisionBackend: backend });
+              assert.equal(result.phase, 'native-stage-resume', 'real admission at ' + ordinal);
+              assert.equal(result.preparationReason, 'known-prefix-continuation-unavailable');
+              assert.equal(result.exit, 4);
+              assert.deepEqual(backend.snapshot, selected);
+              assert.deepEqual(
+                backend.effects.filter(
+                  (name) =>
+                    ![
+                      'authority-read',
+                      'page-read',
+                      'native-history-readback',
+                      'native-proof-record-readback',
+                    ].includes(name)
+                ),
+                [],
+                'only fixed reads, never writes at admission'
+              );
+              assert.deepEqual(captureFiles(), files);
+            }
+          }
           assert.equal(
             (await observeRevision({ context: f.context, deps: createRevisionMemory(snapshot) }))
               .status,

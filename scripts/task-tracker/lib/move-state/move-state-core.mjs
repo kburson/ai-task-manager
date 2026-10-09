@@ -15,6 +15,8 @@ import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import {
   withRevisionConsumer,
+  tryNativeStageOriginalEntry,
+  assertNativeStageOriginalEntryPolicy,
   readNativeRevisionStageBody,
   assertNativeRevisionStageScope,
   assertNativeStageEntryFrame,
@@ -381,7 +383,146 @@ function assertNativeTransitionContext(ctx, requireOriginal = false) {
 // authoritative Status write, and the aitm-move-complete sentinel is written
 // LAST of all — so a crash anywhere leaves a safely re-runnable partial state
 // and "the move is complete" has a single verifiable definition (sentinel.mjs).
+const originalNativeStageEntries = new WeakMap();
+function compareOriginalEntryData(value, expected) {
+  if (!value || ![Object.prototype, null].includes(Object.getPrototypeOf(value)))
+    nativeTransitionRefusal();
+  const current = Object.getOwnPropertyDescriptors(value);
+  if (
+    Reflect.ownKeys(current).length !== Reflect.ownKeys(expected).length ||
+    Reflect.ownKeys(current).some((key) => {
+      const a = current[key],
+        b = expected[key];
+      return (
+        !b ||
+        !Object.hasOwn(a, 'value') ||
+        a.value !== b.value ||
+        a.enumerable !== b.enumerable ||
+        a.writable !== b.writable ||
+        a.configurable !== b.configurable
+      );
+    })
+  )
+    nativeTransitionRefusal();
+}
+// Comparison only. A public context or copied string cannot register an entry.
+export function assertOriginalNativeStageEntry(ctx) {
+  const entry = originalNativeStageEntries.get(ctx);
+  if (!entry) nativeTransitionRefusal();
+  compareOriginalEntryData(ctx, entry.descriptors);
+  if (entry.configDescriptors) compareOriginalEntryData(entry.config, entry.configDescriptors);
+}
+export function assertOriginalNativeStageEntrySources(ctx) {
+  assertOriginalNativeStageEntry(ctx);
+  const entry = originalNativeStageEntries.get(ctx);
+  if (entry.sources) {
+    checkOriginalStageSources(entry.sources);
+    checkOriginalFieldSources(entry.sources);
+    checkOriginalLocalSources(entry.sources);
+  }
+}
+export async function evaluateOriginalNativeStageRestart(ctx, capability, origin, known) {
+  assertOriginalNativeStageEntry(ctx);
+  assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known);
+  assertNativeTransitionContext(ctx);
+  if (
+    ctx.actor !== undefined ||
+    ctx.runGuardExecution !== undefined ||
+    Object.keys(ctx).some((key) => key.startsWith('_') && ctx[key] !== undefined)
+  )
+    nativeTransitionRefusal();
+  const header = origin.journal.header;
+  const words = await import('../../word-counter.mjs');
+  assertOriginalNativeStageEntry(ctx);
+  assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known);
+  const { actorTimingStatePath } = await import('../actor-timing-state.mjs');
+  assertOriginalNativeStageEntry(ctx);
+  const { buildContext } = await import('../../runtime.mjs');
+  assertOriginalNativeStageEntry(ctx);
+  const native = buildContext(['status']);
+  const actor = header.original.actor;
+  const record = {
+    context: {
+      repository: ctx.cfg.repo,
+      issue: Number(ctx.issueArg),
+      executor: ctx.revisionBackend.observation.executor,
+    },
+    actorIdentity: actor.identity,
+    actorEnvironment: actor.environment,
+    source: actor.capture,
+    evaluation: {
+      localReads: {
+        configuration: header.guardCapture.sources.configuration,
+        session: header.guardCapture.sources.session,
+      },
+      guardReads: header.guardCapture.gitReads,
+    },
+    nativeRoots: words,
+    originalBody: origin.observation.body.bytes,
+    originalLinked: canonicalRecordJson(
+      validateGovernedLinkedPlan({
+        body: origin.observation.body.bytes,
+        projectDir: ctx.projectDir,
+      })
+    ),
+    originalFields: header.original.fieldSources,
+    originalLocal: header.original.local,
+    localPaths: {
+      activeTask: nativeCacheSession.activeTaskPath(actor.identity.sid, ctx.projectDir),
+      actorTiming: actorTimingStatePath(actor.identity, ctx.projectDir),
+      actorFlush: actorTimingStatePath(actor.identity, ctx.projectDir) + '.flush.json',
+      wordCursor: words.markerPathFor(actor.identity.sid, ctx.projectDir),
+      trackerState: native.statePath,
+      queue: native.queuePath,
+    },
+    legacyAbsences: [],
+  };
+  originalNativeStageEntries.get(ctx).sources = record;
+  assertOriginalNativeStageEntrySources(ctx);
+  const guard = await defaultRunGuardExecution(ctx);
+  assertOriginalNativeStageEntrySources(ctx);
+  assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known);
+  const evaluation = guard.nativeEvaluation;
+  if (
+    !evaluation?.guardResult.ok ||
+    !evaluation.guardInvocations.length ||
+    evaluation.ownershipReads?.decision.kind !== 'owned-by-session' ||
+    !evaluation.assignmentReads?.reads.length
+  )
+    nativeTransitionRefusal();
+  return {
+    exit: 4,
+    code: 'revision-authority-unavailable',
+    phase: 'native-stage-resume',
+    preparationReason: 'known-prefix-continuation-unavailable',
+    itemId: '',
+    boardMoved: false,
+    sentinelPresent: false,
+    progressVerified: false,
+    tail: { failures: [] },
+  };
+}
 export async function moveState(ctx) {
+  const descriptors = Object.getOwnPropertyDescriptors(ctx);
+  const config =
+    descriptors.cfg && Object.hasOwn(descriptors.cfg, 'value') ? descriptors.cfg.value : null;
+  const entry = {
+    descriptors,
+    config,
+    configDescriptors: config ? Object.getOwnPropertyDescriptors(config) : null,
+  };
+  compareOriginalEntryData(ctx, descriptors);
+  if (originalNativeStageEntries.has(ctx)) nativeTransitionRefusal();
+  originalNativeStageEntries.set(ctx, entry);
+  try {
+    const restarted = await tryNativeStageOriginalEntry(ctx);
+    if (restarted !== null) return restarted;
+    return await moveStateFirstEntry(ctx);
+  } finally {
+    originalNativeStageEntries.delete(ctx);
+  }
+}
+async function moveStateFirstEntry(ctx) {
   return withRevisionConsumer(
     {
       repository: ctx.cfg?.repo,
