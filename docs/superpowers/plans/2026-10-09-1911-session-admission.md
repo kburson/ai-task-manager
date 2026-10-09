@@ -23,7 +23,7 @@ Source inspection finds that independently callable verbResume and verbSwitch cl
 - Preserve lock order and authenticated delegate reuse; no age-only lease reclaim or bare inherited issue-lock authorization.
 - No authority cache, new production activation, compiled binary, test deletion, fixture reduction or time-budget increase.
 - Existing600000ms file/section,20-minute verifier and45-minute sandbox budgets remain unchanged.
-- Prospective remaining estimate9h includes incremental source boundaries, complete original qualification and review; excludes historical source and passive CI. Any individual estimate >=24h requires decomposition before continuation.
+- Prospective remaining estimate11h includes incremental source boundaries, complete original qualification and review; excludes historical source and passive CI. Any individual estimate >=24h requires decomposition before continuation.
 - Full aggregate/Linux proof and normal child lifecycle reconciliation remain due; no scoped pass becomes Done.
 
 ## Task 1: Close actual public session entry gaps
@@ -32,7 +32,7 @@ Source inspection finds that independently callable verbResume and verbSwitch cl
 
 - Create actual pending/stale/malformed/unavailable public start, targeted resume, no-argument resume and switch cases with original state files and effect spies. Preserve genuine baseline/current-approved bind and timing controls.
 - Run RED before source changes; separate malformed fixture/assertion failures from product evidence.
-- Add the smallest fresh admission at the proved public boundaries before original callbacks and occupancy effects. Preserve original admitted algorithms, pure validation and rollback.
+- Add the smallest fresh admission at the proved public boundaries before original callbacks and occupancy effects. Preserve original algorithms, pure validation and rollback; revalidate identity through all admitted awaits and before owned persistence. Actor drift must not redirect rollback into another session.
 - Prove target mismatch/drift, authenticated nested delegation and original return/error behavior; no remembered target may reuse admission for another issue.
 
 ## Task 2: Qualify hooks, bound sessions and delegates

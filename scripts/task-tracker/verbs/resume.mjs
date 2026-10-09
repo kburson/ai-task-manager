@@ -62,7 +62,12 @@ function rollbackClaim(ctx, claim) {
   });
 }
 
-function rollbackFailedBind(ctx, { claim, priorState, savedState }, originalError) {
+function rollbackFailedBind(
+  ctx,
+  { claim, priorState, savedState },
+  originalError,
+  assertActor = () => {}
+) {
   const recoveryErrors = [];
   let rollbackResult;
   try {
@@ -75,6 +80,7 @@ function rollbackFailedBind(ctx, { claim, priorState, savedState }, originalErro
     (claim?.status === 'unchanged' && rollbackResult?.status === 'not-applicable');
   if (savedState && localRestoreIsSafe) {
     try {
+      assertActor();
       const current = loadState(ctx.statePath);
       if (isDeepStrictEqual(current, savedState)) saveState(priorState, ctx.statePath);
     } catch (restoreError) {
@@ -151,7 +157,14 @@ export async function wakeReviewResidents(ctx, target) {
 // `/task resume` — two paths:
 //   no arg: only valid after `/task pause` (s.paused === true). Rebinds lastActive.
 //   #N arg: unrestricted rebind to a specific issue (works after pause OR stop).
-async function resumeAdmitted(ctx) {
+async function resumeAdmitted(ctx, assertIdentity = () => {}, assertActor = assertIdentity) {
+  assertIdentity();
+  const continued = async (operation) => {
+    assertIdentity();
+    const result = await operation();
+    assertIdentity();
+    return result;
+  };
   const { cfg, statePath, projectDir, role, drainQueueIfAny, safePostTiming, nowIso } = ctx;
   const target = ctx.rest[0];
 
@@ -169,6 +182,7 @@ async function resumeAdmitted(ctx) {
       console.log('no previous task on record.');
       return;
     }
+    assertIdentity();
     const occupancyClaim = claimForBind(ctx, s.lastActive);
     let ts;
     let sid;
@@ -183,22 +197,25 @@ async function resumeAdmitted(ctx) {
         ...resolveBinding({ projectDir, now: nowIso }),
         bindingGenerationId: occupancyClaim?.row?.bindingGenerationId ?? null,
       };
-      await drainQueueIfAny();
+      await continued(() => drainQueueIfAny());
       // Inline the lastActive-bind logic (previously in verbStart)
       try {
         const sidPre = currentSessionId();
         if (sidPre) {
-          await finalizeOrphanPause({
-            sid: sidPre,
-            reason: 'orphan-finalize',
-            projDir: projectDir,
-          });
+          await continued(() =>
+            finalizeOrphanPause({
+              sid: sidPre,
+              reason: 'orphan-finalize',
+              projDir: projectDir,
+            })
+          );
         }
       } catch {
         /* never block resume on finalize failure */
       }
       ts = nowIso();
       sid = currentSessionId();
+      assertIdentity();
       resumeBank = bankResumeTranscriptTail(s, sid, s.lastActive);
       const wordsAtStart = resumeBank.marker;
       idleSec = computePauseIdleSec(s.pausedAtTs, ts);
@@ -217,10 +234,12 @@ async function resumeAdmitted(ctx) {
         lastFullWordMarker: resumeBank.fullMarker,
         ...binding,
       };
+      assertIdentity();
       saveState(savedState, statePath);
       savedState = loadState(statePath);
       const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
       try {
+        assertIdentity();
         setTaskStatus(projectDir, s.lastActive, 'active');
       } catch {
         /* best-effort: failure must not abort the primary operation */
@@ -228,12 +247,14 @@ async function resumeAdmitted(ctx) {
       if (sid && cfg?.repo) {
         const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
         try {
-          const seeded = await seed({
-            sid,
-            issue: s.lastActive,
-            projDir: projectDir,
-            repo: cfg.repo,
-          });
+          const seeded = await continued(() =>
+            seed({
+              sid,
+              issue: s.lastActive,
+              projDir: projectDir,
+              repo: cfg.repo,
+            })
+          );
           // #673 — Pickup Directive only applies once an issue has reached
           // Plan; route earlier-state issues back to the state walk instead.
           if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
@@ -251,7 +272,7 @@ async function resumeAdmitted(ctx) {
           );
         }
       }
-      const { buildRow } = await import('../gh-timing-comment.mjs');
+      const { buildRow } = await continued(() => import('../gh-timing-comment.mjs'));
       const row = buildRow({
         ts,
         actorKey: timingActorKey({ provider: aiAppName(), sid }),
@@ -263,22 +284,31 @@ async function resumeAdmitted(ctx) {
         fullWordMarker: fullWordsAtStart,
         description: resumeDesc,
       });
-      await safePostTiming(s.lastActive, row);
+      await continued(() => safePostTiming(s.lastActive, row));
       // #758 — same out-of-band Status-drift audit on the no-arg resume path.
-      await runMoveInvariantAudit({
-        issueNumber: String(s.lastActive).replace(/^#/, ''),
-        cfg,
-      });
-      await reconcileAfterSuccessfulBind({
-        issueNumber: s.lastActive,
-        cfg,
-        reconcile: ctx.reconcileDependencyDisposition,
-      });
+      await continued(() =>
+        runMoveInvariantAudit({
+          issueNumber: String(s.lastActive).replace(/^#/, ''),
+          cfg,
+        })
+      );
+      await continued(() =>
+        reconcileAfterSuccessfulBind({
+          issueNumber: s.lastActive,
+          cfg,
+          reconcile: ctx.reconcileDependencyDisposition,
+        })
+      );
       console.log(`Resumed ${s.lastActive}.`);
-      await wakeReviewResidents(ctx, s.lastActive);
+      await continued(() => wakeReviewResidents(ctx, s.lastActive));
       return;
     } catch (error) {
-      rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
+      rollbackFailedBind(
+        ctx,
+        { claim: occupancyClaim, priorState: s, savedState },
+        error,
+        assertActor
+      );
     }
   }
 
@@ -297,10 +327,11 @@ async function resumeAdmitted(ctx) {
   const ownIssue = ownBoundIssue(projectDir);
   const reopeningBoundTimer = ownIssue === normalizedTarget && !s.entryStartTs;
   if (ownIssue && ownIssue !== normalizedTarget) {
-    await switchVerb(ctx, normalizedTarget);
+    await continued(() => switchVerb(ctx, normalizedTarget));
     return;
   }
   if (ownIssue === normalizedTarget && !reopeningBoundTimer) {
+    assertIdentity();
     const occupancyClaim = claimForBind(ctx, normalizedTarget);
     try {
       const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
@@ -308,6 +339,7 @@ async function resumeAdmitted(ctx) {
         ...resolveBinding({ projectDir, now: nowIso }),
         bindingGenerationId: occupancyClaim?.row?.bindingGenerationId ?? null,
       };
+      assertIdentity();
       saveState({ ...s, ...binding }, statePath);
     } catch (error) {
       rollbackClaim(ctx, occupancyClaim);
@@ -320,16 +352,19 @@ async function resumeAdmitted(ctx) {
     } catch {
       /* best-effort: failure must not turn the timing-safe no-op into an error */
     }
-    await reconcileAfterSuccessfulBind({
-      issueNumber: normalizedTarget,
-      cfg,
-      reconcile: ctx.reconcileDependencyDisposition,
-    });
+    await continued(() =>
+      reconcileAfterSuccessfulBind({
+        issueNumber: normalizedTarget,
+        cfg,
+        reconcile: ctx.reconcileDependencyDisposition,
+      })
+    );
     console.log(`already active: ${normalizedTarget}`);
-    await wakeReviewResidents(ctx, normalizedTarget);
+    await continued(() => wakeReviewResidents(ctx, normalizedTarget));
     return;
   }
 
+  assertIdentity();
   const occupancyClaim = claimForBind(ctx, normalizedTarget);
   let ts;
   let sid;
@@ -343,21 +378,24 @@ async function resumeAdmitted(ctx) {
       ...resolveBinding({ projectDir, now: nowIso }),
       bindingGenerationId: occupancyClaim?.row?.bindingGenerationId ?? null,
     };
-    await drainQueueIfAny();
+    await continued(() => drainQueueIfAny());
     try {
       const sidPre = currentSessionId();
       if (sidPre) {
-        await finalizeOrphanPause({
-          sid: sidPre,
-          reason: 'orphan-finalize',
-          projDir: projectDir,
-        });
+        await continued(() =>
+          finalizeOrphanPause({
+            sid: sidPre,
+            reason: 'orphan-finalize',
+            projDir: projectDir,
+          })
+        );
       }
     } catch {
       /* never block resume on a finalize failure */
     }
     ts = nowIso();
     sid = currentSessionId();
+    assertIdentity();
     resumeBank = bankResumeTranscriptTail(s, sid, normalizedTarget);
     const wordsAtStart = resumeBank.marker;
     idleSec = computePauseIdleSec(s.pausedAtTs, ts);
@@ -374,15 +412,18 @@ async function resumeAdmitted(ctx) {
       lastFullWordMarker: resumeBank.fullMarker,
       ...binding,
     };
+    assertIdentity();
     saveState(savedState, statePath);
     savedState = loadState(statePath);
     const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
     try {
+      assertIdentity();
       setTaskStatus(projectDir, normalizedTarget, 'active');
     } catch {
       /* best-effort: failure must not abort the primary operation */
     }
     try {
+      assertIdentity();
       registerTask(projectDir, normalizedTarget, projectDir, currentBranch(projectDir));
     } catch {
       /* best-effort: failure must not abort the primary operation */
@@ -390,12 +431,14 @@ async function resumeAdmitted(ctx) {
     if (sid && cfg?.repo) {
       const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
       try {
-        const seeded = await seed({
-          sid,
-          issue: normalizedTarget,
-          projDir: projectDir,
-          repo: cfg.repo,
-        });
+        const seeded = await continued(() =>
+          seed({
+            sid,
+            issue: normalizedTarget,
+            projDir: projectDir,
+            repo: cfg.repo,
+          })
+        );
         // #673 — Pickup Directive only applies once an issue has reached
         // Plan; route earlier-state issues back to the state walk instead.
         if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
@@ -417,7 +460,7 @@ async function resumeAdmitted(ctx) {
     // `resumed` (you cannot resume without a prior start/pause). Discriminate by
     // whether the issue already has timing-log history; a genuine resume (history
     // present, or this #N resume follows a pause) keeps `resumed`.
-    const gh = await import('../gh-timing-comment.mjs');
+    const gh = await continued(() => import('../gh-timing-comment.mjs'));
     const { buildRow } = gh;
     const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
     let hasTimingHistory = false;
@@ -431,10 +474,12 @@ async function resumeAdmitted(ctx) {
       // returned `status:'error'` → fail-closed to `resumed` → the fresh-bind
       // downgrade never fired (the orphan-`resumed` half of the #480 bug this fix
       // exists to kill). Pass the bare issue string.
-      tcResult = await readTimingCommentBody({
-        issueNumber: String(normalizedTarget).replace(/^#/, ''),
-        repo: cfg.repo,
-      });
+      tcResult = await continued(() =>
+        readTimingCommentBody({
+          issueNumber: String(normalizedTarget).replace(/^#/, ''),
+          repo: cfg.repo,
+        })
+      );
       wholeTimingBody = gh.bodyOf(tcResult);
       tcBody = timingBodyForActor(wholeTimingBody, timingActorKey({ provider: aiAppName(), sid }));
       readStatus = tcResult?.status ?? null;
@@ -479,11 +524,13 @@ async function resumeAdmitted(ctx) {
           ctx.collectResumeActivityEvidence ?? defaultCollectResumeActivityEvidence;
         let activityEvidence;
         try {
-          activityEvidence = await collectResumeActivityEvidence({
-            issueNumber: Number(String(normalizedTarget).replace(/^#/, '')),
-            projectDir,
-            comments: tcResult?.comments ?? [],
-          });
+          activityEvidence = await continued(() =>
+            collectResumeActivityEvidence({
+              issueNumber: Number(String(normalizedTarget).replace(/^#/, '')),
+              projectDir,
+              comments: tcResult?.comments ?? [],
+            })
+          );
         } catch {
           activityEvidence = { status: 'unknown', timestamps: [] };
         }
@@ -513,7 +560,7 @@ async function resumeAdmitted(ctx) {
           // happened. No offset on the neighbor → null → local-zone fallback.
           offsetMin: timingTimestampOffsetMin(gap.lastRowTs),
         });
-        await safePostTiming(normalizedTarget, departureRow);
+        await continued(() => safePostTiming(normalizedTarget, departureRow));
       }
     }
     const suppressBindEvent =
@@ -537,20 +584,24 @@ async function resumeAdmitted(ctx) {
         fullWordMarker: fullWordsAtStart,
         description: role ?? (isStart ? 'task started' : 'task resumed'),
       });
-      await safePostTiming(normalizedTarget, row);
+      await continued(() => safePostTiming(normalizedTarget, row));
     }
     // #758 — audit the just-bound issue for out-of-band Status drift (a raw-API /
     // wrapper move that never wrote the move-complete sentinel). Best-effort: it
     // prints a warning + recommended reconcile on drift and never blocks the bind.
-    await runMoveInvariantAudit({
-      issueNumber: String(normalizedTarget).replace(/^#/, ''),
-      cfg,
-    });
-    await reconcileAfterSuccessfulBind({
-      issueNumber: normalizedTarget,
-      cfg,
-      reconcile: ctx.reconcileDependencyDisposition,
-    });
+    await continued(() =>
+      runMoveInvariantAudit({
+        issueNumber: String(normalizedTarget).replace(/^#/, ''),
+        cfg,
+      })
+    );
+    await continued(() =>
+      reconcileAfterSuccessfulBind({
+        issueNumber: normalizedTarget,
+        cfg,
+        reconcile: ctx.reconcileDependencyDisposition,
+      })
+    );
     console.log(
       reopeningBoundTimer
         ? `Resumed ${normalizedTarget}.`
@@ -558,9 +609,14 @@ async function resumeAdmitted(ctx) {
           ? `Bound ${normalizedTarget} (live timing span already active; no duplicate reengagement row).`
           : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
     );
-    await wakeReviewResidents(ctx, normalizedTarget);
+    await continued(() => wakeReviewResidents(ctx, normalizedTarget));
   } catch (error) {
-    rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
+    rollbackFailedBind(
+      ctx,
+      { claim: occupancyClaim, priorState: s, savedState },
+      error,
+      assertActor
+    );
   }
 }
 
@@ -584,6 +640,25 @@ export async function verbResume(ctx) {
       noAutomaticRemediation: { reason: 'authority-investigation-required' },
     });
   };
+  const assertActor = () => {
+    if (currentSessionId() !== sessionId || aiAppName() !== provider) refuse();
+  };
+  const assertIdentity = () => {
+    const currentRaw = ctx.rest[0];
+    const currentExplicit = /^#?\d+$/.test(String(currentRaw ?? ''));
+    if (
+      ctx.cfg?.repo !== repository ||
+      ctx.projectDir !== projectDir ||
+      ctx.statePath !== statePath ||
+      ctx.deps?.revisionBackend !== backend ||
+      currentSessionId() !== sessionId ||
+      aiAppName() !== provider ||
+      currentExplicit !== explicit ||
+      (explicit && Number(String(currentRaw).replace(/^#/, '')) !== issue)
+    )
+      refuse();
+    assertActor();
+  };
   return withRevisionConsumer(
     {
       repository,
@@ -593,24 +668,18 @@ export async function verbResume(ctx) {
       projectDir,
     },
     () => {
-      const currentRaw = ctx.rest[0];
-      const currentExplicit = /^#?\d+$/.test(String(currentRaw ?? ''));
-      if (
-        ctx.cfg?.repo !== repository ||
-        ctx.projectDir !== projectDir ||
-        ctx.statePath !== statePath ||
-        ctx.deps?.revisionBackend !== backend ||
-        currentSessionId() !== sessionId ||
-        aiAppName() !== provider ||
-        currentExplicit !== explicit ||
-        (explicit && Number(String(currentRaw).replace(/^#/, '')) !== issue)
-      )
-        refuse();
+      assertIdentity();
       if (!explicit) {
         const current = loadState(ctx.statePath);
         if (resumeEntryPrecondition(current, { issue })) refuse();
       }
-      return resumeAdmitted(ctx);
+      const admitted = Object.freeze({
+        ...ctx,
+        cfg: ctx.cfg == null ? ctx.cfg : Object.freeze({ ...ctx.cfg }),
+        rest: Object.freeze([...ctx.rest]),
+      });
+      assertIdentity();
+      return resumeAdmitted(admitted, assertIdentity, assertActor);
     }
   );
 }

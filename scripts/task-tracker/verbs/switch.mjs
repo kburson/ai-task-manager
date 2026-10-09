@@ -32,7 +32,19 @@ import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
 import { claimBindingOccupancy, rollbackBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
 import { reconcileAfterSuccessfulBind } from '../lib/dependency-disposition.mjs';
 
-async function switchAdmitted(ctx, target) {
+async function switchAdmitted(
+  ctx,
+  target,
+  assertIdentity = () => {},
+  assertActor = assertIdentity
+) {
+  assertIdentity();
+  const continued = async (operation) => {
+    assertIdentity();
+    const result = await operation();
+    assertIdentity();
+    return result;
+  };
   const {
     cfg,
     statePath,
@@ -62,7 +74,7 @@ async function switchAdmitted(ctx, target) {
       ...resolveBinding({ projectDir, now: nowIso }),
       bindingGenerationId: claim?.row?.bindingGenerationId ?? null,
     };
-    await drainQueueIfAny();
+    await continued(() => drainQueueIfAny());
     const s = priorState;
     // #833 — self-bind no-op. Rebinding to the already-active, never-paused issue
     // (`previous === target`, no open pause) never actually stopped work, so there
@@ -75,17 +87,21 @@ async function switchAdmitted(ctx, target) {
     // `s.active === null` (pause.mjs clears it), never satisfies this guard, and
     // still emits its single closing `resumed` via the incoming-bind path.
     if (s.active === target && !s.paused) {
+      assertIdentity();
       saveState({ ...s, ...binding }, statePath);
       try {
+        assertIdentity();
         registerTask(projectDir, target, projectDir, currentBranch(projectDir));
       } catch {
         /* best-effort: keep the fleet registry warm; never block a no-op */
       }
-      await reconcileAfterSuccessfulBind({
-        issueNumber: target,
-        cfg,
-        reconcile: ctx.reconcileDependencyDisposition,
-      });
+      await continued(() =>
+        reconcileAfterSuccessfulBind({
+          issueNumber: target,
+          cfg,
+          reconcile: ctx.reconcileDependencyDisposition,
+        })
+      );
       console.log(`Active: ${target} (already bound; no-op).`);
       return;
     }
@@ -101,11 +117,13 @@ async function switchAdmitted(ctx, target) {
       try {
         const sidSwitch = currentSessionId();
         if (sidSwitch) {
-          await finalizePauseForSwitch({
-            sid: sidSwitch,
-            oldIssue: previous,
-            projDir: projectDir,
-          });
+          await continued(() =>
+            finalizePauseForSwitch({
+              sid: sidSwitch,
+              oldIssue: previous,
+              projDir: projectDir,
+            })
+          );
         }
       } catch {
         /* never block switch on finalize failure */
@@ -122,12 +140,15 @@ async function switchAdmitted(ctx, target) {
       // the peer's away words then ride the same durable marker across the bracket;
       // the close walker excludes this departure sub-span, so they never leak onto
       // the outgoing issue's completed row (AC2).
-      const { deltaMin, deltaWords } = await flushActiveToGH(s, eventSlug, eventDesc, undefined, {
-        suppressRowWords: true,
-      });
+      const { deltaMin, deltaWords } = await continued(() =>
+        flushActiveToGH(s, eventSlug, eventDesc, undefined, {
+          suppressRowWords: true,
+        })
+      );
       previousNote = ` Previous: ${previous} ended (${deltaMin === null ? 'Unknown active time' : '+' + deltaMin + ' min'}, +${deltaWords} words).`;
-      await runLogIssueTime(previous);
+      await continued(() => runLogIssueTime(previous));
       try {
+        assertIdentity();
         deregisterTask(projectDir, previous);
       } catch {
         /* best-effort: cleanup; failure is non-fatal */
@@ -152,6 +173,7 @@ async function switchAdmitted(ctx, target) {
           stateFullWordMarker(s, existingMarker),
           counted.fullExpansion
         );
+        assertIdentity();
         saveMarker(markerPathFor(sid), counted.totalLines, wordsAtStart, target, fullWordsAtStart);
       } else {
         wordsAtStart = existingMarker.words;
@@ -169,11 +191,13 @@ async function switchAdmitted(ctx, target) {
       lastFullWordMarker: fullWordsAtStart ?? stateFullWordMarker(s),
       ...binding,
     };
+    assertIdentity();
     saveState(newState, statePath);
     savedTargetState = loadState(statePath);
     // #218: state hydration removed — the issue body's `aitm-last-known-state`
     // marker is the source of truth; preflight reads it on demand.
     try {
+      assertIdentity();
       registerTask(projectDir, target, projectDir, currentBranch(projectDir));
     } catch {
       /* best-effort: failure must not abort the primary operation */
@@ -183,12 +207,14 @@ async function switchAdmitted(ctx, target) {
     // #273: tagged seeder errors are reported, not swallowed.
     if (sid && cfg?.repo) {
       try {
-        const seeded = await seedSessionKanbanFromBody({
-          sid,
-          issue: target,
-          projDir: projectDir,
-          repo: cfg.repo,
-        });
+        const seeded = await continued(() =>
+          seedSessionKanbanFromBody({
+            sid,
+            issue: target,
+            projDir: projectDir,
+            repo: cfg.repo,
+          })
+        );
         // #935 — warn when switching INTO a review-state issue whose Agent Review
         // has not been run; names `/task review` as the in-place remediation.
         if (seeded?.reviewRemediationHint) console.log(seeded.reviewRemediationHint);
@@ -206,17 +232,19 @@ async function switchAdmitted(ctx, target) {
     // resume, so it must emit `resumed`, not a second `start` (duplicate-start
     // defect observed on #526). Mirror the #482 discrimination from verbResume:
     // read the incoming issue's timing comment and resolve the event slug.
-    const gh = await import('../gh-timing-comment.mjs');
+    const gh = await continued(() => import('../gh-timing-comment.mjs'));
     const { buildRow } = gh;
     const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
     let hasTimingHistory = false;
     let tcBody = '';
     let readStatus = null;
     if (cfg?.repo) {
-      const tcResult = await readTimingCommentBody({
-        issueNumber: Number(target.replace(/^#/, '')),
-        repo: cfg.repo,
-      });
+      const tcResult = await continued(() =>
+        readTimingCommentBody({
+          issueNumber: Number(target.replace(/^#/, '')),
+          repo: cfg.repo,
+        })
+      );
       tcBody = timingBodyForActor(
         gh.bodyOf(tcResult),
         timingActorKey({ provider: aiAppName(), sid })
@@ -253,12 +281,14 @@ async function switchAdmitted(ctx, target) {
       fullWordMarker: fullWordsAtStart,
       description: role,
     });
-    await safePostTiming(target, row);
-    await reconcileAfterSuccessfulBind({
-      issueNumber: target,
-      cfg,
-      reconcile: ctx.reconcileDependencyDisposition,
-    });
+    await continued(() => safePostTiming(target, row));
+    await continued(() =>
+      reconcileAfterSuccessfulBind({
+        issueNumber: target,
+        cfg,
+        reconcile: ctx.reconcileDependencyDisposition,
+      })
+    );
     console.log(`Active: ${target}.${previousNote}`);
 
     // #486 — discuss reconcile + banner. On first reference (bind), converge any
@@ -272,10 +302,14 @@ async function switchAdmitted(ctx, target) {
     // never lost. Advisory-only: never blocks the bind.
     if (cfg?.repo) {
       try {
-        const { reconcileDiscuss } = await import('../lib/discuss-label.mjs');
-        const { formatDiscussStartBanner } = await import('../lib/discuss-marker.mjs');
+        const { reconcileDiscuss } = await continued(() => import('../lib/discuss-label.mjs'));
+        const { formatDiscussStartBanner } = await continued(
+          () => import('../lib/discuss-marker.mjs')
+        );
         const issueNumber = Number(target.replace(/^#/, ''));
-        const { pending } = await reconcileDiscuss({ issueNumber, repo: cfg.repo, cfg });
+        const { pending } = await continued(() =>
+          reconcileDiscuss({ issueNumber, repo: cfg.repo, cfg })
+        );
         if (pending) {
           // #495 — colorful 💬 start delimiter via the shared formatter.
           console.log(formatDiscussStartBanner(target));
@@ -287,7 +321,8 @@ async function switchAdmitted(ctx, target) {
 
     // #1512 — missing gate config now has a deterministic Full-Auto default,
     // so binding never pauses to ask for an auto-mode selection.
-    if (ctx.verb !== 'start') await ctx.resumeReviewActionsAfterBind?.(target, 'rebind');
+    if (ctx.verb !== 'start')
+      await continued(() => ctx.resumeReviewActionsAfterBind?.(target, 'rebind'));
   } catch (error) {
     const recoveryErrors = [];
     let rollbackResult;
@@ -300,6 +335,7 @@ async function switchAdmitted(ctx, target) {
     }
     if (savedTargetState && rollbackResult?.status === 'rolled-back') {
       try {
+        assertActor();
         const current = loadState(statePath);
         if (isDeepStrictEqual(current, savedTargetState)) saveState(priorState, statePath);
       } catch (restoreError) {
@@ -331,6 +367,21 @@ export async function verbSwitch(ctx, target) {
       noAutomaticRemediation: { reason: 'authority-investigation-required' },
     });
   };
+  const assertActor = () => {
+    if (currentSessionId() !== sessionId || aiAppName() !== provider) refuse();
+  };
+  const assertIdentity = () => {
+    if (
+      ctx.cfg?.repo !== repository ||
+      ctx.projectDir !== projectDir ||
+      ctx.statePath !== statePath ||
+      ctx.deps?.revisionBackend !== backend ||
+      currentSessionId() !== sessionId ||
+      aiAppName() !== provider
+    )
+      refuse();
+    assertActor();
+  };
   return withRevisionConsumer(
     {
       repository,
@@ -340,16 +391,13 @@ export async function verbSwitch(ctx, target) {
       projectDir,
     },
     () => {
-      if (
-        ctx.cfg?.repo !== repository ||
-        ctx.projectDir !== projectDir ||
-        ctx.statePath !== statePath ||
-        ctx.deps?.revisionBackend !== backend ||
-        currentSessionId() !== sessionId ||
-        aiAppName() !== provider
-      )
-        refuse();
-      return switchAdmitted(ctx, target);
+      assertIdentity();
+      const admitted = Object.freeze({
+        ...ctx,
+        cfg: ctx.cfg == null ? ctx.cfg : Object.freeze({ ...ctx.cfg }),
+      });
+      assertIdentity();
+      return switchAdmitted(admitted, target, assertIdentity, assertActor);
     }
   );
 }

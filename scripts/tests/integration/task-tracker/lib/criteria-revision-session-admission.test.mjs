@@ -503,3 +503,107 @@ test(
     ]);
   }
 );
+
+for (const [name, adapter] of [
+  ['resume', (f) => verbResume(f.ctx)],
+  ['switch', (f) => verbSwitch(f.ctx, `#${f.context.issue}`)],
+]) {
+  for (const [identity, change] of [
+    [
+      'repository',
+      (f) => {
+        f.ctx.cfg.repo = 'foreign/repo';
+      },
+    ],
+    [
+      'session',
+      () => {
+        process.env.AI_TASK_MANAGER_SESSION_ID += '-changed';
+      },
+    ],
+    [
+      'provider',
+      () => {
+        process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
+      },
+    ],
+  ]) {
+    test(`actual ${name} refuses ${identity} drift inside admitted queue work before later effects`, async () => {
+      const f = await sessionFixture('baseline');
+      try {
+        f.ctx.drainQueueIfAny = async () => {
+          f.effects.push('queue');
+          change(f);
+        };
+        let error;
+        try {
+          await adapter(f);
+        } catch (caught) {
+          error = caught;
+        }
+        assert.deepEqual(
+          f.effects,
+          ['occupancy', 'queue'],
+          'Verified admission/claim prefix cannot authorize later effects after drift'
+        );
+        assert.equal(error?.code, 'revision-conflict');
+        assert.equal(fs.readFileSync(f.ctx.statePath, 'utf8'), f.before);
+      } finally {
+        f.dispose();
+      }
+    });
+  }
+}
+
+import { activeTaskPath, occupancyPath } from '../../../../task-tracker/paths.mjs';
+import { getActiveTask } from '../../../../task-tracker/session-state.mjs';
+import { readOccupancy } from '../../../../task-tracker/lib/occupancy.mjs';
+
+for (const identity of ['repository', 'session']) {
+  test(`actual resume late ${identity} drift preserves verified state and refuses later timing`, async () => {
+    const f = await sessionFixture('baseline');
+    try {
+      let changedSession;
+      f.ctx.seedKanban = async () => {
+        f.effects.push('seed');
+        if (identity === 'repository') f.ctx.cfg.repo = 'foreign/repo';
+        else {
+          process.env.AI_TASK_MANAGER_SESSION_ID += '-changed';
+          changedSession = process.env.AI_TASK_MANAGER_SESSION_ID;
+        }
+        return { kanbanState: 'develop' };
+      };
+      let error;
+      try {
+        await verbResume(f.ctx);
+      } catch (caught) {
+        error = caught;
+      }
+      assert.deepEqual(f.effects, ['occupancy', 'queue', 'seed']);
+      assert.deepEqual(
+        readOccupancy(occupancyPath(f.s.context.sourceRoot)),
+        {},
+        'Original claim rollback uses its fenced identity'
+      );
+      if (identity === 'repository') {
+        assert.equal(error?.code, 'revision-conflict');
+        assert.equal(getActiveTask(f.s.context.runId, f.s.context.sourceRoot)?.issue ?? null, null);
+      } else {
+        assert.ok(
+          error instanceof AggregateError,
+          'Changed actor prevents unsafe state restoration'
+        );
+        assert.ok(error.errors.some((cause) => cause.code === 'revision-conflict'));
+        const committed = getActiveTask(f.s.context.runId, f.s.context.sourceRoot);
+        assert.equal(committed.issue, `#${f.context.issue}`);
+        assert.equal(committed.worktreePath, f.s.context.sourceRoot);
+        assert.ok(
+          !fs.existsSync(activeTaskPath(changedSession, f.s.context.sourceRoot)),
+          'Rollback must not create state for the new actor'
+        );
+      }
+    } finally {
+      f.dispose();
+    }
+  });
+}
