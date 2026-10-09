@@ -335,3 +335,13 @@ test('canonical source is checked after the last transcript await before publish
   assert.equal(state.writes.length, 0);
   assert.match(state.body, /concurrent edit/);
 });
+
+test('an empty continuity session cannot become a legacy repair request', async (t) => {
+  const { state, deps } = transport(t);
+  await assert.rejects(
+    runHeal({ ...options, continuitySession: '', apply: true, deps }),
+    /timing-continuity|Invalid timing actor/
+  );
+  assert.equal(state.reads, 0);
+  assert.equal(state.writes.length, 0);
+});

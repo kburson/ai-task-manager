@@ -65,12 +65,12 @@ export async function runHeal({
 } = {}) {
   if (issueNumber == null) throw new Error('runHeal: issueNumber is required');
   if (!repo) throw new Error('runHeal: repo is required');
-  if (continuitySession && actorOpenerReplays)
+  if (continuitySession != null && actorOpenerReplays)
     throw new TypeError('timing-continuity:conflicting-modes');
   const findTimingComment = deps.findTimingComment || realFindTimingComment;
   const updateTimingComment = deps.updateTimingComment || realUpdateTimingComment;
 
-  if (continuitySession)
+  if (continuitySession != null)
     return recoverTimingContinuity({
       issueNumber,
       repo,
@@ -453,9 +453,9 @@ export async function main(argv, deps = {}) {
     return exit(2);
   }
   if (
-    (args.continuitySession && (args.actorOpenerReplays || args.sweep)) ||
-    (!args.continuitySession && args.expectedTranscriptSha) ||
-    (args.continuitySession &&
+    (args.continuitySession !== null && (args.actorOpenerReplays || args.sweep)) ||
+    (args.continuitySession === null && args.expectedTranscriptSha !== null) ||
+    (args.continuitySession !== null &&
       !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(args.continuitySession)) ||
     (args.continuitySession &&
       args.apply &&

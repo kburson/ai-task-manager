@@ -284,3 +284,38 @@ console.log('heal-timing-log-command.test.mjs: ok');
     assert.equal(reads, 0);
   }
 }
+
+// @story #1926 — an empty requested mode must never fall back to legacy writes.
+{
+  for (const args of [
+    ['1926', '--continuity-session', '', '--apply'],
+    ['1926', '--continuity-session=', '--apply'],
+    ['1926', '--expected-transcript-sha=', '--apply'],
+  ]) {
+    const out = sink();
+    const err = sink();
+    let code;
+    let reads = 0;
+    let heals = 0;
+    await main(args, {
+      loadConfig: async () => {
+        reads++;
+        return { repo: 'o/r' };
+      },
+      getProjectDir: () => '/project',
+      withLock: async (_lock, callback) => callback(),
+      runHeal: async () => {
+        heals++;
+        return { status: 'no-comment' };
+      },
+      out,
+      err,
+      exit: (value) => {
+        code = value;
+      },
+    });
+    assert.equal(code, 2);
+    assert.equal(reads, 0);
+    assert.equal(heals, 0);
+  }
+}
