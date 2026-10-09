@@ -39,7 +39,7 @@ Include the common artifact contract/resolver, consumer migration, rendering, li
 
 Exactly one live `aitm-artifact-references` JSON marker is allowed within root Plan Metadata. Fenced examples and quoted historical markers are not live records. Use a comment-aware structural parser; current helpers that discard comments cannot parse this authority.
 
-Top-level fields are schema `aitm.artifact-references/v1`, repository, issue number, monotonically increasing record revision, artifacts and role bindings. Reject unsupported schemas, duplicate JSON keys, duplicate IDs/roles, malformed identities, multiple markers and unsupported authority fields. A documented extensions object may retain non-authoritative data. Limits: 64 KiB, 32 artifacts, 64 review references; overflow refuses rather than truncates.
+Top-level fields are schema `aitm.artifact-references/v1`, repository, issue number, monotonically increasing record revision, artifacts and role bindings. Reject unsupported schemas, duplicate JSON keys, duplicate IDs/roles, malformed identities, multiple markers and unsupported authority fields. A documented extensions object may retain non-authoritative data. Limits: 16 KiB of UTF-8 bytes for the complete serialized marker, 32 artifact entries and 64 lightweight review-record references. Check whole-body budget before remote effect reservation; overflow refuses rather than truncates. Git-only review manifests have separate budgets below.
 
 Each artifact contains a stable issue-local ID; kind (specification, implementation-plan, hydration-plan); tracked repository-relative path; full commit; raw-blob SHA-256; revision status (draft, reviewed, accepted); review references; and durable evidence references. Evidence references carry repository, full commit, path, digest and optional display anchor. No line-ending normalization precedes hashing.
 
@@ -48,6 +48,20 @@ Roles are governing-specification, accepted-specification, implementation-plan, 
 A child source-plan binding includes the exact task heading and task number, uniquely selected through the canonical task extractor against the pinned plan. Duplicate tasks, mismatched heading/number, changed titles and stale digests refuse. Governing specification and decomposition provenance remain explicit.
 
 Reviewed or accepted status requires applicable authentic evidence. A digest proves integrity, not acceptance. Predecessor review evidence must name its predecessor identity and lineage; it cannot accept later bytes. Authentic human artifact acceptance remains a distinct supported evidence type under existing policy. Reviewer consensus and AITM Plan approval remain independent.
+
+## Digest and wire conventions
+
+Every new contract digest is sha256: followed by 64 lowercase hex digits. Validate/normalize legacy bare-hex only at explicit adapter boundaries while preserving its original form. Artifact and document hashes cover raw Git blob or captured input bytes.
+
+PreviousRecordDigest hashes the entire raw prior publication-manifest file blob at its pinned repository/commit/path, including its own previousRecordDigest and final newline. Never hash a recreated semantic JSON object or exclude fields. The current manifest also carries previousRecord as that immutable document reference, null only at genesis, agreeing with previousRecordDigest. Its own digest is external, calculated from the committed blob; no self-hash cycle.
+
+Producer and adapter share golden JSON manifest/chain fixtures with exact UTF-8 bytes and newline cases. JSON-equivalent files with different bytes have different hashes; readers validate the referenced file. The publication envelope is a JSON document; protocol/manual evidence documents remain separately referenced. Inline JSON marker serialization Unicode-escapes literal less-than, greater-than and ampersand before HTML-comment framing, preventing embedded terminators.
+
+## Protected authority marker
+
+Register aitm-artifact-references as a protected single marker in body-invariants.mjs and mirror it in gh-edit-guard.mjs. Ordinary normalizers preserve it or fail MarkerLossError. A dedicated validated writer may insert genesis revision 1 or advance exactly one revision against a fresh exact base. Lower revisions, reused revisions with different content, duplicates or unverified rebinding refuse through marker-advance validation. Unchanged content/revision is an idempotent no-op.
+
+Revalidate marker loss/advance and artifact authority inside the canonical transaction. Known enrolled issues cannot treat lost authority as absence permitting generic fallback: report artifact-authority-lost from durable enrollment/publication evidence. Initial-creation defaults are a separate explicit policy. Extend body-invariants.test.mjs, gh-edit-guard-body.test.mjs and artifact-reference-contract.test.mjs with drop, regression, same-revision divergence, unchanged, genesis, valid-next and metadata-normalization cases, preserving all unrelated lifecycle markers.
 
 ## Common authority resolver
 
@@ -75,7 +89,7 @@ The implementation-plan role is the active executable plan, including its draft 
 | Governing-spec                                              | governing-specification                                                                                                           |
 | Accepted-specification / Accepted specification             | accepted-specification; Specification-reference-commit pins that revision                                                         |
 | Implementation-plan                                         | implementation-plan                                                                                                               |
-| Plan                                                        | implementation-plan alias; substantive disagreement among declared active references refuses                                      |
+| Plan                                                        | implementation-plan alias in v1; legacy-only Source-plan/Plan disagreements follow the explicit conflict policy below             |
 | Source-plan / Source-plan-commit                            | source-plan; also supplies implementation-plan only when neither Implementation-plan nor Plan declares an independent active plan |
 | Source-plan-section                                         | exact source-plan task selection; obtain task number from the canonical heading without changing it                               |
 | Accepted-plan / Accepted-plan-commit / Accepted-plan-digest | accepted-plan, retaining its independent revision                                                                                 |
@@ -94,6 +108,24 @@ Recognize existing case, bold-label and whitespace normalization. Preserve origi
 
 Consumers resolve the same observation for the same semantic role; distinct roles legitimately refer to different artifacts. A child with inherited plan A/Task 2, new active plan B and accepted predecessor C refuses executable intent/approval while A's selector conflicts with B. WBS retains A's provenance and display retains C's acceptance. This feature does not silently deactivate inherited selectors or introduce an own-plan switch. A future explicit switch needs separately designed rebind semantics. Equal bytes at different paths/commits remain distinct. Include the A/B/C fixture and root/epic variants.
 
+## Legacy conflict and inline pins
+
+Legacy-only Source-plan A plus Plan B without Implementation-plan intentionally receives legacy-precedence-conflict. Current code selects Source-plan before Plan; the new reader reports both values and that former selection, rather than silently activating B or rewriting either field. This explicit stricter diagnostic resolves contradictory authority while preserving unambiguous legacy behavior. Inventory live A/B shapes before writer rollout, preview normalization and require authorized repair before v1 enrollment. Add distinct and identical-alias fixtures.
+
+Recognize path followed by @ and 7–40 hex digits on legacy Implementation-plan, Source-plan, Plan, Governing-spec and Decomposition-plan. Preserve the original value/pin. Resolve abbreviations by unique-prefix commit-object resolution in the configured repository's observed object inventory; record abbreviation, full expansion, repository and inventory observation in diagnostics/migration provenance. Missing, ambiguous or non-commit objects refuse pin-dependent resolution. Do not turn a supplied unresolved pin into absence, guess HEAD or claim global uniqueness beyond the observed inventory. Later ambiguity cannot silently replace a persisted full binding.
+
+Inline and separate corresponding commit fields must expand to the same full commit against the same observation; otherwise artifact-reference-pin-conflict. Validate the exact blob/digest independently: abbreviation expansion alone proves no historical acceptance. New writers emit full commits and remove inline duplication only through validated lossless migration. Cover full/abbreviated forms, ambiguity/missing objects, equal/conflicting separate pins and retained expansion on rerun.
+
+## Whole-body and summary budgets
+
+Use conservative internal ceilings independent of provider compression/counting: the final issue body must fit 57,344 UTF-8 bytes and 57,344 Unicode scalar characters, including all prose, substantive deep dive, AC/VC/DoD, lifecycle/authority markers and canonical body-version change. This is below the 65,536-character ceiling seen in [GitHub API error reports](https://github.com/googleapis/release-please/issues/1034); no live probe or stronger official-documentation claim is made. Multibyte text is intentionally bounded more strictly.
+
+Measure complete final bytes and marker size before effect reservation or transport. Return artifact-reference-body-budget-exceeded or artifact-reference-marker-budget-exceeded with measured values and required reduction. These are deterministic pre-write refusals, not indeterminate transport or retriable drift. Never truncate protected prose, invent link-only deep dives, split the authority marker or silently discard bindings to fit.
+
+A summary including its owned marker must fit 32,768 UTF-8 bytes and 32,768 scalar characters; reserve 1,024 bytes for ownership framing. Choose the first fitting deterministic tier: full ordered rounds across instances; active rounds plus one ordered immutable-record row per superseded instance; or latest actual round response/disposition links plus ordered history ranges linked into the complete immutable manifest. Each tier retains File Under Review, actual outcome/identities/effort, qualified timing when available, complete record/manifest links and a compacted-history label. Every original round, final no-change note and disposition remains reachable in Git.
+
+No second summary, truncated links, deleted evidence or invented responses. If the minimal tier cannot fit, refuse review-summary-budget-exceeded before effects and preserve current publication. Add large/multibyte bodies, oversized marker, many-round/instance summaries, tier determinism/reachability and zero-provider-write budget-failure fixtures.
+
 ## Human metadata
 
 Render bold Design Specification, Implementation Plan and Backlog Hydration Plan labels inside Plan Metadata. Reviews precede accepted artifact metadata. Show one linked artifact for each distinct role/revision operators need to understand. Hide duplicate bare operational fields only after every consumer supports v1.
@@ -101,6 +133,14 @@ Render bold Design Specification, Implementation Plan and Backlog Hydration Plan
 If source and accepted plan share the complete repository/path/commit/digest identity, display one link. If governing specification or hydration plan differs, display distinct labeled links. Draft/unresolved status remains visible. Human reordering and decorative links do not change bindings. Conflicting substantive legacy keys still refuse.
 
 Generate immutable blob links from validated identities, with encoded path segments. Allow the configured repository and explicitly validated external evidence repositories. Anchors change display location, not blob identity. Arbitrary Markdown is not parsed into a filesystem path or command. Preserve unrelated prose and lifecycle evidence.
+
+## Concrete flat display grammar
+
+Groups are standalone bold labels, never nested Markdown headings. Beneath each, use root flat bullets in metadata-section.mjs grammar: a bold field label followed by a colon and meaningful links.
+
+Design Specification renders Specification-review-SAR (or SPR), Specification-review-XPR, then Accepted-specification, omitting reviews that did not occur. Review values contain summary comment, immutable record and manifest links. Implementation Plan uses Plan-review-SPR, Plan-review-XPR, then Accepted-plan. Backlog Hydration Plan uses Hydration-record and Decomposition-plan when present. Summary URLs have numeric comment IDs; durable URLs have validated repository/full commit/path identities. The single machine marker follows the projection within root Plan Metadata.
+
+Each populated group has a real substantive flat field. No nested lists/headings or prose-only replacement, and no fabricated fields to pass gates. Recognized visible labels remain cross-checks; machine roles supply authority. Inventory metadata-section, plan-exit-plan-metadata-guard, agent-review body-sections and issue-body shape/verifier consumers. Preserve flat/substantive rules in plan-metadata-exit-guard.test.mjs and agent-review/validators/body-sections.test.mjs with v1-only grouped and mixed fixtures. A hidden record does not waive planning-output checks.
 
 ## Durable review record
 
@@ -127,7 +167,7 @@ Required fields:
 - documents: unique-ID immutable references carrying repository/full commit/path/raw digest. All response, disposition and validation references resolve here.
 - jointElapsed: null or recorded start/end evidence IDs, nonnegative integer elapsed milliseconds, interval rule and exclusions.
 
-Identifiers are unique nonempty strings of at most 128 characters matching letters, digits, dot, colon, underscore and hyphen. Strings/document arrays use the artifact-record size limits; duplicate keys, unsupported fields and unresolved references refuse. Null fields must have an explicit unavailable/no-change reason when they represent missing observations or dispositions.
+Identifiers are unique nonempty strings of at most 128 characters matching letters, digits, dot, colon, underscore and hyphen. The Git-only JSON publication manifest has a separate 256 KiB UTF-8 cap, at most 128 instances and 64 document references; identifiers are at most 128 characters and paths at most 1,024 UTF-8 bytes; duplicate keys, unsupported fields and unresolved references refuse. Null fields must have an explicit unavailable/no-change reason when they represent missing observations or dispositions.
 
 Each revision has revisionId, logical artifactId, reviewedInput, preservation (immutable document reference or null before publication), and explicit parent revision IDs. ReviewedInput has the pinned-git or uncommitted variant defined below. A round retains its attempted input even before a response: positive integer round, exact revisionId, responseDocumentId or null with responseAbsence, authorDispositionDocumentId or null with dispositionAbsence, decision or null with decisionAbsence, required finding IDs, dispositions and next revision ID or null. Round numbers are unique and increasing per instance. Absence is never an invented document or decision. Dispositions identify the finding, required/optional/deferred classification, action and evidence. Participants separately record requested and observed selections; missing observations have reasons.
 
@@ -219,6 +259,21 @@ Consumption is per effect ID. Verified effects cannot rerun; indeterminate effec
 Journal transitions run under the shared authority lock. Each verified own effect advances expected baseline from before to exact after digest, including canonical body version and created IDs. Later effects compare against that evolved baseline, not indefinitely against the initial snapshot. Never adopt unrelated drift. State/closure and protected evidence remain equal to originals before and after every effect. A target conflict preserves other completed receipts.
 
 Tests must invoke canonical admission for two closed targets under a different active maintenance task, ordinary wrong-target refusal, wrong/expired/revoked scope, invalid backup/proposal/retirement IDs, own-effect partial resume, unrelated drift, ambiguous transport and separately authorized rollback. This is a narrow new capability, not a state exception or general guard bypass.
+
+## Runtime seams and reproducible reference fixtures
+
+Seed the inventory with user-story-quality.mjs planReference/selectStoryIntentTask/resolveStoryIntent, decomposition-plan-exit-guard.mjs and decomposition-delivery-readiness.mjs, as well as previously named readers. None keeps separate precedence after migration.
+
+Reuse runtime-storage.mjs physical-root/activation/path checks, evidence-v2/execution-context.mjs installed context, runtime-capabilities.mjs capability validation and issue-mutator-lock.mjs canonical serialization at the resolved shared root. Publication admission/pending-effect fencing is a new bounded integration, requiring genuine native authority identity rather than a caller's UUID. Current evidence-v2/journal-authority.mjs calls assertSyntheticContext and is rehearsal-only; do not call it for real issue 1939 or label it authenticated production authority. runtime-adapter.mjs's enrollment-specific lock is not the publication lock. Prove cross-worktree mutual exclusion, held-process safety and unresolved-effect refusal with the production facade; no private replacement lock or implicit store activation.
+
+Capture #1901 fixture inputs from exact commit 5f35cf08c41bb8d9c482963e16a5313f44a973f6 through the GitHub API into tracked test fixtures, rather than requiring their paths on trunk. The author verified these raw source digests:
+
+- docs/peer-reviews/1901/2026-10-09-durable-record-index.md: sha256:42b09b9beab7860ef795f6f7b38fe953aa0ac7c3d212c194151d8a4b61b54214.
+- docs/peer-reviews/1901/2026-10-09-review-comment-consolidation.md: sha256:53e8854c78bec8c8ea16e1590418bdb280cbcb668462ee60bb7ea04cd8a60a55.
+
+Retain exact source path/commit/digest and referenced archive inputs. Derived synthetic body/summary fixtures label the derivation and preserve original IDs/revisions; they are not exact historical body snapshots or live authority. Missing sources/hash mismatches refuse fixture capture. Capture is an implementation deliverable, not a claim this spec already added fixture files.
+
+Historical backheal stays in this governing spec because #1939 requires it. Decompose admission/retirement/transactions into bounded later stories, after read/render/publication and with independent JIT review. Publication rollout never enables historical apply or waives its authorization/pilot gates.
 
 ## Rollout
 
