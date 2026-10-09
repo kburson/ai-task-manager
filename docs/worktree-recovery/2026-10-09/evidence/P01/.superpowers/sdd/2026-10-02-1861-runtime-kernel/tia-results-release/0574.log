@@ -1,0 +1,17 @@
+✔ candidates: scoped package is tried before repo-relative (0.957792ms)
+✔ candidates: rejects a non-string name (0.221208ms)
+✔ branch 1 — scoped package present → resolves to scoped package candidate (0.104791ms)
+✔ branch 2 — scoped package absent, repo present → resolves to repo-relative candidate (0.056375ms)
+✔ branch 3 — both absent → returns null (fail-closed signal) (0.061917ms)
+✔ bootstrap command embeds both candidate paths (scoped package first) (0.202625ms)
+✔ bootstrap command carries the fail-closed branch (exit 2 + stderr diagnostic) (0.073917ms)
+✔ bootstrap command dynamic-imports the resolved path in-process (0.057958ms)
+✔ GUARD_NAMES covers the direct-node guards and each yields a bootstrap command (0.106875ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.249833

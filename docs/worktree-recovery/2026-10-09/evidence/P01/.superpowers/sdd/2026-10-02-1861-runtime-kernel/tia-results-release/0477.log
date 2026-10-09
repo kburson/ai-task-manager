@@ -1,0 +1,36 @@
+coverage-reconcile.test.mjs: defined
+✔ runReconcile: throws without issueNumber (1.011583ms)
+✔ runReconcile: throws without cfg (0.096209ms)
+✔ runReconcile: missing mode → error status (0.2ms)
+✔ runReconcile: unknown mode → error status (0.097167ms)
+✔ runReconcile: no live and no recorded → error (0.283542ms)
+✔ runReconcile: backfill with no holes → no-holes (0.363125ms)
+✔ runReconcile: backfill fills a hole → backfilled (0.832583ms)
+✔ runReconcile: recorded === live and no cache gap → no-drift-refused (5.681916ms)
+✔ runReconcile: accept-live with no live → error (0.190667ms)
+✔ runReconcile: accept-live reconciled (external-mutation reason) (0.385042ms)
+✔ runReconcile: accept-live reason from recording-failure comment (0.308584ms)
+✔ runReconcile: accept-live tolerates listComments throwing (0.164792ms)
+✔ runReconcile: accept-live tolerates audit-marker write throwing (0.103208ms)
+✔ runReconcile: revert with no recorded → error (0.061709ms)
+✔ runReconcile: revert transition-failed when move-state non-zero (0.091ms)
+✔ runReconcile: revert reconciled when move-state succeeds (0.979875ms)
+✔ runReconcile: revert tolerates audit-marker write throwing (0.114459ms)
+✔ runReconcile: revert refuses when recorded is BEHIND live (wrong-direction, #740) (0.061042ms)
+✔ runReconcile: default persistTrackerState runs without a session (4.303625ms)
+✔ verbReconcile: missing issue number → usage, exit 1 (0.342625ms)
+✔ verbReconcile: missing mode → usage, exit 1 (0.111375ms)
+✔ verbReconcile: fetch failure → generic error, exit 1 (70.866166ms)
+✔ verbReconcile: no drift → refused, exit 4 (66.239042ms)
+✔ verbReconcile: backfill with no holes → stdout, no exit (63.383417ms)
+✔ verbReconcile: revert wrong-direction → exit 5, names accept-live (#740) (59.135583ms)
+✔ runReconcile: default read helpers fetch body + live state via gh (322.798916ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 607.565375
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/reconcile-proj-jSnmTc for #9100002

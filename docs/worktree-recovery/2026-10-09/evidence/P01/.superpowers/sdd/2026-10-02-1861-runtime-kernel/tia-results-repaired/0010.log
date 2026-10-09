@@ -1,0 +1,64 @@
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/doctor-cli-6MZrtO/consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+
+> Codex files
+  ---------------------------------------------------------
+  OK Skill .scratch/test/doctor-cli-6MZrtO/stale-consumer/.agents/skills/task/SKILL.md
+  OK Hooks .codex/hooks.json
+
+> Shared templates and gitignore
+  ---------------------------------------------------------
+  OK Template .ai-task-manager/templates/pickup-directive.md
+  OK Template .ai-task-manager/templates/definition-of-done.md
+  OK Template .ai-task-manager/templates/epic-body.md
+  OK Template .ai-task-manager/templates/sub-issue-body.md
+  OK Template .ai-task-manager/templates/solo-issue-body.md
+  OK Template .ai-task-manager/templates/defect-body.md
+  OK Template .ai-task-manager/templates/plan-file.md
+  OK Template .ai-task-manager/templates/session-boot.md
+  OK Template .ai-task-manager/templates/session-state-template.md
+  OK Template .ai-task-manager/templates/worker-report.md
+  OK Config .ai-task-manager/project-fields.json
+  OK Config .ai-task-manager/project-field-events.json
+  OK Config .ai-task-manager/activity-policy.json
+  OK Reference .ai-task-manager/templates/references/deep-dive-procedure.md
+  OK Reference .ai-task-manager/templates/references/pickup-directive-rationale.md
+  OK Reference .ai-task-manager/templates/references/status-reporting.md
+  OK Gitignore runtime/local artifacts only
+  OK Preferences .ai-task-manager/task-tracker.json#preferences
+✔ doctor CLI reports a committed install identically without writes or task state (2996.45675ms)
+✔ doctor CLI reserves exit 2 for usage errors and reports missing Git context as health (1146.399459ms)
+✔ doctor inspects artifacts declared by a stale manifest rather than mismatched current IDs (254.859917ms)
+✔ doctor refuses an install manifest reached through an escaping parent symlink (21.292166ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4461.821875

@@ -1,0 +1,96 @@
+coverage-check-verb.test.mjs: defined
+[task-tracker] ✓ "verified ac checked" already checked on #777 (no-op)
+[task-tracker] ✓ Checked "plain ac no verifier" on #777 (unverified — audit marker recorded)
+[task-tracker] ✓ "verified ac checked" already checked on #777 (no-op)
+[task-tracker] ✓ Checked "plain ac no verifier" on #777 (unverified)
+✔ verbCheck: no active task → exit 1 (124.570458ms)
+✔ verbCheck: discover bucket active → exit 1 (128.693333ms)
+✔ verbCheck: empty label → exit 1 (132.673ms)
+✔ verbCheck: not-found label → exit 1 (126.65325ms)
+✔ verbCheck: ambiguous label → exit 1 (125.42575ms)
+✔ verbCheck: evidence-gated AC without stamp → exit 1 (129.359208ms)
+✔ verbCheck: happy path single toggle (uncheck) → no exit (124.967042ms)
+✔ verbCheck: --allow-unverified-ticks happy path → no exit (129.111333ms)
+✔ verbCheck: --allow-unverified-ticks on DoD item → refuse, exit 1 (121.737458ms)
+✔ verbCheck: --allow-unverified-ticks on verifier AC → refuse, exit 1 (127.443125ms)
+✔ verbCheck: batch happy path (uncheck) → no exit (137.234958ms)
+✔ verbCheck: batch with --allow-unverified-ticks → no exit (132.536167ms)
+✔ verbCheck: batch gate failure → exit 1 (130.798917ms)
+✔ verbCheck: batch not-found label → exit 1 (128.764834ms)
+✔ verbCheck: batch ambiguous label → exit 1 (128.460833ms)
+✔ verbCheck: --labels-file empty + no --label → usage exit 1 (126.422458ms)
+[task-tracker] ✓ "verified ac checked" already checked on #777 (no-op)
+✔ verbCheck: --labels-file with a label → no exit (126.223166ms)
+[task-tracker] ✓ Marked deep-dive-complete on #777 at 2026-10-03T07:53:17.145Z
+✔ verbCheck: "deep dive complete" outside Refine → ensureDeepDive, no exit (397.213167ms)
+✔ verbCheck: "deep dive complete" while bound in Refine → refuse, exit 1 (210.319ms)
+[task-tracker] ✓ Marked discussion complete on #777 at 2026-10-03T07:53:17.762Z (token stripped, aitm-discussed stamped, Discuss label removed)
+
+✅ DISCUSSION RESOLVED — #777 · implementation may commence
+✔ verbCheck: "discussion complete" → marks discussed, no exit (211.844542ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3008.794583
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+no active task
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+no active task
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+Usage: /task ensureChecked "<label>"
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] checkbox "totally absent" not found in #777
+Checkboxes found:
+  "plain ac no verifier <!-- aitm-non-demonstrable -->"
+  "verified ac unchecked <!-- aitm-verified cmd="`echo ok`" -->"
+  "verified ac checked <!-- aitm-verified cmd="`echo ok`" -->"
+  "dup label"
+  "dup label"
+  "All automated tests pass <!-- aitm-verified cmd="`npm run test:all`" --> <!-- dod:functional:tests -->"
+  "Acceptance criteria met <!-- dod:functional:acs -->"
+  "Lint and format checks pass <!-- aitm-verified cmd="`npm run lint`" --> <!-- dod:functional:lint -->"
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] checkbox "dup label" is ambiguous in #777: 2 lines share this visible label. Disambiguate with a longer label or the full line text.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+EVIDENCE_REQUIRED: [task-tracker] ✗ Refusing to tick AC "verified ac unchecked" on #777.
+  This acceptance criterion declares a verifier (aitm-verified cmd="…") but carries
+  no aitm-ac-evidence:abc61792 marker. Run `/task ac-stamp "verified ac unchecked"` to
+  execute `echo ok` in a sandbox; the evidence marker it stamps unlocks this tick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✗ Refusing to tick Functional DoD "All automated tests pass" on #777.
+  Key dod:functional:tests has no aitm-dod-evidence marker. Run
+  `/task dod-stamp tests` to execute the verifier in a sandbox; the
+  evidence marker it stamps unlocks this tick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+UNVERIFIED_HATCH_REFUSED: [task-tracker] ✗ Refusing --allow-unverified-ticks on AC "verified ac unchecked" in #777.
+  This acceptance criterion declares a verifier (aitm-verified cmd="…"), so it is
+  demonstrable — the unverified hatch is only for ACs carrying the
+  `<!-- aitm-non-demonstrable -->` opt-out marker or otherwise no machine verifier.
+  Run `/task ac-stamp "verified ac unchecked"` to execute `echo ok` and stamp real evidence instead.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✗ Refusing to tick Functional DoD "All automated tests pass" on #777.
+  Key dod:functional:tests has no aitm-dod-evidence marker. Run
+  `/task dod-stamp tests` to execute the verifier in a sandbox; the
+  evidence marker it stamps unlocks this tick.
+[task-tracker] batch tick on #777 refused: 1 evidence-gated label(s) lack evidence. Run `/task dod-stamp <key>` or `/task ac-stamp "<label>"` for each, then retry.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✗ checkbox "no such label" not found in #777
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✗ checkbox "dup label" is ambiguous in #777: 2 lines share this visible label.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+Usage: /task ensureChecked --label "<label>" [--label ...] | --labels-file <path>
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+stage-bound refusal: marking deep-dive complete via `/task ensureChecked "Deep dive complete"` is not permitted while #777 is in state `refine`.
+  To proceed: /task promote → plan, then retry.
+  Bypass (legacy artifacts only): add an `<!-- aitm-stage-bound-grandfather -->` marker to the body.
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.

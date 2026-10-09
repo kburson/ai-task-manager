@@ -1,0 +1,13 @@
+✔ plans every missing visible Epic carrier with Epic prefix precedence (0.794583ms)
+✔ recognizes the durable marker and is idempotent once visible metadata converges (0.25075ms)
+✔ reconciles the body marker and Epic-specific DoD idempotently (1.261375ms)
+✔ reconciler writes only missing carriers and verifies live readback (0.718917ms)
+✔ reconciler fails closed when readback remains incomplete (0.410625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.06425

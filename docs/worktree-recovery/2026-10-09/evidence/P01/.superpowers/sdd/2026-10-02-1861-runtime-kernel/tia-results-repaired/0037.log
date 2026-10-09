@@ -1,0 +1,13 @@
+✔ execution refreshes authority after intent write before emitting provider action (9.573958ms)
+✔ execution refuses a same-ID ledger edit after intent readback (1.619334ms)
+✔ open PR with a matching receipt is blocked in explanation as execution refuses it (67.590375ms)
+✔ merged execution refuses a changed PR head before posting a receipt (5.144708ms)
+✔ merged execution rechecks trunk reachability before posting a receipt (1.64925ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.894625

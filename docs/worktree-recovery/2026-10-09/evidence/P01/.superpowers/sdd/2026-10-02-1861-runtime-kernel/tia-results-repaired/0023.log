@@ -1,0 +1,16 @@
+✔ Git tree comparison proves merge, squash, and ordered rebase across base advancement (616.5785ms)
+✔ Git tree comparison refuses altered integrated content (494.112917ms)
+✔ the complete proof classifies real Git merge, squash, and rebase objects (638.50475ms)
+✔ manual merge, squash, and rebase record observed method for either proposed preference (950.110833ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2702.136958
+Automatic merge went well; stopped before committing as requested
+Automatic merge went well; stopped before committing as requested
+Automatic merge went well; stopped before committing as requested
+Automatic merge went well; stopped before committing as requested

@@ -1,0 +1,14 @@
+✔ AC2: committed terminal move (ok:true) is never surfaced as "Issue left OPEN" (0.471417ms)
+✔ AC2: reported-failure move but board re-read = done → swallowed (false-open avoided) (0.085ms)
+✔ AC2: a benign audit stderr line on a done board is still swallowed (not a failure reason) (0.059916ms)
+✔ AC2 (guard integrity): a genuinely non-committed move (board still at review) STILL refuses (0.062417ms)
+✔ AC2 (guard integrity): board re-read unknown/null with a failed move STILL refuses (0.648125ms)
+✔ AC2: a benign self-loop (done→done) move is swallowed regardless of board read (0.0835ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.544542
