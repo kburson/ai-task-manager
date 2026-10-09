@@ -4579,3 +4579,68 @@ export async function completeMemoryNativeStageCache(input) {
     validateNativeStageJournal(journal);
   });
 }
+
+// @story #1924 — only the actual cancelled/joined facade may ask for current facts.
+export async function readMemoryNativeStagePartialFacts(input) {
+  const keys = ['backend', 'capability', 'context', 'holder'];
+  const read = () => {
+    if (!input || Object.getPrototypeOf(input) !== Object.prototype)
+      revisionError('native-stage-partial-input');
+    const descriptors = Object.getOwnPropertyDescriptors(input);
+    if (
+      Reflect.ownKeys(descriptors).length !== keys.length ||
+      keys.some(
+        (key) =>
+          !descriptors[key] ||
+          !Object.hasOwn(descriptors[key], 'value') ||
+          !descriptors[key].enumerable
+      )
+    )
+      revisionError('native-stage-partial-input');
+    return descriptors;
+  };
+  const original = read();
+  const values = Object.fromEntries(keys.map((key) => [key, original[key].value]));
+  const contextBytes = () => {
+    try {
+      return canonicalRecordJson(values.context);
+    } catch {
+      revisionError('native-stage-partial-context');
+    }
+  };
+  const bytes = contextBytes();
+  const unchanged = () => {
+    const descriptors = read();
+    if (
+      keys.some((key) =>
+        ['value', 'writable', 'enumerable', 'configurable'].some(
+          (field) => descriptors[key][field] !== original[key][field]
+        )
+      ) ||
+      contextBytes() !== bytes
+    )
+      revisionError('native-stage-partial-input-changed');
+  };
+  const core = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  core.assertNativeStagePartialHolder(input);
+  const { backend, capability, context } = values;
+  assertMemoryCapability(backend, capability, context);
+  const snapshot = canonicalRecordJson(backend.snapshot);
+  const stable = () => {
+    unchanged();
+    core.assertNativeStagePartialHolder(input);
+    assertMemoryCapability(backend, capability, context);
+    if (canonicalRecordJson(backend.snapshot) !== snapshot)
+      revisionError('native-stage-partial-current-changed');
+  };
+  const state = await observeRevision({ context, deps: backend });
+  stable();
+  if (state.status !== 'pending-native-stage') revisionError('native-stage-partial-current');
+  const journal = backend.snapshot.nativeStageRecords.at(-1);
+  const codec = await import('./stage-execution.mjs');
+  stable();
+  const facts = await codec.deriveRecordedNativeStagePartialFacts({ journal });
+  stable();
+  return Object.freeze({ ...facts, progressVerified: true });
+}

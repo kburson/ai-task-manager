@@ -726,6 +726,51 @@ async function continueMoveStateAfterPhases(
 const nativeStagePreparation = new AsyncLocalStorage();
 const nativeStagePreparations = new WeakMap();
 const nativeStageIntents = new WeakMap();
+const nativeStagePartialInputs = new WeakMap();
+// No-return comparison of the actual lexical reporting call. A copied tuple,
+// even with the same holder, has no membership and cannot select the backend.
+export function assertNativeStagePartialHolder(input) {
+  const record = nativeStagePartialInputs.get(input);
+  if (
+    !record ||
+    nativeStagePreparations.get(record.identity) !== record ||
+    !record.cancelled ||
+    !record.header ||
+    record.partialInput !== input
+  )
+    throw preparationRefusal('original-partial-report-input');
+  const descriptors = Object.getOwnPropertyDescriptors(input);
+  const expected = {
+    backend: record.backend,
+    capability: record.capability,
+    context: record.context,
+    holder: record.identity,
+  };
+  if (
+    Object.getPrototypeOf(input) !== Object.prototype ||
+    Reflect.ownKeys(descriptors).length !== 4 ||
+    Object.keys(expected).some(
+      (key) =>
+        !descriptors[key] ||
+        !Object.hasOwn(descriptors[key], 'value') ||
+        !descriptors[key].enumerable ||
+        descriptors[key].value !== expected[key]
+    )
+  )
+    throw preparationRefusal('original-partial-report-input');
+  assertNativeRevisionStageScope({
+    backend: record.backend,
+    capability: record.capability,
+    repository: record.context.repository,
+    issue: record.context.issue,
+    projectDir: record.context.executor.worktree,
+  });
+  record.assertMemoryCapability(record.backend, record.capability, record.context);
+  const journal = record.backend.snapshot.nativeStageRecords.at(-1);
+  if (!journal || canonicalRecordJson(journal.header) !== canonicalRecordJson(record.header))
+    throw preparationRefusal('original-partial-report-header');
+}
+
 function preparationRefusal(reason) {
   const error = new RevisionPolicyError({
     status: 'indeterminate',
@@ -4430,13 +4475,45 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
     // the following checkpoint refusal; that cannot authorize the next saga step.
     throw preparationRefusal('durable-stage-effect-unavailable');
   } catch (error) {
+    // Stop and join the original emitter before taking the final report snapshot;
+    // keep its actual private holder alive until reporting and finally finish.
+    if (record) {
+      record.cancelled = true;
+      record.cancel(preparationRefusal('preparation-cancelled'));
+      if (running) await running.catch(() => {});
+    }
+    let partial = {
+      itemId: '',
+      boardMoved: false,
+      sentinelPresent: false,
+      transitionCommitPresent: false,
+      transitionCommitId: null,
+      progressVerified: !record,
+    };
+    if (record?.header) {
+      const input = {
+        backend: record.backend,
+        capability: record.capability,
+        context: record.context,
+        holder: record.identity,
+      };
+      record.partialInput = input;
+      nativeStagePartialInputs.set(input, record);
+      try {
+        const store = await import('../criteria-revision/store.mjs');
+        partial = await store.readMemoryNativeStagePartialFacts(input);
+      } catch {
+        partial.progressVerified = false;
+      } finally {
+        nativeStagePartialInputs.delete(input);
+        record.partialInput = null;
+      }
+    }
     return {
       exit: 4,
-      itemId: '',
       tail: { failures: [] },
       phase: 'authority',
-      sentinelPresent: false,
-      boardMoved: false,
+      ...partial,
       code: 'revision-authority-unavailable',
       preparationReason: error.preparationReason ?? 'native-source-unavailable',
     };

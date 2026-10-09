@@ -1,0 +1,3 @@
+// @story #1924
+import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
+registerNativeStageCase('partial-reporting-16', import.meta.url);

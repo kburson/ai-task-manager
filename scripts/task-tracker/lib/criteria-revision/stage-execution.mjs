@@ -2966,3 +2966,37 @@ export async function reconstructNativeStageTailCache(input) {
     revisionError('native-stage-tail-cache');
   }
 }
+
+// @story #1924 — detached historical facts only, never current authority.
+export async function deriveRecordedNativeStagePartialFacts(input) {
+  const detached = JSON.parse(canonicalRecordJson(input));
+  exactKeys(detached, ['journal'], 'native-stage-partial-data');
+  const journal = detached.journal;
+  validateNativeStageJournal(journal);
+  const { header, steps } = journal;
+  let boardMoved = false,
+    sentinelPresent = false,
+    transitionCommitPresent = false;
+  if (steps.length >= 14) {
+    const board = await reconstructNativeStageBoard({ header, steps: steps.slice(0, 14) });
+    boardMoved = board.confirmed && steps[13].readback !== null;
+  }
+  if (steps.length >= 15) {
+    await reconstructNativeStageSentinel({ header, steps: steps.slice(0, 15) });
+    sentinelPresent = boardMoved && steps[14].readback !== null;
+  }
+  if (steps.length >= 16) {
+    const comment = await reconstructNativeStageTransitionComment({
+      header,
+      steps: steps.slice(0, 16),
+    });
+    transitionCommitPresent = sentinelPresent && comment.complete;
+  }
+  return Object.freeze({
+    itemId: boardMoved ? header.intent.itemId : '',
+    boardMoved,
+    sentinelPresent,
+    transitionCommitPresent,
+    transitionCommitId: transitionCommitPresent ? steps[15].intent.commentId : null,
+  });
+}

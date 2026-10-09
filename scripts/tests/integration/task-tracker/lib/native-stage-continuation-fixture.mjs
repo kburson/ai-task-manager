@@ -42,6 +42,12 @@ import {
 
 export function registerNativeStageCase(mode, entrypoint, fault = null) {
   const faultMode = mode;
+  const partialReporting = [
+    'partial-reporting-14',
+    'partial-reporting-15',
+    'partial-reporting-16',
+    'partial-reporting-unknown',
+  ].includes(mode);
   const cacheMode = ['tail-cache', 'tail-cache-late-read', 'tail-cache-late-config'].includes(mode);
   const compensationMode = [
     'compensation',
@@ -60,6 +66,7 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
   }[mode];
   const transitionMode =
     transitionCustody ||
+    partialReporting ||
     [
       'transition-comment',
       'transition-comment-prefix',
@@ -2508,6 +2515,16 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
         if (['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode))
           f.backend.failBefore = 'native-stage-cache-intent-write';
+        if (partialReporting) {
+          f.backend.failBefore = null;
+          if (faultMode === 'partial-reporting-14')
+            f.backend.failBefore = 'native-stage-sentinel-intent-write';
+          else if (faultMode === 'partial-reporting-15')
+            f.backend.failBefore = 'native-stage-transition-intent-write';
+          else if (faultMode === 'partial-reporting-16')
+            f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
+          else f.backend.failAfter = 'native-stage-transition-effect-write';
+        }
         const filesystem = (await import('node:fs')).default;
         const { syncBuiltinESMExports } = await import('node:module');
         const originalRead = filesystem.readFileSync,
@@ -2902,6 +2919,47 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             },
           })
         );
+        if (partialReporting) {
+          const completed = {
+            'partial-reporting-14': 14,
+            'partial-reporting-15': 15,
+            'partial-reporting-16': 16,
+            'partial-reporting-unknown': 15,
+          }[faultMode];
+          assert.equal(
+            journal.steps.length,
+            faultMode === 'partial-reporting-unknown' ? 16 : completed
+          );
+          assert.ok(journal.steps.slice(0, completed).every((step) => step.readback !== null));
+          assert.equal(journal.steps[13].outcome.kind, 'confirmed');
+          if (faultMode === 'partial-reporting-unknown')
+            assert.equal(journal.steps[15].readback, null);
+          assert.deepEqual(captureFiles(), files);
+          assert.equal(
+            (await observeRevision({ context: f.context, deps: createRevisionMemory(snapshot) }))
+              .status,
+            'pending-native-stage'
+          );
+          assert.equal(result.exit, 4);
+          assert.equal(result.itemId, 'PVTI_subject', 'verified board item must survive failure');
+          assert.equal(result.boardMoved, true);
+          assert.equal(result.sentinelPresent, completed >= 15);
+          assert.equal(result.transitionCommitPresent, completed === 16);
+          assert.equal(
+            result.transitionCommitId,
+            completed === 16 ? journal.steps[15].intent.commentId : null
+          );
+          assert.equal(result.progressVerified, true);
+          const effects = f.backend.effects;
+          await Promise.resolve();
+          assert.deepEqual(
+            f.backend.snapshot,
+            snapshot,
+            'joined original work cannot change returned facts'
+          );
+          assert.deepEqual(f.backend.effects, effects);
+          return;
+        }
         assert.ok(beforeComment, 'capture after actual completed15');
         assert.equal(beforeComment.nativeStageRecords[0].steps.length, 15);
         assert.ok(
