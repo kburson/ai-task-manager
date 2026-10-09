@@ -1,0 +1,16 @@
+{
+  "owner": "kburson",
+  "story": 1859,
+  "originalStory": 1859,
+  "sourceHead": "14154c2e264b5cdb7d4f8145baead7fd5b4f715e",
+  "protectedIds": [
+    "P04",
+    "P05"
+  ],
+  "purpose": "Three unpublished #1859 CI replay/lane/documentation commits retained by stale detached test registrations. The newer HEAD also contains the older dfed5558 snapshot. Original #1859 is closed; compare with delivered Scope evidence before deciding whether these CI fixes remain applicable.",
+  "sourcePaths": [
+    "/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/.task-test-1859-14154c2e-87607-167a1806",
+    "/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/.task-test-1859-dfed5558-61350-1dfda4ca"
+  ],
+  "validation": "Original object preservation only; current tests and review not run."
+}
