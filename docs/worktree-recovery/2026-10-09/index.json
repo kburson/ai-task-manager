@@ -11830,5 +11830,18 @@
       "stagedStateUnchanged": true,
       "contentDrift": []
     }
-  ]
+  ],
+  "cleanup": {
+    "date": "2026-10-10",
+    "removedWorktrees": 19,
+    "archivedSessions": 55,
+    "previouslyArchivedSessions": 5,
+    "retainedWorktrees": [
+      "/Users/kpburson/projects/Vibe-Coding/ai-task-manager",
+      "/Users/kpburson/.codex/worktrees/b957/ai-task-manager"
+    ],
+    "receipt": "docs/worktree-recovery/2026-10-09/cleanup-receipt-2026-10-10.json",
+    "sourceBranchesRetained": true,
+    "permanentChatDeletionPerformed": false
+  }
 }

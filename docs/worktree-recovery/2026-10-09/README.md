@@ -77,3 +77,11 @@ D10 (#1514) was clean but contained seven ignored planning/AC operator fragments
 The final source-preservation check found unchanged original HEADs, unchanged staged state (including the original staged rename), and no content drift across all six uncommitted-source/collateral captures. Three final helper scripts are preserved as inert source copies in https://github.com/kburson/ai-task-manager/pull/1967.
 
 There are 10 source/collateral recovery PRs, 15 evidence/planning review PRs, and this four-file index PR. All are drafts. Nothing was merged or deleted during recovery.
+
+## Authorized stale-worktree cleanup completed 2026-10-10
+
+After rechecking exact live origin heads and 17,541 meaningful file contents, 19 stale worktree paths and registrations were removed, including nested and broken test registrations. All original source and evidence branches were retained. Only the primary repository and active cleanup checkout remain registered.
+
+The 55 previously unarchived Codex sessions whose actual workspace paths matched the removed trees were archived through the app API. Five matched sessions were already archived. The active cleanup chat remains available. The app API exposes archival, so permanent chat deletion was not performed.
+
+The [cleanup receipt](cleanup-receipt-2026-10-10.json) records original worktree HEADs, removed paths, associated session IDs, retained checkouts, authorization, and final verification. This records cleanup, without changing implementation or merge readiness.
