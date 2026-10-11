@@ -4,13 +4,13 @@ Owner: @kburson. Coordination story: [#1953](https://github.com/kburson/ai-task-
 
 ## Review order and dependencies
 
-1. Review this index and provenance first; it does not change product behavior.
-2. Review #1958 / story #1954 to decide which assignment/tether changes remain applicable to current trunk.
-3. Review #1956 before updating #1871; runtime kernel work belongs to #1861 and the #1857 integration/release gates.
-4. Review #1957 with #1907 and #1928; the criteria-revision repair branch targets the #1855 integration branch. Do not merge it directly to trunk out of stack order.
-5. Review #1962 for the three retained #1859 CI replay changes, then #1963/#1964 for historical planning/evaluator reconciliation. Compare against shipped behavior before choosing any code.
-6. Review #1965 / story #1955 as historical proposals against current GitHub-native authority; no approval of a local authority database is implied.
-7. #1959 and #1960 are collateral/observations. #1961 is temporary cleanup configuration and must not become a permanent hook-disable default.
+1. Complete and review this index and provenance first; it does not change product behavior.
+2. Derive narrow current-trunk project lookup/tether fixes from #1958 under #1954; retain current ownership and lifecycle rules.
+3. Continue #1957 through the #1919/#1918 repair stack, then #1855/#1847. Reconcile #1928 and #1907; do not merge the aggregate directly to trunk.
+4. Select applicable #1956 work onto the newer #1871 kernel; complete #1861/#1862 through the #1857 joint integration/release gates.
+5. #1961–#1965 are closed and their PR branches deleted. Their representation and exact historical preservation are recorded in the retirement manifest below.
+6. #1959/#1960 remain historical collateral/observations for a separate retention decision; #1981 is small #1514 planning provenance.
+7. Curate evidence by its owning purpose and final source candidate, without bulk-merging historical raw logs or treating them as current acceptance.
 
 These are review sequencing suggestions, not a claim that any source PR is ready to merge. Tests, lint and current independent review must be established on each chosen final branch.
 
@@ -98,4 +98,4 @@ The user requested closing superseded or obsolete PRs and deleting their branche
 | #1964 | Authority evaluator already shipped with stronger identity checks.                        |
 | #1965 | SQLite authority proposals superseded by accepted ADR0002; retain research only.          |
 
-The .snapshot files preserve exact bytes without installing hooks, weakening current code, or restoring old plans as active execution instructions. Current work continues in #1956–#1958 and the remaining evidence/planning PRs. This record prepares retirement; final state is recorded after GitHub closure and branch deletion are verified.
+The .snapshot files preserve exact bytes without installing hooks, weakening current code, or restoring old plans as active execution instructions. Current work continues in #1956–#1958 and the remaining evidence/planning PRs. Retirement is complete: #1961–#1965 are closed, their five PR branches are absent from origin and local heads, and all retained snapshot blobs were verified. No source was merged, no owning issue was closed, and the remaining source/evidence PRs stay open.

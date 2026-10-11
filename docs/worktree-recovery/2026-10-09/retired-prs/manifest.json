@@ -11,7 +11,7 @@
       "originalHead": "d2b7284ef30f37ff1cfbcac7662b59ca0a57912e",
       "disposition": "OBSOLETE_SESSION_CONFIGURATION",
       "reason": "Temporary workspace hook disabling is an operational cleanup record, not a product default.",
-      "state": "PREPARED_FOR_RETIREMENT",
+      "state": "CLOSED",
       "preservationBranch": "codex/1953-protected-wip-review-index",
       "content": [
         {
@@ -50,7 +50,10 @@
           "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1961/docs/worktree-recovery/2026-10-09/D09/capture.json.snapshot",
           "storedBlob": "d72b3449411092102c0d524ad68eb3b3fa39bb87"
         }
-      ]
+      ],
+      "localBranchDeleted": true,
+      "originBranchDeleted": true,
+      "closureReasonRecordedInPRBody": true
     },
     {
       "PR": 1962,
@@ -60,7 +63,7 @@
       "originalHead": "cf0c25b2ec9bc22d05f36fc5dda258ef10b0c388",
       "disposition": "ALREADY_REPRESENTED",
       "reason": "CI replay helper and captured bytes are shipped; final test placement is integration/meta, not the intermediate test-helpers directory.",
-      "state": "PREPARED_FOR_RETIREMENT",
+      "state": "CLOSED",
       "preservationBranch": "codex/1953-protected-wip-review-index",
       "content": [
         {
@@ -153,7 +156,10 @@
           "disposition": "represented-on-trunk",
           "representedPath": "scripts/tests/integration/meta/captured-commit-bytes.test.mjs"
         }
-      ]
+      ],
+      "localBranchDeleted": true,
+      "originBranchDeleted": true,
+      "closureReasonRecordedInPRBody": true
     },
     {
       "PR": 1963,
@@ -163,7 +169,7 @@
       "originalHead": "530f081b5d5ff9856d9c45e25d882bee3fd58e6c",
       "disposition": "SUPERSEDED_CHECKPOINT",
       "reason": "Architecture delivery is represented by #1724/#1726; excluded experiment and old generated setup are historical only.",
-      "state": "PREPARED_FOR_RETIREMENT",
+      "state": "CLOSED",
       "preservationBranch": "codex/1953-protected-wip-review-index",
       "content": [
         {
@@ -256,7 +262,10 @@
           "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/docs/worktree-recovery/2026-10-09/P06/source-provenance.json.snapshot",
           "storedBlob": "3fb54b99399d624068d8967aec56d251b57c9f0e"
         }
-      ]
+      ],
+      "localBranchDeleted": true,
+      "originBranchDeleted": true,
+      "closureReasonRecordedInPRBody": true
     },
     {
       "PR": 1964,
@@ -266,7 +275,7 @@
       "originalHead": "2a0f2cf8d32a4a8d5ad6cc3a4e44ffefe00e4c77",
       "disposition": "SUPERSEDED_IMPLEMENTATION",
       "reason": "Current trunk already contains the completed authority evaluator and stronger issue-bound observation identity checks.",
-      "state": "PREPARED_FOR_RETIREMENT",
+      "state": "CLOSED",
       "preservationBranch": "codex/1953-protected-wip-review-index",
       "content": [
         {
@@ -1111,7 +1120,10 @@
           "disposition": "represented-on-trunk",
           "representedPath": "scripts/tests/unit/task-tracker/lib/guidance-legacy-transport.test.mjs"
         }
-      ]
+      ],
+      "localBranchDeleted": true,
+      "originBranchDeleted": true,
+      "closureReasonRecordedInPRBody": true
     },
     {
       "PR": 1965,
@@ -1121,7 +1133,7 @@
       "originalHead": "225808a0a6c8a3e99b339e1e2fc11acbd305178a",
       "disposition": "SUPERSEDED_DESIGN",
       "reason": "Accepted ADR0002 makes GitHub records authoritative; July SQLite-authority execution plans are superseded research.",
-      "state": "PREPARED_FOR_RETIREMENT",
+      "state": "CLOSED",
       "preservationBranch": "codex/1953-protected-wip-review-index",
       "content": [
         {
@@ -1160,7 +1172,10 @@
           "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1965/docs/worktree-recovery/2026-10-09/P17/source-provenance.json.snapshot",
           "storedBlob": "1f2afa55f7cd24614b7103332e0e8ce45c49a3ea"
         }
-      ]
+      ],
+      "localBranchDeleted": true,
+      "originBranchDeleted": true,
+      "closureReasonRecordedInPRBody": true
     }
   ]
 }

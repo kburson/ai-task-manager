@@ -78,9 +78,11 @@
       "localEvidencePaths": 6,
       "originalSourceRetained": true,
       "decision": "Temporary workspace hook disabling is an operational cleanup record, not a product default.",
-      "retirementPrepared": true,
+      "retirementPrepared": false,
       "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
-      "preservationBranch": "codex/1953-protected-wip-review-index"
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "sourcePRState": "CLOSED",
+      "recoveryBranchRetired": true
     },
     {
       "id": "P04",
@@ -95,9 +97,11 @@
       "localEvidencePaths": 0,
       "originalSourceRetained": true,
       "decision": "CI replay helper and captured bytes are shipped; final test placement is integration/meta, not the intermediate test-helpers directory.",
-      "retirementPrepared": true,
+      "retirementPrepared": false,
       "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
-      "preservationBranch": "codex/1953-protected-wip-review-index"
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "sourcePRState": "CLOSED",
+      "recoveryBranchRetired": true
     },
     {
       "id": "P05",
@@ -112,9 +116,11 @@
       "localEvidencePaths": 0,
       "originalSourceRetained": true,
       "decision": "CI replay helper and captured bytes are shipped; final test placement is integration/meta, not the intermediate test-helpers directory.",
-      "retirementPrepared": true,
+      "retirementPrepared": false,
       "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
-      "preservationBranch": "codex/1953-protected-wip-review-index"
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "sourcePRState": "CLOSED",
+      "recoveryBranchRetired": true
     },
     {
       "id": "P06",
@@ -129,9 +135,11 @@
       "localEvidencePaths": 131,
       "originalSourceRetained": true,
       "decision": "Architecture delivery is represented by #1724/#1726; excluded experiment and old generated setup are historical only.",
-      "retirementPrepared": true,
+      "retirementPrepared": false,
       "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
-      "preservationBranch": "codex/1953-protected-wip-review-index"
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "sourcePRState": "CLOSED",
+      "recoveryBranchRetired": true
     },
     {
       "id": "P07",
@@ -188,9 +196,11 @@
       "localEvidencePaths": 7,
       "originalSourceRetained": true,
       "decision": "Current trunk already contains the completed authority evaluator and stronger issue-bound observation identity checks.",
-      "retirementPrepared": true,
+      "retirementPrepared": false,
       "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
-      "preservationBranch": "codex/1953-protected-wip-review-index"
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "sourcePRState": "CLOSED",
+      "recoveryBranchRetired": true
     },
     {
       "id": "P11",
@@ -344,9 +354,11 @@
       "localEvidencePaths": 2,
       "originalSourceRetained": true,
       "decision": "Accepted ADR0002 makes GitHub records authoritative; July SQLite-authority execution plans are superseded research.",
-      "retirementPrepared": true,
+      "retirementPrepared": false,
       "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
-      "preservationBranch": "codex/1953-protected-wip-review-index"
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "sourcePRState": "CLOSED",
+      "recoveryBranchRetired": true
     },
     {
       "id": "P18",
@@ -11729,8 +11741,12 @@
   },
   "retirement": {
     "manifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
-    "state": "PREPARED_FOR_RETIREMENT",
+    "state": "COMPLETE",
     "PRs": [1961, 1962, 1963, 1964, 1965],
-    "preservationBranch": "codex/1953-protected-wip-review-index"
+    "preservationBranch": "codex/1953-protected-wip-review-index",
+    "localBranchesDeleted": 5,
+    "originBranchesDeleted": 5,
+    "uniqueHistoricalSnapshots": 38,
+    "representedOnTrunk": 94
   }
 }
