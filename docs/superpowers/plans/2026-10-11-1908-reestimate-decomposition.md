@@ -183,7 +183,7 @@ Additionally own lib/issue-body-mutate.mjs and body-invariants.mjs: both decompo
 
 **Estimate:** 7h, M. **Wave:** 2. **Depends on:** Task 1.
 
-**Files:** Create `scripts/task-tracker/lib/decomposition-authority.mjs`, `decomposition-projection.mjs`; modify `lib/markers.mjs`, `body-invariants.mjs` and related marker protection definitions; create dedicated `scripts/tests/unit/task-tracker/lib/decomposition-authority.test.mjs` and `decomposition-projection.test.mjs`. Do not edit writer, action-decision or hook files.
+**Files:** Create `scripts/task-tracker/lib/decomposition-authority.mjs`, `decomposition-projection.mjs`; modify `lib/markers.mjs`, `body-invariants.mjs`, `issue-body-mutate.mjs` and related marker protection definitions; create dedicated `scripts/tests/unit/task-tracker/lib/decomposition-authority.test.mjs` and `decomposition-projection.test.mjs`. Do not edit writer, action-decision or hook files.
 
 **Interfaces:** Produce collector/refresh/runtime APIs. Read-only ports are `readIssue`, `readProject`, `readSelectedPlan`, `readForecast` and `readPolicy`; projection writes use governed `mutateIssueBody`, `readBackIssue` and existing issue-lock ports. Ports return explicit observed/unavailable observations with digests; no effect port reaches the collector.
 
@@ -193,6 +193,8 @@ Additionally own lib/issue-body-mutate.mjs and body-invariants.mjs: both decompo
 - [ ] Step 4: Exercise same-issue lock reentrancy and unrelated concurrent contenders, provider body-limit refusals and effect-free collection. Commit the independently tested delivery under its child issue.
 
 Run: `node --test scripts/tests/unit/task-tracker/lib/decomposition-authority.test.mjs scripts/tests/unit/task-tracker/lib/decomposition-projection.test.mjs`
+
+Run: `node --test scripts/tests/unit/task-tracker/lib/body-invariants.test.mjs scripts/tests/unit/task-tracker/lib/mutate-issue-body.test.mjs scripts/tests/unit/task-tracker/lib/mutate-issue-body-marker-loss.test.mjs scripts/tests/unit/task-tracker/lib/state-action-resume.test.mjs`
 
 ### Task 3: Publish estimate revisions through resumable real writer adapters
 
@@ -295,6 +297,10 @@ Run: `node --test scripts/tests/integration/task-tracker/lib/action-parity.test.
 
 Run: `node --test scripts/tests/integration/task-tracker/lib/decomposition-reestimate-admission.test.mjs scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs scripts/tests/integration/task-tracker/lib/artifact-write-policy.test.mjs`
 Run: `node --test scripts/tests/unit/task-tracker/lib/code-complete-gate-audit-494.test.mjs scripts/tests/unit/task-tracker/verbs/deliver-no-commit.test.mjs`
+
+#### Scope revision is preparation
+
+The issue's own governed User Story/Scope/AC/Plan Metadata/WBS revision is decomposition-prepare under every assessment status, including must-decompose/pending/indeterminate and epic-readiness-required with planning false. Ordinary ownership, physical scope, usable issue authority and lifecycle/body-invariant gates remain required; this is no universal override. Classify the actual fresh diff and exact sanctioned operation, not a caller's purpose label. Mixed new deliverable/completion content or forged evidence is not admitted as planning. Reassess after scopeDigest changes, preserve pending publication, and retain must-decompose at Estimate >=24 until truthful sanctioned re-estimation/reconciliation. Only new substantive deliverables/completion evidence require scoped-deliverable/scoped-completion. Test must-decompose story narrowing Scope/AC through actual issue-body (allowed/reassessed/still flagged >=24), Refine/Plan epic with planning false revising Scope/AC (allowed under original gates), and oversized audit/research new deliverable (zero effects/refused).
 
 ### Task 6: Preserve governed split and kind recovery with truthful epic readiness
 
@@ -418,7 +424,7 @@ Task 3 owns cancel-plan.mjs, shelve-transaction.mjs and gh/update-event-fields.m
 
 Task 5 additionally owns guard-registry/preflight composition, lib/code-complete-gate.mjs, lib/action-decision/test.mjs, verbs/issue-body.mjs, verbs/comment.mjs, verbs/epic-reconcile.mjs and no-commit verbs/deliver.mjs. Task 4 owns shared observation/catalog definitions and lands first; Task 6 owns kind/split only. Task 6 follows Task 5; no active owner overlaps these remote boundaries.
 
-Register fresh admission before effectful governed body/comment publication and no-commit completion/delivery records. Resolve body-operation input against the fresh issue; identify substantive Scope/AC/deliverable changes and new deliverable/completion evidence. Exact package-owned history/checkpoint or registered estimate publication keeps its recovery capability; arbitrary caller keys cannot claim exemption. Unknown publication purpose is restricted scoped-deliverable with typed preview/recovery, never permissive booleans. Preserve existing genuine evidence; new no-commit publication requires current scoped-deliverable capability. No local file target or unmatched Bash READ fallback is sufficient.
+Register fresh admission before effectful governed body/comment publication and no-commit completion/delivery records. Resolve body-operation input against the fresh issue; classify the governed scope-revision lane separately from new substantive deliverables and completion evidence. Exact package-owned history/checkpoint or registered estimate publication keeps its recovery capability; arbitrary caller keys cannot claim exemption. Unknown publication purpose is restricted scoped-deliverable with typed preview/recovery, never permissive booleans. Preserve existing genuine evidence; new no-commit publication requires current scoped-deliverable capability. No local file target or unmatched Bash READ fallback is sufficient.
 
 Actual code-complete and Test preflight consume the same fresh observation before accepting no-commit completion evidence. They do not ban Test/Review by state alone: checkpoint/history remain available, while assertions of newly completed scoped work require capability. Converted epics also need current materialized readiness. Deliver checks current capability before its first remote no-commit record effect, conjunctively with review/ownership. Existing requested AITM issue records are the effect boundary; no general messaging action is introduced.
 
@@ -456,3 +462,9 @@ Monotonic total remote budget is five seconds; at most two continuation pages pe
 - scripts/migrate/start-time-field.mjs writes only configured startTime text. Task 7 proves no Estimate target; no estimate publication.
 
 Task 3 is 12h/L, Task 6 6h/M, Task 7 6h/M; total 6+7+12+6+9+6+6=52h. Parallelism remains Tasks 3/4 in Wave 3; Tasks 5/6 are sequential to protect shared inventories. Representative kernel fixture defaults: M non-XL, empty plan, complete non-epic authority. Named root references in each task are reviewed scope-bearing dependencies at the same pinned plan commit: Task 2 includes referenced normalized bytes in decomposition scope identity, so a contract change cannot preserve admission digest.
+
+## Scope preparation and positional verification clarification
+
+Governed scope revision defined in Task 5 is preparation, not scoped-deliverable; it remains available under all decomposition statuses when original exact mutation authority is usable. This includes ordinary epic Refine/Plan/WBS work before readiness. Scope changes always invalidate/reassess the decomposition identity, cannot erase pending intent or create completion evidence, and do not lower a truthfully recorded >=24 estimate. The remote boundary and status table must be interpreted with this lane.
+
+Plan-exit/parent Develop preparation reads validated epicReadiness.planning directly; no invented orchestration capability name is added. Actual epic completion reads epicReadiness.completion plus existing gates. Task 7's original three targeted commands are parent vc:1–3 and become the child's vc:6–8 because five lint/parity commands precede them in the parsed task. Hydration retains exact generated VC numbering, never assumes parent and child indexes match.
