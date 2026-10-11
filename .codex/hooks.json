@@ -87,15 +87,6 @@
           }
         ],
         "matcher": "apply_patch|Edit|Write|NotebookEdit"
-      },
-      {
-        "matcher": "^(?:Bash|functions\\.exec|exec)$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "peer-review-codex-hook"
-          }
-        ]
       }
     ],
     "PostToolUse": [
