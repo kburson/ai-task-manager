@@ -226,6 +226,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   for (const entry of [
     'scripts/task-tracker/lib/decomposition-assessment.mjs',
     'scripts/task-tracker/lib/decomposition-records.mjs',
+    'scripts/task-tracker/lib/decomposition-authority.mjs',
+    'scripts/task-tracker/lib/decomposition-projection.mjs',
   ])
     assert.ok(files.includes(entry));
   // #1635 ships one false-delivery recovery authority. Keep its allowance
@@ -430,7 +432,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     12 + // #1872: ten admission modules, the collection grouping module and operator guide.
     1 + // #1904: shared root AC section locator; actual package delta is exactly one file.
     1 + // #1954: strict shared project membership reader; measured delta is one runtime file.
-    2; // #1986: measured +2 for the strict assessment and record codec only.
+    2 + // #1986: measured +2 for the strict assessment and record codec only.
+    2; // #1987: measured +2 for current authority and protected projection only.
   assert.ok(files.includes('scripts/run-tests-shards.mjs'));
   assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(

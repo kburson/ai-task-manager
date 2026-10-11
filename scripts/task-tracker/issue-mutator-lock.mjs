@@ -79,6 +79,11 @@ export function issueLockToken(issue) {
 // concurrent same-issue run in this process is a SIBLING context, not a
 // descendant, so it reads an empty set and contends normally.
 const heldContext = new AsyncLocalStorage();
+// Opaque in-process owner identity; inherited environment tokens cannot mint it.
+const ownerContext = new AsyncLocalStorage();
+export function currentIssueLockOwner(issue) {
+  return ownerContext.getStore()?.get(issueLockToken(issue)) ?? null;
+}
 
 // Tokens this process itself published into the env, refcounted. Their presence
 // in the env says nothing about the CURRENT call stack — only the async context
@@ -325,7 +330,12 @@ export async function withIssueLock(opts, fn) {
   nextHeld.add(token);
 
   try {
-    return await heldContext.run(nextHeld, fn);
+    const owners = new Map(ownerContext.getStore() ?? []);
+    owners.set(
+      token,
+      Object.freeze({ issue: token, projDir, token: randomBytes(16).toString('hex') })
+    );
+    return await ownerContext.run(owners, () => heldContext.run(nextHeld, fn));
   } finally {
     const depth = (selfPublished.get(token) || 1) - 1;
     if (depth <= 0) selfPublished.delete(token);
