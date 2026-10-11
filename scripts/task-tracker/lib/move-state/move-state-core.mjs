@@ -936,6 +936,7 @@ export function assertNativeStagePartialHolder(input) {
   if (!journal || canonicalRecordJson(journal.header) !== canonicalRecordJson(record.header))
     throw preparationRefusal('original-partial-report-header');
   assertOriginalEntryContext(record);
+  assertNativeReturnedResultsUnchanged(record);
   checkOriginalStageSources(record);
   checkOriginalFieldSources(record);
   checkOriginalLocalSources(record);
@@ -2555,6 +2556,10 @@ function compareNativeResult(result, expected, original) {
   return descriptors;
 }
 function assertNativeReturnedResultsUnchanged(record) {
+  if (record.cacheActiveReturned) {
+    const retained = record.cacheActiveReturned;
+    nativeCacheSession.assertOriginalNativeCacheRead(retained.input, retained.result);
+  }
   if (record.transitionCommentReturned) {
     const retained = record.transitionCommentReturned;
     record.transitionCommentCode.assertOriginalNativeTransitionResult(
@@ -5413,6 +5418,9 @@ export async function executeNativeStageCacheOperation(input, ctx, operation) {
       const result = await leaf.modules.session.getNativeStageCachedTask(input, operation);
       currentCacheOperation(input);
       leaf.modules.session.assertOriginalNativeCacheRead(input, result);
+      // Retain the actual read through cancellation/reporting. Deleting the
+      // leaf must not discard the late-return comparison before further reads.
+      leaf.record.cacheActiveReturned = { input, result };
       return result;
     }
     if (operation.kind === 'set') {
