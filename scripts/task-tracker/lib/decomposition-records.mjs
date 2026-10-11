@@ -1,4 +1,5 @@
 // @story #1908 #1986 — Bounded, non-executable issue-body record codec; no I/O.
+import { DECOMPOSITION_THRESHOLDS } from './decomposition-policy.mjs';
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 import { markdownViews, openingFenceFor, isClosingFence } from './plan-markdown-views.mjs';
 import {
@@ -7,6 +8,7 @@ import {
   exactDecompositionKeys,
   validateDecompositionAssessment,
   validateDecompositionPublication,
+  deriveDecompositionCapabilities,
 } from './decomposition-assessment.mjs';
 
 export { validateDecompositionPublication } from './decomposition-assessment.mjs';
@@ -126,17 +128,28 @@ function encode(name, value) {
   });
 }
 function visibleSection(assessment, publication) {
-  const lines = ['## Decomposition Assessment', ''];
+  const thresholds = DECOMPOSITION_THRESHOLDS;
+  const status =
+    publication?.status === 'pending' ? 'pending' : (assessment?.status ?? 'indeterminate');
+  const allowed = assessment
+    ? deriveDecompositionCapabilities(assessment, publication)
+    : ['inspect', 'checkpoint'];
+  const lines = [
+    '## Decomposition Assessment',
+    '',
+    `- Status: ${status}`,
+    `- Thresholds: estimate review ${thresholds.reviewEstimateHours}h, mandatory ${thresholds.splitEstimateHours}h; task review ${thresholds.reviewTaskCount}, mandatory ${thresholds.splitTaskCount}; verifier groups review ${thresholds.reviewVerificationGroups}, XL mandatory groups ${thresholds.splitXlVerificationGroups}`,
+    `- Allowed actions: ${allowed.join(', ')}`,
+  ];
   if (assessment) {
     lines.push(
-      `- Status: ${assessment.status}`,
       `- Kind: ${assessment.kind}`,
       `- Estimate: ${assessment.estimate.basis}${assessment.estimate.hours === null ? '' : ` ${assessment.estimate.hours}h`}`
     );
     for (const signal of assessment.signals)
       lines.push(`- Signal: ${signal.code} ${signal.value} (${signal.level})`);
     for (const blocker of assessment.blockers) lines.push(`- Blocker: ${blocker.code}`);
-  } else lines.push('- Status: assessment unavailable');
+  } else lines.push('- Assessment: unavailable');
   if (publication) lines.push(`- Publication: ${publication.status} (${publication.operationId})`);
   return `${lines.join('\n')}\n\n`;
 }

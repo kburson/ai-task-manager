@@ -1,5 +1,6 @@
 // @story #1908 #1986 — Pure current-value classification and closed wire validation.
 import { createHash } from 'node:crypto';
+import { stateIds } from './lifecycle-policy/index.mjs';
 import {
   classifyDecomposition,
   collectDecompositionSignals,
@@ -67,7 +68,6 @@ export const DECOMPOSITION_CAPABILITIES = Object.freeze([
   'checkpoint',
   'decomposition-prepare',
   'governed-decomposition',
-  'parent-orchestration',
   'scoped-implementation',
   'scoped-deliverable',
   'scoped-completion',
@@ -122,7 +122,6 @@ const PUBLICATION_KEYS = [
   'updatedAt',
 ];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const STATES = ['backlog', 'refine', 'ready-for-plan', 'plan', 'develop', 'test', 'review', 'done'];
 
 export function decompositionError(category) {
   throw new TypeError(`decomposition:${category}`);
@@ -346,7 +345,7 @@ function readiness(value, kind) {
     )
       decompositionError('readiness-child-dependencies');
     if (
-      !STATES.includes(item.state) ||
+      !stateIds().includes(item.state) ||
       ![null, 'completed', 'not_planned'].includes(item.disposition)
     )
       decompositionError('readiness-child-state');
@@ -506,7 +505,6 @@ function expectedCapabilities(value, publication = null) {
   if (value.status === 'epic-readiness-required') {
     const flags = readinessObservation(value);
     const result = [...BASE];
-    if (flags?.planning) result.push('parent-orchestration');
     if (flags?.completion) result.push('scoped-deliverable', 'scoped-completion');
     return result;
   }
@@ -558,14 +556,17 @@ export function validateDecompositionAssessment(value) {
       decompositionError('assessment-signal-value');
   }
   const signalValue = (code) => value.signals.find((entry) => entry.code === code)?.value ?? 0;
+  const verificationGroups = Math.max(
+    signalValue('verification-groups'),
+    signalValue('xl-verification-groups')
+  );
   const expectedSignals = collectDecompositionSignals({
     size: value.size,
     estimateHours: value.kind === 'epic' ? null : value.estimate.hours,
-    taskCount: signalValue('task-count'),
-    verificationGroupCount: Math.max(
-      signalValue('verification-groups'),
-      signalValue('xl-verification-groups')
-    ),
+    // Every command-bearing group belongs to a task, including groups whose
+    // task-count signal was maliciously removed from the compact record.
+    taskCount: Math.max(signalValue('task-count'), verificationGroups),
+    verificationGroupCount: verificationGroups,
   });
   if (!same(value.signals, expectedSignals)) decompositionError('assessment-signals');
   boundedArray(value.blockers, 'assessment-blockers');
@@ -606,15 +607,17 @@ export function validateDecompositionAssessment(value) {
     !blockers.has('project-unavailable')
   )
     decompositionError('assessment-project-unavailable');
+  const publicationObservations = value.observations.filter(
+    (entry) => entry.resource === 'publication'
+  );
+  const currentPublication = publicationObservations[0];
   if (
-    blockers.has('publication-pending') &&
-    !value.observations.some(
-      (entry) =>
-        entry.resource === 'publication' &&
-        entry.revision === 'pending' &&
-        UUID_RE.test(entry.identity) &&
-        entry.digest !== null
-    )
+    publicationObservations.length > 1 ||
+    (currentPublication &&
+      (!UUID_RE.test(currentPublication.identity) ||
+        currentPublication.digest === null ||
+        !['pending', 'complete', 'superseded'].includes(currentPublication.revision))) ||
+    blockers.has('publication-pending') !== (currentPublication?.revision === 'pending')
   )
     decompositionError('assessment-publication-observation');
   if (value.status !== expectedStatus(value)) decompositionError('assessment-status');

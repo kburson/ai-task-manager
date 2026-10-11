@@ -1,3 +1,4 @@
+// @story #1986
 // @story #1926
 // @story #1904
 // @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
@@ -220,6 +221,13 @@ test('package-boundary: shipped README has no dead docs/introduction link', () =
 
 test('package-boundary: total entry count stays under the ceiling', () => {
   const files = packedFiles();
+  // #1986 inventory measured 919 entries versus the prior 917 ceiling:
+  // exactly the strict runtime assessment and record codec, with tests excluded.
+  for (const entry of [
+    'scripts/task-tracker/lib/decomposition-assessment.mjs',
+    'scripts/task-tracker/lib/decomposition-records.mjs',
+  ])
+    assert.ok(files.includes(entry));
   // #1635 ships one false-delivery recovery authority. Keep its allowance
   // separate so the preserved #1624 branch can apply its exact ceiling change
   // without both histories editing the same base hunk.
@@ -421,7 +429,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     8 + // #1859: six reviewed-scope modules, readiness guard and operator guide.
     12 + // #1872: ten admission modules, the collection grouping module and operator guide.
     1 + // #1904: shared root AC section locator; actual package delta is exactly one file.
-    1; // #1954: strict shared project membership reader; measured delta is one runtime file.
+    1 + // #1954: strict shared project membership reader; measured delta is one runtime file.
+    2; // #1986: measured +2 for the strict assessment and record codec only.
   assert.ok(files.includes('scripts/run-tests-shards.mjs'));
   assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(

@@ -309,8 +309,8 @@ test('epic complexity requires readiness without story must-decompose', () => {
 });
 for (const [planning, completion, want] of [
   [false, false, BASE],
-  [true, false, [...BASE, 'parent-orchestration']],
-  [true, true, [...BASE, 'parent-orchestration', 'scoped-deliverable', 'scoped-completion']],
+  [true, false, BASE],
+  [true, true, [...BASE, 'scoped-deliverable', 'scoped-completion']],
 ]) {
   test(`converted epic planning=${planning} completion=${completion} separates both boundaries`, () => {
     const readiness = {
@@ -667,5 +667,68 @@ test('assessment options accept only publication and timestamp, never caller adm
   assert.throws(
     () => assessDecomposition(fixture(), { publication: null, capabilities: SCOPED }),
     /assessment-options/
+  );
+});
+
+test('planning-ready epic reads the validated boundary without inventing a capability', () => {
+  const input = fixture({
+    kind: 'epic',
+    readiness: {
+      availability: 'observed',
+      planning: true,
+      completion: false,
+      digest: sha('graph'),
+      children: [child()],
+    },
+  });
+  assert.equal(normalizeDecompositionInputs(input).epicReadiness.planning, true);
+  assert.deepEqual(assessment(input).capabilities, BASE);
+});
+test('pending observation cannot survive removal of its blocker and admit scoped effects', () => {
+  const value = assessment(fixture(), publication());
+  value.blockers = [];
+  value.status = 'story-ok';
+  value.capabilities = SCOPED;
+  assert.throws(() => validateDecompositionAssessment(value), /publication-observation/);
+  assert.throws(() => deriveDecompositionCapabilities(value), /publication-observation/);
+  const contradictory = assessment(fixture(), publication());
+  contradictory.observations.push({
+    resource: 'publication',
+    identity: 'c41d3bf2-e26e-477e-88d1-b2db32793002',
+    revision: 'complete',
+    digest: sha('complete'),
+  });
+  assert.throws(() => validateDecompositionAssessment(contradictory), /publication-observation/);
+});
+test('verification groups cannot hide a required task-count signal or outnumber observed tasks', () => {
+  const omitted = assessment(fixture({ hours: 23, content: plan(4) }));
+  omitted.signals = omitted.signals.filter((signal) => signal.code !== 'task-count');
+  omitted.status = 'needs-decomposition-review';
+  omitted.capabilities = SCOPED;
+  assert.throws(() => validateDecompositionAssessment(omitted), /assessment-signals/);
+  const impossible = assessment(fixture({ hours: 23, content: plan(4) }));
+  const taskSignal = impossible.signals.find((signal) => signal.code === 'task-count');
+  taskSignal.value = 3;
+  taskSignal.threshold = 3;
+  taskSignal.level = 'review';
+  impossible.status = 'needs-decomposition-review';
+  impossible.capabilities = SCOPED;
+  assert.throws(() => validateDecompositionAssessment(impossible), /assessment-signals/);
+});
+test('visible record rendering shows shared thresholds and permitted actions with pending precedence', () => {
+  const visible = (value) => value.split('## AITM Progress Markers')[0];
+  const ready = visible(
+    replaceDecompositionRecords('', { assessment: assessment(), publication: null })
+  );
+  assert.match(ready, /Thresholds:.*16h.*24h/);
+  assert.match(ready, /Allowed actions:.*scoped-implementation.*scoped-completion/);
+  const pending = visible(
+    replaceDecompositionRecords('', { assessment: assessment(), publication: publication() })
+  );
+  assert.match(pending, /Status: pending/);
+  assert.match(pending, /Allowed actions:.*publication-reconcile/);
+  assert.doesNotMatch(
+    pending,
+    /Status: story-ok|scoped-implementation|scoped-deliverable|scoped-completion/
   );
 });
