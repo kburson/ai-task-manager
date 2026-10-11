@@ -1,0 +1,99 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "task-1",
+      "description": "Child #1986: Define strict shared decomposition assessment and record codecs",
+      "baseHumanHours": 6,
+      "signals": {
+        "modules": ["decomposition-assessment", "record-codec"],
+        "dependencies": []
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-2",
+      "description": "Child #1987: Collect current authority and persist protected pending projections",
+      "baseHumanHours": 7,
+      "signals": {
+        "modules": ["authority-projection", "marker-invariants"],
+        "dependencies": ["task-1"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-3",
+      "description": "Child #1988: Publish estimate revisions through resumable real writer adapters",
+      "baseHumanHours": 12,
+      "signals": {
+        "modules": ["estimate-publication", "writer-adapters", "recovery-writers"],
+        "dependencies": ["task-1", "task-2"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-4",
+      "description": "Child #1989: Expose restricted bind and typed current continuation decisions",
+      "baseHumanHours": 6,
+      "signals": {
+        "modules": ["continuation", "action-decisions"],
+        "dependencies": ["task-1", "task-2"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-5",
+      "description": "Child #1990: Enforce decomposition at real scoped-effect hook boundaries",
+      "baseHumanHours": 9,
+      "signals": {
+        "modules": ["native-admission", "remote-deliverable-admission"],
+        "dependencies": ["task-3", "task-4"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-6",
+      "description": "Child #1991: Preserve governed split and kind recovery with truthful epic readiness",
+      "baseHumanHours": 6,
+      "signals": {
+        "modules": ["kind-split-recovery", "readiness"],
+        "dependencies": ["task-3", "task-4", "task-5"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "task-7",
+      "description": "Child #1992: Prove complete composition and document operational recovery",
+      "baseHumanHours": 6,
+      "signals": {
+        "modules": ["composition-proof", "operational-documentation"],
+        "dependencies": ["task-5", "task-6"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "parent-orchestration",
+      "description": "Integrate reviewed waves and verify parent delivery and final handoff",
+      "baseHumanHours": 2,
+      "signals": {
+        "modules": ["parent-orchestration"],
+        "dependencies": ["task-7"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "Injected GitHub/provider fixtures and disposable native tool seams; configured exact-SHA parent verification provider for final integrated delivery",
+    "expectedMinutes": 30
+  },
+  "risks": [
+    "Seven refined children total 52 human hours; the separate parent orchestration baseline is 2h. Rubric calibration and unavoidable repository execution add transparent planning adjustments, not measured child work.",
+    "Only Tasks 3 and 4 are disjoint concurrent candidates; shared inventory and formal review handoffs are serialized. Summed human effort is not parallel elapsed time.",
+    "Private marker capability must protect existing advance consumers; pending/unknown publication cannot be cleared by old matching fields or kind conversion.",
+    "Fresh hook collection must meet bounded fixture latency and call-count budgets; provider authority failure remains typed indeterminate.",
+    "Scope preparation remains available under original authority while new substantive deliverable/completion evidence stays restricted.",
+    "The 30-minute execution allowance is a conservative planning assumption, not benchmark evidence. Task baselines include implementation/test authoring and review; final unavoidable isolated execution is separately calibrated."
+  ],
+  "comparableIssueIds": []
+}
