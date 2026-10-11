@@ -16,7 +16,7 @@ function makeRunGql({ itemId = 'PVTI_test' } = {}) {
             number: vars.issue,
             title: 't',
             url: 'u',
-            projectItems: { nodes: [] },
+            projectItems: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
           },
         },
       };
@@ -25,6 +25,7 @@ function makeRunGql({ itemId = 'PVTI_test' } = {}) {
     if (/node\(id: \$project\)/.test(query)) {
       return {
         node: {
+          id: vars.project,
           title: 'p',
           url: 'pu',
           items: {
@@ -34,7 +35,13 @@ function makeRunGql({ itemId = 'PVTI_test' } = {}) {
               {
                 id: itemId,
                 isArchived: false,
-                content: { number: vars.project ? 222 : 222, title: 't', url: 'u' },
+                content: {
+                  __typename: 'Issue',
+                  id: 'ISSUE_test',
+                  number: 222,
+                  title: 't',
+                  url: 'u',
+                },
               },
             ],
           },

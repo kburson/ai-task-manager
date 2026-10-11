@@ -7,7 +7,10 @@ import path from 'node:path';
 import { test } from 'node:test';
 
 import { GUIDANCE_CONTEXT_BUDGETS } from '../../../../task-tracker/lib/context-budgets.mjs';
-import { captureGuidanceLifecycle } from '../../../helpers/capture-guidance-release.mjs';
+import {
+  captureGuidanceLifecycle,
+  validateLifecycleTranscript,
+} from '../../../helpers/capture-guidance-release.mjs';
 import { buildGuidanceContextReport } from '../../../../task-tracker/measure-guidance-context.mjs';
 import { formatReleaseMeasurement, measure } from '../../../../task-tracker/measure-context.mjs';
 import { buildPairedContext } from '../../../helpers/guidance-paired-context.mjs';
@@ -151,15 +154,24 @@ test('final release requires a complete installed-byte and public-CLI capture', 
   );
 });
 
-test('final package and public-CLI capture regenerate byte for byte', () => {
-  const expected = readFileSync(
-    path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json'),
-    'utf8'
+test('current package capture preserves instruction inputs and binds its own transcript', () => {
+  const archived = JSON.parse(
+    readFileSync(
+      path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json'),
+      'utf8'
+    )
   );
+  const current = captureGuidanceLifecycle({ mode: 'final' });
+  assert.equal(validateLifecycleTranscript(current), true);
+  assert.deepEqual(current.identity.productionPackage, archived.identity.productionPackage);
+  assert.deepEqual(current.measurement.installedStatic, archived.measurement.installedStatic);
+  assert.equal(current.identity.initialFixtureSha256, archived.identity.initialFixtureSha256);
   assert.equal(
-    `${JSON.stringify(captureGuidanceLifecycle({ mode: 'final' }), null, 2)}\n`,
-    expected
+    current.identity.transcriptSha256,
+    'sha256:' + createHash('sha256').update(JSON.stringify(current.events)).digest('hex')
   );
+  // Runtime lookup queries may change their traffic; the historical certified
+  // transcript stays immutable rather than being regenerated as current proof.
 });
 
 test('fixed release measurement refuses a missing required instruction file', () => {

@@ -80,7 +80,7 @@ async function projectItemForIssue({ cfg, issueId, runGql }) {
               pageInfo { hasNextPage endCursor }
               nodes {
                 id isArchived
-                content { ... on Issue { id number title url } }
+                content { __typename ... on Issue { id number title url } }
               }
             }
           }
@@ -94,10 +94,17 @@ async function projectItemForIssue({ cfg, issueId, runGql }) {
     projectInfo ??= project;
     after = membershipNextCursor(project.items, cursors);
     for (const node of project.items.nodes) {
-      if (!node?.id || itemIds.has(node.id))
+      if (typeof node?.id !== 'string' || !node.id.trim() || itemIds.has(node.id))
         throw new Error('project membership: missing or duplicate item identity');
+      if (typeof node.isArchived !== 'boolean')
+        throw new Error('project membership: archive flag is unreadable');
       itemIds.add(node.id);
-      if (!node.isArchived && node.content?.id === issueId) matches.push(node);
+      if (node.isArchived) continue;
+      const kind = node.content?.__typename;
+      if (kind === 'DraftIssue' || kind === 'PullRequest') continue;
+      if (kind !== 'Issue' || typeof node.content.id !== 'string' || !node.content.id.trim())
+        throw new Error('project membership: active content identity is unreadable');
+      if (node.content.id === issueId) matches.push(node);
     }
     if (after === null) {
       if (matches.length > 1)

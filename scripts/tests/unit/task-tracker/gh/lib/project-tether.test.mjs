@@ -102,7 +102,9 @@ function makeRunner({
               ? [
                   {
                     id: 'VISIBLE_ITEM',
+                    isArchived: false,
                     content: {
+                      __typename: 'Issue',
                       id: `ISSUE_${currentIssueNumber}`,
                       number: currentIssueNumber,
                       title: 'Task',
@@ -451,9 +453,11 @@ console.log('project-tether.test.mjs: all passed');
 function membershipRunner({ reversePages = null, forwardPages, retryIssueId = 'ISSUE_12' }) {
   const writes = [];
   const additions = [];
+  const mutations = [];
   let issueReads = 0;
   let forwardReads = 0;
   const runGql = async (query, variables) => {
+    if (query.trim().startsWith('mutation')) mutations.push(query);
     if (query.includes('repository(owner:') && query.includes('issue(number:')) {
       if (!variables.after) issueReads += 1;
       const projectItems = reversePages
@@ -483,18 +487,22 @@ function membershipRunner({ reversePages = null, forwardPages, retryIssueId = 'I
     }
     throw new Error(`Unexpected query: ${query}`);
   };
-  return { runGql, writes, additions };
+  return { runGql, writes, additions, mutations };
 }
 
 const connection = (nodes, hasNextPage = false, endCursor = null) => ({
   nodes,
   pageInfo: { hasNextPage, endCursor },
 });
-const exact = { id: 'EXACT', isArchived: false, content: { id: 'ISSUE_12', number: 12 } };
+const exact = {
+  id: 'EXACT',
+  isArchived: false,
+  content: { __typename: 'Issue', id: 'ISSUE_12', number: 12 },
+};
 const other = {
   id: 'FOREIGN',
   isArchived: false,
-  content: { id: 'OTHER_REPOSITORY_ISSUE', number: 12 },
+  content: { __typename: 'Issue', id: 'OTHER_REPOSITORY_ISSUE', number: 12 },
 };
 const tether = (runner) =>
   tetherIssueToProject({
@@ -569,4 +577,36 @@ test('tether refuses changed repository issue identity during retries', async ()
   await assert.rejects(() => tether(runner), /identity changed/);
   assert.deepEqual(runner.writes, []);
   assert.deepEqual(runner.additions, ['ISSUE_12']);
+});
+
+for (const [name, malformed] of [
+  ['non-string item ID', { ...other, id: 42 }],
+  ['blank item ID', { ...other, id: ' ' }],
+  ['missing archive flag', { id: 'BAD', content: other.content }],
+  ['non-boolean archive flag', { ...other, isArchived: 'false' }],
+  ['redacted active content', { ...other, content: null }],
+  ['unreadable Issue content ID', { ...other, content: { __typename: 'Issue' } }],
+]) {
+  test(`tether refuses a later ${name} before every mutation`, async () => {
+    const runner = membershipRunner({
+      forwardPages: [connection([exact], true, 'NEXT'), connection([malformed])],
+    });
+    await assert.rejects(() => tether(runner), /membership/);
+    assert.deepEqual(runner.mutations, []);
+  });
+}
+
+test('tether permits readable non-Issue and archived redacted items', async () => {
+  const runner = membershipRunner({
+    forwardPages: [
+      connection([
+        { id: 'DRAFT', isArchived: false, content: { __typename: 'DraftIssue' } },
+        { id: 'PULL', isArchived: false, content: { __typename: 'PullRequest' } },
+        { id: 'ARCHIVED', isArchived: true, content: null },
+        exact,
+      ]),
+    ],
+  });
+  assert.equal((await tether(runner)).itemId, 'EXACT');
+  assert.deepEqual(runner.writes, ['EXACT']);
 });

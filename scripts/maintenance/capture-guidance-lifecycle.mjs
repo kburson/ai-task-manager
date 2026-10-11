@@ -28,6 +28,7 @@ import {
 import { configPath, SHARED_DIR, statePath } from '../task-tracker/paths.mjs';
 import { mkdtempProjectIsolated } from '../task-tracker/lib/scratch-dir.mjs';
 import { readyForPlanMigrationJournalPath } from '../task-tracker/lib/ready-for-plan-migration-freeze.mjs';
+import { setActiveTask } from '../task-tracker/session-state.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const bin = path.join(root, 'bin/aitm.mjs');
@@ -329,7 +330,7 @@ if (args[0] === 'issue' && args[1] === 'view') {
     process.stdout.write(JSON.stringify({ state: snapshot.state === 'done' ? 'CLOSED' : 'OPEN' }) + '\\n');
     process.exit(0);
   }
-  if (recertification && args.includes('blockedBy,blocking')) {
+  if (recertification && (args.includes('blockedBy,blocking') || args.includes('blockedBy'))) {
     process.stdout.write(JSON.stringify({ blockedBy: { nodes: [], totalCount: 0 }, blocking: { nodes: [], totalCount: 0 } }) + '\\n');
     process.exit(0);
   }
@@ -427,12 +428,15 @@ if (args[0] === 'api' && args[1] === 'graphql') {
     const query = JSON.parse(input).query;
     if (recertification && query.includes('subIssues(')) {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: { subIssues: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } } }));
+    } else if (recertification && query.includes('parent { number }')) {
+      process.stdout.write(JSON.stringify({ data: { repository: { issue: { number: ${issue}, body, parent: null } } } }));
     } else if (query.includes('projectItems')) {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: {
+        id: 'ISSUE_CAPTURE',
         assignees: { nodes: [] },
         projectItems: { nodes: [{ id: 'I1', project: { id: 'P1' }, fieldValueByName: {
           name: snapshot.state.replace(/(^|-)\\w/g, (m) => m.toUpperCase())
-        } }], pageInfo: { hasNextPage: false, endCursor: null } }
+        }, fieldValues: { nodes: [], pageInfo: { hasNextPage: false } } }], pageInfo: { hasNextPage: false, endCursor: null } }
       } } } }));
     } else {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: { body } } } }));
@@ -602,9 +606,10 @@ export function captureGuidanceLifecycle({
       if (nextHead) snapshot.head = nextHead;
       writeSnapshot();
       if (mode === 'recertification' && state === 'develop') {
-        writeFileSync(
-          statePath(fixtureDir),
-          `${JSON.stringify({ active: `#${issue}`, entryStartTs: '2026-09-22T00:00:00Z' })}\n`
+        setActiveTask(
+          baseEnv.AI_TASK_MANAGER_SESSION_ID,
+          { issue, entryStartTs: '2026-09-22T00:00:00Z' },
+          fixtureDir
         );
       }
       events.push({
