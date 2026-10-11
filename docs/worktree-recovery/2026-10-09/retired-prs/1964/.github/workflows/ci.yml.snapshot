@@ -1,0 +1,173 @@
+# Continuous-integration quality gates.
+#
+# Why this exists (code-review epic #549, story #550): the repo has a strong
+# local test/quality toolchain (`npm run quality`, a 400+ file node-test fleet)
+# but no automated gate — "all tests pass" relied entirely on developer
+# discipline. This workflow makes the fast lane mandatory on every PR and every
+# push to trunk, and establishes the green baseline the Wave 3 refactors
+# (#559/#560/#561) depend on.
+#
+# Lane split rationale: the fast job (format:check + lint + explicit unit and
+# integration lanes) runs on every event because it catches the common
+# regressions and gates the CI-only system-touching suites. The slow
+# lane (`npm run test:slow`) is expensive (sandboxed worktree / CI-emulation
+# fixtures), so it runs on a nightly schedule and on demand — either via
+# `workflow_dispatch` or by applying the `ci-slow` label to a PR. Do NOT collapse
+# the two lanes back into one: paying the slow-lane cost on every push is the
+# regression this split prevents.
+#
+# Docs-only PRs skip unit and integration tests but still run format + lint. A PR is docs-only
+# when every changed file is under `docs/`, ends in `.md`, or is `.gitignore`,
+# or when it carries the `docs-only` label. Trunk pushes always run tests.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [trunk]
+  schedule:
+    # Nightly slow-lane run at 07:00 UTC (off-hours for the maintainer).
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fast:
+    name: Fast lane (format, lint, unit + integration)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The docs-only classifier resolves `git diff trunk...HEAD`. Stacked
+          # epic-child PRs need ancestry beyond the merge ref's direct parents
+          # to discover that merge base, so the Fast checkout is unshallow.
+          fetch-depth: 0
+      # The real-git close-gate tests (#733) resolve trunk via a LOCAL
+      # `refs/heads/trunk` branch. On a pull_request the checkout is a detached
+      # merge ref with no such branch, so those tests fail spuriously (#745).
+      # Materialize it. On push/schedule/dispatch a local `trunk` already exists,
+      # so this step is pull_request-only.
+      - name: Materialize local trunk ref for real-git tests (#745)
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin trunk:trunk
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # npm ci caches tarballs, but offline consumer installs also need registry
+      # metadata. Seed it explicitly instead of depending on a warm CI cache.
+      - name: Prepare runtime dependency cache for offline package tests
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+          for (const [location, pkg] of Object.entries(lock.packages)) {
+            if (!location || pkg.dev || pkg.link) continue;
+            const name = pkg.name ?? location.split('node_modules/').at(-1);
+            execFileSync('npm', ['cache', 'add', `${name}@${pkg.version}`], { stdio: 'inherit' });
+          }
+          NODE
+      - run: npm run format:check
+      # `npm run lint` includes the fail-closed canonical-layout, package-wide
+      # story-tag, package-wide line-cap, and typed action-refusal inventory
+      # gates. Unit + integration tests below also prove `npm pack` excludes
+      # scripts/tests/** while retaining runtime assets.
+      - run: npm run lint
+      # Memory-seed index parity (#728, folds #744): fail on any MEMORY.md-index
+      # ⇄ docs/ai-memory/ durable-set drift. Repo-only / CI-safe — `--mode index`
+      # needs no maintainer $HOME memory dir (unlike the maintainer's `--mode diff`).
+      - name: Memory-seed index parity (#728)
+        run: node scripts/inspect/ai-memory-parity.mjs --mode index
+      - name: Classify docs-only pull request
+        id: scope
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          files=$(git diff --name-only trunk...HEAD)
+          echo "Changed files:"
+          echo "$files"
+          if [ -z "$files" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if echo "$files" | grep -Eqv '^(docs/|.+\.md$|\.gitignore$)'; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Unit tests
+        if: >-
+          github.event_name != 'pull_request' ||
+          (
+            steps.scope.outputs.docs_only != 'true' &&
+            !contains(github.event.pull_request.labels.*.name, 'docs-only')
+          )
+        run: npm run test:unit
+      - name: Integration tests
+        if: >-
+          github.event_name != 'pull_request' ||
+          (
+            steps.scope.outputs.docs_only != 'true' &&
+            !contains(github.event.pull_request.labels.*.name, 'docs-only')
+          )
+        run: npm run test:integration
+
+  npm-pack-compatibility:
+    name: npm ${{ matrix.npm }} / Node ${{ matrix.node }} pack compatibility
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - node: 24
+            npm: '11.8.0'
+          - node: 26
+            npm: '12.0.2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm install --global "npm@${{ matrix.npm }}"
+      - run: test "$(npm --version)" = "${{ matrix.npm }}"
+      - run: npm ci
+      - name: npm pack report compatibility tests
+        run: >-
+          node --test
+          scripts/tests/unit/task-tracker/core/npm-pack-report.test.mjs
+          scripts/tests/unit/task-tracker/core/package-boundary.test.mjs
+          scripts/tests/unit/task-tracker/core/memory-seed-packaged.test.mjs
+          scripts/tests/unit/task-tracker/core/scope-pack.test.mjs
+          scripts/tests/integration/meta/package-test-corpus.test.mjs
+          scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs
+          scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs
+
+  slow:
+    name: Slow lane (slow tests only)
+    # Runs nightly (schedule), on manual dispatch, or when a PR carries the
+    # `ci-slow` label — never on an ordinary push, to keep PR latency low.
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'ci-slow'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # Real-git close-gate tests (#733) need a local
+      # `trunk` branch, absent on a pull_request detached checkout (#745).
+      - name: Materialize local trunk ref for real-git tests (#745)
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin trunk:trunk
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:slow

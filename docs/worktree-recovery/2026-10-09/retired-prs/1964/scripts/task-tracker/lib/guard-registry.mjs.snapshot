@@ -1,0 +1,342 @@
+// State-keyed exit/entry guard registry (#262, parent epic #259).
+//
+// FULLY WIRED — fires on every state transition. Do NOT read this registry as
+// inert or bypass it. The #259 epic completed the inline-gate → registry
+// migration (closed at #360); the flow is:
+//
+//   state-bootstrap.mjs  — registers every guard into its state slot via
+//                          `registerGuard`, walking the per-state container
+//                          modules in `scripts/task-tracker/states/` (#292).
+//                          `guard-bootstrap.mjs` is a deprecation shim that
+//                          re-exports `bootstrapGuards` from here.
+//   runGuards(from,to,ctx) — executed at EVERY transition by the callers below,
+//                          by default iterating `GUARDS[from].exit` then
+//                          `GUARDS[to].entry`.
+//
+// Call sites that invoke `runGuards` (the enforcement surface): `move-state.mjs`
+// (the single state-mutator, line ~345), `promote.mjs`, `close.mjs`, and
+// `review.mjs`. There is no transition path that skips the registry.
+//
+// Contract:
+//   guard = { id: string, run(ctx) -> { ok: true } | { ok: false, reason }
+//                              | Promise<{ ok, reason? }> }
+//
+// `run` may be sync OR async — `runGuards` awaits the result either way, so
+// guards that shell out to git/gh can coexist with pure-data guards.
+//
+// runGuards is async. By default it iterates `GUARDS[fromState].exit` then
+// `GUARDS[toState].entry`, awaiting each `run(ctx)`. Callers may disable either
+// phase explicitly while retaining the other. Refusals are aggregated across
+// the selected lists; there is no short-circuit. A guard that throws is treated
+// as a refusal whose `reason` is the stringified error — one buggy guard must
+// not crash the whole pipeline.
+//
+// registerGuard is idempotent on `guard.id`: re-registering the same id is a
+// no-op (returns false). Unknown state or unknown kind throw.
+//
+// Registration policy: this module ships with an EMPTY registry on import.
+// Callers (state-mutator, promote.mjs, close-gates) register guards
+// explicitly — there is no auto-registration from the registry's side. Tests
+// that assert "empty registry" import this module without calling any
+// register-side-effect module. Production CLI entry-points import the
+// guard-bootstrap module (or call registerGuard themselves) before invoking
+// runGuards.
+//
+// Registered-guard inventory (current as of #360 close, after #259 epic
+// completed the inline-gate → registry migration). Source of truth is the
+// per-state container modules in `scripts/task-tracker/states/`; this table
+// is a maintenance index so a single grep on this file reveals what each
+// state enforces. To verify, run:
+//   grep -E "^import |entryGuards|exitGuards" scripts/task-tracker/states/*.mjs
+//
+//   State    | Entry guards                          | Exit guards
+//   ---------|---------------------------------------|------------------------------------------------------------
+//   backlog  | contiguity                            | discuss-unresolved
+//   refine   | contiguity, child-parent-state,       | refine-exit-complete-marker, refine-exit-stub-placeholder,
+//            | user-story-warn (non-blocking)        | plan-entry-fields (body + board adapters),
+//            |                                       | user-story-block
+//   ready-   | contiguity                            | blocked-by, epic-children-r4p, sequential-wip,
+//   for-plan |                                       | child-parent-state, child-cannot-lead-epic
+//   plan     | contiguity                            | blocked-by, plan-approved, plan-epic-children,
+//            |                                       | plan-exit-planned-estimate, plan-exit-deep-dive,
+//            |                                       | plan-exit-plan-metadata, child-cannot-lead-epic
+//   develop  | contiguity                            | blocked-by, develop-exit-code-complete,
+//            |                                       | develop-exit-receipt,
+//            |                                       | develop-exit-commit-trail-head,
+//            |                                       | develop-epic-children-done (terminal children),
+//            |                                       | child-cannot-lead-epic
+//   test     | contiguity, body-gates                | blocked-by, test-exit-dod-verified,
+//            |                                       | test-exit-pre-close-completeness, child-cannot-lead-epic
+//   review   | contiguity, body-gates                | blocked-by, review-exit-review-approved,
+//            |                                       | review-exit-epic-children-done (children at done),
+//            |                                       | review-exit-close-gates, child-cannot-lead-epic
+//   done     | body-gates                            | (none — terminal state)
+//
+// `contiguity`, `child-cannot-lead-epic`, `body-gates`, `refine-exit-complete`
+// (the `refine-complete` marker exit gate) and the structural body gates are
+// the four cross-cutting families exercised by every transition path. New
+// guards belong here too — register them in the matching state module and
+// append a row above.
+
+import { readFileSync } from 'node:fs';
+
+import { stateIds } from './lifecycle-policy/index.mjs';
+import {
+  BOUNDARY_PRODUCER_IDS,
+  CODE_DEFINITIONS,
+  normalizeRefusal,
+  validateHumanRequest,
+  validateWarning,
+} from './action-decision/contract.mjs';
+
+export const DEFAULT_LEGACY_REFUSAL_INVENTORY = JSON.parse(
+  readFileSync(new URL('./action-decision/legacy-refusals.json', import.meta.url), 'utf8')
+);
+
+const STATES = stateIds();
+const KINDS = ['exit', 'entry'];
+
+function makeEmptyRegistry() {
+  const out = {};
+  for (const s of STATES) {
+    out[s] = { exit: [], entry: [] };
+  }
+  return out;
+}
+
+export const GUARDS = makeEmptyRegistry();
+
+export function registerGuard(state, kind, guard) {
+  if (!Object.prototype.hasOwnProperty.call(GUARDS, state)) {
+    throw new Error(
+      `registerGuard: unknown state "${state}" (expected one of ${STATES.join(', ')})`
+    );
+  }
+  if (!KINDS.includes(kind)) {
+    throw new Error(`registerGuard: unknown kind "${kind}" (expected one of ${KINDS.join(', ')})`);
+  }
+  if (!guard || typeof guard.id !== 'string' || typeof guard.run !== 'function') {
+    throw new Error('registerGuard: guard must be { id: string, run(ctx) -> { ok, reason? } }');
+  }
+  if (BOUNDARY_PRODUCER_IDS.includes(guard.id)) {
+    throw new Error(`registerGuard: "${guard.id}" is a reserved boundary producer`);
+  }
+  const slot = GUARDS[state][kind];
+  if (slot.some((g) => g.id === guard.id)) {
+    return false; // idempotent no-op
+  }
+  slot.push(guard);
+  return true;
+}
+
+// Guards may be sync OR return a Promise. invoke awaits either uniformly so a
+// guard that shells out to git/gh can be registered alongside pure-data
+// guards without callers needing to know which is which.
+function contractFailure(guardId, code, reason) {
+  return {
+    ok: false,
+    reason,
+    typedRefusals: [
+      {
+        guardId,
+        code,
+        args: {},
+        noAutomaticRemediation: { reason: 'result-investigation-required' },
+      },
+    ],
+  };
+}
+
+function typedStatus(refusals) {
+  return refusals.some((refusal) =>
+    CODE_DEFINITIONS[refusal.code]?.legalStatuses?.includes('indeterminate')
+  )
+    ? 'indeterminate'
+    : 'blocked';
+}
+
+function registeredGuardIds() {
+  return STATES.flatMap((state) =>
+    KINDS.flatMap((kind) => GUARDS[state][kind].map(({ id }) => id))
+  );
+}
+
+function denseArray(value, label) {
+  if (!Array.isArray(value)) throw new TypeError(`guard ${label} must be an array`);
+  for (let index = 0; index < value.length; index += 1) {
+    if (!Object.hasOwn(value, index)) throw new TypeError(`guard ${label} must be dense`);
+  }
+  return value;
+}
+
+function typedWarnings(guard, result, status) {
+  const warningValues =
+    result.warnings === undefined ? [] : denseArray(result.warnings, 'warnings');
+  const warnings = warningValues.map((warning, index) => ({
+    id: guard.id,
+    ...validateWarning(warning, {
+      status,
+      path: `warnings[${index}]`,
+      producerId: guard.id,
+      registeredGuardIds: registeredGuardIds(),
+    }),
+  }));
+  if (result.warn != null) {
+    warnings.push({
+      id: guard.id,
+      warn: result.warn,
+      code: 'legacy-guard-warning',
+      args: { guardId: guard.id },
+    });
+  }
+  return warnings;
+}
+
+function typedRequests(result) {
+  const requestValues =
+    result.requests === undefined ? [] : denseArray(result.requests, 'requests');
+  return requestValues.map((request, index) =>
+    validateHumanRequest(request, { path: `requests[${index}]` })
+  );
+}
+
+async function invoke(guard, ctx) {
+  let result;
+  try {
+    result = await guard.run(ctx);
+  } catch (err) {
+    return contractFailure(
+      guard.id,
+      'guard-error',
+      `guard "${guard.id}" threw: ${err?.message ?? String(err)}`
+    );
+  }
+  try {
+    if (result && result.ok === true) {
+      if (Object.hasOwn(result, 'refusals')) {
+        if (denseArray(result.refusals, 'refusals').length > 0) {
+          throw new TypeError('successful guard refusals must be empty');
+        }
+      }
+      if (Array.isArray(result.requests) && result.requests.length > 0) {
+        throw new TypeError('successful guard cannot return human requests');
+      }
+      // #359 — guards may attach a non-refusing `warn` payload (e.g. the
+      // lifecycle warn-only path on done-entry when
+      // lifecycleCheckboxesRequired=false). The host can read it from
+      // `guardResult.warns` and emit a side effect (timing row, log line,
+      // etc.) without the guard itself doing I/O.
+      const out = { ok: true };
+      out.typedWarnings = typedWarnings(guard, result, 'ready');
+      out.requests = typedRequests(result);
+      if (result.derived && typeof result.derived === 'object') out.derived = result.derived;
+      return out;
+    }
+    if (result && result.ok === false) {
+      if (Object.hasOwn(result, 'refusals')) {
+        if (denseArray(result.refusals, 'refusals').length === 0) {
+          throw new TypeError('refusing guard refusals must be a nonempty array');
+        }
+      }
+      // #336 — adapters may include a `blockers: string[]` alongside `reason`
+      // so verb-layer callers (promote.mjs) can preserve the array shape that
+      // legacy structured-status tests pin (e.g. `r.blockers.length >= 2`).
+      // Reason remains the canonical single-string surface.
+      const candidates = Array.isArray(result.refusals) ? result.refusals : [result];
+      const typedRefusals = candidates.map((refusal) =>
+        normalizeRefusal(refusal, {
+          guardId: guard.id,
+          legacyInventory: ctx?.legacyRefusalInventory ?? DEFAULT_LEGACY_REFUSAL_INVENTORY,
+          registeredGuardIds: registeredGuardIds(),
+        })
+      );
+      const status = typedStatus(typedRefusals);
+      const out = {
+        ok: false,
+        reason: result.reason ?? '(no reason given)',
+        typedRefusals,
+        typedWarnings: typedWarnings(guard, result, status),
+        requests: typedRequests(result),
+      };
+      if (Array.isArray(result.blockers)) out.blockers = result.blockers;
+      if (result.derived && typeof result.derived === 'object') out.derived = result.derived;
+      return out;
+    }
+    return contractFailure(
+      guard.id,
+      'guard-result-invalid',
+      `guard "${guard.id}" returned malformed result: ${JSON.stringify(result)}`
+    );
+  } catch (err) {
+    return contractFailure(
+      guard.id,
+      'guard-result-invalid',
+      `guard "${guard.id}" returned invalid typed result: ${err?.message ?? String(err)}`
+    );
+  }
+}
+
+export async function runGuards(
+  fromState,
+  toState,
+  ctx,
+  { includeExitGuards = true, includeEntryGuards = true } = {}
+) {
+  const refusals = [];
+  const warns = [];
+  const requests = [];
+  let derived = Object.freeze({});
+  const fromSlot = GUARDS[fromState];
+  const toSlot = GUARDS[toState];
+
+  function finish(out) {
+    if (warns.length > 0) out.warns = warns;
+    if (requests.length > 0) out.humanDecision = { requests };
+    else out.humanDecision = null;
+    if (Object.keys(derived).length > 0) out.derived = derived;
+    if (
+      ctx &&
+      typeof ctx === 'object' &&
+      Object.prototype.hasOwnProperty.call(derived, 'refinementPlan')
+    ) {
+      Reflect.set(ctx, 'refinementPlan', derived.refinementPlan);
+    }
+    return out;
+  }
+
+  function consume(g, r) {
+    if (!r.ok) {
+      for (const refusal of r.typedRefusals ?? []) {
+        const entry = { id: g.id, reason: r.reason, ...refusal };
+        if (r.blockers) entry.blockers = r.blockers;
+        refusals.push(entry);
+      }
+    }
+    warns.push(...(r.typedWarnings ?? []));
+    requests.push(...(r.requests ?? []));
+    if (r.derived) derived = Object.freeze({ ...derived, ...r.derived });
+  }
+
+  // Unknown states are *not* fatal here — runGuards is called from already-
+  // validated state transitions. If a caller passes an unknown state we treat
+  // it as "no guards" rather than throwing, so transition logging stays clean.
+  if (includeExitGuards && fromSlot) {
+    for (const g of fromSlot.exit) {
+      consume(g, await invoke(g, ctx));
+    }
+  }
+  if (includeEntryGuards && toSlot) {
+    for (const g of toSlot.entry) {
+      consume(g, await invoke(g, ctx));
+    }
+  }
+
+  if (refusals.length === 0) {
+    return finish({ ok: true, status: 'ready', refusals: [] });
+  }
+  return finish({ ok: false, status: typedStatus(refusals), refusals });
+}
+
+// Exposed for tests; not part of the public registration API.
+export const __STATES = STATES;
+export const __KINDS = KINDS;

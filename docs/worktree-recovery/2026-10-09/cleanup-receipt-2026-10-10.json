@@ -1,0 +1,335 @@
+{
+  "date": "2026-10-10",
+  "authorization": "User authorized removing stale worktrees after preservation on origin, followed by their attached chat sessions.",
+  "recoveryIndexPR": "https://github.com/kburson/ai-task-manager/pull/1966",
+  "verifiedMeaningfulFiles": 17541,
+  "removedWorktrees": [
+    {
+      "id": "P14",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/.scratch/1897/interrupted-native-test-sandbox-a7ad2b45",
+      "originalHead": "a7ad2b4583deda01a4fcc8dd8b4e65d13957779a"
+    },
+    {
+      "id": "P04",
+      "path": "/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/.task-test-1859-14154c2e-87607-167a1806",
+      "originalHead": "14154c2e264b5cdb7d4f8145baead7fd5b4f715e"
+    },
+    {
+      "id": "P05",
+      "path": "/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/.task-test-1859-dfed5558-61350-1dfda4ca",
+      "originalHead": "dfed55581366ce3c03b83f78d09b8f0243689b50"
+    },
+    {
+      "id": "P07",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.claude/worktrees/articles-book-publication-6a7dfe",
+      "originalHead": "e5b3060cb27caf92239f05ca5552f364d500eec7"
+    },
+    {
+      "id": "P08",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1207-assignee-state",
+      "originalHead": "c0697158c880be8ca60b46839a38aa82d6886cbb"
+    },
+    {
+      "id": "P09",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1558-ask-the-script-review-r1",
+      "originalHead": "a650be5a090f28325e03f47a22b7495674cf5011"
+    },
+    {
+      "id": "P10",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1728-authority-observations",
+      "originalHead": "309f6fe5ea3206a6159893e76b8c4be01f8433f7"
+    },
+    {
+      "id": "P11",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+      "originalHead": "d6c9091e1a568a6b5316e7975c1ff070bcdcbfd1"
+    },
+    {
+      "id": "P12",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1889-binding-generation",
+      "originalHead": "9bb4a2806b47ef53d30c15cc1f0dc4e05d9efc30"
+    },
+    {
+      "id": "P13",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+      "originalHead": "344a6abb3dbf6d0a3f5ab4037b1bd78b0cabd86e"
+    },
+    {
+      "id": "P15",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage",
+      "originalHead": "c254618a6e756697f395c42bf40a60583e7276bc"
+    },
+    {
+      "id": "P16",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "originalHead": "2d36e1a6c9c57039299c332ef208e09e34d1e003"
+    },
+    {
+      "id": "P17",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/chore-hybrid-insights-specs",
+      "originalHead": "4f70500b60c78a090aefd9eea052122c04467480"
+    },
+    {
+      "id": "P18",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+      "originalHead": "d0bbf8c62c5c34b86158054b4c80d3548f8d13b1"
+    },
+    {
+      "id": "D10",
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1514-externalize-forecast-comparables",
+      "originalHead": "477a0bf30756dee0e93008e76c7e9a85245b261c"
+    },
+    {
+      "id": "P01",
+      "path": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager",
+      "originalHead": "aaeaedfc11246a25828ffe0cf506ff35fdca8486"
+    },
+    {
+      "id": "P02",
+      "path": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager",
+      "originalHead": "890f01719707ee206863097df9c52e9cbdbb4e97"
+    },
+    {
+      "id": "D08",
+      "path": "/Users/kpburson/.codex/worktrees/aitm-xpr-first-fresh/ai-task-manager",
+      "originalHead": "6e0c466193e19b25d4dd8e2e196d13cd922aca2a"
+    },
+    {
+      "id": "P06",
+      "path": "/Users/kpburson/.codex/worktrees/planning/ai-task-manager",
+      "originalHead": "46952470a4f89a61bf7f689ea7937397ed8314d2"
+    }
+  ],
+  "retainedWorktrees": [
+    "/Users/kpburson/projects/Vibe-Coding/ai-task-manager",
+    "/Users/kpburson/.codex/worktrees/b957/ai-task-manager"
+  ],
+  "archivedSessions": [
+    {
+      "id": "01a10321-abd4-7982-b7ce-73cb6f603283",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a0fe94-789f-7802-a6ef-6891bb73c19f",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a0febd-4f19-7092-bdf0-e59971210b4b",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a0ff1e-f8f7-7d52-8654-ade41cae644f",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a0ff22-cdb7-78b0-bf21-b61a95165c0b",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a0ff27-d8d0-7203-a834-e5a39cb8e671",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a0ff90-8fe7-7361-b4c6-01facc7ad56e",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a0ffab-5fcf-7a00-a6fe-7691715fd983",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a0ffd0-4a28-7ad2-a2c5-cb2c3193de0f",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a0ffe6-9aae-7532-846d-abe71704380f",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a10003-80e4-7c13-9e3f-67916d496594",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a1005d-6736-7f52-ae6d-a9578254bf61",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a100cb-3325-7a52-a201-1c5cc8c9084a",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a100df-2afc-73f3-9aaa-2d1422c6324b",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a10126-d2bc-7e02-9328-065094886cea",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a10166-9b5e-7632-95a9-ba2402a288f6",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a1027d-15ea-7643-9f73-1869940a5518",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a102bc-abff-79c3-80ac-70a8405bd248",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a102f2-bb68-7442-90f7-c07a82500087",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a10323-a92d-7b02-aa23-eedcb290db8f",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a1035b-94a4-7721-b4e0-996a374c3c55",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a103bf-b785-76a3-9426-91245ef03013",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a103ec-0b1d-7841-b586-ea8780c61c09",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a1041c-b40c-73e3-9a60-186f1754370a",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a1044a-2af5-79b1-82bd-f22618d8a90e",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a10477-f339-7390-bb26-fbe84d650880",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a104a3-eae2-77c0-84f7-6ead3ff12caf",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a104d8-3371-7a23-9e5e-57b3d5ab170d",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a104e2-9c0e-7fd1-b55d-35f8730b0e83",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a1051f-2368-7492-b9fc-11c316dcdfac",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a1059b-e249-7373-8911-853569758dbb",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a105b5-0dc8-7f80-bd4f-1ff42cf96371",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a105fb-bec5-7832-a2e0-930af280e552",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a1063e-bafd-7861-8a32-324c647b0c3c",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a107f5-9c89-7630-9dfd-555f73adaa71",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a1084e-c242-76a2-9599-83d510a44f97",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a10a0c-a408-77a3-a85b-107699b56c25",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a11d51-ba3d-7fc0-966a-096dcb4362f9",
+      "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager"
+    },
+    {
+      "id": "01a11e04-92a5-7432-8a67-c9981c09caac",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a11e06-db0f-7d51-8964-925d7ce992ed",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a11e6a-dacf-72b3-9ce0-abbe0cfbb114",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a11e6e-7cc6-7fc1-aa95-245557ca83ec",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a11f5d-f23a-7a30-97b2-ef4c15ca5cc7",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a11f66-067b-7df0-aad7-612af7bcb95f",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a11f71-f0e3-7ae1-b862-2dfd6fb9012e",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a11f8f-19b1-71a3-bd00-c5da36c3cbf0",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a11fd7-a397-7431-8637-0772c60096b1",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a11ff8-f495-7b93-86d1-85fa56933446",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a120b6-f49e-7743-a440-3240a201f9e1",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a120b7-ae8e-7cf0-a317-162337cf42b2",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a1212e-a806-74d3-81d5-e78c50dc1dff",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a12134-1e15-7c13-a6cc-8e1e4ddb4f12",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a12158-8644-7b41-b5c4-1b972aabe128",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a121a0-a70f-7c30-b9da-669ba567b1dc",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    },
+    {
+      "id": "01a121b1-df65-7891-be87-d04edf225a5c",
+      "cwd": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager"
+    }
+  ],
+  "alreadyArchivedMatchedSessions": 5,
+  "chatDeletionLimit": "The available Codex app tool archives chats; permanent deletion was not performed.",
+  "activeCleanupChatRetained": true,
+  "verification": "All 19 removed paths absent, exactly two worktree registrations remain, all 60 matched sessions archived (55 archived in this cleanup), active cleanup chat unarchived, named branch refs unchanged.",
+  "allNamedBranchRefsUnchangedBeforePublishingReceipt": true,
+  "publicationChange": "Only the existing review-index branch is updated to record this cleanup; all source and evidence branches remain unchanged."
+}

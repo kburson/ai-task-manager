@@ -1,0 +1,117 @@
+{
+  "name": "@kburson/ai-task-manager",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "Bind AI coding sessions to GitHub issues and track time, context, state, and completion workflow",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "author": "Kendrick Burson <spam.kpb@gmail.com>",
+  "homepage": "https://github.com/kburson/ai-task-manager",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "ai-task-manager": "bin/cli.mjs",
+    "aitm": "bin/aitm.mjs",
+    "github-project-report": "scripts/reports/generate-value-report.mjs"
+  },
+  "scripts": {
+    "test": "node scripts/run-tests.mjs --lane fast",
+    "test:unit": "node scripts/run-tests.mjs --lane unit",
+    "test:integration": "node scripts/run-tests.mjs --lane integration",
+    "test:slow": "node scripts/run-tests.mjs --lane slow",
+    "test:timing-tz:utc": "TZ=UTC node --test scripts/tests/unit/task-tracker/core/gh-timing-comment.test.mjs scripts/tests/unit/task-tracker/core/gh-timing-comment-backdated-row.test.mjs",
+    "test:timing-tz:chicago": "TZ=America/Chicago node --test scripts/tests/unit/task-tracker/core/gh-timing-comment.test.mjs scripts/tests/unit/task-tracker/core/gh-timing-comment-backdated-row.test.mjs",
+    "test:unit:utc": "TZ=UTC node scripts/run-tests.mjs --lane unit",
+    "test:coverage": "c8 node scripts/run-tests.mjs --lane all",
+    "test:coverage:fast": "c8 node scripts/run-tests.mjs --lane fast",
+    "log-time": "node scripts/gh/log-issue-time.mjs",
+    "report:value": "node scripts/reports/generate-value-report.mjs",
+    "report:value:pdf": "node scripts/reports/generate-value-report.mjs --pdf",
+    "link:self": "node scripts/task-tracker/ensure-self-link.mjs",
+    "tarball:pack": "npm pack --pack-destination .tmp/publish",
+    "release": "npm publish --access public",
+    "sync:templates": "node scripts/sync-templates.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "audit": "npm audit --audit-level=moderate",
+    "lint:js": "eslint .",
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "lint:spell": "cspell --no-progress \"**/*.{md,mjs,js,json}\"",
+    "lint:tmp": "node scripts/maintenance/lint-no-system-tmp.mjs",
+    "lint:fleet-sandbox": "node scripts/maintenance/lint-fleet-sandbox-isolation.mjs",
+    "lint:test-layout": "node scripts/tests/tools/audit-test-layout.mjs",
+    "lint:test-entrypoint-imports": "node scripts/tests/tools/audit-test-entrypoint-imports.mjs",
+    "lint:story-tags": "node scripts/tests/tools/audit-story-tags.mjs",
+    "lint:line-cap": "node scripts/tests/tools/audit-line-cap.mjs",
+    "lint:test-reach": "node scripts/maintenance/lint-test-coverage-reach.mjs",
+    "lint:doc-anchors": "node scripts/maintenance/lint-doc-anchors.mjs",
+    "lint:action-refusals": "node scripts/maintenance/lint-action-refusals.mjs",
+    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals",
+    "quality": "npm run format:check && npm run lint && npm test"
+  },
+  "files": [
+    "LICENSE",
+    "LICENSE-COMMERCIAL",
+    "NOTICE",
+    "bin/",
+    "config/",
+    "skill/",
+    "hooks/",
+    "scripts/",
+    "!scripts/tests/**",
+    "!scripts/maintenance/**",
+    "!**/*.test.mjs",
+    "statusline/",
+    "docs/README.md",
+    "docs/QUICKSTART.md",
+    "docs/DESIGN.md",
+    "docs/guides/",
+    "docs/superpowers/specs/delivered/2026-09-14-1624-workflow-exceptions-design.md",
+    "docs/introduction/",
+    "docs/ai-memory/",
+    "!docs/ai-memory/archive/**",
+    "templates/"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "codex",
+    "ai-agent",
+    "github",
+    "github-projects",
+    "task-tracker",
+    "time-tracking",
+    "ai",
+    "anthropic",
+    "agile",
+    "scrum",
+    "kanban"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kburson/ai-task-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kburson/ai-task-manager/issues"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "c8": "^12.0.0",
+    "cspell": "^10.3.1",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "js-yaml": "^5.4.2",
+    "markdownlint-cli2": "^0.23.2",
+    "prettier": "^3.9.6",
+    "puppeteer": "^25.11.0"
+  },
+  "dependencies": {
+    "espree": "^11.2.0"
+  },
+  "overrides": {
+    "smol-toml": "1.8.0"
+  }
+}

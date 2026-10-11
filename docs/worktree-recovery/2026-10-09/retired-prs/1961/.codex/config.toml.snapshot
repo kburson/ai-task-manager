@@ -1,0 +1,3 @@
+# Temporary cleanup setting requested for this worktree and chat.
+[features]
+hooks = false
