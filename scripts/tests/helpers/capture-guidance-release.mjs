@@ -539,10 +539,11 @@ if (args[0] === 'api' && args[1] === 'graphql') {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: { number: ${issue}, body, parent: null } } } }));
     } else if (query.includes('projectItems')) {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: {
+        id: 'ISSUE_CAPTURE',
         assignees: { nodes: [] },
         projectItems: { nodes: [{ id: 'I1', project: { id: 'P1' }, fieldValueByName: {
           name: snapshot.state.replace(/(^|-)\\w/g, (m) => m.toUpperCase())
-        } }], pageInfo: { hasNextPage: false, endCursor: null } }
+        }, fieldValues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } }], pageInfo: { hasNextPage: false, endCursor: null } }
       } } } }));
     } else {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: { body } } } }));

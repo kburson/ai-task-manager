@@ -93,17 +93,57 @@ test('pre-slim public CLI capture cannot certify the final installed adapter rel
   assert.match(report.finalInstalledAdapterGate.reason, /final installed adapter bytes/i);
 });
 
-test('final release requires a complete installed-byte and public-CLI capture', async () => {
+test('archived final release retains its original committed proof and rejects current drift', async () => {
   const finalBytes = readFileSync(
     path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json')
   );
-  const report = await buildGuidanceContextReport({ captureBytes: finalBytes });
   const capture = JSON.parse(finalBytes);
   const manifest = JSON.parse(
     readFileSync(
       path.resolve('scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json')
     )
   );
+  await assert.rejects(
+    buildGuidanceContextReport({ captureBytes: finalBytes }),
+    /final capture identity drift/
+  );
+  const fixture = mkdtempProjectIsolated('guidance-archived-release-');
+  let report;
+  try {
+    execFileSync('git', ['fetch', '--no-tags', path.resolve('.'), manifest.sourceCommit], {
+      cwd: fixture,
+    });
+    execFileSync('git', ['checkout', '-q', '--detach', 'FETCH_HEAD'], { cwd: fixture });
+    // The capture was published after its recorded source commit; replay those
+    // exact archived inputs against the source bytes, not an earlier artifact.
+    writeFileSync(
+      path.join(
+        fixture,
+        'scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json'
+      ),
+      finalBytes
+    );
+    writeFileSync(
+      path.join(fixture, 'scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json'),
+      JSON.stringify(manifest)
+    );
+    const script = `
+      import { readFileSync } from 'node:fs';
+      import { buildGuidanceContextReport } from './scripts/task-tracker/measure-guidance-context.mjs';
+      const captureBytes = readFileSync('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json');
+      process.stdout.write(JSON.stringify(await buildGuidanceContextReport({ captureBytes })));
+    `;
+    report = JSON.parse(
+      execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+        cwd: fixture,
+        encoding: 'utf8',
+        maxBuffer: 16 * 1024 * 1024,
+        env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: fixture },
+      })
+    );
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
   assert.equal(report.classification, 'final-installed-consumer-release');
   assert.equal(report.finalInstalledAdapterGate.status, 'passed');
   assert.deepEqual(
@@ -154,7 +194,7 @@ test('final release requires a complete installed-byte and public-CLI capture', 
   );
 });
 
-test('current package capture preserves instruction inputs and binds its own transcript', () => {
+test('current package capture preserves lifecycle outcomes and instruction inputs', () => {
   const archived = JSON.parse(
     readFileSync(
       path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json'),
@@ -163,6 +203,25 @@ test('current package capture preserves instruction inputs and binds its own tra
   );
   const current = captureGuidanceLifecycle({ mode: 'final' });
   assert.equal(validateLifecycleTranscript(current), true);
+  assert.deepEqual(
+    current.events.filter(({ typed }) => typed).map(({ name, typed }) => [name, typed.status]),
+    [
+      ['ready-first-load', 'ready'],
+      ['matching-receipt', 'ready'],
+      ['compaction-reset', 'ready'],
+      ['blocked-migration-freeze', 'blocked'],
+      ['diagnostic', 'blocked'],
+      ['refusal-remediation', 'ready'],
+      ['agent-change', 'ready'],
+      ['source-only-change', 'ready'],
+      ['lifecycle-resume', 'ready'],
+      ['lifecycle-promote', 'ready'],
+      ['lifecycle-test', 'ready'],
+      ['lifecycle-review', 'ready'],
+      ['lifecycle-deliver', 'ready'],
+      ['lifecycle-close', 'ready'],
+    ]
+  );
   assert.deepEqual(current.identity.productionPackage, archived.identity.productionPackage);
   assert.deepEqual(current.measurement.installedStatic, archived.measurement.installedStatic);
   assert.equal(current.identity.initialFixtureSha256, archived.identity.initialFixtureSha256);
