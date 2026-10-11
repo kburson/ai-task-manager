@@ -1,3 +1,4 @@
+import { fetchIssueProjectMembership } from '../../gh/lib/project-membership.mjs';
 // #704 — `dod-stamp`/`ac-stamp` executed declared verifier commands keyed only
 // on local session state (`s.active`), with no check against the issue's live
 // lifecycle state. That let `dod-stamp tests` run `npm run test:all` directly
@@ -14,7 +15,6 @@
 // preserving the Develop-Phase Verification Contract without also restricting
 // the fast lane's targeted use.
 
-import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { normalizeStateId, stateIds } from './lifecycle-policy/index.mjs';
 
 const RESTRICTED_COMMAND_RE = /\bnpm\s+run\s+test:(all|slow)\b/;
@@ -25,28 +25,12 @@ export function isRestrictedVerifierCommand(cmd) {
 }
 
 export async function defaultGetLiveState({ issueNumber, cfg }) {
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 10) {
-            nodes {
-              project { id }
-              fieldValueByName(name: "Status") {
-                ... on ProjectV2ItemFieldSingleSelectValue { name }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateId(node?.fieldValueByName?.name);
+  const { item } = await fetchIssueProjectMembership({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+  });
+  return normalizeStateId(item?.fieldValueByName?.name);
 }
 
 export async function assertVerifierStateAllowed({ issueNumber, cfg, commands, deps = {} }) {

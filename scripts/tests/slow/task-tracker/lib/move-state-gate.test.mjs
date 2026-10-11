@@ -146,8 +146,8 @@ if (args[0] === 'api' && args[1] === 'graphql') {
   if (payload.includes('fieldValueByName')) {
     let opt = '';
     try { opt = fs.readFileSync(STATE_FILE, 'utf8'); } catch {}
-    const res = { data: { repository: { issue: { projectItems: { nodes: [
-      { project: { id: PROJECT_ID }, fieldValueByName: { optionId: opt } },
+    const res = { data: { repository: { issue: { id: 'ISSUE_TEST', projectItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [
+      { id: 'ITEM_TEST', project: { id: PROJECT_ID }, fieldValueByName: { optionId: opt } },
     ] } } } } };
     fs.writeSync(1, JSON.stringify(res));
     process.exit(0);

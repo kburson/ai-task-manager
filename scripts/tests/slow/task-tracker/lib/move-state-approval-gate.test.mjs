@@ -259,11 +259,12 @@ if (args[0] === 'api' && args[1] === 'graphql') {
     try { opt = fs.readFileSync(STATE_FILE, 'utf8'); } catch {}
     const payload = {
       data: { repository: { issue: {
+        id: 'ISSUE_TEST',
         assignees: { nodes: [{ login: 'kburson' }] },
         projectItems: { nodes: [
-        { project: { id: ${JSON.stringify(PROJECT_ID)} },
+        { id: 'ITEM_TEST', project: { id: ${JSON.stringify(PROJECT_ID)} },
           fieldValueByName: { name: ${JSON.stringify(currentState)}, optionId: opt },
-          fieldValues: { nodes: [] } },
+          fieldValues: { nodes: [], pageInfo: { hasNextPage: false } } },
         ], pageInfo: { hasNextPage: false, endCursor: null } },
       } } },
     };

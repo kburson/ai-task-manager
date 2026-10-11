@@ -52,7 +52,7 @@ process.stdin.on('end', () => {
     process.stdout.write(JSON.stringify({ data: { repository: {
       id: 'REPO_x',
       issue: { id: 'ISSUE_x', number: 807, title: 't', url: 'u',
-        projectItems: { nodes: [ { id: ${JSON.stringify(itemId)}, project: { id: ${JSON.stringify(projectId)} } } ] } },
+        projectItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [ { id: ${JSON.stringify(itemId)}, project: { id: ${JSON.stringify(projectId)} } } ] } },
     } } }));
   } else if (/updateProjectV2ItemFieldValue/.test(q)) {
     process.stdout.write(JSON.stringify({ data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: ${JSON.stringify(itemId)} } } } }));

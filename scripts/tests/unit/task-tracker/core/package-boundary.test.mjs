@@ -420,7 +420,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     actorRuntimeEntries.length +
     8 + // #1859: six reviewed-scope modules, readiness guard and operator guide.
     12 + // #1872: ten admission modules, the collection grouping module and operator guide.
-    1; // #1904: shared root AC section locator; actual package delta is exactly one file.
+    1 + // #1904: shared root AC section locator; actual package delta is exactly one file.
+    1; // #1954: strict shared project membership reader; measured delta is one runtime file.
   assert.ok(files.includes('scripts/run-tests-shards.mjs'));
   assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(
@@ -442,6 +443,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'bin/cli.mjs',
     'bin/aitm.mjs',
     'scripts/task-tracker/lib/ac-section.mjs',
+    'scripts/gh/lib/project-membership.mjs',
     'scripts/task-tracker/lib/artifact-write-policy.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',

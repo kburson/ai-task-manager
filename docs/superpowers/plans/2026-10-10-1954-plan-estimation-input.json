@@ -1,0 +1,36 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "membership",
+      "description": "Implement strict paginated configured-project lookup and state consumers",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": ["project-membership", "lifecycle-state"],
+        "dependencies": []
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "tether",
+      "description": "Repair exact issue tether identity and verify shared-board safety",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": ["project-tether"],
+        "dependencies": ["membership"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "Offline injected GraphQL and exact-head cloud CI; no live test mutations",
+    "expectedMinutes": 20
+  },
+  "risks": [
+    "Legacy test fixtures omit pagination and identity fields.",
+    "Concurrent membership edits require refusing unstable identity.",
+    "CI full-suite duration is a planning allowance rather than measured time."
+  ],
+  "comparableIssueIds": []
+}
