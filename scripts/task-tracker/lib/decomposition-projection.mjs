@@ -72,7 +72,7 @@ export async function refreshDecompositionProjection({
     (!owned.has(context) || active.getStore() !== context || !same(context.subject, subject))
   )
     refuse('foreign-context');
-  const main = findMainWorktreePath(projectDir);
+  const main = (deps.findMainWorktreePath ?? findMainWorktreePath)(projectDir);
   return withIssueLock(
     { issue: subject.issue, verb: 'decomposition-refresh', projDir: main },
     async () => {
@@ -190,7 +190,25 @@ export async function refreshDecompositionProjection({
   );
 }
 
-export function assertDecompositionPublicationOwner(
+export const DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID = 'authority-context';
+function authorityContextValue(input) {
+  return {
+    subject: input.subject,
+    scopeDigest: input.scopeDigest,
+    kind: input.kind,
+    policyDigest: input.policy.digest,
+  };
+}
+export function decompositionPublicationContextDigest(input) {
+  return sha(authorityContextValue(input));
+}
+function usableForReconciliation(current) {
+  return (
+    current.projection.status !== 'malformed' &&
+    current.input.availability.reasons.every((reason) => reason === 'authority-conflict')
+  );
+}
+export async function assertDecompositionPublicationOwner(
   context,
   { subject, operationId, writerId, effectId, requireIntent = false } = {}
 ) {
@@ -207,10 +225,30 @@ export function assertDecompositionPublicationOwner(
   )
     refuse('owner-context');
   if (requireIntent && !context.intentConfirmed) refuse('publication-intent');
+  const current = await context.collectCurrent();
+  if (
+    !usableForReconciliation(current) ||
+    decompositionPublicationContextDigest(current.input) !== context.authorityContextDigest
+  )
+    refuse('semantic-context-drift');
+  if (requireIntent) {
+    const pub = current.publication;
+    const binding = pub?.effects.find(
+      (effect) => effect.id === DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID
+    );
+    if (
+      pub?.operationId !== context.operationId ||
+      pub.status !== 'pending' ||
+      binding?.status !== 'confirmed' ||
+      binding.intendedDigest !== context.authorityContextDigest ||
+      binding.observedDigest !== context.authorityContextDigest
+    )
+      refuse('publication-intent');
+  }
   return context;
 }
 function sealedPublication(publication) {
-  return {
+  return structuredClone({
     subject: publication.subject,
     operationId: publication.operationId,
     writerId: publication.writerId,
@@ -225,7 +263,7 @@ function sealedPublication(publication) {
     })),
     supersedes: publication.supersedes,
     createdAt: publication.createdAt,
-  };
+  });
 }
 async function exactReadBack({ subject, cfg, projectDir, deps }, expected) {
   let result;
@@ -259,9 +297,9 @@ async function exactReadBack({ subject, cfg, projectDir, deps }, expected) {
     refuse('projection-read-back');
   }
 }
-// A controlled operation entry, never a raw capability constructor. Task 3
-// supplies registered read-back adapters and runs its named effects in this
-// issue-locked frame; only exact record deltas receive a private capability.
+// Controlled ownership; context attestation is a package-owned assessment
+// effect, not an extra external mutation. Its digest survives refresh/partial
+// estimate writes and consumes one of the closed record's 32 effect slots.
 export async function withDecompositionPublicationOwner(
   { subject, publication, cfg, projectDir, deps = {} },
   operation
@@ -273,20 +311,29 @@ export async function withDecompositionPublicationOwner(
     typeof operation !== 'function'
   )
     refuse('publication-context');
+  const rawPublication = structuredClone(publication);
   const nested = active.getStore();
   if (nested) {
+    const publicManifest = (value) =>
+      sealedPublication({
+        ...value,
+        effects: value.effects.filter(
+          (effect) => effect.id !== DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID
+        ),
+      });
     if (
       !owned.has(nested) ||
       nested.role !== 'owner' ||
       !same(nested.subject, subject) ||
-      nested.operationId !== publication.operationId ||
-      nested.manifestDigest !== sha(sealedPublication(publication)) ||
+      nested.operationId !== rawPublication.operationId ||
+      nested.publicManifestDigest !== sha(publicManifest(rawPublication)) ||
       currentIssueLockOwner(subject.issue) !== nested.lockOwner
     )
       refuse('foreign-operation');
+    await assertDecompositionPublicationOwner(nested, { subject });
     return operation(nested);
   }
-  const main = findMainWorktreePath(projectDir);
+  const main = (deps.findMainWorktreePath ?? findMainWorktreePath)(projectDir);
   return withIssueLock(
     { issue: subject.issue, verb: 'decomposition-publication', projDir: main },
     async () => {
@@ -294,120 +341,116 @@ export async function withDecompositionPublicationOwner(
       if (!lockOwner || lockOwner.projDir !== main) refuse('lock-owner');
       const { collectDecompositionAuthority } = await import('./decomposition-authority.mjs');
       const collect = () => collectDecompositionAuthority({ subject, cfg, projectDir, deps });
-      const initial = await collect();
-      const previous = initial.publication;
-      const resuming =
-        previous?.operationId === publication.operationId && previous.status === 'pending';
-      const superseding =
-        previous?.status === 'pending' &&
-        publication.supersedes?.operationId === previous.operationId;
+      const initial = await collect(),
+        previous = initial.publication;
       if (
-        initial.projection.status === 'malformed' ||
-        (initial.input.availability.status !== 'complete' &&
-          !(
-            (resuming || superseding) &&
-            initial.input.availability.reasons.every((reason) => reason === 'authority-conflict')
-          ))
+        rawPublication.supersedes &&
+        (!previous || rawPublication.supersedes.operationId !== previous.operationId)
+      )
+        refuse('supersession-predecessor');
+      const resuming =
+        previous?.operationId === rawPublication.operationId && previous.status === 'pending';
+      const superseding = Boolean(rawPublication.supersedes);
+      if (
+        !usableForReconciliation(initial) ||
+        (initial.input.availability.status !== 'complete' && !resuming && !superseding)
       )
         refuse('authority-unavailable');
+      const previousBinding = previous?.effects.find(
+        (effect) => effect.id === DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID
+      );
+      const originalDigest = resuming
+        ? previousBinding?.intendedDigest
+        : decompositionPublicationContextDigest(initial.input);
+      if (
+        !originalDigest ||
+        originalDigest !== decompositionPublicationContextDigest(initial.input)
+      )
+        refuse('semantic-context-drift');
+      const targetIdentity = `${subject.repository}#${subject.issue}:authority-context`;
+      let contextEffect = resuming
+        ? structuredClone(previousBinding)
+        : {
+            id: DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID,
+            resource: 'assessment',
+            targetIdentity,
+            intendedDigest: originalDigest,
+            status: 'pending',
+            observedDigest: null,
+          };
+      if (
+        contextEffect.resource !== 'assessment' ||
+        contextEffect.targetIdentity !== targetIdentity
+      )
+        refuse('authority-context');
+      const callerBinding = rawPublication.effects.find(
+        (effect) => effect.id === DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID
+      );
+      if (callerBinding && (!resuming || !same(callerBinding, previousBinding)))
+        refuse('authority-context-collision');
+      const publicEffects = rawPublication.effects.filter(
+        (effect) => effect.id !== DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID
+      );
+      if (publicEffects.length > 31) refuse('authority-context-capacity');
+      const normalizeCandidate = (candidate) => {
+        const copy = structuredClone(candidate),
+          binding = copy.effects.find(
+            (effect) => effect.id === DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID
+          );
+        if (
+          binding &&
+          !same(
+            { ...binding, status: 'pending', observedDigest: null },
+            { ...contextEffect, status: 'pending', observedDigest: null }
+          )
+        )
+          refuse('authority-context-collision');
+        copy.effects = copy.effects.filter(
+          (effect) => effect.id !== DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID
+        );
+        copy.effects.push(structuredClone(contextEffect));
+        return copy;
+      };
+      const normalized = normalizeCandidate(rawPublication),
+        sealed = sealedPublication(normalized);
       if (
         resuming
-          ? !same(sealedPublication(previous), sealedPublication(publication))
-          : initial.inputDigest !== publication.beforeInputDigest
+          ? !same(sealedPublication(previous), sealed)
+          : initial.inputDigest !== rawPublication.beforeInputDigest
       )
         refuse('publication-drift');
       if (previous?.status === 'pending' && !resuming && !superseding)
         refuse('publication-reconciliation-required');
-      if (!resuming && publication.effects.some((e) => e.status !== 'pending'))
+      if (!resuming && publicEffects.some((effect) => effect.status !== 'pending'))
         refuse('publication-before-intent');
-      const sealed = sealedPublication(publication);
-      let intentPersisted = resuming;
-      const persistPublication = async (candidate) => {
-        if (
-          !owned.has(ctx) ||
-          active.getStore() !== ctx ||
-          currentIssueLockOwner(subject.issue) !== lockOwner
-        )
-          refuse('publication-context');
-        validateDecompositionPublication(candidate);
-        if (candidate.status === 'superseded') refuse('supersession-requires-linked-revision');
-        if (!same(sealedPublication(candidate), sealed)) refuse('publication-manifest-drift');
-        if (
-          !intentPersisted &&
-          (candidate.status !== 'pending' || candidate.effects.some((e) => e.status !== 'pending'))
-        )
-          refuse('publication-before-intent');
-        const current = await collect();
-        if (
-          current.projection.status === 'malformed' ||
-          current.input.scopeDigest !== initial.input.scopeDigest
-        )
-          refuse('semantic-drift');
-        if (!intentPersisted && superseding) {
-          const identities = (effects) =>
-            effects.map(({ id, resource, targetIdentity, intendedDigest }) => ({
-              id,
-              resource,
-              targetIdentity,
-              intendedDigest,
-            }));
-          if (!same(identities(previous.effects), identities(candidate.supersedes.effects)))
-            refuse('supersession-manifest');
-          for (const effect of candidate.supersedes.effects) {
-            if (typeof deps.readPublicationEffect !== 'function') refuse('effect-read-back');
-            const read = await deps.readPublicationEffect({
-              subject,
-              operationId: previous.operationId,
-              effect,
-              context: ctx,
-            });
-            if (
-              read?.status !== 'observed' ||
-              read.digest !== sha(read.value) ||
-              read.digest !== effect.observedDigest
-            )
-              refuse('effect-read-back');
-          }
+      let intentPersisted =
+        resuming &&
+        contextEffect.status === 'confirmed' &&
+        contextEffect.observedDigest === originalDigest;
+      let latest = resuming ? structuredClone(previous) : normalized;
+      const readEffect = async (effect, operationId) => {
+        if (effect.id === DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID) {
+          if (effect.resource !== 'assessment' || effect.targetIdentity !== targetIdentity)
+            refuse('authority-context');
+          const current = await collect();
+          if (!usableForReconciliation(current)) refuse('effect-read-back');
+          const value = authorityContextValue(current.input);
+          return { status: 'observed', value, digest: sha(value) };
         }
+        if (typeof deps.readPublicationEffect !== 'function') refuse('effect-read-back');
+        return deps.readPublicationEffect({ subject, operationId, effect, context: ctx });
+      };
+      const verifyEffect = async (effect, operationId) => {
+        const read = await readEffect(effect, operationId);
         if (
-          current.publication &&
-          !same(current.publication.operationId, publication.operationId) &&
-          current.publication.status === 'pending' &&
-          !(superseding && current.publication.operationId === candidate.supersedes.operationId)
+          read?.status !== 'observed' ||
+          read.digest !== sha(read.value) ||
+          read.digest !== effect.observedDigest ||
+          (effect.status === 'confirmed' && read.digest !== effect.intendedDigest)
         )
-          refuse('publication-drift');
-        if (
-          current.publication?.operationId === publication.operationId &&
-          current.publication.status === 'complete' &&
-          candidate.status !== 'complete'
-        )
-          refuse('publication-terminal');
-        for (const effect of candidate.effects.filter((e) =>
-          ['confirmed', 'failed'].includes(e.status)
-        )) {
-          if (typeof deps.readPublicationEffect !== 'function') refuse('effect-read-back');
-          const read = await deps.readPublicationEffect({
-            subject,
-            operationId: publication.operationId,
-            effect,
-            context: ctx,
-          });
-          if (
-            read?.status !== 'observed' ||
-            read.digest !== sha(read.value) ||
-            read.digest !== effect.observedDigest ||
-            (effect.status === 'confirmed' && read.digest !== effect.intendedDigest)
-          )
-            refuse('effect-read-back');
-        }
-        if (
-          candidate.status === 'complete' &&
-          (current.input.availability.status !== 'complete' ||
-            current.inputDigest !== candidate.intendedInputDigest ||
-            current.input.estimate.hours !== candidate.proposal.estimate.hours ||
-            current.input.size !== candidate.proposal.size)
-        )
-          refuse('publication-authority');
+          refuse('effect-read-back');
+      };
+      const writeRecords = async (candidate, current) => {
         const before = readDecompositionRecords(current.sourceObservations.readIssue.value.body);
         const after = {
           assessment: assessDecomposition(current.input, { publication: candidate }),
@@ -438,7 +481,11 @@ export async function withDecompositionPublicationOwner(
                   readIssue: async () => ({ status: 'observed', value, digest: sha(value) }),
                 },
               });
-              if (fresh.inputDigest !== current.inputDigest) refuse('semantic-drift');
+              if (
+                fresh.inputDigest !== current.inputDigest ||
+                decompositionPublicationContextDigest(fresh.input) !== originalDigest
+              )
+                refuse('semantic-drift');
             },
             mutate: (base) => replaceDecompositionRecords(base, after),
           });
@@ -446,25 +493,119 @@ export async function withDecompositionPublicationOwner(
           capabilities.delete(cap);
         }
         await exactReadBack({ subject, cfg, projectDir, deps }, after);
-        intentPersisted = true;
+        latest = structuredClone(candidate);
         return after;
       };
+      const persistPublication = async (rawCandidate) => {
+        if (
+          !owned.has(ctx) ||
+          active.getStore() !== ctx ||
+          currentIssueLockOwner(subject.issue) !== lockOwner
+        )
+          refuse('publication-context');
+        validateDecompositionPublication(rawCandidate);
+        if (rawCandidate.status === 'superseded') refuse('supersession-requires-linked-revision');
+        let candidate = normalizeCandidate(rawCandidate);
+        if (!same(sealedPublication(candidate), sealed)) refuse('publication-manifest-drift');
+        if (
+          !intentPersisted &&
+          (candidate.status !== 'pending' ||
+            candidate.effects
+              .filter((effect) => effect.id !== DECOMPOSITION_AUTHORITY_CONTEXT_EFFECT_ID)
+              .some((effect) => effect.status !== 'pending'))
+        )
+          refuse('publication-before-intent');
+        const current = await collect();
+        if (
+          !usableForReconciliation(current) ||
+          decompositionPublicationContextDigest(current.input) !== originalDigest
+        )
+          refuse('semantic-drift');
+        if (!intentPersisted && superseding) {
+          const identities = (effects) =>
+            effects.map(({ id, resource, targetIdentity, intendedDigest }) => ({
+              id,
+              resource,
+              targetIdentity,
+              intendedDigest,
+            }));
+          if (!same(identities(previous.effects), identities(candidate.supersedes.effects)))
+            refuse('supersession-manifest');
+          for (const effect of candidate.supersedes.effects)
+            await verifyEffect(effect, previous.operationId);
+        }
+        if (
+          current.publication &&
+          current.publication.operationId !== candidate.operationId &&
+          current.publication.status === 'pending' &&
+          !(superseding && current.publication.operationId === candidate.supersedes.operationId)
+        )
+          refuse('publication-drift');
+        if (
+          current.publication?.operationId === candidate.operationId &&
+          current.publication.status === 'complete' &&
+          candidate.status !== 'complete'
+        )
+          refuse('publication-terminal');
+        for (const effect of candidate.effects.filter((effect) =>
+          ['confirmed', 'failed'].includes(effect.status)
+        ))
+          await verifyEffect(effect, candidate.operationId);
+        if (
+          candidate.status === 'complete' &&
+          (current.input.availability.status !== 'complete' ||
+            current.inputDigest !== candidate.intendedInputDigest ||
+            current.input.estimate.hours !== candidate.proposal.estimate.hours ||
+            current.input.size !== candidate.proposal.size)
+        )
+          refuse('publication-authority');
+        let result = await writeRecords(candidate, current);
+        if (!intentPersisted) {
+          const fresh = await collect();
+          if (
+            !usableForReconciliation(fresh) ||
+            decompositionPublicationContextDigest(fresh.input) !== originalDigest
+          )
+            refuse('semantic-drift');
+          contextEffect = { ...contextEffect, status: 'confirmed', observedDigest: originalDigest };
+          candidate = normalizeCandidate(candidate);
+          await verifyEffect(contextEffect, candidate.operationId);
+          result = await writeRecords(candidate, fresh);
+          intentPersisted = true;
+        }
+        return result;
+      };
       const ctx = Object.freeze({
-        subject,
-        operationId: publication.operationId,
-        writerId: publication.writerId,
+        subject: Object.freeze(structuredClone(subject)),
+        operationId: normalized.operationId,
+        writerId: normalized.writerId,
         role: 'owner',
-        effectIds: Object.freeze(publication.effects.map((effect) => effect.id)),
+        lockOwner,
+        effectIds: Object.freeze(publicEffects.map((effect) => effect.id)),
+        authorityContextDigest: originalDigest,
+        publicManifestDigest: sha(sealedPublication({ ...normalized, effects: publicEffects })),
         get intentConfirmed() {
           return intentPersisted;
         },
-        manifestDigest: sha(sealed),
-        lockOwner,
+        collectCurrent: collect,
+        publication: () => structuredClone(latest),
         persistPublication,
       });
       owned.add(ctx);
       try {
-        return await active.run(ctx, () => operation(ctx));
+        return await active.run(ctx, async () => {
+          if (resuming)
+            await exactReadBack(
+              { subject, cfg, projectDir, deps },
+              {
+                assessment: readDecompositionRecords(
+                  initial.sourceObservations.readIssue.value.body
+                ).assessment,
+                publication: previous,
+              }
+            );
+          return operation(ctx);
+        });
       } finally {
         owned.delete(ctx);
       }

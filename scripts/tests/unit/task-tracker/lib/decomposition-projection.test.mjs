@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { freshUnitDir } from './decomposition-authority-fixtures.mjs';
 import {
   collectDecompositionAuthority,
   createDecompositionRuntime,
@@ -24,7 +24,7 @@ const cfg = { repo: 'o/r', projectId: 'PVT_a' };
 const collect = (f) =>
   collectDecompositionAuthority({ subject, cfg, projectDir: process.cwd(), deps: f.deps });
 async function run(f, options = {}) {
-  const dir = mkdtempProjectIsolated('decomposition-');
+  const dir = freshUnitDir('decomposition-');
   try {
     return await refreshDecompositionProjection({
       subject,
@@ -98,7 +98,7 @@ test('provider body limit refuses before a write', async () => {
 });
 test('same issue real lock nesting works but an unrelated contender receives no capability', async () => {
   const f = fixture();
-  const dir = mkdtempProjectIsolated('decomposition-');
+  const dir = freshUnitDir('decomposition-');
   let release, entered;
   const ready = new Promise((r) => (entered = r));
   const held = withIssueLock({ issue: 1987, projDir: dir }, async () => {
@@ -280,7 +280,7 @@ test('owned publication advances require actual effect read back and matching cu
   });
   pub.effects[0].intendedDigest = (await import('./decomposition-authority-fixtures.mjs')).hash(7);
   f.deps.readPublicationEffect = async () => observed(f.values.project.estimate);
-  const dir = mkdtempProjectIsolated('decomposition-owner-');
+  const dir = freshUnitDir('decomposition-owner-');
   try {
     const runtime = createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps });
     await runtime.withPublication({ subject, publication: pub }, async (context) => {
@@ -315,7 +315,7 @@ test('same owned pending operation can resume partial conflicting projections wi
   const f = fixture();
   const a = await collect(f);
   const pub = publication(a.inputDigest);
-  const dir = mkdtempProjectIsolated('decomposition-recovery-');
+  const dir = freshUnitDir('decomposition-recovery-');
   try {
     const runtime = createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps });
     await runtime.withPublication({ subject, publication: pub }, async (context) =>
@@ -338,7 +338,7 @@ test('same operation nesting reuses owner but foreign operation cannot inherit i
   const f = fixture();
   const a = await collect(f);
   const pub = publication(a.inputDigest);
-  const dir = mkdtempProjectIsolated('decomposition-nesting-');
+  const dir = freshUnitDir('decomposition-nesting-');
   try {
     const runtime = createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps });
     await runtime.withPublication({ subject, publication: pub }, async (context) => {
@@ -379,7 +379,7 @@ test('text effect observations use exact UTF8 digest convention', async () => {
     },
   ];
   f.deps.readPublicationEffect = async () => observed('published comment');
-  const dir = mkdtempProjectIsolated('decomposition-text-');
+  const dir = freshUnitDir('decomposition-text-');
   try {
     await createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps }).withPublication(
       { subject, publication: pub },
@@ -407,7 +407,7 @@ test('owner cannot erase unresolved intent by marking the old operation supersed
   const pub = publication(a.inputDigest);
   f.deps.readPublicationEffect = async () => observed(7);
   const { hash } = await import('./decomposition-authority-fixtures.mjs');
-  const dir = mkdtempProjectIsolated('decomposition-supersede-');
+  const dir = freshUnitDir('decomposition-supersede-');
   try {
     await createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps }).withPublication(
       { subject, publication: pub },
@@ -438,12 +438,13 @@ test('new linked pending revision supersedes only after read-back reconciles ori
   const a = await collect(f);
   const pub = publication(a.inputDigest);
   const { hash } = await import('./decomposition-authority-fixtures.mjs');
-  const dir = mkdtempProjectIsolated('decomposition-supersede-');
+  const dir = freshUnitDir('decomposition-supersede-');
   try {
     const runtime = createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps });
     await runtime.withPublication({ subject, publication: pub }, async (context) =>
       context.persistPublication(pub)
     );
+    const stored = readDecompositionRecords(f.body).publication;
     const next = {
       ...pub,
       operationId: 'b41d3bf2-e26e-477e-88d1-b2db32793002',
@@ -455,7 +456,11 @@ test('new linked pending revision supersedes only after read-back reconciles ori
       effects: pub.effects.map((e) => ({ ...e, intendedDigest: hash(7) })),
       supersedes: {
         operationId: pub.operationId,
-        effects: pub.effects.map((e) => ({ ...e, status: 'failed', observedDigest: hash(7) })),
+        effects: stored.effects.map((e) =>
+          e.id === 'authority-context'
+            ? { ...e, status: 'confirmed', observedDigest: e.intendedDigest }
+            : { ...e, status: 'failed', observedDigest: hash(7) }
+        ),
       },
     };
     f.deps.readPublicationEffect = async () => observed(8);
@@ -486,7 +491,7 @@ test('registered writer owner assertion rejects forged expired or pre-intent eff
   const { assertDecompositionPublicationOwner } =
     await import('../../../../task-tracker/lib/decomposition-projection.mjs');
   assert.equal(typeof assertDecompositionPublicationOwner, 'function');
-  assert.throws(
+  await assert.rejects(
     () =>
       assertDecompositionPublicationOwner(
         { subject, role: 'owner' },
@@ -498,13 +503,13 @@ test('registered writer owner assertion rejects forged expired or pre-intent eff
   const a = await collect(f);
   const pub = publication(a.inputDigest);
   let captured;
-  const dir = mkdtempProjectIsolated('decomposition-assert-');
+  const dir = freshUnitDir('decomposition-assert-');
   try {
     await createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps }).withPublication(
       { subject, publication: pub },
       async (context) => {
         captured = context;
-        assert.throws(
+        await assert.rejects(
           () =>
             assertDecompositionPublicationOwner(context, {
               subject,
@@ -515,14 +520,14 @@ test('registered writer owner assertion rejects forged expired or pre-intent eff
           /intent/
         );
         await context.persistPublication(pub);
-        assertDecompositionPublicationOwner(context, {
+        await assertDecompositionPublicationOwner(context, {
           subject,
           operationId: pub.operationId,
           writerId: 'inflate-estimate',
           requireIntent: true,
           effectId: 'estimate',
         });
-        assert.throws(
+        await assert.rejects(
           () =>
             assertDecompositionPublicationOwner(context, {
               subject: { ...subject, issue: 999 },
@@ -532,9 +537,167 @@ test('registered writer owner assertion rejects forged expired or pre-intent eff
         );
       }
     );
-    assert.throws(
+    await assert.rejects(
       () => assertDecompositionPublicationOwner(captured, { subject, requireIntent: true }),
       /owner-context/
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('review regression: nested caller proposal cannot mutate sealed pending manifest', async () => {
+  const f = fixture();
+  const a = await collect(f);
+  const pub = publication(a.inputDigest);
+  const dir = freshUnitDir('review-owner-');
+  try {
+    await createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps }).withPublication(
+      { subject, publication: pub },
+      async (context) => {
+        await context.persistPublication(pub);
+        pub.proposal.estimate.hours = 7;
+        await assert.rejects(() => context.persistPublication(pub), /manifest-drift/);
+        assert.equal(readDecompositionRecords(f.body).publication.proposal.estimate.hours, 25);
+      }
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+test('review regression: unknown claimed predecessor cannot mint supersession evidence', async () => {
+  const f = fixture();
+  const a = await collect(f);
+  const { hash } = await import('./decomposition-authority-fixtures.mjs');
+  const pub = publication(a.inputDigest, {
+    supersedes: {
+      operationId: 'b41d3bf2-e26e-477e-88d1-b2db32793000',
+      effects: [
+        {
+          id: 'old-estimate',
+          resource: 'project-estimate',
+          targetIdentity: 'PVTI_a',
+          intendedDigest: hash(25),
+          status: 'failed',
+          observedDigest: hash(7),
+        },
+      ],
+    },
+  });
+  const dir = freshUnitDir('review-owner-');
+  try {
+    await assert.rejects(
+      () =>
+        createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps }).withPublication(
+          { subject, publication: pub },
+          async (context) => context.persistPublication(pub)
+        ),
+      /predecessor/
+    );
+    assert.equal(f.writes.length, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+for (const point of ['resume', 'active', 'refresh']) {
+  test(`review regression: changed scope before ${point} cannot authorize original effects`, async () => {
+    const f = fixture();
+    const a = await collect(f);
+    const pub = publication(a.inputDigest);
+    const { assertDecompositionPublicationOwner } =
+      await import('../../../../task-tracker/lib/decomposition-projection.mjs');
+    let effects = 0;
+    const dir = freshUnitDir('review-owner-');
+    try {
+      const runtime = createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps });
+      if (point === 'active')
+        await assert.rejects(
+          () =>
+            runtime.withPublication({ subject, publication: pub }, async (context) => {
+              await context.persistPublication(pub);
+              f.body = f.body.replace('Collect current authority.', 'Changed delivery scope.');
+              await assertDecompositionPublicationOwner(context, {
+                subject,
+                requireIntent: true,
+                effectId: 'estimate',
+              });
+              effects++;
+            }),
+          /semantic|context|scope/
+        );
+      else {
+        await runtime.withPublication({ subject, publication: pub }, async (context) =>
+          context.persistPublication(pub)
+        );
+        f.body = f.body.replace('Collect current authority.', 'Changed delivery scope.');
+        if (point === 'refresh') await run(f);
+        await assert.rejects(
+          () =>
+            runtime.withPublication({ subject, publication: pub }, async (context) => {
+              await assertDecompositionPublicationOwner(context, {
+                subject,
+                requireIntent: true,
+                effectId: 'estimate',
+              });
+              effects++;
+            }),
+          /semantic|context|scope/
+        );
+      }
+      assert.equal(effects, 0);
+      assert.equal(readDecompositionRecords(f.body).publication.status, 'pending');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}
+
+test('authority context reserves one effect slot and rejects caller collisions before intent', async () => {
+  for (const variant of ['capacity', 'collision']) {
+    const f = fixture();
+    const a = await collect(f);
+    const pub = publication(a.inputDigest);
+    pub.effects =
+      variant === 'capacity'
+        ? Array.from({ length: 32 }, (_, index) => ({ ...pub.effects[0], id: `effect-${index}` }))
+        : [{ ...pub.effects[0], id: 'authority-context' }];
+    const dir = freshUnitDir('binding-limit-');
+    try {
+      await assert.rejects(
+        () =>
+          createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps }).withPublication(
+            { subject, publication: pub },
+            async (context) => context.persistPublication(pub)
+          ),
+        /capacity|collision/
+      );
+      assert.equal(f.writes.length, 0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+test('package context read-back cannot be confirmed by a generic effect observer', async () => {
+  const f = fixture();
+  const a = await collect(f);
+  const pub = publication(a.inputDigest);
+  const observedIds = [];
+  f.deps.readPublicationEffect = async ({ effect }) => {
+    observedIds.push(effect.id);
+    return observed(7);
+  };
+  const dir = freshUnitDir('binding-proof-');
+  try {
+    await createDecompositionRuntime({ cfg, projectDir: dir, deps: f.deps }).withPublication(
+      { subject, publication: pub },
+      async (context) => {
+        await context.persistPublication(pub);
+        const stored = context.publication();
+        const binding = stored.effects.find((effect) => effect.id === 'authority-context');
+        assert.equal(binding.status, 'confirmed');
+        assert.equal(binding.observedDigest, binding.intendedDigest);
+        assert.deepEqual(observedIds, []);
+      }
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });

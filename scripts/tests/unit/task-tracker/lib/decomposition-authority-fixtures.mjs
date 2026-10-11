@@ -1,4 +1,7 @@
-import { createHash } from 'node:crypto';
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { createHash, randomUUID } from 'node:crypto';
 import { canonicalDecompositionJson } from '../../../../task-tracker/lib/decomposition-assessment.mjs';
 import { decompositionPolicyIdentity } from '../../../../task-tracker/lib/decomposition-policy.mjs';
 import { formatIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
@@ -48,6 +51,7 @@ export function fixture(hours = 7) {
   };
   const writes = [];
   const deps = {
+    findMainWorktreePath: (projectDir) => projectDir,
     readIssue: async () => observed({ number: 1987, body }),
     readProject: async () => observed(values.project),
     readSelectedPlan: async () => observed(values.plan),
@@ -97,4 +101,10 @@ export function publication(inputDigest, overrides = {}) {
     updatedAt: '2026-10-11T12:00:00Z',
     ...overrides,
   };
+}
+
+export function freshUnitDir(prefix) {
+  const dir = path.join(projectScratchDir('inspect'), prefix + process.pid + '-' + randomUUID());
+  mkdirSync(dir, { recursive: true });
+  return dir;
 }

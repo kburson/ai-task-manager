@@ -13,7 +13,10 @@ import { scopeProjection } from './workflow-policy/scope-identity.mjs';
 import { resolveVcListStrict } from './vc-ref.mjs';
 import { markdownViews } from './plan-markdown-views.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
-import { loadForecastProjection } from './estimation/runtime-adapter.mjs';
+import {
+  loadForecastProjection,
+  createGitHubEstimationRecordIo,
+} from './estimation/runtime-adapter.mjs';
 import { fetchEpicChildren, isAcceptedTerminalChild } from './epic-children-gate.mjs';
 import { evaluateMaterializedWbsReadiness } from './decomposition-delivery-readiness.mjs';
 import { parseWbsChildClaim } from './decomposition-wbs-coverage.mjs';
@@ -36,6 +39,8 @@ import {
   canonicalDecompositionJson,
   DECOMPOSITION_KINDS,
 } from './decomposition-assessment.mjs';
+import { parsePreloadedIssueComments } from './github-records/github-comment-store.mjs';
+import { AUDIT_HEADER } from './reevaluate-estimate.mjs';
 import { readDecompositionRecords, replaceDecompositionRecords } from './decomposition-records.mjs';
 const pexec = promisify(execFile);
 const sha = (value) =>
@@ -198,29 +203,179 @@ function readPorts({ cfg, projectDir, deps }) {
       });
     },
     readSelectedPlan: async (args) => observed(await selectedPlan({ ...args, projectDir, deps })),
-    readForecast: async ({ subject }) => {
-      const p = await loadForecastProjection({ cfg, issueNumber: subject.issue });
-      if (p.activeForecastRecordIds.length > 1) throw new Error('forecast conflict');
-      const f = p.forecast;
-      if (
-        f &&
-        (!p.activeForecastRecordIds.includes(f.recordId) || f.payload.issue !== subject.issue)
-      )
-        throw new Error('forecast identity conflict');
-      return observed({
-        estimate: f?.payload.plan.humanHours ?? null,
-        size: f?.payload.plan.size ?? null,
-        recordId: f?.recordId ?? null,
+    readForecast: async ({ subject, body }) => {
+      const forecastDeps = deps.forecast ?? {};
+      const graphql =
+        forecastDeps.graphql ??
+        forecastDeps.recordIo?.graphql ??
+        createGitHubEstimationRecordIo().graphql;
+      const comments = [];
+      const p = await loadForecastProjection({
+        cfg,
+        issueNumber: subject.issue,
+        deps: {
+          graphql: async (request) => {
+            const result = await graphql(request);
+            const nodes = result?.data?.repository?.issue?.comments?.nodes;
+            if (Array.isArray(nodes)) comments.push(...nodes);
+            return result;
+          },
+        },
       });
+      const records = parsePreloadedIssueComments({
+        nodes: comments,
+        repository: cfg.repo,
+        issue: subject.issue,
+      });
+      const active = records.filter(
+        (record) =>
+          record.envelope.recordType === 'estimation-forecast' &&
+          p.activeForecastRecordIds.includes(record.envelope.recordId)
+      );
+      const ready = [
+        ...maskFencedCodeBlocksPreservingOffsets(body).matchAll(
+          /<!--\s*aitm-estimation-forecast-ready\b[\s\S]*?(?:-->|$)/g
+        ),
+      ];
+      const readyId =
+        ready.length === 1
+          ? ready[0][0].match(
+              /^<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->$/
+            )?.[1]
+          : null;
+      let complete =
+        (ready.length === 0 && active.length === 0) ||
+        (ready.length === 1 &&
+          active.length === 1 &&
+          readyId === active[0].envelope.recordId &&
+          p.forecast?.recordId === readyId);
+      if (active.length !== p.activeForecastRecordIds.length) complete = false;
+      const known = active
+        .map((record) => ({
+          estimate: record.envelope.payload.plan.humanHours,
+          size: record.envelope.payload.plan.size,
+          recordId: record.envelope.recordId,
+        }))
+        .sort((a, b) => b.estimate - a.estimate);
+      const published = known[0] ?? { estimate: null, size: null, recordId: null };
+      const proposalResult = collectCommentProposals({
+        comments,
+        subject,
+        body,
+        published: complete && p.forecast ? published : null,
+        board: p.board,
+        bodyFields: p.bodyFields,
+      });
+      const value = { ...published, proposals: proposalResult.proposals };
+      return {
+        status: complete && proposalResult.available ? 'observed' : 'unavailable',
+        value,
+        revision: null,
+        digest: sha(value),
+      };
     },
     readPolicy: async () => observed(decompositionPolicyIdentity()),
   };
   return Object.fromEntries(Object.keys(defaults).map((key) => [key, deps[key] ?? defaults[key]]));
 }
+function collectCommentProposals({ comments, subject, body, published, board, bodyFields }) {
+  let available = true;
+  let publication = null;
+  try {
+    publication = readDecompositionRecords(body).publication;
+  } catch {
+    available = false;
+  }
+  const proposals = [];
+  const commentIds = new Set();
+  for (const comment of comments) {
+    if (commentIds.has(comment.id)) {
+      available = false;
+      continue;
+    }
+    commentIds.add(comment.id);
+    const raw = String(comment.body ?? '');
+    const masked = maskFencedCodeBlocksPreservingOffsets(raw);
+    const { structuralLines } = markdownViews(raw);
+    const lines = structuralLines.map((line) => line.trimEnd());
+    const planned = lines.filter((line) => line === '### Planned Estimate');
+    const human = lines.filter((line) => line === AUDIT_HEADER);
+    let mode = null;
+    if (
+      planned.length &&
+      new RegExp(`<!--\\s*aitm-refined-estimate:\\s*${subject.issue}\\s*-->`).test(masked)
+    )
+      mode = 'planned-estimate';
+    else if (
+      human.length &&
+      masked.includes('**HUMAN ATTENTION**') &&
+      masked.includes('not auto-applied')
+    )
+      mode = 'human-attention';
+    if (!mode) continue;
+    if ((mode === 'planned-estimate' ? planned : human).length !== 1) {
+      available = false;
+      continue;
+    }
+    const heading = mode === 'planned-estimate' ? '### Planned Estimate' : AUDIT_HEADER;
+    const section = sectionBytes(raw, heading);
+    const estimates = [...section.matchAll(/^\|\s*Estimate \(h\)\s*\|\s*([^|]+)\|\s*([^|]+)\|/gm)];
+    const sizes = [...section.matchAll(/^\|\s*Size\s*\|\s*([^|]+)\|\s*([^|]+)\|/gm)];
+    if (estimates.length !== 1 || sizes.length !== 1) {
+      available = false;
+      continue;
+    }
+    const afterHours = estimates[0][2].trim(),
+      afterSize = sizes[0][2].trim();
+    const hours = afterHours === '—' ? null : Number(afterHours),
+      size = afterSize === '—' ? null : afterSize;
+    if (
+      (hours !== null && (!Number.isFinite(hours) || hours < 0)) ||
+      (size !== null && !['XS', 'S', 'M', 'L', 'XL'].includes(size))
+    ) {
+      available = false;
+      continue;
+    }
+    if (hours === null && size === null) continue;
+    const sourceDigest = sha(raw),
+      targetIdentity = `comment:${comment.id}`;
+    const retired =
+      publication &&
+      same(publication.subject, subject) &&
+      publication.supersedes?.effects.some(
+        (effect) =>
+          effect.resource === 'comment' &&
+          effect.targetIdentity === targetIdentity &&
+          ['confirmed', 'failed'].includes(effect.status) &&
+          effect.observedDigest === sourceDigest
+      );
+    const adaptiveConfirmed =
+      mode === 'planned-estimate' &&
+      published &&
+      hours === published.estimate &&
+      size === published.size &&
+      hours === board.estimate &&
+      size === board.size &&
+      hours === bodyFields.estimate &&
+      size === bodyFields.size;
+    if (retired || adaptiveConfirmed) continue;
+    proposals.push({
+      proposalId: `${targetIdentity}:${mode}`,
+      hours: hours === null ? null : normalizeDecompositionHours(hours),
+      size,
+      sourceDigest,
+    });
+  }
+  if (proposals.length > 32) available = false;
+  return { available, proposals };
+}
 async function read(port, args) {
   try {
     const r = await port(args);
-    if (r?.status === 'unavailable') return unavailable();
+    if (r?.status === 'unavailable')
+      return r.value !== null && r.value !== undefined && r.digest === sha(r.value)
+        ? { status: 'unavailable', value: r.value, revision: r.revision ?? null, digest: r.digest }
+        : unavailable();
     if (r?.status !== 'observed' || r.value === undefined || r.digest !== sha(r.value))
       return unavailable();
     return { status: 'observed', value: r.value, revision: r.revision ?? null, digest: r.digest };
@@ -401,14 +556,32 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
   ].filter((v) => v !== null && v !== undefined);
   const good = estimates.filter((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0);
   if (good.length !== estimates.length) reasons.add('estimate-unavailable');
-  const hours = good.length ? Math.max(...good.map(normalizeDecompositionHours)) : null;
+  let hours = good.length ? Math.max(...good.map(normalizeDecompositionHours)) : null;
   if (new Set(good.map(normalizeDecompositionHours)).size > 1) reasons.add('authority-conflict');
   const sizes = [project?.size, fields.ok ? fields.values.size : null, forecast?.size].filter(
     (v) => v !== null && v !== undefined
   );
   if (sizes.some((v) => !['XS', 'S', 'M', 'L', 'XL'].includes(v))) reasons.add('size-unavailable');
   if (new Set(sizes).size > 1) reasons.add('authority-conflict');
-  const size = sizes.find((v) => ['XS', 'S', 'M', 'L', 'XL'].includes(v)) ?? null;
+  let size = sizes.find((v) => ['XS', 'S', 'M', 'L', 'XL'].includes(v)) ?? null;
+  let proposalId = null;
+  const proposals = Array.isArray(forecast?.proposals) ? forecast.proposals : [];
+  if (proposals.length > 32) reasons.add('authority-truncated');
+  for (const proposal of proposals) {
+    if (
+      proposal.hours !== null &&
+      typeof proposal.hours === 'number' &&
+      Number.isFinite(proposal.hours) &&
+      proposal.hours >= 0 &&
+      (hours === null || proposal.hours >= hours)
+    ) {
+      hours = normalizeDecompositionHours(proposal.hours);
+      proposalId = proposal.proposalId;
+    }
+    const tiers = ['XS', 'S', 'M', 'L', 'XL'];
+    if (tiers.includes(proposal.size) && tiers.indexOf(proposal.size) > tiers.indexOf(size))
+      size = proposal.size;
+  }
   let plan =
     planRead.status === 'observed'
       ? planRead.value
@@ -488,7 +661,11 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
     schema: 'aitm.decomposition-input/v1',
     subject: currentSubject,
     kind,
-    estimate: { basis: hours === null ? 'unset' : 'published', hours, proposalId: null },
+    estimate: {
+      basis: hours === null ? 'unset' : proposalId ? 'proposed' : 'published',
+      hours,
+      proposalId,
+    },
     size,
     plan: wirePlan,
     policy: currentPolicy,
