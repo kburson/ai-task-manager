@@ -11,9 +11,11 @@ worktree disappears. Each picked-up PBI owns a discoverable branch on origin
 and a draft PR. Before every state move, preserve its WIP in commits on origin.
 Reuse existing work rather than creating competing branches or overwriting it.
 
-This design covers branch naming and discovery, session pickup, Backlog spec
-requirements, transition protection, Test-stage PR review, Review-stage delivery,
-and post-merge cleanup. Existing unrelated lifecycle gates remain in force.
+This design covers branch naming and discovery, session pickup, branch-level WIP
+manifests, project resurrection and resume ordering, chat ownership handoff,
+Backlog spec requirements, transition protection, Test-stage PR review,
+Review-stage delivery, and post-merge cleanup. Existing unrelated lifecycle gates
+remain in force.
 Issue #1869 captures the draft in Backlog. No implementation plan, implementation,
 repository-wide branch migration, or existing-worktree cleanup is authorized.
 
@@ -87,6 +89,226 @@ The commit is explicitly housekeeping and proves no implementation or acceptance
 If branch push or PR creation fails, retain completed steps and block movement.
 Retries discover completed work before repeating writes.
 
+## Story WIP manifest and project resurrection
+
+Added: 2026-10-11. Consolidated draft extension; implementation and final interface choices remain
+for Refine.
+
+### Authority and recovery guarantees
+
+GitHub remains the source of truth for story lifecycle, dependencies, priority,
+assignment, issue linkage, and origin branches. Each story branch carries its
+own committed WIP manifest. A branch carries committed content; a worktree can
+carry additional staged, unstaged, and untracked changes. The manifest records
+where work was last owned and how to continue, not a guarantee that the recorded
+chat, worktree, or uncommitted changes still exist.
+
+An existing repository may retain local story commits ahead of origin. A fresh
+clone receives only pushed history; it does not inherit historical worktrees,
+local-only commits, archives, or chat context. Remote branch recovery must not
+claim those local resources were recovered.
+
+Encourage early and frequent commits at every development stage, with updated
+resume instructions. Include the manifest in the existing committed-and-pushed
+protection boundary before every forward or backward state transition. Verify
+remote visibility before permitting the transition. This normally bounds remote
+recovery loss to work since the last protected transition, within the current
+kanban stage; it does not preserve every intermediate edit or guarantee survival
+after an interrupted checkpoint.
+
+There is no universal manifest continuously committed to trunk and no continuous
+inventory of dirty files. Project views are generated from GitHub, committed
+story manifests, and local observations gathered during a survey. Session
+cleanup or elapsed time must not make an unfinished GitHub story disappear from
+that survey.
+
+### Branch-level manifest
+
+Maintain a discoverable, issue-specific manifest on the story branch. A proposed
+location is `.ai-task-manager/wip/<issue-id>.md`; an issue-specific path avoids
+collisions when child branches merge into an epic parent. Resolve the final path
+and structured format during Refine.
+
+The committed manifest includes:
+
+- Repository and story identity, branch, parent/target, and PR linkage.
+- Last recorded provider, agent ID, chat/session ID, workspace or host identity,
+  and worktree path. Identify unavailable identifiers explicitly.
+- Last work summary, relevant artifacts, unfinished steps, next intended action,
+  known blockers, and necessary verification or review work.
+- Last recorded lifecycle/disposition and handoff reason, with observation time.
+  Live GitHub lifecycle and dependency facts supersede historical summaries.
+- Prior ownership and handoff information when ownership changes.
+
+Read the latest manifest directly from a local branch ref or a verified origin
+ref without first checking out that branch. Identify the containing commit and
+whether it is local-only or remotely verified. Do not place a commit's own SHA
+inside its content or infer push time from its author/committer date. Use real
+checkpoint evidence for any reported remote protection time; if it is
+unavailable, show the commit date and remote observation time with their actual
+meanings.
+
+Update resume instructions with meaningful commits, before state transitions,
+and for planned chat handoffs. An uncommitted manifest edit is not durable branch
+content. Do not require updates for every intermediate dirty-file change or
+treat an old cleanliness observation as proof of current cleanliness.
+
+### Project survey and resume priority chart
+
+On a request to survey or resume project work after an indefinite pause,
+enumerate started, unfinished stories from GitHub and inspect their discoverable
+branch manifests. Include paused, blocked, and deliberately parked work,
+including work started during drafting or planning. Distinguish a temporary
+session pause from the existing Shelve/Park lifecycle operation.
+
+Produce a visual chart with one row per story and, where evidence permits, a
+timeline of starts and subsequent engagements. Include:
+
+| Column                    | Meaning                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| Story and stage           | GitHub identity, live lifecycle, and work disposition                                      |
+| Start order               | First evidenced start and time; unknown when unavailable                                   |
+| Dependencies and priority | Live blockers, affected dependents, assigned priority, and applicable rank/wave            |
+| Last owner                | Recorded provider, agent/chat, and current availability observation                        |
+| Workspace and protection  | Worktree availability, observed uncommitted WIP, local-only commits, and origin checkpoint |
+| Resume readiness          | Ready, blocked, restoration needed, ownership decision needed, or unknown, with reason     |
+| Resume order              | Recommended order or parallel group, with an explanation                                   |
+
+Historical start order is separate from recommended completion order. Determine
+eligibility from dependencies and existing lifecycle, rank, wave, and ownership
+rules. Explain why a prerequisite must precede dependent work and why one
+eligible story is recommended ahead of another. Readiness and priority remain
+separate: missing workspaces or blocked high-priority stories remain visible.
+
+Do not silently invent a new cross-project priority policy. During Refine, agree
+on ordering across independent epics and standalone stories, tie-breaking, and
+whether higher-priority dependents confer urgency on prerequisites. Until that
+policy exists, expose conflicting or incomparable priorities for a user decision.
+
+More than one eligible story alone does not require parallel execution. When an
+applicable work grouping or execution policy calls for parallel resumption,
+alert the user with the stories, reasons, existing chats to resume or replacement
+chats to start, and prerequisites. The user starts the appropriate chat sessions;
+the survey does not automatically create them or dispatch replacement agents.
+
+Chart observations are dated and labeled by source. In a fresh clone, local WIP
+and historical workspace availability are unknown unless separately inspected.
+Unavailable GitHub evidence, incomplete enumeration, dependency cycles, and
+inaccessible workspaces produce an explicitly partial report rather than an
+invented complete order.
+
+### Recovery paths
+
+Before substantive work on every re-engagement, even inside an existing chat,
+validate the workspace and branch instead of relying on conversation memory or
+a remembered path. Recovery must be possible without executing commands in a
+deleted working directory.
+
+| Situation                                    | Recovery behavior                                                                                                                        |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Existing repository and surviving worktree   | Inspect branch/HEAD, ownership, staged/unstaged/untracked changes, and local-only commits; prefer resuming in place                      |
+| Existing repository and unavailable worktree | Attempt supported archive/snapshot restoration; otherwise create a replacement from the current surviving local story branch HEAD        |
+| Fresh clone from origin                      | Discover the story branch and committed manifest; create a worktree from its verified origin HEAD                                        |
+| Existing chat with a deleted workspace       | Keep the same chat owner; restore its workspace if possible, otherwise reconstruct it from committed story history and renew the binding |
+| New chat or rollover                         | Resolve the prior ownership claim before adopting or reconstructing the workspace                                                        |
+
+If local history is unavailable, use the verified origin branch HEAD. Compare
+surviving local and remote history before choosing a recovery point; divergence
+or uncertain branch identity requires reconciliation. Never roll back to an old
+manifest checkpoint when newer committed story history survives.
+
+A supported archive may preserve uncommitted content as snapshot commits; report
+what was actually restored. Otherwise, a missing worktree may mean uncommitted
+WIP was lost. Do not equate reconstructing a branch checkout with restoring the
+original workspace.
+
+If uncommitted work survives but a replacement workspace is needed, support a
+controlled transfer that preserves staged, unstaged, and relevant untracked
+content, checks the destination base and conflicts, and verifies the result
+before retiring the source. Preserve the original until transfer is proven.
+Existing exclusions for unrelated work, credentials, ignored runtime content,
+and submodules remain in force.
+
+Renew the exact issue/branch/workspace binding after recovery. Record the new
+location in the next committed manifest. A missing branch or unrecoverable
+history is a reported blocker, not permission to invent a fresh story baseline.
+
+### Chat ownership and rollover
+
+The manifest records historical ownership; the incoming agent must announce
+that ownership and check the prior session and worktree independently. GitHub
+assignee/workstation ownership remains distinct from agent/chat occupancy.
+
+If the prior owner still exists and is available, ask whether to transfer to the
+new owner before takeover. An idle or unloaded chat is not proof that the owner
+ceased to exist. If the prior owner is positively confirmed unavailable, warn
+that the story was owned by a prior agent/session and that takeover is occurring.
+If owner availability cannot be established, report uncertainty and ask before
+taking ownership.
+
+A missing prior worktree adds a separate warning that uncommitted WIP may have
+been lost; an unavailable owner does not imply a missing worktree, and a missing
+worktree does not imply lost committed history.
+
+For planned rollover to reduce context baggage, the outgoing agent prepares
+resume instructions and commits the handoff before yielding where possible.
+A receiving agent validates the manifest, ownership, and workspace rather than
+assuming the handoff succeeded. A transfer to another machine must disclose
+local-only progress and verify the receiving machine can access the chosen
+recovery commit.
+
+Perform approved takeover through governed ownership/binding reconciliation.
+Revalidate the prior claim, prevent simultaneous ownership, and record the new
+provider/agent/session, prior owner, worktree, time, and handoff reason. A previous
+session must reconcile its superseded claim before continuing. Retain completed
+handoff steps on interruption so retries do not create competing ownership or
+duplicate worktrees. Commit the updated manifest; the normal state-transition
+boundary provides mandatory remote protection.
+
+### Resurrection report before continuation
+
+After surveying the project and inspecting the selected story, present a full
+resurrection report before substantive continuation:
+
+- Story, lifecycle, resume priority and rationale, blockers/dependents, and any
+  required parallel chats.
+- Manifest source ref and containing commit, observation freshness, last owner,
+  owner availability, and handoff decision.
+- Recorded and inspected workspace locations, expected and observed branch/HEAD,
+  archive recovery result, and restoration versus reconstruction.
+- Staged, unstaged, and untracked work; local-only commits; remote comparison;
+  inspection failures and unknowns.
+- Chosen recovery commit, verified remote checkpoint evidence and time when
+  available, and any potential loss of uncommitted work or local-only commits.
+- Resume instructions, next action, required decisions, and environment or
+  verification prerequisites.
+
+Show the report without adding a routine approval gate when continuation is
+already authorized. Required ownership-transfer or conflict decisions remain
+blocking. The same report applies to an existing chat whose worktree disappeared,
+not only a new chat or fresh clone.
+
+### Integration and later verification
+
+Reuse issue worktree history, occupancy/binding guards, dependency readers,
+rank-wave admission, and supported worktree archive/restore capabilities.
+Local fleet records are observational runtime state, not the durable WIP
+inventory or proof of current ownership. Provider adapters must distinguish
+available, unavailable, and unknown chat status without promising unsupported
+liveness detection.
+
+Later implementation verification must cover direct ref reads without checkout;
+fresh clones; surviving local-only commits; dirty worktrees; missing workspaces
+inside an existing chat; archive restoration versus reconstruction; safe dirty
+content transfer; divergent or absent branches; available, unavailable, and
+unknown prior owners; confirmed rollover; interrupted/concurrent handoffs;
+manifest inclusion and rejected pushes at all state-transition paths; dated
+partial survey results; dependency ordering; and parallel-chat alerts.
+
+This addition changes the draft scope only. It does not authorize implementation,
+state promotion, automatic chat creation, existing-worktree cleanup, or acceptance
+of unresolved priority and manifest interface choices.
+
 ## Backlog and specification requirements
 
 A story must reference a spec in its PBI before leaving Backlog. The spec may
@@ -111,8 +333,9 @@ One common protection boundary applies to every forward and backward state
 move, including dedicated stage verbs and automatic transitions.
 
 1. Revalidate issue, workspace, canonical branch, target, and PR identity.
-2. Commit all issue WIP, including relevant untracked files, to its branch
-   with issue attribution. WIP commits do not assert successful verification.
+2. Update the story WIP manifest and commit all issue WIP, including relevant
+   untracked files, to its branch with issue attribution. WIP commits do not
+   assert successful verification.
 3. Push and independently verify that the live origin branch includes local
    HEAD. Explicitly inspect dirty work, local-only commits and divergence.
 4. Verify phase-appropriate PR status: draft during unfinished work, ready
@@ -223,6 +446,13 @@ deletion, and closure before safe resumable worktree cleanup.
 This draft incorporates the final conversational agreement and corrected intake
 sequence. It supersedes the intermediate merge-in-Test proposal. Phase-specific
 PR requirements avoid contradicting ready-for-review and merged states.
+
+The 2026-10-11 addition consolidates branch-level resume manifests, project
+surveys and priority charts, resurrection reports, missing-workspace recovery
+inside an existing chat, and ownership transfer during chat rollover. GitHub
+remains the source of truth; no continuous trunk manifest or intermediate dirty
+file tracking is proposed. Priority policy and manifest interfaces remain explicit
+Refine decisions, and this update does not constitute spec acceptance.
 
 Nested-epic behavior, unrelated workspace protection, and resumable cleanup are
 proposed details for future refinement. Issue #1869 remains in Backlog on
