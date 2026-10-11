@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { parse } from 'acorn';
+import { discoverTestFiles } from '../../task-tracker/lib/discover-test-files.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const directory = path.join(root, 'scripts/tests/integration/task-tracker/lib');
@@ -13,7 +14,12 @@ export const budget = 600_000;
 
 export function discoverOriginalCases() {
   const cases = [];
-  for (const filename of fs.readdirSync(directory).filter((name) => name.endsWith('.test.mjs'))) {
+  const discovered = discoverTestFiles({
+    projectRoot: root,
+    root: 'scripts/tests/integration/task-tracker/lib',
+  });
+  for (const file of discovered) {
+    const filename = path.relative(directory, path.join(root, file));
     const ast = parse(fs.readFileSync(path.join(directory, filename), 'utf8'), {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -21,7 +27,8 @@ export function discoverOriginalCases() {
     const imported = ast.body.some(
       (node) =>
         node.type === 'ImportDeclaration' &&
-        node.source.value === './native-stage-continuation-fixture.mjs' &&
+        path.resolve(path.dirname(path.join(root, file)), node.source.value) ===
+          path.join(directory, 'native-stage-continuation-fixture.mjs') &&
         node.specifiers.some((value) => value.imported?.name === 'registerNativeStageCase')
     );
     if (!imported) continue;
