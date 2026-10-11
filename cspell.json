@@ -11,6 +11,14 @@
     }
   ],
   "dictionaries": ["project"],
+  "overrides": [
+    {
+      "filename": "docs/worktree-recovery/2026-10-09/index.json",
+      "ignoreRegExpList": [
+        "\"(?:path|branch|sourceBranch|sourceHead|originalBranch|recoveryBranch|originalPath|storedPath|archivePath|archive|source)\":\\s*\"[^\"]*\""
+      ]
+    }
+  ],
   "ignorePaths": [
     "node_modules/**",
     ".tmp/**",

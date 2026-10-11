@@ -53,7 +53,7 @@ Review these as retention/provenance decisions after the owning source PR. They 
 
 | Family                     | Owner story | Part | Files | PR                                                         |
 | -------------------------- | ----------- | ---: | ----: | ---------------------------------------------------------- |
-| local-and-archive-evidence | #1953       |  1/2 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1967) |
+| local-and-archive-evidence | #1953       |  1/2 |   903 | [PR](https://github.com/kburson/ai-task-manager/pull/1967) |
 | local-and-archive-evidence | #1953       |  2/2 |   613 | [PR](https://github.com/kburson/ai-task-manager/pull/1968) |
 | 1725-architecture-evidence | #1725       |  1/1 |   438 | [PR](https://github.com/kburson/ai-task-manager/pull/1969) |
 | 1861-runtime-evidence      | #1861       |  1/7 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1970) |
@@ -74,7 +74,7 @@ Additional Superpowers task reports, publication QA images/PDFs and inert recove
 
 D10 (#1514) was clean but contained seven ignored planning/AC operator fragments. [PR #1981](https://github.com/kburson/ai-task-manager/pull/1981) stores them individually and records their provenance. #1514 is open and unassigned; @kburson owns this recovery review through #1953. The original planning was already merged in PR #1515; no new implementation acceptance is inferred.
 
-The final source-preservation check found unchanged original HEADs, unchanged staged state (including the original staged rename), and no content drift across all six uncommitted-source/collateral captures. Three final helper scripts are preserved as inert source copies in https://github.com/kburson/ai-task-manager/pull/1967.
+The final source-preservation check found unchanged original HEADs, unchanged staged state (including the original staged rename), and no content drift across all six uncommitted-source/collateral captures. Three final helper scripts are preserved as inert source copies in [PR #1967](https://github.com/kburson/ai-task-manager/pull/1967).
 
 There are 10 source/collateral recovery PRs, 15 evidence/planning review PRs, and this index PR. All were created as drafts. Capture itself performed no merges or deletions; subsequent cleanup and retirement are recorded below.
 
