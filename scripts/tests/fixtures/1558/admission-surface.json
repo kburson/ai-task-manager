@@ -2560,6 +2560,7 @@
       "classification": "agent-callable-verb",
       "command": "demote",
       "staticImports": [
+        "../../gh/lib/project-membership.mjs",
         "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
@@ -2632,6 +2633,7 @@
       "classification": "agent-callable-verb",
       "command": "promote",
       "staticImports": [
+        "../../gh/lib/project-membership.mjs",
         "../lib/epic-admission-lock.mjs",
         "../lib/fetch-parent-issue.mjs",
         "../lib/direct-guidance-admission.mjs",
@@ -2680,6 +2682,7 @@
       "classification": "agent-callable-verb",
       "command": "reconcile",
       "staticImports": [
+        "../../gh/lib/project-membership.mjs",
         "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
