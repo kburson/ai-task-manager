@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-section",
+  "heading": "## Scope",
+  "expected": "\n\n_Stub — describe the work at Refine._\n\n",
+  "replacement": "\n\nMake the visible `<details>` block in Plan Estimation Forecast comments the sole stored copy of comparable-issue entries. Keep the logical forecast payload and downstream consumer interface unchanged by encoding the hidden record's `comparableIssues` field as a compact external-list descriptor and reconstructing the array during comment parsing. The descriptor must identify `<ul id=\"comparableIssues\">`, record its count, and carry a SHA-256 fingerprint over the canonical comparable array. New writers use this encoding by default; readers accept both the new encoding and historical v1/v2 comments with embedded arrays. Any missing, duplicated, malformed, count-mismatched, or fingerprint-mismatched external list fails closed.\n\n"
+}

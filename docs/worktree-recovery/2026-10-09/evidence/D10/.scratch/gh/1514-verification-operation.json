@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-section",
+  "heading": "## Verification Commands",
+  "expected": "\n\n- [ ] `npm test` <!-- id=1 -->\n- [ ] `npm run test:slow` <!-- id=2 -->\n- [ ] `npm run lint` <!-- id=3 -->\n- [ ] `npm run format:check` <!-- id=4 -->\n- [ ] `git log --oneline -1` <!-- id=5 -->\n- [ ] `node --test scripts/tests/unit/task-tracker/lib/estimation/forecast-comment-transport.test.mjs scripts/tests/unit/task-tracker/lib/estimation/records.test.mjs scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs` <!-- id=6 -->\n\n",
+  "replacement": "\n\n- [ ] `node --test scripts/tests/unit/task-tracker/lib/estimation/forecast-comment-transport.test.mjs scripts/tests/unit/task-tracker/lib/estimation/records.test.mjs scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs` <!-- id=1 -->\n- [ ] `npm run test:slow` <!-- id=2 -->\n- [ ] `npm run lint` <!-- id=3 -->\n- [ ] `npm run format:check` <!-- id=4 -->\n- [ ] `git log --oneline -1` <!-- id=5 -->\n- [ ] `npm test` <!-- id=6 -->\n\n"
+}
