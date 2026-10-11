@@ -21,7 +21,7 @@ export async function fetchIssueProjectMembership({
   repo,
   projectId,
   issueNumber,
-  runGql = gql,
+  runGql = (query, variables) => gql(query, variables),
   itemFields = '',
 }) {
   if (!projectId || !Number.isInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
