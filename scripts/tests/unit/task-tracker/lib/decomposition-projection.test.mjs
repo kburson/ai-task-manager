@@ -473,14 +473,54 @@ test('new linked pending revision supersedes only after read-back reconciles ori
     );
     assert.equal(readDecompositionRecords(f.body).publication.operationId, pub.operationId);
     f.deps.readPublicationEffect = async () => observed(7);
-    await runtime.withPublication({ subject, publication: next }, async (context) =>
-      context.persistPublication(next)
+    let interrupted = false;
+    f.deps.readBackIssue = async () => {
+      const current = readDecompositionRecords(f.body).publication;
+      if (!interrupted && current?.operationId === next.operationId) {
+        interrupted = true;
+        throw Error('interrupted successor context confirmation');
+      }
+      return observed({ number: subject.issue, body: f.body });
+    };
+    await assert.rejects(
+      () =>
+        runtime.withPublication({ subject, publication: next }, async (context) =>
+          context.persistPublication(next)
+        ),
+      /projection-read-back/
+    );
+    assert.equal(
+      readDecompositionRecords(f.body).publication.effects.find((e) => e.id === 'authority-context')
+        .status,
+      'pending'
     );
     assert.equal(readDecompositionRecords(f.body).publication.operationId, next.operationId);
     assert.equal(readDecompositionRecords(f.body).publication.status, 'pending');
     assert.equal(
       readDecompositionRecords(f.body).publication.supersedes.operationId,
       pub.operationId
+    );
+    const successor = readDecompositionRecords(f.body).publication;
+    await runtime.withPublication({ subject, publication: successor }, async (context) => {
+      const { assertDecompositionPublicationOwner } =
+        await import('../../../../task-tracker/lib/decomposition-projection.mjs');
+      await context.persistPublication(context.publication());
+      await assertDecompositionPublicationOwner(context, {
+        subject,
+        effectId: 'estimate',
+        requireIntent: true,
+      });
+      await context.persistPublication(context.publication());
+    });
+    assert.equal(
+      readDecompositionRecords(f.body).publication.supersedes.operationId,
+      pub.operationId
+    );
+    const forged = structuredClone(readDecompositionRecords(f.body).publication);
+    forged.supersedes.operationId = 'b41d3bf2-e26e-477e-88d1-b2db32793999';
+    await assert.rejects(
+      () => runtime.withPublication({ subject, publication: forged }, async () => {}),
+      /publication-drift/
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });

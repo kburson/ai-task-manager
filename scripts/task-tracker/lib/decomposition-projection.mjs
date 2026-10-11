@@ -343,13 +343,14 @@ export async function withDecompositionPublicationOwner(
       const collect = () => collectDecompositionAuthority({ subject, cfg, projectDir, deps });
       const initial = await collect(),
         previous = initial.publication;
+      const resuming =
+        previous?.operationId === rawPublication.operationId && previous.status === 'pending';
       if (
+        !resuming &&
         rawPublication.supersedes &&
         (!previous || rawPublication.supersedes.operationId !== previous.operationId)
       )
         refuse('supersession-predecessor');
-      const resuming =
-        previous?.operationId === rawPublication.operationId && previous.status === 'pending';
       const superseding = Boolean(rawPublication.supersedes);
       if (
         !usableForReconciliation(initial) ||
@@ -521,7 +522,7 @@ export async function withDecompositionPublicationOwner(
           decompositionPublicationContextDigest(current.input) !== originalDigest
         )
           refuse('semantic-drift');
-        if (!intentPersisted && superseding) {
+        if (!intentPersisted && superseding && !resuming) {
           const identities = (effects) =>
             effects.map(({ id, resource, targetIdentity, intendedDigest }) => ({
               id,

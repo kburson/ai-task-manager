@@ -266,7 +266,11 @@ function readPorts({ cfg, projectDir, deps }) {
         board: p.board,
         bodyFields: p.bodyFields,
       });
-      const value = { ...published, proposals: proposalResult.proposals };
+      const value = {
+        ...published,
+        proposals: proposalResult.proposals,
+        observedProjections: [p.board, p.bodyFields],
+      };
       return {
         status: complete && proposalResult.available ? 'observed' : 'unavailable',
         value,
@@ -549,21 +553,41 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
     ['estimate', 'size'].some((key) => (project?.[key] ?? null) !== (fields.values[key] ?? null))
   )
     reasons.add('authority-conflict');
+  const publishedSnapshots = Array.isArray(forecast?.observedProjections)
+    ? forecast.observedProjections
+    : [];
+  for (const observation of publishedSnapshots) {
+    if (
+      ['estimate', 'size'].some(
+        (key) =>
+          (observation?.[key] ?? null) !== (project?.[key] ?? null) ||
+          (observation?.[key] ?? null) !== (fields.values?.[key] ?? null)
+      )
+    )
+      reasons.add('authority-conflict');
+  }
   const estimates = [
     project?.estimate,
     fields.ok ? fields.values.estimate : null,
     forecast?.estimate,
+    ...publishedSnapshots.map((value) => value?.estimate),
   ].filter((v) => v !== null && v !== undefined);
   const good = estimates.filter((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0);
   if (good.length !== estimates.length) reasons.add('estimate-unavailable');
   let hours = good.length ? Math.max(...good.map(normalizeDecompositionHours)) : null;
   if (new Set(good.map(normalizeDecompositionHours)).size > 1) reasons.add('authority-conflict');
-  const sizes = [project?.size, fields.ok ? fields.values.size : null, forecast?.size].filter(
-    (v) => v !== null && v !== undefined
-  );
+  const sizes = [
+    project?.size,
+    fields.ok ? fields.values.size : null,
+    forecast?.size,
+    ...publishedSnapshots.map((value) => value?.size),
+  ].filter((v) => v !== null && v !== undefined);
   if (sizes.some((v) => !['XS', 'S', 'M', 'L', 'XL'].includes(v))) reasons.add('size-unavailable');
   if (new Set(sizes).size > 1) reasons.add('authority-conflict');
-  let size = sizes.find((v) => ['XS', 'S', 'M', 'L', 'XL'].includes(v)) ?? null;
+  const tiers = ['XS', 'S', 'M', 'L', 'XL'];
+  let size =
+    sizes.filter((v) => tiers.includes(v)).sort((a, b) => tiers.indexOf(b) - tiers.indexOf(a))[0] ??
+    null;
   let proposalId = null;
   const proposals = Array.isArray(forecast?.proposals) ? forecast.proposals : [];
   if (proposals.length > 32) reasons.add('authority-truncated');

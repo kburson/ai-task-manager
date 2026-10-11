@@ -25,7 +25,7 @@ import {
   hash,
   publication,
 } from './decomposition-authority-fixtures.mjs';
-const cfg = { repo: 'o/r', projectId: 'PVT_a' };
+const cfg = { repo: 'o/r', projectId: 'PVT_a', fieldIds: { estimate: 'EST', size: 'SIZE' } };
 const collect = (f) =>
   collectDecompositionAuthority({ subject, cfg, projectDir: process.cwd(), deps: f.deps });
 test('effect-free collection computes current input but absent projection denies scoped admission', async () => {
@@ -375,7 +375,7 @@ for (const field of ['estimate', 'size']) {
   });
 }
 
-function forecastTransport(f, comments) {
+function forecastTransport(f, comments, snapshot = {}) {
   delete f.deps.readForecast;
   const nodes = comments.map((comment, index) => ({
     __typename: 'IssueComment',
@@ -391,14 +391,23 @@ function forecastTransport(f, comments) {
           issue: {
             id: 'I_1987',
             number: 1987,
-            body: f.body,
+            body: snapshot.body ?? f.body,
             repository: { nameWithOwner: 'o/r' },
             projectItems: {
               nodes: [
                 {
                   id: 'PVTI_a',
                   project: { id: 'PVT_a' },
-                  fieldValues: { nodes: [], pageInfo: { hasNextPage: false } },
+                  fieldValues: {
+                    nodes: [
+                      {
+                        number: snapshot.estimate ?? f.values.project.estimate,
+                        field: { id: 'EST' },
+                      },
+                      { name: snapshot.size ?? f.values.project.size, field: { id: 'SIZE' } },
+                    ],
+                    pageInfo: { hasNextPage: false },
+                  },
                 },
               ],
               pageInfo: { hasNextPage: false },
@@ -576,5 +585,26 @@ test('duplicate compatibility headings are unavailable rather than absent propos
   forecastTransport(f, [{ id: 'IC_duplicate', body: raw + '\n### Planned Estimate\n' }]);
   const result = await collect(f);
   assert.ok(result.input.availability.reasons.includes('forecast-unavailable'));
+  assert.equal(result.capabilities.includes('scoped-implementation'), false);
+});
+
+test('production forecast snapshot disagreement retains observed mandatory high estimate', async () => {
+  const f = fixture();
+  const other = fixture(25);
+  forecastTransport(f, [], { estimate: 25, body: other.body });
+  const result = await collect(f);
+  assert.equal(result.input.availability.status, 'incomplete');
+  assert.ok(result.input.availability.reasons.includes('authority-conflict'));
+  assert.equal(result.input.estimate.hours, 25);
+  assert.equal(result.assessment.status, 'indeterminate');
+  assert.equal(result.capabilities.includes('scoped-implementation'), false);
+  assert.equal(f.writes.length, 0);
+});
+test('production forecast snapshot disagreement retains observed mandatory size', async () => {
+  const f = fixture();
+  forecastTransport(f, [], { size: 'XL' });
+  const result = await collect(f);
+  assert.ok(result.input.availability.reasons.includes('authority-conflict'));
+  assert.equal(result.input.size, 'XL');
   assert.equal(result.capabilities.includes('scoped-implementation'), false);
 });
