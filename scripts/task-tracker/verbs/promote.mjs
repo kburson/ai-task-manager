@@ -1,3 +1,4 @@
+import { fetchIssueProjectMembership } from '../../gh/lib/project-membership.mjs';
 import { withEpicAdmissionLock } from '../lib/epic-admission-lock.mjs';
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
 // `promote` verb — directional forward state-change (#81 rename of `/task move`).
@@ -188,28 +189,12 @@ async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 10) {
-            nodes {
-              project { id }
-              fieldValueByName(name: "Status") {
-                ... on ProjectV2ItemFieldSingleSelectValue { name }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateId(node?.fieldValueByName?.name);
+  const { item } = await fetchIssueProjectMembership({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+  });
+  return normalizeStateId(item?.fieldValueByName?.name);
 }
 
 // #533 — the alias delegate spawned for a forward transition is `test`

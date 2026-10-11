@@ -322,7 +322,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       "'lifecycle-warn'",
       ['lifecycle-warn']
     ),
-    timingEmitter('scripts/task-tracker/runtime.mjs', 265, 'flush-call', 'event', [
+    timingEmitter('scripts/task-tracker/runtime.mjs', 266, 'flush-call', 'event', [
       'update',
       'pause:other',
       'review:failed',

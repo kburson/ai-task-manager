@@ -101,7 +101,7 @@ if (argv[0] === 'issue' && argv[1] === 'create') {
 if (argv[0] === 'issue' && (argv[1] === 'edit' || argv[1] === 'comment' || argv[1] === 'view')) {
   if (argv[1] === 'view') {
     // create-issue tether may probe; return minimal
-    fs.writeSync(1,JSON.stringify({ body: '', state: 'OPEN', projectItems: { nodes: [] } }));
+    fs.writeSync(1,JSON.stringify({ body: '', state: 'OPEN', projectItems: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } }));
   }
   process.exit(0);
 }
@@ -160,16 +160,16 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
   if (/repository\\(owner:.*\\)\\s*\\{\\s*id\\s*issue/.test(stdinBody)) {
     const body = JSON.parse(stdinBody);
     const n = Number(body.variables.issue);
-    fs.writeSync(1,JSON.stringify({ data: { repository: { id: 'REPO_test', issue: { id: 'ISS_' + n, number: n, title: 't', url: 'u', projectItems: { nodes: [] } } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { repository: { id: 'REPO_test', issue: { id: 'ISS_' + n, number: n, title: 't', url: 'u', projectItems: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } } }));
     process.exit(0);
   }
   // project-tether: node(id:$project) { ... ProjectV2 ... items { nodes } }
   if (/node\\(id: \\$project\\)/.test(stdinBody) && /items\\(first:/.test(stdinBody)) {
     const body = JSON.parse(stdinBody);
     const st = loadState();
-    const nodes = st.added ? [{ id: 'PVTI_new', isArchived: false, content: { number: fx.newIssueNumber || 500, title: 't', url: 'u' } }] : [];
+    const nodes = st.added ? [{ id: 'PVTI_new', isArchived: false, content: { __typename: 'Issue', id: 'ISS_' + (fx.newIssueNumber || 500), number: fx.newIssueNumber || 500, title: 't', url: 'u' } }] : [];
     fs.writeSync(1,JSON.stringify({ data: { node: {
-      title: 'Test Project', url: 'https://github.com/test',
+      id: body.variables.project, title: 'Test Project', url: 'https://github.com/test',
       items: { totalCount: nodes.length, pageInfo: { hasNextPage: false, endCursor: null }, nodes }
     } } }));
     process.exit(0);
@@ -191,7 +191,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
     process.exit(0);
   }
   if (/projectItems/.test(stdinBody)) {
-    fs.writeSync(1,JSON.stringify({ data: { repository: { issue: { id: 'ISS_new', projectItems: { nodes: [{ id: 'PVTI_new', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev' } }] }, comments: { nodes: [] } } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { repository: { issue: { id: 'ISS_' + JSON.parse(stdinBody).variables.issue, projectItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'PVTI_new', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev' } }] }, comments: { nodes: [] } } } } }));
     process.exit(0);
   }
   fs.writeSync(1,JSON.stringify({ data: {} }));

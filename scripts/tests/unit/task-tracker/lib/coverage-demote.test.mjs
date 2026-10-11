@@ -39,7 +39,7 @@ writeFileSync(
     "process.stdin.on('end', () => {",
     "  const isLive = input.includes('projectItems');",
     '  const data = isLive',
-    "    ? { repository: { issue: { projectItems: { nodes: [{ project: { id: 'P' }, fieldValueByName: { name: 'Test' } }] } } } }",
+    "    ? { repository: { issue: { id: 'ISSUE_FIXTURE', projectItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'ITEM_FIXTURE', project: { id: 'P' }, fieldValueByName: { name: 'Test' } }] } } } }",
     '    : { repository: { issue: { body: \'## Demote\\n\\n<!-- aitm-last-known-state state="test" ts="2026-06-01T00:00:00Z" -->\\n\' } } };',
     '  process.stdout.write(JSON.stringify({ data }));',
     '});',

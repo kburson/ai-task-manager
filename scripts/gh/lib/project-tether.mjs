@@ -1,4 +1,5 @@
-import { gql, splitRepo } from './github-projects.mjs';
+import { fetchIssueProjectMembership, membershipNextCursor } from './project-membership.mjs';
+import { gql } from './github-projects.mjs';
 import { ensureParentEpicTitle } from './epic-retitle.mjs';
 import { stateConfigKey, stateIds } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 import { ceilEstimateHours } from '../../task-tracker/lib/estimation/estimate-granularity.mjs';
@@ -37,31 +38,12 @@ function issueSideProjectItems(issue, projectId) {
 }
 
 async function fetchIssue({ cfg, issueNumber, runGql }) {
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await runGql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        id
-        issue(number: $issue) {
-          id
-          number
-          title
-          url
-          projectItems(first: 50) {
-            nodes {
-              id
-              project { id title url }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const repository = data.repository;
-  if (!repository?.issue) throw new Error(`issue #${issueNumber} not found in ${cfg.repo}`);
-  return { repositoryId: repository.id, issue: repository.issue };
+  return fetchIssueProjectMembership({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+    runGql,
+  });
 }
 
 async function ensureProjectLinked({ cfg, repositoryId, runGql }) {
@@ -82,30 +64,23 @@ async function ensureProjectLinked({ cfg, repositoryId, runGql }) {
   }
 }
 
-async function projectItemForIssue({ cfg, issueNumber, runGql }) {
+async function projectItemForIssue({ cfg, issueId, runGql }) {
   let after = null;
   let projectInfo = null;
-  do {
+  const cursors = new Set();
+  const itemIds = new Set();
+  const matches = [];
+  for (let page = 0; page < 1000; page += 1) {
     const data = await runGql(
-      `
-      query($project: ID!, $after: String) {
+      `query($project: ID!, $after: String) {
         node(id: $project) {
           ... on ProjectV2 {
-            title
-            url
+            id title url
             items(first: 100, after: $after) {
-              totalCount
               pageInfo { hasNextPage endCursor }
               nodes {
-                id
-                isArchived
-                content {
-                  ... on Issue {
-                    number
-                    title
-                    url
-                  }
-                }
+                id isArchived
+                content { __typename ... on Issue { id number title url } }
               }
             }
           }
@@ -113,15 +88,31 @@ async function projectItemForIssue({ cfg, issueNumber, runGql }) {
       }`,
       { project: cfg.projectId, after }
     );
-    const project = data.node;
-    projectInfo = project;
-    const item = (project?.items?.nodes || []).find(
-      (node) => !node.isArchived && Number(node.content?.number) === Number(issueNumber)
-    );
-    if (item) return { project, item };
-    after = project?.items?.pageInfo?.hasNextPage ? project.items.pageInfo.endCursor : null;
-  } while (after);
-  return { project: projectInfo, item: null };
+    const project = data?.node;
+    if (project?.id !== cfg.projectId)
+      throw new Error('project membership: project identity is unreadable');
+    projectInfo ??= project;
+    after = membershipNextCursor(project.items, cursors);
+    for (const node of project.items.nodes) {
+      if (typeof node?.id !== 'string' || !node.id.trim() || itemIds.has(node.id))
+        throw new Error('project membership: missing or duplicate item identity');
+      if (typeof node.isArchived !== 'boolean')
+        throw new Error('project membership: archive flag is unreadable');
+      itemIds.add(node.id);
+      if (node.isArchived) continue;
+      const kind = node.content?.__typename;
+      if (kind === 'DraftIssue' || kind === 'PullRequest') continue;
+      if (kind !== 'Issue' || typeof node.content.id !== 'string' || !node.content.id.trim())
+        throw new Error('project membership: active content identity is unreadable');
+      if (node.content.id === issueId) matches.push(node);
+    }
+    if (after === null) {
+      if (matches.length > 1)
+        throw new Error('project membership: exact issue membership is ambiguous');
+      return { project: projectInfo, item: matches[0] ?? null };
+    }
+  }
+  throw new Error('project membership: pagination exceeded the 1000-page safety limit');
 }
 
 async function addIssueToProject({ cfg, issueId, runGql }) {
@@ -334,7 +325,12 @@ export async function tetherIssueToProject({
   const initial = await fetchIssue({ cfg, issueNumber, runGql });
   const repositoryId = initial.repositoryId;
   let issue = initial.issue;
-  await ensureProjectLinked({ cfg, repositoryId, runGql });
+  let projectLinked = false;
+  async function ensureLinked() {
+    if (projectLinked) return;
+    await ensureProjectLinked({ cfg, repositoryId, runGql });
+    projectLinked = true;
+  }
 
   let lastProject = null;
   let added = false;
@@ -344,6 +340,8 @@ export async function tetherIssueToProject({
     // lag that has since resolved). The first attempt reuses the initial fetch.
     if (attempt > 1) {
       issue = (await fetchIssue({ cfg, issueNumber, runGql })).issue;
+      if (issue.id !== initial.issue.id)
+        throw new Error('project membership: issue identity changed during retries');
     }
 
     // PRIMARY, authoritative lookup: `repository.issue(N).projectItems` is
@@ -353,6 +351,7 @@ export async function tetherIssueToProject({
     if (sideItems.length > 0) {
       const item = sideItems[0];
       lastProject = item.project || lastProject;
+      await ensureLinked();
       await writeFields({
         cfg,
         itemId: item.id,
@@ -384,9 +383,10 @@ export async function tetherIssueToProject({
 
     // FALLBACK: the reverse lookup is empty (issue may genuinely not be linked
     // yet). Scan `ProjectV2.items` forward pagination as a secondary check.
-    const verified = await projectItemForIssue({ cfg, issueNumber, runGql });
+    const verified = await projectItemForIssue({ cfg, issueId: issue.id, runGql });
     lastProject = verified.project || lastProject;
     if (verified.item?.id) {
+      await ensureLinked();
       await writeFields({
         cfg,
         itemId: verified.item.id,
@@ -420,6 +420,7 @@ export async function tetherIssueToProject({
     // retry. The next attempt re-fetches the issue node and the authoritative
     // reverse lookup should then surface the newly-added item.
     if (!added) {
+      await ensureLinked();
       await addIssueToProject({ cfg, issueId: issue.id, runGql });
       added = true;
     }

@@ -1,5 +1,6 @@
 // @story #309
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
   tetherIssueToProject,
   backlogSizingWarning,
@@ -53,7 +54,10 @@ function makeRunner({
             id: issueNumber === 99 ? parentIssueId : `ISSUE_${issueNumber}`,
             number: issueNumber,
             url: `https://github.com/${cfg.repo}/issues/${issueNumber}`,
-            projectItems: { nodes: issueSideItems },
+            projectItems: {
+              nodes: issueSideItems,
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
           },
         },
       };
@@ -78,6 +82,7 @@ function makeRunner({
       if (throwProjectItems) {
         return {
           node: {
+            id: cfg.projectId,
             title: 'AITM Board',
             url: 'https://github.com/users/kburson/projects/1',
             items: { totalCount: 0, nodes: [] },
@@ -87,13 +92,25 @@ function makeRunner({
       const visible = projectChecks >= projectItemOnAttempt;
       return {
         node: {
+          id: cfg.projectId,
           title: 'AITM Board',
           url: 'https://github.com/users/kburson/projects/1',
           items: {
             totalCount: visible ? 1 : 0,
             pageInfo: { hasNextPage: false, endCursor: null },
             nodes: visible
-              ? [{ id: 'VISIBLE_ITEM', content: { number: currentIssueNumber, title: 'Task' } }]
+              ? [
+                  {
+                    id: 'VISIBLE_ITEM',
+                    isArchived: false,
+                    content: {
+                      __typename: 'Issue',
+                      id: `ISSUE_${currentIssueNumber}`,
+                      number: currentIssueNumber,
+                      title: 'Task',
+                    },
+                  },
+                ]
               : [],
           },
         },
@@ -211,7 +228,7 @@ async function testProjectSideItemIsAuthoritativeAndReused() {
   );
   // Forward pagination not consulted — reverse lookup short-circuited it.
   assert.equal(
-    calls.some((c) => c.query.includes('... on ProjectV2')),
+    calls.some((c) => c.query.includes('items(first:')),
     false
   );
 }
@@ -243,7 +260,7 @@ async function testEventualConsistencyResolvesViaReverseLookup() {
             id: `ISSUE_${variables.issue}`,
             number: Number(variables.issue),
             url: `https://github.com/${cfg.repo}/issues/${variables.issue}`,
-            projectItems: { nodes },
+            projectItems: { nodes, pageInfo: { hasNextPage: false, endCursor: null } },
           },
         },
       };
@@ -259,6 +276,7 @@ async function testEventualConsistencyResolvesViaReverseLookup() {
       // Forward pagination NEVER surfaces the item.
       return {
         node: {
+          id: cfg.projectId,
           title: 'AITM Board',
           url: 'https://github.com/users/kburson/projects/1',
           items: { totalCount: 0, pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
@@ -431,3 +449,164 @@ testBacklogSizingWarning();
 testBacklogMoveWarning();
 
 console.log('project-tether.test.mjs: all passed');
+
+function membershipRunner({ reversePages = null, forwardPages, retryIssueId = 'ISSUE_12' }) {
+  const writes = [];
+  const additions = [];
+  const mutations = [];
+  let issueReads = 0;
+  let forwardReads = 0;
+  const runGql = async (query, variables) => {
+    if (query.trim().startsWith('mutation')) mutations.push(query);
+    if (query.includes('repository(owner:') && query.includes('issue(number:')) {
+      if (!variables.after) issueReads += 1;
+      const projectItems = reversePages
+        ? reversePages[variables.after ? 1 : 0]
+        : { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } };
+      return {
+        repository: {
+          id: 'REPO',
+          issue: { id: issueReads > 1 ? retryIssueId : 'ISSUE_12', number: 12, projectItems },
+        },
+      };
+    }
+    if (query.includes('linkProjectV2ToRepository')) return {};
+    if (query.includes('items(first:')) {
+      if (++forwardReads > 3) throw new Error('unexpected extra forward read');
+      return {
+        node: { id: cfg.projectId, title: 'Board', items: forwardPages[variables.after ? 1 : 0] },
+      };
+    }
+    if (query.includes('updateProjectV2ItemFieldValue')) {
+      writes.push(variables.item);
+      return {};
+    }
+    if (query.includes('addProjectV2ItemById')) {
+      additions.push(variables.content);
+      return { addProjectV2ItemById: { item: { id: 'ADDED' } } };
+    }
+    throw new Error(`Unexpected query: ${query}`);
+  };
+  return { runGql, writes, additions, mutations };
+}
+
+const connection = (nodes, hasNextPage = false, endCursor = null) => ({
+  nodes,
+  pageInfo: { hasNextPage, endCursor },
+});
+const exact = {
+  id: 'EXACT',
+  isArchived: false,
+  content: { __typename: 'Issue', id: 'ISSUE_12', number: 12 },
+};
+const other = {
+  id: 'FOREIGN',
+  isArchived: false,
+  content: { __typename: 'Issue', id: 'OTHER_REPOSITORY_ISSUE', number: 12 },
+};
+const tether = (runner) =>
+  tetherIssueToProject({
+    cfg,
+    issueNumber: 12,
+    status: 'develop',
+    runGql: runner.runGql,
+    maxAttempts: 2,
+    sleep: async () => {},
+  });
+
+test('tether ignores a foreign same-number issue before the exact issue', async () => {
+  const runner = membershipRunner({ forwardPages: [connection([other, exact])] });
+  assert.equal((await tether(runner)).itemId, 'EXACT');
+  assert.deepEqual(runner.writes, ['EXACT']);
+  assert.deepEqual(runner.additions, []);
+});
+
+test('tether finds the exact issue beyond a same-number foreign page', async () => {
+  const runner = membershipRunner({
+    forwardPages: [connection([other], true, 'NEXT'), connection([exact])],
+  });
+  assert.equal((await tether(runner)).itemId, 'EXACT');
+  assert.deepEqual(runner.writes, ['EXACT']);
+});
+
+for (const [name, forwardPages] of [
+  [
+    'duplicate exact matches after the first page',
+    [connection([exact], true, 'NEXT'), connection([{ ...exact, id: 'DUPLICATE' }])],
+  ],
+  ['missing forward continuation cursor', [connection([], true)]],
+  ['repeated forward cursor', [connection([], true, 'NEXT'), connection([], true, 'NEXT')]],
+  ['unreadable later forward page after an exact match', [connection([exact], true, 'NEXT'), null]],
+]) {
+  test(`tether refuses ${name} before field writes or additions`, async () => {
+    const runner = membershipRunner({ forwardPages });
+    await assert.rejects(() => tether(runner), /membership/);
+    assert.deepEqual(runner.writes, []);
+    assert.deepEqual(runner.additions, []);
+  });
+}
+
+test('tether completes reverse pagination before writing fields', async () => {
+  const runner = membershipRunner({
+    reversePages: [
+      connection([{ id: 'OTHER_ITEM', project: { id: 'OTHER' } }], true, 'NEXT'),
+      connection([{ id: 'REVERSE_TARGET', project: { id: cfg.projectId } }]),
+    ],
+    forwardPages: [],
+  });
+  assert.equal((await tether(runner)).itemId, 'REVERSE_TARGET');
+  assert.deepEqual(runner.writes, ['REVERSE_TARGET']);
+});
+
+test('tether refuses ambiguous reverse membership before field writes', async () => {
+  const runner = membershipRunner({
+    reversePages: [
+      connection([
+        { id: 'FIRST', project: { id: cfg.projectId } },
+        { id: 'SECOND', project: { id: cfg.projectId } },
+      ]),
+    ],
+    forwardPages: [],
+  });
+  await assert.rejects(() => tether(runner), /membership.*ambiguous/);
+  assert.deepEqual(runner.writes, []);
+});
+
+test('tether refuses changed repository issue identity during retries', async () => {
+  const runner = membershipRunner({ forwardPages: [connection([])], retryIssueId: 'REPLACEMENT' });
+  await assert.rejects(() => tether(runner), /identity changed/);
+  assert.deepEqual(runner.writes, []);
+  assert.deepEqual(runner.additions, ['ISSUE_12']);
+});
+
+for (const [name, malformed] of [
+  ['non-string item ID', { ...other, id: 42 }],
+  ['blank item ID', { ...other, id: ' ' }],
+  ['missing archive flag', { id: 'BAD', content: other.content }],
+  ['non-boolean archive flag', { ...other, isArchived: 'false' }],
+  ['redacted active content', { ...other, content: null }],
+  ['unreadable Issue content ID', { ...other, content: { __typename: 'Issue' } }],
+]) {
+  test(`tether refuses a later ${name} before every mutation`, async () => {
+    const runner = membershipRunner({
+      forwardPages: [connection([exact], true, 'NEXT'), connection([malformed])],
+    });
+    await assert.rejects(() => tether(runner), /membership/);
+    assert.deepEqual(runner.mutations, []);
+  });
+}
+
+test('tether permits readable non-Issue and archived redacted items', async () => {
+  const runner = membershipRunner({
+    forwardPages: [
+      connection([
+        { id: 'DRAFT', isArchived: false, content: { __typename: 'DraftIssue' } },
+        { id: 'PULL', isArchived: false, content: { __typename: 'PullRequest' } },
+        { id: 'ARCHIVED', isArchived: true, content: null },
+        exact,
+      ]),
+    ],
+  });
+  assert.equal((await tether(runner)).itemId, 'EXACT');
+  assert.deepEqual(runner.writes, ['EXACT']);
+});

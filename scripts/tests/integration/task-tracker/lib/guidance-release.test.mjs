@@ -7,12 +7,19 @@ import path from 'node:path';
 import { test } from 'node:test';
 
 import { GUIDANCE_CONTEXT_BUDGETS } from '../../../../task-tracker/lib/context-budgets.mjs';
-import { captureGuidanceLifecycle } from '../../../helpers/capture-guidance-release.mjs';
+import {
+  captureGuidanceLifecycle,
+  validateLifecycleTranscript,
+} from '../../../helpers/capture-guidance-release.mjs';
 import { buildGuidanceContextReport } from '../../../../task-tracker/measure-guidance-context.mjs';
 import { formatReleaseMeasurement, measure } from '../../../../task-tracker/measure-context.mjs';
 import { buildPairedContext } from '../../../helpers/guidance-paired-context.mjs';
 import { assertCurrentCaptureSources } from '../../../helpers/guidance-capture-provenance.mjs';
 import { currentCaptureManifest } from '../../../helpers/generate-current-guidance-evidence.mjs';
+import {
+  archivedGuidanceContextReport,
+  withArchivedGuidanceSource,
+} from '../../../helpers/archived-guidance-source.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const MEASURE_SCRIPT = path.resolve('scripts/task-tracker/measure-context.mjs');
@@ -90,17 +97,21 @@ test('pre-slim public CLI capture cannot certify the final installed adapter rel
   assert.match(report.finalInstalledAdapterGate.reason, /final installed adapter bytes/i);
 });
 
-test('final release requires a complete installed-byte and public-CLI capture', async () => {
+test('archived final release retains its original committed proof and rejects current drift', async () => {
   const finalBytes = readFileSync(
     path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json')
   );
-  const report = await buildGuidanceContextReport({ captureBytes: finalBytes });
   const capture = JSON.parse(finalBytes);
   const manifest = JSON.parse(
     readFileSync(
       path.resolve('scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json')
     )
   );
+  await assert.rejects(
+    buildGuidanceContextReport({ captureBytes: finalBytes }),
+    /final capture identity drift/
+  );
+  const report = withArchivedGuidanceSource(path.resolve('.'), archivedGuidanceContextReport);
   assert.equal(report.classification, 'final-installed-consumer-release');
   assert.equal(report.finalInstalledAdapterGate.status, 'passed');
   assert.deepEqual(
@@ -151,15 +162,43 @@ test('final release requires a complete installed-byte and public-CLI capture', 
   );
 });
 
-test('final package and public-CLI capture regenerate byte for byte', () => {
-  const expected = readFileSync(
-    path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json'),
-    'utf8'
+test('current package capture preserves lifecycle outcomes and instruction inputs', () => {
+  const archived = JSON.parse(
+    readFileSync(
+      path.resolve('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json'),
+      'utf8'
+    )
   );
+  const current = captureGuidanceLifecycle({ mode: 'final' });
+  assert.equal(validateLifecycleTranscript(current), true);
+  assert.deepEqual(
+    current.events.filter(({ typed }) => typed).map(({ name, typed }) => [name, typed.status]),
+    [
+      ['ready-first-load', 'ready'],
+      ['matching-receipt', 'ready'],
+      ['compaction-reset', 'ready'],
+      ['blocked-migration-freeze', 'blocked'],
+      ['diagnostic', 'blocked'],
+      ['refusal-remediation', 'ready'],
+      ['agent-change', 'ready'],
+      ['source-only-change', 'ready'],
+      ['lifecycle-resume', 'ready'],
+      ['lifecycle-promote', 'ready'],
+      ['lifecycle-test', 'ready'],
+      ['lifecycle-review', 'ready'],
+      ['lifecycle-deliver', 'ready'],
+      ['lifecycle-close', 'ready'],
+    ]
+  );
+  assert.deepEqual(current.identity.productionPackage, archived.identity.productionPackage);
+  assert.deepEqual(current.measurement.installedStatic, archived.measurement.installedStatic);
+  assert.equal(current.identity.initialFixtureSha256, archived.identity.initialFixtureSha256);
   assert.equal(
-    `${JSON.stringify(captureGuidanceLifecycle({ mode: 'final' }), null, 2)}\n`,
-    expected
+    current.identity.transcriptSha256,
+    'sha256:' + createHash('sha256').update(JSON.stringify(current.events)).digest('hex')
   );
+  // Runtime lookup queries may change their traffic; the historical certified
+  // transcript stays immutable rather than being regenerated as current proof.
 });
 
 test('fixed release measurement refuses a missing required instruction file', () => {

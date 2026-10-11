@@ -1,3 +1,4 @@
+import { fetchIssueProjectMembership } from '../gh/lib/project-membership.mjs';
 // Runtime context shared by the dispatcher and all lifecycle verb modules.
 //
 // `buildContext()` parses argv, loads config, and bundles the cross-verb helpers
@@ -933,28 +934,12 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
   ctx.getIssueBoardState = async (issueNum) => {
     if (SKIP_NETWORK) return null;
     try {
-      const { owner, repoName } = splitRepo(cfg.repo);
-      const data = await gql(
-        `query($owner: String!, $repo: String!, $issue: Int!) {
-          repository(owner: $owner, name: $repo) {
-            issue(number: $issue) {
-              projectItems(first: 10) {
-                nodes {
-                  project { id }
-                  fieldValueByName(name: "Status") {
-                    ... on ProjectV2ItemFieldSingleSelectValue { optionId }
-                  }
-                }
-              }
-            }
-          }
-        }`,
-        { owner, repo: repoName, issue: Number(issueNum) },
-        { timeout: GH_API_TIMEOUT_MS }
-      );
-      const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-      const node = nodes.find((n) => n.project?.id === cfg.projectId);
-      const optionId = node?.fieldValueByName?.optionId;
+      const { item } = await fetchIssueProjectMembership({
+        repo: cfg.repo,
+        projectId: cfg.projectId,
+        issueNumber: issueNum,
+      });
+      const optionId = item?.fieldValueByName?.optionId;
       return optionId ? (ctx.buildStateOptionMap()[optionId] ?? null) : null;
     } catch {
       return null;

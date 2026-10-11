@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { withArchivedGuidanceSource } from '../../../helpers/archived-guidance-source.mjs';
 import {
   assertGuidanceConsumerRelease,
   checkGuidanceRelease,
@@ -131,11 +132,19 @@ test('computed guidance import cannot evade the B2 release refusal', () => {
   }
 });
 
-test('publication command proves B2 consumer certification on the package under test', () => {
-  const result = spawnSync('npm', ['run', 'lint:guidance-release-consumer'], {
+test('publication refuses changed current sources and retains archived B2 certification', () => {
+  const current = spawnSync('npm', ['run', 'lint:guidance-release-consumer'], {
     cwd: root,
     encoding: 'utf8',
   });
-  assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
-  assert.match(`${result.stdout}${result.stderr}`, /guidance consumer release certified/);
+  assert.notEqual(current.status, 0);
+  assert.match(`${current.stdout}${current.stderr}`, /final capture identity drift/);
+  withArchivedGuidanceSource(root, (fixture) => {
+    const result = spawnSync('npm', ['run', 'lint:guidance-release-consumer'], {
+      cwd: fixture,
+      encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    assert.match(`${result.stdout}${result.stderr}`, /guidance consumer release certified/);
+  });
 });

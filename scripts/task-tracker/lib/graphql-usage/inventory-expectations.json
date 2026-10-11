@@ -55,18 +55,18 @@
     },
     {
       "key": "scripts/gh/lib/github-projects.mjs|gh-api-graphql|planned",
-      "count": 12
+      "count": 10
     },
     {
       "key": "scripts/gh/lib/github-projects.mjs|opaque-gh-cli|opaque",
       "count": 2
     },
     {
-      "key": "scripts/gh/lib/live-state.mjs|gh-api-graphql|planned",
+      "key": "scripts/gh/lib/parent-status.mjs|gh-api-graphql|planned",
       "count": 1
     },
     {
-      "key": "scripts/gh/lib/parent-status.mjs|gh-api-graphql|planned",
+      "key": "scripts/gh/lib/project-membership.mjs|gh-api-graphql|planned",
       "count": 1
     },
     {
@@ -91,10 +91,6 @@
     },
     {
       "key": "scripts/gh/migrate-project.mjs|opaque-gh-cli|opaque",
-      "count": 2
-    },
-    {
-      "key": "scripts/gh/move-state.mjs|gh-api-graphql|planned",
       "count": 2
     },
     {
@@ -274,10 +270,6 @@
       "count": 2
     },
     {
-      "key": "scripts/task-tracker/lib/move-state/github-mutation.mjs|gh-api-graphql|planned",
-      "count": 1
-    },
-    {
       "key": "scripts/task-tracker/lib/move-state/github-mutation.mjs|opaque-gh-cli|opaque",
       "count": 3
     },
@@ -322,10 +314,6 @@
       "count": 1
     },
     {
-      "key": "scripts/task-tracker/lib/verifier-state-gate.mjs|gh-api-graphql|planned",
-      "count": 1
-    },
-    {
       "key": "scripts/task-tracker/lib/versioned-issue-write.mjs|opaque-gh-cli|opaque",
       "count": 2
     },
@@ -351,7 +339,7 @@
     },
     {
       "key": "scripts/task-tracker/runtime.mjs|gh-api-graphql|planned",
-      "count": 3
+      "count": 2
     },
     {
       "key": "scripts/task-tracker/verbs/action-ledger.mjs|uncovered|uncovered",
@@ -387,7 +375,7 @@
     },
     {
       "key": "scripts/task-tracker/verbs/demote.mjs|gh-api-graphql|planned",
-      "count": 2
+      "count": 1
     },
     {
       "key": "scripts/task-tracker/verbs/epic-reconcile.mjs|uncovered|uncovered",
@@ -406,16 +394,12 @@
       "count": 1
     },
     {
-      "key": "scripts/task-tracker/verbs/plan.mjs|gh-api-graphql|planned",
+      "key": "scripts/task-tracker/verbs/promote.mjs|gh-api-graphql|planned",
       "count": 1
     },
     {
-      "key": "scripts/task-tracker/verbs/promote.mjs|gh-api-graphql|planned",
-      "count": 2
-    },
-    {
       "key": "scripts/task-tracker/verbs/reconcile.mjs|gh-api-graphql|planned",
-      "count": 2
+      "count": 1
     },
     {
       "key": "scripts/task-tracker/verbs/report.mjs|out-of-scope|out-of-scope",
@@ -518,23 +502,21 @@
     "scripts/gh/lib/duplicate-child-guard.mjs|125|gh-api-graphql|planned",
     "scripts/gh/lib/epic-metadata.mjs|72|uncovered|uncovered",
     "scripts/gh/lib/epic-metadata.mjs|86|uncovered|uncovered",
-    "scripts/gh/lib/github-projects.mjs|104|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|108|gh-api-graphql|planned",
     "scripts/gh/lib/github-projects.mjs|121|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|134|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|15|opaque-gh-cli|opaque",
-    "scripts/gh/lib/github-projects.mjs|163|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|224|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|232|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|240|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|250|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|25|opaque-gh-cli|opaque",
-    "scripts/gh/lib/github-projects.mjs|262|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|55|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|71|gh-api-graphql|planned",
-    "scripts/gh/lib/github-projects.mjs|86|gh-api-graphql|planned",
-    "scripts/gh/lib/live-state.mjs|8|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|16|opaque-gh-cli|opaque",
+    "scripts/gh/lib/github-projects.mjs|189|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|197|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|205|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|215|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|227|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|26|opaque-gh-cli|opaque",
+    "scripts/gh/lib/github-projects.mjs|56|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|72|gh-api-graphql|planned",
+    "scripts/gh/lib/github-projects.mjs|91|gh-api-graphql|planned",
     "scripts/gh/lib/parent-status.mjs|20|gh-api-graphql|planned",
-    "scripts/gh/lib/project-tether.mjs|24|gh-api-graphql|planned",
+    "scripts/gh/lib/project-membership.mjs|24|gh-api-graphql|planned",
+    "scripts/gh/lib/project-tether.mjs|25|gh-api-graphql|planned",
     "scripts/gh/lib/wave-detect.mjs|76|gh-api-graphql|planned",
     "scripts/gh/log-issue-time.mjs|159|opaque-gh-cli|opaque",
     "scripts/gh/log-issue-time.mjs|173|gh-api-graphql|planned",
@@ -542,8 +524,6 @@
     "scripts/gh/migrate-project.mjs|36|gh-api-graphql|planned",
     "scripts/gh/migrate-project.mjs|57|gh-api-graphql|planned",
     "scripts/gh/migrate-project.mjs|74|opaque-gh-cli|opaque",
-    "scripts/gh/move-state.mjs|217|gh-api-graphql|planned",
-    "scripts/gh/move-state.mjs|253|gh-api-graphql|planned",
     "scripts/gh/set-priority.mjs|131|gh-api-graphql|planned",
     "scripts/gh/set-priority.mjs|21|gh-api-graphql|planned",
     "scripts/gh/set-priority.mjs|54|opaque-gh-cli|opaque",
@@ -622,10 +602,9 @@
     "scripts/task-tracker/lib/graph-node-authority.mjs|75|gh-api-graphql|planned",
     "scripts/task-tracker/lib/move-state/audit-timing.mjs|239|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/move-state/audit-timing.mjs|282|opaque-gh-cli|opaque",
-    "scripts/task-tracker/lib/move-state/github-mutation.mjs|134|opaque-gh-cli|opaque",
-    "scripts/task-tracker/lib/move-state/github-mutation.mjs|276|opaque-gh-cli|opaque",
-    "scripts/task-tracker/lib/move-state/github-mutation.mjs|358|opaque-gh-cli|opaque",
-    "scripts/task-tracker/lib/move-state/github-mutation.mjs|55|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/move-state/github-mutation.mjs|118|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/move-state/github-mutation.mjs|260|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/move-state/github-mutation.mjs|342|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/move-state/guard-execution.mjs|153|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/move-state/guard-execution.mjs|252|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/move-state/guard-execution.mjs|421|opaque-gh-cli|opaque",
@@ -647,7 +626,6 @@
     "scripts/task-tracker/lib/seed-kanban-cache.mjs|59|gh-api-graphql|planned",
     "scripts/task-tracker/lib/seed-kanban-cache.mjs|63|gh-api-graphql|planned",
     "scripts/task-tracker/lib/shelve-transaction.mjs|96|gh-api-graphql|planned",
-    "scripts/task-tracker/lib/verifier-state-gate.mjs|29|gh-api-graphql|planned",
     "scripts/task-tracker/lib/versioned-issue-write.mjs|244|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/versioned-issue-write.mjs|264|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/workflow-policy/enforcement.mjs|158|gh-api-graphql|planned",
@@ -658,9 +636,8 @@
     "scripts/task-tracker/migrate-plan-approved.mjs|89|uncovered|uncovered",
     "scripts/task-tracker/preflight-issue.mjs|622|opaque-gh-cli|opaque",
     "scripts/task-tracker/preflight-issue.mjs|627|out-of-scope|out-of-scope",
-    "scripts/task-tracker/runtime.mjs|880|gh-api-graphql|planned",
-    "scripts/task-tracker/runtime.mjs|918|gh-api-graphql|planned",
-    "scripts/task-tracker/runtime.mjs|937|gh-api-graphql|planned",
+    "scripts/task-tracker/runtime.mjs|881|gh-api-graphql|planned",
+    "scripts/task-tracker/runtime.mjs|919|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/action-ledger.mjs|132|uncovered|uncovered",
     "scripts/task-tracker/verbs/action-ledger.mjs|142|uncovered|uncovered",
     "scripts/task-tracker/verbs/action-ledger.mjs|54|uncovered|uncovered",
@@ -682,8 +659,7 @@
     "scripts/task-tracker/verbs/deliver.mjs|2494|uncovered|uncovered",
     "scripts/task-tracker/verbs/deliver.mjs|2679|uncovered|uncovered",
     "scripts/task-tracker/verbs/delivery-attribution-exception.mjs|506|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/demote.mjs|57|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/demote.mjs|80|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/demote.mjs|58|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/epic-reconcile.mjs|111|uncovered|uncovered",
     "scripts/task-tracker/verbs/incident-ledger.mjs|100|uncovered|uncovered",
     "scripts/task-tracker/verbs/incident-ledger.mjs|135|uncovered|uncovered",
@@ -692,11 +668,8 @@
     "scripts/task-tracker/verbs/incident-ledger.mjs|202|uncovered|uncovered",
     "scripts/task-tracker/verbs/incident-ledger.mjs|82|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/plan-approve.mjs|91|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/plan.mjs|36|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/promote.mjs|170|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/promote.mjs|192|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/reconcile.mjs|71|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/reconcile.mjs|99|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/promote.mjs|171|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/reconcile.mjs|72|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/report.mjs|124|out-of-scope|out-of-scope",
     "scripts/task-tracker/verbs/review.mjs|85|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/split-plan.mjs|80|gh-api-graphql|planned",

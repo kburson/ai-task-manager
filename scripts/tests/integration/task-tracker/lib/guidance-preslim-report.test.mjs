@@ -14,6 +14,10 @@ import {
   buildTokenCalibration,
 } from '../../../../task-tracker/measure-guidance-context.mjs';
 import { buildAuthorityAfterReport } from '../../../helpers/guidance-authority-after.mjs';
+import {
+  archivedGuidanceContextReport,
+  withArchivedGuidanceSource,
+} from '../../../helpers/archived-guidance-source.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '../../../../..');
 const FIXTURES = 'scripts/tests/fixtures/1558/';
@@ -54,32 +58,36 @@ test('generates current paired artifacts while preserving the frozen comparison'
   assert.equal(paired.adapters.codex.currentProxyTokens, 5079);
 });
 
-test('public meter certifies final installed bytes and the paired report', async () => {
+test('public meter rejects current drift while archived source retains certification', () => {
   const base = ['scripts/task-tracker/measure-guidance-context.mjs', '--all', '--json'];
-  const normal = spawnSync(process.execPath, base, { cwd: ROOT, encoding: 'utf8' });
-  assert.equal(normal.status, 0, normal.stderr);
-  const report = JSON.parse(normal.stdout);
-  assert.equal(report.releaseEvidence.authorityAfter.schema, 'aitm.guidance-authority-after/v1');
-  assert.equal(
-    report.releaseEvidence.currentPairedComparison.classification,
-    'final-installed-public-cli-paired-comparison'
-  );
-  const finalCaptureBytes = currentRead('actual-explain-traffic-final.json');
-  const finalLifecycle = await buildGuidanceContextReport({ captureBytes: finalCaptureBytes });
-  assert.equal(
-    currentRead('lifecycle-transcript-final.json').toString(),
-    `${JSON.stringify(finalLifecycle, null, 2)}\n`
-  );
-  const finalPaired = buildCurrentPairedComparison({
-    lifecycle: finalLifecycle,
-    authority: report.releaseEvidence.authorityAfter,
-    budgets: report.releaseEvidence.contextBudgets,
+  const current = spawnSync(process.execPath, base, { cwd: ROOT, encoding: 'utf8' });
+  assert.notEqual(current.status, 0);
+  assert.match(current.stderr, /final capture identity drift/);
+  withArchivedGuidanceSource(ROOT, (fixture) => {
+    const normal = spawnSync(process.execPath, base, { cwd: fixture, encoding: 'utf8' });
+    assert.equal(normal.status, 0, normal.stderr);
+    const report = JSON.parse(normal.stdout);
+    assert.equal(report.releaseEvidence.authorityAfter.schema, 'aitm.guidance-authority-after/v1');
+    assert.equal(
+      report.releaseEvidence.currentPairedComparison.classification,
+      'final-installed-public-cli-paired-comparison'
+    );
+    const finalLifecycle = archivedGuidanceContextReport(fixture);
+    assert.equal(
+      currentRead('lifecycle-transcript-final.json').toString(),
+      `${JSON.stringify(finalLifecycle, null, 2)}\n`
+    );
+    const finalPaired = buildCurrentPairedComparison({
+      lifecycle: finalLifecycle,
+      authority: report.releaseEvidence.authorityAfter,
+      budgets: report.releaseEvidence.contextBudgets,
+    });
+    assert.deepEqual(JSON.parse(currentRead('context-comparison-final-paired.json')), finalPaired);
+    const assertion = spawnSync(process.execPath, [...base, '--assert-budgets'], {
+      cwd: fixture,
+      encoding: 'utf8',
+    });
+    assert.equal(assertion.status, 0, assertion.stderr);
+    assert.equal(JSON.parse(assertion.stdout).finalInstalledAdapterGate.status, 'passed');
   });
-  assert.deepEqual(JSON.parse(currentRead('context-comparison-final-paired.json')), finalPaired);
-  const assertion = spawnSync(process.execPath, [...base, '--assert-budgets'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  });
-  assert.equal(assertion.status, 0, assertion.stderr);
-  assert.equal(JSON.parse(assertion.stdout).finalInstalledAdapterGate.status, 'passed');
 });

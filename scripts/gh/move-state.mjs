@@ -212,29 +212,13 @@ export async function runMoveStateHost({
   async function resolveLiveStateName(issueNumber) {
     if (SKIP_NETWORK) return '';
     try {
-      const { gql, splitRepo } = await import('./lib/github-projects.mjs');
-      const { owner, repoName } = splitRepo(cfg.repo);
-      const data = await gql(
-        `
-        query($owner: String!, $repo: String!, $issue: Int!) {
-          repository(owner: $owner, name: $repo) {
-            issue(number: $issue) {
-              projectItems(first: 10) {
-                nodes {
-                  project { id }
-                  fieldValueByName(name: "Status") {
-                    ... on ProjectV2ItemFieldSingleSelectValue { name }
-                  }
-                }
-              }
-            }
-          }
-        }`,
-        { owner, repo: repoName, issue: Number(issueNumber) }
-      );
-      const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-      const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-      return normalizeStateId(node?.fieldValueByName?.name) || '';
+      const { fetchIssueProjectMembership } = await import('./lib/project-membership.mjs');
+      const { item } = await fetchIssueProjectMembership({
+        repo: cfg.repo,
+        projectId: cfg.projectId,
+        issueNumber,
+      });
+      return normalizeStateId(item?.fieldValueByName?.name) || '';
     } catch {
       return '';
     }
@@ -248,29 +232,13 @@ export async function runMoveStateHost({
   async function readBackStatusOptionId({ issueNumber } = {}) {
     if (SKIP_NETWORK) return '';
     try {
-      const { gql, splitRepo } = await import('./lib/github-projects.mjs');
-      const { owner, repoName } = splitRepo(cfg.repo);
-      const data = await gql(
-        `
-        query($owner: String!, $repo: String!, $issue: Int!) {
-          repository(owner: $owner, name: $repo) {
-            issue(number: $issue) {
-              projectItems(first: 10) {
-                nodes {
-                  project { id }
-                  fieldValueByName(name: "Status") {
-                    ... on ProjectV2ItemFieldSingleSelectValue { optionId }
-                  }
-                }
-              }
-            }
-          }
-        }`,
-        { owner, repo: repoName, issue: Number(issueNumber) }
-      );
-      const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-      const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-      return String(node?.fieldValueByName?.optionId || '');
+      const { fetchIssueProjectMembership } = await import('./lib/project-membership.mjs');
+      const { item } = await fetchIssueProjectMembership({
+        repo: cfg.repo,
+        projectId: cfg.projectId,
+        issueNumber,
+      });
+      return String(item?.fieldValueByName?.optionId || '');
     } catch {
       return '';
     }

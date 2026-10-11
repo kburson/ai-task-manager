@@ -27,7 +27,7 @@ writeFileSync(
     "let input = '';",
     "process.stdin.on('data', (c) => (input += c));",
     "process.stdin.on('end', () => {",
-    "  const data = { repository: { issue: { projectItems: { nodes: [{ project: { id: 'P' }, fieldValueByName: { name: 'Ready for Planning' } }] } } } };",
+    "  const data = { repository: { issue: { id: 'ISSUE_FIXTURE', projectItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'ITEM_FIXTURE', project: { id: 'P' }, fieldValueByName: { name: 'Ready for Planning' } }] } } } };",
     '  process.stdout.write(JSON.stringify({ data }));',
     '});',
   ].join('\n'),

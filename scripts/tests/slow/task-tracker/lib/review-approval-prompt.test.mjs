@@ -247,7 +247,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
           id: 'ISS_test',
           subIssues: { nodes: [] },
           parent: null,
-          projectItems: { nodes: [{ id: 'PVTI_test', project: { id: 'PVT_test' }, fieldValueByName: { optionId: ${JSON.stringify(stateOptionId)} }, fieldValues: { nodes: [] } }] },
+          projectItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'PVTI_test', project: { id: 'PVT_test' }, fieldValueByName: { optionId: ${JSON.stringify(stateOptionId)} }, fieldValues: { nodes: [], pageInfo: { hasNextPage: false } } }] },
           comments: { nodes: [] }
         }
       },

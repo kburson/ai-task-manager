@@ -10,10 +10,7 @@ import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url, 'codex');
 import { captureGuidanceLifecycle as captureProductionLifecycle } from '../../../../maintenance/capture-guidance-lifecycle.mjs';
 
-import {
-  captureGuidanceLifecycle,
-  validateLifecycleTranscript,
-} from '../../../helpers/capture-guidance-release.mjs';
+import { validateLifecycleTranscript } from '../../../helpers/capture-guidance-release.mjs';
 import { capturedCommitBytes } from '../../../helpers/captured-commit-bytes.mjs';
 import { deliveryExplainReadPorts } from '../../../../task-tracker/verbs/explain.mjs';
 
@@ -44,7 +41,7 @@ const archived = JSON.parse(
   )
 );
 let current;
-const capture = () => (current ??= captureGuidanceLifecycle({ mode: 'recertification' }));
+const capture = () => (current ??= captureProductionLifecycle({ mode: 'recertification' }));
 
 test('archived recertification retains its observed authority and original runner provenance', () => {
   assert.equal(archived.identity.mode, 'recertification');
@@ -89,7 +86,11 @@ test('current recertification captures complete simulated authority without exec
     'lifecycle-close',
   ]) {
     const event = result.events.find((item) => item.name === name);
-    assert.equal(event?.typed.status, 'ready', name + ' must have complete simulated authority');
+    assert.equal(
+      event?.typed.status,
+      'ready',
+      name + ' must have complete simulated authority: ' + event.stdout
+    );
     assert.ok(event.remoteAuthorityReads > 0);
   }
   assert.match(result.limitation, /does not authorize a delivery GO/);
