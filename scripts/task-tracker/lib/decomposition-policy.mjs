@@ -1,5 +1,7 @@
 import { accessSync, constants, existsSync, lstatSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { ceilEstimateHours } from './estimation/estimate-granularity.mjs';
 import { markdownViews, openingFenceFor, isClosingFence } from './plan-markdown-views.mjs';
 import { parseStoryIntent, selectStoryIntentTask } from './user-story-quality.mjs';
 
@@ -18,6 +20,22 @@ export const DECOMPOSITION_THRESHOLDS = Object.freeze({
   reviewVerificationGroups: 2,
   splitXlVerificationGroups: 2,
 });
+
+export const DECOMPOSITION_CLASSIFIER_VERSION = '1';
+
+// Whole-hour decomposition wire values preserve the legacy half-hour helper.
+export function normalizeDecompositionHours(hours) {
+  return Math.ceil(ceilEstimateHours(hours));
+}
+
+export function decompositionPolicyIdentity() {
+  const classifierVersion = DECOMPOSITION_CLASSIFIER_VERSION;
+  const thresholds = { ...DECOMPOSITION_THRESHOLDS };
+  const digest = createHash('sha256')
+    .update(JSON.stringify({ classifierVersion, thresholds }))
+    .digest('hex');
+  return { classifierVersion, thresholds, digest };
+}
 
 const TASK_HEADING_RE = /^###\s+(Task|Milestone)\s+(\d+):\s*(.*?)\s*$/i;
 const SECTION_HEADING_RE = /^#{1,3}\s+/;
@@ -116,7 +134,12 @@ function signal(code, value, threshold, level) {
   return { code, value, threshold, level };
 }
 
-function collectSignals({ size, estimateHours, taskCount, verificationGroupCount }) {
+export function collectDecompositionSignals({
+  size,
+  estimateHours,
+  taskCount,
+  verificationGroupCount,
+}) {
   const thresholds = DECOMPOSITION_THRESHOLDS;
   const signals = [];
   const normalizedSize = typeof size === 'string' ? size.trim().toUpperCase() : null;
@@ -159,7 +182,7 @@ function collectSignals({ size, estimateHours, taskCount, verificationGroupCount
 export function classifyDecomposition({ size = null, estimateHours = null, planText = '' } = {}) {
   const tasks = extractPlanTasks(planText);
   const verificationGroupCount = tasks.filter((task) => task.commands.length > 0).length;
-  const signals = collectSignals({
+  const signals = collectDecompositionSignals({
     size,
     estimateHours,
     taskCount: tasks.length,
