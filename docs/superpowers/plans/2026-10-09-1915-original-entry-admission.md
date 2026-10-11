@@ -44,7 +44,18 @@ assert.equal(result.phase, 'native-stage-resume');
 assert.equal(result.preparationReason, 'known-prefix-continuation-unavailable');
 assert.equal(result.exit, 4);
 assert.deepEqual(backend.snapshot, selected);
-assert.deepEqual(backend.effects, []);
+assert.deepEqual(
+  backend.effects.filter(
+    (name) =>
+      ![
+        'authority-read',
+        'page-read',
+        'native-history-readback',
+        'native-proof-record-readback',
+      ].includes(name)
+  ),
+  []
+);
 ```
 
 - [ ] Run the new full fixture. Expected RED: actual original move still throws revision-pending at the first real completed prefix. No credit for setup/capture failure.
@@ -71,6 +82,8 @@ const known = await deriveRecordedNativeStageKnownPrefix({
 - [ ] A private held origin supplies only original guard-body/definitions/evidence reads. The generic evaluateRevisionPolicy and withRevisionConsumer remain unchanged. Read-only evaluateRevisionAdmission may return ready only while this exact held origin/entry is live. Original native assignment validation uses origin; current raw observation still supplies all before/after drift comparisons.
 - [ ] Core validates actual caller restrictions and obtains original defaultRunGuardExecution. Require real complete guard inventory, successful guard result, owned session and assignment reads. Compare original source capture using checkOriginalStageSources, checkOriginalFieldSources, checkOriginalLocalSources and exact current scope before returning the explicit unavailable continuation frontier. No journal, body, board or local write.
 - [ ] Run the full new fixture. Expected all16 actual fresh guarded admissions reach the frontier with zero effects, generic pending callbacks0, all original input assertions intact. Commit1918/1915 source/tests.
+
+Qualification clarification: fresh admission produces the four fixed read-audit entries shown above. "Zero effects" means zero writes or mutation callbacks, with unchanged whole snapshots and physical files. Read audits remain visible and are not mistaken for mutation or suppressed. Input descriptor custody includes consumed nested plan and boundary body DATA, checked before post-await reads; late accessors must be refused without invoking their getters.
 
 ## Task 2: Refusal and regression qualification
 
