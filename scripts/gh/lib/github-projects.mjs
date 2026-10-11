@@ -1,3 +1,4 @@
+import { fetchIssueProjectMembership } from './project-membership.mjs';
 import { prepareGraphqlQuery } from '../../task-tracker/lib/graphql-usage/identity.mjs';
 import { usageEnabled } from '../../task-tracker/lib/graphql-usage/collection.mjs';
 import { promisify } from 'node:util';
@@ -82,22 +83,8 @@ export function splitRepo(repo) {
 }
 
 export async function projectItemForIssue({ repo, projectId, issueNumber }) {
-  const { owner, repoName } = splitRepo(repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          id
-          projectItems(first: 20) { nodes { id project { id } } }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const issue = data.repository.issue;
-  const existing = issue.projectItems.nodes.find((n) => n.project?.id === projectId);
-  return { issueId: issue.id, itemId: existing?.id || '' };
+  const { issue, item } = await fetchIssueProjectMembership({ repo, projectId, issueNumber });
+  return { issueId: issue.id, itemId: item?.id || '' };
 }
 
 export async function addIssueToProject(projectId, issueId) {
@@ -159,46 +146,24 @@ export async function fieldOptionMap(projectId) {
 
 export async function projectValuesForIssue({ cfg, fieldDefs, issueNumber }) {
   if (!cfg?.repo || !cfg.projectId) return {};
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 20) {
-            nodes {
-              project { id }
-              fieldValues(first: 100) {
-                nodes {
-                  ... on ProjectV2ItemFieldNumberValue {
-                    number
-                    field { ... on ProjectV2FieldCommon { id } }
-                  }
-                  ... on ProjectV2ItemFieldDateValue {
-                    date
-                    field { ... on ProjectV2FieldCommon { id } }
-                  }
-                  ... on ProjectV2ItemFieldTextValue {
-                    text
-                    field { ... on ProjectV2FieldCommon { id } }
-                  }
-                  ... on ProjectV2ItemFieldSingleSelectValue {
-                    name
-                    field { ... on ProjectV2FieldCommon { id } }
-                  }
-                }
-              }
-            }
-          }
-        }
+  const { item } = await fetchIssueProjectMembership({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+    itemFields: `fieldValues(first: 100) {
+      nodes {
+        ... on ProjectV2ItemFieldNumberValue { number field { ... on ProjectV2FieldCommon { id } } }
+        ... on ProjectV2ItemFieldDateValue { date field { ... on ProjectV2FieldCommon { id } } }
+        ... on ProjectV2ItemFieldTextValue { text field { ... on ProjectV2FieldCommon { id } } }
+        ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { id } } }
       }
+      pageInfo { hasNextPage }
     }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const item = data.repository.issue.projectItems.nodes.find(
-    (n) => n.project?.id === cfg.projectId
-  );
+  });
   if (!item) return {};
+  if (!Array.isArray(item.fieldValues?.nodes) || item.fieldValues.pageInfo?.hasNextPage !== false) {
+    throw new Error('project field values: connection is unreadable or incomplete');
+  }
   const values = {};
   for (const def of fieldDefs) {
     const fieldId = fieldIdFor(cfg, def.key);
