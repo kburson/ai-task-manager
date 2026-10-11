@@ -14,7 +14,7 @@
 
 ## Scope
 
-Implement #1908's accepted specification only. The incident #1855 remains immutable evidence; no live incident estimate changes or #1847 transaction implementation. Seven child deliveries below 24 hours carry independent verifiers and explicit interfaces. Parent aggregate is provisionally 49 human hours; refinement replaces that with actual reviewed child estimates. Orchestration overhead and parallel elapsed time are reported separately.
+Implement #1908's accepted specification only. The incident #1855 remains immutable evidence; no live incident estimate changes or #1847 transaction implementation. Seven child deliveries below 24 hours carry independent verifiers and explicit interfaces. Parent aggregate is provisionally 52 human hours; refinement replaces that with actual reviewed child estimates. Orchestration overhead and parallel elapsed time are reported separately.
 
 ## Story Intent
 
@@ -51,10 +51,10 @@ Implement #1908's accepted specification only. The incident #1855 remains immuta
 | 3    | Resumable estimate publication and writers | 12                | 3    | 1, 2         | New publication module; estimate/refinement/forecast/tether/migration writers; unit guard suite's writer cases.                 |
 | 4    | Typed continuation and restricted binding  | 6                 | 3    | 1, 2         | Action-decision contracts/collectors/catalog; start/resume/Explain; requested integration admission suite's continuation cases. |
 | 5    | Native scoped-effect admission             | 9                 | 4    | 3, 4         | Activity/source-edit/mutation-context integration; admission suite's hook cases.                                                |
-| 6    | Governed kind/split recovery and guidance  | 4                 | 4    | 3, 4         | Kind/split/epic metadata/Plan-exit guard; dedicated kind/split/Plan-exit tests.                                                 |
-| 7    | Complete composition proof and docs        | 5                 | 5    | 5, 6         | Final requested integration-suite extensions, documentation, complete adapter census and final provider verification.           |
+| 6    | Governed kind/split recovery and guidance  | 6                 | 5    | 3, 4, 5      | Kind/split/epic metadata/Plan-exit guard; dedicated kind/split/Plan-exit tests.                                                 |
+| 7    | Complete composition proof and docs        | 6                 | 6    | 5, 6         | Final requested integration-suite extensions, documentation, complete adapter census and final provider verification.           |
 
-Task 3 and Task 4 may execute in parallel after Task 2 lands; Tasks 5 and 6 may execute in parallel after both Wave 3 deliveries land. Never run two active implementing agents on the same child task. No parallel execution occurs in this preparation run. Parent rank is 1; child wave ranks are parent rank plus wave minus one. Native blocked-by relationships encode the exact dependency graph as well as ranks. Shared unit/admission test files have one owner per wave; a later wave extends the prior committed fixture rather than overwriting it. Integrate each completed wave before dispatching the next.
+Task 3 and Task 4 may execute in parallel after Task 2 lands; Task 5 executes in Wave 4 after both Wave 3 deliveries; Task 6 follows in Wave 5 so shared inventories have one owner at a time. Task 7 integrates in Wave 6. Never run two active implementing agents on the same child task. No parallel execution occurs in this preparation run. Parent rank is 1; child wave ranks are parent rank plus wave minus one. Native blocked-by relationships encode the exact dependency graph as well as ranks. Shared unit/admission test files have one owner per wave; a later wave extends the prior committed fixture rather than overwriting it. Integrate each completed wave before dispatching the next.
 
 ## Shared wire and API contracts
 
@@ -72,7 +72,7 @@ The following proposed interfaces are owned by the named tasks. Consumers use th
 
 ### Normalized input
 
-`aitm.decomposition-input/v1` contains `schema`, `subject`, `kind`, `estimate`, `size`, `plan`, `policy`, `scopeDigest`, `observations` and `availability`. `kind` is one of code/docs-only/audit/research/spike/epic; absence of a genuine marker means default code, while malformed/duplicate/unknown explicit markers are unavailable. `estimate` is `{basis, hours, proposalId}`: basis is published/proposed/unset; hours is a nonnegative finite whole number or null only for unset; proposalId is null for published/unset. An early unset estimate cannot authorize Develop when its ordinary estimation gate requires a value. Proposals are ceiled using `ceilEstimateHours` before classification and are distinguished from successful board effects.
+`aitm.decomposition-input/v1` contains `schema`, `subject`, `kind`, `estimate`, `size`, `plan`, `policy`, `scopeDigest`, `observations`, `availability` and `epicReadiness`. `kind` is one of code/docs-only/audit/research/spike/epic; absence of a genuine marker means default code, while malformed/duplicate/unknown explicit markers are unavailable. `estimate` is `{basis, hours, proposalId}`: basis is published/proposed/unset; hours is a nonnegative finite whole number or null only for unset; proposalId is null for published/unset. An early unset estimate cannot authorize Develop when its ordinary estimation gate requires a value. Proposals are ceiled using `ceilEstimateHours` before classification and are distinguished from successful board effects.
 
 `plan` is `{path, commit, section, digest, availability, content}`; a genuinely absent optional plan has null identifiers and availability absent. Declared unavailable/invalid/escaping plan paths yield unavailable, never an empty valid plan. If a Source-plan-commit is present, read pinned bytes through the existing plan resolver and prove the selected section corresponds to the current delivery; edited working-copy bytes cannot become silent acceptance authority.
 
@@ -138,6 +138,10 @@ The completed call-site census below classifies actual references to writeProjec
 
 ### Task 1: Define strict shared decomposition assessment and record codecs
 
+#### Bound kernel scope
+
+Read these exact root sections of this same pinned plan as scope-bearing contracts: Shared wire and API contracts; Normalized input; Assessment and publication records; Runtime plan structure and compact projection; Epic readiness and capabilities. Runtime plan.content is exact selected Markdown, digest-bound to identity and named root contracts; durable records keep compact metadata. Derive signals using extractPlanTasks(content), not supplied counts. Add M/23 one-versus-four-task/group/selected-section and XL fixtures. Consume closed epicReadiness, map epic task/group signals to readiness rather than story must-decompose, and test every status/capability row including ready converted-epic no-commit completion.
+
 #### Story Intent
 
 - **Beneficiary:** delivery owner
@@ -161,6 +165,12 @@ The completed call-site census below classifies actual references to writeProjec
 Run: `node --test scripts/tests/unit/task-tracker/lib/decomposition-reestimate-guard.test.mjs scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs`
 
 ### Task 2: Collect current authority and persist protected pending projections
+
+#### Bound authority and marker scope
+
+Read exact root Shared wire and API contracts; Runtime plan structure and compact projection; Locking and effect sequence; Epic readiness and capabilities. Collector supplies exact selected content plus named referenced root bytes and current child-readiness observations through evaluateMaterializedWbsReadiness and terminal-child gates.
+
+Additionally own lib/issue-body-mutate.mjs and body-invariants.mjs: both decomposition records are kind advance. Add narrowly typed decompositionMutationCapability forwarded through validateMarkerAdvances to validateAdvance. Require a private WeakSet-branded owner/refresh capability bound to subject, issue lock, operation and expected before/after digest; allowMarkerAdvance strings alone cannot authorize. Validate insertion/rewrite/deletion on every fresh retry, even allowMarkerLoss true. Refresh owns assessment only; publication owner owns intent/effects/complete/supersession. Generic callers cannot mint either. Test forged well-formed pending→complete via mutateIssueBody and issue-body, removal with allowMarkerLoss true, name-only allowMarkerAdvance, foreign context and retry drift; prove legitimate owned advances. Extend body-invariants.test.mjs plus projection/authority suites. No environment token confers capability.
 
 #### Story Intent
 
@@ -186,6 +196,12 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/decomposition-authority.te
 
 ### Task 3: Publish estimate revisions through resumable real writer adapters
 
+#### Complete writer and recovery scope
+
+Read exact root Completed generic field call-site census and Locking and effect sequence as reviewed scope. Additionally own verbs/cancel-plan.mjs, lib/shelve-transaction.mjs, verbs/shelve.mjs and scripts/gh/update-event-fields.mjs. Register cancel-plan/shelve/event-field writer IDs before their enclosing first effects, including proposal retirement/restoration and compensation. Cancel Plan preserves its separately authorized state edge; unknown rollback stays pending. Shelving adopts existing journal, clears fields truthfully and reconciles prior pending before explicit supersession; unset grants no implementation. Numeric event configuration targeting Estimate enters publication. Implement all census semantic writers and production preservation/initial-creation fixtures.
+
+All registered effect adapters execute in-process under the same branded owner. Subprocesses cannot adopt ISSUE_LOCK_HELD_ENV as publication identity: refuse before acquiring a second lock or performing effects; test inherited-token zero effects/no deadlock and recovery to original owner. The added cancellation/shelving/event Run commands in this task verify this scope.
+
 #### Story Intent
 
 - **Beneficiary:** delivery owner
@@ -195,7 +211,7 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/decomposition-authority.te
 
 #### Delivery details
 
-**Estimate:** 12h, M. **Wave:** 3. **Depends on:** Tasks 1 and 2.
+**Estimate:** 12h, L. **Wave:** 3. **Depends on:** Tasks 1 and 2.
 
 **Files:** Create `scripts/task-tracker/lib/decomposition-publication.mjs`; modify `verbs/inflate-estimate.mjs`, `plan-estimate.mjs`, `refine.mjs`, `lib/apply-reevaluate.mjs`, `apply-refinement-estimate.mjs`, `refine-estimate-comment.mjs`, `lib/estimation/plan-estimate-authority.mjs`, `runtime-adapter.mjs`, `scripts/gh/project-tether.mjs`, `scripts/gh/lib/project-tether.mjs`, `scripts/gh/migrate-project.mjs`, `scripts/maintenance/bind-issues-to-new-project.mjs`. Add writer cases to the requested unit guard suite and existing writer suites. Extract small new adapter helpers rather than growing existing large modules beyond repository caps.
 
@@ -211,6 +227,16 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/r4p-jit-boundaries.test.mj
 
 ### Task 4: Expose restricted bind and typed current continuation decisions
 
+#### Shared decision and inventory scope
+
+Read exact root Shared wire and API contracts; Epic readiness and capabilities; Remote no-commit effects and completion boundary. Own Wave 3 lib/action-decision/contract.mjs CODE_DEFINITIONS, legacy-refusals.json, instructions/aitm-guidance.yml and .release.json, states/plan.mjs/guard registration for continuation. Publish closed reason/capability vocabulary for subsequent consumers. Inventory sites/fingerprints must match actual producers. Task 3 owns different writer files; subsequent sequential Tasks 5 and 6 update their real sites one at a time. Use ordinary release generator, story tags for all new tests and small helpers under line caps.
+
+Run: `npm run lint:action-refusals`
+Run: `npm run lint:guidance-release`
+Run: `npm run lint:story-tags`
+Run: `npm run lint:line-cap`
+Run: `node --test scripts/tests/integration/task-tracker/lib/action-parity.test.mjs`
+
 #### Story Intent
 
 - **Beneficiary:** workspace operator
@@ -222,7 +248,7 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/r4p-jit-boundaries.test.mj
 
 **Estimate:** 6h, M. **Wave:** 3. **Depends on:** Tasks 1 and 2.
 
-**Files:** Modify `scripts/task-tracker/verbs/start.mjs`, `resume.mjs`, `explain.mjs`, `lib/action-decision/session.mjs`, `observations.mjs`, `evaluate.mjs`, `contract.mjs`, `remediations.mjs`, `presentation.mjs`, `lib/guard-registry.mjs` and applicable guidance catalog entries. Create `scripts/tests/integration/task-tracker/lib/decomposition-reestimate-admission.test.mjs` continuation cases; extend existing action-decision contract tests. Do not edit Task 3 writer files.
+**Files:** Modify `scripts/task-tracker/verbs/start.mjs`, `resume.mjs`, `explain.mjs`, `lib/action-decision/session.mjs`, `observations.mjs`, `evaluate.mjs`, `contract.mjs`, `remediations.mjs`, `presentation.mjs`, applicable guidance catalog entries. Create `scripts/tests/integration/task-tracker/lib/decomposition-reestimate-admission.test.mjs` continuation cases; extend existing action-decision contract tests. Do not edit Task 3 writer files.
 
 **Interfaces:** Produce observeDecompositionForAction. Register exact blocker arguments `{issue, operationId}` where operationId is nullable and reason from the closed authority vocabulary. Bind readiness and implementation capability are separate: binding can succeed restricted, while ordinary ownership/session admission still fails independently.
 
@@ -235,6 +261,18 @@ Run: `node --test scripts/tests/integration/task-tracker/lib/decomposition-reest
 
 ### Task 5: Enforce decomposition at real scoped-effect hook boundaries
 
+#### Remote effect and hook freshness scope
+
+Read exact root Shared wire and API contracts; Epic readiness and capabilities; Remote no-commit effects and completion boundary; Hook freshness budget. Additionally own lib/guard-registry.mjs, states/plan.mjs/preflight composition, lib/code-complete-gate.mjs, lib/action-decision/test.mjs, verbs/issue-body.mjs, verbs/comment.mjs, verbs/epic-reconcile.mjs and no-commit verbs/deliver.mjs. Before new substantive remote deliverable/completion evidence, enforce fresh capability; arbitrary caller keys never claim recovery. Test actual governed no-local-file-target operations for audit/research/spike 23/24/25, initial/external estimates, pending/unavailable and converted-epic planning-ready versus completion-ready. Preserve genuine history/checkpoints; gate actual completion/Test/delivery effects without a state-wide ban.
+
+Own Wave 4 CODE_DEFINITIONS, legacy-refusals.json, guidance YAML/release and guard edits after Task 4 and before Task 6. Hook collection uses one combined fresh provider snapshot and bounded continuation pages under the root budget; display caches grant nothing. Test call count, warm caches, combined deadline/rate-limit failure, no retry storm and zero admitted effects. Use actual fingerprints, ordinary release generator and story/line-cap gates.
+
+Run: `npm run lint:action-refusals`
+Run: `npm run lint:guidance-release`
+Run: `npm run lint:story-tags`
+Run: `npm run lint:line-cap`
+Run: `node --test scripts/tests/integration/task-tracker/lib/action-parity.test.mjs`
+
 #### Story Intent
 
 - **Beneficiary:** delivery owner
@@ -246,7 +284,7 @@ Run: `node --test scripts/tests/integration/task-tracker/lib/decomposition-reest
 
 **Estimate:** 9h, M. **Wave:** 4. **Depends on:** Tasks 3 and 4.
 
-**Files:** Create `scripts/task-tracker/lib/decomposition-activity.mjs`; modify `activity-guard.mjs`, `activity-policy.mjs`, `source-edit-gate.mjs` and supported target-discovery composition in `lib/mutation-context.mjs`; extend the requested integration admission suite and existing native hook regressions. Task 6 owns kind/split/Plan-exit files and separate tests.
+**Files:** Create `scripts/task-tracker/lib/decomposition-activity.mjs`; modify `activity-guard.mjs`, `activity-policy.mjs`, `source-edit-gate.mjs` and supported target-discovery composition in `lib/mutation-context.mjs`; extend the requested integration admission suite and existing native hook regressions. Task 6 follows Task 5 and owns kind/split/Plan-exit files and separate tests.
 
 **Interfaces:** Produce evaluateDecompositionActivity; capabilities are inspect/checkpoint/decomposition-prepare/governed-decomposition/scoped-implementation/scoped-deliverable. Determine capability from the actual declared command and physically resolved complete targets; path names or a caller boolean are insufficient. Recovery descriptors identify the exact governed command/operation and cannot authorize sibling effects.
 
@@ -260,6 +298,20 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/code-complete-gate-audit-4
 
 ### Task 6: Preserve governed split and kind recovery with truthful epic readiness
 
+#### Complete decision and readiness scope
+
+Read exact root Completed generic field call-site census; Epic readiness and capabilities; Remote no-commit effects and completion boundary. Additionally own verbs/decompose-check.mjs: shared assessment, no prose-waiver exit-zero, explicit pending/indeterminate. Update unit verbs/coverage-promote.test.mjs's obsolete Decomposition Waiver assertion. Test actual output/exit, converted epic without reviewed children refusing completion, R4P children allowing parent Develop only, and terminal children allowing epic no-commit completion under existing gates.
+
+Own Wave 5 CODE_DEFINITIONS, legacy-refusals.json, guidance YAML/release and states/plan.mjs/guard updates after Task 5 lands. This serialization removes parallel inventory edits. Use prior committed fixtures, valid story tags and helpers within line caps.
+
+Run: `node --test scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs`
+
+Run: `npm run lint:action-refusals`
+Run: `npm run lint:guidance-release`
+Run: `npm run lint:story-tags`
+Run: `npm run lint:line-cap`
+Run: `node --test scripts/tests/integration/task-tracker/lib/action-parity.test.mjs`
+
 #### Story Intent
 
 - **Beneficiary:** delivery owner
@@ -269,9 +321,9 @@ Run: `node --test scripts/tests/unit/task-tracker/lib/code-complete-gate-audit-4
 
 #### Delivery details
 
-**Estimate:** 4h, S. **Wave:** 4. **Depends on:** Tasks 3 and 4.
+**Estimate:** 6h, M. **Wave:** 5. **Depends on:** Tasks 3, 4 and 5.
 
-**Files:** Modify `scripts/task-tracker/verbs/kind.mjs`, `split-plan.mjs`, `lib/split-plan.mjs`, `lib/decomposition-plan-exit-guard.mjs`, `scripts/gh/lib/epic-metadata.mjs` and exact sanctioned child-creation assessment integration in `scripts/gh/create-issue.mjs`. Extend `verbs/coverage-kind.test.mjs`, `split-plan.test.mjs`, `lib/decomposition-plan-exit-gate.test.mjs`, `decomposition-delivery-readiness.test.mjs`. Do not edit Task 5's shared integration suite in parallel.
+**Files:** Modify `scripts/task-tracker/verbs/kind.mjs`, `split-plan.mjs`, `lib/split-plan.mjs`, `lib/decomposition-plan-exit-guard.mjs`, `scripts/gh/lib/epic-metadata.mjs` and exact sanctioned child-creation assessment integration in `scripts/gh/create-issue.mjs`. Extend `verbs/coverage-kind.test.mjs`, `split-plan.test.mjs`, `lib/decomposition-plan-exit-gate.test.mjs`, `decomposition-delivery-readiness.test.mjs`. Reuse Task 5's committed integration fixtures after it lands.
 
 **Interfaces:** Consume shared collector/refresh/publication reconciliation and use exact governed recovery descriptors. Child creation assesses newly created delivery on continuation, not as an existing-parent estimate revision. Keep existing substantive story-intent, child enumeration, parent linkage and materialized WBS checks.
 
@@ -284,6 +336,16 @@ Run: `node --test scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs s
 
 ### Task 7: Prove complete composition and document operational recovery
 
+#### Complete inventory and final proof scope
+
+Read all named root contracts/census and accepted spec. Own final Wave 6 CODE_DEFINITIONS, guidance/release and refusal inventory updates after Task 6. No unresolved writer design is deferred here. Census covers all scripts/ outside tests, including Additional census dispositions. Verify ready converted #1908-shaped epic no-commit completion through actual adapters. The three original Run commands in this task are exactly parent vc:1, vc:2 and vc:3; additional commands are their owning tasks' obligations.
+
+Run: `npm run lint:action-refusals`
+Run: `npm run lint:guidance-release`
+Run: `npm run lint:story-tags`
+Run: `npm run lint:line-cap`
+Run: `node --test scripts/tests/integration/task-tracker/lib/action-parity.test.mjs`
+
 #### Story Intent
 
 - **Beneficiary:** workspace operator
@@ -293,7 +355,7 @@ Run: `node --test scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs s
 
 #### Delivery details
 
-**Estimate:** 5h, M. **Wave:** 5. **Depends on:** Tasks 5 and 6, transitively Tasks 1–4.
+**Estimate:** 6h, M. **Wave:** 6. **Depends on:** Tasks 5 and 6, transitively Tasks 1–4.
 
 **Files:** Extend both exact requested regression suites as needed after prior owners land; add the complete adapter census and operational recovery documentation under `docs/`; update applicable `skill/shared/references/` decomposition guidance without changing unrelated policy. Runtime product files remain owned by their earlier tasks; discovered defects return to those owning children rather than being hidden in this proof task.
 
@@ -328,7 +390,7 @@ The normalized runtime input's `plan` additionally has `content`: the exact sele
 
 ### Completed generic field call-site census
 
-Every production reference to writeProjectFieldValue, clearProjectFieldValue, tetherIssueToProject, ensureIssueFieldDb and formatIssueFieldDb under scripts/task-tracker, scripts/gh and scripts/maintenance at the source baseline is classified below. Task 7 checks inventory drift; it does not defer these design decisions.
+Every production reference to writeProjectFieldValue, clearProjectFieldValue, tetherIssueToProject, ensureIssueFieldDb and formatIssueFieldDb under all scripts/ outside tests at the source baseline is classified below. Task 7 checks inventory drift; it does not defer these design decisions.
 
 | Production caller                                                                                                      | Disposition and verification owner                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -350,11 +412,11 @@ Every production reference to writeProjectFieldValue, clearProjectFieldValue, te
 | lib/apply-review-delta.mjs                                                                                             | Reference occurs only in a comment declaring absence of imports; no field effect. Excluded on source evidence; Task 7 rejects a later unmapped Estimate effect.                                                                                                                                                                                                                                                                                    |
 | preflight-issue.mjs; gh/create-issue.mjs                                                                               | Initial values/rendering, not existing-issue revision. Task 6 creation/continuation tests preserve initial fields without fake history; nested existing-issue tether must adopt its owner.                                                                                                                                                                                                                                                         |
 
-Task 3 owns cancel-plan.mjs, shelve-transaction.mjs and gh/update-event-fields.mjs in addition to its listed files. Its writer-ID set adds cancel-plan/shelve/event-field. Test high Plan→saved low Refine restoration, body/board failure and compensation, high proposal clear/restore, unknown outcomes and retries; shelving pending-before-first-effect and every clear/journal phase, interruption and resume. Its expanded boundary is provisionally 12h instead of 8h; seven-child aggregate is 49h, still bounded below 24h per child. Actual refined fields and adaptive parent calibration replace assumptions.
+Task 3 owns cancel-plan.mjs, shelve-transaction.mjs and gh/update-event-fields.mjs in addition to its listed files. Its writer-ID set adds cancel-plan/shelve/event-field. Test high Plan→saved low Refine restoration, body/board failure and compensation, high proposal clear/restore, unknown outcomes and retries; shelving pending-before-first-effect and every clear/journal phase, interruption and resume. Its expanded boundary is provisionally 12h instead of 8h; seven-child aggregate is 52h, still bounded below 24h per child. Actual refined fields and adaptive parent calibration replace assumptions.
 
 ### Remote no-commit effects and completion boundary
 
-Task 5 additionally owns guard-registry/preflight composition, lib/code-complete-gate.mjs, lib/action-decision/test.mjs, verbs/issue-body.mjs, verbs/comment.mjs, verbs/epic-reconcile.mjs and no-commit verbs/deliver.mjs. Task 4 owns shared observation/catalog definitions and lands first; Task 6 owns kind/split only. No active parallel owner overlaps these remote boundaries.
+Task 5 additionally owns guard-registry/preflight composition, lib/code-complete-gate.mjs, lib/action-decision/test.mjs, verbs/issue-body.mjs, verbs/comment.mjs, verbs/epic-reconcile.mjs and no-commit verbs/deliver.mjs. Task 4 owns shared observation/catalog definitions and lands first; Task 6 owns kind/split only. Task 6 follows Task 5; no active owner overlaps these remote boundaries.
 
 Register fresh admission before effectful governed body/comment publication and no-commit completion/delivery records. Resolve body-operation input against the fresh issue; identify substantive Scope/AC/deliverable changes and new deliverable/completion evidence. Exact package-owned history/checkpoint or registered estimate publication keeps its recovery capability; arbitrary caller keys cannot claim exemption. Unknown publication purpose is restricted scoped-deliverable with typed preview/recovery, never permissive booleans. Preserve existing genuine evidence; new no-commit publication requires current scoped-deliverable capability. No local file target or unmatched Bash READ fallback is sufficient.
 
@@ -362,4 +424,35 @@ Actual code-complete and Test preflight consume the same fresh observation befor
 
 Task 5 admission suite executes actual governed issue-body/comment, epic-reconcile, code-complete/Test and no-commit deliver adapters via injected fixture transports, including no-local-file-target commands. Cover audit/research/spike 23/24/25, initial/external estimates, pending/unavailable authority and converted-epic readiness. Assert zero new remote deliverable/completion effects on refusal and retained diagnostics/checkpoints. Extend unit lib/code-complete-gate-audit-494.test.mjs and verbs/deliver-no-commit.test.mjs for real seams. Task 7 composes publication→Explain→completion across the full matrix.
 
-The remote effect boundary increases Task 5's provisional estimate to 9h. The revised total is 6+7+12+6+9+4+5=49h. The completed census is authoritative for Task 3's expanded files/writer IDs; the remote boundary is authoritative for Task 5's expanded files. Their additional targeted verifiers are part of the respective task sections. These are implementation obligations, not executed planning evidence.
+The remote effect boundary increases Task 5's provisional estimate to 9h. The revised total is 6+7+12+6+9+6+6=52h. The completed census is authoritative for Task 3's expanded files/writer IDs; the remote boundary is authoritative for Task 5's expanded files. Their additional targeted verifiers are part of the respective task sections. These are implementation obligations, not executed planning evidence.
+
+## Epic readiness and capabilities
+
+Runtime input epicReadiness has exact keys availability/planning/completion/digest/children. Non-epics use not-applicable/null/null/null/empty. Epics use observed or unavailable; planning/completion booleans only when observed; current digest; bounded children {issue, sourcePlanCommit, sourcePlanSection, refinementDigest, rank, blockedBy, state, disposition}. Task 2 derives planning via existing evaluateMaterializedWbsReadiness (pinned reviewed tasks, current refinement/graph/branch) and completion via existing terminal-child/epic-completion gates. Pure kernel validates the observation; no I/O. Input digest binds it; assessment observations retain compact digest. Unreadable/truncated graphs are unavailable.
+
+Story XL/task/group mandatory signals map to must-decompose. Epic aggregate/task/group signals map to epic-readiness-required. Satisfied epic retains that status with boundary-specific capabilities, never story-ok. Pending publication takes precedence for every kind, then incomplete authority yields indeterminate. Ordinary lifecycle/ownership/review/close gates remain conjunctive.
+
+| Status                     | Permitted decomposition capabilities                                                                                                                                                                                                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| story-ok                   | inspect/checkpoint/decomposition-prepare/governed-decomposition/scoped-implementation/scoped-deliverable/scoped-completion, with normal gates                                                                                                                                                |
+| needs-decomposition-review | Same capabilities, visible advisory warning                                                                                                                                                                                                                                                  |
+| must-decompose             | inspect/checkpoint/decomposition-prepare/governed-decomposition; no new scoped effects                                                                                                                                                                                                       |
+| epic-readiness-required    | inspect/checkpoint/decomposition-prepare/governed-decomposition always; planning true permits parent orchestration/Develop preparation; completion true permits epic scoped-deliverable/scoped-completion with existing reconciliation/review/close gates. No parent product implementation. |
+| pending                    | inspect/checkpoint/exact publication reconciliation and otherwise authorized decomposition; no scoped effects despite matching old low values                                                                                                                                                |
+| indeterminate              | inspect/checkpoint/decomposition preparation and recovery with separately usable exact authority; no scoped effects                                                                                                                                                                          |
+
+Close is never granted independently by this kernel. scoped-completion covers new completion assertions/delivery records; close still requires sanctioned human authority and existing gates. Converted #1908 can complete through epic no-commit only after terminally delivered children, not merely R4P. Tasks 1/2/5/6/7 prove both boundaries and pending precedence. Add scoped-completion to the closed vocabulary consumed by Task 5.
+
+## Hook freshness budget
+
+Task 5 performs one combined GraphQL snapshot per invocation for unique subjects: fresh body/record markers, configured project item Status/Estimate/Size, ownership and bounded forecast envelopes. Local policy and pinned selected plan plus exact referenced root contracts are read/digest-validated. Reuse that snapshot within the invocation for ordinary ownership/lifecycle checks, never across invocations. Multi-subject aliases batch targets; every target must be observed. Single ordinary story edit fixture asserts one base remote query; forecast/epic-child pagination may add bounded reads.
+
+Monotonic total remote budget is five seconds; at most two continuation pages per required resource, no hook retries. Calls use remaining budget; total deadline is six seconds including local validation. Overflow/deadline/429/transport failure yields typed indeterminate with resource/reason, denies recognized scoped effects and preserves diagnostic recovery. Rate-limit backoff is recovery outside edit attempts; cached authority never permits writes. Immutable Git blob/policy parse caches can be reused after local digest validation, but body/project/forecast/readiness are freshly fetched. Digest-only admission cache is forbidden without that current revalidation; display cache remains display-only. Test call counts, deadline, no retry storm, digest-bound local cache and zero effects on exhausted/changed authority. These budgets are design assumptions to measure during implementation, not current performance results.
+
+## Additional census dispositions
+
+- verbs/decompose-check.mjs is a read-only decision producer owned/tested by Task 6; no waiver-derived allow.
+- scripts/migrate/heal-options-co-pilot-bodies.mjs hard-codes kburson/options-co-pilot and its different project. It copies board defaults while preserving existing body values through ensureIssueFieldDb, then raw body writes bypass AITM. It is an unsupported historical external writer for this repository's cooperative publication, never an admission source. Task 7 source fixture proves fixed foreign target/no local semantic Estimate effect; any external semantic drift is detected on fresh continuation. Do not execute/retrofit this foreign one-off under #1908.
+- scripts/migrate/start-time-field.mjs writes only configured startTime text. Task 7 proves no Estimate target; no estimate publication.
+
+Task 3 is 12h/L, Task 6 6h/M, Task 7 6h/M; total 6+7+12+6+9+6+6=52h. Parallelism remains Tasks 3/4 in Wave 3; Tasks 5/6 are sequential to protect shared inventories. Representative kernel fixture defaults: M non-XL, empty plan, complete non-epic authority. Named root references in each task are reviewed scope-bearing dependencies at the same pinned plan commit: Task 2 includes referenced normalized bytes in decomposition scope identity, so a contract change cannot preserve admission digest.
