@@ -43,9 +43,7 @@
         {
           "baseRefName": "trunk",
           "headRefOid": "6e0c466193e19b25d4dd8e2e196d13cd922aca2a",
-          "mergeCommit": {
-            "oid": "d45d36ee6d161603d3c330d6eea2e9bc8086298e"
-          },
+          "mergeCommit": { "oid": "d45d36ee6d161603d3c330d6eea2e9bc8086298e" },
           "mergedAt": "2026-09-21T04:32:55Z",
           "number": 1726,
           "state": "MERGED",
@@ -55,9 +53,7 @@
         {
           "baseRefName": "trunk",
           "headRefOid": "21874bc6f8241c3b15451b952268d4b952b49ecf",
-          "mergeCommit": {
-            "oid": "94c32e12d845b621311a4597ac1dbaf3715c9d67"
-          },
+          "mergeCommit": { "oid": "94c32e12d845b621311a4597ac1dbaf3715c9d67" },
           "mergedAt": "2026-09-20T21:40:12Z",
           "number": 1724,
           "state": "MERGED",
@@ -81,7 +77,10 @@
       "priorDeliveryPRs": [],
       "localEvidencePaths": 6,
       "originalSourceRetained": true,
-      "decision": "Review recovery PR and select applicable changes"
+      "decision": "Temporary workspace hook disabling is an operational cleanup record, not a product default.",
+      "retirementPrepared": true,
+      "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
+      "preservationBranch": "codex/1953-protected-wip-review-index"
     },
     {
       "id": "P04",
@@ -95,7 +94,10 @@
       "priorDeliveryPRs": [],
       "localEvidencePaths": 0,
       "originalSourceRetained": true,
-      "decision": "Review recovery PR and select applicable changes"
+      "decision": "CI replay helper and captured bytes are shipped; final test placement is integration/meta, not the intermediate test-helpers directory.",
+      "retirementPrepared": true,
+      "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
+      "preservationBranch": "codex/1953-protected-wip-review-index"
     },
     {
       "id": "P05",
@@ -109,7 +111,10 @@
       "priorDeliveryPRs": [],
       "localEvidencePaths": 0,
       "originalSourceRetained": true,
-      "decision": "Review recovery PR and select applicable changes"
+      "decision": "CI replay helper and captured bytes are shipped; final test placement is integration/meta, not the intermediate test-helpers directory.",
+      "retirementPrepared": true,
+      "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
+      "preservationBranch": "codex/1953-protected-wip-review-index"
     },
     {
       "id": "P06",
@@ -123,7 +128,10 @@
       "priorDeliveryPRs": [],
       "localEvidencePaths": 131,
       "originalSourceRetained": true,
-      "decision": "Review recovery PR and select applicable changes"
+      "decision": "Architecture delivery is represented by #1724/#1726; excluded experiment and old generated setup are historical only.",
+      "retirementPrepared": true,
+      "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
+      "preservationBranch": "codex/1953-protected-wip-review-index"
     },
     {
       "id": "P07",
@@ -179,7 +187,10 @@
       "priorDeliveryPRs": [],
       "localEvidencePaths": 7,
       "originalSourceRetained": true,
-      "decision": "Review recovery PR and select applicable changes"
+      "decision": "Current trunk already contains the completed authority evaluator and stronger issue-bound observation identity checks.",
+      "retirementPrepared": true,
+      "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
+      "preservationBranch": "codex/1953-protected-wip-review-index"
     },
     {
       "id": "P11",
@@ -194,9 +205,7 @@
         {
           "baseRefName": "trunk",
           "headRefOid": "d6c9091e1a568a6b5316e7975c1ff070bcdcbfd1",
-          "mergeCommit": {
-            "oid": "43e8d35d53952ef2a23615d98cf901fa4c74121b"
-          },
+          "mergeCommit": { "oid": "43e8d35d53952ef2a23615d98cf901fa4c74121b" },
           "mergedAt": "2026-10-09T01:11:29Z",
           "number": 1927,
           "state": "MERGED",
@@ -221,9 +230,7 @@
         {
           "baseRefName": "trunk",
           "headRefOid": "9bb4a2806b47ef53d30c15cc1f0dc4e05d9efc30",
-          "mergeCommit": {
-            "oid": "c04d230e30947d76cb3778e4f88a754c3afd2245"
-          },
+          "mergeCommit": { "oid": "c04d230e30947d76cb3778e4f88a754c3afd2245" },
           "mergedAt": "2026-10-05T05:27:00Z",
           "number": 1890,
           "state": "MERGED",
@@ -248,9 +255,7 @@
         {
           "baseRefName": "trunk",
           "headRefOid": "344a6abb3dbf6d0a3f5ab4037b1bd78b0cabd86e",
-          "mergeCommit": {
-            "oid": "dab9548a5836f958b7abcf623f8c7447e2eaabca"
-          },
+          "mergeCommit": { "oid": "dab9548a5836f958b7abcf623f8c7447e2eaabca" },
           "mergedAt": "2026-10-06T00:05:08Z",
           "number": 1898,
           "state": "MERGED",
@@ -289,9 +294,7 @@
         {
           "baseRefName": "trunk",
           "headRefOid": "c254618a6e756697f395c42bf40a60583e7276bc",
-          "mergeCommit": {
-            "oid": "cf62c49258ad0a377549273576db96acea5dc417"
-          },
+          "mergeCommit": { "oid": "cf62c49258ad0a377549273576db96acea5dc417" },
           "mergedAt": "2026-10-05T23:17:53Z",
           "number": 1900,
           "state": "MERGED",
@@ -316,9 +319,7 @@
         {
           "baseRefName": "trunk",
           "headRefOid": "2d36e1a6c9c57039299c332ef208e09e34d1e003",
-          "mergeCommit": {
-            "oid": "e802e425d1d4efbc058c154d0f09b7b90116446c"
-          },
+          "mergeCommit": { "oid": "e802e425d1d4efbc058c154d0f09b7b90116446c" },
           "mergedAt": "2026-10-06T13:25:08Z",
           "number": 1903,
           "state": "MERGED",
@@ -342,7 +343,10 @@
       "priorDeliveryPRs": [],
       "localEvidencePaths": 2,
       "originalSourceRetained": true,
-      "decision": "Review recovery PR and select applicable changes"
+      "decision": "Accepted ADR0002 makes GitHub records authoritative; July SQLite-authority execution plans are superseded research.",
+      "retirementPrepared": true,
+      "preservationManifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
+      "preservationBranch": "codex/1953-protected-wip-review-index"
     },
     {
       "id": "P18",
@@ -357,9 +361,7 @@
         {
           "baseRefName": "trunk",
           "headRefOid": "d0bbf8c62c5c34b86158054b4c80d3548f8d13b1",
-          "mergeCommit": {
-            "oid": "e49543f2e93c6d5ce768322b8cb36bad8639bc61"
-          },
+          "mergeCommit": { "oid": "e49543f2e93c6d5ce768322b8cb36bad8639bc61" },
           "mergedAt": "2026-10-06T16:09:16Z",
           "number": 1905,
           "state": "MERGED",
@@ -491,10 +493,7 @@
   ],
   "historicalSourcePRs": [
     {
-      "ids": [
-        "P04",
-        "P05"
-      ],
+      "ids": ["P04", "P05"],
       "issue": 1859,
       "sourceHead": "14154c2e264b5cdb7d4f8145baead7fd5b4f715e",
       "branch": "codex/recovery-1859-ci-replay-20261009",
@@ -506,9 +505,7 @@
       "verifiedOriginSha": "cf0c25b2ec9bc22d05f36fc5dda258ef10b0c388"
     },
     {
-      "ids": [
-        "P06"
-      ],
+      "ids": ["P06"],
       "issue": 1725,
       "sourceHead": "46952470a4f89a61bf7f689ea7937397ed8314d2",
       "branch": "codex/recovery-1725-interrupted-review-planning-20261009",
@@ -520,9 +517,7 @@
       "verifiedOriginSha": "530f081b5d5ff9856d9c45e25d882bee3fd58e6c"
     },
     {
-      "ids": [
-        "P10"
-      ],
+      "ids": ["P10"],
       "issue": 1953,
       "originalIssue": 1728,
       "sourceHead": "309f6fe5ea3206a6159893e76b8c4be01f8433f7",
@@ -535,9 +530,7 @@
       "verifiedOriginSha": "2a0f2cf8d32a4a8d5ad6cc3a4e44ffefe00e4c77"
     },
     {
-      "ids": [
-        "P17"
-      ],
+      "ids": ["P17"],
       "issue": 1955,
       "sourceHead": "4f70500b60c78a090aefd9eea052122c04467480",
       "branch": "codex/recovery-1955-hybrid-insights-proposals-20261009",
@@ -1880,9 +1873,7 @@
         "base": "b7fbf455125e92cc3bbe073fc7e585cb0c623bc9"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #108; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 6
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 6 },
       "freshHead": "7e1b2dee7f9321b2f628a14dc82e999c7a8305f8",
       "freshStatus": "",
       "holds": [],
@@ -2324,9 +2315,7 @@
       "proof": "ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH",
       "aggregateProof": null,
       "priorHold": "Clean checkout, but HEAD delivery not proven",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 4
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 4 },
       "freshHead": "d8f666fba749521bece368b8274d535bec4f7fe9",
       "freshStatus": "",
       "holds": [],
@@ -2368,9 +2357,7 @@
       "proof": "ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH",
       "aggregateProof": null,
       "priorHold": "Clean checkout, but HEAD delivery not proven",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 4
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 4 },
       "freshHead": "d8f666fba749521bece368b8274d535bec4f7fe9",
       "freshStatus": "",
       "holds": [],
@@ -2396,9 +2383,7 @@
       "proof": "ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH",
       "aggregateProof": null,
       "priorHold": "Clean checkout, but HEAD delivery not proven",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 1
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 1 },
       "freshHead": "4b5f9d0fc2d1429bbb9eb696bd949740f6030a5e",
       "freshStatus": "",
       "holds": [],
@@ -2429,9 +2414,7 @@
         "base": "7f08f72d60c2b734518c1e6ddd9346106e8a0825"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1815; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 2
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 2 },
       "freshHead": "199d2dae9ab26211ac90c46ce96627523e66a270",
       "freshStatus": "",
       "holds": [],
@@ -2462,9 +2445,7 @@
         "base": "651d2af1d61d06064f5eaed8fafa707cafc7a2f9"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1482; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 10
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 10 },
       "freshHead": "76f58cd2335c8cd5005df47159e972d0fc9eb22b",
       "freshStatus": "",
       "holds": [],
@@ -2501,9 +2482,7 @@
         "base": "e5b3060cb27caf92239f05ca5552f364d500eec7"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1487; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 5
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 5 },
       "freshHead": "94575a4a009383c8749343c5c8023241c84ebd5c",
       "freshStatus": "",
       "holds": [],
@@ -2670,9 +2649,7 @@
         "base": "678463fc105fd88e4954d9da0ef464e43b5f1414"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1606; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 6
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 6 },
       "freshHead": "5565718a479ece4bf445f4f1862a9f682637d6db",
       "freshStatus": "",
       "holds": [],
@@ -2703,9 +2680,7 @@
         "base": "f83eb22f6e60c26235da479c054edbdb3ee0755b"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1489; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 3
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 3 },
       "freshHead": "82eba885bac295a57c236c611c84e0fd6f69d7e3",
       "freshStatus": "",
       "holds": [],
@@ -2807,9 +2782,7 @@
         "base": "00c38cf73a7e4bf7a67ae1af039836e894488f94"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1510; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 6
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 6 },
       "freshHead": "8fafa6681a54c349bd2a02a69e944c07c7df6468",
       "freshStatus": "",
       "holds": [],
@@ -3101,9 +3074,7 @@
         "base": "91e65af227047f0c7e846c3ea75fe652f35b8dab"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1513; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 1
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 1 },
       "freshHead": "99bec143fd3c6401076da84ab78fefe65d054d60",
       "freshStatus": "",
       "holds": [],
@@ -3170,9 +3141,7 @@
         "base": "f2bbe7845b21424d682c2bd97ea16647a0e9e9b2"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1612; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 7
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 7 },
       "freshHead": "094a10bddba9102b4bf9f2483e3b7ba6583bd16c",
       "freshStatus": "",
       "holds": [],
@@ -3334,9 +3303,7 @@
         "base": "ce9d066dbe4bb0e92d46b3e10970346fff7c59db"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1563; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 20
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 20 },
       "freshHead": "698d712240b4f1eb4d1b18cda1faa6c977f7c060",
       "freshStatus": "",
       "holds": [],
@@ -3413,9 +3380,7 @@
         "base": "60f43d809f1b4e8475deac559980100b630a2a0b"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1644; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 1
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 1 },
       "freshHead": "99588ebbe299567496554d034bff04e2b0063309",
       "freshStatus": "",
       "holds": [],
@@ -3452,9 +3417,7 @@
         "base": "5e7a83c72217091cb585c6100f311f250891d6e2"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1775; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 204
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 204 },
       "freshHead": "ee5803e4ae031210c269cf1e655167e7bdd305ab",
       "freshStatus": "",
       "holds": [],
@@ -3571,9 +3534,7 @@
         "base": "493b4e591cce8867894b3b5ea99f1cf584366e13"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1593; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 3
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 3 },
       "freshHead": "15632970a34a8ed2deb26e4594570756baa1d492",
       "freshStatus": "",
       "holds": [],
@@ -3604,9 +3565,7 @@
         "base": "bb052ee3993315a7a454345150aa00bdecac20c0"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1576; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 2
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 2 },
       "freshHead": "b9fce8501a4d1ec3583c949475a69d95ea8c5d1f",
       "freshStatus": "",
       "holds": [],
@@ -3738,9 +3697,7 @@
         "base": "900da3dd6bfa809dfdafbdcc51a031755605d0c4"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1607; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 4
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 4 },
       "freshHead": "190c03c6d3ed139743326ca282e54f9f6d19e1da",
       "freshStatus": "",
       "holds": [],
@@ -3787,9 +3744,7 @@
         "base": "8bf0ef6f757560ef0c5a544c6b91e94fed562669"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1608; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 2
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 2 },
       "freshHead": "3dce8ffe22d909a92d561ac8bb335395848c8cf6",
       "freshStatus": "",
       "holds": [],
@@ -3841,9 +3796,7 @@
         "base": "fd2b0830d9c214aac087de4c29efbd13f4c85b0d"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1584; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 2
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 2 },
       "freshHead": "ddcafc07b45989a136467028b64027ade0515e40",
       "freshStatus": "",
       "holds": [],
@@ -3900,9 +3853,7 @@
         "base": "75647c5657cd96f849b275364f0a56df0996c24c"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1594; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 11
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 11 },
       "freshHead": "65ca762ff0c72c34ef925e0a6752054e1b60834a",
       "freshStatus": "",
       "holds": [],
@@ -3944,9 +3895,7 @@
         "base": "16da6e1fd18d915b0f5e1a3e2db879c53f6d7ea1"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1605; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 11
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 11 },
       "freshHead": "8dd7b298b1168fdf3ec50ff6cd072f2944db8e78",
       "freshStatus": "",
       "holds": [],
@@ -3988,9 +3937,7 @@
         "base": "0988881f5796d19c270e4121a851143bb5046a6f"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1596; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 2
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 2 },
       "freshHead": "4881ecd6ba56ec2cf9850cfe19b503703aa14b43",
       "freshStatus": "",
       "holds": [],
@@ -4021,9 +3968,7 @@
         "base": "d8c228abf7db2aa1a8ea0c3b882b8bfdfb443827"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1598; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 3
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 3 },
       "freshHead": "9c06054d9d7b9345a76a51c0679493c1b3aeab4e",
       "freshStatus": "",
       "holds": [],
@@ -4054,9 +3999,7 @@
         "base": "ac090344c87d6c0dfea9560598762fa00671907f"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1602; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 2
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 2 },
       "freshHead": "b0c7480873e7f305ef4ff8729f309fc5f9abc6e1",
       "freshStatus": "",
       "holds": [],
@@ -4087,9 +4030,7 @@
         "base": "56711d9b2ab5c306df117929fa294c0cc9ca4fa4"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1604; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 5
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 5 },
       "freshHead": "0c3e50b6e481f8e55c7a18981d255d881c8b2b91",
       "freshStatus": "",
       "holds": [],
@@ -4120,9 +4061,7 @@
         "base": "e4330f916f15a6f81984d75c1a628834db47de39"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1634; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 2
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 2 },
       "freshHead": "2e41eece3b92f886c4d173a422de386cfcae793e",
       "freshStatus": "",
       "holds": [],
@@ -4189,9 +4128,7 @@
         "base": "cc3a8307644be8af3b84194c236168e26c506a47"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1636; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 5
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 5 },
       "freshHead": "c5d712c2adddbf6411408454e0c6493d004952df",
       "freshStatus": "",
       "holds": [],
@@ -4318,9 +4255,7 @@
         "base": "d8162ee027e1a61d56d0eb2411c5a99b30733932"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1641; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 23
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 23 },
       "freshHead": "0a534ec156cf308e5f6126f9d85c63679c3714e2",
       "freshStatus": "",
       "holds": [],
@@ -4447,9 +4382,7 @@
       "proof": "ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH",
       "aggregateProof": null,
       "priorHold": "HEAD is contained in merged trunk PR #1775; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 196
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 196 },
       "freshHead": "e3ae66d29ab14b9ac7465b5ee3f3d6d629263f1e",
       "freshStatus": "",
       "holds": [],
@@ -4480,9 +4413,7 @@
         "base": "157990b0bce21a938da71114377c1e5e3c12f229"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1686; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 5
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 5 },
       "freshHead": "b125d453b1c69c768afa5b09c9fb09cb505ffe25",
       "freshStatus": "",
       "holds": [],
@@ -4584,9 +4515,7 @@
         "base": "8f3547e4fdab9f05f293d9b65e95b62f3972424c"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1687; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 4
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 4 },
       "freshHead": "394caaf53ce8a9bee21694d9fd3c89475ecc2937",
       "freshStatus": "",
       "holds": [],
@@ -4638,9 +4567,7 @@
         "base": "4663a2fa103d0311e06fdcef73edff7a625bbcce"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1717; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 2
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 2 },
       "freshHead": "eb871922ec4914c99918e516161276aceb1f41f0",
       "freshStatus": "",
       "holds": [],
@@ -4702,9 +4629,7 @@
         "base": "72123cd9e79fb4c85679c7e44eb1d583731c4cf6"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1722; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 15
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 15 },
       "freshHead": "dafb599e7da3028fd76f4090fda5cf09d4e71a0f",
       "freshStatus": "",
       "holds": [],
@@ -4771,9 +4696,7 @@
         "base": "b0b299c3690f876bceccd175d1cda19b8da6ebf6"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1771; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 22
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 22 },
       "freshHead": "c0f114435ab5b7cc5a4a32676c35bf59322685c7",
       "freshStatus": "",
       "holds": [],
@@ -5965,9 +5888,7 @@
       "proof": "ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH",
       "aggregateProof": null,
       "priorHold": "HEAD is contained in merged trunk PR #1775; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 192
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 192 },
       "freshHead": "cce58c72565ef22e8a6acbb1ccc2d458176c7ffa",
       "freshStatus": "",
       "holds": [],
@@ -5993,9 +5914,7 @@
       "proof": "ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH",
       "aggregateProof": null,
       "priorHold": "HEAD is contained in merged trunk PR #1775; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 195
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 195 },
       "freshHead": "edd049b0bb6a3238bbcdfd0a18a3ea42145965d8",
       "freshStatus": "",
       "holds": [],
@@ -6021,9 +5940,7 @@
       "proof": "ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH",
       "aggregateProof": null,
       "priorHold": "HEAD is contained in merged trunk PR #1775; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 196
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 196 },
       "freshHead": "e3ae66d29ab14b9ac7465b5ee3f3d6d629263f1e",
       "freshStatus": "",
       "holds": [],
@@ -6054,9 +5971,7 @@
         "base": "e2556ca5466f3f63b27fe5b31d870acf10b085dd"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1590; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 74
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 74 },
       "freshHead": "3a1be5f0b9d016fac9ecf2ad656145e839cf6fa4",
       "freshStatus": "",
       "holds": [],
@@ -6218,9 +6133,7 @@
         "base": "3f10a3b48ab8daac4574d621783d5edd7bb447ab"
       },
       "priorHold": "Exact HEAD merged to trunk in PR #1822; archive ignored evidence before removal",
-      "sourceClasses": {
-        "VERIFIED-MERGED-PR-SOURCE": 2
-      },
+      "sourceClasses": { "VERIFIED-MERGED-PR-SOURCE": 2 },
       "freshHead": "d03b6526ea604bd03a9e33755075b26d942c7366",
       "freshStatus": "",
       "holds": [],
@@ -11794,42 +11707,12 @@
     }
   ],
   "sourcePreservationVerification": [
-    {
-      "id": "P01",
-      "currentHeadUnchanged": true,
-      "stagedStateUnchanged": true,
-      "contentDrift": []
-    },
-    {
-      "id": "P02",
-      "currentHeadUnchanged": true,
-      "stagedStateUnchanged": true,
-      "contentDrift": []
-    },
-    {
-      "id": "P08",
-      "currentHeadUnchanged": true,
-      "stagedStateUnchanged": true,
-      "contentDrift": []
-    },
-    {
-      "id": "P09",
-      "currentHeadUnchanged": true,
-      "stagedStateUnchanged": true,
-      "contentDrift": []
-    },
-    {
-      "id": "P07",
-      "currentHeadUnchanged": true,
-      "stagedStateUnchanged": true,
-      "contentDrift": []
-    },
-    {
-      "id": "D09",
-      "currentHeadUnchanged": true,
-      "stagedStateUnchanged": true,
-      "contentDrift": []
-    }
+    { "id": "P01", "currentHeadUnchanged": true, "stagedStateUnchanged": true, "contentDrift": [] },
+    { "id": "P02", "currentHeadUnchanged": true, "stagedStateUnchanged": true, "contentDrift": [] },
+    { "id": "P08", "currentHeadUnchanged": true, "stagedStateUnchanged": true, "contentDrift": [] },
+    { "id": "P09", "currentHeadUnchanged": true, "stagedStateUnchanged": true, "contentDrift": [] },
+    { "id": "P07", "currentHeadUnchanged": true, "stagedStateUnchanged": true, "contentDrift": [] },
+    { "id": "D09", "currentHeadUnchanged": true, "stagedStateUnchanged": true, "contentDrift": [] }
   ],
   "cleanup": {
     "date": "2026-10-10",
@@ -11843,5 +11726,11 @@
     "receipt": "docs/worktree-recovery/2026-10-09/cleanup-receipt-2026-10-10.json",
     "sourceBranchesRetained": true,
     "permanentChatDeletionPerformed": false
+  },
+  "retirement": {
+    "manifest": "docs/worktree-recovery/2026-10-09/retired-prs/manifest.json",
+    "state": "PREPARED_FOR_RETIREMENT",
+    "PRs": [1961, 1962, 1963, 1964, 1965],
+    "preservationBranch": "codex/1953-protected-wip-review-index"
   }
 }

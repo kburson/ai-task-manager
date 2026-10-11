@@ -1,0 +1,14 @@
+{
+  "owner": "kburson",
+  "story": 1955,
+  "originalStory": 1955,
+  "sourceHead": "4f70500b60c78a090aefd9eea052122c04467480",
+  "protectedIds": [
+    "P17"
+  ],
+  "purpose": "Preserve the three July 28 proposed design/plan documents whose original commit had no issue. #1955 owns assessment against the later GitHub-native authority architecture (#1067/#1087/#1088), including a decision to supersede, retain research, or create current implementation stories. These documents are not current approved architecture.",
+  "sourcePaths": [
+    "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/chore-hybrid-insights-specs"
+  ],
+  "validation": "Original object preservation only; current tests and review not run."
+}

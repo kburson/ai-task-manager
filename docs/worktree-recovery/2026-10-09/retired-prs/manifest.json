@@ -1,0 +1,1166 @@
+{
+  "date": "2026-10-10",
+  "purpose": "Retire obsolete recovery proposals and their PR branches while keeping represented source or individually indexed exact historical bytes in the active recovery PR. Snapshots are inert; historical config and execution directions are not product defaults or current approvals.",
+  "representationTrunkHead": "5d11bc4e41507dc7ee298e334c8d432549ef7c9b",
+  "records": [
+    {
+      "PR": 1961,
+      "url": "https://github.com/kburson/ai-task-manager/pull/1961",
+      "story": 1953,
+      "originalBranch": "codex/recovery-1953-cleanup-session-20261009",
+      "originalHead": "d2b7284ef30f37ff1cfbcac7662b59ca0a57912e",
+      "disposition": "OBSOLETE_SESSION_CONFIGURATION",
+      "reason": "Temporary workspace hook disabling is an operational cleanup record, not a product default.",
+      "state": "PREPARED_FOR_RETIREMENT",
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "content": [
+        {
+          "originalPath": ".claude/settings.json",
+          "originalBlob": "47d17e69d08b674a307fb46a25fb0961afb62a54",
+          "sha256": "42f346e8fecbb27a81a42845e62f9bd16155e8286f5d08bb3047bb965d5366ec",
+          "bytes": 1539,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1961/.claude/settings.json.snapshot",
+          "storedBlob": "47d17e69d08b674a307fb46a25fb0961afb62a54"
+        },
+        {
+          "originalPath": ".codex/config.toml",
+          "originalBlob": "9bed608bf83107d04c919bce99f67497c42fc23d",
+          "sha256": "c5b3cc54a94573e3a629074fb7b676fcb92ef46e145a3f900927df4de6158798",
+          "bytes": 91,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1961/.codex/config.toml.snapshot",
+          "storedBlob": "9bed608bf83107d04c919bce99f67497c42fc23d"
+        },
+        {
+          "originalPath": ".codex/hooks.json",
+          "originalBlob": "deffac973448cdf6f444085b535b8f69f7e84ad6",
+          "sha256": "78922a784ee78e9e50587e93628cd3b9d4dfbe49087adc4514e6781cea38cbb9",
+          "bytes": 18,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1961/.codex/hooks.json.snapshot",
+          "storedBlob": "deffac973448cdf6f444085b535b8f69f7e84ad6"
+        },
+        {
+          "originalPath": "docs/worktree-recovery/2026-10-09/D09/capture.json",
+          "originalBlob": "d72b3449411092102c0d524ad68eb3b3fa39bb87",
+          "sha256": "968b41cdb867ee587129ec2e47869ed02e1854515a49b81344702ab96f42d6c6",
+          "bytes": 1315,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1961/docs/worktree-recovery/2026-10-09/D09/capture.json.snapshot",
+          "storedBlob": "d72b3449411092102c0d524ad68eb3b3fa39bb87"
+        }
+      ]
+    },
+    {
+      "PR": 1962,
+      "url": "https://github.com/kburson/ai-task-manager/pull/1962",
+      "story": 1953,
+      "originalBranch": "codex/recovery-1859-ci-replay-20261009",
+      "originalHead": "cf0c25b2ec9bc22d05f36fc5dda258ef10b0c388",
+      "disposition": "ALREADY_REPRESENTED",
+      "reason": "CI replay helper and captured bytes are shipped; final test placement is integration/meta, not the intermediate test-helpers directory.",
+      "state": "PREPARED_FOR_RETIREMENT",
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "content": [
+        {
+          "originalPath": "docs/superpowers/reviews/1859/implementation/ci-archive-green.log",
+          "originalBlob": "02bbfe3653b5d2d3bbfa4cf72d28f4ee2c305df6",
+          "sha256": "47a2e1c863e31d60c88b545fdb99ce0a179ad6baab8b18517a1bdc49d95ebbe1",
+          "bytes": 944,
+          "disposition": "represented-on-trunk",
+          "representedPath": "docs/superpowers/reviews/1859/implementation/ci-archive-green.log"
+        },
+        {
+          "originalPath": "docs/superpowers/reviews/1859/implementation/ci-archive-recovery.md",
+          "originalBlob": "77f917cd0ef29c973ba173b365384b7664d21106",
+          "sha256": "701adcb5187e2e2a75ff8640b36582b6651099750a827af2fa497b11110b6ff6",
+          "bytes": 2198,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1962/docs/superpowers/reviews/1859/implementation/ci-archive-recovery.md.snapshot",
+          "storedBlob": "77f917cd0ef29c973ba173b365384b7664d21106"
+        },
+        {
+          "originalPath": "docs/superpowers/reviews/1859/implementation/ci-archive-red.log",
+          "originalBlob": "2c70888a8df55162a525d43bddd2eb9f89cafc39",
+          "sha256": "234b67d235bc5000ef71425cf4e1ee9aa4169b614c8b932fb5b8dd9678113aad",
+          "bytes": 4846,
+          "disposition": "represented-on-trunk",
+          "representedPath": "docs/superpowers/reviews/1859/implementation/ci-archive-red.log"
+        },
+        {
+          "originalPath": "docs/superpowers/reviews/1859/implementation/ci-lane-recovery.log",
+          "originalBlob": "e09f24bdf8c6d9a7d53350db176e51cf092b7b4d",
+          "sha256": "d13a9a39f0a1adfd91f62a0cdb0465f36d64439f7ff3f1c7d8dc2bdd07b2dd52",
+          "bytes": 1028,
+          "disposition": "represented-on-trunk",
+          "representedPath": "docs/superpowers/reviews/1859/implementation/ci-lane-recovery.log"
+        },
+        {
+          "originalPath": "docs/worktree-recovery/2026-10-09/P04/source-provenance.json",
+          "originalBlob": "244cd7b1350d0bd2f3008174054e01748720b357",
+          "sha256": "e985388c35895bf9953f7f076a3e222eb851c4936ab79464414d4790207ca240",
+          "bytes": 832,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1962/docs/worktree-recovery/2026-10-09/P04/source-provenance.json.snapshot",
+          "storedBlob": "244cd7b1350d0bd2f3008174054e01748720b357"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/captured-sources/1b300cd8121b33631c5c3119daed583eb1d636fb/docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md.snapshot",
+          "originalBlob": "6f39eb63f69a3cc1ea3fbce8d18a7d7ac757cbeb",
+          "sha256": "6810a378cc1ba3fff051fcf72032278efc955af053eb76b8b059de9e033e79f1",
+          "bytes": 137363,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/captured-sources/1b300cd8121b33631c5c3119daed583eb1d636fb/docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance.md.snapshot"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/captured-sources/1b300cd8121b33631c5c3119daed583eb1d636fb/skill/SKILL.md.snapshot",
+          "originalBlob": "ee3e608fe2c6a39b81090e9cadad671a4fbaa1f7",
+          "sha256": "7e0965bc61cb9e346ecdccc888ac7fac1d36a1f33ba3bc6d267add3d097d471e",
+          "bytes": 946,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/captured-sources/1b300cd8121b33631c5c3119daed583eb1d636fb/skill/SKILL.md.snapshot"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/captured-sources/95db22a0306ddbf8bc07c79b8e547778efd68c5d/scripts/maintenance/capture-guidance-lifecycle.mjs.snapshot",
+          "originalBlob": "9d6cbaac0931570327102716c94e546867604a4c",
+          "sha256": "218017063bd49a308f5dbd66e7236c1e7b26de89709a1ecc6b7e23cc74da4024",
+          "bytes": 34981,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/captured-sources/95db22a0306ddbf8bc07c79b8e547778efd68c5d/scripts/maintenance/capture-guidance-lifecycle.mjs.snapshot"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/captured-sources/manifest.json",
+          "originalBlob": "b17105504daabfa027a9575fb221de6e014b49f4",
+          "sha256": "0cd8f5895e49ba7930efd6ab64cdf02acb6d145e68d482db5b58c3214fdd48c3",
+          "bytes": 2969,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/captured-sources/manifest.json"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/captured-commit-bytes.mjs",
+          "originalBlob": "07e66af6c9bc13e8c6fb2843ac5cd30706d473a5",
+          "sha256": "eea4d201037f08a7cbe8a657bb5ad105b99f52359147361a2206f4f043155bfa",
+          "bytes": 2703,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/captured-commit-bytes.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/integration/test-helpers/captured-commit-bytes.test.mjs",
+          "originalBlob": "ad695a90058afe5c59064f1c04cdc4c76521869a",
+          "sha256": "34e48eaff80c8cd46ba82d8637b3957b4dfc3310d66f13947225344baf272bb8",
+          "bytes": 2171,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/integration/meta/captured-commit-bytes.test.mjs"
+        }
+      ]
+    },
+    {
+      "PR": 1963,
+      "url": "https://github.com/kburson/ai-task-manager/pull/1963",
+      "story": 1953,
+      "originalBranch": "codex/recovery-1725-interrupted-review-planning-20261009",
+      "originalHead": "530f081b5d5ff9856d9c45e25d882bee3fd58e6c",
+      "disposition": "SUPERSEDED_CHECKPOINT",
+      "reason": "Architecture delivery is represented by #1724/#1726; excluded experiment and old generated setup are historical only.",
+      "state": "PREPARED_FOR_RETIREMENT",
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "content": [
+        {
+          "originalPath": ".ai-peer-review.json",
+          "originalBlob": "9b444d7d74430d2bdeb43d1aa46133b52281a632",
+          "sha256": "94c67902c293abe21791ff42e1d2ffa685cc3514c615166341751284e59335bb",
+          "bytes": 1187,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/.ai-peer-review.json.snapshot",
+          "storedBlob": "9b444d7d74430d2bdeb43d1aa46133b52281a632"
+        },
+        {
+          "originalPath": ".claude/config.json",
+          "originalBlob": "14c89c06cd504ec396303f21cde9f179a54e119b",
+          "sha256": "5c31cbf64fe25eb606fab6f2b3cdd0c21ebb45fc32e5820ab38294cbce62bfdf",
+          "bytes": 545,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/.claude/config.json.snapshot",
+          "storedBlob": "14c89c06cd504ec396303f21cde9f179a54e119b"
+        },
+        {
+          "originalPath": ".claude/skills/peer-review/SKILL.md",
+          "originalBlob": "2ecc97b0c3840233c402aae2a76c4939e680ed96",
+          "sha256": "c7dfdd8e27c1e4d59d0545ab3944e2332271be3df0b27138da3b4e22435f47d5",
+          "bytes": 5690,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/.claude/skills/peer-review/SKILL.md.snapshot",
+          "storedBlob": "2ecc97b0c3840233c402aae2a76c4939e680ed96"
+        },
+        {
+          "originalPath": ".codex/config.json",
+          "originalBlob": "14c89c06cd504ec396303f21cde9f179a54e119b",
+          "sha256": "5c31cbf64fe25eb606fab6f2b3cdd0c21ebb45fc32e5820ab38294cbce62bfdf",
+          "bytes": 545,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/.codex/config.json.snapshot",
+          "storedBlob": "14c89c06cd504ec396303f21cde9f179a54e119b"
+        },
+        {
+          "originalPath": ".codex/skills/peer-review/SKILL.md",
+          "originalBlob": "2ecc97b0c3840233c402aae2a76c4939e680ed96",
+          "sha256": "c7dfdd8e27c1e4d59d0545ab3944e2332271be3df0b27138da3b4e22435f47d5",
+          "bytes": 5690,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/.codex/skills/peer-review/SKILL.md.snapshot",
+          "storedBlob": "2ecc97b0c3840233c402aae2a76c4939e680ed96"
+        },
+        {
+          "originalPath": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/experiment-evidence.md",
+          "originalBlob": "fcae8df662338d0023eb72df67ee268ca38ca36c",
+          "sha256": "cccfcf55aaf25e103a79e6189e9589cdfe960ee0e1bf379c47dd63a500ed1538",
+          "bytes": 6715,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/experiment-evidence.md.snapshot",
+          "storedBlob": "fcae8df662338d0023eb72df67ee268ca38ca36c"
+        },
+        {
+          "originalPath": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-e4f8d8d65cb5161e7e95a8580aa7854e/review-e4f8d8d65cb5161e7e95a8580aa7854e-author-startup.md",
+          "originalBlob": "b95a999abc686205cf6ad90eba20cca13a951255",
+          "sha256": "602d073491b116b0668865ae7abb9a79d6baf2bf6ee21b4d95d739938fc5bf81",
+          "bytes": 2680,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-e4f8d8d65cb5161e7e95a8580aa7854e/review-e4f8d8d65cb5161e7e95a8580aa7854e-author-startup.md.snapshot",
+          "storedBlob": "b95a999abc686205cf6ad90eba20cca13a951255"
+        },
+        {
+          "originalPath": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-e4f8d8d65cb5161e7e95a8580aa7854e/review-e4f8d8d65cb5161e7e95a8580aa7854e-reviewer-invitation.md",
+          "originalBlob": "0bfeeed95ff0e456fd8d0045fed6e806271f347e",
+          "sha256": "7594a59f75b006352ea50015d671d5887b4506faf22356951bf374bea5d4f150",
+          "bytes": 4669,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-e4f8d8d65cb5161e7e95a8580aa7854e/review-e4f8d8d65cb5161e7e95a8580aa7854e-reviewer-invitation.md.snapshot",
+          "storedBlob": "0bfeeed95ff0e456fd8d0045fed6e806271f347e"
+        },
+        {
+          "originalPath": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-e4f8d8d65cb5161e7e95a8580aa7854e/review-e4f8d8d65cb5161e7e95a8580aa7854e-reviewer-response-1.md",
+          "originalBlob": "c204f5bb327190022bc081808a895224a7cabe25",
+          "sha256": "b5456d43d247a70c6c749703496674b8cbbd52d1e92812b3531a7074561fa585",
+          "bytes": 1351,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-e4f8d8d65cb5161e7e95a8580aa7854e/review-e4f8d8d65cb5161e7e95a8580aa7854e-reviewer-response-1.md.snapshot",
+          "storedBlob": "c204f5bb327190022bc081808a895224a7cabe25"
+        },
+        {
+          "originalPath": "docs/worktree-recovery/2026-10-09/P06/source-provenance.json",
+          "originalBlob": "3fb54b99399d624068d8967aec56d251b57c9f0e",
+          "sha256": "33008727134556cc708a898a7da926b51f8b0804d1198d6f64d7dd1d7f5fa9f4",
+          "bytes": 670,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1963/docs/worktree-recovery/2026-10-09/P06/source-provenance.json.snapshot",
+          "storedBlob": "3fb54b99399d624068d8967aec56d251b57c9f0e"
+        }
+      ]
+    },
+    {
+      "PR": 1964,
+      "url": "https://github.com/kburson/ai-task-manager/pull/1964",
+      "story": 1953,
+      "originalBranch": "codex/recovery-1728-authority-observations-20261009",
+      "originalHead": "2a0f2cf8d32a4a8d5ad6cc3a4e44ffefe00e4c77",
+      "disposition": "SUPERSEDED_IMPLEMENTATION",
+      "reason": "Current trunk already contains the completed authority evaluator and stronger issue-bound observation identity checks.",
+      "state": "PREPARED_FOR_RETIREMENT",
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "content": [
+        {
+          "originalPath": ".github/workflows/ci.yml",
+          "originalBlob": "4de86361b60c2ef3cbf45bd36313ea55a877f194",
+          "sha256": "55823ac36b2a931fa03f8d8a7258c7aab968135f17135d0aeb3524e521d2227e",
+          "bytes": 7386,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/.github/workflows/ci.yml.snapshot",
+          "storedBlob": "4de86361b60c2ef3cbf45bd36313ea55a877f194"
+        },
+        {
+          "originalPath": "docs/guides/ask-the-script.md",
+          "originalBlob": "de60646663d8f5d2b0f83fd3d34347bfef8a7e98",
+          "sha256": "2db4475e4f3e25502b392db11b6b5e31cab2dbeb77dee2c0178379d1775f5a4c",
+          "bytes": 3088,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/docs/guides/ask-the-script.md.snapshot",
+          "storedBlob": "de60646663d8f5d2b0f83fd3d34347bfef8a7e98"
+        },
+        {
+          "originalPath": "docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r3.md",
+          "originalBlob": "ad334ec612d6a2656e0b37e2829e43c59abe5dbf",
+          "sha256": "2addb76c1361331d00c57139373fb3258ef1f8996c2a69df94936f964dabe02a",
+          "bytes": 151358,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r3.md.snapshot",
+          "storedBlob": "ad334ec612d6a2656e0b37e2829e43c59abe5dbf"
+        },
+        {
+          "originalPath": "docs/superpowers/plans/2026-09-21-1663-authority-evaluation-split.md",
+          "originalBlob": "4e25c123c4b66cdd305fb76c4023792bec7f36fa",
+          "sha256": "32a311090945134c1b0a8d1b4117809c786c2960450b5d50519ea85d7e890432",
+          "bytes": 14884,
+          "disposition": "represented-on-trunk",
+          "representedPath": "docs/superpowers/plans/2026-09-21-1663-authority-evaluation-split.md"
+        },
+        {
+          "originalPath": "docs/superpowers/reviews/1663/plan/2026-09-21-1663-authority-split-grok-review.md",
+          "originalBlob": "5a2a8afbdf62dd5981a897cd1ad986af3406e1c3",
+          "sha256": "501a8e7fddce9baa3448cec25be6d595f90f50894bc1cf933c9611ec76e526a2",
+          "bytes": 4334,
+          "disposition": "represented-on-trunk",
+          "representedPath": "docs/superpowers/reviews/1663/plan/2026-09-21-1663-authority-split-grok-review.md"
+        },
+        {
+          "originalPath": "docs/worktree-recovery/2026-10-09/P10/source-provenance.json",
+          "originalBlob": "a6c771946746169f3f5f23d9410e502bbcc1fc0e",
+          "sha256": "b449d361bfb4274fe5e23539e4e25e507107e51c58cd4b575a821608a1d08e4f",
+          "bytes": 735,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/docs/worktree-recovery/2026-10-09/P10/source-provenance.json.snapshot",
+          "storedBlob": "a6c771946746169f3f5f23d9410e502bbcc1fc0e"
+        },
+        {
+          "originalPath": "package.json",
+          "originalBlob": "9a8ba1cd2acdb80048881e39955f8db8a6055f23",
+          "sha256": "230421a5b7701d6e20e3a1808b49a2dde2217d5848087b628556fc5452b4c3cf",
+          "bytes": 4556,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/package.json.snapshot",
+          "storedBlob": "9a8ba1cd2acdb80048881e39955f8db8a6055f23"
+        },
+        {
+          "originalPath": "scripts/maintenance/lint-action-refusals.mjs",
+          "originalBlob": "b17c183f09eb23d339bd5ead3444df25bc5b7839",
+          "sha256": "155da3acf804a2d023dd4bea454828a379ae23cdc359fc1793ce3f08f1a1a378",
+          "bytes": 14050,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/maintenance/lint-action-refusals.mjs"
+        },
+        {
+          "originalPath": "scripts/maintenance/measure-guidance-candidate.mjs",
+          "originalBlob": "2b69c58e14086238d4de1cf424f344018df5b758",
+          "sha256": "0cfa26abbe6687fccb81a1d42f6d8158266f9432798217784ad7c048332479a3",
+          "bytes": 14808,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/maintenance/measure-guidance-candidate.mjs.snapshot",
+          "storedBlob": "2b69c58e14086238d4de1cf424f344018df5b758"
+        },
+        {
+          "originalPath": "scripts/task-tracker/lib/action-decision/contract.mjs",
+          "originalBlob": "a4c0462f68d7e7d9169c7a1f83d39cdfd292ee77",
+          "sha256": "7a2fccf01646d9c376b8c9adf4e33514724325fef0a040d699b842a3a54bf327",
+          "bytes": 29972,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/task-tracker/lib/action-decision/contract.mjs.snapshot",
+          "storedBlob": "a4c0462f68d7e7d9169c7a1f83d39cdfd292ee77"
+        },
+        {
+          "originalPath": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+          "originalBlob": "59fc2d8290d22ff9c7e2dedd8e1cbe9977815717",
+          "sha256": "b91683181cbc0df3fe89c04b3348453b364a05ebf44fd1ed48bf0f0bab5e76cc",
+          "bytes": 38568,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/task-tracker/lib/action-decision/legacy-refusals.json.snapshot",
+          "storedBlob": "59fc2d8290d22ff9c7e2dedd8e1cbe9977815717"
+        },
+        {
+          "originalPath": "scripts/task-tracker/lib/action-decision/observations.mjs",
+          "originalBlob": "a1382bdff13f5f797b50465aa60e7624ca171e3a",
+          "sha256": "b28b10a2999bba4e4abe692a137bc2fa699e7daa5f96ec8435e1794c0ef148e2",
+          "bytes": 7152,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/task-tracker/lib/action-decision/observations.mjs.snapshot",
+          "storedBlob": "a1382bdff13f5f797b50465aa60e7624ca171e3a"
+        },
+        {
+          "originalPath": "scripts/task-tracker/lib/action-decision/presentation.mjs",
+          "originalBlob": "5c2926994acb13386623d57c40c6ff0ea0170d12",
+          "sha256": "485722d1358d2f6e24a5fee6fe596f2541156eda80d23b208ee343732adc9433",
+          "bytes": 12669,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/task-tracker/lib/action-decision/presentation.mjs.snapshot",
+          "storedBlob": "5c2926994acb13386623d57c40c6ff0ea0170d12"
+        },
+        {
+          "originalPath": "scripts/task-tracker/lib/action-decision/remediations.mjs",
+          "originalBlob": "da9d85e758b7c44afacb846fdd9ea0d2ded6613b",
+          "sha256": "be142ec0a196840947091dcf73d316f1edd0196cb8d7326b522481b8c4e2c600",
+          "bytes": 2556,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/task-tracker/lib/action-decision/remediations.mjs"
+        },
+        {
+          "originalPath": "scripts/task-tracker/lib/guard-registry.mjs",
+          "originalBlob": "250af64c75ffa9cdfcf1d6b42ffe75460a540f19",
+          "sha256": "d31f2dc79bddd4f2fa6468b6178aac709c9f343203a32683fa09c9acbb7aaaa4",
+          "bytes": 13742,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/task-tracker/lib/guard-registry.mjs.snapshot",
+          "storedBlob": "250af64c75ffa9cdfcf1d6b42ffe75460a540f19"
+        },
+        {
+          "originalPath": "scripts/task-tracker/lib/lifecycle-policy/actions.mjs",
+          "originalBlob": "fbdb0a7e73f38f038e927aaf0dff01294ab123ab",
+          "sha256": "19090ca7b204421fd889024344b9e48299fa42eacc2870705498df14cc40caa7",
+          "bytes": 4414,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/task-tracker/lib/lifecycle-policy/actions.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/action-cardinality.json",
+          "originalBlob": "dd898bcf2b1a510e997bb2c646731c4c8c22959a",
+          "sha256": "a617f8fbdd2e80ca2c303431f84490af07e3fb4da0194d3c4a74254945884191",
+          "bytes": 17815,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/action-cardinality.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/action-decision-fixtures/bind.json",
+          "originalBlob": "02c19a12597c3b2260e4ae7bef99720af612e6a7",
+          "sha256": "9f2eca86be88df9a883e4f749d7e3968ddc046e433f290a264f8d0b3a6583704",
+          "bytes": 299,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/action-decision-fixtures/bind.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/action-decision-fixtures/close.json",
+          "originalBlob": "769a8fb31f41d6e89a62572b4d587266390f0f45",
+          "sha256": "074a879715603032901bbb0f96e344b2628742cc6d82218a77c0beb0c105b4f9",
+          "bytes": 292,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/action-decision-fixtures/close.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/action-decision-fixtures/deliver.json",
+          "originalBlob": "c11a852d01907bf3e646e2dc9dd67df88753ebb6",
+          "sha256": "c81369a4db340c77962ba9217f405d8946692405aeb8d8cb10bc997d79fb664a",
+          "bytes": 296,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/action-decision-fixtures/deliver.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/action-decision-fixtures/promote.json",
+          "originalBlob": "693b9358f39b0a4a7568b642d2710935345743d1",
+          "sha256": "9465f8caf2fadaffa60b78b3dc0ccf925440390e65227ab3eb0fedd741615aeb",
+          "bytes": 292,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/action-decision-fixtures/promote.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/action-decision-fixtures/resume.json",
+          "originalBlob": "3f5a47631d141bbe968f3980f2311caf71c6e4aa",
+          "sha256": "478dcd736394785f786f81092bc28a771a4e5abfa89150a55b1d635a3400e4bd",
+          "bytes": 301,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/action-decision-fixtures/resume.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/action-decision-fixtures/review.json",
+          "originalBlob": "f8d9084075d01d00fa260d945ce267d887d4da37",
+          "sha256": "ea8d534fecbc7163c8f499dd376f094b904b34a1ad8b1b290d7d431a5f5006c4",
+          "bytes": 298,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/action-decision-fixtures/review.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/action-decision-fixtures/test.json",
+          "originalBlob": "2fbb7ce111c81fdc22a9a0109630c44bd2587bb9",
+          "sha256": "b3513955714a097f0d4aa8a3449ae92531805a0e6d0a70109e0261f900e450d2",
+          "bytes": 299,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/action-decision-fixtures/test.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/action-observation-inventory.json",
+          "originalBlob": "9fa518df87e9734a0958b1bfa78c45d116fcee23",
+          "sha256": "d88fed95e3a3ae03305f095c88affe393481772f53652e16ffbabbc9f4a05b1f",
+          "bytes": 14709,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/action-observation-inventory.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/authority-baseline.json",
+          "originalBlob": "e361769693710109bb2b733546e4bfee9f96c63b",
+          "sha256": "32ec5ddac931a44c880339b6cad987f3099b8019b5f020858fff22c76ecc5a51",
+          "bytes": 3162,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/authority-baseline.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/behavioral-flags.json",
+          "originalBlob": "6f808736be43ab9d3b2cd8606c0165d0d6d7b1f4",
+          "sha256": "c7fb3616949a3804e6966bf1acd79bd977d9959b093a20dea91c72cfd2c265a2",
+          "bytes": 35480,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/behavioral-flags.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/candidate-workflow/claude.json",
+          "originalBlob": "7869ecb8048d527a8e4a0667644ecd3480bde167",
+          "sha256": "ddf030573c783d800b62ba8c96617a192707669cfb26e5152dd0eef938a0d510",
+          "bytes": 23460,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/candidate-workflow/claude.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/candidate-workflow/codex.json",
+          "originalBlob": "e3a324e0b1d8b7c22df7314a80b66c846a6fe7ee",
+          "sha256": "59e4888e4e1044954a90b85f89fcd8c21763d4f1dc1f46980edd61523c229f45",
+          "bytes": 23459,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/candidate-workflow/codex.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/context-comparison.json",
+          "originalBlob": "64ecd7e7e697b0e04ff6f7c7cae296223f9896bd",
+          "sha256": "09a165324fda2649d2bbb99ebd0df0f486b75912d2bfeb9b83567b7c5d047894",
+          "bytes": 19982,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/context-comparison.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/feasibility-decision.json",
+          "originalBlob": "489b9fa92f15464f9034a163d812471a5158c0a5",
+          "sha256": "c5a403c655573248a42094b74e726d9f0d6a6c22840c535e9c4429b41c4c4a5a",
+          "bytes": 19847,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/feasibility-decision.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-baseline.json",
+          "originalBlob": "3d7418fc53658a1d1329f47aabef6be77502ddae",
+          "sha256": "eece030019d32299428932fd121761ac47f3bebed4bfd953f019af32bc4fd83d",
+          "bytes": 20482,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-baseline.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/authority-store.json",
+          "originalBlob": "2c9d855b10cfdc41f536b4a33b86b7b271a5cccc",
+          "sha256": "d2b67c1e1da3afa7ed05750160090a5fc405c5538ac22918851c87e2eae2324b",
+          "bytes": 893,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/authority-store.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/lifecycle-scenarios.json",
+          "originalBlob": "7e932cc22b272d1bcb69923361d7cd2c42d1b9c7",
+          "sha256": "1364fa38a7710471349de771cdb8929b2c68456993c9acf2e545e6e4d07daed9",
+          "bytes": 12580,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/lifecycle-scenarios.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/.ai-task-manager/templates/pickup-directive.md.base64",
+          "originalBlob": "621a311a9f3a809b179f0fa7e0a4735b111558b5",
+          "sha256": "566f74fe9437390dc99e978fddc771e05014fa54feb472faadb22fbe4d98e38e",
+          "bytes": 7533,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/.ai-task-manager/templates/pickup-directive.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/.claude/skills/task/SKILL.md.base64",
+          "originalBlob": "027fb5195d077be79a07dccbd6684723d18e7ece",
+          "sha256": "01c232ad7ded190cb7e7967c8ed8a3e32988f5994f8d97dbbd40730b928d2dd6",
+          "bytes": 3057,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/.claude/skills/task/SKILL.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/adapters/claude/SKILL.md.base64",
+          "originalBlob": "12ac53982fb8d5af2a7c8bf29e4118b380d2a68b",
+          "sha256": "ead87db7598d67dfd220903b6e80d7c256f50c3436f09479e53f1319f2654e52",
+          "bytes": 7237,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/adapters/claude/SKILL.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/SKILL.md.base64",
+          "originalBlob": "927994b9ac7a0bf5f6619640f4e66c307365a96a",
+          "sha256": "b4c4517e036be3cb7fc4c57abad3499372a7fc008c21ea38d07f5c4f55919b36",
+          "bytes": 1133,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/SKILL.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/router.md.base64",
+          "originalBlob": "ab470df2086d56584fe551e4aaedeb58fb3dd809",
+          "sha256": "d3a06a466a1878db34d3d07c2b888a57debecad6db3740c0514e0b4ebd784ad5",
+          "bytes": 11497,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/router.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/bind.md.base64",
+          "originalBlob": "af9cd6bb8a7e0609b5e048ab7219175df0ffa302",
+          "sha256": "981d655078dbd64b9ec2ce32022f273e23678603e65191877b4105841bf52549",
+          "bytes": 7333,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/bind.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/close.md.base64",
+          "originalBlob": "71a97c0871638fefe8968ed377a79a907e02d314",
+          "sha256": "69fd868d285b7f7c4ba3be1db31babdfe6e4c3a27e131d8e4b2a1f11fa73ac08",
+          "bytes": 13961,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/close.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/deliver.md.base64",
+          "originalBlob": "d196ef313acf72fc380b9d86d15be32f30a7818c",
+          "sha256": "f0f3e4f4dfd23ffa60cb67491440bb6c018b5b346e1a1a59b391021e248d38ae",
+          "bytes": 6937,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/deliver.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/full-auto.md.base64",
+          "originalBlob": "4c309b2f7b2934d9861b09a29d0ed893157832ab",
+          "sha256": "f067ab24d37cb8a1745af52736c9a033d13cd142b2aa819cc2d11b2d83a2efc2",
+          "bytes": 3989,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/full-auto.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/functional-dod.md.base64",
+          "originalBlob": "524067f425c6a42429bca08e402353d9920532f6",
+          "sha256": "be2052c296486fa645df4c7e41c307ab700b5a2bef630a0dfa33c4a3ae1d732f",
+          "bytes": 10421,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/functional-dod.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/review.md.base64",
+          "originalBlob": "d331226a39fd23bed4c06c8ee263a1180345a199",
+          "sha256": "3769ca466a0ac30ceb25e81dfe672bcfeb7381d57856555940d6cc025f3afa29",
+          "bytes": 11737,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/review.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/state-walk.md.base64",
+          "originalBlob": "5c6dab3fb429d8326b7820a08d9eb09594eb4990",
+          "sha256": "1828ad4a537645fb117728ce588201f9af46dd490cf8d7699a845ed2c4781c4b",
+          "bytes": 9649,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/claude/skill/shared/rules/state-walk.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/.agents/skills/task/SKILL.md.base64",
+          "originalBlob": "8afe0fecb19146ed0af9102ce6093b6fefff91a9",
+          "sha256": "dcc0f732a6ba51c88b42ccb11df70e91dffae4d6ba65bfc6bef8aee2fb18c0d5",
+          "bytes": 3137,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/.agents/skills/task/SKILL.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/.ai-task-manager/templates/pickup-directive.md.base64",
+          "originalBlob": "621a311a9f3a809b179f0fa7e0a4735b111558b5",
+          "sha256": "566f74fe9437390dc99e978fddc771e05014fa54feb472faadb22fbe4d98e38e",
+          "bytes": 7533,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/.ai-task-manager/templates/pickup-directive.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/adapters/codex/SKILL.md.base64",
+          "originalBlob": "68533b887cc066401d6cc2a48c8cd4ae533efb2c",
+          "sha256": "18a8dcf139dc804de934040cef21ae557f2f1b73f193e1a3e210e4d62122efd4",
+          "bytes": 6701,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/adapters/codex/SKILL.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/SKILL.md.base64",
+          "originalBlob": "927994b9ac7a0bf5f6619640f4e66c307365a96a",
+          "sha256": "b4c4517e036be3cb7fc4c57abad3499372a7fc008c21ea38d07f5c4f55919b36",
+          "bytes": 1133,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/SKILL.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/router.md.base64",
+          "originalBlob": "ab470df2086d56584fe551e4aaedeb58fb3dd809",
+          "sha256": "d3a06a466a1878db34d3d07c2b888a57debecad6db3740c0514e0b4ebd784ad5",
+          "bytes": 11497,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/router.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/bind.md.base64",
+          "originalBlob": "af9cd6bb8a7e0609b5e048ab7219175df0ffa302",
+          "sha256": "981d655078dbd64b9ec2ce32022f273e23678603e65191877b4105841bf52549",
+          "bytes": 7333,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/bind.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/close.md.base64",
+          "originalBlob": "71a97c0871638fefe8968ed377a79a907e02d314",
+          "sha256": "69fd868d285b7f7c4ba3be1db31babdfe6e4c3a27e131d8e4b2a1f11fa73ac08",
+          "bytes": 13961,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/close.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/deliver.md.base64",
+          "originalBlob": "d196ef313acf72fc380b9d86d15be32f30a7818c",
+          "sha256": "f0f3e4f4dfd23ffa60cb67491440bb6c018b5b346e1a1a59b391021e248d38ae",
+          "bytes": 6937,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/deliver.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/full-auto.md.base64",
+          "originalBlob": "4c309b2f7b2934d9861b09a29d0ed893157832ab",
+          "sha256": "f067ab24d37cb8a1745af52736c9a033d13cd142b2aa819cc2d11b2d83a2efc2",
+          "bytes": 3989,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/full-auto.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/functional-dod.md.base64",
+          "originalBlob": "524067f425c6a42429bca08e402353d9920532f6",
+          "sha256": "be2052c296486fa645df4c7e41c307ab700b5a2bef630a0dfa33c4a3ae1d732f",
+          "bytes": 10421,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/functional-dod.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/review.md.base64",
+          "originalBlob": "d331226a39fd23bed4c06c8ee263a1180345a199",
+          "sha256": "3769ca466a0ac30ceb25e81dfe672bcfeb7381d57856555940d6cc025f3afa29",
+          "bytes": 11737,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/review.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/state-walk.md.base64",
+          "originalBlob": "5c6dab3fb429d8326b7820a08d9eb09594eb4990",
+          "sha256": "1828ad4a537645fb117728ce588201f9af46dd490cf8d7699a845ed2c4781c4b",
+          "bytes": 9649,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/loaded-text/codex/skill/shared/rules/state-walk.md.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-authority.mjs.base64",
+          "originalBlob": "ba4fa62ef847d376ff4b2eec790143e0439cb786",
+          "sha256": "048a3ce9692f0473a9db602725bb98a114fc6607b69d7967fad829a732cf7e24",
+          "bytes": 9445,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-authority.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-cli.mjs.base64",
+          "originalBlob": "9fb0e409d3ed6f59edeeedf65a4e08a51a438f1b",
+          "sha256": "96f6bbfcbef704c49c6c0a8ec017546514a9bcf9ef88db96cf12a5b763ce0775",
+          "bytes": 5593,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-cli.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-preload.mjs.base64",
+          "originalBlob": "5add0693354ce3c95a2ac107a5e403b6290efa60",
+          "sha256": "ae627ea2b6e76fe5bc3d1d5ebbb3318e34636138557c33d88c5ee839991dc298",
+          "bytes": 10681,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-preload.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-transport.mjs.base64",
+          "originalBlob": "d3f1eac31c381f666f18d363f1a03558ddfe8c32",
+          "sha256": "92ddc3860ff65b37eb05bd86ebd5dd28e967d85ef083c94436f9668b09103bcf",
+          "bytes": 4285,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/runner/guidance-legacy-transport.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm-registry.mjs.base64",
+          "originalBlob": "7239d2f4c9ff181e9891f6e28900f8ed83572181",
+          "sha256": "0698df8a931fb2ceea7c4ad5cfcdd8b13a96a8ef7a536183aa0f54a14b23b782",
+          "bytes": 8429,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm-registry.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm.mjs.base64",
+          "originalBlob": "f5fa646f52a83eae63d7be00880640893bd4a267",
+          "sha256": "60d5beec9d1b16660e930562b23ced5c049104cab98b64d855469a2029f28ed3",
+          "bytes": 9629,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/bin/aitm.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/task-tracker.mjs.base64",
+          "originalBlob": "6f5745ab896d8453b05d5fce0e18c3af6529d68b",
+          "sha256": "66a50f7524ad1a5d7178e7f7221a0e907347888b03a17463875a39392dcf136a",
+          "bytes": 35737,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/task-tracker.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs.base64",
+          "originalBlob": "a0d450e28c8ea74e1de272858fa614f915ffe280",
+          "sha256": "f2b3ae10fa6587c2f742cc2ce2ae12c748d20a02a5d22c99194b6e2fa35790f9",
+          "bytes": 239157,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/close.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs.base64",
+          "originalBlob": "20d9a72cb44876600561e5ffea946c660bdebf3b",
+          "sha256": "c5e75730a3418b66697b30deaf2caeb06801f51d0a853a60a147952ca0413685",
+          "bytes": 85001,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/deliver.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs.base64",
+          "originalBlob": "5725c51b4a18560edf8bb748627b9f05c3256b46",
+          "sha256": "3e808484a8896e4db6a9eadd2799f680463965d2297de455128632774e5f668c",
+          "bytes": 46777,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/promote.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs.base64",
+          "originalBlob": "5eac265300985ed09907bb6d68a204ae9d42e3cf",
+          "sha256": "9e85b07cb106d677691a41a2483a7415b58f5da32b74500049d9cc434a387733",
+          "bytes": 29277,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/resume.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs.base64",
+          "originalBlob": "9f80667b62c7783d3a79c9ba00b07199eaed373f",
+          "sha256": "6f70c266e2dd9f6c79c132d7c418d1a2b55c82a85183df1068378ddd44d87f08",
+          "bytes": 91409,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/review.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs.base64",
+          "originalBlob": "3ef4ea86f2d1fd5ffff74a80d464dfa60fc5d278",
+          "sha256": "eca48d1cfa39ac76f71bacf1fc76b368795e0e017859cf33215484d38f5ca42a",
+          "bytes": 1217,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/start.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs.base64",
+          "originalBlob": "ca546be22dd134003f9783436face88bf644d29b",
+          "sha256": "3629dcd890aa2eeb01bf77d5fb4c05da11583b4c18f1c92fb74d9d42a76bb366",
+          "bytes": 87469,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/source/scripts/task-tracker/verbs/test.mjs.base64"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/claude.json",
+          "originalBlob": "6a31a1ab494361a8090779bf29e2e19e4f80a98e",
+          "sha256": "643be54a9d4e3d03f596c7c5d800f24d3ae98fdaf4d5341fa5c7fe08da5fca48",
+          "bytes": 33472,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/claude.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/codex.json",
+          "originalBlob": "ec65638754ae0c7e10bf555d1b6197671f89837c",
+          "sha256": "5cac474790ab9198cf392e5057326f827b92a770b9819f6882a2bc4c342d9eec",
+          "bytes": 33471,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/legacy-workflow/transcripts/codex.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/oracle-traceability.json",
+          "originalBlob": "8770b3b87a725fa3eb5f01a4f6cc41fea566f830",
+          "sha256": "d4b81a94c480e7f686926501f1ce4017581c73d714d4a83d8ed97d48053abda8",
+          "bytes": 32117,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/oracle-traceability.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/serialization-sensitivity.json",
+          "originalBlob": "c5a6b94eee2568178d10237c030f242d21fb260d",
+          "sha256": "2442d054c6d5f94a7f09161ebd6cfd8ffde81d1d88696205e0de50f1cfc92430",
+          "bytes": 6649,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/serialization-sensitivity.json"
+        },
+        {
+          "originalPath": "scripts/tests/fixtures/1558/spec-clause-index.json",
+          "originalBlob": "408ffb30d0cce4fd7edc7fb792321ab98074b0b5",
+          "sha256": "6e457daba7d3d17a8798662c0d7b8f61444954ca0050d4fcdfddb4aab41a5c0f",
+          "bytes": 24807,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/fixtures/1558/spec-clause-index.json"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/action-decision-contract-adversarial-cases.mjs",
+          "originalBlob": "903859c416352839d7cca58157e8d987e5daa5a4",
+          "sha256": "c4ddd111d4316d9e0d199eee4590cb7b063cc9747bd928c988cd5b5f77406190",
+          "bytes": 5458,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/action-decision-contract-adversarial-cases.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/action-decision-fixtures.mjs",
+          "originalBlob": "bc7c6811033dbffe192d7223963794183d0db3c3",
+          "sha256": "80b5996cc7f2c29718fdda0c82d8d69027a8c7218ecd18c4ad3e00ce78d4cad9",
+          "bytes": 1355,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/action-decision-fixtures.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/guidance-characterization-coupling.mjs",
+          "originalBlob": "e3b4eeada10a75fa920d27a8d50018b62f2fc6fb",
+          "sha256": "458244b9dddda3003a7f001bd0dd6450f23ef2d318bffc4f24f1349dc5186ef0",
+          "bytes": 1858,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/guidance-characterization-coupling.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/guidance-characterization-harness.mjs",
+          "originalBlob": "cf7a52dc0f58c81ae9768e610cf1589c868fbf78",
+          "sha256": "7e6426acba0fc9e3169c5879e055f7cbfceafab5f5b9a188ab39a4a9bf528b15",
+          "bytes": 44899,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/guidance-characterization-harness.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/guidance-characterization-presentation.mjs",
+          "originalBlob": "82be2ed35522f32b200ee0e3c1f4b74327bf41bc",
+          "sha256": "6d2babb55a516bc71bf97bebc54c5e78daad726f24955be9acf2d4e559e53e81",
+          "bytes": 14739,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/guidance-characterization-presentation.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/guidance-characterization.mjs",
+          "originalBlob": "2379bebb4a7c7669f41835d082858ef15ac5d1e1",
+          "sha256": "e54fa1229cb919a4dafc7395dfeda2461f3500e7b849f3fcd441bc2ac19e7538",
+          "bytes": 54360,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/guidance-characterization.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/guidance-clause-index.mjs",
+          "originalBlob": "767c0dd0470a331a88e701979e23c6c6dad64eab",
+          "sha256": "5d4fb28970a1684eb1823b515bd9877d4e5c0e89a96f97a339717bae4ca9d4d5",
+          "bytes": 10852,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/guidance-clause-index.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/guidance-legacy-authority.mjs",
+          "originalBlob": "0c9edc397f0939fc64db658fb7d2bda102534113",
+          "sha256": "d97dd5df4ab04fe6bfe5a74aeb6fa4646115a2e6df4f59c7932f7d90528b4b8a",
+          "bytes": 7082,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/guidance-legacy-authority.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/guidance-legacy-cli.mjs",
+          "originalBlob": "63c76dd73826e641baf7f95d6070ed0428cba178",
+          "sha256": "3f06a81f28b2ff397c765fddc215e6f87ec7526ffc830c1374ff2117edef7604",
+          "bytes": 4193,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/guidance-legacy-cli.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/guidance-legacy-preload.mjs",
+          "originalBlob": "fefd0abcb27bea68c8af5403987289a1ec91f145",
+          "sha256": "8bf9ebba496f02b7e6c625da04153d98b167ed78a81d8ef9f3318df6947455d0",
+          "bytes": 8008,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/guidance-legacy-preload.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/helpers/guidance-legacy-transport.mjs",
+          "originalBlob": "3b66ac32f684f82954cd21d28d974a7e311acef2",
+          "sha256": "81b2bdef5ec1a7e4de7b7613b2a0078565e39b8274868e6d6a2cbfab454074ee",
+          "bytes": 3212,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/helpers/guidance-legacy-transport.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs",
+          "originalBlob": "267175361a42f6797900af5ee4d027a8ca993ee5",
+          "sha256": "6f82f9eb8167a71010919ab39075a2d64ba72e38be0cb5732248a0debed07ad4",
+          "bytes": 8554,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs",
+          "originalBlob": "f429e07665244d021b325a9e46bb7791b2baf81d",
+          "sha256": "d77c0355d62b756b07cf23c00a0ee15088aba31bbb852697bf055cd52fac616a",
+          "bytes": 8887,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/core/guard-registry.test.mjs",
+          "originalBlob": "81ebfe02d32e2be89eba8864883270a81b2862b7",
+          "sha256": "f7dc7b5d8acd601ce5f52e849cc4ef7f0d277f5ab1307c549bff9b83462eb41c",
+          "bytes": 7235,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/tests/unit/task-tracker/core/guard-registry.test.mjs.snapshot",
+          "storedBlob": "81ebfe02d32e2be89eba8864883270a81b2862b7"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/core/package-boundary.test.mjs",
+          "originalBlob": "6730c16ba3cb33d45aece48b054637b49b275129",
+          "sha256": "cd49520fe2ffd84bb1a846f4e20a25c1ce00fec643eb001b5e78ec0f27b89028",
+          "bytes": 15327,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/tests/unit/task-tracker/core/package-boundary.test.mjs.snapshot",
+          "storedBlob": "6730c16ba3cb33d45aece48b054637b49b275129"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs",
+          "originalBlob": "e731d223b7814cc10419be75b9989e90b9f65fbe",
+          "sha256": "56425401c177dba41daade7e56c3fa692e08767df75f51c6d2532e3f4fd714bf",
+          "bytes": 24418,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs.snapshot",
+          "storedBlob": "e731d223b7814cc10419be75b9989e90b9f65fbe"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/action-observations.test.mjs",
+          "originalBlob": "45f4bb8b4e1aafc9c1dff5e95901a65efda9f8f4",
+          "sha256": "d1948bc1caa650fa8d687ca3738802d1c92b0f9aa06c46f6c9ee531e74c9bca1",
+          "bytes": 10464,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/unit/task-tracker/lib/action-observations.test.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/action-presentation.test.mjs",
+          "originalBlob": "0d52f2e186551a03ee03afb922b8879e1451cac6",
+          "sha256": "4f6b23781cc7f46b0b175d3ae28c46f2df842fb1a44fff3d17d5e3fe5eebbf43",
+          "bytes": 24588,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/tests/unit/task-tracker/lib/action-presentation.test.mjs.snapshot",
+          "storedBlob": "0d52f2e186551a03ee03afb922b8879e1451cac6"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+          "originalBlob": "48d911e0d01c4b6c8edae7fbf2a5656ec2b3d44f",
+          "sha256": "30c45e96b40ff678edf84a25e6dfc59c5a210fe07e37b197fc03adcf856c8fc1",
+          "bytes": 12267,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs.snapshot",
+          "storedBlob": "48d911e0d01c4b6c8edae7fbf2a5656ec2b3d44f"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/guidance-candidate-oracle.test.mjs",
+          "originalBlob": "ecfc169eaed379fdd549e81091c6eea5d58a1e7d",
+          "sha256": "592fd502e35cd22b924ed31bba4f1d3d4b21a1b5cde4b138b301bf2e078f0ed1",
+          "bytes": 29273,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/unit/task-tracker/lib/guidance-candidate-oracle.test.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs",
+          "originalBlob": "1aee953ca688c6f29717718ba2a2fd9fe0f591da",
+          "sha256": "190cf0e838d4a51e2fbe96a5f74bf784aada04b0bae2809bf7e8613a88e69701",
+          "bytes": 10543,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs.snapshot",
+          "storedBlob": "1aee953ca688c6f29717718ba2a2fd9fe0f591da"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/guidance-clause-index.test.mjs",
+          "originalBlob": "71e33375bd87230d5c9c2390ebcb600b9a4089e6",
+          "sha256": "0565775d00cf9fd97c2bb19ac076ff9eba5539142f3b1afadb7d3144d368fb44",
+          "bytes": 6172,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/unit/task-tracker/lib/guidance-clause-index.test.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/guidance-legacy-authority.test.mjs",
+          "originalBlob": "da0353c18b13ea91b9b9cf8d219170367aa9f4e6",
+          "sha256": "ac607f7d4d5c0c2c440996756df3ce102049b09cf8293b5962dac29a09fba9be",
+          "bytes": 7956,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/unit/task-tracker/lib/guidance-legacy-authority.test.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/guidance-legacy-baseline.test.mjs",
+          "originalBlob": "018f657f70baa7a732ae47efc64eb0f7f7b206c7",
+          "sha256": "771e0a5a88094ac44c41a42d5c6db7d2c37996c600e605120137a0842409ac47",
+          "bytes": 8952,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/unit/task-tracker/lib/guidance-legacy-baseline.test.mjs"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs",
+          "originalBlob": "5da5a340d980b96b7ff4c32a17458d7d266ed523",
+          "sha256": "28f69dd2a37bb2b65e2ed556c94a42321129a328b2e4b5cf72417dacca997da0",
+          "bytes": 9433,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1964/scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs.snapshot",
+          "storedBlob": "5da5a340d980b96b7ff4c32a17458d7d266ed523"
+        },
+        {
+          "originalPath": "scripts/tests/unit/task-tracker/lib/guidance-legacy-transport.test.mjs",
+          "originalBlob": "f00106472ec88de753c9b12d60a845a6632d5823",
+          "sha256": "940dd1a4aca5fd50a784347e1ea78ed9a17e89e1880d5e798c5f5bcc44dd3a14",
+          "bytes": 913,
+          "disposition": "represented-on-trunk",
+          "representedPath": "scripts/tests/unit/task-tracker/lib/guidance-legacy-transport.test.mjs"
+        }
+      ]
+    },
+    {
+      "PR": 1965,
+      "url": "https://github.com/kburson/ai-task-manager/pull/1965",
+      "story": 1955,
+      "originalBranch": "codex/recovery-1955-hybrid-insights-proposals-20261009",
+      "originalHead": "225808a0a6c8a3e99b339e1e2fc11acbd305178a",
+      "disposition": "SUPERSEDED_DESIGN",
+      "reason": "Accepted ADR0002 makes GitHub records authoritative; July SQLite-authority execution plans are superseded research.",
+      "state": "PREPARED_FOR_RETIREMENT",
+      "preservationBranch": "codex/1953-protected-wip-review-index",
+      "content": [
+        {
+          "originalPath": "docs/superpowers/plans/2026-07-28-aitm-insights-project.md",
+          "originalBlob": "805f57aeff177bd15cea076eb399e1518a9e2ebd",
+          "sha256": "1e807b46f644aab861963bc41d495df5677f3bff64a06105bdd7df2b1ae03f81",
+          "bytes": 54568,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1965/docs/superpowers/plans/2026-07-28-aitm-insights-project.md.snapshot",
+          "storedBlob": "805f57aeff177bd15cea076eb399e1518a9e2ebd"
+        },
+        {
+          "originalPath": "docs/superpowers/plans/2026-07-28-aitm-local-ledger-foundation.md",
+          "originalBlob": "7cb544b32ae25eacd787b276978630664efb13e5",
+          "sha256": "1064b193d7c9175c0ddb2f1cf68b042f2732db81ad881b43d9aa465145dcba5b",
+          "bytes": 39643,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1965/docs/superpowers/plans/2026-07-28-aitm-local-ledger-foundation.md.snapshot",
+          "storedBlob": "7cb544b32ae25eacd787b276978630664efb13e5"
+        },
+        {
+          "originalPath": "docs/superpowers/specs/2026-07-28-hybrid-ledger-and-insights-program-design.md",
+          "originalBlob": "e2c14c2eab74e84fd26b9a221cc75e71bc94dd9e",
+          "sha256": "0e7d018346251c38486ea407002951914818244c143563a308f91bb52d89d664",
+          "bytes": 40686,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1965/docs/superpowers/specs/2026-07-28-hybrid-ledger-and-insights-program-design.md.snapshot",
+          "storedBlob": "e2c14c2eab74e84fd26b9a221cc75e71bc94dd9e"
+        },
+        {
+          "originalPath": "docs/worktree-recovery/2026-10-09/P17/source-provenance.json",
+          "originalBlob": "1f2afa55f7cd24614b7103332e0e8ce45c49a3ea",
+          "sha256": "8cc43d39258abe959f62b2f2982ce6993a238c2b68a09ec0427c96262468b9ff",
+          "bytes": 729,
+          "disposition": "retained-historical-snapshot",
+          "storedPath": "docs/worktree-recovery/2026-10-09/retired-prs/1965/docs/worktree-recovery/2026-10-09/P17/source-provenance.json.snapshot",
+          "storedBlob": "1f2afa55f7cd24614b7103332e0e8ce45c49a3ea"
+        }
+      ]
+    }
+  ]
+}

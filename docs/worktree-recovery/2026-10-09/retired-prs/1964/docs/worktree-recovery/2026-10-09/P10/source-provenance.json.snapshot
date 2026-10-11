@@ -1,0 +1,14 @@
+{
+  "owner": "kburson",
+  "story": 1953,
+  "originalStory": 1728,
+  "sourceHead": "309f6fe5ea3206a6159893e76b8c4be01f8433f7",
+  "protectedIds": [
+    "P10"
+  ],
+  "purpose": "Preserve original #1728/#1663 authority-observation source and inherited experimental characterization commits. Both original stories are closed, but these exact commits are absent from current origin. Reconcile the 102-file historical proposal with the subsequently shipped #1558 evaluator; do not merge duplicate or superseded behavior blindly.",
+  "sourcePaths": [
+    "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1728-authority-observations"
+  ],
+  "validation": "Original object preservation only; current tests and review not run."
+}

@@ -1,6 +1,6 @@
 # Protected work recovery and review queue
 
-Owner: @kburson. Coordination story: [#1953](https://github.com/kburson/ai-task-manager/issues/1953). This is a reviewable recovery record, not implementation acceptance. Original working directories and indexes were preserved.
+Owner: @kburson. Coordination story: [#1953](https://github.com/kburson/ai-task-manager/issues/1953). This is a reviewable recovery record, not implementation acceptance. Original working directories and indexes were preserved during capture; authorized worktree removal is recorded below.
 
 ## Review order and dependencies
 
@@ -14,30 +14,30 @@ Owner: @kburson. Coordination story: [#1953](https://github.com/kburson/ai-task-
 
 These are review sequencing suggestions, not a claim that any source PR is ready to merge. Tests, lint and current independent review must be established on each chosen final branch.
 
-## Protected groups
+## Originally protected groups
 
-| Group | Owning story | Visible source PR | Original branch stored on origin | Evidence files | Decision |
-|---|---|---|---|---:|---|
-| P01 | [#1861](https://github.com/kburson/ai-task-manager/issues/1861) | [PR](https://github.com/kburson/ai-task-manager/pull/1956) | `codex/recovery-1861-wip-20261009` | 2736 | Review recovery PR and select applicable changes |
-| P02 | [#1918](https://github.com/kburson/ai-task-manager/issues/1918) | [PR](https://github.com/kburson/ai-task-manager/pull/1957) | `codex/recovery-1918-wip-20261009` | 255 | Review recovery PR and select applicable changes |
-| D08 | [#1725](https://github.com/kburson/ai-task-manager/issues/1725) | [#1726](https://github.com/kburson/ai-task-manager/pull/1726), [#1724](https://github.com/kburson/ai-task-manager/pull/1724) | `codex/aitm-mcp-adapter-architecture` | 307 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
-| D09 | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | [PR](https://github.com/kburson/ai-task-manager/pull/1961) | `codex/recovery-1953-cleanup-session-20261009` | 6 | Review recovery PR and select applicable changes |
-| P04 | [#1859](https://github.com/kburson/ai-task-manager/issues/1859) | [PR](https://github.com/kburson/ai-task-manager/pull/1962) | `codex/recovery-1859-ci-replay-20261009` | 0 | Review recovery PR and select applicable changes |
-| P05 | [#1859](https://github.com/kburson/ai-task-manager/issues/1859) | [PR](https://github.com/kburson/ai-task-manager/pull/1962) | `codex/recovery-1859-ci-replay-20261009` | 0 | Review recovery PR and select applicable changes |
-| P06 | [#1725](https://github.com/kburson/ai-task-manager/issues/1725) | [PR](https://github.com/kburson/ai-task-manager/pull/1963) | `codex/recovery-1725-interrupted-review-planning-20261009` | 131 | Review recovery PR and select applicable changes |
-| P07 | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | [PR](https://github.com/kburson/ai-task-manager/pull/1960) | `codex/recovery-1220-local-test-observations-20261009` | 0 | Review recovery PR and select applicable changes |
-| P08 | [#1954](https://github.com/kburson/ai-task-manager/issues/1954) | [PR](https://github.com/kburson/ai-task-manager/pull/1958) | `codex/recovery-1207-assignment-wip-20261009` | 2 | Review recovery PR and select applicable changes |
-| P09 | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | [PR](https://github.com/kburson/ai-task-manager/pull/1959) | `codex/recovery-1558-review-invitation-20261009` | 0 | Review recovery PR and select applicable changes |
-| P10 | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | [PR](https://github.com/kburson/ai-task-manager/pull/1964) | `codex/recovery-1728-authority-observations-20261009` | 7 | Review recovery PR and select applicable changes |
-| P11 | [#1926](https://github.com/kburson/ai-task-manager/issues/1926) | [#1927](https://github.com/kburson/ai-task-manager/pull/1927) | `codex/recovery-1953-p11-original-20261009` | 281 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
-| P12 | [#1889](https://github.com/kburson/ai-task-manager/issues/1889) | [#1890](https://github.com/kburson/ai-task-manager/pull/1890) | `codex/recovery-1953-p12-original-20261009` | 43 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
-| P13 | [#1897](https://github.com/kburson/ai-task-manager/issues/1897) | [#1898](https://github.com/kburson/ai-task-manager/pull/1898) | `codex/recovery-1953-p13-original-20261009` | 348 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
-| P14 | [#1897](https://github.com/kburson/ai-task-manager/issues/1897) | Evidence in this PR | `codex/recovery-1953-p14-original-20261009` | 19 | Review evidence and classification under #1953 |
-| P15 | [#1899](https://github.com/kburson/ai-task-manager/issues/1899) | [#1900](https://github.com/kburson/ai-task-manager/pull/1900) | `codex/recovery-1953-p15-original-20261009` | 111 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
-| P16 | [#1902](https://github.com/kburson/ai-task-manager/issues/1902) | [#1903](https://github.com/kburson/ai-task-manager/pull/1903) | `codex/recovery-1953-p16-original-20261009` | 113 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
-| P17 | [#1955](https://github.com/kburson/ai-task-manager/issues/1955) | [PR](https://github.com/kburson/ai-task-manager/pull/1965) | `codex/recovery-1955-hybrid-insights-proposals-20261009` | 2 | Review recovery PR and select applicable changes |
-| P18 | [#1904](https://github.com/kburson/ai-task-manager/issues/1904) | [#1905](https://github.com/kburson/ai-task-manager/pull/1905) | `codex/recovery-1953-p18-original-20261009` | 156 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
-| D01 | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | Evidence in this PR | `trunk` | 511 | Review evidence and classification under #1953 |
+| Group | Owning story                                                    | Visible source PR                                                                                                            | Original branch stored on origin                           | Evidence files | Decision                                                                                    |
+| ----- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------: | ------------------------------------------------------------------------------------------- |
+| P01   | [#1861](https://github.com/kburson/ai-task-manager/issues/1861) | [PR](https://github.com/kburson/ai-task-manager/pull/1956)                                                                   | `codex/recovery-1861-wip-20261009`                         |           2736 | Review recovery PR and select applicable changes                                            |
+| P02   | [#1918](https://github.com/kburson/ai-task-manager/issues/1918) | [PR](https://github.com/kburson/ai-task-manager/pull/1957)                                                                   | `codex/recovery-1918-wip-20261009`                         |            255 | Review recovery PR and select applicable changes                                            |
+| D08   | [#1725](https://github.com/kburson/ai-task-manager/issues/1725) | [#1726](https://github.com/kburson/ai-task-manager/pull/1726), [#1724](https://github.com/kburson/ai-task-manager/pull/1724) | `codex/aitm-mcp-adapter-architecture`                      |            307 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
+| D09   | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | [PR](https://github.com/kburson/ai-task-manager/pull/1961)                                                                   | `codex/recovery-1953-cleanup-session-20261009`             |              6 | Review recovery PR and select applicable changes                                            |
+| P04   | [#1859](https://github.com/kburson/ai-task-manager/issues/1859) | [PR](https://github.com/kburson/ai-task-manager/pull/1962)                                                                   | `codex/recovery-1859-ci-replay-20261009`                   |              0 | Review recovery PR and select applicable changes                                            |
+| P05   | [#1859](https://github.com/kburson/ai-task-manager/issues/1859) | [PR](https://github.com/kburson/ai-task-manager/pull/1962)                                                                   | `codex/recovery-1859-ci-replay-20261009`                   |              0 | Review recovery PR and select applicable changes                                            |
+| P06   | [#1725](https://github.com/kburson/ai-task-manager/issues/1725) | [PR](https://github.com/kburson/ai-task-manager/pull/1963)                                                                   | `codex/recovery-1725-interrupted-review-planning-20261009` |            131 | Review recovery PR and select applicable changes                                            |
+| P07   | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | [PR](https://github.com/kburson/ai-task-manager/pull/1960)                                                                   | `codex/recovery-1220-local-test-observations-20261009`     |              0 | Review recovery PR and select applicable changes                                            |
+| P08   | [#1954](https://github.com/kburson/ai-task-manager/issues/1954) | [PR](https://github.com/kburson/ai-task-manager/pull/1958)                                                                   | `codex/recovery-1207-assignment-wip-20261009`              |              2 | Review recovery PR and select applicable changes                                            |
+| P09   | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | [PR](https://github.com/kburson/ai-task-manager/pull/1959)                                                                   | `codex/recovery-1558-review-invitation-20261009`           |              0 | Review recovery PR and select applicable changes                                            |
+| P10   | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | [PR](https://github.com/kburson/ai-task-manager/pull/1964)                                                                   | `codex/recovery-1728-authority-observations-20261009`      |              7 | Review recovery PR and select applicable changes                                            |
+| P11   | [#1926](https://github.com/kburson/ai-task-manager/issues/1926) | [#1927](https://github.com/kburson/ai-task-manager/pull/1927)                                                                | `codex/recovery-1953-p11-original-20261009`                |            281 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
+| P12   | [#1889](https://github.com/kburson/ai-task-manager/issues/1889) | [#1890](https://github.com/kburson/ai-task-manager/pull/1890)                                                                | `codex/recovery-1953-p12-original-20261009`                |             43 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
+| P13   | [#1897](https://github.com/kburson/ai-task-manager/issues/1897) | [#1898](https://github.com/kburson/ai-task-manager/pull/1898)                                                                | `codex/recovery-1953-p13-original-20261009`                |            348 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
+| P14   | [#1897](https://github.com/kburson/ai-task-manager/issues/1897) | Evidence in this PR                                                                                                          | `codex/recovery-1953-p14-original-20261009`                |             19 | Review evidence and classification under #1953                                              |
+| P15   | [#1899](https://github.com/kburson/ai-task-manager/issues/1899) | [#1900](https://github.com/kburson/ai-task-manager/pull/1900)                                                                | `codex/recovery-1953-p15-original-20261009`                |            111 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
+| P16   | [#1902](https://github.com/kburson/ai-task-manager/issues/1902) | [#1903](https://github.com/kburson/ai-task-manager/pull/1903)                                                                | `codex/recovery-1953-p16-original-20261009`                |            113 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
+| P17   | [#1955](https://github.com/kburson/ai-task-manager/issues/1955) | [PR](https://github.com/kburson/ai-task-manager/pull/1965)                                                                   | `codex/recovery-1955-hybrid-insights-proposals-20261009`   |              2 | Review recovery PR and select applicable changes                                            |
+| P18   | [#1904](https://github.com/kburson/ai-task-manager/issues/1904) | [#1905](https://github.com/kburson/ai-task-manager/pull/1905)                                                                | `codex/recovery-1953-p18-original-20261009`                |            156 | Already delivered; review evidence and reconcile provenance, no duplicate implementation PR |
+| D01   | [#1953](https://github.com/kburson/ai-task-manager/issues/1953) | Evidence in this PR                                                                                                          | `trunk`                                                    |            511 | Review evidence and classification under #1953                                              |
 
 ## Evidence and archives
 
@@ -51,22 +51,22 @@ See index.json for story/PR/branch ownership and archive details. file-dispositi
 
 Review these as retention/provenance decisions after the owning source PR. They do not add executable product changes. The index PR deliberately remains small; payloads are grouped into bounded review diffs.
 
-| Family | Owner story | Part | Files | PR |
-|---|---|---:|---:|---|
-| local-and-archive-evidence | #1953 | 1/2 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1967) |
-| local-and-archive-evidence | #1953 | 2/2 | 613 | [PR](https://github.com/kburson/ai-task-manager/pull/1968) |
-| 1725-architecture-evidence | #1725 | 1/1 | 438 | [PR](https://github.com/kburson/ai-task-manager/pull/1969) |
-| 1861-runtime-evidence | #1861 | 1/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1970) |
-| 1861-runtime-evidence | #1861 | 2/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1971) |
-| 1861-runtime-evidence | #1861 | 3/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1972) |
-| 1861-runtime-evidence | #1861 | 4/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1973) |
-| 1861-runtime-evidence | #1861 | 5/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1974) |
-| 1861-runtime-evidence | #1861 | 6/7 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1975) |
-| 1861-runtime-evidence | #1861 | 7/7 | 222 | [PR](https://github.com/kburson/ai-task-manager/pull/1976) |
-| 1918-criteria-evidence | #1918 | 1/1 | 343 | [PR](https://github.com/kburson/ai-task-manager/pull/1977) |
-| publication-qa-evidence | #1953 | 1/1 | 249 | [PR](https://github.com/kburson/ai-task-manager/pull/1978) |
-| delivered-story-evidence | #1953 | 1/2 | 900 | [PR](https://github.com/kburson/ai-task-manager/pull/1979) |
-| delivered-story-evidence | #1953 | 2/2 | 188 | [PR](https://github.com/kburson/ai-task-manager/pull/1980) |
+| Family                     | Owner story | Part | Files | PR                                                         |
+| -------------------------- | ----------- | ---: | ----: | ---------------------------------------------------------- |
+| local-and-archive-evidence | #1953       |  1/2 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1967) |
+| local-and-archive-evidence | #1953       |  2/2 |   613 | [PR](https://github.com/kburson/ai-task-manager/pull/1968) |
+| 1725-architecture-evidence | #1725       |  1/1 |   438 | [PR](https://github.com/kburson/ai-task-manager/pull/1969) |
+| 1861-runtime-evidence      | #1861       |  1/7 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1970) |
+| 1861-runtime-evidence      | #1861       |  2/7 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1971) |
+| 1861-runtime-evidence      | #1861       |  3/7 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1972) |
+| 1861-runtime-evidence      | #1861       |  4/7 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1973) |
+| 1861-runtime-evidence      | #1861       |  5/7 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1974) |
+| 1861-runtime-evidence      | #1861       |  6/7 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1975) |
+| 1861-runtime-evidence      | #1861       |  7/7 |   222 | [PR](https://github.com/kburson/ai-task-manager/pull/1976) |
+| 1918-criteria-evidence     | #1918       |  1/1 |   343 | [PR](https://github.com/kburson/ai-task-manager/pull/1977) |
+| publication-qa-evidence    | #1953       |  1/1 |   249 | [PR](https://github.com/kburson/ai-task-manager/pull/1978) |
+| delivered-story-evidence   | #1953       |  1/2 |   900 | [PR](https://github.com/kburson/ai-task-manager/pull/1979) |
+| delivered-story-evidence   | #1953       |  2/2 |   188 | [PR](https://github.com/kburson/ai-task-manager/pull/1980) |
 
 Additional Superpowers task reports, publication QA images/PDFs and inert recovery-tool source copies are included in these evidence PRs. supplement-dispositions.json.gz records the final ignored-file sweep.
 
@@ -76,7 +76,7 @@ D10 (#1514) was clean but contained seven ignored planning/AC operator fragments
 
 The final source-preservation check found unchanged original HEADs, unchanged staged state (including the original staged rename), and no content drift across all six uncommitted-source/collateral captures. Three final helper scripts are preserved as inert source copies in https://github.com/kburson/ai-task-manager/pull/1967.
 
-There are 10 source/collateral recovery PRs, 15 evidence/planning review PRs, and this four-file index PR. All are drafts. Nothing was merged or deleted during recovery.
+There are 10 source/collateral recovery PRs, 15 evidence/planning review PRs, and this index PR. All were created as drafts. Capture itself performed no merges or deletions; subsequent cleanup and retirement are recorded below.
 
 ## Authorized stale-worktree cleanup completed 2026-10-10
 
@@ -85,3 +85,17 @@ After rechecking exact live origin heads and 17,541 meaningful file contents, 19
 The 55 previously unarchived Codex sessions whose actual workspace paths matched the removed trees were archived through the app API. Five matched sessions were already archived. The active cleanup chat remains available. The app API exposes archival, so permanent chat deletion was not performed.
 
 The [cleanup receipt](cleanup-receipt-2026-10-10.json) records original worktree HEADs, removed paths, associated session IDs, retained checkouts, authorization, and final verification. This records cleanup, without changing implementation or merge readiness.
+
+## Obsolete recovery PR retirement
+
+The user requested closing superseded or obsolete PRs and deleting their branches. The selected set is #1961–#1965. [The retirement manifest](retired-prs/manifest.json) records exact original heads, reasons, current-trunk representation and individual retained byte snapshots. No unique historical file depends on a retired branch for storage.
+
+| PR    | Disposition                                                                               |
+| ----- | ----------------------------------------------------------------------------------------- |
+| #1961 | Temporary cleanup hook settings; retain operational history only.                         |
+| #1962 | CI replay source already shipped, including corrected integration/meta placement.         |
+| #1963 | Architecture already delivered; retain excluded experiment and obsolete setup as history. |
+| #1964 | Authority evaluator already shipped with stronger identity checks.                        |
+| #1965 | SQLite authority proposals superseded by accepted ADR0002; retain research only.          |
+
+The .snapshot files preserve exact bytes without installing hooks, weakening current code, or restoring old plans as active execution instructions. Current work continues in #1956–#1958 and the remaining evidence/planning PRs. This record prepares retirement; final state is recorded after GitHub closure and branch deletion are verified.
