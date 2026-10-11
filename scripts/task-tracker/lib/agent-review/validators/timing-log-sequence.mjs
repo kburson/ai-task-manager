@@ -31,6 +31,7 @@ import { SUSPICIOUS_GAP_SEC } from '../../bind-event.mjs';
 import {
   EVENT_CLASS,
   classifyTimingEvent,
+  describeTimingEvent,
   isKnownTimingEvent,
   isRetiredTimingEvent,
   stageOfTimingEvent,
@@ -153,6 +154,57 @@ function isDepartureEvent(slug) {
 
 function isReengagementEvent(slug) {
   return classifyTimingEvent(slug) === EVENT_CLASS.REENGAGEMENT;
+}
+
+// #1994 — appendRow interposes a shared zero-work resumed boundary before a
+// lifecycle opener after an actor departure. It is not an actor's return. Match
+// the complete stored producer shape; malformed lookalikes keep legacy checks.
+const SHARED_PROJECTION_RE =
+  /^(\|.*\|)\s+<!-- aitm-transition move="(move:[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})" -->\s+<!-- row-sec: a=0 i=0 -->$/;
+const ABSOLUTE_CURSOR_RE = /^(?:—|\d+|[1-9]\d{0,2}(?:,\d{3})+)$/;
+
+function zeroWorkProjection(row) {
+  if (!row || row.actorKey) return null;
+  const match = row.raw.match(SHARED_PROJECTION_RE);
+  if (!match) return null;
+  const parsed = parseTimingRow(match[1]);
+  const cells = parsed?.cells;
+  if (
+    !cells ||
+    cells.length !== 10 ||
+    cells[0] !== '' ||
+    cells[9] !== '' ||
+    cells[3] !== '' ||
+    cells[4] !== '' ||
+    cells[5] !== '0' ||
+    !ABSOLUTE_CURSOR_RE.test(cells[6]) ||
+    !ABSOLUTE_CURSOR_RE.test(cells[8])
+  )
+    return null;
+  return { move: match[2], word: cells[6], full: cells[8] };
+}
+
+function isSharedLifecycleResume(rows, index) {
+  const row = rows[index];
+  const departure = rows[index - 1];
+  const opener = rows[index + 1];
+  if (row.event !== 'resumed' || !departure?.actorKey || !isDepartureEvent(departure.event))
+    return false;
+  const departureMs = _tsToMs(departure.ts);
+  if (!Number.isFinite(departureMs) || departureMs > _tsToMs(row.ts)) return false;
+  const event = describeTimingEvent(opener?.event);
+  if (event?.kind !== 'lifecycle' || event.phase !== 'enter' || event.terminalReviewHandoffCloser)
+    return false;
+  const resumed = zeroWorkProjection(row);
+  const entry = zeroWorkProjection(opener);
+  return Boolean(
+    resumed &&
+    entry &&
+    row.ts === opener.ts &&
+    resumed.move === entry.move &&
+    resumed.word === entry.word &&
+    resumed.full === entry.full
+  );
 }
 
 function loc(row) {
@@ -306,7 +358,7 @@ export function validate(context = {}) {
       }
     }
 
-    if (row.actorKey) continue;
+    if (row.actorKey || isSharedLifecycleResume(rows, row.index - 1)) continue;
 
     // --- State-machine walk (skip / double detection) ------------------------
     if (isDepartureEvent(row.event)) {
