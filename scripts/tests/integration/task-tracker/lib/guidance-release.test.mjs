@@ -16,6 +16,10 @@ import { formatReleaseMeasurement, measure } from '../../../../task-tracker/meas
 import { buildPairedContext } from '../../../helpers/guidance-paired-context.mjs';
 import { assertCurrentCaptureSources } from '../../../helpers/guidance-capture-provenance.mjs';
 import { currentCaptureManifest } from '../../../helpers/generate-current-guidance-evidence.mjs';
+import {
+  archivedGuidanceContextReport,
+  withArchivedGuidanceSource,
+} from '../../../helpers/archived-guidance-source.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const MEASURE_SCRIPT = path.resolve('scripts/task-tracker/measure-context.mjs');
@@ -107,43 +111,7 @@ test('archived final release retains its original committed proof and rejects cu
     buildGuidanceContextReport({ captureBytes: finalBytes }),
     /final capture identity drift/
   );
-  const fixture = mkdtempProjectIsolated('guidance-archived-release-');
-  let report;
-  try {
-    execFileSync('git', ['fetch', '--no-tags', path.resolve('.'), manifest.sourceCommit], {
-      cwd: fixture,
-    });
-    execFileSync('git', ['checkout', '-q', '--detach', 'FETCH_HEAD'], { cwd: fixture });
-    // The capture was published after its recorded source commit; replay those
-    // exact archived inputs against the source bytes, not an earlier artifact.
-    writeFileSync(
-      path.join(
-        fixture,
-        'scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json'
-      ),
-      finalBytes
-    );
-    writeFileSync(
-      path.join(fixture, 'scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json'),
-      JSON.stringify(manifest)
-    );
-    const script = `
-      import { readFileSync } from 'node:fs';
-      import { buildGuidanceContextReport } from './scripts/task-tracker/measure-guidance-context.mjs';
-      const captureBytes = readFileSync('scripts/tests/fixtures/1857/1866-current/actual-explain-traffic-final.json');
-      process.stdout.write(JSON.stringify(await buildGuidanceContextReport({ captureBytes })));
-    `;
-    report = JSON.parse(
-      execFileSync(process.execPath, ['--input-type=module', '-e', script], {
-        cwd: fixture,
-        encoding: 'utf8',
-        maxBuffer: 16 * 1024 * 1024,
-        env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: fixture },
-      })
-    );
-  } finally {
-    rmSync(fixture, { recursive: true, force: true });
-  }
+  const report = withArchivedGuidanceSource(path.resolve('.'), archivedGuidanceContextReport);
   assert.equal(report.classification, 'final-installed-consumer-release');
   assert.equal(report.finalInstalledAdapterGate.status, 'passed');
   assert.deepEqual(
