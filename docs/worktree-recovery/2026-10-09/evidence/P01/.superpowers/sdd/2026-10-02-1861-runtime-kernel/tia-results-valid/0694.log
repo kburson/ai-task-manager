@@ -1,0 +1,24 @@
+✔ Review validates a Test receipt and seeds standard results without spawning commands (4.111209ms)
+✔ Review refuses a Test receipt after live Verification Commands change (8.613166ms)
+✔ Review seeds targeted commands only when the Test receipt recorded them (0.410291ms)
+✔ Review fails closed on SHA drift (0.651209ms)
+✔ Review fails closed on config drift (0.447083ms)
+✔ Review fails closed on lockfile drift (0.270083ms)
+✔ Review fails closed when a required complete lane is absent (0.306959ms)
+✔ receipt refusal uses the audited Test-to-Develop rework path (0.537541ms)
+✔ Review fails closed when HEAD cannot be resolved for a v1 receipt (0.275208ms)
+✔ Review and its Test-exit guard reject a malformed v1 marker instead of falling back (0.564833ms)
+✔ Review retains marker-only compatibility when no v1 receipt exists (0.110041ms)
+✔ a reviewer probe appends separate review evidence without mutating the Test receipt (0.50075ms)
+✔ a reviewer probe drops prior Review evidence from a different fingerprint (0.531959ms)
+✔ Review probe mode executes an allowlisted command and persists read-back evidence (0.870584ms)
+✔ Review probe mode persists a red probe and returns failure (0.746042ms)
+✔ Review probe parser accepts repeatable quoted values and rejects a missing value (0.27725ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27.081125

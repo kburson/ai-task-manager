@@ -1,0 +1,27 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/scratch-dir-iYUghz/wrong-cwd'
+- '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/scratch-dir-iYUghz/bound-worktree'
+
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/scratch-dir.test.mjs:55:12
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+    at withRuntimeRootAdapters (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:159:30)
+    at withUnitRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/unit-runtime-root.mjs:42:10)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/scratch-dir.test.mjs:16:7
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/scratch-dir-iYUghz/wrong-cwd',
+  expected: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/scratch-dir-iYUghz/bound-worktree',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
