@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "node --test scripts/tests/integration/task-tracker/lib/native-stage-recovery-from-comment.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-transition-recovery.test.mjs",
+  "replacement": "node --test --test-concurrency=4 scripts/tests/integration/task-tracker/lib/criteria-revision-known-prefix-entry.test.mjs scripts/tests/integration/task-tracker/lib/native-stage-recovery-from-comment.test.mjs scripts/tests/integration/task-tracker/lib/native-stage-complete-saga.test.mjs",
+  "expectedVersion": 47
+}

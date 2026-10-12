@@ -1,0 +1,36 @@
+✔ independent descriptors include current-source drift and all eleven sentinel late inputs (0.772334ms)
+ℹ [{"filename":"native-stage-late-sources.test.mjs","mode":"late-sources","fault":null},{"filename":"native-stage-sentinel-late-context-executor-accessor.test.mjs","mode":"sentinel-late-context-executor-accessor","fault":null},{"filename":"native-stage-sentinel-late-context-identity.test.mjs","mode":"sentinel-late-context-identity","fault":null},{"filename":"native-stage-sentinel-late-context-issue-accessor.test.mjs","mode":"sentinel-late-context-issue-accessor","fault":null},{"filename":"native-stage-sentinel-late-effect-token-accessor.test.mjs","mode":"sentinel-late-effect-token-accessor","fault":null},{"filename":"native-stage-sentinel-late-effect-token-identity.test.mjs","mode":"sentinel-late-effect-token-identity","fault":null},{"filename":"native-stage-sentinel-late-persist-invocation-accessor.test.mjs","mode":"sentinel-late-persist-invocation-accessor","fault":null},{"filename":"native-stage-sentinel-late-persist-invocation-identity.test.mjs","mode":"sentinel-late-persist-invocation-identity","fault":null},{"filename":"native-stage-sentinel-late-persist-step-accessor.test.mjs","mode":"sentinel-late-persist-step-accessor","fault":null},{"filename":"native-stage-sentinel-late-persist-step-identity.test.mjs","mode":"sentinel-late-persist-step-identity","fault":null},{"filename":"native-stage-sentinel-late-persist-token-accessor.test.mjs","mode":"sentinel-late-persist-token-accessor","fault":null},{"filename":"native-stage-sentinel-late-persist-token-identity.test.mjs","mode":"sentinel-late-persist-token-identity","fault":null}]
+▶ actual original source drift and late custody mutations refuse without effects
+  ✔ native-stage-late-sources.test.mjs (26457.418875ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-late-sources.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-context-executor-accessor.test.mjs (118159.962375ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-context-executor-accessor.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-context-identity.test.mjs (117998.943333ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-context-identity.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-context-issue-accessor.test.mjs (117795.476625ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-context-issue-accessor.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-effect-token-accessor.test.mjs (119525.5135ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-effect-token-accessor.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-effect-token-identity.test.mjs (123148.726209ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-effect-token-identity.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-persist-invocation-accessor.test.mjs (121396.925667ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-invocation-accessor.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-persist-invocation-identity.test.mjs (121303.125417ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-invocation-identity.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-persist-step-accessor.test.mjs (116371.162625ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-step-accessor.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-persist-step-identity.test.mjs (106157.805042ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-step-identity.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-persist-token-accessor.test.mjs (106686.068083ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-token-accessor.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-late-persist-token-identity.test.mjs (106336.782208ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-late-persist-token-identity.test.mjs: 1 complete original cases
+✔ actual original source drift and late custody mutations refuse without effects (347292.487041ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 347571.262583

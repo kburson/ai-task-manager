@@ -37,7 +37,10 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TEST_FILE_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
+import {
+  TEST_FILE_TIMEOUT_MS,
+  testExecutionTimeoutMs,
+} from './task-tracker/lib/process-timeouts.mjs';
 import {
   poolConcurrency,
   slowPoolConcurrency,
@@ -189,7 +192,7 @@ async function runEntry(entry) {
   if (process.env.AITM_GH_CENSUS_BIN) env.AITM_GH_CENSUS_CALLER = entry.label;
   const res = await spawnTestChild({
     full: entry.full,
-    timeout: TEST_FILE_TIMEOUT_MS,
+    timeout: testExecutionTimeoutMs(TEST_FILE_TIMEOUT_MS),
     maxBuffer: RUN_TESTS_MAX_BUFFER,
     env,
   });

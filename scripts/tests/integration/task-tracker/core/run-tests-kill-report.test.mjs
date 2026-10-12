@@ -6,6 +6,11 @@
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { parse } from 'acorn';
+import {
+  TEST_FILE_TIMEOUT_MS,
+  testExecutionTimeoutMs,
+} from '../../../../task-tracker/lib/process-timeouts.mjs';
 import {
   describeSpawnResult,
   findFleetLeaks,
@@ -63,17 +68,38 @@ test('the runner applies registered-worktree classification before leak reportin
   );
 });
 
-test('the runner keeps each test file on the dedicated 10-minute child budget', () => {
+test('the runner preserves the dedicated child budget through reversible duration suspension', () => {
   const runner = readFileSync(new URL('../../../../run-tests.mjs', import.meta.url), 'utf8');
-  const timeouts = readFileSync(
-    new URL('../../../../task-tracker/lib/process-timeouts.mjs', import.meta.url),
-    'utf8'
+  const ast = parse(runner, { ecmaVersion: 'latest', sourceType: 'module' });
+  const imports = ast.body.find(
+    (node) =>
+      node.type === 'ImportDeclaration' &&
+      node.source.value === './task-tracker/lib/process-timeouts.mjs'
   );
-
-  assert.match(timeouts, /export const TEST_FILE_TIMEOUT_MS = 600_000;/);
-  assert.match(runner, /import \{ TEST_FILE_TIMEOUT_MS \} from/);
-  assert.match(runner, /timeout: TEST_FILE_TIMEOUT_MS/);
-  assert.doesNotMatch(runner, /timeout: TEST_RUNNER_TIMEOUT_MS/);
+  const bindings = Object.fromEntries(
+    imports.specifiers.map((specifier) => [specifier.imported.name, specifier.local.name])
+  );
+  const runEntry = ast.body.find(
+    (node) => node.type === 'FunctionDeclaration' && node.id.name === 'runEntry'
+  );
+  const spawn = runEntry.body.body
+    .flatMap((node) => node.declarations ?? [])
+    .map((node) => node.init?.argument)
+    .find((node) => node?.callee?.name === 'spawnTestChild');
+  const timeout = spawn.arguments[0].properties.find((node) => node.key.name === 'timeout').value;
+  assert.equal(timeout.type, 'CallExpression');
+  assert.equal(timeout.callee.name, bindings.testExecutionTimeoutMs);
+  assert.equal(timeout.arguments[0].name, bindings.TEST_FILE_TIMEOUT_MS);
+  assert.equal(TEST_FILE_TIMEOUT_MS, 600000);
+  assert.equal(testExecutionTimeoutMs(TEST_FILE_TIMEOUT_MS, {}), 600000);
+  assert.equal(
+    testExecutionTimeoutMs(TEST_FILE_TIMEOUT_MS, { AITM_TEST_EXECUTION_LIMITS: 'suspended' }),
+    0
+  );
+  assert.equal(
+    testExecutionTimeoutMs(TEST_FILE_TIMEOUT_MS, { AITM_TEST_EXECUTION_LIMITS: '' }),
+    600000
+  );
 });
 
 test('clean exit reports ok', () => {

@@ -4,7 +4,10 @@ enforceDirectGuidance(import.meta.url, 'update-event-fields');
 import { writeFileSync, unlinkSync } from 'node:fs';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
-import { eventFieldUpdateProgram, eventFieldBodyWriteProgram } from '../task-tracker/lib/event-field-update.mjs';
+import {
+  eventFieldUpdateProgram,
+  eventFieldBodyWriteProgram,
+} from '../task-tracker/lib/event-field-update.mjs';
 import { loadProjectFieldDefs, loadProjectFieldEvents } from '../task-tracker/project-fields.mjs';
 import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';

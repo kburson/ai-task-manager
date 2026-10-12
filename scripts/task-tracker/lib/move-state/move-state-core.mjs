@@ -15,6 +15,8 @@ import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import {
   withRevisionConsumer,
+  tryNativeStageOriginalEntry,
+  assertNativeStageOriginalEntryPolicy,
   readNativeRevisionStageBody,
   assertNativeRevisionStageScope,
   assertNativeStageEntryFrame,
@@ -37,13 +39,22 @@ import {
   assertOriginalNativeBoardRequest,
   assertOriginalNativeBoardResult,
   readOriginalNativeBoardFailure,
+  assertOriginalNativeCompensationInvocation,
+  assertOriginalNativeCompensationRecordingInput,
+  assertOriginalNativeCompensationReturn,
   rollbackRecordedState as defaultRollbackRecordedState,
   assertBoardMarkerConsistent as defaultAssertBoardMarkerConsistent,
 } from './github-mutation.mjs';
 import { emitPhasePairRows as defaultEmitPhasePairRows } from './audit-timing.mjs';
-import { runPostCommitTail as defaultRunPostCommitTail, DEFAULT_TAIL_STEPS } from './post-commit-tail.mjs';
+import {
+  runPostCommitTail as defaultRunPostCommitTail,
+  DEFAULT_TAIL_STEPS,
+} from './post-commit-tail.mjs';
 import * as nativeTailCache from './cache-unpark.mjs';
 import * as nativeTailAudit from './audit-timing.mjs';
+import * as nativeCacheSession from '../../session-state.mjs';
+import * as nativeCacheWords from '../../word-counter.mjs';
+import { getProjectDir as nativeCacheRoot } from '../../paths.mjs';
 const originalTailDispatch = nativeTailCache.dispatchOnEnterActions;
 import { writeMoveCompleteMarker, readMoveCompleteMarker, isMoveComplete } from './sentinel.mjs';
 import {
@@ -372,7 +383,561 @@ function assertNativeTransitionContext(ctx, requireOriginal = false) {
 // authoritative Status write, and the aitm-move-complete sentinel is written
 // LAST of all — so a crash anywhere leaves a safely re-runnable partial state
 // and "the move is complete" has a single verifiable definition (sentinel.mjs).
+const originalNativeStageEntries = new WeakMap();
+const originalNativeRestartCalls = new WeakMap();
+const completed16ResumeFrames = new WeakMap();
+const completed16ResumeExecution = new AsyncLocalStorage();
+const completed16ExistingReads = new WeakMap();
+const completed16TailInputs = new WeakMap();
+const completed16TailLeaves = new WeakMap();
+const completed16PartialInputs = new WeakMap();
+// No public issuer: only the actual moveState call creates this object.
+export function consumeOriginalNativeStageRestartCall(ctx, restartCall) {
+  assertOriginalNativeStageEntry(ctx);
+  const call = originalNativeRestartCalls.get(restartCall);
+  if (!call || call.ctx !== ctx || call.consumed) nativeTransitionRefusal();
+  call.consumed = true;
+}
+function assertOriginalRestartCall(ctx, restartCall) {
+  const call = originalNativeRestartCalls.get(restartCall);
+  if (!call || call.ctx !== ctx || !call.consumed) nativeTransitionRefusal();
+  assertOriginalNativeStageEntry(ctx);
+  return call;
+}
+export function freshCompleted16UnverifiedResult() {
+  return {
+    exit: 4,
+    code: 'revision-authority-unavailable',
+    phase: 'native-stage-resume',
+    preparationReason: 'native-source-unavailable',
+    tail: { failures: [] },
+    itemId: '',
+    boardMoved: false,
+    sentinelPresent: false,
+    transitionCommitPresent: false,
+    transitionCommitId: null,
+    progressVerified: false,
+  };
+}
+function assertCompleted16ResumeAuthority(frame) {
+  try {
+    if (frame.custodyRefused || frame.readUnavailable) nativeTransitionRefusal();
+
+    if (!isMemoryStageEffectScope() || completed16ResumeFrames.get(frame.stageToken) !== frame)
+      nativeTransitionRefusal();
+    assertOriginalRestartCall(frame.originalContext, frame.restartCall);
+    assertOriginalNativeStageEntrySources(frame.originalContext);
+    frame.store.assertMemoryCapability(frame.backend, frame.capability, frame.context);
+    if (
+      frame.nativeRoots.currentSessionId() !== frame.actorIdentity.sid ||
+      frame.nativeRoots.aiAppName() !== frame.actorIdentity.provider ||
+      frame.context.executor.sessionId !== frame.actorIdentity.sid
+    )
+      nativeTransitionRefusal();
+    if (frame.readRequest) assertNativeTransitionRequestUnchanged(frame.readRequest);
+    if (frame.readResponse)
+      frame.store.assertMemoryExistingNativeStageTransitionResponse(
+        completed16ReadAuthority(frame, frame.existingReadInput),
+        frame.readResponse
+      );
+    if (frame.existingReadReturned)
+      frame.transitionCode.assertExistingNativeTransitionResult(
+        frame.existingReadInput,
+        frame.sagaContext,
+        frame.existingReadReturned
+      );
+    compareOriginalEntryData(frame.sagaContext, frame.sagaDescriptors, frame.sagaPrototype);
+    for (const child of frame.sagaChildren)
+      compareOriginalEntryData(child.value, child.fields, child.prototype, true);
+    if (frame.cacheActiveReturned) {
+      const retained = frame.cacheActiveReturned;
+      nativeCacheSession.assertOriginalNativeCacheRead(retained.input, retained.result);
+    }
+  } catch (error) {
+    frame.custodyRefused = true;
+    throw error;
+  }
+}
+function assertCompleted16ResumeCurrent(frame) {
+  try {
+    assertCompleted16ResumeAuthority(frame);
+    if (canonicalRecordJson(frame.backend.snapshot) !== frame.currentSnapshot)
+      nativeTransitionRefusal();
+  } catch (error) {
+    frame.custodyRefused = true;
+    throw error;
+  }
+}
+export function assertCompleted16ResumeFrame(ctx, restartCall) {
+  const frame = assertOriginalRestartCall(ctx, restartCall).frame;
+  if (!frame || frame.originalContext !== ctx) nativeTransitionRefusal();
+  assertCompleted16ResumeCurrent(frame);
+}
+export function assertCompleted16ExistingReadLifetime(input, context) {
+  const frame = completed16ExistingReads.get(input);
+  if (
+    !frame ||
+    frame.context !== context ||
+    !isMemoryStageEffectScope() ||
+    completed16ResumeFrames.get(frame.stageToken) !== frame
+  )
+    nativeTransitionRefusal();
+  assertOriginalRestartCall(frame.originalContext, frame.restartCall);
+  frame.store.assertMemoryCapability(frame.backend, frame.capability, frame.context);
+}
+export function assertCompleted16ResumeFinalHistory(ctx, restartCall, history) {
+  const frame = assertOriginalRestartCall(ctx, restartCall).frame;
+  if (!frame) nativeTransitionRefusal();
+  assertCompleted16ResumeCurrent(frame);
+  canonicalRecordJson(history);
+  const expected = JSON.parse(frame.currentSnapshot).nativeStageRecords.at(-1);
+  if (
+    history.status !== 'pending-native-stage' ||
+    canonicalRecordJson(history.journal) !== canonicalRecordJson(expected)
+  ) {
+    frame.custodyRefused = true;
+    nativeTransitionRefusal();
+  }
+}
+function assertCompleted16PartialInput(input, frame) {
+  if (
+    !frame ||
+    completed16PartialInputs.get(input) !== frame ||
+    !frame.executionSettled ||
+    frame.tailRunning ||
+    frame.tailLeaf ||
+    frame.partialInput !== input ||
+    frame.existingReadPhase !== 'comparison'
+  )
+    nativeTransitionRefusal();
+  const expected = {
+    backend: frame.backend,
+    capability: frame.capability,
+    context: frame.context,
+    holder: frame.stageToken,
+  };
+  const fields = Object.getOwnPropertyDescriptors(input);
+  if (
+    Object.getPrototypeOf(input) !== Object.prototype ||
+    Reflect.ownKeys(fields).length !== 4 ||
+    Object.keys(expected).some(
+      (key) =>
+        !fields[key] ||
+        !Object.hasOwn(fields[key], 'value') ||
+        fields[key].value !== expected[key] ||
+        !fields[key].enumerable
+    )
+  )
+    nativeTransitionRefusal();
+  assertCompleted16ResumeCurrent(frame);
+}
+export function readNativeStagePartialReportIntent(input) {
+  assertNativeStagePartialHolder(input);
+  const resumed = completed16PartialInputs.get(input);
+  const record = resumed ?? nativeStagePartialInputs.get(input);
+  return structuredClone({ kind: resumed ? 'completed16' : 'original', header: record.header });
+}
+async function readCompleted16ResumePartial(frame) {
+  if (!frame.existingReadReturned || frame.readUnavailable)
+    return freshCompleted16UnverifiedResult();
+  const input = {
+    backend: frame.backend,
+    capability: frame.capability,
+    context: frame.context,
+    holder: frame.stageToken,
+  };
+  frame.partialInput = input;
+  completed16PartialInputs.set(input, frame);
+  try {
+    assertCompleted16PartialInput(input, frame);
+    const partial = await frame.store.readMemoryNativeStagePartialFacts(input);
+    assertCompleted16PartialInput(input, frame);
+    frame.store.assertMemoryNativeStagePartialResult(input, partial);
+    return { ...freshCompleted16UnverifiedResult(), ...partial };
+  } catch {
+    frame.custodyRefused = true;
+    return freshCompleted16UnverifiedResult();
+  } finally {
+    completed16PartialInputs.delete(input);
+    frame.partialInput = null;
+  }
+}
+function completed16ReadAuthority(frame, invocation) {
+  return {
+    backend: frame.backend,
+    capability: frame.capability,
+    context: frame.context,
+    token: frame.stageToken,
+    invocation,
+  };
+}
+function existingNativeRead(input, ctx) {
+  const frame = completed16ExistingReads.get(input);
+  if (
+    !frame ||
+    frame.sagaContext !== ctx ||
+    completed16ResumeExecution.getStore() !== frame ||
+    !['call', 'running'].includes(frame.existingReadPhase)
+  )
+    nativeTransitionRefusal();
+  assertCompleted16ResumeCurrent(frame);
+  return frame;
+}
+export function beginExistingNativeTransitionRead(input, ctx) {
+  const frame = existingNativeRead(input, ctx);
+  if (frame.existingReadPhase !== 'call') nativeTransitionRefusal();
+  frame.existingReadPhase = 'running';
+}
+export function assertExistingNativeTransitionInput(input, ctx) {
+  const frame = existingNativeRead(input, ctx);
+  if (frame.existingReadPhase !== 'running') nativeTransitionRefusal();
+}
+export function readExistingNativeTransitionExpected(input, ctx) {
+  const frame = existingNativeRead(input, ctx);
+  return structuredClone({
+    commentId: frame.derived.intent.commentId,
+    record: frame.derived.intent.record,
+    body: frame.derived.commentBody,
+  });
+}
+export function readExistingNativeStageTransitionIntent(token, backend, input, context) {
+  const frame = completed16ExistingReads.get(input);
+  if (
+    !frame ||
+    token !== frame.stageToken ||
+    backend !== frame.backend ||
+    context !== frame.context
+  )
+    nativeTransitionRefusal();
+  existingNativeRead(input, frame.sagaContext);
+  return structuredClone({ header: frame.header });
+}
+// Comparison remains usable after the leaf's execution window closes, but only
+// within this original frame and held interlock. It cannot register an effect.
+export function assertExistingNativeTransitionComparison(input, ctx) {
+  const frame = completed16ExistingReads.get(input);
+  if (
+    !frame ||
+    frame.sagaContext !== ctx ||
+    !isMemoryStageEffectScope() ||
+    completed16ResumeFrames.get(frame.stageToken) !== frame
+  )
+    nativeTransitionRefusal();
+  assertOriginalRestartCall(frame.originalContext, frame.restartCall);
+  frame.store.assertMemoryCapability(frame.backend, frame.capability, frame.context);
+  if (frame.readRequest) assertNativeTransitionRequestUnchanged(frame.readRequest);
+  if (frame.readResponse)
+    frame.store.assertMemoryExistingNativeStageTransitionResponse(
+      completed16ReadAuthority(frame, input),
+      frame.readResponse
+    );
+}
+export async function readCompleted16NativeTransitionComment(input, request) {
+  const frame = existingNativeRead(input, completed16ExistingReads.get(input)?.sagaContext);
+  if (frame.existingReadPhase !== 'running' || frame.readRequest) nativeTransitionRefusal();
+  frame.readRequest = retainNativeTransitionRequest(request, {
+    file: 'gh',
+    args: [
+      'api',
+      `repos/${frame.context.repository}/issues/comments/${frame.derived.intent.commentId}`,
+    ],
+    options: { timeout: 15000 },
+  });
+  const response = await frame.store.readMemoryExistingNativeStageTransition(
+    completed16ReadAuthority(frame, input)
+  );
+  frame.readResponse = response;
+  existingNativeRead(input, frame.sagaContext);
+  return response;
+}
+export function expireCompleted16ResumeFrame(ctx, restartCall) {
+  const call = originalNativeRestartCalls.get(restartCall),
+    frame = call?.frame;
+  if (!call || call.ctx !== ctx || !frame) return;
+  if (frame.existingReadInput) {
+    frame.transitionCode.expireExistingNativeTransitionRead(frame.existingReadInput);
+    completed16ExistingReads.delete(frame.existingReadInput);
+  }
+  completed16ResumeFrames.delete(frame.stageToken);
+  call.frame = null;
+}
+function compareOriginalEntryData(value, expected, prototype, allowArray = false) {
+  const actualPrototype = value && Object.getPrototypeOf(value);
+  if (
+    !value ||
+    ![Object.prototype, null, ...(allowArray ? [Array.prototype] : [])].includes(actualPrototype) ||
+    (prototype !== undefined && actualPrototype !== prototype)
+  )
+    nativeTransitionRefusal();
+  const current = Object.getOwnPropertyDescriptors(value);
+  if (
+    Reflect.ownKeys(current).length !== Reflect.ownKeys(expected).length ||
+    Reflect.ownKeys(current).some((key) => {
+      const a = current[key],
+        b = expected[key];
+      return (
+        !b ||
+        !Object.hasOwn(a, 'value') ||
+        a.value !== b.value ||
+        a.enumerable !== b.enumerable ||
+        a.writable !== b.writable ||
+        a.configurable !== b.configurable
+      );
+    })
+  )
+    nativeTransitionRefusal();
+}
+// Retain caller DATA descriptors and identities only for this live invocation.
+// These are comparison inputs, never revision/source approval or readiness.
+function captureOriginalEntryChildren(descriptors) {
+  const records = [];
+  const seen = new Set();
+  function retain(value) {
+    if (value === null || typeof value !== 'object' || seen.has(value)) return;
+    const prototype = Object.getPrototypeOf(value);
+    if (![Object.prototype, null, Array.prototype].includes(prototype)) nativeTransitionRefusal();
+    const fields = Object.getOwnPropertyDescriptors(value);
+    compareOriginalEntryData(value, fields, prototype, true);
+    seen.add(value);
+    records.push({ value, fields, prototype });
+    for (const field of Object.values(fields)) retain(field.value);
+  }
+  for (const key of ['cfg', 'plan', 'deps', 'boundarySnapshot']) {
+    const field = descriptors[key];
+    if (field && Object.hasOwn(field, 'value')) retain(field.value);
+  }
+  return records;
+}
+// Comparison only. A public context or copied string cannot register an entry.
+export function assertOriginalNativeStageEntry(ctx) {
+  const entry = originalNativeStageEntries.get(ctx);
+  if (!entry) nativeTransitionRefusal();
+  compareOriginalEntryData(ctx, entry.descriptors, entry.prototype);
+  for (const { value, fields, prototype } of entry.children)
+    compareOriginalEntryData(value, fields, prototype, true);
+}
+export function assertOriginalNativeStageEntrySources(ctx) {
+  assertOriginalNativeStageEntry(ctx);
+  const entry = originalNativeStageEntries.get(ctx);
+  if (entry.sources) {
+    checkOriginalStageSources(entry.sources);
+    checkOriginalFieldSources(entry.sources);
+    checkOriginalLocalSources(entry.sources);
+  }
+}
+export async function evaluateOriginalNativeStageRestart(ctx, capability, origin, known, handoff) {
+  assertOriginalNativeStageEntry(ctx);
+  assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known, handoff);
+  assertOriginalRestartCall(ctx, handoff.restartCall);
+  assertNativeTransitionContext(ctx);
+  if (
+    ctx.actor !== undefined ||
+    ctx.runGuardExecution !== undefined ||
+    Object.keys(ctx).some((key) => key.startsWith('_') && ctx[key] !== undefined)
+  )
+    nativeTransitionRefusal();
+  const header = origin.journal.header;
+  const words = await import('../../word-counter.mjs');
+  assertOriginalNativeStageEntry(ctx);
+  assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known);
+  const { actorTimingStatePath } = await import('../actor-timing-state.mjs');
+  assertOriginalNativeStageEntry(ctx);
+  const { buildContext } = await import('../../runtime.mjs');
+  assertOriginalNativeStageEntry(ctx);
+  const native = buildContext(['status']);
+  const actor = header.original.actor;
+  const record = {
+    context: {
+      repository: ctx.cfg.repo,
+      issue: Number(ctx.issueArg),
+      executor: ctx.revisionBackend.observation.executor,
+    },
+    actorIdentity: actor.identity,
+    actorEnvironment: actor.environment,
+    source: actor.capture,
+    evaluation: {
+      localReads: {
+        configuration: header.guardCapture.sources.configuration,
+        session: header.guardCapture.sources.session,
+      },
+      guardReads: header.guardCapture.gitReads,
+    },
+    nativeRoots: words,
+    originalBody: origin.observation.body.bytes,
+    originalLinked: canonicalRecordJson(
+      validateGovernedLinkedPlan({
+        body: origin.observation.body.bytes,
+        projectDir: ctx.projectDir,
+      })
+    ),
+    originalFields: header.original.fieldSources,
+    originalLocal: header.original.local,
+    localPaths: {
+      activeTask: nativeCacheSession.activeTaskPath(actor.identity.sid, ctx.projectDir),
+      actorTiming: actorTimingStatePath(actor.identity, ctx.projectDir),
+      actorFlush: actorTimingStatePath(actor.identity, ctx.projectDir) + '.flush.json',
+      wordCursor: words.markerPathFor(actor.identity.sid, ctx.projectDir),
+      trackerState: native.statePath,
+      queue: native.queuePath,
+    },
+    legacyAbsences: [],
+  };
+  originalNativeStageEntries.get(ctx).sources = record;
+  assertOriginalNativeStageEntrySources(ctx);
+  const guard = await defaultRunGuardExecution(ctx);
+  assertOriginalNativeStageEntrySources(ctx);
+  assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known);
+  const evaluation = guard.nativeEvaluation;
+  if (
+    !evaluation?.guardResult.ok ||
+    !evaluation.guardInvocations.length ||
+    evaluation.ownershipReads?.decision.kind !== 'owned-by-session' ||
+    !evaluation.assignmentReads?.reads.length
+  )
+    nativeTransitionRefusal();
+  if (known.ordinal === 16) {
+    const states = await import('../../states/index.mjs');
+    assertOriginalNativeStageEntrySources(ctx);
+    assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known, handoff);
+    if (
+      !isMemoryStageEffectScope() ||
+      ctx.stateArg !== 'test' ||
+      header.intent.target !== 'test' ||
+      !Object.isFrozen(states.STATES) ||
+      !Object.isFrozen(states.STATES.test) ||
+      !Object.isFrozen(states.STATES.test.onEnter) ||
+      states.STATES.test.onEnter.length !== 0 ||
+      words.currentSessionId() !== actor.identity.sid ||
+      words.aiAppName() !== actor.identity.provider ||
+      record.context.executor.sessionId !== actor.identity.sid
+    )
+      nativeTransitionRefusal();
+    const codec = await import('../criteria-revision/stage-execution.mjs');
+    assertOriginalNativeStageEntrySources(ctx);
+    const derived = await codec.reconstructNativeStageTransitionComment({
+      header,
+      steps: origin.journal.steps,
+    });
+    assertOriginalNativeStageEntrySources(ctx);
+    assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known, handoff);
+    const store = await import('../criteria-revision/store.mjs');
+    const transitionCode = await import('./transition-commit.mjs');
+    assertOriginalNativeStageEntrySources(ctx);
+    assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known, handoff);
+    if (!derived.complete || origin.journal.steps[13].outcome.kind !== 'confirmed')
+      nativeTransitionRefusal();
+    const sagaContext = {
+      ...ctx,
+      ...header.intent,
+      resolvedFromState: header.intent.source,
+      stateArg: header.intent.target,
+      transitionId: header.intent.transitionId,
+      tailProfile: 'task-owner',
+    };
+    const frame = {
+      ...record,
+      header,
+      backend: ctx.revisionBackend,
+      capability,
+      origin,
+      known,
+      restartCall: handoff.restartCall,
+      originalContext: ctx,
+      sagaContext,
+      store,
+      transitionCode,
+      derived,
+      stageToken: Object.freeze({}),
+      currentSnapshot: canonicalRecordJson(ctx.revisionBackend.snapshot),
+      sagaDescriptors: Object.getOwnPropertyDescriptors(sagaContext),
+      sagaPrototype: Object.getPrototypeOf(sagaContext),
+      sagaChildren: captureOriginalEntryChildren(Object.getOwnPropertyDescriptors(sagaContext)),
+      cursor: { index: 0, vectors: [], operation: null },
+    };
+    completed16ResumeFrames.set(frame.stageToken, frame);
+    assertOriginalRestartCall(ctx, handoff.restartCall).frame = frame;
+    handoff.onFrameAdmitted();
+    return completed16ResumeExecution.run(frame, async () => {
+      const input = Object.freeze({});
+      frame.existingReadInput = input;
+      frame.existingReadPhase = 'call';
+      completed16ExistingReads.set(input, frame);
+      let acquired = false;
+      try {
+        assertCompleted16ResumeCurrent(frame);
+        await store.acquireMemoryExistingNativeStageTransition(
+          completed16ReadAuthority(frame, input)
+        );
+        acquired = true;
+        assertCompleted16ResumeCurrent(frame);
+        const result = await transitionCode.readExistingTransitionCommit(sagaContext, input);
+        assertCompleted16ResumeCurrent(frame);
+        transitionCode.assertExistingNativeTransitionResult(input, sagaContext, result);
+        frame.existingReadReturned = result;
+        assertCompleted16ResumeCurrent(frame);
+      } catch {
+        frame.readUnavailable = true;
+        // Never infer facts from a thrown object or release a tail on a failed read.
+      } finally {
+        frame.existingReadPhase = 'comparison';
+        if (acquired)
+          store.releaseMemoryExistingNativeStageTransition({
+            backend: frame.backend,
+            token: frame.stageToken,
+            invocation: input,
+          });
+      }
+      if (frame.existingReadReturned) {
+        assertCompleted16ResumeCurrent(frame);
+        sagaContext.transitionCommit = frame.existingReadReturned;
+        frame.sagaDescriptors = Object.getOwnPropertyDescriptors(sagaContext);
+        try {
+          await runNativeStageTail(sagaContext, defaultRunPostCommitTail);
+        } catch {
+          // The original sequencer stops at any refusal, including the step19 fence.
+        }
+      }
+      // Every lexical read/tail invocation has settled and released its lock.
+      // There is no resumed background emitter to cancel or restore.
+      frame.executionSettled = true;
+      return readCompleted16ResumePartial(frame);
+    });
+  }
+  return {
+    exit: 4,
+    code: 'revision-authority-unavailable',
+    phase: 'native-stage-resume',
+    preparationReason: 'known-prefix-continuation-unavailable',
+    itemId: '',
+    boardMoved: false,
+    sentinelPresent: false,
+    progressVerified: false,
+    tail: { failures: [] },
+  };
+}
 export async function moveState(ctx) {
+  const descriptors = Object.getOwnPropertyDescriptors(ctx);
+  const entry = {
+    descriptors,
+    prototype: Object.getPrototypeOf(ctx),
+    children: captureOriginalEntryChildren(descriptors),
+  };
+  compareOriginalEntryData(ctx, descriptors);
+  if (originalNativeStageEntries.has(ctx)) nativeTransitionRefusal();
+  originalNativeStageEntries.set(ctx, entry);
+  const restartCall = Object.freeze({});
+  originalNativeRestartCalls.set(restartCall, { ctx, consumed: false, frame: null });
+  try {
+    const restarted = await tryNativeStageOriginalEntry(ctx, restartCall);
+    if (restarted !== null) return restarted;
+    return await moveStateFirstEntry(ctx);
+  } finally {
+    expireCompleted16ResumeFrame(ctx, restartCall);
+    originalNativeRestartCalls.delete(restartCall);
+    originalNativeStageEntries.delete(ctx);
+  }
+}
+async function moveStateFirstEntry(ctx) {
   return withRevisionConsumer(
     {
       repository: ctx.cfg?.repo,
@@ -717,6 +1282,61 @@ async function continueMoveStateAfterPhases(
 const nativeStagePreparation = new AsyncLocalStorage();
 const nativeStagePreparations = new WeakMap();
 const nativeStageIntents = new WeakMap();
+const nativeStagePartialInputs = new WeakMap();
+// No-return comparison of the actual lexical reporting call. A copied tuple,
+// even with the same holder, has no membership and cannot select the backend.
+export function assertNativeStagePartialHolder(input) {
+  const resumed = completed16PartialInputs.get(input);
+  if (resumed) {
+    assertCompleted16PartialInput(input, resumed);
+    return;
+  }
+  const record = nativeStagePartialInputs.get(input);
+  if (
+    !record ||
+    nativeStagePreparations.get(record.identity) !== record ||
+    !record.cancelled ||
+    !record.header ||
+    record.partialInput !== input
+  )
+    throw preparationRefusal('original-partial-report-input');
+  const descriptors = Object.getOwnPropertyDescriptors(input);
+  const expected = {
+    backend: record.backend,
+    capability: record.capability,
+    context: record.context,
+    holder: record.identity,
+  };
+  if (
+    Object.getPrototypeOf(input) !== Object.prototype ||
+    Reflect.ownKeys(descriptors).length !== 4 ||
+    Object.keys(expected).some(
+      (key) =>
+        !descriptors[key] ||
+        !Object.hasOwn(descriptors[key], 'value') ||
+        !descriptors[key].enumerable ||
+        descriptors[key].value !== expected[key]
+    )
+  )
+    throw preparationRefusal('original-partial-report-input');
+  assertNativeRevisionStageScope({
+    backend: record.backend,
+    capability: record.capability,
+    repository: record.context.repository,
+    issue: record.context.issue,
+    projectDir: record.context.executor.worktree,
+  });
+  record.assertMemoryCapability(record.backend, record.capability, record.context);
+  const journal = record.backend.snapshot.nativeStageRecords.at(-1);
+  if (!journal || canonicalRecordJson(journal.header) !== canonicalRecordJson(record.header))
+    throw preparationRefusal('original-partial-report-header');
+  assertOriginalEntryContext(record);
+  assertNativeReturnedResultsUnchanged(record);
+  checkOriginalStageSources(record);
+  checkOriginalFieldSources(record);
+  checkOriginalLocalSources(record);
+}
+
 function preparationRefusal(reason) {
   const error = new RevisionPolicyError({
     status: 'indeterminate',
@@ -985,26 +1605,36 @@ function checkPreparation(record) {
   });
   record.assertMemoryCapability(record.backend, record.capability, record.context);
   const body = record.backend.observation.body.bytes;
+  const compensationCurrent = record.compInvocation && record.compCustodyReady;
+  if (compensationCurrent)
+    record.compStore.assertMemoryNativeCompensationCurrent({
+      backend: record.backend,
+      token: record.stageToken,
+      invocation: record.compInvocation,
+    });
   if (
     ![
       record.originalBody,
       ...(record.entryAfterBody ? [record.entryAfterBody] : []),
       ...(record.sentinelAfterBody ? [record.sentinelAfterBody] : []),
+      ...(record.compAfterBody ? [record.compAfterBody] : []),
     ].includes(body) ||
-    ![
-      record.originalSnapshot,
-      record.firstIntentSnapshot,
-      ...(record.actorPrefixes ?? []),
-      ...(record.timingPrefixes ?? []),
-      ...(record.cursorPrefixes ?? []),
-      ...(record.checkpointPrefixes ?? []),
-      ...(record.removalPrefixes ?? []),
-      ...(record.entryPrefixes ?? []),
-      ...(record.boardPrefixes ?? []),
-      ...(record.sentinelPrefixes ?? []),
-      ...(record.transitionCommentPrefixes ?? []),
-      ...(record.tailPrefixes ?? []),
-    ].includes(canonicalRecordJson(record.backend.snapshot))
+    (!compensationCurrent &&
+      ![
+        record.originalSnapshot,
+        record.firstIntentSnapshot,
+        ...(record.actorPrefixes ?? []),
+        ...(record.timingPrefixes ?? []),
+        ...(record.cursorPrefixes ?? []),
+        ...(record.checkpointPrefixes ?? []),
+        ...(record.removalPrefixes ?? []),
+        ...(record.entryPrefixes ?? []),
+        ...(record.boardPrefixes ?? []),
+        ...(record.sentinelPrefixes ?? []),
+        ...(record.transitionCommentPrefixes ?? []),
+        ...(record.tailPrefixes ?? []),
+        ...(record.cachePrefixes ?? []),
+      ].includes(canonicalRecordJson(record.backend.snapshot)))
   )
     throw preparationRefusal('current-authority-drift');
   assertNativeTransitionContext(record.sagaContext, true);
@@ -1669,7 +2299,7 @@ async function beginCheckpointLeaf(invocation, operation, kind, index, ordinal, 
 export async function beginNativeStageCheckpointSession(invocation, operation) {
   return await beginCheckpointLeaf(invocation, operation, 'set-binding', 3, 4, 'activeTask');
 }
-// Returnless input gate before the original actor record construction. It
+// Input gate without a return value before the original actor record construction. It
 // neither advances the state program nor acquires a resource lock.
 export function assertNativeStageActorStateInput(invocation, operation) {
   const record = checkpointRecord(invocation),
@@ -2321,6 +2951,18 @@ function compareNativeResult(result, expected, original) {
   return descriptors;
 }
 function assertNativeReturnedResultsUnchanged(record) {
+  // Retain only comparison of the actual issued sentinel store arguments.
+  // A rejected lexical call must not make its mutated DATA invisible to the
+  // subsequent report; this list never recreates live execution membership.
+  for (const retained of !record.sentinelInput ? (record.sentinelStoreInputs ?? []) : []) {
+    compareOriginalEntryData(retained.input, retained.descriptors, retained.prototype);
+    for (const child of retained.children)
+      compareOriginalEntryData(child.value, child.fields, child.prototype, true);
+  }
+  if (record.cacheActiveReturned) {
+    const retained = record.cacheActiveReturned;
+    nativeCacheSession.assertOriginalNativeCacheRead(retained.input, retained.result);
+  }
   if (record.transitionCommentReturned) {
     const retained = record.transitionCommentReturned;
     record.transitionCommentCode.assertOriginalNativeTransitionResult(
@@ -2331,9 +2973,21 @@ function assertNativeReturnedResultsUnchanged(record) {
     if (canonicalRecordJson(retained.result) !== retained.bytes)
       throw preparationRefusal('original-transition-result');
   }
+  // The lexical call checks its own live returns. Reporting compares retained
+  // DATA only after that call's input and effect lease have expired.
+  if (record.transitionCommentComparisonInput && !record.transitionCommentInput)
+    record.transitionCommentCode.assertOriginalNativeTransitionCallCustody(
+      record.transitionCommentComparisonInput
+    );
   for (const read of [record.transitionCreateRead, record.transitionCommentRead]) {
     if (!read) continue;
     assertNativeTransitionRequestUnchanged(read);
+    if (read.response)
+      record.transitionCommentStore.assertMemoryNativeStageTransitionResponseCustody(
+        read.authority,
+        read.response,
+        read.phase
+      );
   }
   for (const retained of [
     record.entryReturned,
@@ -2629,6 +3283,12 @@ function assignNativeTransitionEvidence(ctx, entry, sentinel) {
 // Only the original post-consistency call below creates this opaque invocation.
 // Restored journals and the early alreadyComplete/repair branch cannot recreate it.
 function assertNativeStageTransitionContext(ctx) {
+  const resumed = completed16ResumeExecution.getStore();
+  if (resumed && resumed.sagaContext === ctx) {
+    assertCompleted16ResumeCurrent(resumed);
+    if (!resumed.existingReadReturned) nativeTransitionRefusal();
+    return resumed;
+  }
   const record = nativeStagePreparation.getStore();
   if (
     !record ||
@@ -2650,9 +3310,10 @@ function assertNativeStageTransitionContext(ctx) {
   const currentJournal = record.backend.snapshot.nativeStageRecords.at(-1);
   // Tail records remain independently bound to full current snapshots; compare
   // original body/comment custody against its unchanged complete16 prefix.
-  const journal = record.tailInput && currentJournal.steps.length === 17
-    ? { ...currentJournal, steps: currentJournal.steps.slice(0, 16) }
-    : currentJournal;
+  const journal =
+    record.tailInput && [17, 18].includes(currentJournal.steps.length)
+      ? { ...currentJournal, steps: currentJournal.steps.slice(0, 16) }
+      : currentJournal;
   if (journal.steps.length === 15) {
     if (journal.steps[14].readback === null) throw preparationRefusal('transition-sentinel-prefix');
   } else if (journal.steps.length === 16) {
@@ -2795,6 +3456,11 @@ export async function createNativeStageTransitionComment(input, request) {
   const response = await record.transitionCommentStore.writeMemoryNativeStageTransition(
     transitionAuthority(record, input)
   );
+  Object.assign(record.transitionCreateRead, {
+    response,
+    authority: transitionAuthority(record, input),
+    phase: 'create',
+  });
   nativeTransitionCommentRecord(input);
   assertNativeStageTransitionCreateResponse(input, request, response);
   return response;
@@ -2824,6 +3490,11 @@ export async function readNativeStageTransitionComment(input, request) {
   const response = await record.transitionCommentStore.readMemoryNativeStageTransition(
     transitionAuthority(record, input)
   );
+  Object.assign(record.transitionCommentRead, {
+    response,
+    authority: transitionAuthority(record, input),
+    phase: 'read',
+  });
   nativeTransitionCommentRecord(input);
   assertNativeStageTransitionReadResponse(input, request, response);
   return response;
@@ -2927,6 +3598,7 @@ async function runNativeStageTransitionCommit(ctx, originalFunction) {
     record.transitionCommentPrefixes = [intended, effected, completed].map(canonicalRecordJson);
     await store.persistMemoryNativeStageTransition({ ...transitionAuthority(record, input), step });
     nativeTransitionCommentRecord(input);
+    record.transitionCommentComparisonInput = input;
     const result = await originalFunction(ctx, record.transitionEvidenceDescriptor.value, input);
     nativeTransitionCommentRecord(input);
     code.assertOriginalNativeTransitionResult(input, ctx, result);
@@ -3235,29 +3907,49 @@ export async function prepareNativeStageBody(input, before, bytes) {
   };
   record.sentinelAfterBody = bytes;
   record.sentinelPrefixes = [intended, effected, completed].map(canonicalRecordJson);
-  await record.sentinelStore.persistMemoryNativeStageSentinel({
-    backend: record.backend,
-    capability: record.capability,
-    context: record.context,
-    token: record.stageToken,
-    invocation: input,
-    step,
-  });
+  await record.sentinelStore.persistMemoryNativeStageSentinel(
+    retainOriginalSentinelStoreInput(record, {
+      backend: record.backend,
+      capability: record.capability,
+      context: record.context,
+      token: record.stageToken,
+      invocation: input,
+      step,
+    })
+  );
   sentinelRecord(input);
   assertNativeStageSentinelDelta(input, before, bytes);
+}
+function retainOriginalSentinelStoreInput(record, input) {
+  const descriptors = Object.getOwnPropertyDescriptors(input);
+  compareOriginalEntryData(input, descriptors);
+  const retained = {
+    input,
+    descriptors,
+    prototype: Object.getPrototypeOf(input),
+    // Opaque authority objects remain identity comparisons, never traversed.
+    children: captureOriginalEntryChildren({
+      cfg: descriptors.context,
+      ...(descriptors.step ? { plan: descriptors.step } : {}),
+    }),
+  };
+  (record.sentinelStoreInputs ??= []).push(retained);
+  return input;
 }
 export async function pushNativeStageBody(input, bytes) {
   const record = nativeStagePreparation.getStore();
   if (!input || record?.sentinelWrapped !== input) return pushNativeStageEntryBody(input, bytes);
   sentinelRecord(input);
   assertNativeStageSentinelDelta(input, record.backend.observation.body.bytes, bytes);
-  await record.sentinelStore.writeMemoryNativeStageSentinel({
-    backend: record.backend,
-    capability: record.capability,
-    context: record.context,
-    token: record.stageToken,
-    invocation: input,
-  });
+  await record.sentinelStore.writeMemoryNativeStageSentinel(
+    retainOriginalSentinelStoreInput(record, {
+      backend: record.backend,
+      capability: record.capability,
+      context: record.context,
+      token: record.stageToken,
+      invocation: input,
+    })
+  );
   sentinelRecord(input);
 }
 
@@ -3658,6 +4350,7 @@ export async function completeNativeStageBoard(ctx, invocation, result) {
   boardRecord(invocation);
   assertOriginalNativeBoardResult(result, ctx);
   if (result.exit === null) record.boardResult = result;
+  else record.compBoardResult = result;
 }
 
 export function readNativeStageBoardFailure(token, backend, invocation) {
@@ -4378,6 +5071,7 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
       record.stageToken = token;
       record.release();
       await running;
+      record.originalEmitterJoined = true;
       checkPreparation(record);
       checkOriginalStageSources(record);
       const completed = record.backend.snapshot.nativeStageRecords.at(-1);
@@ -4409,13 +5103,57 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
     // the following checkpoint refusal; that cannot authorize the next saga step.
     throw preparationRefusal('durable-stage-effect-unavailable');
   } catch (error) {
+    // Stop and join the original emitter before taking the final report snapshot;
+    // keep its actual private holder alive until reporting and finally finish.
+    if (record) {
+      record.cancelled = true;
+      record.cancel(preparationRefusal('preparation-cancelled'));
+      if (running) await running.catch(() => {});
+      record.originalEmitterJoined = true;
+    }
+    let partial = {
+      itemId: '',
+      boardMoved: false,
+      sentinelPresent: false,
+      transitionCommitPresent: false,
+      transitionCommitId: null,
+      progressVerified: !record,
+    };
+    if (record?.header) {
+      const input = {
+        backend: record.backend,
+        capability: record.capability,
+        context: record.context,
+        holder: record.identity,
+      };
+      record.partialInput = input;
+      nativeStagePartialInputs.set(input, record);
+      try {
+        const store = await import('../criteria-revision/store.mjs');
+        const reported = await store.readMemoryNativeStagePartialFacts(input);
+        store.assertMemoryNativeStagePartialResult(input, reported);
+        partial = reported;
+      } catch {
+        // Successful Store facts are frozen; a refused consumer comparison must
+        // produce fresh unverified DATA rather than mutate a stale report.
+        partial = {
+          itemId: '',
+          boardMoved: false,
+          sentinelPresent: false,
+          transitionCommitPresent: false,
+          transitionCommitId: null,
+          progressVerified: false,
+        };
+      } finally {
+        nativeStagePartialInputs.delete(input);
+        record.partialInput = null;
+      }
+    }
     return {
       exit: 4,
-      itemId: '',
       tail: { failures: [] },
       phase: 'authority',
-      sentinelPresent: false,
-      boardMoved: false,
+      ...partial,
       code: 'revision-authority-unavailable',
       preparationReason: error.preparationReason ?? 'native-source-unavailable',
     };
@@ -4423,7 +5161,11 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
     if (record) {
       record.cancelled = true;
       record.cancel(preparationRefusal('preparation-cancelled'));
-      if (running) await running.catch(() => {});
+      if (running && !record.originalEmitterJoined) await running.catch(() => {});
+      if (record.transitionCommentComparisonInput)
+        record.transitionCommentCode.expireOriginalNativeTransitionCallCustody(
+          record.transitionCommentComparisonInput
+        );
       nativeStagePreparations.delete(record.identity);
     }
   }
@@ -4432,13 +5174,102 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
 // @story #1855 — private original tail invocations, never caller-minted ports.
 const originalTailInputs = new WeakMap();
 const originalTailLeaves = new WeakMap();
+function resolveTailSequence(input) {
+  return completed16TailInputs.get(input) ?? originalTailInputs.get(input);
+}
+function resolveTailLeaf(input) {
+  return completed16TailLeaves.get(input) ?? originalTailLeaves.get(input);
+}
+function resumedTail(record) {
+  return completed16ResumeFrames.get(record.stageToken) === record;
+}
+// Private sealed DATA describes the genuine lexical program; it cannot issue a leaf.
+function sealCompleted16TailOperations(record, vectors) {
+  if (!resumedTail(record)) return;
+  assertCompleted16ResumeCurrent(record);
+  const cursor = record.cursor;
+  if (cursor.operation || cursor.index !== cursor.vectors.length) nativeTransitionRefusal();
+  let before = record.currentSnapshot;
+  for (const [name, after] of vectors) {
+    const afterBytes = canonicalRecordJson(after);
+    cursor.vectors.push(Object.freeze({ name, before, after: afterBytes }));
+    before = afterBytes;
+  }
+}
+export function beginNativeStageTailStoreOperation(invocation, operation) {
+  const leaf = resolveTailLeaf(invocation);
+  if (!leaf) nativeTransitionRefusal();
+  tailLeafCurrent(invocation, leaf.ctx);
+  const record = leaf.record;
+  if (!resumedTail(record)) return;
+  const next = record.cursor.vectors[record.cursor.index];
+  if (!next || record.cursor.operation || next.before !== record.currentSnapshot)
+    nativeTransitionRefusal();
+  record.store.assertMemoryNativeTailStoreOperation(
+    operation,
+    tailAuthority(record, invocation),
+    next.name,
+    'before'
+  );
+  record.cursor.operation = operation;
+}
+export function completeNativeStageTailStoreOperation(invocation, operation) {
+  const leaf = completed16TailLeaves.get(invocation);
+  if (!leaf) {
+    const original = originalTailLeaves.get(invocation);
+    if (!original) nativeTransitionRefusal();
+    tailLeafCurrent(invocation, original.ctx);
+    return;
+  }
+  const record = leaf.record,
+    cursor = record.cursor,
+    next = cursor.vectors[cursor.index];
+  if (
+    !isMemoryStageEffectScope() ||
+    completed16ResumeExecution.getStore() !== record ||
+    record.tailLeaf !== invocation ||
+    cursor.operation !== operation ||
+    !next
+  )
+    nativeTransitionRefusal();
+  assertCompleted16ResumeAuthority(record);
+  record.store.assertMemoryNativeTailStoreOperation(
+    operation,
+    tailAuthority(record, invocation),
+    next.name,
+    'after'
+  );
+  if (canonicalRecordJson(record.backend.snapshot) !== next.after) nativeTransitionRefusal();
+  record.currentSnapshot = next.after;
+  cursor.index++;
+  cursor.operation = null;
+  tailLeafCurrent(invocation, leaf.ctx);
+}
 function assertTailEntry(value, expected, original) {
-  if (!value || Object.getPrototypeOf(value) !== Object.prototype) throw preparationRefusal('original-tail-steps');
+  if (!value || Object.getPrototypeOf(value) !== Object.prototype)
+    throw preparationRefusal('original-tail-steps');
   const descriptors = Object.getOwnPropertyDescriptors(value);
-  if (Reflect.ownKeys(descriptors).length !== 3 || ['name', 'scope', 'fn'].some(key => {
-    const a = descriptors[key], b = original?.[key];
-    return !a || !Object.hasOwn(a, 'value') || !a.enumerable || !a.writable || !a.configurable || a.value !== expected[key] || (b && (a.value !== b.value || a.enumerable !== b.enumerable || a.writable !== b.writable || a.configurable !== b.configurable));
-  })) throw preparationRefusal('original-tail-steps');
+  if (
+    Reflect.ownKeys(descriptors).length !== 3 ||
+    ['name', 'scope', 'fn'].some((key) => {
+      const a = descriptors[key],
+        b = original?.[key];
+      return (
+        !a ||
+        !Object.hasOwn(a, 'value') ||
+        !a.enumerable ||
+        !a.writable ||
+        !a.configurable ||
+        a.value !== expected[key] ||
+        (b &&
+          (a.value !== b.value ||
+            a.enumerable !== b.enumerable ||
+            a.writable !== b.writable ||
+            a.configurable !== b.configurable))
+      );
+    })
+  )
+    throw preparationRefusal('original-tail-steps');
   return descriptors;
 }
 function captureOriginalTailEntries() {
@@ -4452,30 +5283,62 @@ function captureOriginalTailEntries() {
     ['syncEventFields', 'issue', nativeTailCache.syncEventFields],
     ['endTaskTracking', 'session', nativeTailCache.endTaskTracking],
   ];
-  if (!Object.isFrozen(DEFAULT_TAIL_STEPS) || DEFAULT_TAIL_STEPS.length !== expected.length) throw preparationRefusal('original-tail-steps');
+  if (!Object.isFrozen(DEFAULT_TAIL_STEPS) || DEFAULT_TAIL_STEPS.length !== expected.length)
+    throw preparationRefusal('original-tail-steps');
   return expected.map(([name, scope, fn], index) => {
-    const value = DEFAULT_TAIL_STEPS[index], facts = { name, scope, fn };
+    const value = DEFAULT_TAIL_STEPS[index],
+      facts = { name, scope, fn };
     return { value, facts, descriptors: assertTailEntry(value, facts) };
   });
 }
 function tailCurrent(input, ctx) {
-  const record = originalTailInputs.get(input);
-  if (!record || record.tailInput !== input || record.sagaContext !== ctx || !record.tailRunning) throw preparationRefusal('original-tail-invocation');
+  const record = resolveTailSequence(input);
+  if (!record || record.tailInput !== input || record.sagaContext !== ctx || !record.tailRunning)
+    throw preparationRefusal('original-tail-invocation');
   assertNativeStageTransitionContext(ctx);
-  const returned = record.transitionCommentReturned;
-  if (!returned || ctx.transitionCommit !== returned.result || canonicalRecordJson(returned.result) !== returned.bytes) throw preparationRefusal('original-tail-comment');
-  record.transitionCommentCode.assertOriginalNativeTransitionResult(returned.input, ctx, returned.result);
-  if (Object.hasOwn(ctx, 'deps') || Object.hasOwn(ctx, 'transitionCommitRepairRequested') || ctx.tailProfile !== 'task-owner') throw preparationRefusal('original-tail-context');
+  if (resumedTail(record)) {
+    if (
+      completed16ResumeExecution.getStore() !== record ||
+      ctx.transitionCommit !== record.existingReadReturned
+    )
+      nativeTransitionRefusal();
+    record.transitionCode.assertExistingNativeTransitionResult(
+      record.existingReadInput,
+      ctx,
+      record.existingReadReturned
+    );
+  } else {
+    const returned = record.transitionCommentReturned;
+    if (
+      !returned ||
+      ctx.transitionCommit !== returned.result ||
+      canonicalRecordJson(returned.result) !== returned.bytes
+    )
+      throw preparationRefusal('original-tail-comment');
+    record.transitionCommentCode.assertOriginalNativeTransitionResult(
+      returned.input,
+      ctx,
+      returned.result
+    );
+  }
+  if (
+    Object.hasOwn(ctx, 'deps') ||
+    Object.hasOwn(ctx, 'transitionCommitRepairRequested') ||
+    ctx.tailProfile !== 'task-owner'
+  )
+    throw preparationRefusal('original-tail-context');
   for (let index = 0; index < record.tailEntries.length; index++) {
-    const original = record.tailEntries[index], value = DEFAULT_TAIL_STEPS[index];
+    const original = record.tailEntries[index],
+      value = DEFAULT_TAIL_STEPS[index];
     if (value !== original.value) throw preparationRefusal('original-tail-steps');
     assertTailEntry(value, original.facts, original.descriptors);
   }
   return record;
 }
 export function beginNativeStageTailSequence(input, ctx, steps) {
-  const record = originalTailInputs.get(input);
-  if (!record || record.sagaContext !== ctx || !record.tailCallWindow || record.tailStarted) throw preparationRefusal('original-tail-sequence-window');
+  const record = resolveTailSequence(input);
+  if (!record || record.sagaContext !== ctx || !record.tailCallWindow || record.tailStarted)
+    throw preparationRefusal('original-tail-sequence-window');
   record.tailCallWindow = false;
   record.tailStarted = true;
   tailCurrent(input, ctx);
@@ -4483,62 +5346,126 @@ export function beginNativeStageTailSequence(input, ctx, steps) {
 }
 export function assertNativeStageTailSequenceCurrent(input, ctx, steps) {
   const record = tailCurrent(input, ctx);
-  if (!record.tailStarted || steps !== DEFAULT_TAIL_STEPS) throw preparationRefusal('original-tail-sequence');
+  if (!record.tailStarted || steps !== DEFAULT_TAIL_STEPS)
+    throw preparationRefusal('original-tail-sequence');
 }
 function tailLeafCurrent(input, ctx) {
-  const leaf = originalTailLeaves.get(input);
-  if (!leaf || leaf.ctx !== ctx || leaf.record.tailLeaf !== input) throw preparationRefusal('original-tail-leaf');
+  const leaf = resolveTailLeaf(input);
+  if (!leaf || leaf.ctx !== ctx || leaf.record.tailLeaf !== input)
+    throw preparationRefusal('original-tail-leaf');
   tailCurrent(leaf.sequence, ctx);
   return leaf;
 }
 export function beginNativeStageTailDispatch(input, ctx) {
-  const leaf = originalTailLeaves.get(input);
-  if (!leaf || leaf.ctx !== ctx || leaf.phase !== 'call') throw preparationRefusal('original-tail-dispatch-window');
+  const leaf = resolveTailLeaf(input);
+  if (!leaf || leaf.ctx !== ctx || leaf.phase !== 'call')
+    throw preparationRefusal('original-tail-dispatch-window');
   leaf.phase = 'running';
   tailLeafCurrent(input, ctx);
 }
 export function assertNativeStageTailDispatchModule(input, ctx, module) {
   const leaf = tailLeafCurrent(input, ctx);
-  if (leaf.phase !== 'running' || module !== leaf.record.tailStates || module.STATES !== leaf.states || module.STATES.test !== leaf.target || leaf.target.onEnter !== leaf.actions || !Object.isFrozen(leaf.actions) || leaf.actions.length !== 0) throw preparationRefusal('original-tail-dispatch-source');
+  if (
+    leaf.phase !== 'running' ||
+    module !== leaf.record.tailStates ||
+    module.STATES !== leaf.states ||
+    module.STATES.test !== leaf.target ||
+    leaf.target.onEnter !== leaf.actions ||
+    !Object.isFrozen(leaf.actions) ||
+    leaf.actions.length !== 0
+  )
+    throw preparationRefusal('original-tail-dispatch-source');
 }
 export function readNativeStageTailDispatchIntent(token, backend, invocation, context) {
-  const leaf = originalTailLeaves.get(invocation);
+  const leaf = resolveTailLeaf(invocation);
   if (!leaf) throw preparationRefusal('original-tail-leaf');
   const { record } = leaf;
   tailLeafCurrent(invocation, record.sagaContext);
-  if (token !== record.stageToken || backend !== record.backend || context !== record.context) throw preparationRefusal('original-tail-token');
+  if (token !== record.stageToken || backend !== record.backend || context !== record.context)
+    throw preparationRefusal('original-tail-token');
   return structuredClone({ header: record.header, returned: leaf.phase === 'returned' });
 }
 function tailAuthority(record, invocation) {
-  return { backend: record.backend, capability: record.capability, context: record.context, token: record.stageToken, invocation };
+  return {
+    backend: record.backend,
+    capability: record.capability,
+    context: record.context,
+    token: record.stageToken,
+    invocation,
+  };
 }
 export async function runNativeStageTailStep(input, ctx, step) {
   const record = tailCurrent(input, ctx);
-  if (!record.tailStarted || record.tailLeaf || record.tailNext !== 0 || step !== DEFAULT_TAIL_STEPS[0] || step.fn !== originalTailDispatch) {
+  if (
+    record.tailNext === 1 &&
+    step === DEFAULT_TAIL_STEPS[1] &&
+    step.fn === nativeTailCache.refreshKanbanStateCache
+  )
+    return runNativeStageCache(input, ctx, step);
+  if (
+    !record.tailStarted ||
+    record.tailLeaf ||
+    record.tailNext !== 0 ||
+    step !== DEFAULT_TAIL_STEPS[0] ||
+    step.fn !== originalTailDispatch
+  ) {
     // All later original leaves retain their existing fail-closed host fence.
     assertRevisionStageHostEffect();
     throw preparationRefusal('original-tail-order');
   }
   const invocation = Object.freeze({});
-  const leaf = { record, ctx, sequence: input, phase: 'new', states: record.tailStates.STATES, target: record.tailStates.STATES.test, actions: record.tailStates.STATES.test.onEnter };
-  originalTailLeaves.set(invocation, leaf);
+  const leaf = {
+    record,
+    ctx,
+    sequence: input,
+    phase: 'new',
+    states: record.tailStates.STATES,
+    target: record.tailStates.STATES.test,
+    actions: record.tailStates.STATES.test.onEnter,
+  };
+  const leaves = resumedTail(record) ? completed16TailLeaves : originalTailLeaves;
+  leaves.set(invocation, leaf);
   record.tailLeaf = invocation;
-  let acquired = false, store;
+  let acquired = false,
+    store;
   try {
     store = await import('../criteria-revision/store.mjs');
     tailLeafCurrent(invocation, ctx);
     await store.acquireMemoryNativeStageTailDispatch(tailAuthority(record, invocation));
     acquired = true;
     tailLeafCurrent(invocation, ctx);
-    const before = record.backend.snapshot, journal = before.nativeStageRecords.at(-1);
-    if (journal.steps.length !== 16 || journal.steps.some(step => step.readback === null)) throw preparationRefusal('tail-dispatch-before');
-    const stepData = { ordinal: 17, kind: 'tail-dispatch', previous: hashNativeStep(journal.steps[15]), intent: { target: 'test', actions: [] }, readback: null };
+    const before = record.backend.snapshot,
+      journal = before.nativeStageRecords.at(-1);
+    if (journal.steps.length !== 16 || journal.steps.some((step) => step.readback === null))
+      throw preparationRefusal('tail-dispatch-before');
+    const stepData = {
+      ordinal: 17,
+      kind: 'tail-dispatch',
+      previous: hashNativeStep(journal.steps[15]),
+      intent: { target: 'test', actions: [] },
+      readback: null,
+    };
     const intended = structuredClone(before);
     intended.nativeStageRecords.at(-1).steps.push(structuredClone(stepData));
     const completed = structuredClone(intended);
-    completed.nativeStageRecords.at(-1).steps[16].readback = { actions: [], resources: structuredClone(before.nativeStageResources), body: structuredClone(before.observation.body), stage: before.observation.stage };
-    record.tailPrefixes = [intended, completed].map(canonicalRecordJson);
-    await store.persistMemoryNativeStageTailDispatch({ ...tailAuthority(record, invocation), step: stepData });
+    completed.nativeStageRecords.at(-1).steps[16].readback = {
+      actions: [],
+      resources: structuredClone(before.nativeStageResources),
+      body: structuredClone(before.observation.body),
+      stage: before.observation.stage,
+    };
+    if (resumedTail(record)) {
+      sealCompleted16TailOperations(record, [
+        ['native-stage-tail-dispatch-intent-write', intended],
+        ['native-stage-tail-dispatch-intent-readback', intended],
+        ['native-stage-tail-dispatch-execution', intended],
+        ['native-stage-tail-dispatch-readback', completed],
+      ]);
+    } else record.tailPrefixes = [intended, completed].map(canonicalRecordJson);
+    await store.persistMemoryNativeStageTailDispatch({
+      ...tailAuthority(record, invocation),
+      step: stepData,
+    });
     tailLeafCurrent(invocation, ctx);
     store.assertMemoryNativeStageTailDispatchIntent(tailAuthority(record, invocation));
     leaf.phase = 'call';
@@ -4549,35 +5476,645 @@ export async function runNativeStageTailStep(input, ctx, step) {
     leaf.phase = 'returned';
     await store.completeMemoryNativeStageTailDispatch(tailAuthority(record, invocation));
     tailLeafCurrent(invocation, ctx);
-    if (canonicalRecordJson(record.backend.snapshot) !== canonicalRecordJson(completed)) throw preparationRefusal('tail-dispatch-completion');
+    if (canonicalRecordJson(record.backend.snapshot) !== canonicalRecordJson(completed))
+      throw preparationRefusal('tail-dispatch-completion');
     record.tailNext = 1;
   } finally {
-    if (acquired) store.releaseMemoryNativeStageTailDispatch({ backend: record.backend, token: record.stageToken, invocation });
-    originalTailLeaves.delete(invocation);
+    if (acquired)
+      store.releaseMemoryNativeStageTailDispatch({
+        backend: record.backend,
+        token: record.stageToken,
+        invocation,
+      });
+    leaves.delete(invocation);
     record.tailLeaf = null;
   }
 }
 async function runNativeStageTail(ctx, originalFunction) {
   const record = assertNativeStageTransitionContext(ctx);
-  if (originalFunction !== defaultRunPostCommitTail || record.tailInput || record.tailStarted || !record.transitionCommentReturned || record.backend.snapshot.nativeStageRecords.at(-1).steps.length !== 16) throw preparationRefusal('original-tail-entry');
+  if (
+    originalFunction !== defaultRunPostCommitTail ||
+    record.tailInput ||
+    record.tailStarted ||
+    !(resumedTail(record) ? record.existingReadReturned : record.transitionCommentReturned) ||
+    record.backend.snapshot.nativeStageRecords.at(-1).steps.length !== 16
+  )
+    throw preparationRefusal('original-tail-entry');
   const input = Object.freeze({});
   record.tailInput = input;
   record.tailRunning = true;
   record.tailNext = 0;
   record.tailEntries = captureOriginalTailEntries();
-  originalTailInputs.set(input, record);
+  const sequences = resumedTail(record) ? completed16TailInputs : originalTailInputs;
+  sequences.set(input, record);
   try {
     tailCurrent(input, ctx);
     const states = await import('../../states/index.mjs');
     tailCurrent(input, ctx);
-    if (!Object.isFrozen(states.STATES) || !Object.isFrozen(states.STATES.test) || !Object.isFrozen(states.STATES.test.onEnter) || states.STATES.test.onEnter.length !== 0) throw preparationRefusal('original-tail-dispatch-source');
+    if (
+      !Object.isFrozen(states.STATES) ||
+      !Object.isFrozen(states.STATES.test) ||
+      !Object.isFrozen(states.STATES.test.onEnter) ||
+      states.STATES.test.onEnter.length !== 0
+    )
+      throw preparationRefusal('original-tail-dispatch-source');
     record.tailStates = states;
     record.tailCallWindow = true;
     return await originalFunction(ctx, DEFAULT_TAIL_STEPS, input);
   } finally {
     record.tailRunning = false;
     record.tailCallWindow = false;
-    originalTailInputs.delete(input);
+    sequences.delete(input);
     record.tailInput = null;
   }
+}
+
+// Compensation retains the actual failed board return and lexical recording
+// program. Public DATA can neither register an invocation nor select a sink.
+export function assertNativeStageCompensationContext(ctx, priorState) {
+  const record = nativeStagePreparation.getStore();
+  if (!record || record.sagaContext !== ctx || priorState !== 'develop')
+    throw preparationRefusal('original-compensation-context');
+  checkPreparation(record);
+  checkOriginalStageSources(record);
+  assertOriginalNativeBoardResult(record.compBoardResult, ctx);
+  const journal = record.backend.snapshot.nativeStageRecords.at(-1);
+  if (
+    record.compBoardResult.exit !== 7 ||
+    journal.steps.length !== 14 ||
+    journal.steps[13].outcome?.kind !== 'unconfirmed' ||
+    journal.steps[13].readback !== null
+  )
+    throw preparationRefusal('original-compensation-prefix');
+}
+function compensationRecord(invocation) {
+  const record = nativeStagePreparation.getStore();
+  if (!record || record.compInvocation !== invocation)
+    throw preparationRefusal('original-compensation-invocation');
+  assertOriginalNativeCompensationInvocation(invocation, record.sagaContext);
+  assertNativeStageCompensationContext(record.sagaContext, 'develop');
+  return record;
+}
+export async function beginNativeStageCompensation(ctx, invocation) {
+  const record = nativeStagePreparation.getStore();
+  assertNativeStageCompensationContext(ctx, 'develop');
+  assertOriginalNativeCompensationInvocation(invocation, ctx);
+  if (record.compInvocation || record.backend.snapshot.nativeStageRecords.at(-1).compensation)
+    throw preparationRefusal('compensation-reentrant');
+  record.compInvocation = invocation;
+  try {
+    const store = await import('../criteria-revision/store.mjs');
+    compensationRecord(invocation);
+    const codec = await import('../criteria-revision/stage-execution.mjs');
+    compensationRecord(invocation);
+    const recording = await import('../state-recording.mjs');
+    compensationRecord(invocation);
+    record.compStore = store;
+    record.compCodec = codec;
+    record.compRecordingModule = recording;
+    await store.acquireMemoryNativeStageCompensation(compensationAuthority(record));
+    record.compCustodyReady = true;
+    compensationRecord(invocation);
+  } catch (error) {
+    if (record.compStore)
+      record.compStore.releaseMemoryNativeStageCompensation({
+        backend: record.backend,
+        token: record.stageToken,
+        invocation,
+      });
+    record.compCustodyReady = false;
+    record.compInvocation = null;
+    throw error;
+  }
+}
+function compensationAuthority(record) {
+  return {
+    backend: record.backend,
+    capability: record.capability,
+    context: record.context,
+    token: record.stageToken,
+    invocation: record.compInvocation,
+  };
+}
+export function endNativeStageCompensation(ctx, invocation) {
+  const record = nativeStagePreparation.getStore();
+  if (!record || record.sagaContext !== ctx || record.compInvocation !== invocation)
+    throw preparationRefusal('original-compensation-release');
+  record.compStore.releaseMemoryNativeStageCompensation({
+    backend: record.backend,
+    token: record.stageToken,
+    invocation,
+  });
+  record.compCustodyReady = false;
+  record.compInvocation = null;
+  record.compOperation = null;
+}
+export async function readNativeStageCompensationBody(ctx, invocation, request) {
+  const record = compensationRecord(invocation);
+  if (
+    record.sagaContext !== ctx ||
+    canonicalRecordJson(request) !==
+      canonicalRecordJson({
+        file: 'gh',
+        args: [
+          'issue',
+          'view',
+          String(record.context.issue),
+          '-R',
+          record.context.repository,
+          '--json',
+          'body',
+        ],
+      })
+  )
+    throw preparationRefusal('original-compensation-read');
+  const result = { stdout: JSON.stringify({ body: record.backend.observation.body.bytes }) };
+  record.compBodyRead = { result, descriptors: Object.getOwnPropertyDescriptors(result) };
+  return result;
+}
+export function assertNativeStageRecordingInput(input, invocation) {
+  const record = compensationRecord(invocation);
+  assertOriginalNativeCompensationRecordingInput(input, invocation);
+  if (
+    input.issueNumber !== String(record.context.issue) ||
+    input.repo !== record.context.repository ||
+    input.target !== 'develop' ||
+    typeof input.body !== 'string' ||
+    typeof input.bodyBefore !== 'string'
+  )
+    throw preparationRefusal('original-compensation-recording');
+  return record;
+}
+export function readNativeStageCompensationIntent(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (record.stageToken !== token || record.backend !== backend)
+    throw preparationRefusal('original-compensation-token');
+  return {
+    header: structuredClone(record.header),
+    compensation: record.compTemplate ? structuredClone(record.compTemplate) : null,
+  };
+}
+export function readNativeStageCompensationOperation(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (record.stageToken !== token || record.backend !== backend || !record.compOperation)
+    throw preparationRefusal('original-compensation-operation');
+  record.compRecordingModule.assertOriginalNativeRecordingOperation(
+    record.compInput,
+    invocation,
+    record.compOperation
+  );
+  return structuredClone(record.compOperation);
+}
+export function readNativeStageCompensationFailure(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (record.stageToken !== token || record.backend !== backend || !record.compFailure)
+    throw preparationRefusal('original-compensation-failure');
+  const { error, bytes } = record.compFailure;
+  const facts = nativeCompensationError(error);
+  if (canonicalRecordJson(facts) !== bytes)
+    throw preparationRefusal('original-compensation-failure-changed');
+  return facts;
+}
+function nativeCompensationError(error) {
+  if (!error || Object.getPrototypeOf(error) !== Error.prototype)
+    throw preparationRefusal('original-compensation-error');
+  const d = Object.getOwnPropertyDescriptors(error);
+  if (
+    Reflect.ownKeys(d).some((key) => !['stack', 'message', 'name', 'code'].includes(key)) ||
+    ['message', 'name', 'code'].some((key) => d[key] && !Object.hasOwn(d[key], 'value')) ||
+    typeof d.message?.value !== 'string'
+  )
+    throw preparationRefusal('original-compensation-error');
+  const facts = {
+    kind: 'threw',
+    name: d.name?.value ?? 'Error',
+    message: d.message.value,
+    code: d.code?.value ?? null,
+  };
+  canonicalRecordJson(facts);
+  return facts;
+}
+export async function executeNativeStateRecordingOperation(input, invocation, operation) {
+  const record = assertNativeStageRecordingInput(input, invocation);
+  record.compRecordingModule.assertOriginalNativeRecordingOperation(input, invocation, operation);
+  if (record.compOperation) throw preparationRefusal('compensation-operation-reentrant');
+  record.compInput = input;
+  record.compOperation = operation;
+  try {
+    if (operation.kind === 'warn') {
+      compensationRecord(invocation);
+      process.stderr.write(operation.message + '\n');
+      return;
+    }
+    if (!record.compTemplate) {
+      const { readLastKnownState } = await import('../../gh-timing-comment.mjs');
+      assertNativeStageRecordingInput(input, invocation);
+      const journal = record.backend.snapshot.nativeStageRecords.at(-1);
+      record.compTemplate = {
+        schema: 'aitm.native-compensation/v1',
+        previous: hashNativeStep(journal.steps[13]),
+        intent: { priorState: 'develop', stateTs: readLastKnownState(input.body).ts },
+        attempts: [],
+        readback: null,
+        audit: null,
+        result: null,
+      };
+      const derived = await record.compCodec.reconstructNativeStageCompensation({
+        header: record.header,
+        steps: journal.steps,
+        compensation: record.compTemplate,
+      });
+      assertNativeStageRecordingInput(input, invocation);
+      if (derived.beforeBody.bytes !== input.bodyBefore || derived.afterBody.bytes !== input.body)
+        throw preparationRefusal('compensation-original-delta');
+      record.compAfterBody = derived.afterBody.bytes;
+    }
+    if (operation.kind === 'write-body') {
+      record.compAttemptNumber = (record.compAttemptNumber ?? 0) + 1;
+      try {
+        await record.compStore.persistMemoryNativeStageCompensation(compensationAuthority(record));
+        assertNativeStageRecordingInput(input, invocation);
+        await record.compStore.beginMemoryNativeStageCompensationAttempt(
+          compensationAuthority(record)
+        );
+        assertNativeStageRecordingInput(input, invocation);
+        await record.compStore.writeMemoryNativeStageCompensation(compensationAuthority(record));
+        assertNativeStageRecordingInput(input, invocation);
+        await record.compStore.completeMemoryNativeStageCompensation(compensationAuthority(record));
+        assertNativeStageRecordingInput(input, invocation);
+      } catch (error) {
+        compensationRecord(invocation);
+        const facts = nativeCompensationError(error);
+        record.compFailure = { error, bytes: canonicalRecordJson(facts) };
+        try {
+          if (record.backend.snapshot.nativeStageRecords.at(-1).compensation) {
+            await record.compStore.recordMemoryNativeStageCompensationFailure(
+              compensationAuthority(record)
+            );
+            compensationRecord(invocation);
+          } else {
+            // A failed original callback before durable intent still happened.
+            // Retain its actual failure DATA only; retry must freshly persist/read
+            // the unchanged sealed intent before any fixed effect can occur.
+            const body = record.backend.observation.body;
+            record.compTemplate.attempts.push({
+              number: record.compAttemptNumber,
+              request: structuredClone(operation),
+              before: structuredClone(body),
+              write: facts,
+              after: structuredClone(body),
+            });
+          }
+        } finally {
+          record.compFailure = null;
+        }
+        throw error;
+      }
+      return;
+    }
+    await record.compStore.persistMemoryNativeStageCompensation(compensationAuthority(record));
+    assertNativeStageRecordingInput(input, invocation);
+    if (operation.kind === 'post-comment') {
+      await record.compStore.writeMemoryNativeStageCompensationAudit(compensationAuthority(record));
+      assertNativeStageRecordingInput(input, invocation);
+      return;
+    }
+    throw preparationRefusal('compensation-operation-kind');
+  } finally {
+    record.compOperation = null;
+  }
+}
+export async function completeNativeStateRecording(input, invocation, result) {
+  const record = assertNativeStageRecordingInput(input, invocation);
+  record.compRecordingModule.assertOriginalNativeRecordingResult(input, invocation, result);
+  record.compRecordingResult = result;
+  await record.compStore.completeMemoryNativeStageCompensationResult(compensationAuthority(record));
+  assertNativeStageRecordingInput(input, invocation);
+  record.compRecordingModule.assertOriginalNativeRecordingResult(input, invocation, result);
+}
+export function readNativeStageCompensationResult(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (record.stageToken !== token || record.backend !== backend || !record.compRecordingResult)
+    throw preparationRefusal('original-compensation-result');
+  record.compRecordingModule.assertOriginalNativeRecordingResult(
+    record.compInput,
+    invocation,
+    record.compRecordingResult
+  );
+  return structuredClone(record.compRecordingResult);
+}
+export function assertNativeStageCompensationReturn(ctx, invocation, result) {
+  assertOriginalNativeCompensationReturn(ctx, invocation, result);
+  const record = compensationRecord(invocation);
+  record.compRecordingModule.assertOriginalNativeRecordingResult(
+    record.compInput,
+    invocation,
+    record.compRecordingResult
+  );
+  if (
+    record.sagaContext !== ctx ||
+    !record.compRecordingResult ||
+    result.rolledBack !== (record.compRecordingResult.status === 'ok') ||
+    result.priorState !== 'develop' ||
+    (record.compRecordingResult.status === 'failed' &&
+      result.recording !== record.compRecordingResult)
+  )
+    throw preparationRefusal('original-compensation-return');
+  record.compStore.assertMemoryNativeCompensationCurrent({
+    backend: record.backend,
+    token: record.stageToken,
+    invocation,
+  });
+}
+
+export function assertNativeStageCompensationBodyReturn(invocation, result) {
+  const record = compensationRecord(invocation),
+    original = record.compBodyRead;
+  if (!original || original.result !== result || Object.getPrototypeOf(result) !== Object.prototype)
+    throw preparationRefusal('original-compensation-body-return');
+  const descriptors = Object.getOwnPropertyDescriptors(result);
+  if (
+    Reflect.ownKeys(descriptors).length !== 1 ||
+    !Object.hasOwn(descriptors.stdout ?? {}, 'value') ||
+    ['value', 'enumerable', 'writable', 'configurable'].some(
+      (key) => descriptors.stdout[key] !== original.descriptors.stdout[key]
+    )
+  )
+    throw preparationRefusal('original-compensation-body-return');
+}
+
+export function readNativeStageCompensationAttemptNumber(token, backend, invocation) {
+  const record = compensationRecord(invocation);
+  if (
+    record.stageToken !== token ||
+    record.backend !== backend ||
+    ![1, 2].includes(record.compAttemptNumber) ||
+    record.compOperation?.kind !== 'write-body'
+  )
+    throw preparationRefusal('original-compensation-attempt');
+  record.compRecordingModule.assertOriginalNativeRecordingOperation(
+    record.compInput,
+    invocation,
+    record.compOperation
+  );
+  return record.compAttemptNumber;
+}
+
+// #1913 — original cache leaf, lexical operation window and current fixed sinks.
+function cacheLeaf(input, ctx) {
+  const leaf = tailLeafCurrent(input, ctx);
+  if (leaf.kind !== 'cache' || !['new', 'call', 'running', 'returned'].includes(leaf.phase))
+    throw preparationRefusal('original-cache-invocation');
+  return leaf;
+}
+export function beginNativeStageTailCache(input, ctx) {
+  const leaf = resolveTailLeaf(input);
+  if (!leaf || leaf.kind !== 'cache' || leaf.ctx !== ctx || leaf.phase !== 'call')
+    throw preparationRefusal('original-cache-window');
+  leaf.phase = 'running';
+  cacheLeaf(input, ctx);
+}
+export function assertNativeStageTailCacheCurrent(input, ctx) {
+  cacheLeaf(input, ctx);
+}
+export function readNativeStageTailCacheIntent(token, backend, input) {
+  const leaf = resolveTailLeaf(input);
+  if (!leaf) throw preparationRefusal('original-cache-invocation');
+  cacheLeaf(input, leaf.ctx);
+  if (leaf.record.stageToken !== token || leaf.record.backend !== backend)
+    throw preparationRefusal('original-cache-token');
+  return { header: structuredClone(leaf.record.header) };
+}
+function currentCacheOperation(input) {
+  const leaf = resolveTailLeaf(input);
+  if (!leaf) throw preparationRefusal('original-cache-invocation');
+  cacheLeaf(input, leaf.ctx);
+  if (leaf.phase !== 'running' || !leaf.operation)
+    throw preparationRefusal('original-cache-operation');
+  nativeTailCache.assertOriginalNativeCacheOperation(input, leaf.ctx, leaf.operation);
+  return leaf;
+}
+export function assertNativeStageTailCacheRead(input) {
+  const leaf = currentCacheOperation(input);
+  if (!['active', 'set'].includes(leaf.operation.kind))
+    throw preparationRefusal('original-cache-read');
+}
+export function assertNativeStageTailCacheSet(input, operation) {
+  const leaf = currentCacheOperation(input);
+  if (
+    leaf.operation !== operation ||
+    operation.kind !== 'set' ||
+    operation.sid !== leaf.record.actorIdentity.sid ||
+    operation.projectDir !== leaf.record.context.executor.worktree ||
+    operation.stateArg !== 'test'
+  )
+    throw preparationRefusal('original-cache-set');
+}
+export async function readNativeStageTailCacheSource(input, operation) {
+  const leaf = currentCacheOperation(input);
+  if (
+    leaf.operation !== operation ||
+    !['active', 'set'].includes(operation.kind) ||
+    operation.sid !== leaf.record.actorIdentity.sid ||
+    operation.projectDir !== leaf.record.context.executor.worktree
+  )
+    throw preparationRefusal('original-cache-read');
+  const read = await leaf.store.readMemoryNativeStageCache(tailAuthority(leaf.record, input));
+  currentCacheOperation(input);
+  return {
+    beforeBytes: read.beforeBytes,
+    file: leaf.record.localPaths.activeTask,
+    sid: operation.sid,
+    projectDir: operation.projectDir,
+  };
+}
+export async function executeNativeStageCacheOperation(input, ctx, operation) {
+  const leaf = cacheLeaf(input, ctx);
+  nativeTailCache.assertOriginalNativeCacheOperation(input, ctx, operation);
+  if (leaf.operation) throw preparationRefusal('original-cache-operation-reentry');
+  leaf.operation = operation;
+  leaf.operations.push(JSON.parse(canonicalRecordJson(operation)));
+  try {
+    if (operation.kind === 'modules') {
+      if (canonicalRecordJson(operation.deps) !== '{}')
+        throw preparationRefusal('original-cache-modules');
+      const [session, words] = await Promise.all([
+        import('../../session-state.mjs'),
+        import('../../word-counter.mjs'),
+      ]);
+      currentCacheOperation(input);
+      if (session !== nativeCacheSession || words !== nativeCacheWords)
+        throw preparationRefusal('original-cache-modules');
+      leaf.modules = { session, words };
+      return;
+    }
+    if (!leaf.modules) throw preparationRefusal('original-cache-modules');
+    if (operation.kind === 'sid') {
+      const value = leaf.modules.words.currentSessionId();
+      currentCacheOperation(input);
+      if (value !== leaf.record.actorIdentity.sid)
+        throw preparationRefusal('original-cache-identity');
+      return value;
+    }
+    if (operation.kind === 'root') {
+      const value = nativeCacheRoot();
+      currentCacheOperation(input);
+      if (value !== leaf.record.context.executor.worktree)
+        throw preparationRefusal('original-cache-root');
+      return value;
+    }
+    if (operation.kind === 'active') {
+      const result = await leaf.modules.session.getNativeStageCachedTask(input, operation);
+      currentCacheOperation(input);
+      leaf.modules.session.assertOriginalNativeCacheRead(input, result);
+      // Retain the actual read through cancellation/reporting. Deleting the
+      // leaf must not discard the late-return comparison before further reads.
+      leaf.record.cacheActiveReturned = { input, result };
+      return result;
+    }
+    if (operation.kind === 'set') {
+      const result = await leaf.modules.session.setNativeStageKanbanState(input, operation);
+      currentCacheOperation(input);
+      return result;
+    }
+    if (operation.kind === 'stderr') {
+      process.stderr.write(operation.bytes);
+      return;
+    }
+    throw preparationRefusal('original-cache-operation-kind');
+  } finally {
+    leaf.operation = null;
+  }
+}
+export function assertNativeStageTailCacheWrite(input, intent) {
+  const leaf = currentCacheOperation(input);
+  assertNativeStageTailCacheSet(input, leaf.operation);
+  if (!leaf.writeIntent) throw preparationRefusal('original-cache-write');
+  nativeCacheSession.assertOriginalNativeStageKanbanWrite(input, leaf.writeIntent);
+  if (intent !== undefined && canonicalRecordJson(intent) !== canonicalRecordJson(leaf.step.intent))
+    throw preparationRefusal('original-cache-write');
+}
+export async function persistNativeStageTailCache(input, intent) {
+  const leaf = currentCacheOperation(input);
+  assertNativeStageTailCacheSet(input, leaf.operation);
+  nativeCacheSession.assertOriginalNativeStageKanbanWrite(input, intent);
+  if (leaf.step) throw preparationRefusal('original-cache-write-reentry');
+  leaf.writeIntent = intent;
+  const snapshot = leaf.record.backend.snapshot,
+    journal = snapshot.nativeStageRecords.at(-1);
+  if (journal.steps.length !== 17) throw preparationRefusal('original-cache-prefix');
+  const step = {
+    ordinal: 18,
+    kind: 'tail-cache',
+    previous: hashNativeStep(journal.steps[16]),
+    intent: {
+      file: intent.file,
+      sid: leaf.record.actorIdentity.sid,
+      beforeBytes: intent.beforeBytes,
+      bytes: intent.bytes,
+      operations: structuredClone(leaf.operations),
+    },
+    readback: null,
+  };
+  const codec = await import('../criteria-revision/stage-execution.mjs');
+  currentCacheOperation(input);
+  const derived = await codec.reconstructNativeStageTailCache({
+    header: leaf.record.header,
+    steps: [...journal.steps, step],
+  });
+  currentCacheOperation(input);
+  if (
+    canonicalRecordJson(snapshot) !== canonicalRecordJson(leaf.record.backend.snapshot) ||
+    canonicalRecordJson(snapshot.nativeStageResources) !==
+      canonicalRecordJson(derived.beforeResources)
+  )
+    throw preparationRefusal('original-cache-before');
+  leaf.step = step;
+  const intended = structuredClone(snapshot);
+  intended.nativeStageRecords.at(-1).steps.push(step);
+  const effected = structuredClone(intended);
+  effected.nativeStageResources = structuredClone(derived.afterResources);
+  const completed = structuredClone(effected);
+  completed.nativeStageRecords.at(-1).steps[17].readback = structuredClone(derived.readback);
+  if (resumedTail(leaf.record)) {
+    sealCompleted16TailOperations(leaf.record, [
+      ['native-stage-cache-intent-write', intended],
+      ['native-stage-cache-intent-readback', intended],
+      ['native-stage-cache-effect-write', effected],
+      ['native-stage-cache-effect-readback', completed],
+    ]);
+  } else leaf.record.cachePrefixes = [intended, effected, completed].map(canonicalRecordJson);
+  await leaf.store.persistMemoryNativeStageCache({ ...tailAuthority(leaf.record, input), step });
+  currentCacheOperation(input);
+}
+export async function writeNativeStageTailCache(input) {
+  const leaf = currentCacheOperation(input);
+  assertNativeStageTailCacheWrite(input);
+  await leaf.store.writeMemoryNativeStageCache(tailAuthority(leaf.record, input));
+  currentCacheOperation(input);
+}
+export async function completeNativeStageTailCache(input) {
+  const leaf = currentCacheOperation(input);
+  assertNativeStageTailCacheWrite(input);
+  await leaf.store.completeMemoryNativeStageCache(tailAuthority(leaf.record, input));
+  currentCacheOperation(input);
+}
+async function runNativeStageCache(sequence, ctx, step) {
+  const record = tailCurrent(sequence, ctx);
+  if (record.tailNext !== 1 || record.tailLeaf || step !== DEFAULT_TAIL_STEPS[1])
+    throw preparationRefusal('original-cache-order');
+  const input = Object.freeze({});
+  const leaf = {
+    kind: 'cache',
+    record,
+    sequence,
+    ctx,
+    phase: 'new',
+    operations: [],
+    operation: null,
+  };
+  const leaves = resumedTail(record) ? completed16TailLeaves : originalTailLeaves;
+  leaves.set(input, leaf);
+  record.tailLeaf = input;
+  let acquired = false;
+  try {
+    cacheLeaf(input, ctx);
+    leaf.store = await import('../criteria-revision/store.mjs');
+    cacheLeaf(input, ctx);
+    await leaf.store.acquireMemoryNativeStageCache(tailAuthority(record, input));
+    acquired = true;
+    cacheLeaf(input, ctx);
+    leaf.phase = 'call';
+    const result = await nativeTailCache.refreshKanbanStateCache(ctx, input);
+    cacheLeaf(input, ctx);
+    nativeTailCache.assertOriginalNativeCacheReturn(input, ctx, result);
+    if (
+      leaf.phase !== 'running' ||
+      record.backend.snapshot.nativeStageRecords.at(-1).steps[17]?.readback == null
+    )
+      throw preparationRefusal('original-cache-return');
+    leaf.phase = 'returned';
+    record.tailNext = 2;
+  } finally {
+    if (acquired)
+      leaf.store.releaseMemoryNativeStageCache({
+        backend: record.backend,
+        token: record.stageToken,
+        invocation: input,
+      });
+    leaves.delete(input);
+    record.tailLeaf = null;
+  }
+}
+
+// Comparison at the actual original generator's consumer boundary, after await.
+export function assertNativeStageCacheValue(input, ctx, operation, value) {
+  const leaf = cacheLeaf(input, ctx);
+  nativeTailCache.assertOriginalNativeCacheOperation(input, ctx, operation);
+  if (leaf.phase !== 'running') throw preparationRefusal('original-cache-value');
+  if (operation.kind === 'active') nativeCacheSession.assertOriginalNativeCacheRead(input, value);
+  else if (operation.kind === 'sid' && value !== leaf.record.actorIdentity.sid)
+    throw preparationRefusal('original-cache-value');
+  else if (operation.kind === 'root' && value !== leaf.record.context.executor.worktree)
+    throw preparationRefusal('original-cache-value');
 }

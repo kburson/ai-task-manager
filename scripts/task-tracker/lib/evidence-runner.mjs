@@ -30,7 +30,7 @@ export function readNativeVerifierExecution(token) {
 // per-surface libraries (`functional-dod-evidence.mjs`, `ac-evidence.mjs`);
 // this module owns only command execution + the small shared helpers.
 
-import { TEST_RUNNER_TIMEOUT_MS } from './process-timeouts.mjs';
+import { TEST_RUNNER_TIMEOUT_MS, testExecutionTimeoutMs } from './process-timeouts.mjs';
 import {
   isCacheEligible,
   lookup as cacheLookup,
@@ -189,7 +189,7 @@ export async function runVerifiers({
   }
   const runOptions = {
     cwd,
-    timeout: timeout ?? TEST_RUNNER_TIMEOUT_MS,
+    timeout: testExecutionTimeoutMs(timeout ?? TEST_RUNNER_TIMEOUT_MS, env ?? process.env),
     maxBuffer: maxBuffer ?? 64 * 1024 * 1024,
     ...(env !== undefined ? { env } : {}),
   };

@@ -1,0 +1,24 @@
+{
+  "schema": "ai-peer-review.primary-config/v2",
+  "hosts": {
+    "claude": {
+      "automatic": {
+        "adapter_version": "2.0.0",
+        "capability": "live-wait"
+      }
+    },
+    "codex": {
+      "automatic": {
+        "adapter_version": "2.0.0",
+        "capability": "live-wait"
+      }
+    }
+  },
+  "setup": {
+    "owner": "ai-peer-review",
+    "version": 3,
+    "agents": ["claude", "codex"],
+    "skill_sha256": "5df0e064c01c3d6cc81f01ac87dc8ea87f1ff6cea6ca63597ebf7c277a2a9b9e",
+    "integration_contract": "ai-peer-review.integration/v1"
+  }
+}

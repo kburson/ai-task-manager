@@ -140,7 +140,14 @@ export function resolveTimeoutMs(envName, defaultMs, env = process.env, opts = {
  * @returns {number}
  */
 export function sandboxTimeoutMs(env = process.env, opts = {}) {
+  if (testExecutionTimeoutMs(SANDBOX_TIMEOUT_DEFAULT_MS, env) === 0) return 0;
   return resolveTimeoutMs(SANDBOX_TIMEOUT_ENV, SANDBOX_TIMEOUT_DEFAULT_MS, env, opts);
+}
+
+// Explicit temporary test-execution setting. Network, Git and semantic lease
+// deadlines keep their original behavior; removing the setting restores limits.
+export function testExecutionTimeoutMs(defaultMs, env = process.env) {
+  return env?.AITM_TEST_EXECUTION_LIMITS === 'suspended' ? 0 : defaultMs;
 }
 
 /**

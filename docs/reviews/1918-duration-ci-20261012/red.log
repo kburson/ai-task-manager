@@ -1,0 +1,52 @@
+✖ legacy guidance inventory freezes all seven actions, authority resources, and behavioral reads (1302.129083ms)
+✔ inventory completeness rejects a removed action observation or behavioral flag row (1044.180791ms)
+✔ live inventory refuses removal of the post-baseline usage context (1288.9705ms)
+✔ two-lane tests DoD line resolves to both lane commands (1.380459ms)
+✖ runVerifiers spawns each lane as its own child under TEST_RUNNER_TIMEOUT_MS (2.915375ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 3
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3736.1265
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs:247:1
+✖ legacy guidance inventory freezes all seven actions, authority resources, and behavioral reads (1302.129083ms)
+  AssertionError [ERR_ASSERTION]: unclassified behavioral read: scripts/task-tracker/lib/process-timeouts.mjs::AITM_TEST_EXECUTION_LIMITS
+  
+  false !== true
+  
+      at validateFlags (file:///Users/kpburson/.codex/worktrees/b957/ai-task-manager/scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs:243:12)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b957/ai-task-manager/scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs:254:3)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/lane-split-dod-stamp.test.mjs:31:1
+✖ runVerifiers spawns each lane as its own child under TEST_RUNNER_TIMEOUT_MS (2.915375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1200000
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b957/ai-task-manager/scripts/tests/unit/task-tracker/lib/lane-split-dod-stamp.test.mjs:53:33)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1200000,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

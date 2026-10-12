@@ -1,0 +1,14 @@
+{
+  "scripts/task-tracker/lib/move-state/move-state-core.mjs": {
+    "gitBlob": "13bbe32cb3e2ecff88633837727e4cfcd6dbd493",
+    "sha256": "b846858683950bedc98532995fd0561eb81e271b8ac26ad43c5354b1e30bd9e4"
+  },
+  "scripts/task-tracker/lib/move-state/transition-commit.mjs": {
+    "gitBlob": "9592305f0cef602cd6abd8c2f6493a1d80e6430e",
+    "sha256": "13b735b81e00a10a4632463f93f3986bdb129b033ba931a121f94b11ee060a71"
+  },
+  "scripts/task-tracker/lib/criteria-revision/store.mjs": {
+    "gitBlob": "1317a5700fcbc2de4b6a6c79f0dbad3b58e7e204",
+    "sha256": "b34112837b84854799254ae76d3de71251ee6ee3fc3d49df5e38e4912c38f361"
+  }
+}

@@ -1,0 +1,62 @@
+✔ all original consistency and comment custody boundaries execute (0.951458ms)
+ℹ [{"filename":"native-stage-consistency-current-config.test.mjs","mode":"consistency-current-config","fault":null},{"filename":"native-stage-consistency-request-value.test.mjs","mode":"consistency-request-value","fault":null},{"filename":"native-stage-consistency-response-accessor.test.mjs","mode":"consistency-response-accessor","fault":null},{"filename":"native-stage-consistency-result-accessor.test.mjs","mode":"consistency-result-accessor","fault":null},{"filename":"native-stage-transition-create-parsed.test.mjs","mode":"transition-create-parsed","fault":null},{"filename":"native-stage-transition-create-response.test.mjs","mode":"transition-create-response","fault":null},{"filename":"native-stage-transition-current-config.test.mjs","mode":"transition-current-config","fault":null},{"filename":"native-stage-transition-override.test.mjs","mode":"transition-override","fault":null},{"filename":"native-stage-transition-read-parsed.test.mjs","mode":"transition-read-parsed","fault":null},{"filename":"native-stage-transition-read-response.test.mjs","mode":"transition-read-response","fault":null},{"filename":"native-stage-transition-request-accessor.test.mjs","mode":"transition-request-accessor","fault":null},{"filename":"native-stage-transition-result-custody.test.mjs","mode":"transition-result-custody","fault":null}]
+▶ actual original consistency and comment custody mutations refuse before unauthorized effects
+  ✔ native-stage-consistency-current-config.test.mjs (187545.365541ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-consistency-current-config.test.mjs: 1 complete original cases
+  ✔ native-stage-consistency-request-value.test.mjs (188145.226375ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-consistency-request-value.test.mjs: 1 complete original cases
+  ✔ native-stage-consistency-response-accessor.test.mjs (188399.406416ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-consistency-response-accessor.test.mjs: 1 complete original cases
+  ✔ native-stage-consistency-result-accessor.test.mjs (189048.595542ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-consistency-result-accessor.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-create-parsed.test.mjs (187479.525834ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-create-parsed.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-create-response.test.mjs (185839.017292ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-create-response.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-current-config.test.mjs (185663.557041ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-current-config.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-override.test.mjs (13874.67925ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-override.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-read-parsed.test.mjs (196060.075125ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-read-parsed.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-read-response.test.mjs (197993.276708ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-read-response.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-request-accessor.test.mjs (190015.519375ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-request-accessor.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-result-custody.test.mjs (206548.110125ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-result-custody.test.mjs: 1 complete original cases
+✔ actual original consistency and comment custody mutations refuse before unauthorized effects (581587.837333ms)
+✔ independent descriptors account for every comment/consistency mode and all eight transport faults (1.005791ms)
+ℹ [{"filename":"native-stage-transition-comment-effect-readback-failAfter.test.mjs","mode":"transition-comment-prefix","fault":{"when":"failAfter","suffix":"effect-readback"}},{"filename":"native-stage-transition-comment-effect-readback-failBefore.test.mjs","mode":"transition-comment-prefix","fault":{"when":"failBefore","suffix":"effect-readback"}},{"filename":"native-stage-transition-comment-effect-write-failAfter.test.mjs","mode":"transition-comment-prefix","fault":{"when":"failAfter","suffix":"effect-write"}},{"filename":"native-stage-transition-comment-effect-write-failBefore.test.mjs","mode":"transition-comment-prefix","fault":{"when":"failBefore","suffix":"effect-write"}},{"filename":"native-stage-transition-comment-intent-readback-failAfter.test.mjs","mode":"transition-comment-prefix","fault":{"when":"failAfter","suffix":"intent-readback"}},{"filename":"native-stage-transition-comment-intent-readback-failBefore.test.mjs","mode":"transition-comment-prefix","fault":{"when":"failBefore","suffix":"intent-readback"}},{"filename":"native-stage-transition-comment-intent-write-failAfter.test.mjs","mode":"transition-comment-prefix","fault":{"when":"failAfter","suffix":"intent-write"}},{"filename":"native-stage-transition-comment-intent-write-failBefore.test.mjs","mode":"transition-comment-prefix","fault":{"when":"failBefore","suffix":"intent-write"}},{"filename":"native-stage-transition-comment.test.mjs","mode":"transition-comment","fault":null},{"filename":"native-stage-transition-history.test.mjs","mode":"transition-history","fault":null}]
+✔ complete original comment DATA and public quarantine profiles (9455.2145ms)
+ℹ scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-execution.test.mjs, scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-data.test.mjs, scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-source-data.test.mjs, scripts/tests/integration/task-tracker/lib/revision-stage-public-root-quarantine.test.mjs: 71 complete original cases
+▶ actual original positive/comment transport/history cases preserve exact resources
+  ✔ native-stage-transition-comment-effect-readback-failAfter.test.mjs (153911.431625ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-effect-readback-failAfter.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-comment-effect-readback-failBefore.test.mjs (153659.019792ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-effect-readback-failBefore.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-comment-effect-write-failAfter.test.mjs (149616.478416ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-effect-write-failAfter.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-comment-effect-write-failBefore.test.mjs (150838.585625ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-effect-write-failBefore.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-comment-intent-readback-failAfter.test.mjs (137277.827125ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-intent-readback-failAfter.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-comment-intent-readback-failBefore.test.mjs (136770.799083ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-intent-readback-failBefore.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-comment-intent-write-failAfter.test.mjs (136014.368542ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-intent-write-failAfter.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-comment-intent-write-failBefore.test.mjs (135589.601583ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment-intent-write-failBefore.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-comment.test.mjs (140497.426125ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-history.test.mjs (160717.398583ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-history.test.mjs: 1 complete original cases
+✔ actual original positive/comment transport/history cases preserve exact resources (448338.664334ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1040180.8605

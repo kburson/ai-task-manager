@@ -432,7 +432,12 @@ test('native phase UTC metadata reaches its original durable intent', { timeout:
       ],
       {
         cwd: isolation.context.sourceRoot,
-        env: { ...isolation.env, AITM_NATIVE_STAGE_CONTEXT: '1', TZ: 'UTC' },
+        env: {
+          ...isolation.env,
+          AITM_NATIVE_STAGE_CONTEXT: '1',
+          TZ: 'UTC',
+          AITM_NATIVE_STAGE_EXPECTED_TZ: 'UTC',
+        },
         encoding: 'utf8',
         timeout: 590000,
       }

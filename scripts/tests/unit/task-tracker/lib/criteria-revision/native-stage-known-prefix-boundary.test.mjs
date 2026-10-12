@@ -1,0 +1,95 @@
+// @story #1915
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as codec from '../../../../../task-tracker/lib/criteria-revision/stage-execution.mjs';
+const fresh = () => ({
+  journal: {},
+  resources: {},
+  body: { bytes: 'source', version: 0 },
+  stage: 'develop',
+  executor: {},
+});
+for (const key of ['journal', 'resources', 'body', 'stage', 'executor'])
+  test(
+    'known-prefix DATA rejects ' + key + ' getter before reading any selected value',
+    async () => {
+      let gets = 0;
+      const input = fresh();
+      Object.defineProperty(input, key, {
+        enumerable: true,
+        get() {
+          gets++;
+          throw Error('unowned DATA getter');
+        },
+      });
+      await assert.rejects(
+        async () => codec.deriveRecordedNativeStageKnownPrefix(input),
+        /criteria-revision:native-stage-known-prefix/
+      );
+      assert.equal(gets, 0);
+    }
+  );
+for (const shape of ['prototype', 'hidden', 'symbol', 'extra', 'missing'])
+  test('known-prefix DATA refuses ' + shape + ' shape without recognition', async () => {
+    const input = fresh();
+    if (shape === 'prototype') Object.setPrototypeOf(input, { approved: true });
+    if (shape === 'hidden') Object.defineProperty(input, 'journal', { enumerable: false });
+    if (shape === 'symbol') input[Symbol('approved')] = true;
+    if (shape === 'extra') input.capability = {};
+    if (shape === 'missing') delete input.body;
+    await assert.rejects(
+      async () => codec.deriveRecordedNativeStageKnownPrefix(input),
+      /criteria-revision:native-stage-known-prefix/
+    );
+  });
+test('known-prefix DATA refuses null, scalar and incomplete roots', async () => {
+  for (const value of [null, undefined, 3, true, 'known', [], fresh()])
+    await assert.rejects(
+      async () => codec.deriveRecordedNativeStageKnownPrefix(value),
+      /criteria-revision:native-stage-known-prefix/
+    );
+});
+
+test('completed16 cursor comparison roots reject copied inputs without reading getters', async () => {
+  const core = await import('../../../../../task-tracker/lib/move-state/move-state-core.mjs');
+  const store = await import('../../../../../task-tracker/lib/criteria-revision/store.mjs');
+  let gets = 0;
+  const forged = Object.defineProperty({}, 'backend', {
+    get() {
+      gets++;
+      throw Error('unowned');
+    },
+  });
+  for (const root of [
+    core.beginNativeStageTailStoreOperation,
+    core.completeNativeStageTailStoreOperation,
+  ])
+    assert.throws(
+      () => root(forged, forged),
+      (error) => error.code === 'revision-authority-unavailable'
+    );
+  assert.throws(() =>
+    store.assertMemoryNativeTailStoreOperation(
+      forged,
+      forged,
+      'native-stage-cache-effect-write',
+      'after'
+    )
+  );
+  assert.equal(gets, 0);
+});
+
+test('completed16 report/history/lifetime comparators reject forged inputs before getters', async () => {
+  const core = await import('../../../../../task-tracker/lib/move-state/move-state-core.mjs');
+  let gets = 0;
+  const forged = Object.defineProperty({}, 'holder', {
+    get() {
+      gets++;
+      throw Error('unowned report getter');
+    },
+  });
+  assert.throws(() => core.assertCompleted16ExistingReadLifetime(forged, forged));
+  assert.throws(() => core.assertCompleted16ResumeFinalHistory(forged, forged, forged));
+  assert.throws(() => core.readNativeStagePartialReportIntent(forged));
+  assert.equal(gets, 0);
+});

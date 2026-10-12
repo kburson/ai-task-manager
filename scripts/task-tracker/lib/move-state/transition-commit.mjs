@@ -117,7 +117,82 @@ function commentBody(comment) {
 
 // Original lexical calls and parsed returns only. No public registration route.
 const nativeTransitionCalls = new WeakMap();
+// Comparison survives the lexical call only until the original frame finishes
+// reporting. It cannot restore live call membership or authorize another effect.
+const nativeTransitionComparisons = new WeakMap();
 const nativeTransitionResults = new WeakMap();
+const existingNativeTransitionCalls = new WeakMap();
+const existingNativeTransitionComparisons = new WeakMap();
+const existingNativeTransitionResults = new WeakMap();
+function existingTransitionCall(input, ctx) {
+  const call = existingNativeTransitionCalls.get(input);
+  if (!call || call.ctx !== ctx) throw new TypeError('existing-transition-call');
+  call.code.assertExistingNativeTransitionInput(input, ctx);
+  if (call.found) assertTransitionData(call.found, call.found.value);
+  return call;
+}
+export function assertExistingNativeTransitionResult(input, ctx, result) {
+  const call = existingNativeTransitionComparisons.get(input),
+    retained = existingNativeTransitionResults.get(result);
+  if (
+    !isMemoryStageEffectScope() ||
+    !call ||
+    call.ctx !== ctx ||
+    !retained ||
+    retained.input !== input ||
+    retained.ctx !== ctx
+  )
+    throw new TypeError('existing-transition-result-custody');
+  call.code.assertExistingNativeTransitionComparison(input, ctx);
+  assertTransitionData(call.found, call.found.value);
+  assertTransitionData(retained.result, result);
+}
+export function expireExistingNativeTransitionRead(input) {
+  existingNativeTransitionComparisons.delete(input);
+  existingNativeTransitionCalls.delete(input);
+}
+export async function readExistingTransitionCommit(ctx, input) {
+  if (!isMemoryStageEffectScope()) throw new TypeError('existing-transition-scope');
+  const code = await import('./move-state-core.mjs');
+  code.beginExistingNativeTransitionRead(input, ctx);
+  const call = { ctx, code, found: null };
+  existingNativeTransitionCalls.set(input, call);
+  existingNativeTransitionComparisons.set(input, call);
+  try {
+    const expected = code.readExistingNativeTransitionExpected(input, ctx);
+    existingTransitionCall(input, ctx);
+    const request = {
+      file: 'gh',
+      args: ['api', `repos/${ctx.cfg.repo}/issues/comments/${expected.commentId}`],
+      options: { timeout: 15000 },
+    };
+    const response = await code.readCompleted16NativeTransitionComment(input, request);
+    existingTransitionCall(input, ctx);
+    const parsed = JSON.parse(response.stdout);
+    call.found = captureTransitionData(parsed);
+    existingTransitionCall(input, ctx);
+    if (commentId(parsed) !== expected.commentId || commentBody(parsed) !== expected.body)
+      throw new TypeError('existing-transition-readback');
+    const record = parseTransitionCommitComment(expected.body);
+    if (canonicalRecordJson(record) !== canonicalRecordJson(expected.record))
+      throw new TypeError('existing-transition-record');
+    const result = Object.freeze({
+      verified: true,
+      commentId: expected.commentId,
+      record,
+      body: expected.body,
+    });
+    existingNativeTransitionResults.set(result, {
+      input,
+      ctx,
+      result: captureTransitionData(result),
+    });
+    assertExistingNativeTransitionResult(input, ctx, result);
+    return result;
+  } finally {
+    existingNativeTransitionCalls.delete(input);
+  }
+}
 function captureTransitionData(value) {
   // Canonical validation refuses nested accessors before reading values.
   const bytes = canonicalRecordJson(value);
@@ -164,6 +239,14 @@ function transitionCall(input, ctx) {
   call.code.assertNativeStageTransitionInput(input, ctx, call.evidence);
   for (const item of [call.created, call.found]) if (item) assertTransitionData(item, item.value);
   return call;
+}
+export function assertOriginalNativeTransitionCallCustody(input) {
+  const call = nativeTransitionComparisons.get(input);
+  if (!isMemoryStageEffectScope() || !call) throw new TypeError('native-transition-result-custody');
+  for (const item of [call.created, call.found]) if (item) assertTransitionData(item, item.value);
+}
+export function expireOriginalNativeTransitionCallCustody(input) {
+  nativeTransitionComparisons.delete(input);
 }
 export function assertOriginalNativeTransitionResult(input, ctx, result) {
   const retained = nativeTransitionResults.get(result);
@@ -438,7 +521,9 @@ export async function writeTransitionCommit(ctx, evidence = {}, nativeInput) {
     const code = await import('./move-state-core.mjs');
     code.assertNativeStageTransitionInput(nativeInput, ctx, evidence);
     if (nativeTransitionCalls.has(nativeInput)) throw new TypeError('native-transition-reentrant');
-    nativeTransitionCalls.set(nativeInput, { ctx, evidence, code });
+    const call = { ctx, evidence, code };
+    nativeTransitionCalls.set(nativeInput, call);
+    nativeTransitionComparisons.set(nativeInput, call);
   } else assertRevisionStageHostEffect();
   try {
     if (ctx.SKIP_NETWORK) return Object.freeze({ verified: true, skipped: true });

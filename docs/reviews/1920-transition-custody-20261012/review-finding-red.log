@@ -1,0 +1,270 @@
+✔ findFleetLeaks ignores a concurrently added registered Git worktree (0.871ms)
+✔ findFleetLeaks retains new missing, malformed, and unregistered sandbox entries (0.272125ms)
+✔ the runner applies registered-worktree classification before leak reporting (0.972ms)
+✖ the runner keeps each test file on the dedicated 10-minute child budget (1.945833ms)
+✔ clean exit reports ok (0.116625ms)
+✔ numeric non-zero exit reports the code (0.077375ms)
+✔ signal kill reports the signal and elapsed ms, never bare exit null (0.10525ms)
+✔ errored child reports error.code (e.g. ENOBUFS), never bare exit null (0.579875ms)
+✔ a status-null kill with no signal/error still names a cause, not exit null (0.164417ms)
+✔ per-file maxBuffer is raised well above the 1 MB default (0.109833ms)
+✔ formatFleetLeak dumps worktreePath/sessionId/kind/branch for each leaked key (0.102542ms)
+✔ formatFleetLeak reports <entry absent> for a leaked key missing from the fleet (0.055083ms)
+✔ formatFleetLeak marks unset fields rather than printing undefined (0.052667ms)
+✔ formatFleetLeak singular/plural entry count agrees with leak length (0.0705ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 13
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 88.514708
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/core/run-tests-kill-report.test.mjs:66:1
+✖ the runner keeps each test file on the dedicated 10-minute child budget (1.945833ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /import \{ TEST_FILE_TIMEOUT_MS \} from/. Input:
+  
+  '#!/usr/bin/env node\n' +
+    '// Carve-out (see #22; parallelized by #863): the runner needs non-throwing\n' +
+    '// exit-code introspection to accumulate failures across files. #863 replaced the\n' +
+    '// blocking `for … spawnSync` loop with an async bounded pool (run-tests-pool.mjs)\n' +
+    '// so the parallel-safe unit subset runs at `cpus - 1` concurrency; `spawnTestChild`\n' +
+    '// reshapes each async child into the same `{status,signal,error}` object\n' +
+    '// spawnSync gave, so failure accounting and `describeSpawnResult` are unchanged.\n' +
+    '// Direct-subprocess unit files run in a separate two-worker phase after the\n' +
+    '// saturated pure pool drains. Explicit `@parallel-unsafe`/unreadable unit files,\n' +
+    '// integration files, and unmarked slow files remain one-at-a-time serial. A\n' +
+    '// small audited slow subset can opt into a separate two-worker phase with the\n' +
+    '// source-local `@slow-parallel-safe (rationale)` marker.\n' +
+    '//\n' +
+    '// Lanes (#305, canonicalized #874; sectioned #864):\n' +
+    '//   --lane unit           — all unit tests (pure subset pooled; directly\n' +
+    '//                           detected subprocess subset reduced-pooled;\n' +
+    '//                           explicit unsafe/unreadable subset serial)\n' +
+    '//   --lane integration    — the integration population (serial)\n' +
+    '//   --lane fast (default)  — unit only (the deterministic local regression floor)\n' +
+    '//   --lane slow           — the slow lane (explicit-safe subset bounded at two;\n' +
+    '//                           every other file serial)\n' +
+    '//   --lane all            — every lane; INTERNAL union for the divergence guard\n' +
+    '//                           and `test:coverage` only — no `test:all` script exists\n' +
+    '//\n' +
+    '// #864 — every lane except `all` is fail-closed against a 10-minute wall-time\n' +
+    '// ceiling (run-tests-ceiling.mjs): a section over budget exits non-zero so it\n' +
+    '// cannot silently regrow; the overage goes to #945, the ceiling is never relaxed.\n' +
+    '//\n' +
+    '// Discovery and lane assignment come from the canonical modules\n' +
+    '// (`discoverTestFiles` #872 + `laneManifest` #873) via `run-tests-lanes.mjs`;\n' +
+    '// there is no hardcoded directory list here. A divergence guard fails the run if\n' +
+    '// the complete lane union ever omits an on-disk `*.test.mjs`, proving that the\n' +
+    '// union accounts for every discovered committed test file. The selected lane\n' +
+    '// still executes only its own slice (the 624-vs-652 false green cannot recur).\n' +
+    "import { execFileSync } from 'node:child_process';\n" +
+    "import { writeFileSync, mkdirSync } from 'node:fs';\n" +
+    "import os from 'node:os';\n" +
+    "import path from 'node:path';\n" +
+    "import { fileURLToPath } from 'node:url';\n" +
+    'import {\n' +
+    '  TEST_FILE_TIMEOUT_MS,\n' +
+    '  testExecutionTimeoutMs,\n' +
+    "} from './task-tracker/lib/process-timeouts.mjs';\n" +
+    'import {\n' +
+    '  poolConcurrency,\n' +
+    '  slowPoolConcurrency,\n' +
+    '  subprocessPoolConcurrency,\n' +
+    '  spawnTestChild,\n' +
+    '  createTestFileEnvironment,\n' +
+    "} from './run-tests-pool.mjs';\n" +
+    "import { partitionTestEntries, runTestPhases } from './run-tests-schedule.mjs';\n" +
+    "import { loadSerialSectionMetadata } from './run-tests-native-sections.mjs';\n" +
+    'import {\n' +
+    '  findMainWorktreePath,\n' +
+    '  fleetRegistryPath,\n' +
+    '  readFleet,\n' +
+    "} from './task-tracker/fleet-registry.mjs';\n" +
+    'import {\n' +
+    '  describeSpawnResult,\n' +
+    '  findFleetLeaks,\n' +
+    '  formatFleetLeak,\n' +
+    '  RUN_TESTS_MAX_BUFFER,\n' +
+    "} from './run-tests-report.mjs';\n" +
+    "import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';\n" +
+    "import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';\n" +
+    "import { planShards } from './run-tests-shards.mjs';\n" +
+    "import { evaluateSections, formatSectionSummary } from './run-tests-ceiling.mjs';\n" +
+    "import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';\n" +
+    'import {\n' +
+    '  parseInProcessDurationMs,\n' +
+    '  formatPassLine,\n' +
+    '  buildTimingReport,\n' +
+    '  formatTimingReport,\n' +
+    '  serializeArtifact,\n' +
+    "} from './run-tests-timing.mjs';\n" +
+    '\n' +
+    'if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {\n' +
+    "  emitSelfDoc('run-tests');\n" +
+    '  process.exit(0);\n' +
+    '}\n' +
+    '\n' +
+    'const __dir = path.dirname(fileURLToPath(import.meta.url));\n' +
+    "const repoRoot = path.resolve(__dir, '..');\n" +
+    '\n' +
+    '// ---- arg parsing ---------------------------------------------------------\n' +
+    'const VALID_LANES = new Set(RUN_LANES);\n' +
+    "let lane = 'fast';\n" +
+    'let shard = null;\n' +
+    '// #861 — opt-in slow-test report. The per-file timing dataset and JSON artifact\n' +
+    '// are ALWAYS produced; this flag (or AITM_TEST_TIMING=1) only controls whether\n' +
+    '// the human-readable top-N/Pareto/slow-bucket report is printed at the end.\n' +
+    "let timingReport = process.env.AITM_TEST_TIMING === '1';\n" +
+    'for (let i = 2; i < process.argv.length; i++) {\n' +
+    '  const a = process.argv[i];\n' +
+    "  if (a === '--lane') {\n" +
+    '    lane = process.argv[++i];\n' +
+    "  } else if (a.startsWith('--lane=')) {\n" +
+    "    lane = a.slice('--lane='.length);\n" +
+    "  } else if (a === '--shard' || a.startsWith('--shard=')) {\n" +
+    "    const value = a === '--shard' ? process.argv[++i] : a.slice('--shard='.length);\n" +
+    "    const match = /^(\\d+)\\/(\\d+)$/.exec(value || '');\n" +
+    '    if (\n' +
+    '      shard ||\n' +
+    '      !match ||\n' +
+    '      Number(match[1]) < 1 ||\n' +
+    '      Number(match[1]) > Number(match[2]) ||\n' +
+    '      Number(match[2]) > 32\n' +
+    '    ) {\n' +
+    "      console.error('run-tests: --shard must be index/count (1 <= index <= count <= 32)');\n" +
+    '      process.exit(2);\n' +
+    '    }\n' +
+    '    shard = { index: Number(match[1]), total: Number(match[2]) };\n' +
+    "  } else if (a === '--timing-report') {\n" +
+    '    timingReport = true;\n' +
+    '  } else {\n' +
+    '    console.error(`run-tests: unknown argument: ${a}`);\n' +
+    '    process.exit(2);\n' +
+    '  }\n' +
+    '}\n' +
+    'if (!VALID_LANES.has(lane)) {\n' +
+    "  console.error(`run-tests: --lane must be one of ${RUN_LANES.join('|')} (got: ${lane})`);\n" +
+    '  process.exit(2);\n' +
+    '}\n' +
+    '\n' +
+    '// ---- divergence guard ----------------------------------------------------\n' +
+    "// Every lane's selection is a slice of the canonical manifest; the union of the\n" +
+    "// three lanes must equal the on-disk `*.test.mjs` set. If it ever doesn't, a\n" +
+    '// test would silently vanish from the suite — fail loudly instead of printing a\n' +
+    '// false green. Runs on every invocation, independent of the selected lane.\n' +
+    'const { missing, extra } = discoveryDivergence();\n' +
+    'if (missing.length || extra.length) {\n' +
+    "  console.error('run-tests: discovery divergence — the runner is not covering every on-disk test:');\n" +
+    '  for (const f of missing) console.error(`  MISSING (on disk, not selected): ${f}`);\n' +
+    '  for (const f of extra) console.error(`  EXTRA   (selected, not on disk): ${f}`);\n' +
+    '  process.exit(1);\n' +
+    '}\n' +
+    '\n' +
+    '// Canonical selection: repo-relative paths → { label, full } run entries.\n' +
+    'const inventory = laneFiles(lane);\n' +
+    'const selected = shard ? planShards(inventory, shard.total)[shard.index - 1] : inventory;\n' +
+    'const files = selected.map((rel) => ({ label: rel, full: path.join(repoRoot, rel) }));\n' +
+    '\n' +
+    'console.log(`▶ lane=${lane} (${files.length} files)\\n`);\n' +
+    '\n' +
+    '// AC2 (#442) — authoritative runtime guard against test-sandbox registry leaks.\n' +
+    '// A test that creates a non-git sandbox and then reaches `registerTask` will\n' +
+    '// have its registry path escape the sandbox (via findMainWorktreePath →\n' +
+    "// git rev-parse) and land on THIS repo's live `.ai-task-manager/task-fleet.json`,\n" +
+    '// injecting bogus issue entries (#777/#888/#999/#108/#200/...). We snapshot the\n' +
+    '// live registry key-SET before the suite and fail if the suite ADDS any key.\n' +
+    '// Comparing key-sets (not contents) ignores benign timestamp churn on entries\n' +
+    '// that legitimately already exist (e.g. the active task driving this run).\n' +
+    'function liveRegistryKeySet() {\n' +
+    '  try {\n' +
+    '    const regPath = fleetRegistryPath(findMainWorktreePath(repoRoot));\n' +
+    '    const fleet = readFleet(regPath) || {};\n' +
+    '    return new Set(Object.keys(fleet));\n' +
+    '  } catch {\n' +
+    '    return new Set();\n' +
+    '  }\n' +
+    '}\n' +
+    'const registryKeysBefore = liveRegistryKeySet();\n' +
+    '\n' +
+    'function registeredWorktreePaths() {\n' +
+    '  try {\n' +
+    "    const output = execFileSync('git', ['-C', repoRoot, 'worktree', 'list', '--porcelain', '-z'], {\n" +
+    "      encoding: 'utf8',\n" +
+    '    });\n' +
+    '    return new Set(\n' +
+    '      output\n' +
+    "        .split('\\0')\n" +
+    "        .filter((field) => field.startsWith('worktree '))\n" +
+    "        .map((field) => field.slice('worktree '.length))\n" +
+    '    );\n' +
+    '  } catch {\n' +
+    '    return new Set();\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'let failed = 0;\n' +
+    'const failures = [];\n' +
+    '// #861 — one timing record per executed file, keyed later by repo-relative path.\n' +
+    'const timingRecords = [];\n' +
+    '\n' +
+    '// #863 — run ONE file: async `spawn` shaped into a spawnSync-style result, timed\n' +
+    '// here so run-tests-pool.mjs stays a generic scheduler. env/timeout/maxBuffer are\n' +
+    "// the runner's policy — #531 AC1 (TEST_NO_RETRY_ENV) + AC2 (RUN_TESTS_MAX_BUFFER)\n" +
+    '// carry forward unchanged into every child, serial or pooled.\n' +
+    'async function runEntry(entry) {\n' +
+    '  const t0 = process.hrtime.bigint();\n' +
+    "  const env = { ...createTestFileEnvironment(process.env), [TEST_NO_RETRY_ENV]: '1' };\n" +
+    '  if (process.env.AITM_GH_CENSUS_BIN) env.AITM_GH_CENSUS_CALLER = entry.label;\n' +
+    '  const res = await spawnTestChild({\n' +
+    '    full: entry.full,\n' +
+    '    timeout: testExecutionTimeoutMs(TEST_FILE_TIMEOUT_MS),\n' +
+    '    maxBuffer: RUN_TESTS_MAX_BUFFER,\n' +
+    '    env,\n' +
+    '  });\n' +
+    '  const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;\n' +
+    '  return { res, elapsedMs };\n' +
+    '}\n' +
+    '\n' +
+    '// #863/#1208 — pure unit files run at the bounded `cpus - 1` pool. Direct\n' +
+    '// subprocess users must not overlap that saturated pool (the historic child\n' +
+    '// starvation flake), but can overlap each other at the fixed reduced cap after\n' +
+    '// the pure barrier. Explicit unsafe/unreadable files remain exclusive serial,\n' +
+    '// alongside integration and unmarked slow files. Slow concurrency is a\n' +
+    '// separate explicit opt-in; unit describes behavior while scheduling classes\n' +
+    '// describe safe execution mechanics.\n' +
+    '// Output is emitted in INPUT order below, so the log stays deterministic\n' +
+    '// regardless of which child finishes first.\n' +
+    'const CONCURRENCY = poolConcurrency();\n' +
+    'const SUBPROCESS_CONCURRENCY = subprocessPoolConcurrency();\n' +
+    'const SLOW_CONCURRENCY = slowPoolConcurrency();\n' +
+    'const runnable = files.filter((e) => !SKIP.has(e.label));\n' +
+    'const {\n' +
+    '  pooledEntries,\n' +
+    '  subprocessEntries,\n' +
+    '  slowParallelEntries,\n' +
+    '  serialEntries: rawSerialEntries,\n' +
+    '} = partitionTestEntries(runnable);\n' +
+    'const serialEntries = loadSerialSectionMetadata(rawSerialEntries);\n' +
+    '\n' +
+    '// The aggregate remains useful observational timing, while #1157 evaluates the\n' +
+    '// already-distinct pool and serial execution phases as independently bounded\n' +
+    '// sections be'... 6825 more characters
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b957/ai-task-manager/scripts/tests/integration/task-tracker/core/run-tests-kill-report.test.mjs:74:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "#!/usr/bin/env node\n// Carve-out (see #22; parallelized by #863): the runner needs non-throwing\n// exit-code introspection to accumulate failures across files. #863 replaced the\n// blocking `for … spawnSync` loop with an async bounded pool (run-tests-pool.mjs)\n// so the parallel-safe unit subset runs at `cpus - 1` concurrency; `spawnTestChild`\n// reshapes each async child into the same `{status,signal,error}` object\n// spawnSync gave, so failure accounting and `describeSpawnResult` are unchanged.\n// Direct-subprocess unit files run in a separate two-worker phase after the\n// saturated pure pool drains. Explicit `@parallel-unsafe`/unreadable unit files,\n// integration files, and unmarked slow files remain one-at-a-time serial. A\n// small audited slow subset can opt into a separate two-worker phase with the\n// source-local `@slow-parallel-safe (rationale)` marker.\n//\n// Lanes (#305, canonicalized #874; sectioned #864):\n//   --lane unit           — all unit tests (pure subset pooled; directly\n//                           detected subprocess subset reduced-pooled;\n//                           explicit unsafe/unreadable subset serial)\n//   --lane integration    — the integration population (serial)\n//   --lane fast (default)  — unit only (the deterministic local regression floor)\n//   --lane slow           — the slow lane (explicit-safe subset bounded at two;\n//                           every other file serial)\n//   --lane all            — every lane; INTERNAL union for the divergence guard\n//                           and `test:coverage` only — no `test:all` script exists\n//\n// #864 — every lane except `all` is fail-closed against a 10-minute wall-time\n// ceiling (run-tests-ceiling.mjs): a section over budget exits non-zero so it\n// cannot silently regrow; the overage goes to #945, the ceiling is never relaxed.\n//\n// Discovery and lane assignment come from the canonical modules\n// (`discoverTestFiles` #872 + `laneManifest` #873) via `run-tests-lanes.mjs`;\n// there is no hardcoded directory list here. A divergence guard fails the run if\n// the complete lane union ever omits an on-disk `*.test.mjs`, proving that the\n// union accounts for every discovered committed test file. The selected lane\n// still executes only its own slice (the 624-vs-652 false green cannot recur).\nimport { execFileSync } from 'node:child_process';\nimport { writeFileSync, mkdirSync } from 'node:fs';\nimport os from 'node:os';\nimport path from 'node:path';\nimport { fileURLToPath } from 'node:url';\nimport {\n  TEST_FILE_TIMEOUT_MS,\n  testExecutionTimeoutMs,\n} from './task-tracker/lib/process-timeouts.mjs';\nimport {\n  poolConcurrency,\n  slowPoolConcurrency,\n  subprocessPoolConcurrency,\n  spawnTestChild,\n  createTestFileEnvironment,\n} from './run-tests-pool.mjs';\nimport { partitionTestEntries, runTestPhases } from './run-tests-schedule.mjs';\nimport { loadSerialSectionMetadata } from './run-tests-native-sections.mjs';\nimport {\n  findMainWorktreePath,\n  fleetRegistryPath,\n  readFleet,\n} from './task-tracker/fleet-registry.mjs';\nimport {\n  describeSpawnResult,\n  findFleetLeaks,\n  formatFleetLeak,\n  RUN_TESTS_MAX_BUFFER,\n} from './run-tests-report.mjs';\nimport { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';\nimport { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';\nimport { planShards } from './run-tests-shards.mjs';\nimport { evaluateSections, formatSectionSummary } from './run-tests-ceiling.mjs';\nimport { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';\nimport {\n  parseInProcessDurationMs,\n  formatPassLine,\n  buildTimingReport,\n  formatTimingReport,\n  serializeArtifact,\n} from './run-tests-timing.mjs';\n\nif (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.slice(2))) {\n  emitSelfDoc('run-tests');\n  process.exit(0);\n}\n\nconst __dir = path.dirname(fileURLToPath(import.meta.url));\nconst repoRoot = path.resolve(__dir, '..');\n\n// ---- arg parsing ---------------------------------------------------------\nconst VALID_LANES = new Set(RUN_LANES);\nlet lane = 'fast';\nlet shard = null;\n// #861 — opt-in slow-test report. The per-file timing dataset and JSON artifact\n// are ALWAYS produced; this flag (or AITM_TEST_TIMING=1) only controls whether\n// the human-readable top-N/Pareto/slow-bucket report is printed at the end.\nlet timingReport = process.env.AITM_TEST_TIMING === '1';\nfor (let i = 2; i < process.argv.length; i++) {\n  const a = process.argv[i];\n  if (a === '--lane') {\n    lane = process.argv[++i];\n  } else if (a.startsWith('--lane=')) {\n    lane = a.slice('--lane='.length);\n  } else if (a === '--shard' || a.startsWith('--shard=')) {\n    const value = a === '--shard' ? process.argv[++i] : a.slice('--shard='.length);\n    const match = /^(\\d+)\\/(\\d+)$/.exec(value || '');\n    if (\n      shard ||\n      !match ||\n      Number(match[1]) < 1 ||\n      Number(match[1]) > Number(match[2]) ||\n      Number(match[2]) > 32\n    ) {\n      console.error('run-tests: --shard must be index/count (1 <= index <= count <= 32)');\n      process.exit(2);\n    }\n    shard = { index: Number(match[1]), total: Number(match[2]) };\n  } else if (a === '--timing-report') {\n    timingReport = true;\n  } else {\n    console.error(`run-tests: unknown argument: ${a}`);\n    process.exit(2);\n  }\n}\nif (!VALID_LANES.has(lane)) {\n  console.error(`run-tests: --lane must be one of ${RUN_LANES.join('|')} (got: ${lane})`);\n  process.exit(2);\n}\n\n// ---- divergence guard ----------------------------------------------------\n// Every lane's selection is a slice of the canonical manifest; the union of the\n// three lanes must equal the on-disk `*.test.mjs` set. If it ever doesn't, a\n// test would silently vanish from the suite — fail loudly instead of printing a\n// false green. Runs on every invocation, independent of the selected lane.\nconst { missing, extra } = discoveryDivergence();\nif (missing.length || extra.length) {\n  console.error('run-tests: discovery divergence — the runner is not covering every on-disk test:');\n  for (const f of missing) console.error(`  MISSING (on disk, not selected): ${f}`);\n  for (const f of extra) console.error(`  EXTRA   (selected, not on disk): ${f}`);\n  process.exit(1);\n}\n\n// Canonical selection: repo-relative paths → { label, full } run entries.\nconst inventory = laneFiles(lane);\nconst selected = shard ? planShards(inventory, shard.total)[shard.index - 1] : inventory;\nconst files = selected.map((rel) => ({ label: rel, full: path.join(repoRoot, rel) }));\n\nconsole.log(`▶ lane=${lane} (${files.length} files)\\n`);\n\n// AC2 (#442) — authoritative runtime guard against test-sandbox registry leaks.\n// A test that creates a non-git sandbox and then reaches `registerTask` will\n// have its registry path escape the sandbox (via findMainWorktreePath →\n// git rev-parse) and land on THIS repo's live `.ai-task-manager/task-fleet.json`,\n// injecting bogus issue entries (#777/#888/#999/#108/#200/...). We snapshot the\n// live registry key-SET before the suite and fail if the suite ADDS any key.\n// Comparing key-sets (not contents) ignores benign timestamp churn on entries\n// that legitimately already exist (e.g. the active task driving this run).\nfunction liveRegistryKeySet() {\n  try {\n    const regPath = fleetRegistryPath(findMainWorktreePath(repoRoot));\n    const fleet = readFleet(regPath) || {};\n    return new Set(Object.keys(fleet));\n  } catch {\n    return new Set();\n  }\n}\nconst registryKeysBefore = liveRegistryKeySet();\n\nfunction registeredWorktreePaths() {\n  try {\n    const output = execFileSync('git', ['-C', repoRoot, 'worktree', 'list', '--porcelain', '-z'], {\n      encoding: 'utf8',\n    });\n    return new Set(\n      output\n        .split('\\0')\n        .filter((field) => field.startsWith('worktree '))\n        .map((field) => field.slice('worktree '.length))\n    );\n  } catch {\n    return new Set();\n  }\n}\n\nlet failed = 0;\nconst failures = [];\n// #861 — one timing record per executed file, keyed later by repo-relative path.\nconst timingRecords = [];\n\n// #863 — run ONE file: async `spawn` shaped into a spawnSync-style result, timed\n// here so run-tests-pool.mjs stays a generic scheduler. env/timeout/maxBuffer are\n// the runner's policy — #531 AC1 (TEST_NO_RETRY_ENV) + AC2 (RUN_TESTS_MAX_BUFFER)\n// carry forward unchanged into every child, serial or pooled.\nasync function runEntry(entry) {\n  const t0 = process.hrtime.bigint();\n  const env = { ...createTestFileEnvironment(process.env), [TEST_NO_RETRY_ENV]: '1' };\n  if (process.env.AITM_GH_CENSUS_BIN) env.AITM_GH_CENSUS_CALLER = entry.label;\n  const res = await spawnTestChild({\n    full: entry.full,\n    timeout: testExecutionTimeoutMs(TEST_FILE_TIMEOUT_MS),\n    maxBuffer: RUN_TESTS_MAX_BUFFER,\n    env,\n  });\n  const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;\n  return { res, elapsedMs };\n}\n\n// #863/#1208 — pure unit files run at the bounded `cpus - 1` pool. Direct\n// subprocess users must not overlap that saturated pool (the historic child\n// starvation flake), but can overlap each other at the fixed reduced cap after\n// the pure barrier. Explicit unsafe/unreadable files remain exclusive serial,\n// alongside integration and unmarked slow files. Slow concurrency is a\n// separate explicit opt-in; unit describes behavior while scheduling classes\n// describe safe execution mechanics.\n// Output is emitted in INPUT order below, so the log stays deterministic\n// regardless of which child finishes first.\nconst CONCURRENCY = poolConcurrency();\nconst SUBPROCESS_CONCURRENCY = subprocessPoolConcurrency();\nconst SLOW_CONCURRENCY = slowPoolConcurrency();\nconst runnable = files.filter((e) => !SKIP.has(e.label));\nconst {\n  pooledEntries,\n  subprocessEntries,\n  slowParallelEntries,\n  serialEntries: rawSerialEntries,\n} = partitionTestEntries(runnable);\nconst serialEntries = loadSerialSectionMetadata(rawSerialEntries);\n\n// The aggregate remains useful observational timing, while #1157 evaluates the\n// already-distinct pool and serial execution phases as independently bounded\n// sections be"... 6825 more characters,
+    expected: /import \{ TEST_FILE_TIMEOUT_MS \} from/,
+    operator: 'match',
+    diff: 'simple'
+  }

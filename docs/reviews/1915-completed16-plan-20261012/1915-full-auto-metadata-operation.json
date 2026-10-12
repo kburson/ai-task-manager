@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "remaining1–15 due; human plan approval and formal lifecycle gates pending.",
+  "replacement": "remaining1–15 due; Full-Auto ordinary approval authority; formal lifecycle/estimate prerequisites pending.",
+  "expectedVersion": 46
+}

@@ -35,6 +35,7 @@ export const CEILING_EXEMPT_LANES = Object.freeze(new Set(['all']));
  * @returns {number|null}
  */
 export function ceilingMsForLane(lane, env = process.env) {
+  if (env?.AITM_TEST_EXECUTION_LIMITS === 'suspended') return null;
   if (CEILING_EXEMPT_LANES.has(lane)) return null;
   const raw = env?.[CEILING_ENV];
   if (raw !== undefined && raw !== '') {
@@ -57,7 +58,13 @@ export function ceilingMsForLane(lane, env = process.env) {
 export function evaluateCeiling({ lane, elapsedMs, env = process.env, section }) {
   const ceilingMs = ceilingMsForLane(lane, env);
   if (ceilingMs === null) {
-    return { breached: false, exempt: true, ceilingMs: null, elapsedMs };
+    return {
+      breached: false,
+      exempt: true,
+      ceilingMs: null,
+      elapsedMs,
+      ...(env?.AITM_TEST_EXECUTION_LIMITS === 'suspended' ? { suspended: true } : {}),
+    };
   }
   const breached = elapsedMs > ceilingMs;
   const result = { breached, exempt: false, ceilingMs, elapsedMs };
@@ -109,7 +116,11 @@ export function evaluateSections({ lane, sections, env = process.env }) {
 /** Render the bounded phase timings while keeping the aggregate observational. */
 export function formatSectionSummary(result) {
   const details = result.sections.map((entry) => {
-    const budget = entry.exempt ? 'exempt' : `${(entry.ceilingMs / 1000).toFixed(0)}s`;
+    const budget = entry.suspended
+      ? 'suspended (explicit user instruction)'
+      : entry.exempt
+        ? 'exempt'
+        : `${(entry.ceilingMs / 1000).toFixed(0)}s`;
     return (
       `${entry.name}=${(entry.elapsedMs / 1000).toFixed(1)}s/${budget} ` + `(${entry.count} files)`
     );
