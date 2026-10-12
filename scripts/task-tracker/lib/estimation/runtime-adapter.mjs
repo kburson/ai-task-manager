@@ -766,6 +766,10 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
         ...(adoptLegacyBaseline ? {} : { refine }),
         forecastEnvelope,
         deps: {
+          cfg,
+          projectDir: deps.projectDir,
+          decomposition: deps.decomposition,
+          projectItemForIssue: deps.projectItemForIssue,
           readProjection: () => readProjection(issueNumber),
           writeRefineAppendix: ({ refine: previous, plan }) =>
             (deps.upsertPlannedEstimate ?? upsertPlannedEstimate)({

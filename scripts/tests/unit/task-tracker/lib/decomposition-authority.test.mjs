@@ -608,3 +608,14 @@ test('production forecast snapshot disagreement retains observed mandatory size'
   assert.equal(result.input.size, 'XL');
   assert.equal(result.capabilities.includes('scoped-implementation'), false);
 });
+
+test('unready unique forecast exposes reconciliation data but remains unavailable authority', async () => {
+  const f = fixture();
+  forecastTransport(f, [activeForecastComment()]);
+  const current = await collect(f),
+    read = current.sourceObservations.readForecast;
+  assert.equal(read.status, 'unavailable');
+  assert.equal(read.value.publicationTransition.recordId, '01J00000000000000000000702');
+  assert.equal(read.value.publicationTransition.readyRecordId, null);
+  assert.equal(current.capabilities.includes('scoped-implementation'), false);
+});

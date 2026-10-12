@@ -732,3 +732,9 @@ test('visible record rendering shows shared thresholds and permitted actions wit
     /Status: story-ok|scoped-implementation|scoped-deliverable|scoped-completion/
   );
 });
+
+// Writer matrix is loaded here so the issue's canonical guard verifier executes it.
+import { registerEstimatePublicationCases } from './decomposition-publication.cases.mjs';
+registerEstimatePublicationCases();
+import { registerAdaptivePublicationCases } from './decomposition-adaptive-publication.cases.mjs';
+registerAdaptivePublicationCases();

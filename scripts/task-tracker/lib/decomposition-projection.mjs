@@ -1,3 +1,4 @@
+import { publicationForecastTransitionUsable } from './decomposition-publication-inputs.mjs';
 // @story #1987 — privately owned assessment mutation and exact read-back.
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID, createHash } from 'node:crypto';
@@ -12,6 +13,7 @@ import { readDecompositionRecords, replaceDecompositionRecords } from './decompo
 const owned = new WeakSet();
 const capabilities = new WeakSet();
 const active = new AsyncLocalStorage();
+const publicationReconciliation = new WeakMap();
 const sha = (value) =>
   createHash('sha256')
     .update(typeof value === 'string' ? value : canonicalDecompositionJson(value))
@@ -185,6 +187,7 @@ export async function refreshDecompositionProjection({
         });
       } finally {
         owned.delete(ctx);
+        publicationReconciliation.delete(ctx);
       }
     }
   );
@@ -227,7 +230,8 @@ export async function assertDecompositionPublicationOwner(
   if (requireIntent && !context.intentConfirmed) refuse('publication-intent');
   const current = await context.collectCurrent();
   if (
-    !usableForReconciliation(current) ||
+    !(await (publicationReconciliation.get(context)?.(current) ??
+      Promise.resolve(usableForReconciliation(current)))) ||
     decompositionPublicationContextDigest(current.input) !== context.authorityContextDigest
   )
     refuse('semantic-context-drift');
@@ -341,6 +345,17 @@ export async function withDecompositionPublicationOwner(
       if (!lockOwner || lockOwner.projDir !== main) refuse('lock-owner');
       const { collectDecompositionAuthority } = await import('./decomposition-authority.mjs');
       const collect = () => collectDecompositionAuthority({ subject, cfg, projectDir, deps });
+      let ownerContext = null;
+      const snapshotUsable = async (current) =>
+        usableForReconciliation(current) ||
+        publicationForecastTransitionUsable(current, rawPublication, (effect) =>
+          deps.readPublicationEffect?.({
+            subject,
+            operationId: rawPublication.operationId,
+            effect,
+            context: ownerContext,
+          })
+        );
       const initial = await collect(),
         previous = initial.publication;
       const resuming =
@@ -353,7 +368,7 @@ export async function withDecompositionPublicationOwner(
         refuse('supersession-predecessor');
       const superseding = Boolean(rawPublication.supersedes);
       if (
-        !usableForReconciliation(initial) ||
+        !(await snapshotUsable(initial)) ||
         (initial.input.availability.status !== 'complete' && !resuming && !superseding)
       )
         refuse('authority-unavailable');
@@ -434,7 +449,7 @@ export async function withDecompositionPublicationOwner(
           if (effect.resource !== 'assessment' || effect.targetIdentity !== targetIdentity)
             refuse('authority-context');
           const current = await collect();
-          if (!usableForReconciliation(current)) refuse('effect-read-back');
+          if (!(await snapshotUsable(current))) refuse('effect-read-back');
           const value = authorityContextValue(current.input);
           return { status: 'observed', value, digest: sha(value) };
         }
@@ -518,7 +533,7 @@ export async function withDecompositionPublicationOwner(
           refuse('publication-before-intent');
         const current = await collect();
         if (
-          !usableForReconciliation(current) ||
+          !(await snapshotUsable(current)) ||
           decompositionPublicationContextDigest(current.input) !== originalDigest
         )
           refuse('semantic-drift');
@@ -564,7 +579,7 @@ export async function withDecompositionPublicationOwner(
         if (!intentPersisted) {
           const fresh = await collect();
           if (
-            !usableForReconciliation(fresh) ||
+            !(await snapshotUsable(fresh)) ||
             decompositionPublicationContextDigest(fresh.input) !== originalDigest
           )
             refuse('semantic-drift');
@@ -592,6 +607,8 @@ export async function withDecompositionPublicationOwner(
         publication: () => structuredClone(latest),
         persistPublication,
       });
+      ownerContext = ctx;
+      publicationReconciliation.set(ctx, snapshotUsable);
       owned.add(ctx);
       try {
         return await active.run(ctx, async () => {
@@ -609,6 +626,7 @@ export async function withDecompositionPublicationOwner(
         });
       } finally {
         owned.delete(ctx);
+        publicationReconciliation.delete(ctx);
       }
     }
   );

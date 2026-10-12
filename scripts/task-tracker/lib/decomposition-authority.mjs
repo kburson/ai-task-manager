@@ -40,6 +40,10 @@ import {
   DECOMPOSITION_KINDS,
 } from './decomposition-assessment.mjs';
 import { parsePreloadedIssueComments } from './github-records/github-comment-store.mjs';
+import {
+  confirmedEstimateProjectionRevision,
+  forecastPublicationTransition,
+} from './decomposition-publication-inputs.mjs';
 import { AUDIT_HEADER } from './reevaluate-estimate.mjs';
 import { readDecompositionRecords, replaceDecompositionRecords } from './decomposition-records.mjs';
 const pexec = promisify(execFile);
@@ -271,6 +275,16 @@ function readPorts({ cfg, projectDir, deps }) {
         proposals: proposalResult.proposals,
         observedProjections: [p.board, p.bodyFields],
       };
+      if (!complete) {
+        const transition = forecastPublicationTransition({
+          ready,
+          readyId,
+          active,
+          projection: p,
+          proposalsAvailable: proposalResult.available,
+        });
+        if (transition) value.publicationTransition = transition;
+      }
       return {
         status: complete && proposalResult.available ? 'observed' : 'unavailable',
         value,
@@ -358,10 +372,15 @@ function collectCommentProposals({ comments, subject, body, published, board, bo
       published &&
       hours === published.estimate &&
       size === published.size &&
-      hours === board.estimate &&
-      size === board.size &&
-      hours === bodyFields.estimate &&
-      size === bodyFields.size;
+      ((hours === board.estimate &&
+        size === board.size &&
+        hours === bodyFields.estimate &&
+        size === bodyFields.size) ||
+        confirmedEstimateProjectionRevision({
+          publication,
+          project: { ...board, projectItemId: subject.projectItemId },
+          bodyFields,
+        }));
     if (retired || adaptiveConfirmed) continue;
     proposals.push({
       proposalId: `${targetIdentity}:${mode}`,
@@ -553,6 +572,16 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
     ['estimate', 'size'].some((key) => (project?.[key] ?? null) !== (fields.values[key] ?? null))
   )
     reasons.add('authority-conflict');
+  let historicalForecast = false;
+  try {
+    historicalForecast = confirmedEstimateProjectionRevision({
+      publication: readDecompositionRecords(body).publication,
+      project,
+      bodyFields: fields.ok ? fields.values : null,
+    });
+  } catch {
+    /* Malformed projection remains refused below. */
+  }
   const publishedSnapshots = Array.isArray(forecast?.observedProjections)
     ? forecast.observedProjections
     : [];
@@ -569,7 +598,7 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
   const estimates = [
     project?.estimate,
     fields.ok ? fields.values.estimate : null,
-    forecast?.estimate,
+    historicalForecast ? null : forecast?.estimate,
     ...publishedSnapshots.map((value) => value?.estimate),
   ].filter((v) => v !== null && v !== undefined);
   const good = estimates.filter((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0);
@@ -579,7 +608,7 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
   const sizes = [
     project?.size,
     fields.ok ? fields.values.size : null,
-    forecast?.size,
+    historicalForecast ? null : forecast?.size,
     ...publishedSnapshots.map((value) => value?.size),
   ].filter((v) => v !== null && v !== undefined);
   if (sizes.some((v) => !['XS', 'S', 'M', 'L', 'XL'].includes(v))) reasons.add('size-unavailable');
