@@ -17,11 +17,13 @@ export const ACTION_DECISION_SCHEMA_V3 = 'aitm.action-decision/v3';
 export const ACTION_VOCABULARY_VERSION = 'aitm.action-vocabulary/v2';
 export const BOUNDARY_PRODUCER_IDS = Object.freeze([
   'authority-collection',
+  'decomposition-continuation',
   'action-navigation',
   'action-result-validation',
 ]);
 export const AUTHORITY_RESOURCE_IDS = Object.freeze([
   'issue-body',
+  'decomposition',
   'issue-comment',
   'project-board',
   'delivery',
@@ -78,7 +80,7 @@ const definition = ({
     disposition,
   });
 
-const decisionIndeterminate = (code, producers, argumentSchema = noArgs()) =>
+const decisionIndeterminate = (code, producers, argumentSchema = noArgs(), values = {}) =>
   definition({
     code,
     domain: 'decision-blocker',
@@ -87,6 +89,7 @@ const decisionIndeterminate = (code, producers, argumentSchema = noArgs()) =>
     statuses: ['indeterminate'],
     phases: ['collection', 'navigation', 'evaluation', 'validation'],
     argumentSchema,
+    ...values,
   });
 
 const decisionBlocked = (code, producers, values = {}) =>
@@ -104,7 +107,46 @@ const sourceArg = enumType(...AUTHORITY_RESOURCE_IDS);
 const authoritySubject = Object.freeze({ type: 'authority-subject' });
 const registeredGuard = Object.freeze(['registered-guard']);
 
+const decompositionArgs = args(['issue', 'operationId'], {
+  issue: positiveIntegerType,
+  operationId: Object.freeze({ type: 'nullable-uuid' }),
+});
 export const CODE_DEFINITIONS = Object.freeze({
+  'decomposition-required': decisionBlocked(
+    'decomposition-required',
+    ['decomposition-continuation'],
+    { phases: ['collection', 'evaluation'], argumentSchema: decompositionArgs }
+  ),
+  'decomposition-assessment-pending': decisionBlocked(
+    'decomposition-assessment-pending',
+    ['decomposition-continuation'],
+    { phases: ['collection', 'evaluation'], argumentSchema: decompositionArgs }
+  ),
+  'decomposition-authority-unavailable': decisionIndeterminate(
+    'decomposition-authority-unavailable',
+    ['decomposition-continuation'],
+    decompositionArgs,
+    { disposition: 'registered-remediation' }
+  ),
+  'decomposition-bind-restricted': definition({
+    code: 'decomposition-bind-restricted',
+    domain: 'operational-warning',
+    producers: ['decomposition-continuation'],
+    severity: 'warning',
+    statuses: ['ready', 'blocked', 'indeterminate'],
+    phases: ['collection', 'evaluation'],
+    argumentSchema: args(['issue', 'operationId', 'reason'], {
+      issue: positiveIntegerType,
+      operationId: Object.freeze({ type: 'nullable-uuid' }),
+      reason: enumType(
+        'decomposition-required',
+        'decomposition-assessment-pending',
+        'decomposition-authority-unavailable'
+      ),
+    }),
+    disposition: 'none',
+  }),
+
   'guard-error': decisionIndeterminate('guard-error', [
     'registered-guard',
     'action-result-validation',
@@ -520,6 +562,13 @@ function validateArgs(value, schema, path) {
     if (!Object.hasOwn(value, key)) continue;
     const member = value[key];
     if (type.type === 'enum' && !type.values.includes(member)) fail(`${path}.${key}`, 'enum');
+    if (
+      type.type === 'nullable-uuid' &&
+      member !== null &&
+      (typeof member !== 'string' ||
+        !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(member))
+    )
+      fail(`${path}.${key}`, 'nullable-uuid');
     if (type.type === 'string') nonemptyString(member, `${path}.${key}`);
     if (type.type === 'positive-integer' && (!Number.isInteger(member) || member <= 0)) {
       fail(`${path}.${key}`, 'positive-integer');
@@ -541,6 +590,7 @@ function producerAllowed(producerId, allowed, registeredGuardIds = REGISTERED_GU
 }
 
 function producerPhase(producerId, definition, registeredGuardIds) {
+  if (producerId === 'decomposition-continuation') return 'collection';
   if (producerId === 'authority-collection') return 'collection';
   if (producerId === 'action-navigation') return 'navigation';
   if (producerId === 'action-result-validation') {

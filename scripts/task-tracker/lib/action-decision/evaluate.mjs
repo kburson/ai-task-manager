@@ -1,3 +1,4 @@
+import { observeDecompositionForAction } from './decomposition.mjs';
 // @story #1729
 // Complete shared guard orchestration. Per-action read-only adapters remain
 // explicit: a missing adapter cannot advertise readiness.
@@ -781,6 +782,42 @@ async function evaluateCompletedAction({
       : selectedAction === 'review' && actionId === 'promote'
         ? 'review'
         : effectiveActionId;
+  if (
+    deps.decomposition &&
+    !['bind', 'resume'].includes(actionId) &&
+    navigation.status !== 'terminal'
+  ) {
+    let context;
+    try {
+      context =
+        typeof deps.decomposition === 'function' ? await deps.decomposition() : deps.decomposition;
+    } catch (error) {
+      context = {
+        subject: {
+          repository,
+          issue,
+          projectId: inputs.config?.projectId ?? null,
+          projectItemId: null,
+        },
+        runtime: {
+          collect: async () => {
+            throw error;
+          },
+        },
+      };
+    }
+    const decomposition = await observeDecompositionForAction({ actionId, attempt, ...context });
+    if (['plan', 'develop', 'test', 'review'].includes(canonicalState)) {
+      blockers.push(...decomposition.blockers);
+      if (
+        decomposition.blockers.some(
+          (blocker) => blocker.code === 'decomposition-authority-unavailable'
+        )
+      )
+        status = 'indeterminate';
+      else if (decomposition.blockers.length && status === 'ready') status = 'blocked';
+    }
+  }
   const requests = blockers.flatMap((blocker) => {
     if (blocker.code === 'plan-approval-missing') {
       return [
