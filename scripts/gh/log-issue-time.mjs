@@ -16,6 +16,7 @@ import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
 import { withRetry } from './lib/with-retry.mjs';
 import {
   buildFieldSyncPlan,
+  TIMING_DURATION_FIELD_KEYS,
   fieldIdFor,
   loadProjectFieldDefs,
 } from '../task-tracker/project-fields.mjs';
@@ -129,11 +130,14 @@ export async function publishTimingBoardFields({
 }) {
   const effectiveCfg = { ...cfg, fieldIds: { ...resolvedFieldIds, ...cfg.fieldIds } };
   const unknownIds = new Set(
-    projection.unknownFields.map((key) => fieldIdFor(effectiveCfg, key)).filter(Boolean)
+    projection.unknownFields
+      .filter((key) => TIMING_DURATION_FIELD_KEYS.has(key))
+      .map((key) => fieldIdFor(effectiveCfg, key))
+      .filter(Boolean)
   );
   const plan = buildFieldSyncPlan({
     cfg: effectiveCfg,
-    fieldDefs,
+    fieldDefs: fieldDefs.filter(({ key }) => TIMING_DURATION_FIELD_KEYS.has(key)),
     values,
     secondsByKey: projection.secondsByKey,
   });
