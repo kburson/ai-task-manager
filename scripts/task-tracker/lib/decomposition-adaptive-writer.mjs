@@ -2,7 +2,7 @@ import { estimateProjectionFromProposals } from './decomposition-publication-inp
 // @story #1988 — concrete six-effect adaptive Plan adapter.
 import {
   executeEstimateWriter,
-  estimateOperationId,
+  resolveEstimateOperationId,
   readEstimateWriterAuthority,
   intendedPublishedRevisionInput,
   observedEstimateEffect,
@@ -40,6 +40,7 @@ export async function publishAdaptivePlanAuthority({ issueNumber, forecastEnvelo
           estimate: plan.humanHours,
           size: plan.size,
           recordId: forecastEnvelope.recordId,
+          payloadHash: forecastEnvelope.payloadHash,
           proposals: (initial.sourceObservations.readForecast.value.proposals ?? []).filter(
             (proposal) => !proposal.proposalId.endsWith(':planned-estimate')
           ),
@@ -149,10 +150,14 @@ export async function publishAdaptivePlanAuthority({ issueNumber, forecastEnvelo
 
 export async function hasPendingAdaptivePublication({ issueNumber, forecastEnvelope, deps }) {
   const current = await readEstimateWriterAuthority({ cfg: deps.cfg, issueNumber, deps });
-  const operationId = estimateOperationId('plan-estimate-adaptive', {
-    recordId: forecastEnvelope.recordId,
-    payloadHash: forecastEnvelope.payloadHash,
-  });
+  const operationId = resolveEstimateOperationId(
+    'plan-estimate-adaptive',
+    {
+      recordId: forecastEnvelope.recordId,
+      payloadHash: forecastEnvelope.payloadHash,
+    },
+    current.publication
+  );
   return (
     current.publication?.status === 'pending' &&
     current.publication.writerId === 'plan-estimate-adaptive' &&

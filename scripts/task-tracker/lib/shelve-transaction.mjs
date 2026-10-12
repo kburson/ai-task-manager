@@ -92,7 +92,7 @@ function exactProjectItem(issue, cfg) {
   return matches[0];
 }
 
-async function defaultFetchSnapshot({ issueNumber, cfg, includeLegacyBlockedBy = false }) {
+export async function defaultFetchSnapshot({ issueNumber, cfg, includeLegacyBlockedBy = false }) {
   const { owner, repoName } = splitRepo(cfg.repo);
   const data = await gql(
     `query($owner:String!,$repo:String!,$issue:Int!){

@@ -44,6 +44,8 @@ import {
   confirmedEstimateProjectionRevision,
   forecastPublicationTransition,
   confirmedForecastRetirement,
+  confirmedFieldBaseline,
+  matchesForecastBaseline,
 } from './decomposition-publication-inputs.mjs';
 import { AUDIT_HEADER } from './reevaluate-estimate.mjs';
 import { readDecompositionRecords, replaceDecompositionRecords } from './decomposition-records.mjs';
@@ -254,25 +256,30 @@ function readPorts({ cfg, projectDir, deps }) {
           active.length === 1 &&
           readyId === active[0].envelope.recordId &&
           p.forecast?.recordId === readyId);
-      if (
-        await confirmedForecastRetirement({
-          publication: readDecompositionRecords(body).publication,
-          active,
-          ready,
-          project: { ...p.board, projectItemId: subject.projectItemId },
-          bodyFields: p.bodyFields,
-        })
-      )
-        complete = true;
+      const retired = await confirmedForecastRetirement({
+        publication: readDecompositionRecords(body).publication,
+        body,
+        active,
+        ready,
+        project: { ...p.board, projectItemId: subject.projectItemId },
+        bodyFields: p.bodyFields,
+      });
+      if (retired) complete = true;
       if (active.length !== p.activeForecastRecordIds.length) complete = false;
       const known = active
         .map((record) => ({
           estimate: record.envelope.payload.plan.humanHours,
           size: record.envelope.payload.plan.size,
           recordId: record.envelope.recordId,
+          payloadHash: record.envelope.payloadHash,
         }))
         .sort((a, b) => b.estimate - a.estimate);
-      const published = known[0] ?? { estimate: null, size: null, recordId: null };
+      const published = known[0] ?? {
+        estimate: null,
+        size: null,
+        recordId: null,
+        payloadHash: null,
+      };
       const proposalResult = collectDecompositionCommentProposals({
         comments,
         subject,
@@ -605,11 +612,24 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
     reasons.add('authority-conflict');
   let historicalForecast = false;
   try {
-    historicalForecast = confirmedEstimateProjectionRevision({
-      publication: readDecompositionRecords(body).publication,
-      project,
-      bodyFields: fields.ok ? fields.values : null,
-    });
+    historicalForecast =
+      matchesForecastBaseline({
+        publication: readDecompositionRecords(body).publication,
+        body,
+        forecast,
+      }) &&
+      (confirmedEstimateProjectionRevision({
+        publication: readDecompositionRecords(body).publication,
+        project,
+        bodyFields: fields.ok ? fields.values : null,
+      }) ||
+        confirmedFieldBaseline({
+          publication: readDecompositionRecords(body).publication,
+          project,
+          bodyFields: fields.ok ? fields.values : null,
+          body,
+          forecast,
+        }));
   } catch {
     /* Malformed projection remains refused below. */
   }

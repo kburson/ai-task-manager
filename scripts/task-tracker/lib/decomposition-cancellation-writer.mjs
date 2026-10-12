@@ -1,10 +1,11 @@
+import { readDecompositionRecords } from './decomposition-records.mjs';
 import { createGitHubEstimationRecordIo } from './estimation/runtime-adapter.mjs';
 import { estimateEffectDigest } from './decomposition-publication.mjs';
 import { canonicalDecompositionJson } from './decomposition-assessment.mjs';
 // @story #1988 — cancellation shares one owner through its authorized move and compensation.
 import {
   executeEstimateWriter,
-  estimateOperationId,
+  resolveEstimateOperationId,
   observedEstimateEffect,
   intendedPublishedRevisionInput,
 } from './estimate-writer-publication.mjs';
@@ -78,7 +79,11 @@ export async function publishCancellationRevision({
   const plannedDeps = deps.plannedEstimate ?? {},
     comments = await (plannedDeps.listComments ?? listRefineEstimateComments)({ cfg, issueNumber });
   const key = { reason, snapshot: snapshot.digest },
-    operationId = estimateOperationId('cancel-plan', key);
+    operationId = resolveEstimateOperationId(
+      'cancel-plan',
+      key,
+      readDecompositionRecords(originalBody).publication
+    );
   let comment = await findRefineEstimateComment({ cfg, issueNumber, deps: plannedDeps });
   const saved = readCancellationRecovery(originalBody, operationId);
   const recovery = saved ?? {

@@ -1,6 +1,6 @@
 import {
   readEstimateWriterAuthority,
-  estimateOperationId,
+  resolveEstimateOperationId,
 } from './estimate-writer-publication.mjs';
 import { estimateEffectDigest } from './decomposition-publication.mjs';
 import { publishPlannedCommentRevision } from './decomposition-proposal-writer.mjs';
@@ -179,10 +179,14 @@ export async function ensureRefineEstimateComment({ cfg, issueNumber, deps = {} 
 async function hasPendingPlannedPublication({ cfg, issueNumber, comment, nextBody, deps }) {
   if (!cfg.projectId || nextBody !== comment.body) return false;
   const current = await readEstimateWriterAuthority({ cfg, issueNumber, deps });
-  const operationId = estimateOperationId('plan-estimate-compatibility', {
-    comment: comment.nodeId ?? String(comment.id),
-    body: estimateEffectDigest(nextBody),
-  });
+  const operationId = resolveEstimateOperationId(
+    'plan-estimate-compatibility',
+    {
+      comment: comment.nodeId ?? String(comment.id),
+      body: estimateEffectDigest(nextBody),
+    },
+    current.publication
+  );
   return (
     current.publication?.operationId === operationId && current.publication.status === 'pending'
   );

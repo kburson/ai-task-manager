@@ -1,3 +1,5 @@
+import { publishFieldEstimateRevision } from '../../../../../task-tracker/lib/decomposition-field-writer.mjs';
+import { currentIssueLockOwner } from '../../../../../task-tracker/issue-mutator-lock.mjs';
 // @story #1988 — actual tether/refinement composition and provider recovery.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,6 +13,171 @@ import { parseIssueFieldDb } from '../../../../../task-tracker/issue-field-db.mj
 import { readDecompositionRecords } from '../../../../../task-tracker/lib/decomposition-records.mjs';
 export function registerTetherPublicationCases({ cfg, makeRunner, actualTether }) {
   const tetherIssueToProject = actualTether;
+  for (const estimate of [23, 24, 25])
+    test(`real creator tether initial ${estimate} preserves initial fields without publication history`, async () => {
+      let body = estimationIssueBody({ estimate, size: 'M' }),
+        board = { estimate: null, size: null };
+      const base = makeRunner({ projectItemOnAttempt: 2 }).runGql;
+      const fixture = estimationPublicationFixture({
+        cfg,
+        issueNumber: 1987,
+        getBody: () => body,
+        setBody: (b) => (body = b),
+        getProject: () => board,
+        getForecast: () =>
+          estimationObservation({
+            estimate: null,
+            size: null,
+            recordId: null,
+            proposals: [],
+            observedProjections: [],
+          }),
+      });
+      const deps = {
+        ...fixture,
+        fetchIssueBody: async () => ({ body }),
+        projectValuesForIssue: async () => ({ ...board }),
+      };
+      const runGql = async (q, v) => {
+        if (q.includes('mutation')) {
+          assert.ok(currentIssueLockOwner(1987));
+          assert.equal(readDecompositionRecords(body).publication, null);
+        }
+        const result = await base(q, v);
+        if (q.includes('updateProjectV2ItemFieldValue')) {
+          if (v.field === cfg.fieldEstimate) board.estimate = v.val;
+          if (v.field === cfg.sizeFieldId) board.size = 'M';
+        }
+        return result;
+      };
+      const result = await actualTether({
+        cfg,
+        issueNumber: 1987,
+        estimate,
+        size: 'M',
+        initialValues: true,
+        runGql,
+        sleep: async () => {},
+        deps,
+      });
+      assert.equal(result.itemId, 'VISIBLE_ITEM');
+      assert.equal(board.estimate, estimate);
+      assert.equal(parseIssueFieldDb(body).values.estimate, estimate);
+      assert.equal(readDecompositionRecords(body).publication, null);
+      assert.equal(readDecompositionRecords(body).assessment, null);
+    });
+  test('nested tether preserves a foreign Estimate arriving between grouped scalar effects', async () => {
+    let body = estimationIssueBody({ estimate: 10, size: 'M' }),
+      board = { estimate: 10, size: 'M' },
+      estimateWrites = 0;
+    const fixture = estimationPublicationFixture({
+      cfg,
+      issueNumber: 1987,
+      getBody: () => body,
+      setBody: (b) => (body = b),
+      getProject: () => board,
+      getForecast: () =>
+        estimationObservation({
+          estimate: null,
+          size: null,
+          recordId: null,
+          proposals: [],
+          observedProjections: [],
+        }),
+    });
+    const base = makeRunner({
+      issueSideItems: [{ id: 'ITEM_1987', project: { id: cfg.projectId } }],
+    }).runGql;
+    const result = await publishFieldEstimateRevision({
+      cfg,
+      issueNumber: 1987,
+      writerId: 'project-tether',
+      key: { estimate: 25 },
+      estimate: 25,
+      size: 'M',
+      deps: fixture,
+      writeField: ({ context, effectId }) =>
+        actualTether({
+          cfg,
+          issueNumber: 1987,
+          status: 'develop',
+          estimate: 25,
+          size: 'M',
+          context,
+          effectId,
+          deps: fixture,
+          runGql: async (q, v) => {
+            const result = await base(q, v);
+            if (q.includes('updateProjectV2ItemFieldValue')) {
+              if (v.field === cfg.kanbanFieldId) board.estimate = 99;
+              if (v.field === cfg.fieldEstimate) {
+                estimateWrites++;
+                board.estimate = v.val;
+              }
+            }
+            return result;
+          },
+        }),
+    });
+    assert.equal(result.status, 'partial');
+    assert.equal(board.estimate, 99);
+    assert.equal(estimateWrites, 0);
+    assert.equal(readDecompositionRecords(body).publication.status, 'pending');
+  });
+  test('nested tether refuses a foreign configured project before any provider effect', async () => {
+    let body = estimationIssueBody({ estimate: 10, size: 'M' }),
+      board = { estimate: 10, size: 'M' },
+      effects = 0;
+    const fixture = estimationPublicationFixture({
+      cfg,
+      issueNumber: 1987,
+      getBody: () => body,
+      setBody: (b) => (body = b),
+      getProject: () => board,
+      getForecast: () =>
+        estimationObservation({
+          estimate: null,
+          size: null,
+          recordId: null,
+          proposals: [],
+          observedProjections: [],
+        }),
+    });
+    const base = makeRunner({
+      issueSideItems: [{ id: 'ITEM_1987', project: { id: cfg.projectId } }],
+    }).runGql;
+    const result = await publishFieldEstimateRevision({
+      cfg,
+      issueNumber: 1987,
+      writerId: 'project-tether',
+      key: { estimate: 25 },
+      estimate: 25,
+      size: 'M',
+      deps: fixture,
+      writeField: async ({ field, value, context, effectId }) => {
+        await assert.rejects(
+          () =>
+            actualTether({
+              cfg: { ...cfg, projectId: 'PVT_foreign' },
+              issueNumber: 1987,
+              estimate: 25,
+              context,
+              effectId,
+              runGql: async (q, v) => {
+                if (q.includes('mutation')) effects++;
+                return base(q, v);
+              },
+              deps: fixture,
+            }),
+          /foreign-context/
+        );
+        board[field] = value;
+      },
+    });
+    assert.equal(result.status, 'recorded', result.reason);
+    assert.equal(effects, 0);
+  });
+
   for (const state of ['backlog', 'refine', 'ready-for-plan', 'plan', 'develop', 'test', 'review'])
     for (const hours of [23, 24, 25])
       test(`actual tether ${state} 10→${hours} records intent before every existing-issue Estimate effect`, async () => {

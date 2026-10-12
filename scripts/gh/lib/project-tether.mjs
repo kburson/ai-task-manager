@@ -1,3 +1,4 @@
+import { withInitialProjectFields } from '../../task-tracker/lib/initial-project-fields.mjs';
 import { publishFieldEstimateRevision } from '../../task-tracker/lib/decomposition-field-writer.mjs';
 import { assertDecompositionPublicationOwner } from '../../task-tracker/lib/decomposition-projection.mjs';
 import { fetchIssueProjectMembership, membershipNextCursor } from './project-membership.mjs';
@@ -158,7 +159,17 @@ async function linkSubIssue({
   });
 }
 
-async function writeField({ cfg, itemId, fieldId, value, runGql, context, effectId }) {
+async function writeField({
+  cfg,
+  itemId,
+  fieldId,
+  value,
+  runGql,
+  context,
+  effectId,
+  beforeEachField,
+}) {
+  if (beforeEachField) await beforeEachField();
   if (context)
     await assertDecompositionPublicationOwner(context, {
       subject: context.subject,
@@ -201,6 +212,7 @@ async function writeFields({
   runGql,
   context,
   effectId,
+  beforeEachField,
 }) {
   const statusKey = STATUS_CONFIG_KEYS[String(status || '').toLowerCase()];
   if (statusKey) {
@@ -212,6 +224,7 @@ async function writeFields({
       runGql,
       context,
       effectId,
+      beforeEachField,
     });
   }
 
@@ -225,6 +238,7 @@ async function writeFields({
       runGql,
       context,
       effectId,
+      beforeEachField,
     });
   }
 
@@ -250,6 +264,7 @@ async function writeFields({
       runGql,
       context,
       effectId,
+      beforeEachField,
     });
   }
 
@@ -262,6 +277,7 @@ async function writeFields({
       runGql,
       context,
       effectId,
+      beforeEachField,
     });
   }
 
@@ -289,6 +305,7 @@ async function writeFields({
         runGql,
         context,
         effectId,
+        beforeEachField,
       });
     }
   }
@@ -333,7 +350,7 @@ export function backlogMoveWarning({ targetState, fieldValues } = {}) {
   );
 }
 
-export async function tetherIssueToProject({
+async function tetherIssueToProjectOwned({
   cfg,
   issueNumber,
   parentIssueNumber,
@@ -349,28 +366,58 @@ export async function tetherIssueToProject({
   sleep: sleepFn = sleep,
   context,
   effectId,
+  initialFrame,
   deps = {},
 } = {}) {
   if (!cfg?.repo) throw new Error('repo not configured');
   if (!cfg.projectId) throw new Error('projectId not configured');
   if (!issueNumber) throw new Error('issueNumber is required');
 
+  if (context) {
+    if (
+      context.subject?.issue !== issueNumber ||
+      context.subject?.repository !== cfg.repo.toLowerCase() ||
+      context.subject?.projectId !== cfg.projectId
+    )
+      throw new Error('estimate-publication:foreign-context');
+    await assertDecompositionPublicationOwner(context, {
+      subject: context.subject,
+      operationId: context.operationId,
+      effectId,
+      requireIntent: true,
+    });
+  }
   const initial = await fetchIssue({ cfg, issueNumber, runGql });
   const repositoryId = initial.repositoryId;
   let issue = initial.issue;
   let projectLinked = false;
   async function ensureLinked() {
     if (projectLinked) return;
+    if (initialFrame) await initialFrame.assert();
     await ensureProjectLinked({ cfg, repositoryId, runGql });
     projectLinked = true;
   }
 
   async function publishExistingFields(itemId) {
     const raw = (values) => writeFields({ cfg, itemId, runGql, ...values });
+    if (initialFrame) {
+      await initialFrame.assert(itemId);
+      await ensureLinked();
+      await raw({
+        status,
+        priority,
+        rank,
+        size: initialFrame.size ?? undefined,
+        estimate: initialFrame.estimate ?? undefined,
+        beforeEachField: () => initialFrame.assert(itemId),
+      });
+      return;
+    }
     if (context) {
       if (
         context.subject?.issue !== issueNumber ||
-        context.subject?.repository !== cfg.repo.toLowerCase()
+        context.subject?.repository !== cfg.repo.toLowerCase() ||
+        context.subject?.projectItemId !== itemId
       )
         throw new Error('estimate-publication:foreign-context');
       await assertDecompositionPublicationOwner(context, {
@@ -496,6 +543,7 @@ export async function tetherIssueToProject({
     // retry. The next attempt re-fetches the issue node and the authoritative
     // reverse lookup should then surface the newly-added item.
     if (!added) {
+      if (context) throw new Error('estimate-publication:foreign-context');
       await ensureLinked();
       await addIssueToProject({ cfg, issueId: issue.id, runGql });
       added = true;
@@ -504,4 +552,14 @@ export async function tetherIssueToProject({
   }
 
   throw new Error(failureMessage({ cfg, issueNumber, project: lastProject }));
+}
+
+export function tetherIssueToProject(args = {}) {
+  if (args.initialFrame) throw new Error('initial-project-fields:foreign-context');
+  if (args.initialValues && args.context) throw new Error('initial-project-fields:foreign-context');
+  return args.initialValues
+    ? withInitialProjectFields(args, (initialFrame) =>
+        tetherIssueToProjectOwned({ ...args, initialFrame })
+      )
+    : tetherIssueToProjectOwned(args);
 }

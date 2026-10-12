@@ -95,6 +95,7 @@ export function registerAdaptivePublicationCases() {
           estimate: record ? hours : null,
           size: record ? 'L' : null,
           recordId: record?.recordId ?? null,
+          payloadHash: record?.payloadHash ?? null,
           proposals: [],
           observedProjections: [{ ...state.board }, { ...state.bodyFields }],
         };

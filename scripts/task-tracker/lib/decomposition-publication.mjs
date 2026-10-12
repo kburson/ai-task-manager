@@ -4,7 +4,10 @@ import {
   canonicalDecompositionJson,
   validateDecompositionPublication,
 } from './decomposition-assessment.mjs';
-import { assertDecompositionPublicationOwner } from './decomposition-projection.mjs';
+import {
+  assertDecompositionPublicationOwner,
+  withDecompositionEffectCheckpoint,
+} from './decomposition-projection.mjs';
 export const estimateEffectDigest = (value) =>
   createHash('sha256')
     .update(typeof value === 'string' ? value : canonicalDecompositionJson(value))
@@ -180,7 +183,10 @@ async function publishEstimateRevisionOwned({
         };
       }
     };
-    return deps.withEffects ? deps.withEffects(runEffects) : runEffects();
+    const execute = () => (deps.withEffects ? deps.withEffects(runEffects) : runEffects());
+    return deps.beforeEffect
+      ? withDecompositionEffectCheckpoint(owner, deps.beforeEffect, execute)
+      : execute();
   };
   return runtime.withPublication({ subject, publication: manifest }, operation);
 }

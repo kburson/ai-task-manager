@@ -46,7 +46,12 @@ export function fixture(hours = 7) {
       content: null,
       references: null,
     },
-    forecast: { estimate: hours, size: 'M', recordId: 'forecast-a' },
+    forecast: {
+      estimate: hours,
+      size: 'M',
+      recordId: '01J00000000000000000000702',
+      payloadHash: 'sha256:' + 'a'.repeat(64),
+    },
     policy: decompositionPolicyIdentity(),
   };
   const writes = [];

@@ -1,5 +1,5 @@
 import { readDecompositionRecords } from '../lib/decomposition-records.mjs';
-import { estimateOperationId } from '../lib/estimate-writer-publication.mjs';
+import { resolveEstimateOperationId } from '../lib/estimate-writer-publication.mjs';
 import { estimateEffectDigest } from '../lib/decomposition-publication.mjs';
 import {
   publishCancellationRevision,
@@ -51,7 +51,7 @@ const PLAN_ONLY_MARKERS = Object.freeze([
 ]);
 const PLAN_CANCELLED_MARKER_RE = /<!--\s*aitm-plan-cancelled\s+[^>]*?-->\s*\n?/gi;
 
-function planArtifactMarkers(body) {
+export function planArtifactMarkers(body) {
   const found = [];
   for (const pattern of PLAN_ONLY_MARKERS) {
     for (const match of String(body || '').matchAll(pattern)) found.push(match[0].trim());
@@ -225,10 +225,14 @@ export async function runCancelPlan({ issueNumber, cfg, reason, now, deps = {} }
       };
     }
   }
-  const operationId = estimateOperationId('cancel-plan', {
-    reason: why,
-    snapshot: snapshot.digest,
-  });
+  const operationId = resolveEstimateOperationId(
+    'cancel-plan',
+    {
+      reason: why,
+      snapshot: snapshot.digest,
+    },
+    publication
+  );
   const recovery =
     publication?.writerId === 'cancel-plan' &&
     ['pending', 'complete'].includes(publication.status) &&

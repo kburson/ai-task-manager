@@ -1136,14 +1136,14 @@
       "staticImports": [
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "node:child_process",
-        "node:fs",
-        "node:path",
         "../task-tracker/config.mjs",
         "../task-tracker/paths.mjs",
         "../task-tracker/issue-field-db.mjs",
         "../task-tracker/project-fields.mjs",
         "./lib/github-projects.mjs",
-        "./lib/project-tether.mjs",
+        "../task-tracker/lib/decomposition-migration-writer.mjs",
+        "../task-tracker/lib/issue-body-mutate.mjs",
+        "../task-tracker/lib/versioned-issue-write.mjs",
         "../lib/self-doc.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
@@ -1250,8 +1250,8 @@
       "staticImports": [
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "node:fs",
-        "node:fs",
         "node:path",
+        "node:url",
         "../task-tracker/config.mjs",
         "../task-tracker/paths.mjs",
         "../task-tracker/issue-field-db.mjs",
@@ -1259,7 +1259,10 @@
         "../task-tracker/gh-timing-comment.mjs",
         "./lib/github-projects.mjs",
         "../task-tracker/lib/move-state/policy.mjs",
-        "../lib/self-doc.mjs"
+        "../lib/self-doc.mjs",
+        "../task-tracker/lib/issue-body-mutate.mjs",
+        "../task-tracker/lib/decomposition-field-writer.mjs",
+        "../task-tracker/lib/decomposition-projection.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",
@@ -2717,6 +2720,7 @@
       "classification": "agent-callable-verb",
       "command": "refine",
       "staticImports": [
+        "../lib/decomposition-field-writer.mjs",
         "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",

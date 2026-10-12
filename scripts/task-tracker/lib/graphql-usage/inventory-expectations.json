@@ -91,7 +91,7 @@
     },
     {
       "key": "scripts/gh/migrate-project.mjs|opaque-gh-cli|opaque",
-      "count": 2
+      "count": 1
     },
     {
       "key": "scripts/gh/set-priority.mjs|gh-api-graphql|planned",
@@ -238,6 +238,10 @@
       "count": 1
     },
     {
+      "key": "scripts/task-tracker/lib/decomposition-migration-writer.mjs|opaque-gh-cli|opaque",
+      "count": 1
+    },
+    {
       "key": "scripts/task-tracker/lib/decomposition-projection.mjs|opaque-gh-cli|opaque",
       "count": 2
     },
@@ -275,6 +279,10 @@
     },
     {
       "key": "scripts/task-tracker/lib/graph-node-authority.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
+      "key": "scripts/task-tracker/lib/initial-project-fields.mjs|opaque-gh-cli|opaque",
       "count": 1
     },
     {
@@ -469,7 +477,7 @@
     "scripts/dev-env/setup-local-worktree.sh|48|opaque-gh-cli|opaque",
     "scripts/gh/create-issue.mjs|252|uncovered|uncovered",
     "scripts/gh/create-issue.mjs|265|out-of-scope|out-of-scope",
-    "scripts/gh/create-issue.mjs|307|opaque-gh-cli|opaque",
+    "scripts/gh/create-issue.mjs|314|opaque-gh-cli|opaque",
     "scripts/gh/ensure-wave-parent.mjs|106|opaque-gh-cli|opaque",
     "scripts/gh/ensure-wave-parent.mjs|124|gh-api-graphql|planned",
     "scripts/gh/ensure-wave-parent.mjs|132|gh-api-graphql|planned",
@@ -528,14 +536,13 @@
     "scripts/gh/lib/github-projects.mjs|91|gh-api-graphql|planned",
     "scripts/gh/lib/parent-status.mjs|20|gh-api-graphql|planned",
     "scripts/gh/lib/project-membership.mjs|24|gh-api-graphql|planned",
-    "scripts/gh/lib/project-tether.mjs|27|gh-api-graphql|planned",
+    "scripts/gh/lib/project-tether.mjs|28|gh-api-graphql|planned",
     "scripts/gh/lib/wave-detect.mjs|76|gh-api-graphql|planned",
     "scripts/gh/log-issue-time.mjs|159|opaque-gh-cli|opaque",
     "scripts/gh/log-issue-time.mjs|173|gh-api-graphql|planned",
-    "scripts/gh/migrate-project.mjs|110|opaque-gh-cli|opaque",
-    "scripts/gh/migrate-project.mjs|36|gh-api-graphql|planned",
-    "scripts/gh/migrate-project.mjs|57|gh-api-graphql|planned",
-    "scripts/gh/migrate-project.mjs|74|opaque-gh-cli|opaque",
+    "scripts/gh/migrate-project.mjs|165|opaque-gh-cli|opaque",
+    "scripts/gh/migrate-project.mjs|41|gh-api-graphql|planned",
+    "scripts/gh/migrate-project.mjs|62|gh-api-graphql|planned",
     "scripts/gh/set-priority.mjs|131|gh-api-graphql|planned",
     "scripts/gh/set-priority.mjs|21|gh-api-graphql|planned",
     "scripts/gh/set-priority.mjs|54|opaque-gh-cli|opaque",
@@ -588,10 +595,11 @@
     "scripts/task-tracker/lib/assignee-guard.mjs|165|out-of-scope|out-of-scope",
     "scripts/task-tracker/lib/assignee-guard.mjs|31|gh-api-graphql|planned",
     "scripts/task-tracker/lib/close-gates-lineage.mjs|461|gh-api-graphql|planned",
-    "scripts/task-tracker/lib/decomposition-audit-writer.mjs|10|opaque-gh-cli|opaque",
-    "scripts/task-tracker/lib/decomposition-authority.mjs|170|opaque-gh-cli|opaque",
-    "scripts/task-tracker/lib/decomposition-projection.mjs|156|opaque-gh-cli|opaque",
-    "scripts/task-tracker/lib/decomposition-projection.mjs|283|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/decomposition-audit-writer.mjs|11|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/decomposition-authority.mjs|172|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/decomposition-migration-writer.mjs|176|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/decomposition-projection.mjs|158|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/decomposition-projection.mjs|299|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/deep-dive.mjs|572|out-of-scope|out-of-scope",
     "scripts/task-tracker/lib/epic-children-gate.mjs|345|gh-api-graphql|planned",
     "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs|83|gh-api-graphql|planned",
@@ -615,6 +623,7 @@
     "scripts/task-tracker/lib/gh-project-guard.mjs|92|out-of-scope|out-of-scope",
     "scripts/task-tracker/lib/github-records/contract-write.mjs|236|gh-api-graphql|planned",
     "scripts/task-tracker/lib/graph-node-authority.mjs|75|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/initial-project-fields.mjs|21|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/move-state/audit-timing.mjs|239|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/move-state/audit-timing.mjs|282|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/move-state/github-mutation.mjs|118|opaque-gh-cli|opaque",

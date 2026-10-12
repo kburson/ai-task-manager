@@ -37,10 +37,76 @@ export async function readRegisteredEstimateEffect({
   else if (
     effect.id === 'writer-before-values' &&
     effect.resource === 'assessment' &&
-    effect.targetIdentity === `${subject.repository}#${issueNumber}:estimate-before`
+    (effect.targetIdentity === `${subject.repository}#${issueNumber}:estimate-before` ||
+      (effect.targetIdentity.startsWith(`${subject.repository}#${issueNumber}:estimate-before:`) &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+          effect.targetIdentity.split(':').at(-1)
+        )))
   )
     value = readEstimateBeforeRecord(body);
   else if (
+    publication.writerId === 'cancel-plan' &&
+    effect.resource === 'body-fields' &&
+    effect.id === 'recovery' &&
+    effect.targetIdentity === `${cfg.repo}#${issueNumber}:cancel-plan-recovery`
+  ) {
+    const { readCancellationRecovery } = await import('./decomposition-cancellation-writer.mjs');
+    value = readCancellationRecovery(body, publication.operationId);
+  } else if (
+    ['cancel-plan', 'shelve'].includes(publication.writerId) &&
+    effect.id === 'board' &&
+    effect.resource === 'project-estimate' &&
+    effect.targetIdentity === subject.projectItemId
+  ) {
+    const { fetchRefinementBoardFields } = await import('./refinement-snapshot-guard.mjs');
+    const { defaultFetchSnapshot } = await import('./shelve-transaction.mjs');
+    const actual =
+      publication.writerId === 'shelve'
+        ? (await (deps.fetchSnapshot ?? defaultFetchSnapshot)({ cfg, issueNumber })).fields
+        : await (deps.fetchBoardFields ?? fetchRefinementBoardFields)({ cfg, issueNumber });
+    value = Object.fromEntries(
+      ['priority', 'size', 'estimate', 'rank'].map((key) => [key, actual[key] ?? null])
+    );
+  } else if (
+    publication.writerId === 'cancel-plan' &&
+    effect.id === 'body' &&
+    effect.resource === 'body-fields' &&
+    effect.targetIdentity === `${cfg.repo}#${issueNumber}:cancellation`
+  ) {
+    const { planArtifactMarkers } = await import('../verbs/cancel-plan.mjs');
+    const { parseMarker } = await import('./marker-grammar.mjs');
+    const fields = parseIssueFieldDb(body);
+    if (!fields.ok) throw new Error('estimate-publication:body-fields');
+    value = {
+      fields: Object.fromEntries(
+        ['priority', 'size', 'estimate', 'rank'].map((key) => [key, fields.values[key] ?? null])
+      ),
+      artifacts: planArtifactMarkers(body),
+      reason:
+        parseMarker(body.match(/<!--\s*aitm-plan-cancelled\s+[^>]*-->/)?.[0] ?? '')?.props
+          ?.reason ?? null,
+    };
+  } else if (
+    publication.writerId === 'shelve' &&
+    effect.id === 'transaction' &&
+    effect.resource === 'body-fields' &&
+    effect.targetIdentity === `${cfg.repo}#${issueNumber}:shelve-journal`
+  ) {
+    const { defaultFetchSnapshot, parseShelveJournal } = await import('./shelve-transaction.mjs');
+    const snapshot = await (deps.fetchSnapshot ?? defaultFetchSnapshot)({ cfg, issueNumber });
+    if (snapshot.itemId && snapshot.itemId !== subject.projectItemId)
+      throw new Error('estimate-publication:membership-drift');
+    const parsed = parseIssueFieldDb(snapshot.body);
+    if (!parsed.ok) throw new Error('estimate-publication:body-fields');
+    value =
+      parseShelveJournal(snapshot.body)?.phase === 'verified' &&
+      snapshot.state === 'backlog' &&
+      [snapshot.fields, parsed.values].every((fields) =>
+        ['priority', 'size', 'estimate', 'rank'].every((key) => (fields[key] ?? null) === null)
+      )
+        ? { phase: 'verified' }
+        : null;
+  } else if (
     effect.id === 'estimate' &&
     effect.resource === 'project-estimate' &&
     effect.targetIdentity === subject.projectItemId
@@ -89,7 +155,7 @@ export async function readRegisteredEstimateEffect({
     )({ cfg, issueNumber });
     value = plannedAppendix(comments, issueNumber);
   } else if (
-    effect.id === 'ready' &&
+    ['ready', 'retired-ready'].includes(effect.id) &&
     effect.resource === 'ready-marker' &&
     effect.targetIdentity.toLowerCase() === `${cfg.repo}#${issueNumber}:ready-marker`.toLowerCase()
   )
@@ -99,7 +165,7 @@ export async function readRegisteredEstimateEffect({
       )?.[1] ?? null;
   else if (
     effect.resource === 'forecast' &&
-    ['forecast', 'forecast-snapshot'].includes(effect.id) &&
+    ['forecast', 'forecast-snapshot', 'retired-forecast'].includes(effect.id) &&
     /^record:[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(effect.targetIdentity)
   ) {
     const records = await (

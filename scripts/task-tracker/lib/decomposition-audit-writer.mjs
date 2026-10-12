@@ -1,7 +1,8 @@
 // @story #1988 — keyed audit creation, with read-before-retry and exact confirmation.
 import { gh } from '../../gh/lib/github-projects.mjs';
 import {
-  estimateOperationId,
+  resolveEstimateOperationId,
+  readEstimateWriterAuthority,
   executeEstimateWriter,
   observedEstimateEffect,
 } from './estimate-writer-publication.mjs';
@@ -24,7 +25,8 @@ export async function prepareEstimateAudit({
   postComment,
   deps = {},
 }) {
-  const operationId = estimateOperationId(writerId, key),
+  const current = await readEstimateWriterAuthority({ cfg, issueNumber, deps });
+  const operationId = resolveEstimateOperationId(writerId, key, current.publication),
     marker = `<!-- aitm-estimate-operation: ${operationId} -->`;
   let nextBody = body + '\n' + marker;
   const list = () =>

@@ -274,7 +274,14 @@ function ghCreate(args, assignee) {
 function buildTetherArgs(issueNumber, args, priority) {
   // #272 — Always create new issues in Backlog. The --status flag was removed
   // from this script's surface; the project tether call hard-codes `backlog`.
-  const tArgs = [TETHER_SCRIPT, '--issue', String(issueNumber), '--status', 'backlog'];
+  const tArgs = [
+    TETHER_SCRIPT,
+    '--issue',
+    String(issueNumber),
+    '--status',
+    'backlog',
+    '--initial-values',
+  ];
   if (priority) tArgs.push('--priority', priority);
   if (typeof args.size === 'string') tArgs.push('--size', args.size);
   if (typeof args.estimate === 'string') tArgs.push('--estimate', args.estimate);

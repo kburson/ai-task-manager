@@ -1,5 +1,5 @@
 import { readDecompositionRecords } from './decomposition-records.mjs';
-import { estimateOperationId } from './estimate-writer-publication.mjs';
+import { resolveEstimateOperationId } from './estimate-writer-publication.mjs';
 import { publishFieldEstimateRevision } from './decomposition-field-writer.mjs';
 import {
   prepareEstimateAudit,
@@ -126,7 +126,7 @@ export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}
     if (
       publication?.writerId !== 'apply-reevaluate' ||
       publication.status !== 'pending' ||
-      publication.operationId !== estimateOperationId('apply-reevaluate', key)
+      publication.operationId !== resolveEstimateOperationId('apply-reevaluate', key, publication)
     )
       return { status: 'unchanged', result };
   }

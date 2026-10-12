@@ -1,3 +1,7 @@
+import { readRegisteredEstimateEffect } from '../../../../task-tracker/lib/decomposition-writer-registry.mjs';
+import { upsertPlannedEstimate } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
+import { publishFieldEstimateRevision } from '../../../../task-tracker/lib/decomposition-field-writer.mjs';
+import { readEstimateWriterAuthority } from '../../../../task-tracker/lib/estimate-writer-publication.mjs';
 // @story #1988 — actual cancellation composition and durable recovery.
 import {
   estimationIssueBody,
@@ -19,10 +23,13 @@ import {
 } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
 const TS = '2026-08-12T12:00:00.000Z';
 
-function cancellationHarness({
+export function cancellationHarness({
   hours = 25,
   planSize = 'M',
   forecast = false,
+  forecastMissing = false,
+  forecastReadyId = null,
+  expectedWriterId = 'cancel-plan',
   commentPadding = '',
   bodyPadding = '',
   fail = {},
@@ -72,7 +79,8 @@ function cancellationHarness({
           rationale: 'current Plan',
         }),
     };
-  let forecastComment = null;
+  let forecastComment = null,
+    forecastPayload = null;
   if (forecast) {
     const payload = {
       schema: FORECAST_SCHEMA,
@@ -105,6 +113,7 @@ function cancellationHarness({
       recommendation: { action: 'proceed', reason: 'Current plan' },
       supersedesForecastRecordId: null,
     };
+    forecastPayload = payload;
     const envelope = createAitmRecordEnvelope({
       recordType: 'estimation-forecast',
       repository: cfg.repo,
@@ -118,6 +127,8 @@ function cancellationHarness({
     forecastComment = { id: 100, node_id: 'IC_forecast', body: renderAitmRecord({ envelope }) };
     body += '\n<!-- aitm-estimation-forecast-ready record-id="' + envelope.recordId + '" -->\n';
   }
+  if (forecastReadyId)
+    body = body.replace('record-id="01J00000000000000000000702"', `record-id="${forecastReadyId}"`);
   const counts = { body: 0, board: 0, patch: 0, move: 0, projection: 0 };
   const subject = {
     repository: 'o/r',
@@ -189,7 +200,7 @@ function cancellationHarness({
                 pageInfo: { hasNextPage: false },
               },
               comments: {
-                nodes: [comment, forecastComment].map((c) => ({
+                nodes: [comment, ...(forecastMissing ? [] : [forecastComment])].map((c) => ({
                   __typename: 'IssueComment',
                   id: c.node_id,
                   body: c.body,
@@ -209,7 +220,8 @@ function cancellationHarness({
   const assertOwner = () => {
     const pub = readDecompositionRecords(body).publication;
     assert.equal(pub?.status, 'pending');
-    assert.equal(pub.writerId, 'cancel-plan');
+    if (Array.isArray(expectedWriterId)) assert.ok(expectedWriterId.includes(pub.writerId));
+    else assert.equal(pub.writerId, expectedWriterId);
   };
   const args = {
     cfg,
@@ -267,6 +279,20 @@ function cancellationHarness({
     },
   };
   return {
+    replaceForecast: (recordId) => {
+      const envelope = createAitmRecordEnvelope({
+        recordType: 'estimation-forecast',
+        repository: cfg.repo,
+        issue: 1987,
+        payload: forecastPayload,
+        actor: 'aitm/plan-estimate',
+        recordId,
+        grantId: '01J00000000000000000000704',
+        createdAt: '2026-10-11T12:00:00.000Z',
+      });
+      forecastComment.body = renderAitmRecord({ envelope });
+      body = body.replace(/record-id="[0-7][0-9A-HJKMNP-TV-Z]{25}"/, `record-id="${recordId}"`);
+    },
     args,
     counts,
     fail,
@@ -285,6 +311,224 @@ function cancellationHarness({
   };
 }
 export function registerCancellationPublicationCases() {
+  test('interruption at a new intent preserves the field-history baseline needed by exact retry', async () => {
+    const f = cancellationHarness({
+      forecast: true,
+      expectedWriterId: ['project-tether', 'plan-estimate-compatibility'],
+    });
+    const applied = await publishFieldEstimateRevision({
+      cfg: f.args.cfg,
+      issueNumber: 1987,
+      writerId: 'project-tether',
+      key: { estimate: 23 },
+      estimate: 23,
+      size: 'M',
+      deps: f.args.deps,
+      writeField: ({ field, value, context, effectId }) =>
+        f.args.deps.restoreBoardFields({
+          fields: { ...f.board, [field]: value },
+          context,
+          effectId,
+        }),
+    });
+    assert.equal(applied.status, 'recorded', applied.reason);
+    const push = f.args.deps.decomposition.pushBody;
+    let once = true;
+    f.args.deps.decomposition.pushBody = async (...args) => {
+      await push(...args);
+      if (
+        once &&
+        readDecompositionRecords(args[2]).publication?.writerId === 'plan-estimate-compatibility'
+      ) {
+        once = false;
+        throw new Error('lost initial intent outcome');
+      }
+    };
+    const args = {
+      cfg: f.args.cfg,
+      issueNumber: 1987,
+      refine: { estimate: 23, size: 'M' },
+      plan: { estimate: 25, size: 'L' },
+      rationale: 'next revision',
+      deps: { ...f.args.deps, ...f.args.deps.plannedEstimate },
+    };
+    const first = await upsertPlannedEstimate(args);
+    assert.notEqual(first.status, 'updated');
+    assert.equal(readDecompositionRecords(f.body).publication.status, 'pending');
+    const second = await upsertPlannedEstimate(args);
+    assert.equal(second.status, 'updated', second.reason ?? 'exact retry failed');
+    assert.equal(readDecompositionRecords(f.body).publication.status, 'complete');
+    assert.equal(f.board.estimate, 23);
+  });
+  test('closed registry freshly reads every real cancellation effect for future supersession', async () => {
+    const f = cancellationHarness();
+    assert.equal((await runCancelPlan(f.args)).status, 'cancelled');
+    const publication = readDecompositionRecords(f.body).publication;
+    const before = { ...f.counts };
+    for (const effect of publication.effects) {
+      const actual = await readRegisteredEstimateEffect({
+        cfg: f.args.cfg,
+        issueNumber: 1987,
+        publication,
+        effect,
+        deps: f.args.deps,
+        collect: () =>
+          readEstimateWriterAuthority({ cfg: f.args.cfg, issueNumber: 1987, deps: f.args.deps }),
+      });
+      assert.equal(actual.digest, effect.intendedDigest, effect.id);
+    }
+    assert.deepEqual(f.counts, before);
+  });
+  test('retired forecast stays retired through the next compatibility proposal', async () => {
+    const f = cancellationHarness({
+      forecast: true,
+      expectedWriterId: ['cancel-plan', 'plan-estimate-compatibility'],
+    });
+    assert.equal((await runCancelPlan(f.args)).status, 'cancelled');
+    const result = await upsertPlannedEstimate({
+      cfg: f.args.cfg,
+      issueNumber: 1987,
+      refine: { estimate: f.board.estimate, size: f.board.size },
+      plan: { estimate: 25, size: 'L' },
+      rationale: 'new proposal',
+      deps: { ...f.args.deps, ...f.args.deps.plannedEstimate },
+    });
+    assert.equal(result.status, 'updated', result.reason ?? 'proposal failed');
+    const current = await readEstimateWriterAuthority({
+      cfg: f.args.cfg,
+      issueNumber: 1987,
+      deps: f.args.deps,
+    });
+    assert.equal(current.input.availability.status, 'complete');
+    assert.equal(current.assessment.estimate.hours, 25);
+    assert.equal(current.assessment.estimate.basis, 'proposed');
+  });
+  test('a confirmed field revision cannot ignore a different active forecast identity', async () => {
+    const f = cancellationHarness({ forecast: true, expectedWriterId: 'project-tether' });
+    const result = await publishFieldEstimateRevision({
+      cfg: f.args.cfg,
+      issueNumber: 1987,
+      writerId: 'project-tether',
+      key: { estimate: 23 },
+      estimate: 23,
+      size: 'M',
+      deps: f.args.deps,
+      writeField: ({ field, value, context, effectId }) =>
+        f.args.deps.restoreBoardFields({
+          fields: { ...f.board, [field]: value },
+          context,
+          effectId,
+        }),
+    });
+    assert.equal(result.status, 'recorded', result.reason);
+    f.replaceForecast('01J00000000000000000000706');
+    const current = await readEstimateWriterAuthority({
+      cfg: f.args.cfg,
+      issueNumber: 1987,
+      deps: f.args.deps,
+    });
+    assert.equal(current.input.availability.status, 'incomplete');
+    assert.ok(current.input.availability.reasons.includes('authority-conflict'));
+  });
+  test('default forecast history survives a subsequent compatibility proposal and exact retry', async () => {
+    const f = cancellationHarness({
+      forecast: true,
+      expectedWriterId: ['project-tether', 'plan-estimate-compatibility'],
+    });
+    const applied = await publishFieldEstimateRevision({
+      cfg: f.args.cfg,
+      issueNumber: 1987,
+      writerId: 'project-tether',
+      key: { estimate: 23 },
+      estimate: 23,
+      size: 'M',
+      deps: f.args.deps,
+      writeField: ({ field, value, context, effectId }) =>
+        f.args.deps.restoreBoardFields({
+          fields: { ...f.board, [field]: value },
+          context,
+          effectId,
+        }),
+    });
+    assert.equal(applied.status, 'recorded', applied.reason);
+    const args = {
+      cfg: f.args.cfg,
+      issueNumber: 1987,
+      refine: { estimate: 23, size: 'M' },
+      plan: { estimate: 25, size: 'L' },
+      rationale: 'additional work',
+      deps: { ...f.args.deps, ...f.args.deps.plannedEstimate },
+    };
+    const result = await upsertPlannedEstimate(args);
+    assert.equal(result.status, 'updated', result.reason);
+    const current = await readEstimateWriterAuthority({
+      cfg: f.args.cfg,
+      issueNumber: 1987,
+      deps: f.args.deps,
+    });
+    assert.equal(current.input.availability.status, 'complete');
+    assert.equal(current.assessment.estimate.hours, 25);
+    assert.equal(current.assessment.estimate.basis, 'proposed');
+    assert.equal(f.board.estimate, 23);
+    assert.equal((await upsertPlannedEstimate(args)).status, 'current');
+  });
+  for (const estimate of [23, 24, 25])
+    test(`real default forecast reader preserves historical Plan after field revision to ${estimate}`, async () => {
+      const f = cancellationHarness({ forecast: true, expectedWriterId: 'project-tether' });
+      const result = await publishFieldEstimateRevision({
+        cfg: f.args.cfg,
+        issueNumber: 1987,
+        writerId: 'project-tether',
+        key: { estimate, size: 'L' },
+        estimate,
+        size: 'L',
+        deps: f.args.deps,
+        writeField: ({ field, value, context, effectId }) =>
+          f.args.deps.restoreBoardFields({
+            fields: { ...f.board, [field]: value },
+            context,
+            effectId,
+          }),
+      });
+      assert.equal(result.status, 'recorded', result.reason);
+      const current = await readEstimateWriterAuthority({
+        cfg: f.args.cfg,
+        issueNumber: 1987,
+        deps: f.args.deps,
+      });
+      assert.equal(current.input.availability.status, 'complete');
+      assert.equal(current.assessment.estimate.hours, estimate);
+      assert.equal(f.board.estimate, estimate);
+      assert.equal(
+        current.sourceObservations.readForecast.value.recordId,
+        '01J00000000000000000000702'
+      );
+      assert.equal(f.counts.move, 0);
+    });
+  for (const options of [
+    { forecastMissing: true },
+    { forecastReadyId: '01J00000000000000000000705' },
+  ])
+    test(`real default forecast reader refuses ${options.forecastMissing ? 'missing' : 'dangling'} forecast before field effects`, async () => {
+      const f = cancellationHarness({ forecast: true, ...options });
+      await assert.rejects(
+        () =>
+          publishFieldEstimateRevision({
+            cfg: f.args.cfg,
+            issueNumber: 1987,
+            writerId: 'project-tether',
+            key: { estimate: 25 },
+            estimate: 25,
+            size: 'M',
+            deps: f.args.deps,
+            writeField: () => {
+              throw new Error('effect must not run');
+            },
+          }),
+        /authority-unavailable/
+      );
+      assert.deepEqual(f.counts, { body: 0, board: 0, patch: 0, move: 0, projection: 0 });
+    });
   for (const hours of [23, 24, 25])
     test(`actual cancel Plan publishes saved Refine 10→${hours} under one owner before retiring the Plan proposal`, async () => {
       const f = cancellationHarness({ hours }),

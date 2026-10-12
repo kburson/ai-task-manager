@@ -374,7 +374,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const graphqlUsageCollectionAllowance = 3;
   // #1838 ships four offline report modules, the companion CLI and operator guide.
   const graphqlUsageReportAllowance = 6;
-  // #1988 measured exactly ten shipped publication runtime adapters; no spare headroom.
+  // #1988 measured exactly twelve shipped publication runtime adapters; no spare headroom.
   const estimatePublicationEntries = [
     'scripts/task-tracker/lib/decomposition-publication.mjs',
     'scripts/task-tracker/lib/decomposition-publication-inputs.mjs',
@@ -386,6 +386,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'scripts/task-tracker/lib/decomposition-cancellation-writer.mjs',
     'scripts/task-tracker/lib/decomposition-shelve-writer.mjs',
     'scripts/task-tracker/lib/decomposition-writer-registry.mjs',
+    'scripts/task-tracker/lib/decomposition-migration-writer.mjs',
+    'scripts/task-tracker/lib/initial-project-fields.mjs',
   ];
   for (const entry of estimatePublicationEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =

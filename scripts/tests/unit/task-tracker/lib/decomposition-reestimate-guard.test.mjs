@@ -749,3 +749,9 @@ import {
 registerShelvePublicationCases();
 
 registerShelveLandedCases();
+
+import { registerMigrationPublicationCases } from './decomposition-migration-publication.cases.mjs';
+registerMigrationPublicationCases();
+
+import { registerPublicationSubprocessCases } from './publication-subprocess.cases.mjs';
+registerPublicationSubprocessCases();

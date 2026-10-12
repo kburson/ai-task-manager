@@ -1,3 +1,4 @@
+import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import {
   readRegisteredEstimateEffect,
   reconcileEstimatePredecessor,
@@ -9,7 +10,10 @@ import {
   exactDecompositionKeys,
 } from './decomposition-assessment.mjs';
 import { normalizeDecompositionHours } from './decomposition-policy.mjs';
-import { estimateProjectionFromProposals } from './decomposition-publication-inputs.mjs';
+import {
+  estimateProjectionFromProposals,
+  isMigrationProjectionRepair,
+} from './decomposition-publication-inputs.mjs';
 // @story #1988 — adapter preparation; only current reads grant ownership.
 import { createHash } from 'node:crypto';
 import { projectItemForIssue } from '../../gh/lib/github-projects.mjs';
@@ -31,11 +35,41 @@ export function estimateOperationId(writerId, key) {
     .digest('hex');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
+// Intent identity is sealed in the before-record target even if interruption
+// occurs before that record lands. New revisions bind the predecessor operation;
+// identical retries retain their exact operation, including older record shapes.
+export function resolveEstimateOperationId(writerId, key, publication = null) {
+  const intentId = estimateOperationId(writerId, key);
+  const prefix = publication
+    ? `${publication.subject.repository}#${publication.subject.issue}:estimate-before`
+    : null;
+  const before = publication?.effects.find((effect) => effect.id === 'writer-before-values');
+  if (
+    publication?.writerId === writerId &&
+    (before?.targetIdentity === `${prefix}:${intentId}` ||
+      (publication.operationId === intentId && before?.targetIdentity === prefix))
+  )
+    return publication.operationId;
+  return estimateOperationId(writerId, { intentId, predecessor: publication?.operationId ?? null });
+}
 // This is an intended-value calculation, never an authority observation or admission.
 export function intendedPublishedRevisionInput(initial, proposal) {
   const input = structuredClone(initial.input);
   input.estimate = structuredClone(proposal.estimate);
   input.size = proposal.size;
+  if (
+    isMigrationProjectionRepair(initial, initial.migrationWriterId, {
+      ...proposal,
+      estimate: {
+        ...proposal.estimate,
+        hours:
+          proposal.estimate.hours === null
+            ? null
+            : normalizeDecompositionHours(proposal.estimate.hours),
+      },
+    })
+  )
+    input.availability = { status: 'complete', reasons: [] };
   const project = {
     ...initial.sourceObservations.readProject.value,
     estimate: proposal.estimate.hours,
@@ -94,6 +128,8 @@ export function readEstimateBeforeRecord(body) {
       'beforeInputDigest',
       'intendedInputDigest',
       'effects',
+      ...(Object.hasOwn(record, 'fieldBaseline') ? ['fieldBaseline'] : []),
+      ...(Object.hasOwn(record, 'forecastBaseline') ? ['forecastBaseline'] : []),
     ],
     'before-record'
   );
@@ -104,6 +140,30 @@ export function readEstimateBeforeRecord(body) {
     record.effects.length > 30
   )
     beforeFailure('before-record');
+  if (Object.hasOwn(record, 'fieldBaseline') && record.fieldBaseline !== null) {
+    exactDecompositionKeys(record.fieldBaseline, ['estimate', 'size'], 'before-field-baseline');
+    if (
+      (record.fieldBaseline.estimate !== null &&
+        (typeof record.fieldBaseline.estimate !== 'number' ||
+          !Number.isFinite(record.fieldBaseline.estimate) ||
+          record.fieldBaseline.estimate < 0)) ||
+      (record.fieldBaseline.size !== null &&
+        !['XS', 'S', 'M', 'L', 'XL'].includes(record.fieldBaseline.size))
+    )
+      beforeFailure('before-field-baseline');
+  }
+  if (record.forecastBaseline != null) {
+    exactDecompositionKeys(
+      record.forecastBaseline,
+      ['recordId', 'payloadHash'],
+      'before-forecast-baseline'
+    );
+    if (
+      !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(record.forecastBaseline.recordId) ||
+      !/^sha256:[a-f0-9]{64}$/.test(record.forecastBaseline.payloadHash)
+    )
+      beforeFailure('before-forecast-baseline');
+  }
   for (const value of [record.beforeInputDigest, record.intendedInputDigest])
     if (!/^[a-f0-9]{64}$/.test(value)) beforeFailure('before-record-digest');
   for (const effect of record.effects) {
@@ -127,7 +187,8 @@ export function readEstimateBeforeRecord(body) {
 function replaceBeforeRecord(body, record) {
   const raw = canonicalDecompositionJson(record);
   if (Buffer.byteLength(raw, 'utf8') > 8192) beforeFailure('before-record-limit');
-  readEstimateBeforeRecord(body);
+  const existing = readEstimateBeforeRecord(body);
+  if (existing && canonicalDecompositionJson(existing) === raw) return body;
   return (
     String(body).replace(BEFORE_RE, '').trimEnd() +
     `\n<!-- aitm-estimate-before schema="1" payload="${Buffer.from(raw).toString('base64url')}" -->\n`
@@ -182,15 +243,17 @@ export async function executeEstimateWriter({
     projectDir,
     deps: {
       ...deps.decomposition,
+      publicationMetadataBody: (base) =>
+        beforeRecord ? replaceBeforeRecord(base, beforeRecord) : base,
       previewPublicationBody: (base) => {
         const preview = deps.previewPublicationBody?.(base) ?? base;
         return beforeRecord ? replaceBeforeRecord(preview, beforeRecord) : preview;
       },
-      readPublicationEffect: async ({ effect, operationId }) => {
+      readPublicationEffect: async ({ effect, operationId: readOperationId }) => {
         if (
           previousPublication &&
-          operationId === previousPublication.operationId &&
-          previousPublication.operationId !== estimateOperationId(writerId, key)
+          readOperationId === previousPublication.operationId &&
+          previousPublication.operationId !== operationId
         )
           return readRegisteredEstimateEffect({
             cfg,
@@ -207,7 +270,7 @@ export async function executeEstimateWriter({
     },
   });
   const initial = await runtime.collect(subject),
-    operationId = estimateOperationId(writerId, key);
+    operationId = resolveEstimateOperationId(writerId, key, initial.publication);
   const prior = initial.publication?.operationId === operationId ? initial.publication : null;
   previousPublication = initial.publication;
   supersedes = prior?.supersedes ?? null;
@@ -225,7 +288,18 @@ export async function executeEstimateWriter({
       deps,
     });
   if (deriveProposal) proposal = deriveProposal(initial);
-  if (!prior && initial.input.availability.status !== 'complete')
+  const migrationRepair = isMigrationProjectionRepair(initial, writerId, {
+    ...proposal,
+    estimate: {
+      ...proposal.estimate,
+      hours:
+        proposal.estimate.hours === null
+          ? null
+          : normalizeDecompositionHours(proposal.estimate.hours),
+    },
+  });
+  if (migrationRepair) initial.migrationWriterId = writerId;
+  if (!prior && initial.input.availability.status !== 'complete' && !migrationRepair)
     throw new Error(
       `estimate-publication:authority-unavailable:${initial.input.availability.reasons.join(',')}`
     );
@@ -235,6 +309,57 @@ export async function executeEstimateWriter({
     createdAt: prior?.createdAt ?? new Date().toISOString(),
     initial,
   });
+  const retiredSource = initial.sourceObservations.readForecast.value;
+  const retainsRetirement =
+    initial.publication?.effects.some(
+      (e) => e.resource === 'forecast' && e.status === 'confirmed'
+    ) &&
+    initial.publication.effects.some(
+      (e) =>
+        e.resource === 'ready-marker' &&
+        e.status === 'confirmed' &&
+        e.intendedDigest === estimateEffectDigest(null)
+    );
+  if (
+    !adapters.some((e) => e.resource === 'forecast') &&
+    (retainsRetirement || prior?.effects.some((e) => e.id === 'retired-forecast'))
+  ) {
+    if (!retiredSource?.recordId || !retiredSource?.payloadHash)
+      throw new Error('estimate-publication:retired-forecast-unavailable');
+    adapters.unshift(
+      {
+        id: 'retired-forecast',
+        resource: 'forecast',
+        targetIdentity: `record:${retiredSource.recordId}`,
+        value: { recordId: retiredSource.recordId, payloadHash: retiredSource.payloadHash },
+        read: async () => {
+          const value = (await runtime.collect(subject)).sourceObservations.readForecast.value;
+          return observedEstimateEffect({
+            recordId: value.recordId,
+            payloadHash: value.payloadHash,
+          });
+        },
+        apply: () => {
+          throw new Error('estimate-publication:retired-forecast-drift');
+        },
+      },
+      {
+        id: 'retired-ready',
+        resource: 'ready-marker',
+        targetIdentity: `${cfg.repo}#${issueNumber}:ready-marker`,
+        value: null,
+        read: async () =>
+          observedEstimateEffect(
+            (await runtime.collect(subject)).sourceObservations.readIssue.value.body.match(
+              /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/
+            )?.[1] ?? null
+          ),
+        apply: () => {
+          throw new Error('estimate-publication:retired-ready-drift');
+        },
+      }
+    );
+  }
   const intended =
     prior?.intendedInputDigest ??
     decompositionInputDigest(
@@ -273,6 +398,25 @@ export async function executeEstimateWriter({
       writerId,
       beforeInputDigest: prior?.beforeInputDigest ?? initial.inputDigest,
       intendedInputDigest: intended,
+      forecastBaseline:
+        initial.sourceObservations.readForecast.value?.recordId &&
+        initial.sourceObservations.readForecast.value?.payloadHash
+          ? {
+              recordId: initial.sourceObservations.readForecast.value.recordId,
+              payloadHash: initial.sourceObservations.readForecast.value.payloadHash,
+            }
+          : null,
+      fieldBaseline:
+        initial.input.availability.status === 'complete' &&
+        initial.sourceObservations.readProject.value?.estimate ===
+          parseIssueFieldDb(initial.sourceObservations.readIssue.value.body).values?.estimate &&
+        initial.sourceObservations.readProject.value?.size ===
+          parseIssueFieldDb(initial.sourceObservations.readIssue.value.body).values?.size
+          ? {
+              estimate: initial.sourceObservations.readProject.value.estimate ?? null,
+              size: initial.sourceObservations.readProject.value.size ?? null,
+            }
+          : null,
       effects: await Promise.all(
         adapters.map(async (effect) => {
           const before = await readAdapter(effect);
@@ -325,7 +469,9 @@ export async function executeEstimateWriter({
     {
       id: 'writer-before-values',
       resource: 'assessment',
-      targetIdentity: `${subject.repository}#${subject.issue}:estimate-before`,
+      targetIdentity:
+        previousBefore?.targetIdentity ??
+        `${subject.repository}#${subject.issue}:estimate-before:${estimateOperationId(writerId, key)}`,
       value: beforeRecord,
       read: async () =>
         observedEstimateEffect(

@@ -1,6 +1,7 @@
 // @story #1988 — the existing journal remains the recovery authority for Shelve phases.
 import {
   executeEstimateWriter,
+  resolveEstimateOperationId,
   observedEstimateEffect,
   intendedPublishedRevisionInput,
 } from './estimate-writer-publication.mjs';
@@ -50,6 +51,12 @@ export async function publishShelveRevision({
     refreshStaleBlockers: Boolean(refreshStaleBlockers),
     snapshot: digest,
   };
+  const recorded = readDecompositionRecords(snapshot.body).publication;
+  const prior =
+    recorded?.writerId === 'shelve' &&
+    recorded.operationId === resolveEstimateOperationId('shelve', key, recorded)
+      ? recorded
+      : null;
   const proposal = { estimate: { basis: 'unset', hours: null, proposalId: null }, size: null };
   const planned = deps.plannedEstimate ?? {};
   const comments = await (planned.listComments ?? listRefineEstimateComments)({ cfg, issueNumber });
@@ -58,7 +65,11 @@ export async function publishShelveRevision({
   const readyId =
     snapshot.body.match(
       /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/
-    )?.[1] ?? null;
+    )?.[1] ??
+    prior?.effects
+      .find((e) => e.id === 'forecast-snapshot' && e.resource === 'forecast')
+      ?.targetIdentity.slice(7) ??
+    null;
   const io = readyId
     ? (deps.recordIo ?? createGitHubEstimationRecordIo(deps.decomposition?.forecast ?? {}))
     : null;
@@ -137,7 +148,9 @@ export async function publishShelveRevision({
             },
           ]
         : []),
-      ...(comment && nextComment !== comment.body
+      ...(comment &&
+      (nextComment !== comment.body ||
+        prior?.effects.some((e) => e.id === 'appendix' && e.resource === 'comment'))
         ? [
             {
               id: 'appendix',

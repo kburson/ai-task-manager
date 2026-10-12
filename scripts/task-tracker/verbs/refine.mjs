@@ -265,6 +265,11 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     throw new Error(`refine: current state ${recordedState || 'unknown'} is not Backlog or Refine`);
   }
 
+  if (body.includes(STUB_AC_PLACEHOLDER))
+    throw new Error(
+      'stub AC placeholder still present — replace the TBD acceptance criteria before running refine'
+    );
+
   // 1b. Pre-load size option IDs from the project so tetherIssueToProject can
   //     resolve `size: 'S'` → option ID without requiring the config file to
   //     carry sizeOptions (which most installs don't).

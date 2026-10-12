@@ -34,6 +34,7 @@ export function createAdaptiveAuthorityHarness({ repository, issue, transport, r
         estimate: envelope?.payload.plan.humanHours ?? null,
         size: envelope?.payload.plan.size ?? null,
         recordId: record?.recordId ?? null,
+        payloadHash: record?.payloadHash ?? null,
         proposals: [],
         observedProjections: [{ ...state.board }, { ...state.bodyFields }],
       };

@@ -1,3 +1,6 @@
+import { buildPlannedAppendix } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
+import { readRegisteredEstimateEffect } from '../../../../task-tracker/lib/decomposition-writer-registry.mjs';
+import { readEstimateWriterAuthority } from '../../../../task-tracker/lib/estimate-writer-publication.mjs';
 import { publishFieldEstimateRevision } from '../../../../task-tracker/lib/decomposition-field-writer.mjs';
 // @story #1988 — real Shelve journal under the publication owner.
 import { deriveDecompositionCapabilities } from '../../../../task-tracker/lib/decomposition-assessment.mjs';
@@ -96,6 +99,68 @@ export function registerShelvePublicationCases() {
 }
 
 export function registerShelveLandedCases() {
+  for (const point of ['appendix', 'active-evidence-cleared'])
+    test(`Shelve retries retained forecast and appendix identities after unknown ${point}`, async () => {
+      const h = fixture(point === 'active-evidence-cleared' ? { failAfterPhase: point } : {});
+      const recordId = '01J00000000000000000000702',
+        payloadHash = 'sha256:' + 'a'.repeat(64);
+      h.store.body += '\n<!-- aitm-estimation-forecast-ready record-id="' + recordId + '" -->\n';
+      h.store.body = stampRefinementSnapshot(h.store.body, {
+        labels: h.store.labels,
+        ts: '2026-08-12T00:00:00.000Z',
+      });
+      let comment = {
+          id: 91,
+          node_id: 'IC_refine',
+          body:
+            '<!-- aitm-refined-estimate: 1215 -->\n' +
+            buildPlannedAppendix({
+              current: { estimate: 4, size: 'M' },
+              planned: { estimate: 10, size: 'M' },
+              rationale: 'Plan',
+            }),
+        },
+        once = point === 'appendix';
+      h.args.deps.recordIo = {
+        listIssueRecords: async () => [
+          { envelope: { recordId, payloadHash, recordType: 'estimation-forecast' } },
+        ],
+      };
+      h.args.deps.plannedEstimate = {
+        listComments: async () => [comment],
+        patchComment: async ({ body }) => {
+          comment = { ...comment, body };
+          if (once) {
+            once = false;
+            throw new Error('unknown patch');
+          }
+        },
+      };
+      assert.equal((await runShelveTransaction(h.args)).status, 'recovery-pending');
+      const result = await runShelveTransaction(h.args);
+      assert.equal(result.status, 'shelved', result.reason ?? result.error ?? 'retry failed');
+      assert.equal(readDecompositionRecords(h.store.body).publication.status, 'complete');
+      assert.equal(parseRefinementHistory(h.store.body).length, 1);
+      assert.equal((await runShelveTransaction(h.args)).status, 'shelved');
+    });
+  test('closed registry freshly reads every real Shelve effect for future supersession', async () => {
+    const h = fixture();
+    assert.equal((await runShelveTransaction(h.args)).status, 'shelved');
+    const publication = readDecompositionRecords(h.store.body).publication;
+    for (const effect of publication.effects) {
+      const actual = await readRegisteredEstimateEffect({
+        cfg: CFG,
+        issueNumber: 1215,
+        publication,
+        effect,
+        deps: h.args.deps,
+        collect: () =>
+          readEstimateWriterAuthority({ cfg: CFG, issueNumber: 1215, deps: h.args.deps }),
+      });
+      assert.equal(actual.digest, effect.intendedDigest, effect.id);
+    }
+    assert.equal(parseRefinementHistory(h.store.body).length, 1);
+  });
   test('actual Shelve reads every predecessor effect before explicitly superseding a pending field revision', async () => {
     const h = fixture();
     const pending = await publishFieldEstimateRevision({

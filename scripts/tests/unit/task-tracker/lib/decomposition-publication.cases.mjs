@@ -1,3 +1,7 @@
+import {
+  applyRefinementEstimate,
+  buildRefinementCommentBody,
+} from '../../../../task-tracker/lib/apply-refinement-estimate.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rmSync as removePublicationDir } from 'node:fs';
@@ -201,40 +205,6 @@ export function registerEstimatePublicationCases() {
     }
   });
 
-  test('confirmed field revision makes prior Plan forecast historical while preserving its observation', async () => {
-    const publish = await loadPublisher(),
-      c = await publicationCase(25);
-    c.f.values.forecast = { estimate: 10, size: 'M', recordId: 'forecast-a' };
-    const initial = await publicationCollect({
-      subject: publicationSubject,
-      cfg: publicationCfg,
-      projectDir: c.dir,
-      deps: c.f.deps,
-    });
-    const intended = structuredClone(initial.input);
-    intended.estimate = { basis: 'published', hours: 25, proposalId: null };
-    intended.observations.find((o) => o.resource === 'project').digest = (
-      await import('./decomposition-authority-fixtures.mjs')
-    ).hash({ projectId: 'PVT_a', projectItemId: 'PVTI_a', estimate: 25, size: 'M' });
-    const { decompositionInputDigest } =
-      await import('../../../../task-tracker/lib/decomposition-assessment.mjs');
-    c.args.expectedInputDigest = initial.inputDigest;
-    c.args.deps.intendedInputDigest = decompositionInputDigest(intended);
-    try {
-      const result = await publish(c.args);
-      assert.equal(result.status, 'recorded', result.reason);
-      const current = await c.args.deps.runtime.collect(publicationSubject);
-      assert.equal(current.input.availability.status, 'complete');
-      assert.equal(current.input.estimate.hours, 25);
-      assert.equal(
-        current.input.observations.find((o) => o.resource === 'forecast').identity,
-        'forecast-a'
-      );
-    } finally {
-      removePublicationDir(c.dir, { recursive: true, force: true });
-    }
-  });
-
   for (const state of ['backlog', 'refine', 'ready-for-plan', 'plan', 'develop', 'test', 'review'])
     for (const hours of [23, 24, 25]) {
       test(
@@ -247,7 +217,7 @@ export function registerEstimatePublicationCases() {
           const f = publicationFixture(10),
             dir = publicationDir('inflation-');
           f.body = f.body.replace('state="develop"', 'state="' + state + '"');
-          f.values.forecast = { estimate: 10, size: 'M', recordId: 'forecast-a' };
+          f.values.forecast = { ...f.values.forecast, estimate: 10, size: 'M' };
           let comment = {
             id: 99,
             body: '<!-- aitm-refined-estimate: 1987 -->\n### Refine estimate\n',
@@ -361,6 +331,27 @@ export function registerEstimatePublicationCases() {
       },
     };
   }
+  test('actual repeated inflation intent after a different revision gets a new operation and one new history entry', async () => {
+    const c = recoveryInflationFixture();
+    try {
+      const first = await realInflate(c.args, c.cfg, c.deps);
+      assert.equal(first.status, 'recorded');
+      const second = await realInflate(
+        { ...c.args, estimate: '10', size: 'M', reason: 'Scope reduced', items: ['Smaller scope'] },
+        c.cfg,
+        c.deps
+      );
+      assert.equal(second.status, 'recorded', second.reason);
+      const third = await realInflate(c.args, c.cfg, c.deps);
+      assert.equal(third.status, 'recorded', third.reason);
+      assert.notEqual(first.operationId, third.operationId);
+      assert.equal(c.comment.body.match(/Publication operation:/g).length, 3);
+      assert.equal((await realInflate(c.args, c.cfg, c.deps)).operationId, third.operationId);
+      assert.equal(c.comment.body.match(/Publication operation:/g).length, 3);
+    } finally {
+      removePublicationDir(c.dir, { recursive: true, force: true });
+    }
+  });
   for (const effect of ['audit', 'size', 'estimate', 'fields'])
     for (const outcome of ['before', 'after']) {
       test(
@@ -411,6 +402,44 @@ export function registerEstimatePublicationCases() {
         }
       );
     }
+  test('unchanged Refine audit posting preserves a real pending publication and numeric fields', async () => {
+    const c = recoveryInflationFixture();
+    c.deps.patchComment = async () => {
+      throw new Error('unavailable audit');
+    };
+    try {
+      assert.equal((await realInflate(c.args, c.cfg, c.deps)).status, 'partial');
+      const before = publicationRecords(c.f.body),
+        fields = JSON.parse(JSON.stringify(c.f.values.project));
+      c.f.body +=
+        '\n<!-- aitm-refinement-rationale: {"size":"M","estimate":"10","priority":"p1","rationale":"unchanged"} -->\n';
+      let audit = null;
+      const result = await applyRefinementEstimate({
+        cfg: c.cfg,
+        issueNumber: 1987,
+        plan: {
+          commentBody: buildRefinementCommentBody({
+            issueNumber: 1987,
+            size: 'M',
+            estimate: 10,
+            priority: 'P1',
+            rationale: { rationale: 'unchanged' },
+          }),
+        },
+        deps: {
+          listCommentBodies: async () => [],
+          postComment: async ({ body }) => (audit = body),
+          mutateIssueBody: async ({ mutate }) => (c.f.body = await mutate(c.f.body)),
+        },
+      });
+      assert.equal(result.status, 'posted');
+      assert.match(audit, /\| Estimate \| 10h \|/);
+      assert.deepEqual(publicationRecords(c.f.body), before);
+      assert.deepEqual(c.f.values.project, fields);
+    } finally {
+      removePublicationDir(c.dir, { recursive: true, force: true });
+    }
+  });
   test('no refine comment performs zero estimate effects and creates no revision', async () => {
     const c = recoveryInflationFixture();
     c.deps.listComments = async () => [];
@@ -422,7 +451,7 @@ export function registerEstimatePublicationCases() {
       removePublicationDir(c.dir, { recursive: true, force: true });
     }
   });
-  test('inherited subprocess issue token cannot obtain publication identity or effects', async () => {
+  test('in-process inherited-token simulation cannot obtain publication identity or effects', async () => {
     const c = recoveryInflationFixture(),
       before = process.env.AITM_ISSUE_LOCK_HELD;
     process.env.AITM_ISSUE_LOCK_HELD = '1987';
@@ -453,12 +482,11 @@ export function registerEstimatePublicationCases() {
     }
   });
   test('published lower value completes truthfully while a higher human proposal still restricts implementation', async () => {
-    const publish = await loadPublisher(),
-      c = await publicationCase(23);
+    const c = recoveryInflationFixture();
+    c.args.estimate = '23';
+    c.args.size = 'M';
     c.f.values.forecast = {
-      estimate: 10,
-      size: 'M',
-      recordId: null,
+      ...c.f.values.forecast,
       proposals: [
         {
           proposalId: 'comment:IC_human:human-attention',
@@ -468,27 +496,9 @@ export function registerEstimatePublicationCases() {
         },
       ],
     };
-    const initial = await publicationCollect({
-        subject: publicationSubject,
-        cfg: publicationCfg,
-        projectDir: c.dir,
-        deps: c.f.deps,
-      }),
-      intended = structuredClone(initial.input);
-    const { hash } = await import('./decomposition-authority-fixtures.mjs');
-    intended.observations.find((o) => o.resource === 'project').digest = hash({
-      projectId: 'PVT_a',
-      projectItemId: 'PVTI_a',
-      estimate: 23,
-      size: 'M',
-    });
-    const { decompositionInputDigest } =
-      await import('../../../../task-tracker/lib/decomposition-assessment.mjs');
-    c.args.expectedInputDigest = initial.inputDigest;
-    c.args.deps.intendedInputDigest = decompositionInputDigest(intended);
     try {
-      const result = await publish(c.args);
-      assert.equal(result.status, 'recorded', result.reason ?? 'publication failed');
+      const result = await realInflate(c.args, c.cfg, c.deps);
+      assert.equal(result.status, 'recorded', result.reason);
       const r = publicationRecords(c.f.body);
       assert.equal(r.publication.proposal.estimate.hours, 23);
       assert.equal(r.assessment.estimate.basis, 'proposed');

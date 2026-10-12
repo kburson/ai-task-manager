@@ -96,6 +96,7 @@ function harness({ failAfter } = {}) {
         estimate: record ? (record.payload?.plan.humanHours ?? state.board.estimate) : null,
         size: record ? (record.payload?.plan.size ?? state.board.size) : null,
         recordId: record?.recordId ?? null,
+        payloadHash: record?.payloadHash ?? null,
         proposals: [],
         observedProjections: [{ ...state.board }, { ...state.bodyFields }],
       };

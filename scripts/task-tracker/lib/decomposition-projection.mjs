@@ -1,3 +1,4 @@
+import { isMigrationProjectionRepair } from './decomposition-publication-inputs.mjs';
 import {
   publicationForecastTransitionUsable,
   publicationProposalMatchesAuthority,
@@ -17,6 +18,7 @@ const owned = new WeakSet();
 const capabilities = new WeakSet();
 const active = new AsyncLocalStorage();
 const publicationReconciliation = new WeakMap();
+const effectCheckpoints = new WeakMap();
 const sha = (value) =>
   createHash('sha256')
     .update(typeof value === 'string' ? value : canonicalDecompositionJson(value))
@@ -214,6 +216,18 @@ function usableForReconciliation(current) {
     current.input.availability.reasons.every((reason) => reason === 'authority-conflict')
   );
 }
+export async function withDecompositionEffectCheckpoint(context, checkpoint, operation) {
+  if (!owned.has(context) || active.getStore() !== context || typeof checkpoint !== 'function')
+    refuse('owner-context');
+  const previous = effectCheckpoints.get(context);
+  effectCheckpoints.set(context, checkpoint);
+  try {
+    return await operation();
+  } finally {
+    if (previous) effectCheckpoints.set(context, previous);
+    else effectCheckpoints.delete(context);
+  }
+}
 export async function assertDecompositionPublicationOwner(
   context,
   { subject, operationId, writerId, effectId, requireIntent = false } = {}
@@ -252,6 +266,8 @@ export async function assertDecompositionPublicationOwner(
     )
       refuse('publication-intent');
   }
+  if (requireIntent && effectCheckpoints.has(context))
+    await effectCheckpoints.get(context)(context);
   return context;
 }
 function sealedPublication(publication) {
@@ -372,7 +388,10 @@ export async function withDecompositionPublicationOwner(
       const superseding = Boolean(rawPublication.supersedes);
       if (
         !(await snapshotUsable(initial)) ||
-        (initial.input.availability.status !== 'complete' && !resuming && !superseding)
+        (initial.input.availability.status !== 'complete' &&
+          !resuming &&
+          !superseding &&
+          !isMigrationProjectionRepair(initial, rawPublication.writerId, rawPublication.proposal))
       )
         refuse('authority-unavailable');
       const previousBinding = previous?.effects.find(
@@ -511,7 +530,8 @@ export async function withDecompositionPublicationOwner(
               )
                 refuse('semantic-drift');
             },
-            mutate: (base) => replaceDecompositionRecords(base, after),
+            mutate: (base) =>
+              replaceDecompositionRecords(deps.publicationMetadataBody?.(base) ?? base, after),
           });
         } finally {
           capabilities.delete(cap);
