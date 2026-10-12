@@ -308,7 +308,9 @@ export async function expectedCompleted16Tail(selected) {
 
 function actualStoreBoundary(stack, name) {
   const functions = [
-    ...stack.matchAll(/at (\w+) \([^\n]*\/criteria-revision\/store\.mjs:\d+/g),
+    ...stack.matchAll(
+      /at (?:async )?(?:Module\.)?(\w+) \([^\n]*\/criteria-revision\/store\.mjs:\d+/g
+    ),
   ].map((match) => match[1]);
   if (functions[0] !== 'assertCommentStoreKeys') return false;
   if (name.startsWith('release')) return functions[1] === name;
@@ -331,7 +333,7 @@ export function observeCompleted16Locks(backend) {
     const descriptors = original(value);
     const stack = new Error().stack;
     const name =
-      /at (acquireMemoryExistingNativeStageTransition|releaseMemoryExistingNativeStageTransition|acquireMemoryNativeStageTailDispatch|releaseMemoryNativeStageTailDispatch|acquireMemoryNativeStageCache|releaseMemoryNativeStageCache) \([^\n]*\/criteria-revision\/store\.mjs:\d+/.exec(
+      /at (?:async )?(?:Module\.)?(acquireMemoryExistingNativeStageTransition|releaseMemoryExistingNativeStageTransition|acquireMemoryNativeStageTailDispatch|releaseMemoryNativeStageTailDispatch|acquireMemoryNativeStageCache|releaseMemoryNativeStageCache) \([^\n]*\/criteria-revision\/store\.mjs:\d+/.exec(
         stack
       )?.[1];
     if (
@@ -401,7 +403,9 @@ export async function qualifyCompleted16ActorControls({
       [
         'provider',
         'AI_TASK_MANAGER_APP_NAME',
-        selected.observation.executor.provider === 'claude' ? 'codex' : 'claude',
+        selected.nativeStageRecords.at(-1).header.original.actor.identity.provider === 'claude'
+          ? 'codex'
+          : 'claude',
       ],
       ['sid', 'AI_TASK_MANAGER_SESSION_ID', 'changed-completed16-sid'],
       [
@@ -413,6 +417,20 @@ export async function qualifyCompleted16ActorControls({
       await t.test(`current ${kind} drift at ${boundary} stops checkpoint progress`, async () => {
         const backend = createRevisionMemory(selected),
           beforeFiles = captureFiles();
+        if (kind === 'provider') {
+          const words = await import('../../task-tracker/word-counter.mjs');
+          const actor = selected.nativeStageRecords.at(-1).header.original.actor.identity;
+          assert.equal(
+            words.aiAppName(),
+            actor.provider,
+            'current actual actor matches captured source before control'
+          );
+          assert.notEqual(
+            changed,
+            actor.provider,
+            'provider mutation must actually change the native provider'
+          );
+        }
         const previous = process.env[envKey],
           original = Object.getOwnPropertyDescriptors;
         let fired = 0,
@@ -530,6 +548,24 @@ export async function qualifyCompleted16CursorControls({
   }
 }
 
+export const completed16Task2AuditTrace = Object.freeze([
+  ...Array(3).fill('authority-read'),
+  'page-read',
+  'native-history-readback',
+  'native-proof-record-readback',
+  'authority-read',
+  'native-history-readback',
+  ...Array(13).fill('authority-read'),
+  'native-stage-existing-transition-read',
+  ...resumedStageOperations,
+  ...Array(2).fill('authority-read'),
+  'page-read',
+  'native-history-readback',
+  ...Array(496).fill('authority-read'),
+  'native-proof-record-readback',
+  'authority-read',
+]);
+
 export async function qualifyCompleted16Variant(options) {
   const { t, originalContext, snapshots, captureFiles, variant } = options;
   const { moveState } = await import('../../task-tracker/lib/move-state/move-state-core.mjs');
@@ -554,6 +590,11 @@ export async function qualifyCompleted16Variant(options) {
     );
     assertCompleted16Locks(locks.calls);
     assert.deepEqual(captureFiles(), beforeFiles);
+    assert.deepEqual(
+      backend.effects,
+      completed16Task2AuditTrace,
+      'complete read and owned-operation audit sequence is independently pinned'
+    );
     t.diagnostic('completed16 audited trace: ' + JSON.stringify(backend.effects));
     await qualifyCompleted16ActorControls(options);
     await qualifyCompleted16CursorControls(options);

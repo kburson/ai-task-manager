@@ -3396,6 +3396,7 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
                   unverifiedPartial,
                   expectedCompleted16Tail,
                   resumedStageOperations,
+                  completed16Task2AuditTrace,
                 } = await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
                 assertResumeResult(result, unverifiedPartial());
                 assert.equal(
@@ -3409,7 +3410,11 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
                   resumedStageOperations,
                   'exact genuine original17/18 operations execute once in order'
                 );
-                t.diagnostic('completed16 full trace: ' + JSON.stringify(backend.effects));
+                assert.deepEqual(
+                  backend.effects,
+                  completed16Task2AuditTrace,
+                  'complete resumed audit trace'
+                );
                 assert.deepEqual(backend.snapshot, await expectedCompleted16Tail(selected));
                 assert.equal(backend.snapshot.nativeStageRecords.at(-1).steps.length, 18);
                 assert.deepEqual(
