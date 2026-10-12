@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1989 — complete current decomposition fixture authority; no lifecycle effects.
 // @story #1765
 // @story #1767
 // @story #1872
@@ -319,12 +320,35 @@ export function issueBody(snapshot, recertification = false) {
 
 function fakeGhSource(mode) {
   return `#!/usr/bin/env node
+(async () => {
 const { appendFileSync, readFileSync } = require('node:fs');
 const args = process.argv.slice(2);
 const recertification = ${mode === 'recertification'};
 const snapshot = JSON.parse(readFileSync(process.env.CAPTURE_SNAPSHOT_PATH, 'utf8'));
-const body = ${issueBody.toString()}(snapshot, recertification);
-appendFileSync(process.env.CAPTURE_AUTHORITY_LOG, JSON.stringify({ args, revision: snapshot.revision }) + '\\n');
+let body = ${issueBody.toString()}(snapshot, recertification);
+if (recertification) {
+  const { collectDecompositionAuthority } = await import(${JSON.stringify(path.join(root, 'scripts/task-tracker/lib/decomposition-authority.mjs'))});
+  const { replaceDecompositionRecords } = await import(${JSON.stringify(path.join(root, 'scripts/task-tracker/lib/decomposition-records.mjs'))});
+  const { canonicalDecompositionJson } = await import(${JSON.stringify(path.join(root, 'scripts/task-tracker/lib/decomposition-assessment.mjs'))});
+  const { createHash } = require('node:crypto');
+  const planContent = '# Fixture plan\\nRead-only guidance capture.\\n';
+  const hash = (value) => createHash('sha256').update(typeof value === 'string' ? value : canonicalDecompositionJson(value)).digest('hex');
+  const observed = (value) => ({status:'observed',value,revision:null,digest:hash(value)});
+  const collected = await collectDecompositionAuthority({
+    subject: {repository:'example/project',issue:2100,projectId:'P1',projectItemId:'I1'},
+    cfg: {repo:'example/project',projectId:'P1'},projectDir:process.cwd(),
+    deps: {
+      readIssue: async () => observed({number:2100,body}),
+      readProject: async () => observed({projectId:'P1',projectItemId:'I1',estimate:4,size:'S',children:[]}),
+      readSelectedPlan: async () => observed({path:'fixture-plan.md',commit:null,section:null,digest:hash(planContent),availability:'available',content:planContent,references:null}),
+      readForecast: async () => observed({estimate:null,size:null,recordId:null,payloadHash:null,proposals:[],observedProjections:[{size:'S',estimate:4},{size:'S',estimate:4}]}),
+    },
+  });
+  if (collected.assessment.status !== 'story-ok') throw new Error('capture:decomposition:' + collected.assessment.status);
+  collected.assessment.assessedAt = '2026-09-22T00:00:00.000Z';
+  body = replaceDecompositionRecords(body,{assessment:collected.assessment,publication:null});
+}
+appendFileSync(process.env.CAPTURE_AUTHORITY_LOG, JSON.stringify({ args, revision: snapshot.revision, bodySha256: 'sha256:' + require('node:crypto').createHash('sha256').update(body).digest('hex') }) + '\\n');
 if (args[0] === 'issue' && args[1] === 'view') {
   if (recertification && args.includes('state') && args[args.indexOf('--json') + 1] === 'state') {
     process.stdout.write(JSON.stringify({ state: snapshot.state === 'done' ? 'CLOSED' : 'OPEN' }) + '\\n');
@@ -432,11 +456,11 @@ if (args[0] === 'api' && args[1] === 'graphql') {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: { number: ${issue}, body, parent: null } } } }));
     } else if (query.includes('projectItems')) {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: {
-        id: 'ISSUE_CAPTURE',
+        id: 'ISSUE_CAPTURE', number:2100, body, comments:{nodes:[],pageInfo:{hasNextPage:false,endCursor:null}},
         assignees: { nodes: [] },
         projectItems: { nodes: [{ id: 'I1', project: { id: 'P1' }, fieldValueByName: {
           name: snapshot.state.replace(/(^|-)\\w/g, (m) => m.toUpperCase())
-        }, fieldValues: { nodes: [], pageInfo: { hasNextPage: false } } }], pageInfo: { hasNextPage: false, endCursor: null } }
+        }, fieldValues: { nodes: [{number:4,field:{id:'ESTIMATE'}},{name:'S',field:{id:'SIZE'}}], pageInfo: { hasNextPage: false } } }], pageInfo: { hasNextPage: false, endCursor: null } }
       } } } }));
     } else {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: { body } } } }));
@@ -446,6 +470,7 @@ if (args[0] === 'api' && args[1] === 'graphql') {
   process.stderr.write('unsupported fake gh call: ' + args.join(' '));
   process.exit(2);
 }
+})().catch((error) => { console.error(error); process.exit(2); });
 `;
 }
 
@@ -467,6 +492,7 @@ export function captureGuidanceLifecycle({
   const config = {
     repo: 'example/project',
     projectId: 'P1',
+    fieldIds: { estimate: 'ESTIMATE', size: 'SIZE' },
     preferences: { gateAssigneeMatch: false },
     ...(mode === 'recertification'
       ? {
@@ -504,6 +530,10 @@ export function captureGuidanceLifecycle({
     writeFileSync(configPath(fixtureDir), `${JSON.stringify(config, null, 2)}\n`);
     writeFileSync(statePath(fixtureDir), '{}\n');
     writeSnapshot();
+    writeFileSync(
+      path.join(fixtureDir, 'fixture-plan.md'),
+      '# Fixture plan\nRead-only guidance capture.\n'
+    );
     copyFileSync(
       path.join(root, 'instructions/aitm-guidance.yml'),
       path.join(fixtureDir, SHARED_DIR, 'aitm-guidance.yml')
@@ -534,6 +564,16 @@ export function captureGuidanceLifecycle({
       CAPTURE_AUTHORITY_LOG: authorityLog,
       CAPTURE_SNAPSHOT_PATH: snapshotPath,
     };
+    const fixtureBodySha = () => {
+      const response = spawnSync('gh', ['issue', 'view', String(issue), '--json', 'body'], {
+        cwd: fixtureDir,
+        env: baseEnv,
+        encoding: 'utf8',
+        timeout: 30000,
+      });
+      if (response.status !== 0) throw new Error('capture:fixture-body:' + response.stderr);
+      return sha256(JSON.parse(response.stdout).body);
+    };
     const run = (kind, name, argv) => {
       writeFileSync(authorityLog, '');
       const result = spawnSync(argv[0], argv.slice(1), {
@@ -552,7 +592,8 @@ export function captureGuidanceLifecycle({
           stateRevision: snapshot.revision,
           state: snapshot.state,
           snapshotSha256: snapshotIdentity(snapshot).sha256,
-          authorityBodySha256: sha256(issueBody(snapshot, mode === 'recertification')),
+          authorityBodySha256: JSON.parse(readFileSync(authorityLog, 'utf8').split('\n')[0])
+            .bodySha256,
         },
         argv,
         stdin: '',
@@ -597,7 +638,7 @@ export function captureGuidanceLifecycle({
     const transition = (name, state, evidenceAdded, external = {}, nextHead = null) => {
       const from = {
         ...snapshotIdentity(snapshot),
-        bodySha256: sha256(issueBody(snapshot, mode === 'recertification')),
+        bodySha256: fixtureBodySha(),
       };
       snapshot.revision += 1;
       snapshot.state = state;
@@ -620,7 +661,7 @@ export function captureGuidanceLifecycle({
         from,
         to: {
           ...snapshotIdentity(snapshot),
-          bodySha256: sha256(issueBody(snapshot, mode === 'recertification')),
+          bodySha256: fixtureBodySha(),
         },
         evidenceAdded,
         agentVisible: false,
