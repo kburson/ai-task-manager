@@ -1,0 +1,6 @@
+{
+  "complete": false,
+  "completed": 73,
+  "reason": "Root-cause groups established; stop obsolete-fixture diagnostic rerun and repair focused tests serially.",
+  "exit": 130
+}

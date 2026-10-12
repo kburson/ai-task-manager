@@ -1,0 +1,66 @@
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/cli-prefs-empty-0tXHyS
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/cli-prefs-yes-52GgKu
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/cli-prefs-merge-Gd8lMg
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/cli-prefs-bad-0xpYow
+                                                            
+
+✔ color helpers return the wrapped content regardless of TTY (0.696542ms)
+✔ patchSettingsJson creates settings and is idempotent (23.717583ms)
+✔ patchSettingsJson migrates legacy hook commands and broad Bash allow (17.4295ms)
+✔ patchSettingsJson tolerates a malformed existing file (21.814041ms)
+✔ patchCodexHooksJson creates hooks, is idempotent, tolerates garbage (50.465875ms)
+✔ patchCodexHooksJson registers memory index hooks only when requested (18.109916ms)
+✔ version subcommand and aliases print the package version (398.044333ms)
+✔ no-args prints help while an unknown verb returns a usage error (306.427292ms)
+✔ configure with a bad or missing subcommand exits 1 (329.313083ms)
+✔ install rejects bad --agent and --link-mode (328.11775ms)
+✔ install --link-mode stub writes skill, settings, templates and is idempotent (445.019667ms)
+✔ install --link-mode symlink refuses a package source outside the target project (240.970667ms)
+✔ uninstall removes Codex integrations while preserving user hooks and durable data (793.589042ms)
+✔ uninstall defaults to all providers and removes the generated Claude command (413.069083ms)
+✔ uninstall --dry-run reports cleanup without changing the project (417.205208ms)
+✔ uninstall --purge refuses non-interactive deletion without --yes (214.251584ms)
+✔ uninstall --purge --yes removes durable AITM data but preserves unrelated issue templates (197.698708ms)
+✔ uninstall validates every managed file before removing any provider integration (419.260416ms)
+✔ uninstall refuses to recursively remove a managed skill directory with user files (381.952959ms)
+✔ uninstall refuses to remove a foreign symlink at a managed skill path (224.712459ms)
+✔ uninstall recognizes exact generated artifacts from the previous package layout (402.727833ms)
+✔ uninstall removes only the marked project-local AITM bootstrap block (196.085125ms)
+✔ uninstall refuses a modified or ambiguously embedded AITM bootstrap block (381.55375ms)
+✔ uninstall --agent scopes provider files and Codex bootstrap cleanup (401.780417ms)
+✔ uninstall removes only exact managed hook commands (393.376584ms)
+✔ uninstall removes Claude permissions without hooks and never strips other providers (369.289375ms)
+✔ uninstall rejects malformed hook schemas before changing any files (658.727ms)
+✔ uninstall rejects unknown, missing, duplicate, and conflicting options without cleanup (1439.565958ms)
+✔ uninstall --help documents cleanup ordering and destructive options (129.743583ms)
+✔ statusline installs under an overridden HOME (205.220875ms)
+✔ configurePreferences with all-empty answers writes defaults (17.5595ms)
+✔ configurePreferences with "y" answers parses every bool branch truthy (17.108ms)
+✔ configurePreferences merges over an existing config and a custom scratchDir (20.488792ms)
+✔ configurePreferences tolerates a malformed existing config (19.338334ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9905.475583

@@ -1,0 +1,17 @@
+✔ every public direct entry point exits safely for --help and -h (14764.182917ms)
+✔ every package bin emits detailed help through an install-style symlink (603.976541ms)
+✔ every package lifecycle subcommand help exits before mutation (1143.504542ms)
+✔ help probes do not consume option values and run before subprocess work (928.165833ms)
+✔ every routed verb supports help, ?, --help, and -h (121727.255125ms)
+✔ equivalent direct, routed, and package-bin forms render the same contract (1751.5235ms)
+✔ direct task help forms exit before project configuration is read (323.381667ms)
+✔ routed task wrappers propagate command return codes (6663.611292ms)
+✔ unknown commands return usage error with compact ANSI-free aggregate help (443.39775ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 148355.01225

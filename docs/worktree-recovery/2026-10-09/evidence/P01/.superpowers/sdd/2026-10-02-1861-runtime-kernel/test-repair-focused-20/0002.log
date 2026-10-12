@@ -1,0 +1,102 @@
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #100
+✔ runPromote: throws without issueNumber or cfg (1.65375ms)
+✔ runPromote: assertBound is invoked and may throw (0.248958ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #100
+✔ runPromote: refine→R4P promoted via direct move + refine-estimate hook (457.335042ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1005
+✔ runPromote: consumes the final returned refinement plan without context mutation (10.520041ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1471
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1473
+✔ runPromote: refine→R4P refused when refine-estimate signals missing (6.512792ms)
+✔ runPromote: refine→R4P refused when refine-exit gate returns blockers (4.558833ms)
+[task-tracker] WARN: required project field "Start Time" (cfg.fieldStartTime) is not configured — board stamp skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist field ids.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1472
+✔ runPromote: backlog→refine direct move (5.017916ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #101
+✔ runPromote: backlog→refine stamps Start time on success (4.577875ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1011
+✔ runPromote: plan→develop promoted when planned-estimate appendix present (12.085334ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #102
+✔ runPromote: plan→develop refused when refine-estimate comment missing (8.545625ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1361
+✔ runPromote: develop→test delegates to /task test (21.086875ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #2572
+✔ runPromote: develop→test refused when CODE_COMPLETE gate blocks (12.6845ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1031
+✔ runPromote: test→review delegates to /task review (7.256208ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #104
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #108
+✔ runPromote: test→review refused when dod-verified marker missing (4.382334ms)
+✔ runPromote: review→done delegates to /task close (5.512542ms)
+✔ runPromote: terminal refusal on done (0.234542ms)
+✔ runPromote: drift refused when live ≠ recorded (0.069375ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #109
+✔ runPromote: bootstrap when lastKnownState absent (6.209625ms)
+✔ runPromote: error when no recorded and no live state (0.108541ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #132
+✔ runPromote: transition-failed when alias verb exits non-zero (20.564375ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1751
+✔ runPromote: promoted-with-warning, markers already synced (noop repair) (19.43075ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1753
+✔ runPromote: promoted-with-warning, stale marker → repair write fires (102.934917ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #134
+✔ runPromote: delegate non-zero AND board drifted to non-target → transition-failed (60.223833ms)
+Usage: promote #N
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1473
+✔ runPromote: post-failure getLiveState throw is swallowed (47.08175ms)
+✔ runPromote: error when recorded state is unknown (0.433708ms)
+✔ spawnVerbTimeout: test → undefined, others → finite budget (0.694041ms)
+✔ verbPromote: no issue number → usage, exit 1 (1.288125ms)
+✓ #1473 promoted: backlog → refine (direct)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #100
+✔ verbPromote: promoted → stdout, no exit (86.521ms)
+✓ #100 promoted: refine → ready-for-plan (direct)
+  ↳ posted "### 🛠 Refine estimate" comment
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1031
+✔ verbPromote: refine→R4P promoted prints refine-estimate comment line (80.23725ms)
+
+⛔ Refusing to promote #1031 to review: test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #1031` to produce sandbox evidence before promoting to Review.
+   BLOCKED: test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #1031` to produce sandbox evidence before promoting to Review.
+   BLOCKED: aitm-entered-backlog
+   BLOCKED: aitm-entered-refine
+   BLOCKED: aitm-entered-plan
+   BLOCKED: aitm-entered-develop
+   BLOCKED: aitm-entered-test
+
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1134
+✔ verbPromote: refused gate → exit 4 with BLOCKED lines (66.133958ms)
+
+⛔ Refusing to promote #1134 to develop: plan-exit-decomposition: must-split (size-xl, estimate-hours); no linked plan path; Run `npx aitm split-plan <issue> --dry-run` or add a complete visible `## Decomposition Waiver` section.
+   BLOCKED: plan-exit-decomposition: must-split (size-xl, estimate-hours); no linked plan path
+   BLOCKED: Run `npx aitm split-plan <issue> --dry-run` or add a complete visible `## Decomposition Waiver` section.
+
+
+⛔ Refusing to promote #107:
+   BLOCKED: drift detected: board says "develop", task-tracker says "plan". Run `/task reconcile <accept-live|revert-to-recorded>`.
+
+
+⛔ already in done (#106); promote is forward-only.
+
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #1751
+✔ verbPromote: decomposition refusal renders blockers and exits 4 (72.242875ms)
+✔ verbPromote: drift-refused → exit 4 (70.2545ms)
+✔ verbPromote: terminal-refused → exit 4 (75.159625ms)
+✓ #1751 promoted: develop → test (/task test)
+  ⚠ delegate /task test exited 1 — board reached target; treating as soft warning.
+  ↳ marker repaired (attempts: 1)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/promote-6nKso5 for #109
+✔ verbPromote: promoted-with-warning prints soft-warning (184.964875ms)
+promote: promote: delegate /task test exited 4; recorded state left at "develop".
+promote: promote: unknown recorded state "bogus" for #110
+promote: not bound to #9
+✔ verbPromote: transition-failed → exits with delegate code (111.2435ms)
+✔ verbPromote: error status → exit 1 (75.315834ms)
+✔ verbPromote: runPromote throw → catch → exit 1 (104.811375ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 37
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2694.803583

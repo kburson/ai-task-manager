@@ -1,0 +1,21 @@
+✔ outOfOrderHealableStages flags develop when develop ts > test ts (1.13ms)
+✔ outOfOrderHealableStages flags test when test ts > review ts (the #170 inversion) (0.149ms)
+✔ outOfOrderHealableStages: monotonic chain across all five stages flags nothing (0.142834ms)
+✔ planStageHeal restamps out-of-order test with safe lower-bound ts (1.531708ms)
+✔ planStageHeal backfills missing develop when test is present (0.172834ms)
+✔ planStageHeal audit-only on review entry with no audit marker and later marker present (0.204792ms)
+✔ planStageHeal skip on monotonic chain (no regression for any stage) (0.285667ms)
+✔ safeBackfillTs for test stays strictly below review ts (0.085625ms)
+✔ refine/plan regression: previous heal behavior unchanged for early stages (0.107541ms)
+✔ checkOnlyExitCode: 0 when all results are skip (clean backlog) (0.114916ms)
+✔ checkOnlyExitCode: 1 when any result is plan (anomaly present) (0.057709ms)
+✔ checkOnlyExitCode: 2 when any result is error (precedence over plan) (0.129584ms)
+✔ verifyChainIntegrity passes after restamping out-of-order test (full round-trip) (1.245958ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.848209

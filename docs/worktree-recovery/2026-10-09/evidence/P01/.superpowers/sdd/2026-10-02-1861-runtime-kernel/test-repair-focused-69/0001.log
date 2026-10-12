@@ -1,0 +1,41 @@
+✔ recorded runtime context refuses production source before context construction (252.378542ms)
+✔ recorded context rejects storage links, alternates, executable config and remote escape (1881.606125ms)
+✔ cold process denies network, arbitrary subprocesses and production filesystem access (1987.795666ms)
+✔ Git executable options and remote hooks refuse before native execution (2220.156667ms)
+✖ real dispatcher runs in a fresh recorded context and refuses production issue preflight (6383.482875ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12831.839834
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs:155:1
+✖ real dispatcher runs in a fresh recorded context and refuses production issue preflight (6383.482875ms)
+  AssertionError [ERR_ASSERTION]: (node:85703) [PERM0002] SecurityWarning: The flag --allow-child-process must be used with extreme caution. It could invalidate the permission model.
+  (Use `node --trace-warnings ...` to show where the warning was created)
+  [task-tracker] WARN: configuration is missing 1 known project field id(s): Rank (cfg.fieldRank). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+  [task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/private/var/folders/j0/f32tkg_96mb236vycdn8bj5w0000gn/T/evidence-v2-vK90ih/source for the active issue
+  task-tracker error: Access to this API has been restricted
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs:159:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

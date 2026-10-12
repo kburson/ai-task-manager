@@ -1,0 +1,13 @@
+⚠ approve: review-notes post failed: network down
+✔ runApprove in human mode posts notes with human source from stdin drivers (84.572667ms)
+✔ runApprove in full-auto mode posts notes with auto source and derived drivers (77.649666ms)
+✔ runApprove in human mode skips notes comment when no drivers entered (78.421833ms)
+✔ runApprove still ticks lifecycle even if notes-post fails (75.274959ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 503.122375

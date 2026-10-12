@@ -1,0 +1,45 @@
+✔ promote: refine→R4P is a direct move-state call with refine-estimate hook (274.686417ms)
+✔ promote: refine→R4P refused when full refine-estimate signals are missing (23.340708ms)
+✔ promote: refine→R4P refuses when Acceptance Criteria drift after snapshot (20.298333ms)
+✔ promote: refine→R4P refused when refine-exit gate returns blockers (#147) (19.161125ms)
+✔ promote: backlog→refine stamps Start time on success (#147, #1211) (19.361834ms)
+✔ promote: backlog→refine is a direct move-state call without a Priority gate (16.008375ms)
+✔ promote: plan→develop is a direct move-state call when planned-estimate appendix is present (22.978916ms)
+✔ promote: plan→develop surfaces an empty Plan Metadata refusal before move-state (16.974ms)
+✔ promote: plan→develop refused when refine-estimate comment is missing (#134) (17.166916ms)
+✔ promote: plan→develop refused when any sub-issue still in Backlog (#135) (23.036917ms)
+✔ promote: plan→develop refuses only children without current R4P-or-later evidence (17.746333ms)
+✔ promote: refine→plan refused when an epic child is PAST refine (#149 — lead-rule) (18.410041ms)
+✔ promote: plan→develop refused when planned-estimate appendix is missing (#134) (21.945291ms)
+✔ promote: develop→test delegates to /task test (#137) (38.821042ms)
+✔ promote: develop→test refused when CODE_COMPLETE gate returns blockers (#136) (27.589292ms)
+✔ promote: develop→test allowed when CODE_COMPLETE gate passes (#136) (28.477042ms)
+✔ promote: test→review delegates to the review verb (16.789708ms)
+✔ promote: test→review refused when aitm-dod-verified marker is missing (#210 Fix C) (16.348417ms)
+✔ promote: test→review REFUSED when a non-lifecycle checkbox is still unticked (#257) (14.12175ms)
+✔ promote: test→review ALLOWED when dod-verified present and every checkbox ticked (#257) (13.81775ms)
+✔ promote: review→done delegates to /task close (14.202125ms)
+✔ promote: review→done reports transition-failed when close exits 0 but board stays review (#710) (14.113542ms)
+✔ promote: historical Assigned body canonicalizes to R4P before drift comparison (18.216041ms)
+✔ promote: terminal refusal on done (14.379792ms)
+✔ promote: drift refused when live ≠ recorded (13.871958ms)
+✔ promote: bootstrap when lastKnownState absent — syncs to live, then promotes (19.905167ms)
+✔ promote: transition-failed when alias verb exits non-zero — no metadata update (27.32825ms)
+✔ promote: delegate non-zero but board reached target → promoted-with-warning (#175) (23.6465ms)
+✔ promote: delegate non-zero, board at target, marker stale → repair write fires (#175) (29.499958ms)
+✔ promote: delegate non-zero, marker repair write fails → audit comment posted (#175, #168) (27.465333ms)
+✔ promote: alias=test exit non-zero, board at target, NO aitm-dod-verified → promoted-with-warning, no rollback (#271 regression guard) (25.153666ms)
+✔ promote: delegate non-zero AND board drifted to non-target → transition-failed (#175) (25.006583ms)
+✔ promote: drift-reconcile is a no-op when live state matches recorded after failure (25.41175ms)
+✔ promote: drift-reconcile survives getLiveState throwing on the post-failure read (21.853625ms)
+✔ promote: error when recorded state is unknown (11.668042ms)
+✔ promote: no longer writes a move:<target> audit row (#128 — chokepoint emits paired phase rows) (14.327375ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1135.215708
+[state-recording] issue #1752 marker write to "test" FAILED after 2 attempts: simulated gh failure

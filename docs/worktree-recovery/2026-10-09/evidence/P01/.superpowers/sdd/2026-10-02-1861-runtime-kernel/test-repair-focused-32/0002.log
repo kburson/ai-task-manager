@@ -1,0 +1,26 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/hooks/on-ask.mjs:52
+  if (sid !== currentSessionId()) throw new Error('ASK_ACTOR_MISMATCH');
+                                        ^
+
+Error: ASK_ACTOR_MISMATCH
+    at questionOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/hooks/on-ask.mjs:52:41)
+    at recordAskPause (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/hooks/on-ask.mjs:58:10)
+    at withUnitRuntimeRoot.projectRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/on-ask.test.mjs:47:25)
+    at async file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/on-ask.test.mjs:30:3
+
+Node.js v26.8.1
+✖ scripts/tests/unit/task-tracker/lib/on-ask.test.mjs (92.612ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 97.832375
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/on-ask.test.mjs:1:1
+✖ scripts/tests/unit/task-tracker/lib/on-ask.test.mjs (92.612ms)
+  'test failed'

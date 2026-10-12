@@ -1,0 +1,19 @@
+✔ non-gated tool is allowed (0.693333ms)
+✔ allowlisted scratch and runtime paths are allowed even on a wrong-base child (0.114375ms)
+✔ non-managed branches fail OPEN (solo/main/epic/story unaffected) (0.168625ms)
+✔ managed child with a PASSING evaluation is allowed (0.059542ms)
+✔ managed child with a FAILING evaluation is blocked (fail-closed) (0.138167ms)
+✔ managed child whose base could not be resolved is blocked (fail-closed) (0.079375ms)
+✔ computeEvaluation PASSES a child cut from the epic head (0.294875ms)
+✔ computeEvaluation FAILS the #859 wrong-base child (cut from the fork) (0.067083ms)
+✔ #1284: the guard evaluates a child against its custom recorded epic branch (0.156209ms)
+✔ #1284: unresolved custom authority blocks guard evaluation before Git (0.410583ms)
+✔ #1486: the synchronous hook delegates authority mapping to the shared adapter (0.51175ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.963708

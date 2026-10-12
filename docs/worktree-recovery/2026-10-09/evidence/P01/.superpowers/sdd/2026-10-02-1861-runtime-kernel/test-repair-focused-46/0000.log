@@ -1,0 +1,96 @@
+coverage-source-edit-gate.test.mjs: ok
+✔ normalizePath: empty → empty, relative → posix, outside → abs (0.709375ms)
+✔ isAllowlistedPath: empty false, .tmp/ true, scratch true, src false (0.101917ms)
+✔ decide: non-gated tool → allow (0.189458ms)
+✔ decide: chore-mode → allow bypass (0.323625ms)
+✔ decide: allowlisted path → allow (0.134458ms)
+✔ decide: no bound issue → block (0.089667ms)
+✔ decide: pre-develop state → block state-gate (0.11625ms)
+✔ decide: historical On Deck state remains a pre-develop block (0.104833ms)
+✔ decide: develop but markers missing → block marker-gate (0.168958ms)
+✔ decide: develop + both markers → allow (0.119667ms)
+✔ loadBoundIssue: no state file → null (2.140375ms)
+✔ loadBoundIssue: numeric active → #N (2.111791ms)
+✔ loadBoundIssue: discover/plan sentinels → null (3.079625ms)
+✔ cacheFilePath: lands under .ai-task-manager/.cache (0.101167ms)
+✔ readCache: missing file → null; write then read → hit (1.291584ms)
+✔ readCache: wrong issue → null (1.853458ms)
+✔ readCache: stale entry → null (2.403042ms)
+✔ fetchIssueSignals: shared exact-project snapshot supplies state and ownership (2.695833ms)
+✔ fetchIssueSignals: name shape → canonical state (3.792041ms)
+✔ fetchIssueSignals: historical display name and legacy config key map to Ready for Planning (1.404333ms)
+✔ resolveIssueSignals: cache miss fetches then warms cache (2.706917ms)
+✔ runHook: non-gated tool → allow (0.241ms)
+✔ runHook: no project dir → allow (0.154ms)
+✖ runHook: chore-mode bypass (1.323292ms)
+✖ runHook: bound + develop + markers via injected resolve → allow (0.25975ms)
+✖ runHook: resolve throws → falls through to refuse pre-develop default (0.184125ms)
+✔ runHook: findProjectDir honours env override (2.78325ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 24
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 202.364125
+
+✖ failing tests:
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ runHook: chore-mode bypass (1.323292ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '[task-tracker] Runtime authority unavailable (ROOT_IDENTITY_MISMATCH): Project root does not exist: /proj; inspect registered migrate-runtime status.'
+  - 'chore-mode-bypass'
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs:275:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[task-tracker] Runtime authority unavailable (ROOT_IDENTITY_MISMATCH): Project root does not exist: /proj; inspect registered migrate-runtime status.',
+    expected: 'chore-mode-bypass',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ runHook: bound + develop + markers via injected resolve → allow (0.25975ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '[task-tracker] Runtime authority unavailable (ROOT_IDENTITY_MISMATCH): Project root does not exist: /proj; inspect registered migrate-runtime status.'
+  - 'state-and-markers-ok'
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs:293:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[task-tracker] Runtime authority unavailable (ROOT_IDENTITY_MISMATCH): Project root does not exist: /proj; inspect registered migrate-runtime status.',
+    expected: 'state-and-markers-ok',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:84:10
+✖ runHook: resolve throws → falls through to refuse pre-develop default (0.184125ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'source-edit-runtime-unavailable'
+  - 'source-edit-state-gate'
+                 ^
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs:308:10
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'source-edit-runtime-unavailable',
+    expected: 'source-edit-state-gate',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,12 @@
+Active: #1142. Previous: #700 ended (+0 min, +3 words). Created with title: "new issue".
+[dependency-disposition] #1143: binding remains active; retry dependency projection (dependency-disposition:config)
+Active: #1143. Previous: #700 ended (+0 min, +3 words).
+✔ new and switch both flush the outgoing issue before reseeding the cursor for the target (27538.898459ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28452.760125

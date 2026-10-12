@@ -1,0 +1,16 @@
+✔ happy path: creates, tethers, substitutes placeholders (1779.075875ms)
+✔ explicit --assignee is forwarded to gh issue create (1237.782333ms)
+✔ missing projectId: exits non-zero before calling gh (961.13525ms)
+✔ tether failure: prints recovery command and exits non-zero (1186.491042ms)
+✔ --parent flag forwards to project-tether (1295.471667ms)
+✔ --no-tether: skips tether step entirely (1225.559833ms)
+✔ --shape sub-issue: refuses creation under a Done parent epic (1166.397417ms)
+✔ --shape sub-issue: AITM_SKIP_PARENT_STATE_GATE=1 bypasses the Done-parent check (2757.363541ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11694.505417

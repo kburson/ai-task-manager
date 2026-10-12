@@ -1,0 +1,20 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+    "status": 1,
+    "durationMs": 22112,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-85/0000.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs",
+    "status": 0,
+    "durationMs": 41282,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-85/0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/reopened-close-binding-ownership.test.mjs",
+    "status": 0,
+    "durationMs": 21050,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-85/0002.log"
+  }
+]

@@ -1,0 +1,13 @@
+✔ strict parser accepts canonical and mutation-alias explanation forms (1.395833ms)
+✔ strict parser rejects missing json, singleton duplication, and malformed shapes (0.74475ms)
+✔ one evaluation feeds routine and diagnostic projection without effects (4.2265ms)
+✔ matching receipt suppresses only agent expansion while evaluation remains fresh (0.267209ms)
+✔ actual command-core traffic covers receipt, source, reset, blocked, and diagnostic lanes (1.740916ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18.357208

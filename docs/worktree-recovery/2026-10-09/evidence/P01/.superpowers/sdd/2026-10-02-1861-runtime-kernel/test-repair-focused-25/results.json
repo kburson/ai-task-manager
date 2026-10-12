@@ -1,0 +1,32 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs",
+    "status": 0,
+    "durationMs": 1841,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-25/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs",
+    "status": 0,
+    "durationMs": 1220,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-25/0001.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs",
+    "status": 0,
+    "durationMs": 596,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-25/0002.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs",
+    "status": 0,
+    "durationMs": 588,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-25/0003.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs",
+    "status": 0,
+    "durationMs": 985,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-25/0004.log"
+  }
+]

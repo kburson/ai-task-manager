@@ -1,0 +1,45 @@
+self-bind-resume.test.mjs: ok
+✖ same-issue resume restores fleet evidence without timing writes (4302.907208ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4306.455375
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs:110:1
+✖ same-issue resume restores fleet evidence without timing writes (4302.907208ms)
+  WorktreeResolutionError: Unable to resolve a Git worktree for bind directory "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/tt-self-bind-fleet-repair-67GGMF": fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+  Use '--' to separate paths from revisions, like this:
+  'git <command> [<revision>...] -- [<file>...]'
+      at resolveWorktreeBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding.mjs:41:11)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/resume.mjs:302:23)
+      ... 2 lines matching cause stack trace ...
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    projectDir: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/tt-self-bind-fleet-repair-67GGMF',
+    cause: Error: Command failed: git rev-parse --abbrev-ref HEAD
+    fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+    Use '--' to separate paths from revisions, like this:
+    'git <command> [<revision>...] -- [<file>...]'
+    
+        at genericNodeError (node:internal/errors:999:15)
+        at wrappedFn (node:internal/errors:544:14)
+        at checkExecSyncError (node:child_process:942:11)
+        at execFileSync (node:child_process:978:15)
+        at resolveWorktreeBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/worktree-binding.mjs:32:7)
+        at verbResume (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/resume.mjs:302:23)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs:144:11)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+      status: 128,
+      signal: null,
+      output: [ null, 'HEAD\n', "fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'\n" ],
+      pid: 88468,
+      stdout: 'HEAD\n',
+      stderr: "fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'\n"
+    }
+  }

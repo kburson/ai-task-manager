@@ -1,0 +1,12 @@
+✔ aggregate parity matrix covers every lifecycle action and required scenario (1.738584ms)
+✔ aggregate parity executes the seven action suites, not only their metadata (18859.600667ms)
+✔ authority cost evidence matches fresh physical reads before A2 certification (807.895584ms)
+✔ legacy refusal and warning fallbacks remain inventoried and fail closed (1.2945ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19826.17525

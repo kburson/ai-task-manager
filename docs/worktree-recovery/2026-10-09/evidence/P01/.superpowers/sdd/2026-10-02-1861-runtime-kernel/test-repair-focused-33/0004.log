@@ -1,0 +1,50 @@
+  ok  parity: claude.installTarget matches expected baseline
+  ok  parity: claude.stateDir matches expected baseline
+  ok  parity: claude.transcriptLocator matches expected baseline
+  ok  parity: claude.transcriptHomeEnv matches expected baseline
+  ok  parity: claude.transcriptHomeDefault matches expected baseline
+  ok  parity: claude.transcriptLayout matches expected baseline
+  ok  parity: claude.transcriptSchema matches expected baseline
+  ok  parity: claude.sessionIdEnvKeys matches expected baseline
+  ok  parity: claude.detectionEnvKeys matches expected baseline
+  ok  parity: claude.sessionIdFallback matches expected baseline
+  ok  parity: claude.hookCapability matches expected baseline
+  ok  parity: claude.skillAdapterPath matches expected baseline
+  ok  parity: claude.installRecipe matches expected baseline
+  ok  parity: claude.externalActions matches expected baseline
+  ok  parity: codex.installTarget matches expected baseline
+  ok  parity: codex.stateDir matches expected baseline
+  ok  parity: codex.transcriptLocator matches expected baseline
+  ok  parity: codex.transcriptHomeEnv matches expected baseline
+  ok  parity: codex.transcriptHomeDefault matches expected baseline
+  ok  parity: codex.transcriptLayout matches expected baseline
+  ok  parity: codex.transcriptSchema matches expected baseline
+  ok  parity: codex.sessionIdEnvKeys matches expected baseline
+  ok  parity: codex.detectionEnvKeys matches expected baseline
+  ok  parity: codex.sessionIdFallback matches expected baseline
+  ok  parity: codex.hookCapability matches expected baseline
+  ok  parity: codex.skillAdapterPath matches expected baseline
+  ok  parity: codex.installRecipe matches expected baseline
+  ok  parity: codex.externalActions matches expected baseline
+  ok  parity: full claude adapter object matches expected baseline
+  ok  parity: full codex adapter object matches expected baseline
+  ok  #939: shared router discovers the deliver JIT rule and installed stubs reach it
+  ok  #1381: shared router discovers the provider-neutral incident-ledger rule
+  ok  #1713: provider adapters route one shared story-quality contract without stale mandates
+  ok  #1713: active-mandate detector rejects both historical forms even beside optional prose
+  ok  #1703: active-instruction scanning cannot recreate an HTML comment opener
+  ok  #1713: shared and CLI authoring guidance treats intake story prose as optional
+  ok  #1631: generated consumer stubs use scoped package paths
+  ok  #939: provider adapters own sanctioned integration wording
+  ok  #939: delivery rule is an exact, fail-closed host contract
+
+All 39 parity tests passed.
+✔ scripts/tests/unit/providers/parity.test.mjs (169.2515ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 174.044542

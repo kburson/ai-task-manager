@@ -1,0 +1,20 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "status": 0,
+    "durationMs": 41326,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-98/0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs",
+    "status": 0,
+    "durationMs": 160059,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-98/0001.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs",
+    "status": 0,
+    "durationMs": 153321,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-98/0002.log"
+  }
+]

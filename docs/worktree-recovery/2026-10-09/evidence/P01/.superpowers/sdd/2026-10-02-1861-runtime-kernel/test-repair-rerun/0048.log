@@ -1,0 +1,31 @@
+✖ clean offline packed install exposes the supported workflow-exception package (7307.647375ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7311.232
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs:36:1
+✖ clean offline packed install exposes the supported workflow-exception package (7307.647375ms)
+  Error: Command failed: npm install --offline --ignore-scripts --no-audit --no-fund --package-lock=false /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-workflow-policy-pack-vXMNzH/pack/kburson-ai-task-manager-0.1.0.tgz
+      at genericNodeError (node:internal/errors:999:15)
+      at wrappedFn (node:internal/errors:544:14)
+      at checkExecSyncError (node:child_process:942:11)
+      at execFileSync (node:child_process:978:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs:67:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    status: 1,
+    signal: null,
+    output: [ null, '', '' ],
+    pid: 71814,
+    stdout: '',
+    stderr: ''
+  }

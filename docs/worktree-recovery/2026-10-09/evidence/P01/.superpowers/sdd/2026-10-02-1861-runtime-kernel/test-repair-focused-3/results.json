@@ -1,0 +1,114 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "--test-name-pattern=question marker cannot|session tracking initializes|upgrade refuses invalid",
+      "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs"
+    ],
+    "status": 0,
+    "durationMs": 16181,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "--test-name-pattern=question marker cannot|session tracking initializes|upgrade refuses invalid",
+      "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs"
+    ],
+    "status": 0,
+    "durationMs": 2558,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs"
+    ],
+    "status": 0,
+    "durationMs": 23245,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0002.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs"
+    ],
+    "status": 0,
+    "durationMs": 215,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0003.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs"
+    ],
+    "status": 1,
+    "durationMs": 4594,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0004.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "scripts/tests/integration/task-tracker/lib/action-review.test.mjs"
+    ],
+    "status": 0,
+    "durationMs": 1658,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0005.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs"
+    ],
+    "status": 0,
+    "durationMs": 6141,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0006.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs"
+    ],
+    "status": 0,
+    "durationMs": 28039,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0007.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/executable-entrypoint-classification.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "scripts/tests/unit/task-tracker/lib/executable-entrypoint-classification.test.mjs"
+    ],
+    "status": 0,
+    "durationMs": 308,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0008.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+    "args": [
+      "node",
+      "--test",
+      "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs"
+    ],
+    "status": 1,
+    "durationMs": 59658,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-3/0009.log"
+  }
+]

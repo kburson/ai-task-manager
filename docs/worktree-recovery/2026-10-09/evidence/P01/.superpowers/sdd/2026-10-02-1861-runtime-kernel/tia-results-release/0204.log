@@ -1,0 +1,14 @@
+✔ Test accepts current accepted directory evidence without reading or rewriting body proof (2.748125ms)
+✔ shared Test and Review transition guards consume accepted directory evidence (0.653625ms)
+✔ Test fails closed before mutation when directory evidence is absent or invalid (0.705292ms)
+✔ Review preserves the legacy lane and requires accepted Test evidence for directory issues (0.4375ms)
+✔ typed waiver heads require exact receipt or accepted directory evidence (0.113584ms)
+✔ Review preflight reads directory lifecycle authority and retains legacy AC auditing (2.241292ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.185542

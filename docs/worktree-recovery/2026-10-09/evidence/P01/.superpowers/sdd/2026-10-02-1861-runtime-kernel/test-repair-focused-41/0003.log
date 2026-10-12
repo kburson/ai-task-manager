@@ -1,0 +1,30 @@
+✔ runPullNext refuses when epic is not in develop (0.969375ms)
+✔ pull-next live-state reads use the exact configured-project snapshot (0.13075ms)
+✔ runPullNext returns no-children for epic with no sub-issues (0.143041ms)
+✔ runPullNext returns no-eligible when no R4P children exist (4.628167ms)
+✔ runPullNext promotes lowest-rank R4P child (5.785916ms)
+✔ #1260 pulled epic child names the bound epic integration branch (2.073833ms)
+✔ #1260 solo-story planning guidance remains current trunk (0.0915ms)
+✔ #1260 missing epic branch authority fails closed to generic epic guidance (0.2315ms)
+✔ #1260 default epic branch resolver reads the already-bound project directory (0.12875ms)
+✔ runPullNext refuses false success when the selected child did not reach Plan (0.176625ms)
+✔ runPullNext delegates the selected child through the real promote bind seam (#1114) (43.692292ms)
+✔ selected-child promotion reuses its held lock instead of entering the locking verb wrapper (0.2325ms)
+✔ direct promote remains fail-closed on a mismatched bind (#1114) (0.2615ms)
+✔ runPullNext skips a child whose external native dependency is not Done (1.738459ms)
+✔ runPullNext selects a child when its external native dependency is Done (2.142ms)
+✔ runPullNext audits the epic before child selection (#758) (1.92675ms)
+✔ runPullNext refuses ambiguous epic audit drift (0.141833ms)
+✔ runPullNext refuses every pull when any child descriptor is incomplete (0.087791ms)
+✔ runPullNext holds shared parent authority across selection and promotion (1.612167ms)
+✔ runPullNext does not audit when the epic is not in develop (#758) (0.09125ms)
+✔ runPullNext requires epicNumber and cfg (0.116792ms)
+✔ runPullNext surfaces fetch failures (0.120417ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 298.260709

@@ -1,0 +1,13 @@
+✔ shim preserves exact request, stdout, stderr, and exit while recording body-file bytes (3908.378417ms)
+✔ shim captures piped stdin and refuses invalid metadata before child execution (3822.76425ms)
+✔ shim preserves a terminating signal while recording the outcome (5376.341125ms)
+✔ shim does not wait for EOF on an unused execFile stdin pipe (4462.221875ms)
+✔ concurrent shim processes allocate unique ordered action directories (5742.82125ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23315.689083

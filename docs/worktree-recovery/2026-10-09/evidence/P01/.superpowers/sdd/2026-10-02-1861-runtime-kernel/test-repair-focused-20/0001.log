@@ -1,0 +1,22 @@
+coverage-commit-trace.test.mjs: defined
+✔ runCommitTrace: happy path threads info through injected deps (36.392458ms)
+✔ runCommitTrace: strips leading # from issueNumber (3.835458ms)
+✔ runCommitTrace: throws without issueNumber (0.35925ms)
+✔ runCommitTrace: throws without cfg.repo (0.164834ms)
+Usage: /task commit-trace #N
+Usage: /task commit-trace #N
+commit-trace: commit-trace: cfg.repo is required
+commit-trace: commit-trace: cfg.repo is required
+✔ runCommitTrace: falls back to getProjectDir() when projectDir omitted (157.515708ms)
+✔ verbCommitTrace: no target → usage, exit 1 (121.31675ms)
+✔ verbCommitTrace: discover bucket active + no positional → usage, exit 1 (161.158375ms)
+✔ verbCommitTrace: positional target but runCommitTrace throws → catch, exit 1 (113.38775ms)
+✔ verbCommitTrace: target resolved from state.active, then catch → exit 1 (122.672292ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 802.492875
