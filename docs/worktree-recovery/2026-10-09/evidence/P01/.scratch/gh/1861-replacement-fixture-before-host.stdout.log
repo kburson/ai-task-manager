@@ -1,0 +1,35 @@
+✔ layout audit rejects a discovered test outside the canonical lane tree (285.981542ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (107.654709ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (96.944792ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (339.924792ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (1.947ms)
+✔ current test-tree baseline is well formed (1.960458ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.826334ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.462ms)
+✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (5.5315ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (12.250541ms)
+✔ resume refuses unbound first pending artifacts after a real SIGKILL (766.511875ms)
+✔ SIGKILL at after-empty-first-journal preserves exact empty recovery (1317.914375ms)
+✔ SIGKILL at after-empty-stage-record preserves exact empty recovery (1292.465083ms)
+✔ SIGKILL at after-empty-staging preserves exact empty recovery (1261.840833ms)
+✔ SIGKILL at after-empty-prepared-control preserves exact empty recovery (2666.162375ms)
+✔ SIGKILL at after-empty-store-rename preserves exact empty recovery (1362.720417ms)
+✔ SIGKILL at after-empty-complete-journal preserves exact empty recovery (1850.62325ms)
+✔ SIGKILL at after-empty-active-control preserves exact empty recovery (3104.495166ms)
+✔ staged byte conflict refuses recovery without changing any file (751.560125ms)
+✔ unexpected ancestor sibling is never adopted by empty recovery (806.065583ms)
+✔ SIGKILLed empty resumer requires its own exact death before another recovery (1798.302167ms)
+✔ SIGKILL during coordinator recovery claim retains a resumable ordered history (1284.250292ms)
+✔ live empty publisher cannot be recovered and all protected bytes stay unchanged (475.08075ms)
+✔ closed empty journal refuses stage-path without writes (1616.079917ms)
+✔ closed empty journal refuses owner-extra without writes (832.059084ms)
+✔ closed empty journal refuses owner-history without writes (921.864625ms)
+✔ registered recovery completes an exact dead receipt after durable coordinator removal (9542.86175ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31734.055125

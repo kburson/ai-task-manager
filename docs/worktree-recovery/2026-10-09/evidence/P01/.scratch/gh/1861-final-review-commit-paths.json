@@ -1,0 +1,18 @@
+[
+  "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+  "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+  "scripts/task-tracker/lib/runtime-batch.mjs",
+  "scripts/tests/fixtures/runtime-empty/linked-publisher.mjs",
+  "scripts/tests/fixtures/runtime-empty/empty-publisher.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+  "docs/reviews/1857-remaining-work/1861-final-code-review/README.md",
+  "docs/reviews/1857-remaining-work/1861-final-code-review/reviewer-response-r1.md",
+  "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md",
+  "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/final-review-fix.json",
+  "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+  "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+  "docs/reviews/1857-remaining-work/2026-10-03-1861-ac-contract-handoff.md"
+]

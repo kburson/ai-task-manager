@@ -1,0 +1,498 @@
+{
+  "conclusion": "success",
+  "databaseId": 37177610211,
+  "headSha": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "jobs": [
+    {
+      "completedAt": "2026-10-04T04:45:38Z",
+      "conclusion": "success",
+      "databaseId": 111363418340,
+      "name": "Slow lane (slow tests only)",
+      "startedAt": "2026-10-04T04:39:36Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-04T04:39:37Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-04T04:39:37Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:40Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v5",
+          "number": 2,
+          "startedAt": "2026-10-04T04:39:37Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:43Z",
+          "conclusion": "success",
+          "name": "Materialize local trunk ref for real-git tests (#745)",
+          "number": 3,
+          "startedAt": "2026-10-04T04:39:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:46Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v5",
+          "number": 4,
+          "startedAt": "2026-10-04T04:39:43Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:54Z",
+          "conclusion": "success",
+          "name": "Run npm ci",
+          "number": 5,
+          "startedAt": "2026-10-04T04:39:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:45:35Z",
+          "conclusion": "success",
+          "name": "Run npm run test:slow",
+          "number": 6,
+          "startedAt": "2026-10-04T04:39:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:45:35Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v5",
+          "number": 11,
+          "startedAt": "2026-10-04T04:45:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:45:35Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v5",
+          "number": 12,
+          "startedAt": "2026-10-04T04:45:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:45:35Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 13,
+          "startedAt": "2026-10-04T04:45:35Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/kburson/ai-task-manager/actions/runs/37177610211/job/111363418340"
+    },
+    {
+      "completedAt": "2026-10-04T04:39:28Z",
+      "conclusion": "success",
+      "databaseId": 111363418413,
+      "name": "Guidance cache runtime budget",
+      "startedAt": "2026-10-04T04:38:59Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-04T04:39:01Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-04T04:39:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:04Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v5",
+          "number": 2,
+          "startedAt": "2026-10-04T04:39:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:06Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v5",
+          "number": 3,
+          "startedAt": "2026-10-04T04:39:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:14Z",
+          "conclusion": "success",
+          "name": "Run npm ci",
+          "number": 4,
+          "startedAt": "2026-10-04T04:39:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:19Z",
+          "conclusion": "success",
+          "name": "Measure five fresh-process cache cases",
+          "number": 5,
+          "startedAt": "2026-10-04T04:39:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:25Z",
+          "conclusion": "success",
+          "name": "Enforce CI-derived budget with 20 percent headroom",
+          "number": 6,
+          "startedAt": "2026-10-04T04:39:19Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:25Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v5",
+          "number": 11,
+          "startedAt": "2026-10-04T04:39:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:25Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v5",
+          "number": 12,
+          "startedAt": "2026-10-04T04:39:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:25Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 13,
+          "startedAt": "2026-10-04T04:39:25Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/kburson/ai-task-manager/actions/runs/37177610211/job/111363418413"
+    },
+    {
+      "completedAt": "2026-10-04T04:46:34Z",
+      "conclusion": "success",
+      "databaseId": 111363418429,
+      "name": "Fast lane (format, lint, unit + integration)",
+      "startedAt": "2026-10-04T04:38:59Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-04T04:39:01Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-04T04:39:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:04Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v5",
+          "number": 2,
+          "startedAt": "2026-10-04T04:39:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:04Z",
+          "conclusion": "success",
+          "name": "Materialize local trunk ref for real-git tests (#745)",
+          "number": 3,
+          "startedAt": "2026-10-04T04:39:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:06Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v5",
+          "number": 4,
+          "startedAt": "2026-10-04T04:39:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:12Z",
+          "conclusion": "success",
+          "name": "Run npm ci",
+          "number": 5,
+          "startedAt": "2026-10-04T04:39:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:14Z",
+          "conclusion": "success",
+          "name": "Prepare runtime dependency cache for offline package tests",
+          "number": 6,
+          "startedAt": "2026-10-04T04:39:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:38Z",
+          "conclusion": "success",
+          "name": "Run npm run format:check",
+          "number": 7,
+          "startedAt": "2026-10-04T04:39:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:40:09Z",
+          "conclusion": "success",
+          "name": "Run npm run lint",
+          "number": 8,
+          "startedAt": "2026-10-04T04:39:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:40:10Z",
+          "conclusion": "success",
+          "name": "Memory-seed index parity (#728)",
+          "number": 9,
+          "startedAt": "2026-10-04T04:40:09Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:40:10Z",
+          "conclusion": "success",
+          "name": "Classify docs-only pull request",
+          "number": 10,
+          "startedAt": "2026-10-04T04:40:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:41:12Z",
+          "conclusion": "success",
+          "name": "Unit tests",
+          "number": 11,
+          "startedAt": "2026-10-04T04:40:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:46:32Z",
+          "conclusion": "success",
+          "name": "Integration tests",
+          "number": 12,
+          "startedAt": "2026-10-04T04:41:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:46:32Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v5",
+          "number": 23,
+          "startedAt": "2026-10-04T04:46:32Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:46:33Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v5",
+          "number": 24,
+          "startedAt": "2026-10-04T04:46:32Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:46:33Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 25,
+          "startedAt": "2026-10-04T04:46:33Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/kburson/ai-task-manager/actions/runs/37177610211/job/111363418429"
+    },
+    {
+      "completedAt": "2026-10-04T04:39:38Z",
+      "conclusion": "success",
+      "databaseId": 111363418464,
+      "name": "npm 12.0.2 / Node 26 pack compatibility",
+      "startedAt": "2026-10-04T04:38:59Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-04T04:39:00Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-04T04:39:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:03Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v5",
+          "number": 2,
+          "startedAt": "2026-10-04T04:39:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:08Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v5",
+          "number": 3,
+          "startedAt": "2026-10-04T04:39:03Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:12Z",
+          "conclusion": "success",
+          "name": "Run npm install --global \"npm@12.0.2\"",
+          "number": 4,
+          "startedAt": "2026-10-04T04:39:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:12Z",
+          "conclusion": "success",
+          "name": "Run test \"$(npm --version)\" = \"12.0.2\"",
+          "number": 5,
+          "startedAt": "2026-10-04T04:39:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:13Z",
+          "conclusion": "success",
+          "name": "Run npm ci",
+          "number": 6,
+          "startedAt": "2026-10-04T04:39:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:36Z",
+          "conclusion": "success",
+          "name": "npm pack report compatibility tests",
+          "number": 7,
+          "startedAt": "2026-10-04T04:39:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:36Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v5",
+          "number": 13,
+          "startedAt": "2026-10-04T04:39:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:36Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v5",
+          "number": 14,
+          "startedAt": "2026-10-04T04:39:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:36Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 15,
+          "startedAt": "2026-10-04T04:39:36Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/kburson/ai-task-manager/actions/runs/37177610211/job/111363418464"
+    },
+    {
+      "completedAt": "2026-10-04T04:39:32Z",
+      "conclusion": "success",
+      "databaseId": 111363418545,
+      "name": "npm 11.8.0 / Node 24 pack compatibility",
+      "startedAt": "2026-10-04T04:39:01Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-04T04:39:02Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-04T04:39:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:05Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v5",
+          "number": 2,
+          "startedAt": "2026-10-04T04:39:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:10Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v5",
+          "number": 3,
+          "startedAt": "2026-10-04T04:39:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:15Z",
+          "conclusion": "success",
+          "name": "Run npm install --global \"npm@11.8.0\"",
+          "number": 4,
+          "startedAt": "2026-10-04T04:39:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:15Z",
+          "conclusion": "success",
+          "name": "Run test \"$(npm --version)\" = \"11.8.0\"",
+          "number": 5,
+          "startedAt": "2026-10-04T04:39:15Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:23Z",
+          "conclusion": "success",
+          "name": "Run npm ci",
+          "number": 6,
+          "startedAt": "2026-10-04T04:39:15Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:31Z",
+          "conclusion": "success",
+          "name": "npm pack report compatibility tests",
+          "number": 7,
+          "startedAt": "2026-10-04T04:39:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:31Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v5",
+          "number": 13,
+          "startedAt": "2026-10-04T04:39:31Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:31Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v5",
+          "number": 14,
+          "startedAt": "2026-10-04T04:39:31Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T04:39:31Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 15,
+          "startedAt": "2026-10-04T04:39:31Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/kburson/ai-task-manager/actions/runs/37177610211/job/111363418545"
+    },
+    {
+      "completedAt": "2026-10-04T04:38:57Z",
+      "conclusion": "skipped",
+      "databaseId": 111363419181,
+      "name": "Guidance publication gate",
+      "startedAt": "2026-10-04T04:38:58Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/kburson/ai-task-manager/actions/runs/37177610211/job/111363419181"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/kburson/ai-task-manager/actions/runs/37177610211"
+}

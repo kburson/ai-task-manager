@@ -1,0 +1,267 @@
+✖ migration bootstrap admits exact registered forms without reading corrupt runtime (30.266875ms)
+✔ bootstrap rejects wrong executable, wrappers, extra tokens and ambiguous arguments (0.430167ms)
+✖ bootstrap accepts exact-hash legacy trust planning and never requires volatile input on resume (16.836834ms)
+✔ bootstrap rejects artifact-root identity even when it contains a real Git repository (32.130209ms)
+✖ bootstrap compares executable physical identity and rejects copied package entrypoints (20.739042ms)
+✖ writer leases are durable, scoped and removed after successful or failed operations (17.948958ms)
+✖ fencing drains existing leases and prevents new writers without accepting unknown older writers (19.801625ms)
+✖ known cooperative in-flight writers drain under a fence while unknown older processes refuse (31.391166ms)
+✖ nested synchronous and asynchronous writers share the outer lease through publication (47.097167ms)
+✖ corrupt and aliased fence records cannot be treated as an absent fence (32.110666ms)
+✖ unknown coordinator ownership is retained rather than reclaimed by age (39.773583ms)
+✖ coordinator release preserves replaced ownership instead of unlinking another owner (32.554167ms)
+✖ malformed owners and foreign-root lease records fail closed before fencing (35.027042ms)
+✖ a separate live process lease drains before migration can become quiescent (101.334875ms)
+✖ synchronous writers retain a lease through byte publication and return synchronously (29.247292ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 2
+ℹ fail 13
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 511.815042
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:19:1
+✖ migration bootstrap admits exact registered forms without reading corrupt runtime (30.266875ms)
+  TypeError: Cannot read properties of null (reading 'mode')
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:25:79)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:72:1
+✖ bootstrap accepts exact-hash legacy trust planning and never requires volatile input on resume (16.836834ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/migration-1857-kiX21A/observed-plan.json'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:77:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/migration-1857-kiX21A/observed-plan.json',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:126:1
+✖ bootstrap compares executable physical identity and rejects copied package entrypoints (20.739042ms)
+  TypeError: Cannot read properties of null (reading 'executable')
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:138:68)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:149:1
+✖ writer leases are durable, scoped and removed after successful or failed operations (17.948958ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/migration-1857-kiX21A
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at runtimeStoragePaths (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:237:20)
+      at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:580:18)
+      at withRuntimeWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:608:17)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:162:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:175:1
+✖ fencing drains existing leases and prevents new writers without accepting unknown older writers (19.801625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ROOT_OVERRIDE_UNSAFE'
+  -   code: 'RUNTIME_WRITER_CENSUS_UNKNOWN'
+    }
+  
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:190:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:241:1
+✖ known cooperative in-flight writers drain under a fence while unknown older processes refuse (31.391166ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ROOT_OVERRIDE_UNSAFE'
+  -   code: 'RUNTIME_WRITERS_ACTIVE'
+    }
+  
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:261:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:273:1
+✖ nested synchronous and asynchronous writers share the outer lease through publication (47.097167ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/migration-1857-kiX21A/coordination-2FLNWk
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at runtimeStoragePaths (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:237:20)
+      at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:580:18)
+      at withRuntimeWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:608:17)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:286:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:314:1
+✖ corrupt and aliased fence records cannot be treated as an absent fence (32.110666ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ROOT_OVERRIDE_UNSAFE'
+  -   code: 'RUNTIME_CONTROL_INVALID'
+    }
+  
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:331:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:343:1
+✖ unknown coordinator ownership is retained rather than reclaimed by age (39.773583ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ROOT_OVERRIDE_UNSAFE'
+  -   code: 'RUNTIME_MIGRATION_BUSY'
+    }
+  
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:359:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:366:1
+✖ coordinator release preserves replaced ownership instead of unlinking another owner (32.554167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ROOT_OVERRIDE_UNSAFE'
+  -   code: 'RUNTIME_MIGRATION_CONFLICT'
+    }
+  
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:382:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:402:1
+✖ malformed owners and foreign-root lease records fail closed before fencing (35.027042ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ROOT_OVERRIDE_UNSAFE'
+  -   code: 'RUNTIME_CONTROL_INVALID'
+    }
+  
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:432:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:436:1
+✖ a separate live process lease drains before migration can become quiescent (101.334875ms)
+  AssertionError [ERR_ASSERTION]: file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32
+    throw new RuntimeRootError(code, message);
+          ^
+  
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/migration-1857-kiX21A/coordination-aBL5dC
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at runtimeStoragePaths (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:237:20)
+      at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:580:18)
+      at withRuntimeWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:608:17)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/[eval1]:4:7
+      at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+      at async node:internal/modules/esm/loader:226:26
+      at async ModuleLoader.executeModuleJob (node:internal/modules/esm/loader:223:20) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+  
+  Node.js v26.8.1
+  
+  
+  'exit' !== 'ready'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:468:14)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'exit',
+    expected: 'ready',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:505:1
+✖ synchronous writers retain a lease through byte publication and return synchronously (29.247292ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/migration-1857-kiX21A/coordination-KfnhHd
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at runtimeStoragePaths (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:237:20)
+      at scopedLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:580:18)
+      at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:617:17)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs:520:18)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }

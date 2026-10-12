@@ -1,0 +1,113 @@
+✖ a killed whole-operation writer needs exact confirmed-death lease recovery before fencing (139.019208ms)
+✖ malformed owner host and null writer leases produce typed refusals without erasing evidence (35.47225ms)
+✖ a genuinely SIGKILLed coordinator is observable and recoverable only from exact dead-owner evidence (93.098167ms)
+✖ foreign host and replacement coordinator evidence cannot authorize recovery (33.189833ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 0
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 303.815792
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:18:1
+✖ a killed whole-operation writer needs exact confirmed-death lease recovery before fencing (139.019208ms)
+  AssertionError [ERR_ASSERTION]: writer exited before holding lease
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:37:32
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:35:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'fail',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:63:1
+✖ malformed owner host and null writer leases produce typed refusals without erasing evidence (35.47225ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ROOT_OVERRIDE_UNSAFE'
+  -   code: 'RUNTIME_CONTROL_INVALID'
+    }
+  
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:79:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:92:1
+✖ a genuinely SIGKILLed coordinator is observable and recoverable only from exact dead-owner evidence (93.098167ms)
+  AssertionError [ERR_ASSERTION]: child exited before lock: file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32
+    throw new RuntimeRootError(code, message);
+          ^
+  
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-killed-coordinator-ZjtCVZ
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at runtimeStoragePaths (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:237:20)
+      at locations (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:142:18)
+      at fenceRuntimeWriters (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-lock.mjs:703:17)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/[eval1]:4:7
+      at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+      at async node:internal/modules/esm/loader:226:26
+      at async ModuleLoader.executeModuleJob (node:internal/modules/esm/loader:223:20) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+  
+  Node.js v26.8.1
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:124:32
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:122:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'fail',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:210:1
+✖ foreign host and replacement coordinator evidence cannot authorize recovery (33.189833ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ROOT_OVERRIDE_UNSAFE'
+  -   code: 'RUNTIME_CONTROL_INVALID'
+    }
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs:229:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'throws',
+    diff: 'simple'
+  }

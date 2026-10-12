@@ -1,0 +1,11 @@
+✔ canonical record bytes roundtrip and reject changed bytes, fields and identities (5.224666ms)
+✔ canonical JSON rejects values erased or coerced by ordinary JSON (0.486834ms)
+✔ v2 protocol claims are strict protected projections and synthetic only (566.10825ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 575.740875

@@ -1,0 +1,12 @@
+✔ projectTmpDir resolves under .scratch/, not runtime .tmp/ or bare tmp/ (21.293667ms)
+✔ no scripts/ source hardcodes a project-root tmp/ scratch path (131.301458ms)
+✔ .gitignore ignores .scratch contents except the contract README (17.53525ms)
+✔ no registered git worktree lives under a project-root tmp/ path (7.982167ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 182.161917

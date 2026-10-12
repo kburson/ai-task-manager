@@ -1,0 +1,13 @@
+✔ synthetic completed-then-reopened history preserves the known v1 refusal (447.669125ms)
+✔ Done board effect before checkpoint remains a resumable production-codec prefix (434.106375ms)
+✔ legacy reopened recovery preserves a valid progressed replacement on retry (619.094334ms)
+✔ real rewrites share trees while changed input differs and linked authority remains isolated (3019.083041ms)
+✔ pinned imports copy independent objects while preserving the source repository bytes (2382.709625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6919.302334

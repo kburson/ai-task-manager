@@ -1,0 +1,9 @@
+{
+  "head": "914ae88921ee28a662a7d6fadcdbe047b2b1233c",
+  "preexistingPathsVerified": 347,
+  "indexPreserved": true,
+  "refsPreserved": true,
+  "restoredMixedFiles": [
+    "scripts/task-tracker/lib/runtime-migration-plan.mjs"
+  ]
+}

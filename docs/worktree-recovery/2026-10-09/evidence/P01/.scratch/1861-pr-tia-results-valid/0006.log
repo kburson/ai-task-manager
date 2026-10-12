@@ -1,0 +1,31 @@
+✔ one plan observes each physical root independently of file count and rechecks its final census (54.615375ms)
+✔ supported legacy roots have an explicit byte-preserving route and duplicates refuse (190.485375ms)
+✔ empty legacy lock directories remain active-source blockers, never invisible empty inventory (107.812042ms)
+✖ capture catalog accepts actual producer records and validates each stored payload (702.316042ms)
+✔ default migration catalog validates supported state and actor formats without caller-supplied classification (95.244542ms)
+✔ migration classifiers receive exact binary capture bytes without text decoding (129.029125ms)
+✔ an artifact-contained registered root is a typed census blocker, not a thrown planner failure (236.705333ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 6
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1520.293125
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs:85:1
+✖ capture catalog accepts actual producer records and validates each stored payload (702.316042ms)
+  AssertionError [ERR_ASSERTION]: ../../../.tmp/aitm/action-capture/enabled/owner__repo/issue-1857.json
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs:119:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

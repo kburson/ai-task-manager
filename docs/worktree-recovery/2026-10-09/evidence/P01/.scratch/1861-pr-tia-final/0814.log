@@ -1,0 +1,35 @@
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+✔ stale restart composes one immutable reopened recovery with a partial replacement (390.559083ms)
+✔ recovery-backed stale restart reuses the second link after a lost response (175.596417ms)
+✔ recovery-backed stale restart resumes durable progress after the second link (167.88625ms)
+✔ recovery-backed stale restart refuses contradictions before persistence (140.211291ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 886.365833
+[task-tracker] ⛔ Refusing to close #925: terminal timing issue:wrap was not durably posted: lost response. Issue left OPEN; retry after timing evidence is reachable.
+[task-tracker] ⛔ Refusing to close #925: terminal timing issue:wrap was not durably posted: lost response. Issue left OPEN; retry after timing evidence is reachable.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:recovery-backing-ambiguous
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: reopened-close-recovery:malformed-comment
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: reopened-close-recovery:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: reopened-close-recovery:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:dirty-worktree
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: reopened-close-recovery:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: reopened-close-recovery:recovery-backed-transaction
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: reopened-close-recovery:fresh-authority
+No convergence mutation was attempted; retry later.

@@ -1,0 +1,16 @@
+coverage-fleet.test.mjs: defined
+✔ list: empty registry → "No fleet tasks registered." (23.120125ms)
+✔ list: renders entries, covering both age formats and effectiveKind (13.170125ms)
+✔ prune: nothing stale → "nothing stale", no eviction (70.899209ms)
+✔ prune: evicts a worktree entry whose directory is gone (14.343959ms)
+✔ prune --dry-run: reports "Would evict" but leaves the registry intact (72.433708ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 205.591833
+(node:3279) [DEP0187] DeprecationWarning: Passing invalid argument types to fs.existsSync is deprecated
+(Use `node --trace-deprecation ...` to show where the warning was created)

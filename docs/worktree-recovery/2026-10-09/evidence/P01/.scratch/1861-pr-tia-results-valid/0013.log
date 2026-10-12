@@ -1,0 +1,48 @@
+✔ registered discovery state roundtrips as a supported non-issue binding without invented issue authority (699.336167ms)
+✖ unsupported publication refuses before changing any global, binding or actor bytes (662.638292ms)
+✖ a promise returned through the synchronous record wrapper retains real lease and coordinator evidence (878.638333ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 1
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2244.48575
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:32:1
+✖ unsupported publication refuses before changing any global, binding or actor bytes (662.638292ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:46:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: [Object],
+    operator: 'throws',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:63:1
+✖ a promise returned through the synchronous record wrapper retains real lease and coordinator evidence (878.638333ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'RUNTIME_OVERRIDE_UNSAFE'
+  -   code: 'RUNTIME_SYNC_WRITER_ASYNC'
+    }
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs:73:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'throws',
+    diff: 'simple'
+  }

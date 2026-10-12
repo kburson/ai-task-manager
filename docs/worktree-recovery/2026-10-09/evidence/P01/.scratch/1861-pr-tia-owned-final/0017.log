@@ -1,0 +1,11 @@
+✔ batched cwd observations keep missing and duplicate process evidence unavailable (16.772375ms)
+✔ process observation preserves executable paths containing spaces without parsing argv as executable identity (1.054959ms)
+✔ process census separates actual current/registered router ancestry from uncooperative or unknown writers (0.660333ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21.927708

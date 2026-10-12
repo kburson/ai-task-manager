@@ -1,0 +1,103 @@
+✔ one plan observes each physical root independently of file count and rechecks its final census (65.944833ms)
+✔ supported legacy roots have an explicit byte-preserving route and duplicates refuse (247.782834ms)
+✔ empty legacy lock directories remain active-source blockers, never invisible empty inventory (133.859541ms)
+✖ capture catalog accepts actual producer records and validates each stored payload (930.4335ms)
+✔ default migration catalog validates supported state and actor formats without caller-supplied classification (123.629ms)
+✖ migration classifiers receive exact binary capture bytes without text decoding (118.0405ms)
+✖ an artifact-contained registered root is a typed census blocker, not a thrown planner failure (292.26925ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 4
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1920.355375
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs:132:1
+✖ capture catalog accepts actual producer records and validates each stored payload (930.4335ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   {
+  +     code: 'required-record-missing',
+  +     target: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-capture-upgrade-source-tI1dLh/.ai-task-manager/runtime/store/state/task-tracker-state.json'
+  +   },
+  +   {
+  +     code: 'required-record-missing',
+  +     target: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-capture-upgrade-source-tI1dLh/.ai-task-manager/runtime/store/state/task-tracker-queue.json'
+  +   },
+  +   {
+  +     code: 'required-record-missing',
+  +     target: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-capture-upgrade-source-tI1dLh/.ai-task-manager/runtime/store/fleet/task-fleet.json'
+  +   },
+  +   {
+  +     code: 'required-record-missing',
+  +     target: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-capture-upgrade-source-tI1dLh/.ai-task-manager/runtime/store/fleet/occupancy.json'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs:183:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [Array],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs:222:1
+✖ migration classifiers receive exact binary capture bytes without text decoding (118.0405ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   {
+  +     code: 'required-record-missing',
+  +     target: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-binary-census-iml75P/.ai-task-manager/runtime/store/state/task-tracker-state.json'
+  +   },
+  +   {
+  +     code: 'required-record-missing',
+  +     target: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-binary-census-iml75P/.ai-task-manager/runtime/store/state/task-tracker-queue.json'
+  +   },
+  +   {
+  +     code: 'required-record-missing',
+  +     target: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-binary-census-iml75P/.ai-task-manager/runtime/store/fleet/task-fleet.json'
+  +   },
+  +   {
+  +     code: 'required-record-missing',
+  +     target: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-binary-census-iml75P/.ai-task-manager/runtime/store/fleet/occupancy.json'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs:242:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [Array],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs:250:1
+✖ an artifact-contained registered root is a typed census blocker, not a thrown planner failure (292.26925ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/1857-unsafe-census-UA2Hdi/.tmp/registered
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at runtimeStoragePaths (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:237:20)
+      at planRuntimeMigration (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-plan.mjs:277:19)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs:268:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }

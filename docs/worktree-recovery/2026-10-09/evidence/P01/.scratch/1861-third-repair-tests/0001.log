@@ -1,0 +1,25 @@
+✔ claude static pickup and captured lifecycle use the same router-plus-pickup budget (12.333833ms)
+✔ claude static lifecycle and captured lifecycle use the same full-lifecycle budget (5.814292ms)
+✔ codex static pickup and captured lifecycle use the same router-plus-pickup budget (7.037125ms)
+✔ codex static lifecycle and captured lifecycle use the same full-lifecycle budget (6.498791ms)
+✔ pre-slim public CLI capture cannot certify the final installed adapter release (803.285833ms)
+✔ final release requires a complete installed-byte and public-CLI capture (1186.580667ms)
+✔ committed final package and public-CLI archive regenerate byte for byte from its source commit (35681.692625ms)
+✔ fixed release measurement refuses a missing required instruction file (0.749541ms)
+✔ claude aggregate CLI labels fixed release scenarios and exits on any breach (194.369666ms)
+✔ codex aggregate CLI labels fixed release scenarios and exits on any breach (155.75325ms)
+✔ accepted final archive stays intact and cannot certify changed current sources (7.883875ms)
+✔ internally consistent dirty installed guidance cannot inherit a committed source identity (3946.356334ms)
+✔ recertification refuses a relabeled or altered lifecycle capture (15224.81325ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57280.776792
+From /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate
+ * branch              171c7d93866f67b58effa635be5ae737f54ef9eb -> FETCH_HEAD
+From /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate
+ * branch              171c7d93866f67b58effa635be5ae737f54ef9eb -> FETCH_HEAD

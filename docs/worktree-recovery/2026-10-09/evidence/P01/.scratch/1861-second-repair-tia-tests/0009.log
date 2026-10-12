@@ -1,0 +1,14 @@
+✔ persistent provider payloads pass production close and board codecs (300.545916ms)
+✔ fresh processes reconcile every fault boundary using the original operation identity (3185.399208ms)
+✔ real body writer persists and reads back through the offline transport (357.927208ms)
+✔ uncertain writes retain one effect and reject conflicting retry payloads (300.955ms)
+✔ provider refuses unknown operations and production identities before effects (319.301084ms)
+✔ stale observations persist across restart without erasing the actual provider effect (376.572291ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4848.480792

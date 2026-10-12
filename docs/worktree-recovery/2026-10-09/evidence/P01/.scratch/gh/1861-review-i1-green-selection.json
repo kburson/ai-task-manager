@@ -1,0 +1,28 @@
+{
+  "base": "ec1298af3571ce98b2d82100d22e20f393b2b2eb",
+  "changedPaths": [
+    "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs"
+  ],
+  "selection": {
+    "tests": [
+      "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs"
+    ],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+        "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "signal": "manifest",
+        "reason": "current test tree authority change"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+        "signal": "changed-test",
+        "reason": "changed or newly discovered test"
+      }
+    ],
+    "escalated": false
+  }
+}

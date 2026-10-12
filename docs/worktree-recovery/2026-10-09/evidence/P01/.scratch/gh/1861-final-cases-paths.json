@@ -1,0 +1,4 @@
+[
+  "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs"
+]

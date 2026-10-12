@@ -1,0 +1,11 @@
+✔ direct test and generic promotion converge on the same Develop-to-Test request (0.906625ms)
+✔ rebind and resume wake Test in place through actions-only (0.113542ms)
+✔ task binding dispatches Test residents through verbTest (0.498625ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.743625
