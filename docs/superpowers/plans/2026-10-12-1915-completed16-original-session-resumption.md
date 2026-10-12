@@ -16,12 +16,12 @@ This is the completed16 increment of existing #1915, under #1918/#1855/#1847 and
 
 The full #1915 story still requires original actor/body/board/comment continuation for completed1–15. This plan deliberately preserves their admission-only frontier. Completed17–24, interrupted17/18 recovery and ambiguous outcomes remain owned by #1923/#1925; exact new event-body authorization remains #1922. Neither this increment nor its reviews complete #1915, #1928, #1957 or #1918.
 
-Live #1915 is Ready for Planning with blocker #1920 and WIP admission still gating formal Plan entry. Prepare/review this source slice under the approved #1918 source-order decision in `2026-10-08-1918-delivery-execution.md`; do not bypass those lifecycle gates or claim a child Plan/Develop receipt. Keep native dependencies, verifiers and issue scope intact. Hydration first enumerates existing issues; this tightly coupled slice remains four sequential tasks within #1915 and creates no duplicate story or defect.
+Live #1915 is Ready for Planning with blocker #1920 and WIP admission still gating formal Plan entry. Prepare/review this source slice under the approved #1918 source-order decision in `2026-10-08-1918-delivery-execution.md`; do not bypass those lifecycle gates or claim a child Plan/Develop receipt. Keep native dependencies, verifiers and issue scope intact. Hydration first enumerates existing issues; this slice proposes four sequential tasks within #1915, with no duplicate issue merely to repeat them. Re-estimate the whole remaining story before lifecycle approval; the governed ≥24h decomposition gate still applies.
 
 ## Plan Metadata
 
 - Issue: #1915; immediate parent #1918; ancestors #1855/#1847.
-- Priority: P1; existing story size L, rank 6, remaining-story estimate 14 hours.
+- Priority: P1; existing story size L, rank 6, recorded whole-story estimate 14 hours. That number is stale for approval because this12h slice alone would leave only2h for required1–15 continuation; do not use it to approve the plan or roll up the parent.
 - Prospective completed16 slice: 12 joint human/agent hours, including incremental authoring, diagnosis, focused verification and review; excludes historical work and passive CI time. This is a forecast, not an elapsed-time claim or an automatic replacement of the whole-story estimate.
 - Tasks: 2.5 + 3.5 + 3 + 3 hours, strictly sequential with one integration owner.
 - No parallel fanout: Core, policy, store and fixture custody are one shared protocol.
@@ -61,26 +61,127 @@ Live #1915 is Ready for Planning with blocker #1920 and WIP admission still gati
 
 No architectural extraction of the large existing modules belongs to this repair. Follow their established private maps, descriptor comparisons and fixed lexical programs.
 
-| File                                                                               | Exact responsibility                                                                                                                                                                                       |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/task-tracker/lib/move-state/move-state-core.mjs`                          | One-use actual restart call, private resume/saga frame, fresh actor checks, read/leaf/report comparison custody, reuse of original tail and pure conservative return construction                          |
-| `scripts/task-tracker/lib/criteria-revision/policy.mjs`                            | Original-call admission, ordered execution comparison/final observation under the existing interlock, and conversion of admitted final-policy refusal to a fresh unverified result                         |
-| `scripts/task-tracker/lib/criteria-revision/store.mjs`                             | Distinct locked read of completed16 comment/census/resources, genuine read response custody, original17/18 stores accepting only live resume custody, strengthened resume partial-fact resource comparison |
-| `scripts/task-tracker/lib/move-state/transition-commit.mjs`                        | New existing-read/parser/result path; original POST/GET and creation-result requirements unchanged                                                                                                         |
-| `scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs` | Retain authentic capture1..16; change only ordinal16 expectation; invoke new completed16 controls against real captured state                                                                              |
-| `scripts/tests/helpers/native-stage-completed16-resume-controls.mjs`               | New fixture-only assertions, post-admission fault observers and exact interrupted snapshots/traces; cannot grant production custody                                                                        |
-| `scripts/tests/helpers/native-stage-original-entry-controls.mjs`                   | Preserve the existing pre-admission refusal predicate and all controls unchanged                                                                                                                           |
+| File                                                                                  | Exact responsibility                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/task-tracker/lib/move-state/move-state-core.mjs`                             | One-use actual restart call, private resume/saga frame, fresh actor checks, read/leaf/report comparison custody, reuse of original tail and pure conservative return construction                          |
+| `scripts/task-tracker/lib/criteria-revision/policy.mjs`                               | Original-call admission, ordered execution comparison/final observation under the existing interlock, and conversion of admitted final-policy refusal to a fresh unverified result                         |
+| `scripts/task-tracker/lib/criteria-revision/store.mjs`                                | Distinct locked read of completed16 comment/census/resources, genuine read response custody, original17/18 stores accepting only live resume custody, strengthened resume partial-fact resource comparison |
+| `scripts/task-tracker/lib/move-state/transition-commit.mjs`                           | New existing-read/parser/result path; original POST/GET and creation-result requirements unchanged                                                                                                         |
+| `scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs`    | Retain authentic capture1..16; change only ordinal16 expectation; invoke new completed16 controls against real captured state                                                                              |
+| `scripts/tests/helpers/native-stage-completed16-resume-controls.mjs`                  | New fixture-only assertions, post-admission fault observers and exact interrupted snapshots/traces; cannot grant production custody                                                                        |
+| `scripts/tests/helpers/criteria-revision-transition-profiles.mjs`                     | Additive static classification and original-set inventory for the24 planned wrappers; preserve all existing launch/profile contracts                                                                       |
+| `scripts/tests/integration/task-tracker/lib/criteria-revision-completed16-*.test.mjs` | Create only the24 exact wrappers enumerated below, one genuine original capture per file and no substituted adapter                                                                                        |
+| `scripts/tests/helpers/native-stage-original-entry-controls.mjs`                      | Preserve the existing pre-admission refusal predicate and all controls unchanged                                                                                                                           |
 
 New interface names below are proposed implementation contracts; they are not already available source APIs. All registration is lexical and private. Exported assertions only compare existing live membership; none registers or returns execution authority from DATA.
 
 - `tryNativeStageOriginalEntry(ctx, restartCall)`: policy boundary additionally validates/consumes the one-use object privately registered by that actual `moveState` call. A call without it cannot execute; direct/overlapping callers cannot steal the live ctx.
 - `readExistingTransitionCommit(ctx, input)`: transition module performs the genuine completed-comment GET/parser path; its own private invocation/result maps are distinct from `nativeTransitionCalls`/`nativeTransitionResults`.
 - `assertExistingNativeTransitionResult(input, ctx, result)`: comparison-only validation of the actual read/result and retained descriptors.
+- `evaluateOriginalNativeStageRestart(ctx, capability, origin, known, handoff)`: policy alone constructs the private handoff; Core validates the actual one-use restart and invokes its no-return `onFrameAdmitted` callback once, exactly at private frame registration. No caller/deps hook or exported frame registrar is introduced.
+- `acquireMemoryExistingNativeStageTransition(input)` / `releaseMemoryExistingNativeStageTransition(input)`: proposed distinct store wrappers for the new reader. Acquire validates actual resume/read membership and current authority, then uses existing private `acquireTimingResourceLock`; release validates the same real owner with `releaseTimingResourceLock` in `finally`. Do not call first-entry `stageTimingAuthority` or register a first-entry preparation. Release input is exactly `{backend, token, invocation}`.
 - `readMemoryExistingNativeStageTransition(input)`: store's fixed internal completed16 GET/census reader. Exact input is `{backend, capability, context, token, invocation}`; token/invocation must be in the actual resume/read custody, not merely equal DATA.
 - Core private `assertCompleted16ResumeCurrent(frame)` checks caller/source/actor/scope/capability/current cursor and actual read/leaf descriptors synchronously. Policy's execution branch calls it before any audited final read.
 - Core private `advanceCompleted16ResumeCursor(frame, operationName, expectedBefore, expectedAfter)` binds only the next genuine operation to its reconstructed before/after state. Store's existing lexical operations consume this comparison, not caller-provided snapshots.
 - `readMemoryNativeStagePartialFacts(input)` gains a separately branded resume-holder branch. Original preparation-holder branch remains unchanged. Resume branch independently reconstructs the complete history and compares current whole resources/body/stage to the exact landed cursor before deriving/binding partial facts.
 - `qualifyCompleted16Resume({t, originalContext, snapshots, captureFiles})` is fixture-only. It consumes actual captured snapshots and calls actual `moveState`; it never creates a production token/frame or replaces the tail/transport.
+
+## Admission, comparison-mode and tail-gate contracts
+
+### Exact admission point and policy handoff
+
+`originalNativeStageEntries` remains the ctx-keyed comparison entry created by
+`moveState`. The new one-use call object supplements it specifically to deny an
+overlapping same-ctx policy call. It is never exposed on caller ctx, backend,
+returned DATA or a public getter.
+
+Admission is the single synchronous registration of the completed16 frame in
+Core's new private `completed16ResumeFrames` WeakMap, after: actual-call/policy
+membership, independent reconstruction, every existing current guard/source check,
+exact16/confirmed-board eligibility, target `test` and frozen empty actions,
+fresh actor/provider/sid/executor equality and positive stage scope. No required
+check is deferred until after registration. A failed check before this point
+uses the unchanged pre-admission exception/refusal contract. Registration occurs
+before the existing read. A refusal after this point is caught by the admitted
+execution boundary and returns the exact conservative resume record.
+
+Policy creates a frozen, unexported lexical handoff `{restartCall, onFrameAdmitted}`
+inside its actual original-entry invocation and stores its identity in the private
+`originalStageEntry` record. It passes that handoff as the fifth argument to
+`evaluateOriginalNativeStageRestart`. Core compares actual call membership and
+policy compares the exact stored handoff pointer; a caller-created callback or
+copied tuple cannot qualify. The callback is not a caller ctx/deps override, tail
+adapter or public registration API. It returns no authority. Immediately after
+Core's private frame registration, Core invokes this actual callback once; policy
+first calls Core's no-return frame assertion, then switches its private comparison
+mode. Neither module exports a registration function or installs DATA in old maps.
+
+The existing `originalStageEntry.check` closure remains the one check used by
+`assertNativeStageOriginalEntryPolicy` (policy243), `originalStageReadState`
+(policy250) and the post-evaluate call (policy327). Before admission it compares
+the unchanged entry snapshot/authority as today. At frame registration it switches
+to Core's exact current invocation/cursor comparison plus unchanged authority;
+it must no longer compare new17/18 work to admission snapshot bytes. All three
+callers use this same switched closure, including calls during source/leaf checks.
+
+### Resume frame storage and every existing tail gate
+
+Register the opaque new `stageToken` only in `completed16ResumeFrames`, with
+`header`, `backend`, `capability`, `context`, cross-checked `actorIdentity`, private
+`sagaContext`, original caller/source captures, origin/known comparison inputs,
+ordered cursor, and actual `existingReadReturned` input/result/descriptors. Tail
+window/running/index/source/leaf fields also belong to this frame. Use a distinct
+private `completed16ResumeExecution` AsyncLocalStorage during the lexical resume
+execution, and distinct `completed16TailInputs`/`completed16TailLeaves` WeakMaps for
+new actual sequence/leaf invocations. Do not put this frame/token into
+`nativeStagePreparations`, `nativeStageIntents` or the `nativeStagePreparation`
+store. Never set `entryReturned`, `sentinelReturned`, `consistencyReturned`,
+`consistencyRead` or `transitionCommentReturned` on a first-entry record.
+
+A private Core resolver selects actual first-entry or completed16 membership;
+there is no exported getter that supplies a frame or execution capability. Every
+existing gate below gets an explicit discriminated resume branch, with the current
+first-entry branch retained unchanged:
+
+| Existing gate                                                                                          | Required completed16 branch                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `runNativeStageTail` entry                                                                             | Resolve actual resume execution/frame/saga ctx; require exact16 and genuine `existingReadReturned`, unused sequence window and frozen original function/steps. Do not require first-entry preparation/creation returns.                   |
+| `assertNativeStageTransitionContext`, at tail entry and inside `tailCurrent`                           | Recognize only the distinct live resume ALS/frame with matching ctx/token, current caller/source/actor/scope/cursor and genuine existing-read custody. Never call `checkPreparation` or board-result membership for this branch.          |
+| `tailCurrent` creation assertion                                                                       | For resume call `assertExistingNativeTransitionResult` and retained result descriptors; for first-entry keep `assertOriginalNativeTransitionResult`. Preserve no-deps/no-repair, task-owner profile and exact original tail-entry checks. |
+| `beginNativeStageTailSequence` / `assertNativeStageTailSequenceCurrent`                                | Resolve actual `completed16TailInputs` membership, consume its one-use sequence window and require exact `DEFAULT_TAIL_STEPS`; do not register a copied original sequence.                                                                |
+| `tailLeafCurrent`, `beginNativeStageTailDispatch`, `assertNativeStageTailDispatchModule`               | Resolve actual new leaf in `completed16TailLeaves`, compare frame/sequence/ctx/phase and frozen target/actions; keep original leaves in their existing map.                                                                               |
+| `runNativeStageTailStep` / `runNativeStageCache`                                                       | Register genuinely invoked new leaf records in the resume map, then execute the existing lexical programs, store operations and cleanup. Original order and step19 host fence remain.                                                     |
+| `readNativeStageTailDispatchIntent` / `readNativeStageTailCacheIntent`                                 | Resolve the actual resume leaf, require its frame's new token/backend/context, return only detached header/phase DATA, and retain real operation/result checks.                                                                           |
+| `beginNativeStageTailCache` / `assertNativeStageTailCacheCurrent` / private `cacheLeaf`                | Select the actual resume leaf from its distinct map and enforce its unused→running phase, current frame and exact original cache function; retain original leaf lookup for first-entry.                                                   |
+| private `currentCacheOperation` / `executeNativeStageCacheOperation`                                   | Resolve the actual resume leaf and its live lexical operation, preserve operation-kind/in-flight/reentry checks and original returned-value custody; never fall back to `originalTailLeaves` for a resume invocation.                     |
+| `readNativeStageTailCacheSource`                                                                       | Read the actual resume leaf/frame sources and cross-checked original actor/worktree; recheck before/after current source reads, without any first-entry preparation lookup.                                                               |
+| `assertNativeStageTailCacheRead` / `assertNativeStageTailCacheWrite` / `assertNativeStageTailCacheSet` | Resolve actual resume leaf, require exact phase/intent, live current provider/sid/executor and actual frame sink; keep all existing sid/worktree/operation checks.                                                                        |
+
+`session-state.mjs`, `cache-unpark.mjs` and `post-commit-tail.mjs` are read-only
+reused leaf/transport contracts in this plan: their actual source programs need no
+change because their Core assertion/source rendezvous above receive explicit resume
+branches. Verify their original return custody still executes. If implementation
+would require a new leaf algorithm or a bypass in those modules, stop for a plan
+revision and review rather than widening ownership silently.
+
+### Fixed refusal classification
+
+The outcome below is decided by the registration event, never learned by pinning
+whatever the new implementation happens to return:
+
+| Control and injection point                                                                                                                      | Fixed expected class                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Direct/overlapping exported policy call, copied/absent actual-call object                                                                        | Pre-admission existing refusal; no resume phase/new effect.                                                                                                                                                 |
+| Source/caller/guard-pipeline failure, actor/provider/sid/executor mismatch before frame registration                                             | Pre-admission existing refusal; old helper predicate unchanged.                                                                                                                                             |
+| Completed16 wrong target/changed actions; missing stage scope at registration                                                                    | Pre-admission existing refusal before read/intent; no resume phase.                                                                                                                                         |
+| Completed17–24, incomplete/unknown/compensated or otherwise ineligible input                                                                     | Pre-admission refusal; valid1–15 positive admission-only results are separately unchanged.                                                                                                                  |
+| Envelope-only drift, duplicate/changed/missing comment, census/whole resources injected at the genuine existing-read boundary after registration | Admitted exact resume result, fresh unverified partial when read/report custody is unavailable; no17 intent.                                                                                                |
+| Actor/provider/sid/executor, source/caller or scope drift after registration, including cache boundaries                                         | Admitted exact resume result; precise landed snapshot/trace and conservative current facts only.                                                                                                            |
+| Late request/response/result/cache accessor after registration or leaf cleanup                                                                   | Admitted exact unverified record, getter count0 and no subsequent audited report/final reads.                                                                                                               |
+| Skipped/reverted/duplicate execution cursor inside actual resumed call                                                                           | Admitted exact refusal; retain precise landed state, no next unauthorized operation.                                                                                                                        |
+| Any failBefore/failAfter existing-read or17/18 operation                                                                                         | Admitted exact record; read faults have no17 intent, later faults preserve their exact landed vector.                                                                                                       |
+| Post-evaluate check, final full comparison or final source assertion refusal                                                                     | Admitted fresh unverified record even if a verified partial was computed.                                                                                                                                   |
+| Direct external reader/leaf/result assertion with copied/expired token/result or outside scope                                                   | That API throws its existing typed refusal before effects; it is not an actual admitted `moveState` result. The equivalent in-flight substitution inside an admitted call is caught as the admitted record. |
 
 ## Implementation Tasks
 
@@ -197,9 +298,9 @@ assert.equal(
 Filtering this one ordered subsequence is not the complete trace check: separately compare the entire read/audit sequence, reject every undeclared write/POST and compare the whole backend snapshot. Expected audit ordering is pinned from the reviewed lexical program and genuine clean execution, then fixed in the test; do not derive expected output from the same run under test.
 
 - [ ] **Step 2: Run RED through the original known-prefix-entry verifier.** Task1 must not already release tail effects. Verify failure is lack of actual17/18 execution, not a fabricated header/custody mismatch.
-- [ ] **Step 3: Add the resume branch to existing tail validation.** `tailCurrent` accepts either its current first-entry frame or the separate completed16 frame; leave first-entry creation/board/sentinel checks unchanged. Reuse `runPostCommitTail`, frozen `DEFAULT_TAIL_STEPS`, original dispatch/cache programs, current operation/result comparison and existing lexical cancellation. Recheck positive memory scope before any tail function; never fall through to the host repair branch. Read lock is already released; dispatch releases its timing lock before cache takes `activeTask`. Keep expected actor bound to fresh provider/sid/executor at every cache boundary. Original sid/root/read/set operations continue selecting only that cross-checked memory sink.
-- [ ] **Step 4: Implement the ordered execution cursor.** The policy's `originalStageEntry` record gains a private execution branch, registered only from the actual completed16 frame after guards. Before each genuine operation derive and seal its exact expected before/after journal/body/stage/resource vector. A private cursor stores invocation, index, expected next operation and last genuine landed vector. Existing store lexical operations advance it only on their actual intent/effect/readback boundaries. Assert authority, descriptors, scope and exact current state before accepting that advancement; identical snapshots at two dispatch boundaries do not remove the index/name check. Fail-before leaves the prior cursor; fail-after retains the actually landed vector because mutation precedes the injected throw. No caller-selected index/baseline, unordered snapshot set or public register function is allowed.
-- [ ] **Step 5: Exercise actor/scope/order/lock RED-to-GREEN controls.** Changed provider/sid/executor before cache and at its boundaries must refuse before the checkpoint mutation. Direct/overlapping policy calls, missing/expired/copy tokens and outside-scope reader/tail calls must not reach a leaf or host transport. Require skipped/reverted/duplicate cursor refusal. Observe genuine lock release/reacquisition and verify a following authorized operation can acquire each resource after clean, refused and interrupted work; do not use a fabricated lock token as proof.
+- [ ] **Step 3: Add every discriminated resume gate in the contract table above.** `tailCurrent` accepts either its current first-entry frame or the separate completed16 frame; leave first-entry creation/board/sentinel checks unchanged. Reuse `runPostCommitTail`, frozen `DEFAULT_TAIL_STEPS`, original dispatch/cache programs, current operation/result comparison and existing lexical cancellation. Recheck positive memory scope before any tail function; never fall through to the host repair branch. Read lock is already released; dispatch releases its timing lock before cache takes `activeTask`. Keep expected actor bound to fresh provider/sid/executor at every cache boundary. Original sid/root/read/set operations continue selecting only that cross-checked memory sink.
+- [ ] **Step 4: Switch the single policy check closure at the exact registration event and implement the ordered cursor.** The policy's `originalStageEntry` record gains a private execution branch, registered only from the actual completed16 frame after guards. Before each genuine operation derive and seal its exact expected before/after journal/body/stage/resource vector. A private cursor stores invocation, index, expected next operation and last genuine landed vector. Existing store lexical operations advance it only on their actual intent/effect/readback boundaries. Assert authority, descriptors, scope and exact current state before accepting that advancement; identical snapshots at two dispatch boundaries do not remove the index/name check. Fail-before leaves the prior cursor; fail-after retains the actually landed vector because mutation precedes the injected throw. No caller-selected index/baseline, unordered snapshot set or public register function is allowed.
+- [ ] **Step 5: Exercise actor/scope/order/lock RED-to-GREEN controls.** Changed provider/sid/executor before cache and at its boundaries must refuse before the checkpoint mutation. Direct/overlapping policy calls, missing/expired/copy tokens and outside-scope reader/tail calls must not reach a leaf or host transport. Require skipped/reverted/duplicate cursor refusal. Use the fixture-only lock observer defined below to record actual acquire/release call ordering on the same live backend. Clean dispatch17 reacquisition proves the read lock was released. Do not claim a later restart can reacquire locks after an interrupted prefix, or use a new backend/constructed token as proof.
 - [ ] **Step 6: Run the exact known-prefix-entry, dispatch/cache-boundary and original cache/native-tail commands in the ledger; commit only the task's exact changed files with `[#1915]`.** At this checkpoint report genuine17/18 source continuation with final partial/report qualification still due; no success or whole-story completion claim.
 
 ### Task 3: Bind current partial facts and own final-policy refusal output
@@ -216,7 +317,7 @@ Filtering this one ordered subsequence is not the complete trace check: separate
 - [ ] **Step 1: Add exact fourth-category RED.** Cause final policy authority/resource refusal after a genuinely verified partial report and require `assertResumeResult(result, unverifiedPartial())`. Confirm no stale item/comment/progress value survives. Observe the final boundary rather than pre-admission drift. Add late existing-read/cache result accessor substitutions after leaf cleanup and before reporting; assert getter count0 and no subsequent reporting/final-policy audited read.
 - [ ] **Step 2: Introduce distinct resume report membership.** Core registers only its actual lexical partial-report invocation in a separate private map. It cancels/joins all running work first, retains frame/read/leaf comparisons, checks all descriptors synchronously before the first audited reporting read and expires report membership after the returned facts are consumed. The original preparation-holder map/assertion is unchanged. No restored original holder or journal DATA grants current report authority.
 - [ ] **Step 3: Strengthen the store's resume branch.** Independently `observeRevision` and reconstruct the complete native history under the held capability, accepting only `pending-native-stage` and the exact actual last cursor, including incomplete17 and legitimate before/after-cache18 states. Compare current whole body/stage/resource vector with that reconstruction and retained cursor before `deriveRecordedNativeStagePartialFacts({journal})`; snapshot stability alone is insufficient. Bind the genuine returned facts to this actual input/current check and recheck before Core consumes them. Retain the existing original branch intact.
-- [ ] **Step 4: Give policy finalization explicit output ownership.** For this admitted execution branch only, policy synchronously asks Core to recheck retained caller/read/leaf descriptors before any final observation. If custody is already refused, skip further audited reads. Otherwise re-observe/reconstruct full history and compare pending status, unchanged authority and the exact last landed cursor. Do not use the known1–16 decoder or arbitrary current bytes as baseline. If that final comparison refuses, policy discards the computed verified partial and returns a newly allocated pure DATA unverified result via a Core helper; it does not propagate the original admission-only `revision-conflict` throw for this admitted category. Pre-admission and1–15 throwing behavior remains unchanged. Core's fresh failure constructor is:
+- [ ] **Step 4: Give policy finalization explicit output ownership.** For this admitted execution branch only, policy synchronously asks Core to recheck retained caller/read/leaf descriptors before any final observation. If custody is already refused, skip further audited reads. The admitted catch boundary includes the post-evaluate switched `check()` at policy327, the full-final-observation comparison at policy330 and `core.assertOriginalNativeStageEntrySources(ctx)` at policy332. Otherwise re-observe/reconstruct full history and compare pending status, unchanged authority and the exact last landed cursor. Do not use the known1–16 decoder or arbitrary current bytes as baseline. If that final comparison refuses, policy discards the computed verified partial and returns a newly allocated pure DATA unverified result via a Core helper; it does not propagate the original admission-only `revision-conflict` throw for this admitted category. Pre-admission and1–15 throwing behavior remains unchanged. Core's fresh failure constructor is:
 
 ```js
 function freshCompleted16UnverifiedResult() {
@@ -238,7 +339,7 @@ function freshCompleted16UnverifiedResult() {
 
 Policy may call an exported pure DATA factory of this exact shape; it is not an authority API. Establish the admitted branch before its catch boundary and catch without reading any thrown object's property/accessor. Final synchronous cleanup expires call/frame/read/leaf/report membership only after cancellation and policy finalization have finished. Cleanup performs no new audited policy/report reads.
 
-- [ ] **Step 5: Qualify all four terminal categories.** Clean completed18 then fence19; admitted refusal before17; each interrupted17/18 boundary; and report/final-policy refusal. Verified prior16 facts are allowed only if current report reconstruction and final comparison pass. Derive expected prior facts from the authentic retained journal using the existing pure partial-fact codec; assert all fields and exact current snapshot/trace. Unverified cases use a fresh object; never a previously computed partial reused after refusal.
+- [ ] **Step 5: Qualify all four terminal categories and each of those three final throw sites.** Clean completed18 then fence19; admitted refusal before17; each interrupted17/18 boundary; and report/final-policy refusal. Verified prior16 facts are allowed only if current report reconstruction and final comparison pass. Derive expected prior facts from the authentic retained journal using the existing pure partial-fact codec; assert all fields and exact current snapshot/trace. Unverified cases use a fresh object; never a previously computed partial reused after refusal.
 - [ ] **Step 6: Run known-prefix-entry, the exact partial-report command below and cache-late-read, then commit the exact task files with `[#1915]`.** Do not weaken their fixed-read/getter assertions or emit lifecycle evidence from scoped passes.
 
 ### Task 4: Complete authentic fault qualification and delivery evidence
@@ -253,7 +354,7 @@ Policy may call an exported pure DATA factory of this exact shape; it is not an 
 **Files:** Existing known-prefix fixture, new completed16 helper, existing discovery/source-coordinate verifiers if coordinates change, and review/evidence Markdown. No source feature beyond the accepted contract is added here.
 
 - [ ] **Step 1: Complete the existing ordinal16 expectation transition.** Require verified prior16 facts on the clean positive, exact18 snapshot/resources and full trace. Retain unchanged1–15 expectations, `1..16` completeness, all original refusal controls/full map, and physical `captureFiles()` equality for every ordinal. The active-task byte delta is in `nativeStageResources.local.activeTask`; real physical files remain unchanged.
-- [ ] **Step 2: Use the existing backend fault setters for all16 operation interruptions.** Do not add fault keys to `createRevisionMemory` input or edit its opaque cloned snapshot as if it were live state:
+- [ ] **Step 2: Use the existing backend fault setters for all18 interruptions: the16 listed17/18 boundaries plus failBefore/failAfter on `native-stage-existing-transition-read`.** Do not add fault keys to `createRevisionMemory` input or edit its opaque cloned snapshot as if it were live state:
 
 ```js
 const newStageOperations = [
@@ -267,7 +368,7 @@ const newStageOperations = [
   'native-stage-cache-effect-readback',
 ];
 for (const when of ['failBefore', 'failAfter']) {
-  for (const operation of newStageOperations) {
+  for (const operation of ['native-stage-existing-transition-read', ...newStageOperations]) {
     await t.test(`${when}:${operation}`, async () => {
       const backend = createRevisionMemory(snapshots.get(16));
       backend[when] = operation;
@@ -281,11 +382,106 @@ for (const when of ['failBefore', 'failAfter']) {
 }
 ```
 
-Extend each concrete test with the complete exact return assertion, full snapshot and complete trace expected for that boundary. Pin the expected prefix independently from actual journal codec/program semantics: fail-before intent leaves16; fail-after dispatch intent leaves pending17; readback completion yields completed17; cache intent leaves pending18; effect-write changes only active-task bytes; effect-readback completes18. Preserve landed mutation before a fail-after exception, original clock/header/first16 and pending status. Subsequent execution from completed17/18 or incomplete/unknown states must remain excluded. Verify every lock is released and report custody is correctly retained/expired.
+Extend each concrete test with the complete exact return assertion, full snapshot and complete trace expected for that boundary. Pin the expected prefix independently from actual journal codec/program semantics: fail-before intent leaves16; fail-after dispatch intent leaves pending17; readback completion yields completed17; cache intent leaves pending18; effect-write changes only active-task bytes; effect-readback completes18. Preserve landed mutation before a fail-after exception, original clock/header/first16 and pending status. Subsequent execution from completed17/18 or incomplete/unknown states must remain excluded. Verify actual release call ordering and in-call read-lock reacquisition through the observer below; verify report custody retained/expired. No private lock-state or post-interruption reacquisition claim is inferred from a fresh backend.
 
 - [ ] **Step 3: Complete the negative matrix.** Post-admission envelope/census/resource refusals from Task1; current actor/provider/sid/executor at Task2 boundaries; late request/response/result/cache accessors after lexical leaf cleanup; source/caller drift; direct/overlapping policy calls; copied/expired inputs; non-`test` target/changed actions; skipped/reverted cursor; unknown/compensated prefixes; missing stage scope. Distinguish pre-admission exception controls from admitted exact-return controls. Assert no new unauthorized intent/write/POST, no getters and precise landed snapshot/trace in every admitted case.
 - [ ] **Step 4: Run the original verification set without increasing budgets.** First the named known-prefix-entry test, then the source-owned dispatch/cache/partial and ordinary regressions in the command table below. Run original full recovery/vertical cases too and record inherited failures with #1923/#1925/#1918 ownership; do not filter them out or count them as passes. Maintain the253 original registration set and complete GraphQL/timing inventories when refreshing coordinates. Stop on a budget breach and correct the regression; do not extend timeouts.
 - [ ] **Step 5: Commit and push exact reviewed implementation/evidence, then get one fresh final source review at the exact HEAD.** Resolve required findings and rerun affected verification. Required full Linux/aggregate checks and normal AITM Test/Review/delivery/close remain gates. If later repairs still make those checks red, preserve the branch/PR and truthful pending lifecycle state; do not merge or close this whole story.
+
+## Fixture observations and budgeted file layout
+
+### Lock observation without fabricated authority
+
+The new fixture helper wraps `Object.getOwnPropertyDescriptors` using the existing
+fixture probe pattern, delegates unchanged to the original intrinsic, and observes
+only actual store acquire/release validation stacks. Capture the actual DATA
+`backend`, `token`, `invocation` identities from returned descriptors without
+reading getters. Filter stack frames to the exact current store file and functions
+`acquireMemoryExistingNativeStageTransition`, `acquireMemoryNativeStageTailDispatch`,
+`acquireMemoryNativeStageCache` and their actual release counterparts; the distinct
+existing-read wrapper must reuse the private timing-lock mechanism without the first-entry `stageTimingAuthority` predicate. The reader acquires through its new wrapper; the wrapper itself uses the unchanged private lock function. Record each unique
+actual validation input/function pair and compare token/invocation pairs; do not
+mint or invoke a lock input. Restore the intrinsic in `finally`.
+
+Assert observed read release precedes dispatch acquire, dispatch release precedes
+cache acquire, and each actually acquired resource has its own release call before
+resume frame teardown, including refused reads and interrupted leaves. Clean
+in-call dispatch acquisition is the behavioral read-lock reacquisition oracle.
+Observe only real acquired locks: refusal before acquisition must not manufacture
+a release. The observer proves call ordering on real runtime inputs, not private
+lock contents or successful reacquisition after an excluded interrupted restart.
+Review the unchanged synchronous store release implementation, which validates the
+same owner then clears its slot. Retain its existing unit release tests. Do not
+claim a fresh `createRevisionMemory` proves release; do not add a production lock
+inspection/fault export. This narrows the old impossible follow-up-reacquisition
+claim while preserving lock ordering/cleanup obligations.
+
+### Exact final-policy fault observations
+
+Use fixture-only descriptor/structuredClone probes as already used for source and
+late result controls. Arm only after the actual resume partial return is produced:
+recognize its getter-free result with progressVerified/step16 facts at the real
+clone/freeze boundary and retain the original return identity. Do not construct a
+replacement member. Then independently exercise: (a) post-evaluate policy327 by a
+one-shot `replaceAuthority` update on the same actual backend after that boundary;
+(b) policy330 by a fixture-only substitution of the genuine final observation/history read DATA after the switched snapshot/authority check passes, without changing backend.snapshot or authority: the independent final reconstruction differs while the cursor check remains valid; and (c) policy332 by a physical config-source change armed at that final Core source-assertion descriptor boundary, after the policy330 comparison. Filter the exact source-file/call-site stack to distinguish this assertion from earlier repeated checks; do not inject at a generic earlier clone. Existing physical-file
+probe patterns save and restore exact bytes in `finally`. Every control must prove
+its named observer fired and that no earlier gate short-circuited it. Assert fresh
+unverified output and complete exact trace; a pre-admission mutation is not proof.
+Late result accessors instead fire at the retained actual return descriptor after
+leaf cleanup; the getter must not run and no subsequent audited reads run.
+
+### Preselected native-process layout
+
+Keep `criteria-revision-known-prefix-entry.test.mjs` as the complete existing1..16
+capture/control plus single clean completed16 positive. Move new faults/negative
+clusters into new statically registered #1915 wrapper files, using an additive
+`completed16-resume` mode in the existing fixture. That mode retains the complete
+authentic capture1..16 and invokes only its declared new control, rather than
+stacking the entire new matrix inside the existing file. At the top of `registerNativeStageCase`, save the third argument as `resumeVariant` when mode is `completed16-resume`, set `fault = null` for the authentic original capture, and map this mode to `known-prefix-inputs`. After capturing the genuine1..16 map, pass only `resumeVariant` to the new controls helper. Thus the requested resume fault cannot interrupt the original capture. No old case/capture or
+assertion is removed. The third registration argument is a flat literal descriptor
+with `when` and `suffix`, following existing fault registration/discovery shape.
+
+Create18 interruption wrappers named
+`criteria-revision-completed16-{read|dispatch|cache}-{boundary}-{failBefore|failAfter}.test.mjs`:
+read has boundary `read`; dispatch has `intent-write`, `intent-readback`,
+`execution`, `readback`; cache has `intent-write`, `intent-readback`, `effect-write`,
+`effect-readback`. Their static mode is `completed16-resume`; suffix is the exact
+operation name above, and when is the literal fault setter. Create six negative
+cluster wrappers `criteria-revision-completed16-{read-controls|entry-controls|actor-scope-controls|cursor-controls|late-report-controls|final-policy-controls}.test.mjs`,
+using the same static mode, `when: 'control'` and a literal `suffix` selecting that fixture-only
+control group. All wrappers/helpers carry `// @story #1915` and use the existing
+`registerNativeStageCase` import. The registration passes no callback/capability.
+
+Extend the original AST classifier/profile inventory additively for these24 fixed
+registrations and the new helper; retain the complete original253 filename set and
+all existing GraphQL/timing site inventories. Expected additive total is277, with
+explicit original-set inclusion and24 descriptor matches; changing a count alone
+is not qualification. `criteria-revision-transition-profiles.mjs` continues to
+launch genuine original cases, not replacement adapters.
+
+Run the new wrappers in these two fixed12-file batches, each with
+`node --test --test-concurrency=4` and the integration directory prefixed to every
+filename. Expand both `failBefore` and `failAfter` for each fault pair; the lists
+are a closed filename specification, not a glob that can silently miss a case:
+
+- Batch A: `criteria-revision-completed16-read-read-{failBefore|failAfter}.test.mjs`;
+  `criteria-revision-completed16-dispatch-{intent-write|intent-readback}-{failBefore|failAfter}.test.mjs`;
+  `criteria-revision-completed16-cache-{intent-write|intent-readback}-{failBefore|failAfter}.test.mjs`;
+  `criteria-revision-completed16-read-controls.test.mjs`;
+  `criteria-revision-completed16-entry-controls.test.mjs`.
+- Batch B: `criteria-revision-completed16-dispatch-{execution|readback}-{failBefore|failAfter}.test.mjs`;
+  `criteria-revision-completed16-cache-{effect-write|effect-readback}-{failBefore|failAfter}.test.mjs`;
+  `criteria-revision-completed16-actor-scope-controls.test.mjs`;
+  `criteria-revision-completed16-cursor-controls.test.mjs`;
+  `criteria-revision-completed16-late-report-controls.test.mjs`;
+  `criteria-revision-completed16-final-policy-controls.test.mjs`.
+
+Each wrapper/file retains600000ms, each batch1200s and the overall sandbox45min.
+Capture timing for both batches; never raise those values. If full authentic
+capture plus a cluster exceeds the existing file budget, split that cluster into
+more genuine wrappers and re-review its inventory/batch partition before code
+continues. This is a plan revision, not case filtering or a budget increase.
 
 ## Verification command ledger
 
