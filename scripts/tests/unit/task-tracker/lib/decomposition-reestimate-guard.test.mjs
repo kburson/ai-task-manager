@@ -752,3 +752,11 @@ registerShelveLandedCases();
 
 import { registerMigrationPublicationCases } from './decomposition-migration-publication.cases.mjs';
 registerMigrationPublicationCases();
+
+// @story #1992
+import { registerDecompositionPreservationCases } from './decomposition-preservation.cases.mjs';
+registerDecompositionPreservationCases();
+
+// @story #1992
+import { registerDecompositionCensusCases } from './decomposition-census.cases.mjs';
+registerDecompositionCensusCases();
