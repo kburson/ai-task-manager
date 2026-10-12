@@ -1,4 +1,4 @@
-// @story #1926
+// @story #1926 #1998
 // Presence observations only: never reconstruct durations, words or departures.
 import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -79,15 +79,22 @@ function transcriptEvidence(text, sessionId, gaps) {
   const observations = [];
   for (const gap of gaps) {
     const calls = [];
+    const presence = [];
     const callIds = new Set();
     for (const item of entries.filter((item) => item.ms >= gap.start && item.ms <= gap.end)) {
       const p = item.event.payload;
+      const kinds = p?.internal_chat_message_metadata_passthrough?.content_item_kinds;
+      const environmentContext =
+        Array.isArray(kinds) &&
+        kinds.length > 0 &&
+        kinds.every((kind) => kind === 'environments.environment_context');
       if (
         (item.event.type === 'event_msg' &&
           ['task_complete', 'turn_aborted', 'session_end', 'user_message'].includes(p?.type)) ||
         (item.event.type === 'response_item' &&
           p?.type === 'message' &&
-          (p.role === 'user' || (p.role === 'assistant' && p.phase === 'final_answer')))
+          ((p.role === 'user' && !environmentContext) ||
+            (p.role === 'assistant' && p.phase === 'final_answer')))
       )
         refuse('interrupted-session');
       if (
@@ -99,10 +106,12 @@ function transcriptEvidence(text, sessionId, gaps) {
         if (callIds.has(p.call_id)) refuse('duplicate-observation');
         callIds.add(p.call_id);
         calls.push(item);
+        presence.push(item.ms);
       }
+      if (item.event.type === 'response_item' && p?.type === 'reasoning') presence.push(item.ms);
     }
     if (!calls.length) refuse('missing-observations');
-    const points = [gap.start, ...calls.map((call) => call.ms), gap.end];
+    const points = [gap.start, ...presence, gap.end];
     if (points.some((point, index) => index > 0 && point - points[index - 1] > OBSERVATION_GAP_MS))
       refuse('unexplained-transcript-gap');
     let checkpoint = gap.start;
@@ -145,7 +154,8 @@ export function planTimingContinuityRepair(body, { sessionId, transcript, now })
         )
       )
         refuse('interrupted-timing-window');
-      if (prior.event !== 'update' || current.event !== 'update') refuse('ambiguous-actor-window');
+      if (prior.event !== 'update' || !['update', 'stop'].includes(current.event))
+        refuse('ambiguous-actor-window');
       gaps.push({ start, end });
     }
   }

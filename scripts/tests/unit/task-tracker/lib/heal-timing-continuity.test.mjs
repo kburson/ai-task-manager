@@ -345,3 +345,140 @@ test('an empty continuity session cannot become a legacy repair request', async 
   assert.equal(state.reads, 0);
   assert.equal(state.writes.length, 0);
 });
+
+// @story #1998
+// Rejecting a recorded stop or ignoring native reasoning presence breaks truthful recovery.
+test('recorded stop endpoint repairs continuity without changing accounting', async (t) => {
+  const { state, deps } = transport(t);
+  const stopped = originals[1].replace('| update |', '| stop |');
+  const before = body.replace(originals[1], stopped);
+  state.body = before;
+  const dry = await runHeal({ ...options, deps });
+  assert.equal(dry.status, 'dry-run');
+  await runHeal({ ...options, ...applyIdentity(dry), deps });
+  assert.equal(grade(state.body).pass, true);
+  assert.ok(state.body.includes(stopped));
+  assert.deepEqual(
+    deriveActorEngagement(rows(state.body), now),
+    deriveActorEngagement(rows(before), now)
+  );
+});
+
+function reasoningGapTranscript({ anchors = true, interrupt = false } = {}) {
+  const native = transcript
+    .trim()
+    .split('\n')
+    .map(JSON.parse)
+    .filter((entry) => {
+      if (entry.type !== 'response_item') return true;
+      const minutes = (Date.parse(entry.timestamp) - start) / 60_000;
+      return anchors && (minutes < 60 || minutes > 90);
+    });
+  const begin = anchors ? 60 : 0;
+  const finish = anchors ? 90 : 540;
+  for (let minute = begin; minute <= finish; minute += 5)
+    native.push(
+      JSON.parse(
+        event(start + minute * 60_000, 'response_item', {
+          type: 'reasoning',
+          summary: [{ text: 'PRIVATE_REASONING_SENTINEL' }],
+        })
+      )
+    );
+  if (interrupt)
+    native.push(JSON.parse(event(start + 75 * 60_000, 'event_msg', { type: 'turn_aborted' })));
+  return (
+    native
+      .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
+      .map(JSON.stringify)
+      .join('\n') + '\n'
+  );
+}
+
+test('native reasoning closes a presence gap while checkpoints retain real tool anchors', async (t) => {
+  const native = reasoningGapTranscript();
+  const { state, deps } = transport(t, native);
+  const dry = await runHeal({ ...options, deps });
+  assert.equal(dry.status, 'dry-run');
+  const healed = await runHeal({ ...options, ...applyIdentity(dry), deps });
+  assert.equal(grade(state.body).pass, true);
+  assert.deepEqual(
+    deriveActorEngagement(rows(state.body), now),
+    deriveActorEngagement(rows(body), now)
+  );
+  const sourceLines = native.split('\n');
+  for (const checkpoint of rows(state.body).filter((r) => !originals.includes(r.raw))) {
+    const line = Number(checkpoint.raw.match(/observation (\d+)/)[1]);
+    const source = JSON.parse(sourceLines[line - 1]);
+    assert.ok(['function_call', 'custom_tool_call'].includes(source.payload.type));
+    assert.match(source.payload.call_id, /^call-\d+$/);
+    assert.equal(checkpoint.engagement, undefined);
+    assert.equal(checkpoint.wordMarker, '50');
+    assert.equal(checkpoint.fullWordMarker, '500');
+  }
+  for (const artifact of ['before.md', 'candidate.md', 'manifest.json'])
+    assert.ok(
+      !readFileSync(path.join(healed.evidenceDir, artifact), 'utf8').includes(
+        'PRIVATE_REASONING_SENTINEL'
+      )
+    );
+});
+
+for (const [name, settings, refusal] of [
+  ['reasoning without real tool anchors', { anchors: false }, /missing-observations/],
+  ['real interruption amid reasoning presence', { interrupt: true }, /interrupted-session/],
+])
+  test('continuity refuses ' + name + ' before writing', async (t) => {
+    const { state, deps } = transport(t, reasoningGapTranscript(settings));
+    await assert.rejects(runHeal({ ...options, deps }), refusal);
+    assert.equal(state.writes.length, 0);
+    assert.equal(state.body, body);
+  });
+
+test('native environment context metadata does not interrupt continuous work', async (t) => {
+  const native = transcript.trim().split('\n').map(JSON.parse);
+  native.push(
+    JSON.parse(
+      event(start + 75 * 60_000, 'response_item', {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: '<environment_context>current environment</environment_context>',
+          },
+        ],
+        internal_chat_message_metadata_passthrough: {
+          content_item_kinds: ['environments.environment_context'],
+        },
+      })
+    )
+  );
+  const { state, deps } = transport(
+    t,
+    native
+      .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
+      .map(JSON.stringify)
+      .join('\n') + '\n'
+  );
+  const dry = await runHeal({ ...options, deps });
+  assert.equal(dry.status, 'dry-run');
+  await runHeal({ ...options, ...applyIdentity(dry), deps });
+  assert.equal(grade(state.body).pass, true);
+});
+
+for (const kinds of [[], ['environments.environment_context', 'user_input'], ['unknown']])
+  test(
+    'unrecognized or mixed user metadata still interrupts: ' + JSON.stringify(kinds),
+    async (t) => {
+      const native = transcript.replace(
+        '"type":"function_call","call_id":"call-5"',
+        '"type":"message","role":"user","internal_chat_message_metadata_passthrough":' +
+          JSON.stringify({ content_item_kinds: kinds }) +
+          ',"call_id":"call-5"'
+      );
+      const { state, deps } = transport(t, native);
+      await assert.rejects(runHeal({ ...options, deps }), /interrupted-session/);
+      assert.equal(state.writes.length, 0);
+    }
+  );
