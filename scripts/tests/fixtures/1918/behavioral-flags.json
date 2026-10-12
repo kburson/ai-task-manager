@@ -1,0 +1,27 @@
+{
+  "schema": "aitm.guidance-legacy-behavioral-flags/v1",
+  "flags": [
+    {
+      "flag": "AITM_TEST_EXECUTION_LIMITS",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/process-timeouts.mjs",
+          "symbol": "testExecutionTimeoutMs",
+          "excerpt": "return env?.AITM_TEST_EXECUTION_LIMITS === 'suspended' ? 0 : defaultMs;",
+          "fingerprint": "sha256:e22e16e3529426136975e0e379a9ec04b514ee1b13903ffe523e7d48ccb54b08"
+        }
+      ],
+      "defaultBehavior": "Enforce original test execution deadlines.",
+      "nondefaultBehavior": "Only the exact suspended setting temporarily removes execution cutoffs while retaining functional results and elapsed measurements.",
+      "changes": {
+        "predicate": true,
+        "effect": true
+      },
+      "purpose": "operator-control",
+      "disposition": "retain",
+      "rationale": "Explicit user-directed temporary contention control; not semantic lease expiry or lifecycle authority.",
+      "ownerTask": "#1918",
+      "verifier": "scripts/tests/unit/task-tracker/core/test-duration-suspension.test.mjs"
+    }
+  ]
+}
