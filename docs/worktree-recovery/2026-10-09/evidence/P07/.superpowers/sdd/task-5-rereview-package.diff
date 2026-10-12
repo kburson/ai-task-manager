@@ -1,0 +1,402 @@
+# Review package: 3018481310a98d17102b1be252d6952439ef4bd3..a68385141a00e8fc42d0eb736032ad32eafe833e
+
+## Commits
+a6838514 fix(book): render EPUB title banner
+b3539fbf style(book): constrain reflowable artwork
+
+## Files changed
+ docs/articles/assets/book/book.css                 | 74 ++++++++++++++----
+ scripts/articles/lib/book/render.mjs               | 90 +++++++++++++++++++++-
+ .../tests/unit/articles/lib/book/render.test.mjs   | 51 +++++++++++-
+ 3 files changed, 194 insertions(+), 21 deletions(-)
+
+## Diff
+diff --git a/docs/articles/assets/book/book.css b/docs/articles/assets/book/book.css
+index 39bc6f11..b5b3ee81 100644
+--- a/docs/articles/assets/book/book.css
++++ b/docs/articles/assets/book/book.css
+@@ -1,41 +1,92 @@
++#title-block-header {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  text-align: center;
++}
++
++#title-block-header::before {
++  content: '';
++  display: block;
++  order: -1;
++  width: 100%;
++  aspect-ratio: 1376 / 768;
++  margin-bottom: 2rem;
++  background: url('title-page.png') center / contain no-repeat;
++}
++
++#title-block-header h1.title {
++  font-size: 2.75rem;
++  line-height: 1.15;
++}
++
++.titlepage {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  text-align: center;
++}
++
++.titlepage .title-banner {
++  display: block;
++  order: -1;
++  width: 100%;
++  margin-bottom: 2rem;
++}
++
++.titlepage .title-banner svg {
++  display: block;
++  width: 100%;
++  height: auto;
++}
++
++.titlepage h1.title {
++  font-size: 2.75rem;
++  line-height: 1.15;
++}
++
+ .chapter-opener {
+   display: flex;
+   flex-direction: column;
+   gap: 0;
+   margin-block: 4rem 2rem;
+   break-before: page;
+   page-break-before: always;
+ }
+ 
+ .chapter-opener .chapter-image {
+   order: 1;
+   margin: 0 0 1.5rem;
+ }
+ 
+ .chapter-opener .chapter-image img {
+   display: block;
+-  width: 100%;
+-  height: 20vh;
+-  object-fit: cover;
+-  object-position: center;
++  max-width: 100%;
++  width: auto;
++  height: auto;
++  margin-inline: auto;
++  object-fit: contain;
+ }
+ 
+ .chapter-opener figcaption {
+   display: none;
+ }
+ 
+-.chapter-opener .chapter-number {
+-  order: 2;
+-  text-align: center;
+-  font-variant: small-caps;
+-  letter-spacing: 0.04em;
++.book-diagram {
++  display: block;
++  max-width: 100%;
++  width: auto;
++  height: auto;
++  max-height: 70vh;
++  margin: 1.5rem auto;
++  object-fit: contain;
+ }
+ 
+ .chapter-opener .chapter-title {
+   order: 3;
+   margin: 0.55rem 0 0;
+   text-align: center;
+ }
+ 
+ .chapter-opener .chapter-subtitle {
+   order: 4;
+@@ -46,22 +97,17 @@
+ 
+ @media print {
+   .chapter-opener {
+     margin-block: 0 1.5rem;
+     break-before: page;
+     page-break-before: always;
+     break-inside: avoid;
+     page-break-inside: avoid;
+   }
+ 
+-  .chapter-opener .chapter-image img {
+-    height: 2.2in;
+-  }
+-
+   .chapter-opener .chapter-image,
+-  .chapter-opener .chapter-number,
+   .chapter-opener .chapter-title,
+   .chapter-opener .chapter-subtitle {
+     break-inside: avoid;
+     page-break-inside: avoid;
+   }
+ }
+diff --git a/scripts/articles/lib/book/render.mjs b/scripts/articles/lib/book/render.mjs
+index bd9d54b3..a84fad05 100644
+--- a/scripts/articles/lib/book/render.mjs
++++ b/scripts/articles/lib/book/render.mjs
+@@ -1,53 +1,136 @@
+ // Rendering. Pandoc for every target; latexmk on top of it for PDF, because a
+ // table of contents and a makeindex index both need multiple passes and pandoc
+ // runs the engine exactly once.
+ 
+ import { spawn } from 'node:child_process';
++import { mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+ import path from 'node:path';
+ 
++import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
++
+ export const TARGETS = ['manuscript', 'pdf', 'epub', 'html'];
+ 
+ const OUTPUT_NAME = { pdf: 'book.tex', epub: 'book.epub', html: 'book.html' };
+ 
+ /**
+  * `--toc-depth` is not a portable number. Under the `book` class pandoc turns
+  * it into `\setcounter{tocdepth}{N}`, where 0 is chapter and 1 is section — so
+  * the 2 that gives EPUB and HTML a chapter-plus-section contents listed every
+  * `###` subsection in the PDF. The PDF therefore wants 1.
+  */
+ export const TOC_DEPTH = { pdf: 1, epub: 2, html: 2 };
+ 
+ export function pandocArgs({ manuscriptPath, bookDir, target, outDir }) {
+   const presentationArgs =
+     target === 'pdf'
+       ? [`--include-in-header=${path.join(bookDir, 'chapter-openers.tex')}`]
+-      : target === 'epub' || target === 'html'
+-        ? ['--css=book.css']
+-        : [];
++      : target === 'epub'
++        ? ['--css=book.css', '--epub-cover-image=title-page.png']
++        : target === 'html'
++          ? ['--css=book.css']
++          : [];
+   return [
+     manuscriptPath,
+     `--metadata-file=${path.join(bookDir, 'book.json')}`,
+     '--top-level-division=chapter',
+     '--toc',
+     `--toc-depth=${TOC_DEPTH[target] ?? 2}`,
+     '--standalone',
+     ...presentationArgs,
+     '-o',
+     path.join(outDir, OUTPUT_NAME[target]),
+   ];
+ }
+ 
+ export function latexmkArgs({ texPath, outDir }) {
+   return ['-xelatex', '-interaction=nonstopmode', '-halt-on-error', `-outdir=${outDir}`, texPath];
+ }
+ 
++function epubManifestHref(opf, id) {
++  const item = opf.match(
++    new RegExp(`<item\\b(?=[^>]*\\bid="${id}")(?=[^>]*\\bhref="([^"]+)")[^>]*\\/?>`)
++  );
++  if (!item) throw new Error(`EPUB manifest is missing ${id}`);
++  return item[1];
++}
++
++function epubCoverHref(opf) {
++  const item = opf.match(
++    /<item\b(?=[^>]*\bproperties="[^"]*\bcover-image\b[^"]*")(?=[^>]*\bhref="([^"]+)")[^>]*\/?>/
++  );
++  if (!item) throw new Error('EPUB manifest is missing a cover-image item');
++  return item[1];
++}
++
++function pngDimensions(png) {
++  if (png.length < 24 || png.toString('ascii', 1, 4) !== 'PNG') {
++    throw new Error('EPUB cover image is not a PNG');
++  }
++  const width = png.readUInt32BE(16);
++  const height = png.readUInt32BE(20);
++  if (width === 0 || height === 0) throw new Error('EPUB cover image has invalid dimensions');
++  return { width, height };
++}
++
++export function insertEpubTitleBanner({
++  titlePage,
++  titleHref,
++  coverHref,
++  coverWidth,
++  coverHeight,
++}) {
++  const imageHref = path.posix.relative(path.posix.dirname(titleHref), coverHref);
++  const banner = `  <div class="title-banner">\n    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="100%" height="100%" viewBox="0 0 ${coverWidth} ${coverHeight}" preserveAspectRatio="xMidYMid">\n      <image width="${coverWidth}" height="${coverHeight}" xlink:href="${imageHref}" />\n    </svg>\n  </div>\n`;
++  const inserted = titlePage.replace(
++    /(<section\b[^>]*\bclass="titlepage"[^>]*>\s*)(<h1\b)/,
++    `$1${banner}  $2`
++  );
++  if (inserted === titlePage) throw new Error('EPUB title page is missing its title heading');
++  return inserted;
++}
++
++async function injectEpubTitleBanner(epubPath) {
++  const stageDir = await mkdtemp(path.join(projectScratchDir('book'), 'epub-title-banner-'));
++  try {
++    await runCommand('unzip', ['-qq', epubPath, '-d', stageDir]);
++    const epubDir = path.join(stageDir, 'EPUB');
++    const opfPath = path.join(epubDir, 'content.opf');
++    const opf = await readFile(opfPath, 'utf8');
++    const titleHref = epubManifestHref(opf, 'title_page_xhtml');
++    const coverHref = epubCoverHref(opf);
++    const titlePagePath = path.join(epubDir, titleHref);
++    const cover = await readFile(path.join(epubDir, coverHref));
++    const { width, height } = pngDimensions(cover);
++    const titlePage = await readFile(titlePagePath, 'utf8');
++    await writeFile(
++      titlePagePath,
++      insertEpubTitleBanner({
++        titlePage,
++        titleHref,
++        coverHref,
++        coverWidth: width,
++        coverHeight: height,
++      })
++    );
++
++    const packagedEpub = path.join(stageDir, 'book.epub');
++    await runCommand('zip', ['-X', '-q', '-0', packagedEpub, 'mimetype'], { cwd: stageDir });
++    await runCommand('zip', ['-X', '-q', '-r', packagedEpub, 'META-INF', 'EPUB'], {
++      cwd: stageDir,
++    });
++    await rename(packagedEpub, epubPath);
++  } finally {
++    await rm(stageDir, { recursive: true, force: true });
++  }
++}
++
+ /**
+  * `cwd` matters: image references embedded by `extractBookDiagrams` (Task 14)
+  * are bare filenames like `![](03-slug-diagram-1.png)`, written alongside the
+  * manuscript in `outDir`. Both pandoc and the xelatex engine `latexmk` drives
+  * resolve relative image paths against the spawned process's working
+  * directory, not against the manuscript file's directory — so without `cwd`
+  * set to `outDir`, every diagram fails to resolve during pdf/epub/html
+  * rendering. `manuscriptPath`/`texPath`/`outDir` are already absolute at every
+  * call site in this file, so pointing `cwd` at `outDir` doesn't change how
+  * those absolute paths resolve.
+@@ -92,11 +175,12 @@ export function renderInvocations({ manuscriptPath, bookDir, outDir, target }) {
+ 
+ export async function renderTarget({ manuscriptPath, bookDir, outDir, target }) {
+   for (const { command, args, options } of renderInvocations({
+     manuscriptPath,
+     bookDir,
+     outDir,
+     target,
+   })) {
+     await runCommand(command, args, options);
+   }
++  if (target === 'epub') await injectEpubTitleBanner(path.join(outDir, OUTPUT_NAME.epub));
+ }
+diff --git a/scripts/tests/unit/articles/lib/book/render.test.mjs b/scripts/tests/unit/articles/lib/book/render.test.mjs
+index 7f1a2c9c..7966f0d8 100644
+--- a/scripts/tests/unit/articles/lib/book/render.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/render.test.mjs
+@@ -68,24 +68,21 @@ test('the PDF page styles put chapter numbers left and page numbers right', () =
+   assert.match(header, /\\fancyhead\[L\]\{\\bookchapterheader\}/);
+   assert.match(header, /\\fancyfoot\[R\]\{\\thepage\}/);
+   assert.match(header, /\\fancypagestyle\{plain\}/);
+   assert.match(header, /\\ifnum\\value\{chapter\}>0 Chapter \\thechapter\\fi/);
+   assert.match(header, /\\renewcommand\{\\headrulewidth\}\{0pt\}/);
+   assert.match(header, /\\renewcommand\{\\footrulewidth\}\{0pt\}/);
+ });
+ 
+ test('the PDF uses unique physical-page anchors across visible numbering resets', () => {
+   const header = readFileSync(CHAPTER_HEADER, 'utf8');
+-  assert.match(
+-    header,
+-    /\\PassOptionsToPackage\{hypertexnames=false\}\{hyperref\}/
+-  );
++  assert.match(header, /\\PassOptionsToPackage\{hypertexnames=false\}\{hyperref\}/);
+   assert.doesNotMatch(header, /pageanchor=false/);
+ });
+ 
+ test('the PDF title page is banner-first, unnumbered, and uses a 34-point title', () => {
+   const header = readFileSync(CHAPTER_HEADER, 'utf8');
+   assert.match(header, /\\providecommand\{\\subtitle\}\[1\]\{\\gdef\\booksubtitle\{#1\}\}/);
+   assert.match(header, /\\renewcommand\{\\maketitle\}/);
+   assert.match(header, /\\thispagestyle\{empty\}/);
+   assert.match(header, /\\includegraphics\{title-page\.png\}/);
+   assert.match(header, /\\fontsize\{34\}\{40\}\\selectfont\\bfseries \\@title/);
+@@ -99,26 +96,72 @@ test('the PDF body-image wrapper centers and bounds diagrams to 70 percent of te
+   assert.match(header, /\.7\\textheight/);
+   assert.match(header, /\\linewidth/);
+   assert.match(header, /\\makebox\[\\linewidth\]\[c\]/);
+ });
+ 
+ test('the HTML and EPUB chapter artwork caption stays visually hidden', () => {
+   const css = readFileSync(BOOK_CSS, 'utf8');
+   assert.match(css, /\.chapter-opener figcaption\s*\{[^}]*display:\s*none;/s);
+ });
+ 
++test('the reflowable stylesheet keeps title, chapter, and diagram images proportional', () => {
++  const css = readFileSync(BOOK_CSS, 'utf8');
++  assert.match(css, /#title-block-header::before\s*\{[^}]*url\(['"]title-page\.png['"]\)/s);
++  assert.match(css, /#title-block-header h1\.title\s*\{[^}]*font-size:\s*2\.75rem/s);
++  assert.match(
++    css,
++    /\.chapter-opener \.chapter-image img\s*\{[^}]*max-width:\s*100%;[^}]*width:\s*auto;[^}]*height:\s*auto;[^}]*object-fit:\s*contain;/s
++  );
++  assert.match(
++    css,
++    /\.book-diagram\s*\{[^}]*max-width:\s*100%;[^}]*max-height:\s*70vh;[^}]*object-fit:\s*contain;/s
++  );
++  assert.doesNotMatch(css, /object-fit:\s*cover/);
++});
++
++test('the reflowable stylesheet supports Pandoc EPUB title-page banners', () => {
++  const css = readFileSync(BOOK_CSS, 'utf8');
++  assert.match(css, /\.titlepage\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s);
++  assert.match(css, /\.titlepage \.title-banner\s*\{[^}]*order:\s*-1;[^}]*width:\s*100%;/s);
++  assert.match(css, /\.titlepage h1\.title\s*\{[^}]*font-size:\s*2\.75rem/s);
++});
++
++test('the EPUB banner inserter uses manifest media before the title', async () => {
++  const { insertEpubTitleBanner } = await import('../../../../../articles/lib/book/render.mjs');
++  assert.equal(typeof insertEpubTitleBanner, 'function');
++  const template = insertEpubTitleBanner({
++    titlePage:
++      '<section epub:type="titlepage" class="titlepage">\n  <h1 class="title">Book</h1>\n</section>',
++    titleHref: 'text/title_page.xhtml',
++    coverHref: 'media/file35.png',
++    coverWidth: 1376,
++    coverHeight: 768,
++  });
++  assert.match(
++    template,
++    /class="title-banner"[\s\S]*xlink:href="\.\.\/media\/file35\.png"[\s\S]*<h1 class="title">Book<\/h1>/
++  );
++  assert.match(template, /viewBox="0 0 1376 768"/);
++});
++
+ test('pandocArgs emits epub and html directly', () => {
+   const base = { manuscriptPath: '/m.md', bookDir: '/b', outDir: '/o' };
+   const epub = pandocArgs({ ...base, target: 'epub' });
+   const html = pandocArgs({ ...base, target: 'html' });
+   assert.ok(epub.includes('--css=book.css'));
++  assert.ok(epub.includes('--epub-cover-image=title-page.png'));
++  assert.equal(
++    epub.some((arg) => arg.startsWith('--template=')),
++    false
++  );
+   assert.ok(html.includes('--css=book.css'));
++  assert.equal(html.includes('--epub-cover-image=title-page.png'), false);
+   assert.deepEqual(epub.slice(-2), ['-o', '/o/book.epub']);
+   assert.deepEqual(html.slice(-2), ['-o', '/o/book.html']);
+ });
+ 
+ test('latexmkArgs drives xelatex with an output directory', () => {
+   const args = latexmkArgs({ texPath: '/o/book.tex', outDir: '/o' });
+   assert.ok(args.includes('-xelatex'));
+   assert.ok(args.includes('-interaction=nonstopmode'));
+   assert.ok(args.includes('-outdir=/o'));
+   assert.equal(args.at(-1), '/o/book.tex');
