@@ -1012,6 +1012,8 @@
       "classification": "agent-callable-standalone",
       "command": "create-issue",
       "staticImports": [
+        "../task-tracker/lib/decomposition-plan-exit-guard.mjs",
+        "../task-tracker/paths.mjs",
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "node:fs",
         "node:child_process",
