@@ -23,3 +23,9 @@ The user explicitly directed local duration-limit suspension because three other
 Existing section/sandbox controls observed RED1pass/2fail, then GREEN3/3. The real failing verifier still returns failure and prevents its following command under suspension. The cache benchmark executes all functional cases and measures duration; its performance-only enforcement is explicitly suspended.
 
 GitHub run38278263355 at d238e019 retained a historical failure: integration group3 passed159/159 files but exceeded its600-second section limit at627.7seconds. It is not relabeled green.
+
+## Final clean-source checkpoint
+
+After the runner review finding was fixed, the complete qualifier ran at unchanged HEAD 6a66d45c965d50128d9281bdac32fc7b9cdc87d4 and exited0:58/58 tests, zero failures, cancellations or skips,970711.323958ms. All22 original native cases and71 supporting DATA/public quarantine cases ran, together with31 ordinary quarantine/reentry controls. Full output is final-qualification.log. The task-done helper recorded Task2 complete in the execution ledger. The subsequent checkpoint commit changes evidence and documentation only.
+
+The affected runner review-fix suite passed112/112 (review-fix-green.log). One Important finding was fixed; one Minor comment correction remains deferred as recorded in astra-review.md and execution-ledger.md. Whole-story delivery, Linux full/slow/exact-head CI and child lifecycle remain pending. User requested pause for a restart immediately after this verified source checkpoint.
