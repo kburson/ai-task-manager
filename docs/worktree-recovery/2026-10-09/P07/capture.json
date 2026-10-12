@@ -1,0 +1,26 @@
+{
+  "story": 1953,
+  "originalStory": 1220,
+  "owner": "kburson",
+  "sourcePath": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.claude/worktrees/articles-book-publication-6a7dfe",
+  "sourceHead": "e5b3060cb27caf92239f05ca5552f364d500eec7",
+  "originalIndexSha256": "afaf44a8661c894816b51eb2229358f4f721663d50a6c5e7a62710272d135d77",
+  "sourceIndexEntries": "",
+  "purpose": "Recover the local pool benchmark and test timing observations left in the cloud-test/articles worktree. Original branch naming references #1220 and #1485; the files are generated observations, not a verified production baseline.",
+  "captured": [
+    {
+      "path": ".aitm/pool-bench.json",
+      "blob": "136f703e8bb35f32fee474459c2cf8284da6f79a",
+      "sha256": "9d7d09190ff2dc978e7f46393a072fa763cc459a52235ae23db2dd5b264bfe7b",
+      "bytes": 191
+    },
+    {
+      "path": ".aitm/test-timing.json",
+      "blob": "467e6d3789d8f581539673ef61d8076b9ae545f5",
+      "sha256": "7ab1263a1bc4332bb5f7be3272144b2b252c3f576b0967833b739b46e1a3bab9",
+      "bytes": 195770
+    }
+  ],
+  "excludedRuntimeFixtures": [],
+  "validation": "Content preservation only. No current functional test, lint, peer review or merge readiness claim."
+}
