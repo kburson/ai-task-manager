@@ -25,3 +25,10 @@ Applied separately authorized temporary execution-duration suspension after qual
 
 Final ordinary regressions98/98 and full lint/format exit0. Source qualifier is scoped evidence; full/slow/exact-head CI and native child lifecycle remain due. Durable collateral saved at docs/reviews/1920-transition-custody-20261012.
 Task3: Ruling: fresh bounded code review covers d238e019..new repair HEAD, with prior repair inputs retained — this is the existing1920 source slice plus explicit user-directed duration suspension, not final1918 aggregate review — cost if wrong: an inherited defect remains; whole-train review and CI still gate delivery.
+
+Final review: fresh Astra6HIGH, exact d238e019..b7e1ad6; no Critical/other custody finding. One Important stale runner wiring assertion reproduced13/14 and fixed by actual AST wiring plus default/suspension/restoration controls; affected suite112/112 GREEN, zero fail/cancel/skip. No second review loop.
+Final: minor (deferred): transition-profile comment says CI retains its budget although user-directed CI suspension is active; actual status is correctly recorded in audit/output.
+Final: Ruling: full/slow/exact-head Linux success remains due — scoped tests do not establish broad delivery verification — cost if wrong: inherited regression would be missed; broad checks still gate delivery.
+Final: Ruling: generated-ID/reentry and whole-transition recovery remain with existing owners — step16 qualification does not complete those contracts — cost if wrong: unfinished recovery would be falsely claimed; whole-train qualification remains required.
+Final: Ruling: whole-story lifecycle/delivery/closure readiness remains unclaimed — native child stages and aggregate review still apply — cost if wrong: invalid close; no close or merge is authorized by this source review.
+Final: Ruling: performance compliance is not asserted during suspension — explicit user direction removes enforcement while retaining measurements — cost if wrong: performance regression persists until limits are restored and qualified.
