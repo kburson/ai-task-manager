@@ -49,3 +49,32 @@ test('known-prefix DATA refuses null, scalar and incomplete roots', async () => 
       /criteria-revision:native-stage-known-prefix/
     );
 });
+
+test('completed16 cursor comparison roots reject copied inputs without reading getters', async () => {
+  const core = await import('../../../../../task-tracker/lib/move-state/move-state-core.mjs');
+  const store = await import('../../../../../task-tracker/lib/criteria-revision/store.mjs');
+  let gets = 0;
+  const forged = Object.defineProperty({}, 'backend', {
+    get() {
+      gets++;
+      throw Error('unowned');
+    },
+  });
+  for (const root of [
+    core.beginNativeStageTailStoreOperation,
+    core.completeNativeStageTailStoreOperation,
+  ])
+    assert.throws(
+      () => root(forged, forged),
+      (error) => error.code === 'revision-authority-unavailable'
+    );
+  assert.throws(() =>
+    store.assertMemoryNativeTailStoreOperation(
+      forged,
+      forged,
+      'native-stage-cache-effect-write',
+      'after'
+    )
+  );
+  assert.equal(gets, 0);
+});

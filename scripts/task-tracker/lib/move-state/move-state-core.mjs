@@ -388,6 +388,8 @@ const originalNativeRestartCalls = new WeakMap();
 const completed16ResumeFrames = new WeakMap();
 const completed16ResumeExecution = new AsyncLocalStorage();
 const completed16ExistingReads = new WeakMap();
+const completed16TailInputs = new WeakMap();
+const completed16TailLeaves = new WeakMap();
 // No public issuer: only the actual moveState call creates this object.
 export function consumeOriginalNativeStageRestartCall(ctx, restartCall) {
   assertOriginalNativeStageEntry(ctx);
@@ -416,7 +418,7 @@ export function freshCompleted16UnverifiedResult() {
     progressVerified: false,
   };
 }
-function assertCompleted16ResumeCurrent(frame) {
+function assertCompleted16ResumeAuthority(frame) {
   if (!isMemoryStageEffectScope() || completed16ResumeFrames.get(frame.stageToken) !== frame)
     nativeTransitionRefusal();
   assertOriginalRestartCall(frame.originalContext, frame.restartCall);
@@ -440,6 +442,16 @@ function assertCompleted16ResumeCurrent(frame) {
       frame.sagaContext,
       frame.existingReadReturned
     );
+  compareOriginalEntryData(frame.sagaContext, frame.sagaDescriptors, frame.sagaPrototype);
+  for (const child of frame.sagaChildren)
+    compareOriginalEntryData(child.value, child.fields, child.prototype, true);
+  if (frame.cacheActiveReturned) {
+    const retained = frame.cacheActiveReturned;
+    nativeCacheSession.assertOriginalNativeCacheRead(retained.input, retained.result);
+  }
+}
+function assertCompleted16ResumeCurrent(frame) {
+  assertCompleted16ResumeAuthority(frame);
   if (canonicalRecordJson(frame.backend.snapshot) !== frame.currentSnapshot)
     nativeTransitionRefusal();
 }
@@ -718,6 +730,7 @@ export async function evaluateOriginalNativeStageRestart(ctx, capability, origin
       resolvedFromState: header.intent.source,
       stateArg: header.intent.target,
       transitionId: header.intent.transitionId,
+      tailProfile: 'task-owner',
     };
     const frame = {
       ...record,
@@ -734,6 +747,10 @@ export async function evaluateOriginalNativeStageRestart(ctx, capability, origin
       derived,
       stageToken: Object.freeze({}),
       currentSnapshot: canonicalRecordJson(ctx.revisionBackend.snapshot),
+      sagaDescriptors: Object.getOwnPropertyDescriptors(sagaContext),
+      sagaPrototype: Object.getPrototypeOf(sagaContext),
+      sagaChildren: captureOriginalEntryChildren(Object.getOwnPropertyDescriptors(sagaContext)),
+      cursor: { index: 0, vectors: [], operation: null },
     };
     completed16ResumeFrames.set(frame.stageToken, frame);
     assertOriginalRestartCall(ctx, handoff.restartCall).frame = frame;
@@ -757,8 +774,7 @@ export async function evaluateOriginalNativeStageRestart(ctx, capability, origin
         frame.existingReadReturned = result;
         assertCompleted16ResumeCurrent(frame);
       } catch {
-        // Task1 establishes current read custody only. Tail/report release is
-        // separately qualified; never infer facts from the thrown object.
+        // Never infer facts from a thrown object or release a tail on a failed read.
       } finally {
         frame.existingReadPhase = 'comparison';
         if (acquired)
@@ -767,6 +783,16 @@ export async function evaluateOriginalNativeStageRestart(ctx, capability, origin
             token: frame.stageToken,
             invocation: input,
           });
+      }
+      if (frame.existingReadReturned) {
+        assertCompleted16ResumeCurrent(frame);
+        sagaContext.transitionCommit = frame.existingReadReturned;
+        frame.sagaDescriptors = Object.getOwnPropertyDescriptors(sagaContext);
+        try {
+          await runNativeStageTail(sagaContext, defaultRunPostCommitTail);
+        } catch {
+          // The original sequencer stops at any refusal, including the step19 fence.
+        }
       }
       return freshCompleted16UnverifiedResult();
     });
@@ -3146,6 +3172,12 @@ function assignNativeTransitionEvidence(ctx, entry, sentinel) {
 // Only the original post-consistency call below creates this opaque invocation.
 // Restored journals and the early alreadyComplete/repair branch cannot recreate it.
 function assertNativeStageTransitionContext(ctx) {
+  const resumed = completed16ResumeExecution.getStore();
+  if (resumed && resumed.sagaContext === ctx) {
+    assertCompleted16ResumeCurrent(resumed);
+    if (!resumed.existingReadReturned) nativeTransitionRefusal();
+    return resumed;
+  }
   const record = nativeStagePreparation.getStore();
   if (
     !record ||
@@ -5031,6 +5063,77 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
 // @story #1855 — private original tail invocations, never caller-minted ports.
 const originalTailInputs = new WeakMap();
 const originalTailLeaves = new WeakMap();
+function resolveTailSequence(input) {
+  return completed16TailInputs.get(input) ?? originalTailInputs.get(input);
+}
+function resolveTailLeaf(input) {
+  return completed16TailLeaves.get(input) ?? originalTailLeaves.get(input);
+}
+function resumedTail(record) {
+  return completed16ResumeFrames.get(record.stageToken) === record;
+}
+// Private sealed DATA describes the genuine lexical program; it cannot issue a leaf.
+function sealCompleted16TailOperations(record, vectors) {
+  if (!resumedTail(record)) return;
+  assertCompleted16ResumeCurrent(record);
+  const cursor = record.cursor;
+  if (cursor.operation || cursor.index !== cursor.vectors.length) nativeTransitionRefusal();
+  let before = record.currentSnapshot;
+  for (const [name, after] of vectors) {
+    const afterBytes = canonicalRecordJson(after);
+    cursor.vectors.push(Object.freeze({ name, before, after: afterBytes }));
+    before = afterBytes;
+  }
+}
+export function beginNativeStageTailStoreOperation(invocation, operation) {
+  const leaf = resolveTailLeaf(invocation);
+  if (!leaf) nativeTransitionRefusal();
+  tailLeafCurrent(invocation, leaf.ctx);
+  const record = leaf.record;
+  if (!resumedTail(record)) return;
+  const next = record.cursor.vectors[record.cursor.index];
+  if (!next || record.cursor.operation || next.before !== record.currentSnapshot)
+    nativeTransitionRefusal();
+  record.store.assertMemoryNativeTailStoreOperation(
+    operation,
+    tailAuthority(record, invocation),
+    next.name,
+    'before'
+  );
+  record.cursor.operation = operation;
+}
+export function completeNativeStageTailStoreOperation(invocation, operation) {
+  const leaf = completed16TailLeaves.get(invocation);
+  if (!leaf) {
+    const original = originalTailLeaves.get(invocation);
+    if (!original) nativeTransitionRefusal();
+    tailLeafCurrent(invocation, original.ctx);
+    return;
+  }
+  const record = leaf.record,
+    cursor = record.cursor,
+    next = cursor.vectors[cursor.index];
+  if (
+    !isMemoryStageEffectScope() ||
+    completed16ResumeExecution.getStore() !== record ||
+    record.tailLeaf !== invocation ||
+    cursor.operation !== operation ||
+    !next
+  )
+    nativeTransitionRefusal();
+  assertCompleted16ResumeAuthority(record);
+  record.store.assertMemoryNativeTailStoreOperation(
+    operation,
+    tailAuthority(record, invocation),
+    next.name,
+    'after'
+  );
+  if (canonicalRecordJson(record.backend.snapshot) !== next.after) nativeTransitionRefusal();
+  record.currentSnapshot = next.after;
+  cursor.index++;
+  cursor.operation = null;
+  tailLeafCurrent(invocation, leaf.ctx);
+}
 function assertTailEntry(value, expected, original) {
   if (!value || Object.getPrototypeOf(value) !== Object.prototype)
     throw preparationRefusal('original-tail-steps');
@@ -5078,22 +5181,35 @@ function captureOriginalTailEntries() {
   });
 }
 function tailCurrent(input, ctx) {
-  const record = originalTailInputs.get(input);
+  const record = resolveTailSequence(input);
   if (!record || record.tailInput !== input || record.sagaContext !== ctx || !record.tailRunning)
     throw preparationRefusal('original-tail-invocation');
   assertNativeStageTransitionContext(ctx);
-  const returned = record.transitionCommentReturned;
-  if (
-    !returned ||
-    ctx.transitionCommit !== returned.result ||
-    canonicalRecordJson(returned.result) !== returned.bytes
-  )
-    throw preparationRefusal('original-tail-comment');
-  record.transitionCommentCode.assertOriginalNativeTransitionResult(
-    returned.input,
-    ctx,
-    returned.result
-  );
+  if (resumedTail(record)) {
+    if (
+      completed16ResumeExecution.getStore() !== record ||
+      ctx.transitionCommit !== record.existingReadReturned
+    )
+      nativeTransitionRefusal();
+    record.transitionCode.assertExistingNativeTransitionResult(
+      record.existingReadInput,
+      ctx,
+      record.existingReadReturned
+    );
+  } else {
+    const returned = record.transitionCommentReturned;
+    if (
+      !returned ||
+      ctx.transitionCommit !== returned.result ||
+      canonicalRecordJson(returned.result) !== returned.bytes
+    )
+      throw preparationRefusal('original-tail-comment');
+    record.transitionCommentCode.assertOriginalNativeTransitionResult(
+      returned.input,
+      ctx,
+      returned.result
+    );
+  }
   if (
     Object.hasOwn(ctx, 'deps') ||
     Object.hasOwn(ctx, 'transitionCommitRepairRequested') ||
@@ -5109,7 +5225,7 @@ function tailCurrent(input, ctx) {
   return record;
 }
 export function beginNativeStageTailSequence(input, ctx, steps) {
-  const record = originalTailInputs.get(input);
+  const record = resolveTailSequence(input);
   if (!record || record.sagaContext !== ctx || !record.tailCallWindow || record.tailStarted)
     throw preparationRefusal('original-tail-sequence-window');
   record.tailCallWindow = false;
@@ -5123,14 +5239,14 @@ export function assertNativeStageTailSequenceCurrent(input, ctx, steps) {
     throw preparationRefusal('original-tail-sequence');
 }
 function tailLeafCurrent(input, ctx) {
-  const leaf = originalTailLeaves.get(input);
+  const leaf = resolveTailLeaf(input);
   if (!leaf || leaf.ctx !== ctx || leaf.record.tailLeaf !== input)
     throw preparationRefusal('original-tail-leaf');
   tailCurrent(leaf.sequence, ctx);
   return leaf;
 }
 export function beginNativeStageTailDispatch(input, ctx) {
-  const leaf = originalTailLeaves.get(input);
+  const leaf = resolveTailLeaf(input);
   if (!leaf || leaf.ctx !== ctx || leaf.phase !== 'call')
     throw preparationRefusal('original-tail-dispatch-window');
   leaf.phase = 'running';
@@ -5150,7 +5266,7 @@ export function assertNativeStageTailDispatchModule(input, ctx, module) {
     throw preparationRefusal('original-tail-dispatch-source');
 }
 export function readNativeStageTailDispatchIntent(token, backend, invocation, context) {
-  const leaf = originalTailLeaves.get(invocation);
+  const leaf = resolveTailLeaf(invocation);
   if (!leaf) throw preparationRefusal('original-tail-leaf');
   const { record } = leaf;
   tailLeafCurrent(invocation, record.sagaContext);
@@ -5196,7 +5312,8 @@ export async function runNativeStageTailStep(input, ctx, step) {
     target: record.tailStates.STATES.test,
     actions: record.tailStates.STATES.test.onEnter,
   };
-  originalTailLeaves.set(invocation, leaf);
+  const leaves = resumedTail(record) ? completed16TailLeaves : originalTailLeaves;
+  leaves.set(invocation, leaf);
   record.tailLeaf = invocation;
   let acquired = false,
     store;
@@ -5226,7 +5343,14 @@ export async function runNativeStageTailStep(input, ctx, step) {
       body: structuredClone(before.observation.body),
       stage: before.observation.stage,
     };
-    record.tailPrefixes = [intended, completed].map(canonicalRecordJson);
+    if (resumedTail(record)) {
+      sealCompleted16TailOperations(record, [
+        ['native-stage-tail-dispatch-intent-write', intended],
+        ['native-stage-tail-dispatch-intent-readback', intended],
+        ['native-stage-tail-dispatch-execution', intended],
+        ['native-stage-tail-dispatch-readback', completed],
+      ]);
+    } else record.tailPrefixes = [intended, completed].map(canonicalRecordJson);
     await store.persistMemoryNativeStageTailDispatch({
       ...tailAuthority(record, invocation),
       step: stepData,
@@ -5251,7 +5375,7 @@ export async function runNativeStageTailStep(input, ctx, step) {
         token: record.stageToken,
         invocation,
       });
-    originalTailLeaves.delete(invocation);
+    leaves.delete(invocation);
     record.tailLeaf = null;
   }
 }
@@ -5261,7 +5385,7 @@ async function runNativeStageTail(ctx, originalFunction) {
     originalFunction !== defaultRunPostCommitTail ||
     record.tailInput ||
     record.tailStarted ||
-    !record.transitionCommentReturned ||
+    !(resumedTail(record) ? record.existingReadReturned : record.transitionCommentReturned) ||
     record.backend.snapshot.nativeStageRecords.at(-1).steps.length !== 16
   )
     throw preparationRefusal('original-tail-entry');
@@ -5270,7 +5394,8 @@ async function runNativeStageTail(ctx, originalFunction) {
   record.tailRunning = true;
   record.tailNext = 0;
   record.tailEntries = captureOriginalTailEntries();
-  originalTailInputs.set(input, record);
+  const sequences = resumedTail(record) ? completed16TailInputs : originalTailInputs;
+  sequences.set(input, record);
   try {
     tailCurrent(input, ctx);
     const states = await import('../../states/index.mjs');
@@ -5288,7 +5413,7 @@ async function runNativeStageTail(ctx, originalFunction) {
   } finally {
     record.tailRunning = false;
     record.tailCallWindow = false;
-    originalTailInputs.delete(input);
+    sequences.delete(input);
     record.tailInput = null;
   }
 }
@@ -5632,7 +5757,7 @@ function cacheLeaf(input, ctx) {
   return leaf;
 }
 export function beginNativeStageTailCache(input, ctx) {
-  const leaf = originalTailLeaves.get(input);
+  const leaf = resolveTailLeaf(input);
   if (!leaf || leaf.kind !== 'cache' || leaf.ctx !== ctx || leaf.phase !== 'call')
     throw preparationRefusal('original-cache-window');
   leaf.phase = 'running';
@@ -5642,7 +5767,7 @@ export function assertNativeStageTailCacheCurrent(input, ctx) {
   cacheLeaf(input, ctx);
 }
 export function readNativeStageTailCacheIntent(token, backend, input) {
-  const leaf = originalTailLeaves.get(input);
+  const leaf = resolveTailLeaf(input);
   if (!leaf) throw preparationRefusal('original-cache-invocation');
   cacheLeaf(input, leaf.ctx);
   if (leaf.record.stageToken !== token || leaf.record.backend !== backend)
@@ -5650,7 +5775,7 @@ export function readNativeStageTailCacheIntent(token, backend, input) {
   return { header: structuredClone(leaf.record.header) };
 }
 function currentCacheOperation(input) {
-  const leaf = originalTailLeaves.get(input);
+  const leaf = resolveTailLeaf(input);
   if (!leaf) throw preparationRefusal('original-cache-invocation');
   cacheLeaf(input, leaf.ctx);
   if (leaf.phase !== 'running' || !leaf.operation)
@@ -5800,7 +5925,14 @@ export async function persistNativeStageTailCache(input, intent) {
   effected.nativeStageResources = structuredClone(derived.afterResources);
   const completed = structuredClone(effected);
   completed.nativeStageRecords.at(-1).steps[17].readback = structuredClone(derived.readback);
-  leaf.record.cachePrefixes = [intended, effected, completed].map(canonicalRecordJson);
+  if (resumedTail(leaf.record)) {
+    sealCompleted16TailOperations(leaf.record, [
+      ['native-stage-cache-intent-write', intended],
+      ['native-stage-cache-intent-readback', intended],
+      ['native-stage-cache-effect-write', effected],
+      ['native-stage-cache-effect-readback', completed],
+    ]);
+  } else leaf.record.cachePrefixes = [intended, effected, completed].map(canonicalRecordJson);
   await leaf.store.persistMemoryNativeStageCache({ ...tailAuthority(leaf.record, input), step });
   currentCacheOperation(input);
 }
@@ -5830,7 +5962,8 @@ async function runNativeStageCache(sequence, ctx, step) {
     operations: [],
     operation: null,
   };
-  originalTailLeaves.set(input, leaf);
+  const leaves = resumedTail(record) ? completed16TailLeaves : originalTailLeaves;
+  leaves.set(input, leaf);
   record.tailLeaf = input;
   let acquired = false;
   try {
@@ -5858,7 +5991,7 @@ async function runNativeStageCache(sequence, ctx, step) {
         token: record.stageToken,
         invocation: input,
       });
-    originalTailLeaves.delete(input);
+    leaves.delete(input);
     record.tailLeaf = null;
   }
 }

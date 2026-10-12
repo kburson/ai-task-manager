@@ -41,6 +41,12 @@ import {
 } from './native-continuation-fixtures.mjs';
 
 export function registerNativeStageCase(mode, entrypoint, fault = null) {
+  const completed16Resume = mode === 'completed16-resume';
+  const resumeVariant = completed16Resume ? fault : null;
+  if (completed16Resume) {
+    mode = 'known-prefix-inputs';
+    fault = null;
+  }
   const knownPrefixEntry = mode === 'known-prefix-entry';
   if (knownPrefixEntry) mode = 'known-prefix-inputs';
   const knownPrefixLater = mode === 'known-prefix-later';
@@ -2532,7 +2538,9 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       }
       if (transitionMode) {
         const originalRetryContext =
-          faultMode === 'recovery-from-comment' || knownPrefixEntry ? { ...ctx } : null;
+          faultMode === 'recovery-from-comment' || knownPrefixEntry || completed16Resume
+            ? { ...ctx }
+            : null;
         assert.equal(Object.hasOwn(ctx, 'transitionCommit'), false);
         assert.equal(Object.hasOwn(ctx, 'deps'), false);
         const files = captureFiles();
@@ -3355,6 +3363,18 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             (error) => error.code === 'revision-pending'
           );
           assert.deepEqual(calls, []);
+          if (completed16Resume) {
+            const { qualifyCompleted16Variant } =
+              await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
+            await qualifyCompleted16Variant({
+              t,
+              originalContext: originalRetryContext,
+              snapshots: knownSnapshots,
+              captureFiles,
+              variant: resumeVariant,
+            });
+            return;
+          }
           if (knownPrefixEntry) {
             assert.equal(Object.hasOwn(originalRetryContext, 'transitionId'), false);
             const { qualifyOriginalEntryRefusals } =
@@ -3371,8 +3391,12 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
               const result = await moveState({ ...originalRetryContext, revisionBackend: backend });
               assert.equal(result.phase, 'native-stage-resume', 'real admission at ' + ordinal);
               if (ordinal === 16) {
-                const { assertResumeResult, unverifiedPartial } =
-                  await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
+                const {
+                  assertResumeResult,
+                  unverifiedPartial,
+                  expectedCompleted16Tail,
+                  resumedStageOperations,
+                } = await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
                 assertResumeResult(result, unverifiedPartial());
                 assert.equal(
                   backend.effects.filter((name) => name === 'native-stage-existing-transition-read')
@@ -3381,10 +3405,13 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
                   'completed16 must execute its actual existing-comment read'
                 );
                 assert.deepEqual(
-                  backend.snapshot,
-                  selected,
-                  'Task1 has not released original17/18'
+                  backend.effects.filter((name) => resumedStageOperations.includes(name)),
+                  resumedStageOperations,
+                  'exact genuine original17/18 operations execute once in order'
                 );
+                t.diagnostic('completed16 full trace: ' + JSON.stringify(backend.effects));
+                assert.deepEqual(backend.snapshot, await expectedCompleted16Tail(selected));
+                assert.equal(backend.snapshot.nativeStageRecords.at(-1).steps.length, 18);
                 assert.deepEqual(
                   backend.snapshot.nativeStageRecords.at(-1).steps.slice(0, 16),
                   selected.nativeStageRecords.at(-1).steps

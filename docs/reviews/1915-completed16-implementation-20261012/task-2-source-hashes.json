@@ -1,0 +1,7 @@
+{
+  "scripts/task-tracker/lib/move-state/move-state-core.mjs": "4e8294ca9ae1c6781fbe635b0ef5e64cdc6ca3b2e6e720d98ceba0ffa5379f2f",
+  "scripts/task-tracker/lib/criteria-revision/store.mjs": "28e5162bfeaf1e067645e71a4e38ddca776418e267005842ce199ba0b29a8734",
+  "scripts/tests/helpers/native-stage-completed16-resume-controls.mjs": "4f3c53689d44b31c36e1a0491aaace585c035db8e5d36030c8937fe61ccf092a",
+  "scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs": "7bf94ec1490510984713ac348f66ea61c5e463a4a7127a8094352ebde6052873",
+  "scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-known-prefix-boundary.test.mjs": "19c78665e70d174a9f4d8396c12e012bc658f8aff0e147c6cb357372f7a713e2"
+}

@@ -67,6 +67,47 @@ function operation(m, step, fn) {
   checkpoint(m, step, 'failAfter');
   return clone(value);
 }
+// Opaque operation custody exists only inside an actual lexical Store call.
+// Comparison callbacks consume it; callers cannot register arbitrary DATA.
+const nativeTailStoreOperations = new WeakMap();
+export function assertMemoryNativeTailStoreOperation(token, authority, name, phase) {
+  const held = nativeTailStoreOperations.get(token);
+  if (!held || held.name !== name || held.phase !== phase) revisionError('native-tail-operation');
+  held.unchanged();
+  for (const key of ['backend', 'capability', 'context', 'token', 'invocation']) {
+    const field = Object.getOwnPropertyDescriptor(authority, key);
+    if (!field || !Object.hasOwn(field, 'value') || field.value !== held.authority[key])
+      revisionError('native-tail-operation');
+  }
+  assertMemoryCapability(held.authority.backend, held.authority.capability, held.authority.context);
+}
+function tailOperation(m, name, fn, authority, core) {
+  const token = Object.freeze({});
+  const held = {
+    authority,
+    name,
+    phase: 'before',
+    unchanged: commentStoreContinuity(authority, [
+      'backend',
+      'capability',
+      'context',
+      'token',
+      'invocation',
+    ]),
+  };
+  nativeTailStoreOperations.set(token, held);
+  try {
+    return operation(m, name, () => {
+      core.beginNativeStageTailStoreOperation(authority.invocation, token);
+      const value = fn();
+      held.phase = 'after';
+      core.completeNativeStageTailStoreOperation(authority.invocation, token);
+      return value;
+    });
+  } finally {
+    nativeTailStoreOperations.delete(token);
+  }
+}
 // Complete in-memory filesystem for the real interlock/admission algorithms.
 // None of these paths are ever passed to the host filesystem.
 function memoryPorts(observation) {
@@ -3934,7 +3975,7 @@ async function stageTailDispatchAuthority(input) {
     return intent;
   };
   current();
-  return { m, journal, current };
+  return { m, journal, current, core: code };
 }
 export async function acquireMemoryNativeStageTailDispatch(input) {
   const { m, current } = await stageTailDispatchAuthority(input);
@@ -3956,7 +3997,7 @@ export async function persistMemoryNativeStageTailDispatch(input) {
   ]);
   const { step: supplied, ...authority } = input;
   const step = JSON.parse(canonicalRecordJson(supplied));
-  const { m, journal, current: check } = await stageTailDispatchAuthority(authority);
+  const { m, journal, current: check, core } = await stageTailDispatchAuthority(authority);
   const current = () => {
     unchanged();
     check();
@@ -3984,25 +4025,37 @@ export async function persistMemoryNativeStageTailDispatch(input) {
       revisionError('native-stage-tail-dispatch-current');
   };
   sameBefore();
-  operation(m, 'native-stage-tail-dispatch-intent-write', () => {
-    current();
-    sameBefore();
-    if (journal.steps.length !== 16) revisionError('native-stage-tail-dispatch-prefix');
-    journal.steps.push(clone(step));
-    return true;
-  });
-  operation(m, 'native-stage-tail-dispatch-intent-readback', () => {
-    current();
-    sameBefore();
-    if (canonicalRecordJson(journal.steps[16]) !== canonicalRecordJson(step))
-      revisionError('native-stage-tail-dispatch-intent-readback');
-    nativeTailDispatchIntentReads.add(journal.steps[16]);
-    nativeTailDispatchIntentChecks.set(journal.steps[16], { current, authority });
-    return true;
-  });
+  tailOperation(
+    m,
+    'native-stage-tail-dispatch-intent-write',
+    () => {
+      current();
+      sameBefore();
+      if (journal.steps.length !== 16) revisionError('native-stage-tail-dispatch-prefix');
+      journal.steps.push(clone(step));
+      return true;
+    },
+    authority,
+    core
+  );
+  tailOperation(
+    m,
+    'native-stage-tail-dispatch-intent-readback',
+    () => {
+      current();
+      sameBefore();
+      if (canonicalRecordJson(journal.steps[16]) !== canonicalRecordJson(step))
+        revisionError('native-stage-tail-dispatch-intent-readback');
+      nativeTailDispatchIntentReads.add(journal.steps[16]);
+      nativeTailDispatchIntentChecks.set(journal.steps[16], { current, authority });
+      return true;
+    },
+    authority,
+    core
+  );
 }
 export async function completeMemoryNativeStageTailDispatch(input) {
-  const { m, journal, current: check } = await stageTailDispatchAuthority(input);
+  const { m, journal, current: check, core } = await stageTailDispatchAuthority(input);
   const current = () => {
     const intent = check();
     timingLock(m, input);
@@ -4039,18 +4092,30 @@ export async function completeMemoryNativeStageTailDispatch(input) {
       stage: m.observation.stage,
     };
   };
-  operation(m, 'native-stage-tail-dispatch-execution', () => {
-    current();
-    read();
-    return true;
-  });
-  operation(m, 'native-stage-tail-dispatch-readback', () => {
-    current();
-    const actual = read();
-    journal.steps[16].readback = actual;
-    validateNativeStageJournal(journal);
-    return true;
-  });
+  tailOperation(
+    m,
+    'native-stage-tail-dispatch-execution',
+    () => {
+      current();
+      read();
+      return true;
+    },
+    input,
+    core
+  );
+  tailOperation(
+    m,
+    'native-stage-tail-dispatch-readback',
+    () => {
+      current();
+      const actual = read();
+      journal.steps[16].readback = actual;
+      validateNativeStageJournal(journal);
+      return true;
+    },
+    input,
+    core
+  );
 }
 
 export function assertMemoryNativeStageTailDispatchIntent(input) {
@@ -4636,19 +4701,31 @@ export async function persistMemoryNativeStageCache(input) {
       revisionError('native-stage-cache-current');
   };
   before();
-  operation(m, 'native-stage-cache-intent-write', () => {
-    current();
-    before();
-    if (journal.steps.length !== 17) revisionError('native-stage-cache-prefix');
-    journal.steps.push(clone(step));
-  });
-  operation(m, 'native-stage-cache-intent-readback', () => {
-    current();
-    before();
-    if (canonicalRecordJson(journal.steps[17]) !== canonicalRecordJson(step))
-      revisionError('native-stage-cache-intent-readback');
-    nativeCacheIntentReads.add(journal.steps[17]);
-  });
+  tailOperation(
+    m,
+    'native-stage-cache-intent-write',
+    () => {
+      current();
+      before();
+      if (journal.steps.length !== 17) revisionError('native-stage-cache-prefix');
+      journal.steps.push(clone(step));
+    },
+    authority,
+    core
+  );
+  tailOperation(
+    m,
+    'native-stage-cache-intent-readback',
+    () => {
+      current();
+      before();
+      if (canonicalRecordJson(journal.steps[17]) !== canonicalRecordJson(step))
+        revisionError('native-stage-cache-intent-readback');
+      nativeCacheIntentReads.add(journal.steps[17]);
+    },
+    authority,
+    core
+  );
 }
 export async function writeMemoryNativeStageCache(input) {
   const { m, journal, current: check, core } = await cacheAuthority(input);
@@ -4668,14 +4745,20 @@ export async function writeMemoryNativeStageCache(input) {
     steps: journal.steps,
   });
   current();
-  operation(m, 'native-stage-cache-effect-write', () => {
-    current();
-    if (
-      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
-    )
-      revisionError('native-stage-cache-current');
-    m.nativeStageResources.local.activeTask = clone(derived.afterResources.local.activeTask);
-  });
+  tailOperation(
+    m,
+    'native-stage-cache-effect-write',
+    () => {
+      current();
+      if (
+        canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
+      )
+        revisionError('native-stage-cache-current');
+      m.nativeStageResources.local.activeTask = clone(derived.afterResources.local.activeTask);
+    },
+    input,
+    core
+  );
 }
 export async function completeMemoryNativeStageCache(input) {
   const { m, journal, current: check, core } = await cacheAuthority(input);
@@ -4701,17 +4784,24 @@ export async function completeMemoryNativeStageCache(input) {
     steps: journal.steps,
   });
   current();
-  operation(m, 'native-stage-cache-effect-readback', () => {
-    current();
-    if (
-      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
-      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
-      m.observation.stage !== derived.stage
-    )
-      revisionError('native-stage-cache-readback');
-    step.readback = clone(derived.readback);
-    validateNativeStageJournal(journal);
-  });
+  tailOperation(
+    m,
+    'native-stage-cache-effect-readback',
+    () => {
+      current();
+      if (
+        canonicalRecordJson(m.nativeStageResources) !==
+          canonicalRecordJson(derived.afterResources) ||
+        canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+        m.observation.stage !== derived.stage
+      )
+        revisionError('native-stage-cache-readback');
+      step.readback = clone(derived.readback);
+      validateNativeStageJournal(journal);
+    },
+    input,
+    core
+  );
 }
 
 const nativeStagePartialResults = new WeakMap();
