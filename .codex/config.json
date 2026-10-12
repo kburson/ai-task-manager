@@ -1,18 +1,1 @@
-{
-  "ai_peer_review": {
-    "owner": "ai-peer-review",
-    "version": 2,
-    "adapter_version": "2.0.0",
-    "reviewer_guard": {
-      "installed": false,
-      "enforcement": "advisory"
-    },
-    "resume_adapter": true,
-    "transport": "manual",
-    "mcp": null,
-    "config_created": true,
-    "skill_created": true,
-    "hook_added": false,
-    "hook_file_created": false
-  }
-}
+{}
