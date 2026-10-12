@@ -1,0 +1,21 @@
+✔ lifecycleSatisfaction: all absent when labels absent (0.944333ms)
+✔ lifecycleSatisfaction: ticked when checkbox is [x] (0.333208ms)
+✔ lifecycleSatisfaction: audited when fullAutoApproved & passed-final-review missing (0.099958ms)
+✔ lifecycleSatisfaction: optout when marker present and label missing (0.084916ms)
+✔ lifecycleSatisfaction: ticked beats audited (0.08125ms)
+✔ parseLifecycleOptouts: parses multiple keys, lowercases (0.058792ms)
+✔ assertLifecycleSatisfied: required + passed-final-review missing → block (0.296917ms)
+✔ assertLifecycleSatisfied: only close-owned keys missing → pass (0.46275ms)
+✔ #982 canonical satisfaction reads review and housekeeping as one logical set (0.1455ms)
+✔ assertLifecycleSatisfied: required + all ticked → pass (0.108959ms)
+✔ assertLifecycleSatisfied: required=false never blocks (0.095542ms)
+✔ assertLifecycleSatisfied: audit marker satisfies passed-final-review only (0.081916ms)
+✔ assertLifecycleSatisfied: opt-outs unblock per key (0.053166ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.541125

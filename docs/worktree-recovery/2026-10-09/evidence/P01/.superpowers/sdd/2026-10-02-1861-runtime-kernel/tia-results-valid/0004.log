@@ -1,0 +1,11 @@
+✔ ordinary writes cannot bootstrap protected coordination before valid activation (79.541167ms)
+✔ action capture uses validated durable binary records, whole publication leases, and refuses volatile aliases or fenced writes (3209.90675ms)
+✔ capture shim retains a whole writer lease across the real child command and drains through a fence (2044.746416ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5336.891542

@@ -1,0 +1,15 @@
+✔ planStageHeal: backlog absent + refine present → backfill candidate (2.907875ms)
+✔ backlog backfill ts is a conservative lower bound (createdAt <= ts < refineTs) (0.249292ms)
+✔ safeBackfillTs handles stageIdx 0: no earlier stage → floor is createdAt (0.079542ms)
+✔ backfillEntryMarker writes aitm-entered-backlog and aitm-backfill:backlog audit marker (0.566042ms)
+✔ planStageHeal: clean backlog-only issue (no later marker) → skip (0.086417ms)
+✔ planStageHeal: empty body / no markers → backfill from createdAt fallback (#784) (0.107042ms)
+✔ planStageHeal: backlog present + refine absent + plan present → refine still backfills (0.250542ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.746584

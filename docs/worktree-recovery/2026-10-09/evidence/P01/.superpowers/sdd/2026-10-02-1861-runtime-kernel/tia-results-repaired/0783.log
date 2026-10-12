@@ -1,0 +1,16 @@
+✔ dry-run reports authoritative before and after totals without writing (1.244625ms)
+✔ apply writes once and requires exact fresh read-back (1.724167ms)
+✔ ambiguous update is reconciled only when the intended body landed (0.927375ms)
+✔ an exact prior repair is a no-write idempotent success (0.195417ms)
+✔ strict argv requires one issue and complete unique interval options (0.467958ms)
+✔ main serializes the full operation under the issue timing lock (37.1155ms)
+✔ main obtains blast-radius authority before an apply operation (0.216334ms)
+✔ the installed command is classified and self-documents its authority boundary (0.268458ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50.202042

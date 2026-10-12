@@ -1,0 +1,51 @@
+✔ classifies writes and verification across compound command segments (1.295625ms)
+✔ wrapped nested commits require the bound worktree (0.211625ms)
+✔ allows navigation and read-only inspection classifications (0.362042ms)
+✔ confirmed mismatch refuses with complete corrective diagnostics (0.411834ms)
+✔ absence, matching worktree, and explicit override pass unchanged (0.91575ms)
+✖ real PreToolUse hook refuses a guarded command from a foreign worktree (185.268458ms)
+✔ existing gh-edit evaluator outcomes are unchanged (1.030291ms)
+✖ hook process in main checkout honors linked payload directory and recorded branch (217.596625ms)
+✔ aliases and literal nested shells remain guarded worktree mutations (0.234584ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 7
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 410.91575
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:161:1
+✖ real PreToolUse hook refuses a guarded command from a foreign worktree (185.268458ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:99:3)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:116:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/fleet-registry.mjs:8:10)
+      at setActiveTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/session-state.mjs:55:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:165:3)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:212:1
+✖ hook process in main checkout honors linked payload directory and recorded branch (217.596625ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:99:3)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:116:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/fleet-registry.mjs:8:10)
+      at setActiveTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/session-state.mjs:55:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:216:3)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }

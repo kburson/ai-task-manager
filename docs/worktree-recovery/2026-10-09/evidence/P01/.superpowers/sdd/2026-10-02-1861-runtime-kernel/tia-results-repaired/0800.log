@@ -1,0 +1,27 @@
+[task-tracker] ✓ #20 blocked by #12
+[task-tracker] ✓ #20 blocked by #4
+[task-tracker] ✓ #20 native blockers already converged
+[task-tracker] ✓ #20 native blockers already converged
+[task-tracker] ✓ #20 removed native blockers #9
+[task-tracker] ✓ #20 removed native blockers #4, #9
+[task-tracker] ✓ #20 has no matching native blockers to remove
+[task-tracker] ✓ #20 removed native blockers #4
+[task-tracker] ✓ #20 has no matching native blockers to remove
+✔ parseByList and block arguments normalize valid issue refs and reject partial-invalid input (1.32625ms)
+✔ unblock arguments distinguish subtract-some from clear-all (0.13625ms)
+✔ block unions requested refs into the native set without duplicates (1.006083ms)
+✔ block accepts existing closed issues because AITM Status decides readiness (0.164125ms)
+✔ block is idempotent when every requested ref already exists but still projects (0.475541ms)
+✔ block refuses self, invalid, and missing refs before graph mutation (0.275083ms)
+✔ block retry converges after projection failed without duplicating graph edges or comments (0.211959ms)
+✔ unblock subtracts only present requested refs and ignores absent refs (0.240416ms)
+✔ unblock without --by clears the native set (0.13425ms)
+✔ unblock repeat is idempotent and still projects (0.228583ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.7985

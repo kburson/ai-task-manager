@@ -1,0 +1,17 @@
+✔ classification retains SHA records and verifies only unattributed merges (1.101667ms)
+✔ failed merge inspection leaves its source SHA attributable (0.141916ms)
+✔ classification keeps duplicate subjects bound to distinct source SHAs (0.125083ms)
+✔ open-PR preflight binds every exception scope and mapping field (4.594666ms)
+✔ open-PR preflight omits a locally verified two-parent ancestry merge (6.065167ms)
+✔ open-PR preflight preserves an unattributed local commit omitted by provider records (0.569708ms)
+✔ merged external recovery refuses an incomplete provider commit inventory (0.352292ms)
+✔ merged external recovery refuses source inventory not bound to the PR head (0.272875ms)
+✔ merged external recovery refuses source inventory not bound to the PR head (0.230042ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18.193333

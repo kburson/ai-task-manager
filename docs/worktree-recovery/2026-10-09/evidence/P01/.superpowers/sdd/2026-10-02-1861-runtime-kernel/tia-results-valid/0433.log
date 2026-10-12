@@ -1,0 +1,12 @@
+✔ #806 auto-tick flips a single-id vc-list Functional line on a passing sandbox (AC2) (2.622667ms)
+✔ #806 auto-tick ticks a multi-id vc-list line only when every cited command passes (AC2/AC4) (0.370834ms)
+✔ #806 auto-tick leaves a Functional line citing a nonexistent id untouched (malformed body, not evidence) (0.125667ms)
+✔ #1344 auto-tick records an explicit tested commit on keyed Functional proof (0.1995ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.202

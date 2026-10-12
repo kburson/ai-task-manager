@@ -1,0 +1,13 @@
+✔ identity mutate is a noop — no push, no version bump (post-#697 contract) (2.931ms)
+✔ succeeds on first attempt — 1 push, no warn, no audit (0.485083ms)
+✔ succeeds on retry — 2 pushes + stderr warn, no audit comment (0.259875ms)
+✔ fails — stderr + audit comment posted (0.272833ms)
+✔ audit-post failure does not throw — auditPosted=false (0.231833ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.516542

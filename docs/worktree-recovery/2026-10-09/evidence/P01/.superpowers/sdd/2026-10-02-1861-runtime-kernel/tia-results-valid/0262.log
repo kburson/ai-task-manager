@@ -1,0 +1,25 @@
+✔ assigned-to-ready-for-plan migration CLI exposes dry-run and explicit apply contracts (116.74725ms)
+✔ migration command rejects unknown arguments before any GitHub access (174.236959ms)
+✖ production GraphQL and filesystem adapters resume a landed response and verify the full cutover (140.0355ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 435.172459
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs:70:1
+✖ production GraphQL and filesystem adapters resume a landed response and verify the full cutover (140.0355ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:125:17)
+      at applyReadyForPlanMigration (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration.mjs:493:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs:179:26)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }

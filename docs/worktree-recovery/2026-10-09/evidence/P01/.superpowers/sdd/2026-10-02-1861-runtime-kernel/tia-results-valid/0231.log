@@ -1,0 +1,100 @@
+✖ blocks when cwd === main worktree and no orchestrator lock (183.401875ms)
+✖ blocks when lock has expired (startedAt + ttlMs < now) (178.008541ms)
+✖ blocks when lock is held but isolation !== "worktree" (205.408083ms)
+✖ passes when lock is fresh and isolation === "worktree" (186.383334ms)
+✔ passes when cwd is a linked worktree (cwd !== main) (202.93275ms)
+✔ safe-passes on malformed stdin (does not block) (184.839209ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 2
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1144.910708
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs:52:1
+✖ blocks when cwd === main worktree and no orchestrator lock (183.401875ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /No orchestrator lock present/. Input:
+  
+  'ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/aitm-agent-guard-5D0Z94'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs:60:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/aitm-agent-guard-5D0Z94',
+    expected: /No orchestrator lock present/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs:68:1
+✖ blocks when lock has expired (startedAt + ttlMs < now) (178.008541ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Orchestrator lock expired/. Input:
+  
+  'ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/aitm-agent-guard-rBbdKk'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs:83:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/aitm-agent-guard-rBbdKk',
+    expected: /Orchestrator lock expired/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs:89:1
+✖ blocks when lock is held but isolation !== "worktree" (205.408083ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /must set `isolation: "worktree"`/. Input:
+  
+  'ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/aitm-agent-guard-FZzRZT'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs:101:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/aitm-agent-guard-FZzRZT',
+    expected: /must set `isolation: "worktree"`/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs:107:1
+✖ passes when lock is fresh and isolation === "worktree" (186.383334ms)
+  AssertionError [ERR_ASSERTION]: expected silent pass, got: {"decision":"block","reason":"ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/aitm-agent-guard-XXFOAG"}
+  + actual - expected
+  
+  + '{"decision":"block","reason":"ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/aitm-agent-guard-XXFOAG"}'
+  - ''
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs:120:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '{"decision":"block","reason":"ROOT_OVERRIDE_UNSAFE: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/aitm-agent-guard-XXFOAG"}',
+    expected: '',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

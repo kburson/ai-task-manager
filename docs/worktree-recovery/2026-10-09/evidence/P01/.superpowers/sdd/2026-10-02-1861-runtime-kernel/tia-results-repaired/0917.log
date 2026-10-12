@@ -1,0 +1,19 @@
+✔ ok: Plan feedback uses verified body and never approves (1.639542ms)
+✔ ok: Plan feedback uses fetched body and never approves (0.108041ms)
+✔ no-op: Plan feedback uses verified body and never approves (0.629125ms)
+✔ no-op: Plan feedback uses fetched body and never approves (0.085541ms)
+✔ ok: state failures remain advisory (0.203459ms)
+✔ no-op: state failures remain advisory (0.077792ms)
+✔ ok: body failures remain advisory (0.501917ms)
+✔ no-op: body failures remain advisory (0.059125ms)
+✔ ok: intent failures remain advisory (0.090292ms)
+✔ no-op: intent failures remain advisory (0.166291ms)
+✔ outside Plan reads state once and performs no body or intent read (18.238458ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25.923958

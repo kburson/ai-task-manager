@@ -1,0 +1,36 @@
+✔ fresh exact waiver verifies all live predicates and returns provisional facts only (1.7875ms)
+✔ pinned waiver reproduces stored receipt input without current grant lookup (2.808459ms)
+✔ generic waiver refuses mismatched schemas and fabricated mode flags as input-contract (0.354875ms)
+✔ a second failed predicate refuses the provisional waiver (0.42ms)
+✔ provider and Git disagreement is a hard evidence refusal (0.40825ms)
+✔ malformed provider method and unknown topology remain hard refusals (1.408042ms)
+✔ pinned provider field may disappear while receipt retains authorized observation (4.18875ms)
+✔ pinned topology changes and conflicting new provider observations refuse (2.830667ms)
+✔ pinned evidence requires a complete real burn and cannot use a fake OID (3.098583ms)
+✔ fresh waiver preserves an absent provider method as null (0.467875ms)
+✔ confirmed v3 candidate can be reverified provisionally before a burn (0.442375ms)
+✔ unrelated trunk advancement remains valid when the merge stays reachable (1.735417ms)
+✔ fresh waiver refuses a contradictory original intent timestamp (0.292833ms)
+✔ pinned null provider observation remains null when metadata later appears (2.668917ms)
+✔ typed current-grant ambiguity retains its hard ID and indeterminate outcome (0.49075ms)
+✔ valid local head divergence can use accepted-head waiver with accepted PR/Test/Review head intact (1.020125ms)
+✔ valid merge-before-original-intent chronology can use one intent-integrity waiver (0.72025ms)
+✔ observed commit bytes divergence can use one commit-attribution waiver (0.660208ms)
+✔ conflicting accepted authorities stays hard despite a matching catalog-eligible grant (0.492917ms)
+✔ unmerged PR stays hard despite a matching catalog-eligible grant (0.438875ms)
+✔ wrong PR target stays hard despite a matching catalog-eligible grant (0.432917ms)
+✔ unreachable merge stays hard despite a matching catalog-eligible grant (0.436709ms)
+✔ unknown branch disposition stays hard despite a matching catalog-eligible grant (0.418666ms)
+✔ two distinct eligible failures refuse before any provisional receipt (0.243125ms)
+✔ commit-attribution waiver never accepts a conflicting issue claim (0.917208ms)
+✔ single missing final attribution can use the exact commit-attribution waiver (0.622584ms)
+✔ missing final attribution and changed bytes count as one waived requirement ID (0.497708ms)
+✔ pinned v3/v4 missing-trailer waiver reconstructs an exact warning-free receipt (2.695791ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 38.261375

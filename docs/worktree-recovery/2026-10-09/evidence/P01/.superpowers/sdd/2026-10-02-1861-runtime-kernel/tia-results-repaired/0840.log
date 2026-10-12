@@ -1,0 +1,31 @@
+coverage-plan-approve.test.mjs: defined
+✔ runPlanApprove: throws without issueNumber (1.129541ms)
+✔ runPlanApprove: throws without cfg (0.100875ms)
+✔ runPlanApprove: not in plan state → wrong-state (0.736959ms)
+✔ runPlanApprove: forbidden compound command in AC → forbidden-command (19.321292ms)
+✔ runPlanApprove: both markers present → already-approved (no write) (60.846042ms)
+✔ runPlanApprove: clean body → approved, mutate stamps both markers (127.370875ms)
+✔ runPlanApprove: approval present, entry missing → re-stamped-entry (94.217292ms)
+✔ verbPlanApprove: no issue number → usage, exit 1 (0.394791ms)
+✔ verbPlanApprove: TT_SKIP_NETWORK set → refuses, exit 1 (0.181834ms)
+✔ verbPlanApprove: approved → stdout, no exit (20.739167ms)
+✔ verbPlanApprove: already-approved → stdout, no exit (15.376625ms)
+✔ verbPlanApprove: re-stamped-entry → stdout, no exit (15.8065ms)
+✔ verbPlanApprove: repaired adaptive approval → stdout, no exit (15.822667ms)
+✔ verbPlanApprove: missing adaptive forecast → stderr, exit 13 (17.040125ms)
+✔ verbPlanApprove: wrong-state → stderr, exit 3 (15.262416ms)
+✔ verbPlanApprove: forbidden-command → stderr, exit 12 (16.4305ms)
+✔ verbPlanApprove: runPlanApprove throws → stderr, exit 1 (14.163875ms)
+✔ verbPlanApprove: story binding refusal has stable diagnostics and nonzero exit (17.115417ms)
+✔ verbPlanApprove: directory binding refusal has stable diagnostics and nonzero exit (17.087ms)
+✔ verbPlanApprove: persistence binding refusal has stable diagnostics and nonzero exit (16.622959ms)
+✔ verbPlanApprove: fresh-directory binding refusal has stable diagnostics and nonzero exit (14.976291ms)
+✔ verbPlanApprove: legacy binding repair reports renewal (19.944666ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 528.784916

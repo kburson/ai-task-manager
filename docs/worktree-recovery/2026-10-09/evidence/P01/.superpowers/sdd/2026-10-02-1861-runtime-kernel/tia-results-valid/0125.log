@@ -1,0 +1,13 @@
+✔ complete content-only subject survives amend but changes on raw content and declared inputs (2275.552667ms)
+✔ manifest includes mode symlink deletion and refuses unresolved material and unsafe inputs (1866.324459ms)
+✔ history-sensitive default captures commit metadata and refs; undeclared environment refuses (877.8365ms)
+✔ requirements normalizer excludes progress proof but retains executable declarations and mappings (1.351625ms)
+✔ every requirement and verifier line participates in the canonical projection (0.127ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5025.539167

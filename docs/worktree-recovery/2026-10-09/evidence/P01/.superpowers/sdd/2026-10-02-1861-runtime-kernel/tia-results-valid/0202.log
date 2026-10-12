@@ -1,0 +1,17 @@
+✔ help tokens short-circuit to {help:true} (0.816417ms)
+✔ unknown flags return an error instead of falling through (0.093167ms)
+✔ zero arguments defaults to dry-run (0.066ms)
+✔ write mode requires an explicit --apply (or --write alias) (0.071292ms)
+✔ --verify wins over --apply (scan only) (0.092417ms)
+✔ --issue extracts the number with or without # prefix (0.082125ms)
+✔ --yes is parsed and passed through (0.051042ms)
+✔ --help prints usage and exits 0 before config or gh are touched (101.70325ms)
+✔ unknown flag exits 2 with a diagnostic, never reaching the write path (88.276167ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 194.869959

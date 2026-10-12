@@ -1,0 +1,66 @@
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/cli-prefs-empty-4lVzd2
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/cli-prefs-yes-JgG1FB
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/cli-prefs-merge-nrFy6s
+                                                            
+
+
+                                                            
+  Configure project preferences                             
+  target: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/test/cli-prefs-bad-TqD4v0
+                                                            
+
+✔ color helpers return the wrapped content regardless of TTY (0.687375ms)
+✔ patchSettingsJson creates settings and is idempotent (24.123125ms)
+✔ patchSettingsJson migrates legacy hook commands and broad Bash allow (24.06025ms)
+✔ patchSettingsJson tolerates a malformed existing file (30.838125ms)
+✔ patchCodexHooksJson creates hooks, is idempotent, tolerates garbage (48.285375ms)
+✔ patchCodexHooksJson registers memory index hooks only when requested (22.289792ms)
+✔ version subcommand and aliases print the package version (384.124625ms)
+✔ no-args prints help while an unknown verb returns a usage error (328.001542ms)
+✔ configure with a bad or missing subcommand exits 1 (338.919542ms)
+✔ install rejects bad --agent and --link-mode (309.857834ms)
+✔ install --link-mode stub writes skill, settings, templates and is idempotent (408.574208ms)
+✔ install --link-mode symlink refuses a package source outside the target project (218.548833ms)
+✔ uninstall removes Codex integrations while preserving user hooks and durable data (576.580708ms)
+✔ uninstall defaults to all providers and removes the generated Claude command (467.9875ms)
+✔ uninstall --dry-run reports cleanup without changing the project (437.256625ms)
+✔ uninstall --purge refuses non-interactive deletion without --yes (205.264875ms)
+✔ uninstall --purge --yes removes durable AITM data but preserves unrelated issue templates (208.036ms)
+✔ uninstall validates every managed file before removing any provider integration (407.963292ms)
+✔ uninstall refuses to recursively remove a managed skill directory with user files (389.215125ms)
+✔ uninstall refuses to remove a foreign symlink at a managed skill path (210.083875ms)
+✔ uninstall recognizes exact generated artifacts from the previous package layout (416.108875ms)
+✔ uninstall removes only the marked project-local AITM bootstrap block (191.536083ms)
+✔ uninstall refuses a modified or ambiguously embedded AITM bootstrap block (614.779583ms)
+✔ uninstall --agent scopes provider files and Codex bootstrap cleanup (491.934167ms)
+✔ uninstall removes only exact managed hook commands (589.238292ms)
+✔ uninstall removes Claude permissions without hooks and never strips other providers (420.711ms)
+✔ uninstall rejects malformed hook schemas before changing any files (360.962791ms)
+✔ uninstall rejects unknown, missing, duplicate, and conflicting options without cleanup (1232.431375ms)
+✔ uninstall --help documents cleanup ordering and destructive options (121.37875ms)
+✔ statusline installs under an overridden HOME (200.006042ms)
+✔ configurePreferences with all-empty answers writes defaults (21.546125ms)
+✔ configurePreferences with "y" answers parses every bool branch truthy (20.513417ms)
+✔ configurePreferences merges over an existing config and a custom scratchDir (21.413833ms)
+✔ configurePreferences tolerates a malformed existing config (28.403125ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9782.448042

@@ -1,0 +1,35 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 0; stderr:
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Ambiguous Git root observation
+    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+    at observeGitIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:84:32)
+    at readPhysicalRuntimeIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:146:23)
+    at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:188:20)
+    at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:124:10)
+    at buildContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/runtime.mjs:314:22)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/task-tracker.mjs:488:17 {
+  code: 'ROOT_IDENTITY_MISMATCH'
+}
+
+Node.js v26.8.1
+
+
+1 !== 0
+
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs:352:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1

@@ -1,0 +1,10 @@
+✔ partial success: gh exits nonzero but prints issue URL → exit 6 with recovery message (614.294541ms)
+✔ genuine failure: gh exits nonzero with no URL in stdout → non-zero exit, no partial-success message (538.148625ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1156.53375

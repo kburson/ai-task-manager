@@ -1,0 +1,14 @@
+✔ shared observation reads native refs and AITM Status including external issues (1.078333ms)
+✔ post-bind reconciliation succeeds or warns without undoing the binding (0.282083ms)
+✔ switch and resume invoke projection after writing active binding state (0.917375ms)
+✔ readiness reads only incoming blockers with 0 incoming relation (0.449042ms)
+✔ readiness reads only incoming blockers with 1 incoming relation (0.161833ms)
+✔ incoming cross-repository blockers still refuse rather than lose identity (0.267042ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.74825

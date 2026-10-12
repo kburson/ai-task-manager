@@ -1,0 +1,10 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs:27
+    proc.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`worker exit ${code}`))));
+                                                               ^
+
+Error: worker exit 1
+    at ChildProcess.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs:27:64)
+    at ChildProcess.emit (node:events:514:20)
+    at ChildProcess._handle.onexit (node:internal/child_process:294:12)
+
+Node.js v26.8.1

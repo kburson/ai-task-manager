@@ -1,0 +1,27 @@
+✔ buildUpdates always writes the required field-id keys (0.61975ms)
+✔ buildUpdates writes an optional key only when its env value is non-empty (0.114625ms)
+✔ buildUpdates maps FIELD_RANK to both fieldRank and rankFieldId (0.073167ms)
+✔ buildUpdates merges a non-empty FIELD_IDS_JSON blob and tolerates garbage (0.414375ms)
+✔ mergeConfig preserves hand-set keys the bootstrap never touches (0.126666ms)
+✔ mergeConfig rewrites the legacy On Deck option key to Ready for Planning (0.081292ms)
+✔ mergeConfig fails closed when legacy and canonical option ids conflict (0.240083ms)
+✔ preflightConfig validates existing config without writing (0.148583ms)
+✔ loadExisting falls back to the legacy .claude/ path then to {} (0.125375ms)
+✔ serializeConfig matches the bash JSON.stringify(…,null,2)+newline shape (0.116666ms)
+✔ writeConfig loads → merges → writes and returns the merged object (0.125417ms)
+✔ issue templates carry the AITM title prefixes and labels (0.070333ms)
+✔ writeIssueTemplates writes task.yml + bug.yml under .github/ISSUE_TEMPLATE (0.115958ms)
+✔ writeIssueTemplates is idempotent — same bytes on re-run (0.12025ms)
+✔ canonColor returns the palette color or empty for unknown (0.087792ms)
+✔ projectNumberFromInput parses all three input shapes (and rejects junk) (0.208125ms)
+✔ normalizeProjectList handles array, repo-nodes, and user/org-nodes shapes (0.143041ms)
+✔ mergeProjectLists dedups by id (linked OR) and sorts linked-first then number (0.114042ms)
+✔ init-project-config.sh delegates config + template writes to config-init.mjs (1.038083ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.086083

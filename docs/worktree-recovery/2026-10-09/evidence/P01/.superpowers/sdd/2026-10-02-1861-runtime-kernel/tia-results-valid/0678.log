@@ -1,0 +1,14 @@
+✔ canonical lifecycle places Ready for Planning between Refine and Plan (0.738375ms)
+✔ canonical state and config serialization use only Ready for Planning vocabulary (0.086667ms)
+✔ historical Assigned and On Deck values normalize and parse without rewriting bytes (0.850542ms)
+✔ packaged configuration authors the canonical R4P key and retains the existing option id (0.804084ms)
+✔ this topology child contains no live board migration execution (1.133875ms)
+✔ the named eight-state integration flow consumes canonical lifecycle authority (0.510083ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.525833

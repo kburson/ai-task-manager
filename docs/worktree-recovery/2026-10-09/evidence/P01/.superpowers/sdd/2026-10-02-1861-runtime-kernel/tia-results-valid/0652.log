@@ -1,0 +1,12 @@
+✔ mutateIssueBody throws MarkerLossError when mutate drops aitm-fields (3.165375ms)
+✔ mutateIssueBody allows the same drop with allowMarkerLoss: true (0.916959ms)
+✔ MarkerLossError message lists each lost marker name (0.344ms)
+✔ mutateIssueBody passes through clean mutate that preserves markers (0.341917ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.968875

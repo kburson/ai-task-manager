@@ -1,0 +1,35 @@
+coverage-evidence-markers.test.mjs: defined
+✔ runEvidenceMarkers: audit clean body → status clean (1.338167ms)
+✔ runEvidenceMarkers: audit issues body → status issues-found (0.262042ms)
+✔ runEvidenceMarkers: defaults to audit mode when mode omitted (0.115458ms)
+✔ runEvidenceMarkers: backfill changed body → writes via mutateBody (1.2015ms)
+✔ runEvidenceMarkers: backfill dry-run does not write (0.143834ms)
+✔ runEvidenceMarkers: backfill with unchanged body skips write (0.131833ms)
+✔ runEvidenceMarkers: backfill without mapping → ambiguous (0.102375ms)
+✔ runEvidenceMarkers: unknown mode throws (0.289667ms)
+✔ runEvidenceMarkers: throws without issueNumber (0.127958ms)
+✔ runEvidenceMarkers: throws without cfg.repo (0.122583ms)
+✔ verbEvidenceMarkers: no issue number → usage, exit 1 (0.311792ms)
+✔ verbEvidenceMarkers: backfill without --map-file → exit 2 (0.216709ms)
+missing-evidence: bare ac
+missing-verification-command: npm test
+stale-verification-command: npm run lint
+evidence-markers: issues-found
+✔ verbEvidenceMarkers: audit issues body prints audit, status issues-found (246.231292ms)
+evidence-markers: clean
+✔ verbEvidenceMarkers: audit clean body → exits normally (13.390292ms)
+evidence-markers: dry-run
+✔ verbEvidenceMarkers: backfill dry-run with map-file (13.814708ms)
+missing-evidence: needs backfill
+✔ verbEvidenceMarkers: backfill ambiguous → exit 3 (19.884416ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 301.975583
+Usage: /task evidence-markers <audit|backfill> #N [--map-file mappings.json] [--dry-run]
+evidence-markers backfill requires --map-file <json>
+ambiguous-evidence: needs backfill

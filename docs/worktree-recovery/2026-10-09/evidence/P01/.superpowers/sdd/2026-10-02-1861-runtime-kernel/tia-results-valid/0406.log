@@ -1,0 +1,27 @@
+✖ fixed action authority measurement records physical read-port calls for every explain-ready collector (157.459125ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 167.992084
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/action-authority-cost.test.mjs:7:1
+✖ fixed action authority measurement records physical read-port calls for every explain-ready collector (157.459125ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async measure (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-authority-cost.mjs:86:18)
+      at async Promise.all (index 2)
+      at async measureFixedActionAuthorityReads (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-authority-cost.mjs:103:14)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/action-authority-cost.test.mjs:8:20) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
