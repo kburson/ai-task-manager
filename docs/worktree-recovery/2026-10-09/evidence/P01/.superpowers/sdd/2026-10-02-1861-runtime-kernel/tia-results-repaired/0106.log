@@ -1,0 +1,59 @@
+✔ tracked invalid override refuses a read-only operational route before normal dispatch (548.811083ms)
+✔ invalid catalog refuses before GitHub, lock, or session effects without network skip (14074.846042ms)
+✔ dynamic issue-bind route cannot bypass admission (382.825084ms)
+✔ direct verb hub refuses invalid guidance before context construction (388.164458ms)
+✔ direct verb executables refuse invalid guidance before their own main paths (2177.759041ms)
+✔ direct verb help-shaped arguments cannot bypass admission (2389.079542ms)
+✔ unsupported direct-hub recovery words are admitted as operational (602.929375ms)
+✔ session annotation requires a durable issue write, not a zero-exit or local change (0.593ms)
+✔ timing-post observation distinguishes durable issue writes from queued rows (0.213375ms)
+✔ package installer refuses invalid guidance before init writes (379.765667ms)
+✔ direct support-script path refuses invalid guidance before its own parser (378.743833ms)
+✔ guidance validation remains a routed recovery command (561.553917ms)
+✔ top-level help remains available while the selected catalog is invalid (348.414042ms)
+✔ command help, guidance source, and package version remain effect-free recovery routes (903.649584ms)
+✖ admission inventory accounts for every canonical command, alias, and classified executable (92.2715ms)
+✔ every registered operational token refuses an invalid catalog (20557.696375ms)
+✔ registered runtime status remains available with an invalid guidance catalog (494.477667ms)
+✔ every supported direct operational entrypoint refuses an invalid catalog (14463.87625ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 17
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 58752.524583
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs:316:1
+✖ admission inventory accounts for every canonical command, alias, and classified executable (92.2715ms)
+  AssertionError [ERR_ASSERTION]: scripts/task-tracker/commit-trail-handler.mjs
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      'node:fs',
+      'node:child_process',
+      'node:util',
+      'node:path',
+  ...
+      './paths.mjs',
+  +   './state.mjs'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs:342:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [Array],
+    expected: [Array],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

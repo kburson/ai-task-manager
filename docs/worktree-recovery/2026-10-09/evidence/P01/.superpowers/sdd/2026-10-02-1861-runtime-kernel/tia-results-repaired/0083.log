@@ -1,0 +1,15 @@
+✔ rejects genuine green proof unreachable from the bound branch and names both branches (AC1, AC2) (216.445083ms)
+✔ accepts legacy proof and receipts with no provenance without probing Git (AC3) (0.331959ms)
+✔ #1344 auto-tick keeps provenance incomplete with the legacy sentinel and reachable with an explicit SHA (203.179792ms)
+✔ uses Git ancestry even when the recorded worktree directory no longer exists (AC4) (0.283959ms)
+✔ evaluates verification-receipt execution context with the same predicate (0.274208ms)
+✔ Develop exit, Test entry and exit, and review-preflight all enforce the shared audit (AC5) (2.068333ms)
+✔ allow-foreign-worktree cannot bypass artifact reachability (AC6) (0.166042ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 427.354959

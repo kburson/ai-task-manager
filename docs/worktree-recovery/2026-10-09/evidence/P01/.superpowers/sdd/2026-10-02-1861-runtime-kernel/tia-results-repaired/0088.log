@@ -1,0 +1,34 @@
+✔ cold retry converges timing after before-effect (2.207125ms)
+✔ cold retry converges timing after after-effect-before-response (0.667042ms)
+✔ cold retry converges timing after after-response-before-checkpoint (1.611667ms)
+✔ cold retry converges estimation after before-effect (0.424708ms)
+✔ cold retry converges estimation after after-effect-before-response (0.491166ms)
+✔ cold retry converges estimation after after-response-before-checkpoint (0.412208ms)
+✔ cold retry converges lifecycle after before-effect (0.318125ms)
+✔ cold retry converges lifecycle after after-effect-before-response (0.31225ms)
+✔ cold retry converges lifecycle after after-response-before-checkpoint (0.855041ms)
+✔ cold retry converges board after before-effect (0.361917ms)
+✔ cold retry converges board after after-effect-before-response (0.323625ms)
+✔ cold retry converges board after after-response-before-checkpoint (0.246917ms)
+✔ cold retry converges disposition after before-effect (0.37375ms)
+✔ cold retry converges disposition after after-effect-before-response (0.318083ms)
+✔ cold retry converges disposition after after-response-before-checkpoint (0.257875ms)
+✔ cold retry converges issue after before-effect (0.323417ms)
+✔ cold retry converges issue after after-effect-before-response (0.365625ms)
+✔ cold retry converges issue after after-response-before-checkpoint (0.27575ms)
+✔ cold retry converges labels after before-effect (0.397042ms)
+✔ cold retry converges labels after after-effect-before-response (0.251583ms)
+✔ cold retry converges labels after after-response-before-checkpoint (0.375375ms)
+✔ cold retry converges cleanup after before-effect (0.915041ms)
+✔ cold retry converges cleanup after after-effect-before-response (0.361875ms)
+✔ cold retry converges cleanup after after-response-before-checkpoint (0.324708ms)
+✔ pre-close contention refuses effects while a post-completion race is cleanup pending (0.626708ms)
+✔ public close dispatcher selects marked synthetic v2 and ignores unmarked v1 (1758.1085ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1777.145958

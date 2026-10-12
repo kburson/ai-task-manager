@@ -1,0 +1,14 @@
+✔ decideGateEvalFailure: gate error without --force fails closed, exit 3 (0.494833ms)
+✔ decideGateEvalFailure: gate error WITH --force continues (deliberate bypass) (0.080042ms)
+✔ decideGateEvalFailure: total over missing error (no throw) (0.059333ms)
+✔ source: gate-eval catch no longer ends in a bare warn-and-fall-through (0.363375ms)
+✔ source: gate-eval catch routes through decideGateEvalFailure (0.166167ms)
+✔ source: non-force gate-eval failure exits before mutation (0.099292ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.16125

@@ -1,0 +1,26 @@
+✔ production root aliases refuse artifact-contained forged authority before state access (268.915875ms)
+✔ production root aliases refuse physical artifact aliases (67.977833ms)
+✔ same physical worktree override resolves root from a subdirectory (137.021583ms)
+✔ foreign overrides require exact registered admission and conflicting aliases refuse (499.893ms)
+✔ shadowed unsafe aliases never escape validation (741.171917ms)
+✔ a marker directory with only HEAD is not a Git identity (9.491417ms)
+✔ registered foreign admission is scoped and requires a fresh linked Git worktree (304.724125ms)
+✔ an unavailable unrelated registered worktree does not poison a valid root (74.757958ms)
+✔ a linked checkout cannot import a main root located under artifacts (85.508834ms)
+✔ durable layout separates linked local state from main shared state without creating stores (37.571167ms)
+✔ uninitialized durable storage refuses without importing volatile state (21.171625ms)
+✔ durable reads validate real queue generations and individual authority fields (91.347833ms)
+✔ durable reads refuse corrupt control, unsupported schema and partial publication (78.696209ms)
+✔ activated stores require valid records and never recover authority from volatile bytes (195.63575ms)
+✔ runtime overrides reject volatile, foreign and physical alias destinations (113.388708ms)
+✔ runtime override ancestry checks repeated directory components (49.061041ms)
+✔ a dangling control alias refuses before uninitialized-store classification (41.061375ms)
+✔ a final runtime record alias refuses even when its target exists (47.937625ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2895.63425

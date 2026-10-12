@@ -1,0 +1,22 @@
+coverage-migrate-fields-encoding.test.mjs: ok
+✔ transformBody: legacy fence → migrated to single-line aitm-fields (0.994584ms)
+✔ transformBody: single new-encoding block → no-op (0.084209ms)
+✔ transformBody: legacy block with invalid fence → unchanged w/ reason (0.100125ms)
+✔ fetchBody: returns gh stdout body (0.105959ms)
+✔ writeBody: mkdtemp + write + gh edit + rm cleanup (0.192958ms)
+✔ scanOpenIssues: parses gh search json → numbers (0.437666ms)
+✔ scanOpenIssues: gh failure → [] with err note (0.119125ms)
+✔ migrateOne: no change → reports, no write (0.131459ms)
+✔ migrateOne: dry-run → would-migrate, no write (0.115542ms)
+✔ migrateOne: live → writes migrated body (0.1485ms)
+✔ main: missing repo → err + exit 2 (0.16175ms)
+✔ main: no targets → usage + exit 2 (0.08425ms)
+✔ main: explicit numbers + --scan union, migrateOne per target, error captured (0.18825ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.962

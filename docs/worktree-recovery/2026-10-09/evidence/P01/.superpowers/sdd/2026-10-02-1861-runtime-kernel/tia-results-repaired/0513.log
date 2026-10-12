@@ -1,0 +1,21 @@
+✔ #1490: PR #1489 real default-squash body recovers without a trailer (3.783792ms)
+✔ #1490: PR #1487 real default-squash body recovers without a trailer (0.383834ms)
+✔ #1490: a multi-token default body carrying every expected token recovers (0.299959ms)
+✔ #1583: an authorized secondary target recovers when another authorized token leads (0.23125ms)
+✔ #1583: an absent target is rejected before external recovery (0.388791ms)
+✔ #1583: an unauthorized title-leading token is refused (0.273166ms)
+✔ #1490: a missing expected secondary token is refused (0.195208ms)
+✔ #1490: an extra unauthorized token is refused (0.400542ms)
+✔ #1490: a title not leading with the top-level token is refused (0.333375ms)
+✔ #1490: a nonterminal Attribution line does not fall through to the default-body proof (0.312167ms)
+✔ #1490: a duplicated Attribution line does not fall through to the default-body proof (0.200375ms)
+✔ #1490: an indented canonical-looking trailer does not fall through (0.279792ms)
+✔ #1490: a canonical trailer on external recovery still succeeds (0.154458ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.570458

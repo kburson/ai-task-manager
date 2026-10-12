@@ -1,0 +1,11 @@
+✔ pairs separate Explain and executor attempts with equal physical authority reads (27.802917ms)
+✔ isolates named refresh, waivable policy enrichment, and post-success annotation effects (8.660666ms)
+✔ seals timing provenance and regenerates the committed authority artifact (45.847458ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 86.298083

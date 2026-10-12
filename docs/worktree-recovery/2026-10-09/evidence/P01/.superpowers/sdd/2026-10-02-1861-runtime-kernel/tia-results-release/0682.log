@@ -1,0 +1,12 @@
+✔ a waived AC label is recognized as waived (checked and unchecked yield same label) (0.594084ms)
+✔ a waiver may carry a rationale tail and still match (0.065583ms)
+✔ a plain AC label is not waived (0.060291ms)
+✔ non-demonstrable and waived are distinct opt-outs (0.09875ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.159291

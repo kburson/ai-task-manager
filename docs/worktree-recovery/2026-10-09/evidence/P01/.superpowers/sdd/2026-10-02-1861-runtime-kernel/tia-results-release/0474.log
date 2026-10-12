@@ -1,0 +1,31 @@
+coverage-demote.test.mjs: defined
+✔ runDemote: throws without issueNumber (0.791458ms)
+✔ runDemote: throws without cfg (0.121625ms)
+✔ runDemote: assertBound is invoked and may throw (0.13375ms)
+✔ runDemote: no recorded + no live → error (board item missing) (0.289459ms)
+✔ runDemote: no recorded + live → bootstrap, then demoted (1.91875ms)
+✔ runDemote: live disagrees with recorded → drift-refused (0.127ms)
+✔ runDemote: unknown recorded state → error (0.115791ms)
+✔ runDemote: legal-but-non-source state → invalid-source-refused (0.136125ms)
+✔ runDemote: move-state nonzero exit → transition-failed (0.128709ms)
+✔ runDemote: recorded test, live test, move ok → demoted (no bootstrap) (0.259375ms)
+✔ runDemote: recorded review → demoted from review (0.134875ms)
+✔ runDemote: default fetch + live-state deps run via fake gh → demoted (324.403583ms)
+✔ verbDemote: no issue number → usage, exit 1 (0.388666ms)
+✔ verbDemote: demoted → stdout, no exit (0.18125ms)
+✔ verbDemote: bootstrap demoted → stdout notes bootstrap (0.201291ms)
+✔ verbDemote: drift-refused → stderr, exit 4 (0.215834ms)
+✔ verbDemote: invalid-source-refused → stderr, exit 4 (0.101666ms)
+✔ verbDemote: transition-failed → stderr, exit code (0.086917ms)
+✔ verbDemote: error status → stderr, exit 1 (0.070125ms)
+✔ verbDemote: runDemote throws → stderr, exit 1 (0.086875ms)
+✔ runDemote: no --rework → rework-required (refuses before any fetch) (0.065209ms)
+✔ verbDemote: rework-required → stderr, exit 4 (0.067792ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 333.497667

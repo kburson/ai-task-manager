@@ -1,0 +1,13 @@
+✔ returns true when the .bin symlink realpath-resolves to the module file (0.549208ms)
+✔ returns true for direct invocation of the real file (0.12375ms)
+✔ returns false when argv points at an unrelated script (0.194833ms)
+✔ returns false when there is no argv path (0.163292ms)
+✔ returns false (fail-closed) when realpath throws (0.11375ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.289833

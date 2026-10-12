@@ -1,0 +1,11 @@
+✔ new claims get fresh generations while heartbeat preserves the active generation (3132.690583ms)
+✔ generation release preserves same-session newer and foreign claims under the authority lock (0.604667ms)
+✔ absent and paused bindings remain explicit cleanup observations (0.186083ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3136.993417

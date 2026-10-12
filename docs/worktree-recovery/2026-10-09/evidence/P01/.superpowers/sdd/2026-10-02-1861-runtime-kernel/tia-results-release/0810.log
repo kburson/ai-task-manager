@@ -1,0 +1,16 @@
+✔ comment parses a strict target, key, and body file (1.11575ms)
+✔ owned comment creates, updates, and no-ops exactly one stable marker (0.495083ms)
+✔ owned comment refuses duplicate markers and marker spoofing (0.199541ms)
+✔ write success is reported only after exact correlated read-back (0.117291ms)
+✔ a concurrent duplicate ownership marker after create is a refusal (0.153042ms)
+✔ ambiguous create transport is recovered only from one exact marker read-back (0.216ms)
+✔ comment listing is exhaustive, correlated, and cursor-safe (0.250708ms)
+✔ default GraphQL adapters create, read, update, and no-op through production queries (0.374458ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.234417

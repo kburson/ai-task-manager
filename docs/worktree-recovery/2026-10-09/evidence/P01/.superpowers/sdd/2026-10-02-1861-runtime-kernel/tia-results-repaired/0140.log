@@ -1,0 +1,25 @@
+✔ verificationActivityTimestamps accepts only established verification headings (1.2715ms)
+✔ collectResumeActivityEvidence combines and deduplicates comment and attributed commit times (0.245083ms)
+✔ collectResumeActivityEvidence reports none after a complete empty lookup (0.112ms)
+✔ collectResumeActivityEvidence reports unknown when commit attribution fails without comment proof (0.272667ms)
+✔ verification comment proof remains found when commit attribution is unavailable (0.168042ms)
+Resumed #1077.
+✔ verbResume does not synthesize idle over a #1077-shaped gap with durable activity (7045.409875ms)
+Resumed #1077.
+✔ verbResume refuses retroactive idle for own actor history despite no activity (6205.243042ms)
+Resumed #1077.
+✔ verbResume refuses retroactive idle without querying unknown activity (6171.942958ms)
+Started #1077.
+✔ legacy untagged history cannot fabricate a current actor retroactive departure (6027.673584ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25463.590667
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[dependency-disposition] #1077: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #1077: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #1077: binding remains active; retry dependency projection (dependency-disposition:config)

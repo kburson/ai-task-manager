@@ -1,0 +1,14 @@
+✔ builds a strict, versioned, deeply frozen real-PR evidence object (1.7935ms)
+✔ real-PR evidence rejects every partial object (0.542917ms)
+✔ real-PR evidence rejects unknown keys (0.101833ms)
+✔ real-PR evidence rejects partial, unknown, and malformed provider actions (0.183ms)
+✔ real-PR evidence correlates every provider action authority and commit hash (0.529375ms)
+✔ real-PR evidence validates identities, SHAs, URLs, disposition, and close result (0.348917ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.204542

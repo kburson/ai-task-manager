@@ -1,0 +1,15 @@
+✔ dry run reports exact legacy-to-contract parity with no write dependencies (5.960666ms)
+✔ apply prepares singletons, seals and projects the contract, then publishes the directory last (1.619958ms)
+✔ parity mismatch refuses adoption before the first write (0.919791ms)
+✔ rollback is allowed only for the unchanged adoption snapshot (0.309542ms)
+✔ rollback snapshot inspection detects singleton projection drift as well as capsule drift (0.52275ms)
+✔ repair delegates to validated discovery and never guesses a missing singleton (0.510916ms)
+✔ CLI is dry-run first and exposes no database or hosted-service configuration (0.451041ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.546125

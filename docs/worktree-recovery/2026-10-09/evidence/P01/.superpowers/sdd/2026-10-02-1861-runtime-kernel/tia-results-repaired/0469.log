@@ -1,0 +1,16 @@
+✔ normalizes GitHub issue close state and reason without inventing completion (1.234041ms)
+✔ human-gated integrity requires Agent Review and Final Review (1.196042ms)
+✔ explicit full-auto mode exempts Final Review but never Agent Review (0.124667ms)
+✔ functional and acceptance checkboxes remain part of close integrity (0.187042ms)
+✔ close-owned lifecycle boxes, fenced examples, and waived ACs are exempt (0.102667ms)
+✔ legacy Final Review label satisfies the human-gated integrity key (0.081ms)
+✔ epic integrity requires every raw child board state to be Done (0.127459ms)
+✔ runtime exposes an additive state plus stateReason snapshot query (0.393458ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.268875

@@ -1,0 +1,30 @@
+All code-complete-gate tests passed.
+✔ parseAcceptanceCriteria: returns null when no AC section (0.616458ms)
+✔ parseAcceptanceCriteria: parses only ## Acceptance Criteria section, ignores DoD (0.570167ms)
+✔ parseAcceptanceCriteria: recognizes a combined single-marker AC (cmd + run-props) as verified (#481) (0.10975ms)
+✔ gateCodeComplete: combined single-marker AC passes the verification gate (#481) (2.597125ms)
+✔ gateCodeComplete: resolves record authority exactly once instead of trusting legacy AC state (1.542708ms)
+✔ gateCodeComplete: resolver refusal fails closed without legacy AC fallback (0.844041ms)
+✔ gateCodeComplete: legacy and record contracts share the same AC policy matrix (1.25075ms)
+✔ parseCommitShas: extracts comma-separated SHAs (0.154458ms)
+✔ parseCommitShas: empty marker → [] (0.156667ms)
+✔ findCommitTrailComment: finds comment with both heading and marker (0.15375ms)
+✔ gateCodeComplete: all-passing → ok:true (0.295292ms)
+✔ gateCodeComplete: missing AC section → blocker (0.143833ms)
+✔ gateCodeComplete: unticked AC → blocker (0.139916ms)
+✔ gateCodeComplete: ticked without aitm-verified-by → blocker (0.097333ms)
+✔ gateCodeComplete: aitm-verified cmd="TBD" treated as unverified (0.110291ms)
+✔ gateCodeComplete: missing commit-trail comment → blocker (0.094792ms)
+✔ gateCodeComplete: empty aitm-commits marker → blocker (0.077709ms)
+✔ gateCodeComplete: dirty file in touch-set → blocker names file (0.141625ms)
+✔ gateCodeComplete: lifecycle DoD unticked ignored when functional ACs pass (0.317333ms)
+✔ gateCodeComplete: docs-only body takes the commit-trail path, not the deliverable lane (#923) (1.0825ms)
+✔ gateCodeComplete: docs-only with NO commit trail still blocks (not deliverable-waived) (#923) (0.634084ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.958792

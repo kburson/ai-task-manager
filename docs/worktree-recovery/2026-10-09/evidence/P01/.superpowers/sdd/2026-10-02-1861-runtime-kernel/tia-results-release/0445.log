@@ -1,0 +1,34 @@
+✔ nested epic evidence retains every required child and explicit nondelivery disposition at exact target (3.741041ms)
+✔ timing proof captures exact child lineage census at an immutable target without a fabricated record ID (0.587958ms)
+✔ skipped or ambiguous lineage never creates accepted timing delivery evidence (0.338458ms)
+✔ resolveDoneTargetBranch: child resolves to its epic parent branch (0.088958ms)
+✔ resolveDoneTargetBranch: child honors its parent epic recorded branch (0.096792ms)
+✔ close graph adapter carries recorded parent authority and canonical fallback (0.435875ms)
+✔ close graph adapter carries malformed parent authority as a fail-closed error (0.391ms)
+✔ #1486: close graph adapter delegates authority and preserves rich child records (0.555916ms)
+✔ resolveDoneTargetBranch: standalone story degenerates to trunk (no regression) (0.079625ms)
+✔ resolveDoneTargetBranch: honors a custom trunk name (0.108334ms)
+✔ resolveDoneTargetBranch: grandchild resolves to sub-epic branch when it survives (0.092209ms)
+✔ resolveDoneTargetBranch: walks up to root-epic branch when sub-epic branch is gone (0.074709ms)
+✔ resolveDoneTargetBranch: walks all the way to trunk when every ancestor branch is gone (0.078375ms)
+✔ lineageDoneGate: no commit-trail → skip (0.071625ms)
+✔ lineageDoneGate: empty trail marker → skip (0.282417ms)
+✔ lineageDoneGate: root epic without an own commit trail still proves children on trunk (16.278875ms)
+✔ lineageDoneGate: child with [#N] reachable on its epic branch → passes (9.149625ms)
+✔ lineageDoneGate: child not on parent branch → refuses naming the branch (7.614291ms)
+✔ lineageDoneGate: standalone story scopes attribution to trunk (7.698209ms)
+✔ lineageDoneGate: root epic proves every child commit on trunk even while its branch survives (7.332917ms)
+✔ lineageDoneGate: root epic excludes a closed not-planned child on trunk (7.152917ms)
+✔ lineageDoneGate: root epic refuses naming children whose commit is not on trunk (7.499208ms)
+✔ lineageDoneGate: nested epic proves its child trail on the parent even while its own branch survives (8.439542ms)
+✔ lineageDoneGate: nested epic uses its surviving parent when its own branch is missing (11.432583ms)
+✔ lineageDoneGate: nested epic fallback still refuses an incomplete child trail (9.345417ms)
+✔ lineageDoneGate: root epic falls back to the configured trunk when its branch is gone (0.213792ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104.875667
