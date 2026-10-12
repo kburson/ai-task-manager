@@ -1,0 +1,9 @@
+{
+  "scripts/task-tracker/lib/move-state/move-state-core.mjs": "fdc2a3efc124364543ea6b95bc5e9c54fe3c6e9d7cdf53c59ed5ca24132fca87",
+  "scripts/task-tracker/lib/criteria-revision/store.mjs": "2b99a784f960b85efad50cf638a58c035fa309bcafcaa5d13512ae4bfd3da0bc",
+  "scripts/task-tracker/lib/criteria-revision/policy.mjs": "c51aa898fad482d92e6c9c654099c6862acfefd1f08bdb05123c427022acfa88",
+  "scripts/tests/helpers/native-stage-completed16-resume-controls.mjs": "3a38557e4d9ec253c5641ec1944967cb9b1966c1cea8cc20818b3999943e2a91",
+  "scripts/tests/helpers/native-stage-completed16-report-controls.mjs": "ca8728b45250e9e9f99a1abd519a74638a871f4de2d40c2f54b56357744a03a5",
+  "scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs": "958a3270160e97416e44325d630976fffc8a812ed25980489f1f9d1da233ec3f",
+  "scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-known-prefix-boundary.test.mjs": "6a9e307446258bedaab10922dfb7e80b9708a8516fc8ad40db67e9548ab940d3"
+}

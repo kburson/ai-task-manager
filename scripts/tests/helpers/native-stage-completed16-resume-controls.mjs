@@ -225,7 +225,9 @@ export async function qualifyCompleted16OriginalCall({
       const original = moveState(retry);
       const overlap = tryNativeStageOriginalEntry(retry);
       await assert.rejects(overlap, (error) => error.code === 'revision-authority-unavailable');
-      assertResumeResult(await original, unverifiedPartial());
+      const { verifiedCompleted16Partial } =
+        await import('./native-stage-completed16-report-controls.mjs');
+      assertResumeResult(await original, verifiedCompleted16Partial(selected));
       assert.deepEqual(backend.snapshot, await expectedCompleted16Tail(selected));
       assert.deepEqual(
         backend.effects.filter((name) => !fixedAudits.has(name)),
@@ -571,6 +573,24 @@ export async function qualifyCompleted16Variant(options) {
   const { moveState } = await import('../../task-tracker/lib/move-state/move-state-core.mjs');
   const { createRevisionMemory } =
     await import('../../task-tracker/lib/criteria-revision/store.mjs');
+  if (variant.when === 'control' && variant.suffix === 'task3-final-sites') {
+    const { qualifyCompleted16FinalSites } =
+      await import('./native-stage-completed16-report-controls.mjs');
+    await qualifyCompleted16FinalSites(options);
+    return;
+  }
+  if (variant.when === 'control' && variant.suffix === 'task3-late') {
+    const { qualifyCompleted16LateReports } =
+      await import('./native-stage-completed16-report-controls.mjs');
+    await qualifyCompleted16LateReports(options);
+    return;
+  }
+  if (variant.when === 'control' && variant.suffix === 'task3') {
+    const { qualifyCompleted16Reporting } =
+      await import('./native-stage-completed16-report-controls.mjs');
+    await qualifyCompleted16Reporting(options);
+    return;
+  }
   if (variant.when === 'control' && variant.suffix === 'task2') {
     const selected = snapshots.get(16),
       backend = createRevisionMemory(selected);
@@ -694,7 +714,9 @@ export async function qualifyCompleted16EntryControls(options) {
         saved.map((v) => v.kind),
         ['read', 'dispatch', 'cache']
       );
-      assertResumeResult(result, unverifiedPartial());
+      const { verifiedCompleted16Partial } =
+        await import('./native-stage-completed16-report-controls.mjs');
+      assertResumeResult(result, verifiedCompleted16Partial(snapshots.get(16)));
       const effects = backend.effects;
       for (const { input, kind } of saved) {
         if (kind === 'read')

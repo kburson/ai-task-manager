@@ -3863,7 +3863,7 @@ async function existingStageTransitionAuthority(input) {
       revisionError('completed16-existing-read-authority');
   };
   current();
-  return { m, journal, current };
+  return { m, journal, current, core: code };
 }
 export async function acquireMemoryExistingNativeStageTransition(input) {
   const { m, current } = await existingStageTransitionAuthority(input);
@@ -3891,10 +3891,11 @@ export function assertMemoryExistingNativeStageTransitionResponse(input, respons
   )
     revisionError('completed16-existing-read-response');
   assertMemoryCapability(input.backend, input.capability, input.context);
+  retained.core.assertCompleted16ExistingReadLifetime(input.invocation, input.context);
   assertTransitionResponseData(retained, response);
 }
 export async function readMemoryExistingNativeStageTransition(input) {
-  const { m, journal, current: check } = await existingStageTransitionAuthority(input);
+  const { m, journal, current: check, core } = await existingStageTransitionAuthority(input);
   const current = () => {
     check();
     timingLock(m, input);
@@ -3934,6 +3935,7 @@ export async function readMemoryExistingNativeStageTransition(input) {
     return response;
   });
   existingTransitionResponses.set(result, {
+    core,
     authority: Object.fromEntries(
       Object.entries(Object.getOwnPropertyDescriptors(input)).map(([key, d]) => [key, d.value])
     ),
@@ -4873,6 +4875,25 @@ export async function readMemoryNativeStagePartialFacts(input) {
   const state = await observeRevision({ context, deps: backend });
   stable();
   if (state.status !== 'pending-native-stage') revisionError('native-stage-partial-current');
+  const reportIntent = core.readNativeStagePartialReportIntent(input);
+  if (reportIntent.kind === 'completed16') {
+    const { reconstructNativeHistory } = await import('./source-correction.mjs');
+    stable();
+    const history = await reconstructNativeHistory({
+      history: readMemoryNativeHistory(backend),
+      chain: state.chain,
+      backend,
+      observation: backend.observation,
+    });
+    stable();
+    const current = backend.snapshot.nativeStageRecords.at(-1);
+    if (
+      history.status !== 'pending-native-stage' ||
+      canonicalRecordJson(history.journal) !== canonicalRecordJson(current) ||
+      canonicalRecordJson(current.header) !== canonicalRecordJson(reportIntent.header)
+    )
+      revisionError('completed16-partial-history');
+  }
   const journal = backend.snapshot.nativeStageRecords.at(-1);
   const codec = await import('./stage-execution.mjs');
   stable();

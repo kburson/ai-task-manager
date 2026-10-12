@@ -78,3 +78,18 @@ test('completed16 cursor comparison roots reject copied inputs without reading g
   );
   assert.equal(gets, 0);
 });
+
+test('completed16 report/history/lifetime comparators reject forged inputs before getters', async () => {
+  const core = await import('../../../../../task-tracker/lib/move-state/move-state-core.mjs');
+  let gets = 0;
+  const forged = Object.defineProperty({}, 'holder', {
+    get() {
+      gets++;
+      throw Error('unowned report getter');
+    },
+  });
+  assert.throws(() => core.assertCompleted16ExistingReadLifetime(forged, forged));
+  assert.throws(() => core.assertCompleted16ResumeFinalHistory(forged, forged, forged));
+  assert.throws(() => core.readNativeStagePartialReportIntent(forged));
+  assert.equal(gets, 0);
+});

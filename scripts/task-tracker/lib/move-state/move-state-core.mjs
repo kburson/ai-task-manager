@@ -390,6 +390,7 @@ const completed16ResumeExecution = new AsyncLocalStorage();
 const completed16ExistingReads = new WeakMap();
 const completed16TailInputs = new WeakMap();
 const completed16TailLeaves = new WeakMap();
+const completed16PartialInputs = new WeakMap();
 // No public issuer: only the actual moveState call creates this object.
 export function consumeOriginalNativeStageRestartCall(ctx, restartCall) {
   assertOriginalNativeStageEntry(ctx);
@@ -419,46 +420,147 @@ export function freshCompleted16UnverifiedResult() {
   };
 }
 function assertCompleted16ResumeAuthority(frame) {
-  if (!isMemoryStageEffectScope() || completed16ResumeFrames.get(frame.stageToken) !== frame)
-    nativeTransitionRefusal();
-  assertOriginalRestartCall(frame.originalContext, frame.restartCall);
-  assertOriginalNativeStageEntrySources(frame.originalContext);
-  frame.store.assertMemoryCapability(frame.backend, frame.capability, frame.context);
-  if (
-    frame.nativeRoots.currentSessionId() !== frame.actorIdentity.sid ||
-    frame.nativeRoots.aiAppName() !== frame.actorIdentity.provider ||
-    frame.context.executor.sessionId !== frame.actorIdentity.sid
-  )
-    nativeTransitionRefusal();
-  if (frame.readRequest) assertNativeTransitionRequestUnchanged(frame.readRequest);
-  if (frame.readResponse)
-    frame.store.assertMemoryExistingNativeStageTransitionResponse(
-      completed16ReadAuthority(frame, frame.existingReadInput),
-      frame.readResponse
-    );
-  if (frame.existingReadReturned)
-    frame.transitionCode.assertExistingNativeTransitionResult(
-      frame.existingReadInput,
-      frame.sagaContext,
-      frame.existingReadReturned
-    );
-  compareOriginalEntryData(frame.sagaContext, frame.sagaDescriptors, frame.sagaPrototype);
-  for (const child of frame.sagaChildren)
-    compareOriginalEntryData(child.value, child.fields, child.prototype, true);
-  if (frame.cacheActiveReturned) {
-    const retained = frame.cacheActiveReturned;
-    nativeCacheSession.assertOriginalNativeCacheRead(retained.input, retained.result);
+  try {
+    if (frame.custodyRefused || frame.readUnavailable) nativeTransitionRefusal();
+
+    if (!isMemoryStageEffectScope() || completed16ResumeFrames.get(frame.stageToken) !== frame)
+      nativeTransitionRefusal();
+    assertOriginalRestartCall(frame.originalContext, frame.restartCall);
+    assertOriginalNativeStageEntrySources(frame.originalContext);
+    frame.store.assertMemoryCapability(frame.backend, frame.capability, frame.context);
+    if (
+      frame.nativeRoots.currentSessionId() !== frame.actorIdentity.sid ||
+      frame.nativeRoots.aiAppName() !== frame.actorIdentity.provider ||
+      frame.context.executor.sessionId !== frame.actorIdentity.sid
+    )
+      nativeTransitionRefusal();
+    if (frame.readRequest) assertNativeTransitionRequestUnchanged(frame.readRequest);
+    if (frame.readResponse)
+      frame.store.assertMemoryExistingNativeStageTransitionResponse(
+        completed16ReadAuthority(frame, frame.existingReadInput),
+        frame.readResponse
+      );
+    if (frame.existingReadReturned)
+      frame.transitionCode.assertExistingNativeTransitionResult(
+        frame.existingReadInput,
+        frame.sagaContext,
+        frame.existingReadReturned
+      );
+    compareOriginalEntryData(frame.sagaContext, frame.sagaDescriptors, frame.sagaPrototype);
+    for (const child of frame.sagaChildren)
+      compareOriginalEntryData(child.value, child.fields, child.prototype, true);
+    if (frame.cacheActiveReturned) {
+      const retained = frame.cacheActiveReturned;
+      nativeCacheSession.assertOriginalNativeCacheRead(retained.input, retained.result);
+    }
+  } catch (error) {
+    frame.custodyRefused = true;
+    throw error;
   }
 }
 function assertCompleted16ResumeCurrent(frame) {
-  assertCompleted16ResumeAuthority(frame);
-  if (canonicalRecordJson(frame.backend.snapshot) !== frame.currentSnapshot)
-    nativeTransitionRefusal();
+  try {
+    assertCompleted16ResumeAuthority(frame);
+    if (canonicalRecordJson(frame.backend.snapshot) !== frame.currentSnapshot)
+      nativeTransitionRefusal();
+  } catch (error) {
+    frame.custodyRefused = true;
+    throw error;
+  }
 }
 export function assertCompleted16ResumeFrame(ctx, restartCall) {
   const frame = assertOriginalRestartCall(ctx, restartCall).frame;
   if (!frame || frame.originalContext !== ctx) nativeTransitionRefusal();
   assertCompleted16ResumeCurrent(frame);
+}
+export function assertCompleted16ExistingReadLifetime(input, context) {
+  const frame = completed16ExistingReads.get(input);
+  if (
+    !frame ||
+    frame.context !== context ||
+    !isMemoryStageEffectScope() ||
+    completed16ResumeFrames.get(frame.stageToken) !== frame
+  )
+    nativeTransitionRefusal();
+  assertOriginalRestartCall(frame.originalContext, frame.restartCall);
+  frame.store.assertMemoryCapability(frame.backend, frame.capability, frame.context);
+}
+export function assertCompleted16ResumeFinalHistory(ctx, restartCall, history) {
+  const frame = assertOriginalRestartCall(ctx, restartCall).frame;
+  if (!frame) nativeTransitionRefusal();
+  assertCompleted16ResumeCurrent(frame);
+  canonicalRecordJson(history);
+  const expected = JSON.parse(frame.currentSnapshot).nativeStageRecords.at(-1);
+  if (
+    history.status !== 'pending-native-stage' ||
+    canonicalRecordJson(history.journal) !== canonicalRecordJson(expected)
+  ) {
+    frame.custodyRefused = true;
+    nativeTransitionRefusal();
+  }
+}
+function assertCompleted16PartialInput(input, frame) {
+  if (
+    !frame ||
+    completed16PartialInputs.get(input) !== frame ||
+    !frame.executionSettled ||
+    frame.tailRunning ||
+    frame.tailLeaf ||
+    frame.partialInput !== input ||
+    frame.existingReadPhase !== 'comparison'
+  )
+    nativeTransitionRefusal();
+  const expected = {
+    backend: frame.backend,
+    capability: frame.capability,
+    context: frame.context,
+    holder: frame.stageToken,
+  };
+  const fields = Object.getOwnPropertyDescriptors(input);
+  if (
+    Object.getPrototypeOf(input) !== Object.prototype ||
+    Reflect.ownKeys(fields).length !== 4 ||
+    Object.keys(expected).some(
+      (key) =>
+        !fields[key] ||
+        !Object.hasOwn(fields[key], 'value') ||
+        fields[key].value !== expected[key] ||
+        !fields[key].enumerable
+    )
+  )
+    nativeTransitionRefusal();
+  assertCompleted16ResumeCurrent(frame);
+}
+export function readNativeStagePartialReportIntent(input) {
+  assertNativeStagePartialHolder(input);
+  const resumed = completed16PartialInputs.get(input);
+  const record = resumed ?? nativeStagePartialInputs.get(input);
+  return structuredClone({ kind: resumed ? 'completed16' : 'original', header: record.header });
+}
+async function readCompleted16ResumePartial(frame) {
+  if (!frame.existingReadReturned || frame.readUnavailable)
+    return freshCompleted16UnverifiedResult();
+  const input = {
+    backend: frame.backend,
+    capability: frame.capability,
+    context: frame.context,
+    holder: frame.stageToken,
+  };
+  frame.partialInput = input;
+  completed16PartialInputs.set(input, frame);
+  try {
+    assertCompleted16PartialInput(input, frame);
+    const partial = await frame.store.readMemoryNativeStagePartialFacts(input);
+    assertCompleted16PartialInput(input, frame);
+    frame.store.assertMemoryNativeStagePartialResult(input, partial);
+    return { ...freshCompleted16UnverifiedResult(), ...partial };
+  } catch {
+    frame.custodyRefused = true;
+    return freshCompleted16UnverifiedResult();
+  } finally {
+    completed16PartialInputs.delete(input);
+    frame.partialInput = null;
+  }
 }
 function completed16ReadAuthority(frame, invocation) {
   return {
@@ -774,6 +876,7 @@ export async function evaluateOriginalNativeStageRestart(ctx, capability, origin
         frame.existingReadReturned = result;
         assertCompleted16ResumeCurrent(frame);
       } catch {
+        frame.readUnavailable = true;
         // Never infer facts from a thrown object or release a tail on a failed read.
       } finally {
         frame.existingReadPhase = 'comparison';
@@ -794,7 +897,10 @@ export async function evaluateOriginalNativeStageRestart(ctx, capability, origin
           // The original sequencer stops at any refusal, including the step19 fence.
         }
       }
-      return freshCompleted16UnverifiedResult();
+      // Every lexical read/tail invocation has settled and released its lock.
+      // There is no resumed background emitter to cancel or restore.
+      frame.executionSettled = true;
+      return readCompleted16ResumePartial(frame);
     });
   }
   return {
@@ -1180,6 +1286,11 @@ const nativeStagePartialInputs = new WeakMap();
 // No-return comparison of the actual lexical reporting call. A copied tuple,
 // even with the same holder, has no membership and cannot select the backend.
 export function assertNativeStagePartialHolder(input) {
+  const resumed = completed16PartialInputs.get(input);
+  if (resumed) {
+    assertCompleted16PartialInput(input, resumed);
+    return;
+  }
   const record = nativeStagePartialInputs.get(input);
   if (
     !record ||

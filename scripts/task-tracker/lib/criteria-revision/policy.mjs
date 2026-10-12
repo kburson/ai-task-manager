@@ -348,7 +348,18 @@ export async function tryNativeStageOriginalEntry(ctx, restartCall) {
             check();
             const final = await observeRevision({ context, deps: backend });
             check();
-            if (canonicalRecordJson(final) !== canonicalRecordJson(state))
+            if (originalStageEntry.admitted) {
+              if (final.status !== 'pending-native-stage')
+                throw new RevisionPolicyError(outcome('blocked', 'revision-conflict'));
+              const history = await reconstructNativeHistory({
+                history: readMemoryNativeHistory(backend),
+                chain: final.chain,
+                backend,
+                observation: backend.observation,
+              });
+              check();
+              core.assertCompleted16ResumeFinalHistory(ctx, restartCall, history);
+            } else if (canonicalRecordJson(final) !== canonicalRecordJson(state))
               throw new RevisionPolicyError(outcome('blocked', 'revision-conflict'));
             core.assertOriginalNativeStageEntrySources(ctx);
             return result;

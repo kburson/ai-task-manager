@@ -3391,14 +3391,11 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
               const result = await moveState({ ...originalRetryContext, revisionBackend: backend });
               assert.equal(result.phase, 'native-stage-resume', 'real admission at ' + ordinal);
               if (ordinal === 16) {
-                const {
-                  assertResumeResult,
-                  unverifiedPartial,
-                  expectedCompleted16Tail,
-                  resumedStageOperations,
-                  completed16Task2AuditTrace,
-                } = await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
-                assertResumeResult(result, unverifiedPartial());
+                const { assertResumeResult, expectedCompleted16Tail, resumedStageOperations } =
+                  await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
+                const { verifiedCompleted16Partial, completed16ReportAuditTrace } =
+                  await import('../../../helpers/native-stage-completed16-report-controls.mjs');
+                assertResumeResult(result, verifiedCompleted16Partial(selected));
                 assert.equal(
                   backend.effects.filter((name) => name === 'native-stage-existing-transition-read')
                     .length,
@@ -3412,7 +3409,7 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
                 );
                 assert.deepEqual(
                   backend.effects,
-                  completed16Task2AuditTrace,
+                  completed16ReportAuditTrace,
                   'complete resumed audit trace'
                 );
                 assert.deepEqual(backend.snapshot, await expectedCompleted16Tail(selected));
