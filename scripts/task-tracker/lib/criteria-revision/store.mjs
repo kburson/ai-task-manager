@@ -3527,7 +3527,7 @@ function retainTransitionResponse(response, input, phase, current) {
   });
   return response;
 }
-function assertTransitionResponse(input, response, phase) {
+function transitionResponseCustody(input, response, phase) {
   const retained = nativeTransitionResponses.get(response);
   if (!retained || retained.phase !== phase) revisionError('native-stage-transition-response');
   const descriptors = assertCommentStoreKeys(input, [
@@ -3543,7 +3543,9 @@ function assertTransitionResponse(input, response, phase) {
     )
   )
     revisionError('native-stage-transition-response');
-  retained.current();
+  return retained;
+}
+function assertTransitionResponseData(retained, response) {
   const actual = assertCommentStoreKeys(response, ['stdout', 'stderr', 'exitCode']);
   if (
     Object.keys(actual).some((key) => {
@@ -3559,6 +3561,22 @@ function assertTransitionResponse(input, response, phase) {
     canonicalRecordJson(response) !== retained.bytes
   )
     revisionError('native-stage-transition-response');
+}
+function assertTransitionResponse(input, response, phase) {
+  const retained = transitionResponseCustody(input, response, phase);
+  retained.current();
+  assertTransitionResponseData(retained, response);
+}
+// Compare actual returned DATA after the effect lease expires. This no-return
+// check grants neither live invocation membership nor a read/write capability.
+export function assertMemoryNativeStageTransitionResponseCustody(input, response, phase) {
+  const retained = transitionResponseCustody(input, response, phase);
+  assertMemoryCapability(
+    retained.authority.backend,
+    retained.authority.capability,
+    retained.authority.context
+  );
+  assertTransitionResponseData(retained, response);
 }
 export function assertMemoryNativeStageTransitionCreateResponse(input, response) {
   assertTransitionResponse(input, response, 'create');

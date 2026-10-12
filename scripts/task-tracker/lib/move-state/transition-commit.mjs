@@ -117,6 +117,9 @@ function commentBody(comment) {
 
 // Original lexical calls and parsed returns only. No public registration route.
 const nativeTransitionCalls = new WeakMap();
+// Comparison survives the lexical call only until the original frame finishes
+// reporting. It cannot restore live call membership or authorize another effect.
+const nativeTransitionComparisons = new WeakMap();
 const nativeTransitionResults = new WeakMap();
 function captureTransitionData(value) {
   // Canonical validation refuses nested accessors before reading values.
@@ -164,6 +167,14 @@ function transitionCall(input, ctx) {
   call.code.assertNativeStageTransitionInput(input, ctx, call.evidence);
   for (const item of [call.created, call.found]) if (item) assertTransitionData(item, item.value);
   return call;
+}
+export function assertOriginalNativeTransitionCallCustody(input) {
+  const call = nativeTransitionComparisons.get(input);
+  if (!isMemoryStageEffectScope() || !call) throw new TypeError('native-transition-result-custody');
+  for (const item of [call.created, call.found]) if (item) assertTransitionData(item, item.value);
+}
+export function expireOriginalNativeTransitionCallCustody(input) {
+  nativeTransitionComparisons.delete(input);
 }
 export function assertOriginalNativeTransitionResult(input, ctx, result) {
   const retained = nativeTransitionResults.get(result);
@@ -438,7 +449,9 @@ export async function writeTransitionCommit(ctx, evidence = {}, nativeInput) {
     const code = await import('./move-state-core.mjs');
     code.assertNativeStageTransitionInput(nativeInput, ctx, evidence);
     if (nativeTransitionCalls.has(nativeInput)) throw new TypeError('native-transition-reentrant');
-    nativeTransitionCalls.set(nativeInput, { ctx, evidence, code });
+    const call = { ctx, evidence, code };
+    nativeTransitionCalls.set(nativeInput, call);
+    nativeTransitionComparisons.set(nativeInput, call);
   } else assertRevisionStageHostEffect();
   try {
     if (ctx.SKIP_NETWORK) return Object.freeze({ verified: true, skipped: true });

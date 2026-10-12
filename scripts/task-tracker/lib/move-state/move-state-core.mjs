@@ -2570,9 +2570,21 @@ function assertNativeReturnedResultsUnchanged(record) {
     if (canonicalRecordJson(retained.result) !== retained.bytes)
       throw preparationRefusal('original-transition-result');
   }
+  // The lexical call checks its own live returns. Reporting compares retained
+  // DATA only after that call's input and effect lease have expired.
+  if (record.transitionCommentComparisonInput && !record.transitionCommentInput)
+    record.transitionCommentCode.assertOriginalNativeTransitionCallCustody(
+      record.transitionCommentComparisonInput
+    );
   for (const read of [record.transitionCreateRead, record.transitionCommentRead]) {
     if (!read) continue;
     assertNativeTransitionRequestUnchanged(read);
+    if (read.response)
+      record.transitionCommentStore.assertMemoryNativeStageTransitionResponseCustody(
+        read.authority,
+        read.response,
+        read.phase
+      );
   }
   for (const retained of [
     record.entryReturned,
@@ -3035,6 +3047,11 @@ export async function createNativeStageTransitionComment(input, request) {
   const response = await record.transitionCommentStore.writeMemoryNativeStageTransition(
     transitionAuthority(record, input)
   );
+  Object.assign(record.transitionCreateRead, {
+    response,
+    authority: transitionAuthority(record, input),
+    phase: 'create',
+  });
   nativeTransitionCommentRecord(input);
   assertNativeStageTransitionCreateResponse(input, request, response);
   return response;
@@ -3064,6 +3081,11 @@ export async function readNativeStageTransitionComment(input, request) {
   const response = await record.transitionCommentStore.readMemoryNativeStageTransition(
     transitionAuthority(record, input)
   );
+  Object.assign(record.transitionCommentRead, {
+    response,
+    authority: transitionAuthority(record, input),
+    phase: 'read',
+  });
   nativeTransitionCommentRecord(input);
   assertNativeStageTransitionReadResponse(input, request, response);
   return response;
@@ -3167,6 +3189,7 @@ async function runNativeStageTransitionCommit(ctx, originalFunction) {
     record.transitionCommentPrefixes = [intended, effected, completed].map(canonicalRecordJson);
     await store.persistMemoryNativeStageTransition({ ...transitionAuthority(record, input), step });
     nativeTransitionCommentRecord(input);
+    record.transitionCommentComparisonInput = input;
     const result = await originalFunction(ctx, record.transitionEvidenceDescriptor.value, input);
     nativeTransitionCommentRecord(input);
     code.assertOriginalNativeTransitionResult(input, ctx, result);
@@ -4710,6 +4733,10 @@ async function prepareNativeStageAtBoundary(ctx, capability, evaluation) {
       record.cancelled = true;
       record.cancel(preparationRefusal('preparation-cancelled'));
       if (running && !record.originalEmitterJoined) await running.catch(() => {});
+      if (record.transitionCommentComparisonInput)
+        record.transitionCommentCode.expireOriginalNativeTransitionCallCustody(
+          record.transitionCommentComparisonInput
+        );
       nativeStagePreparations.delete(record.identity);
     }
   }

@@ -616,6 +616,10 @@ test('transition16 new public roots refuse forged input before caller descriptor
       () => native.assertOriginalNativeTransitionResult({}, context, response),
       (error) => error instanceof TypeError && error.message === 'native-transition-result-custody'
     );
+    assert.throws(
+      () => native.assertOriginalNativeTransitionCallCustody(context),
+      (error) => error instanceof TypeError && error.message === 'native-transition-result-custody'
+    );
     for (const name of [
       'acquireMemoryNativeStageTransition',
       'persistMemoryNativeStageTransition',
@@ -654,6 +658,7 @@ test('transition16 new public roots refuse forged input before caller descriptor
     for (const name of [
       'assertMemoryNativeStageTransitionCreateResponse',
       'assertMemoryNativeStageTransitionReadResponse',
+      'assertMemoryNativeStageTransitionResponseCustody',
     ])
       assert.throws(
         () => store[name](context, response),

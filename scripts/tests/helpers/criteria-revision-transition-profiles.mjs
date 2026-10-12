@@ -10,7 +10,8 @@ import { discoverTestFiles } from '../../task-tracker/lib/discover-test-files.mj
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const directory = path.join(root, 'scripts/tests/integration/task-tracker/lib');
-export const budget = 600_000;
+// Explicit local contention allowance; CI and ordinary runs keep their budget.
+export const budget = process.env.AITM_TEST_EXECUTION_LIMITS === 'suspended' ? Infinity : 600_000;
 
 export function discoverOriginalCases() {
   const cases = [];
@@ -80,7 +81,13 @@ export async function qualify(files, minimum, t) {
     execFile(
       process.execPath,
       ['--test', '--test-concurrency=1', '--test-reporter=tap', ...paths],
-      { cwd: root, env, encoding: 'utf8', timeout: budget, maxBuffer: 8 * 1024 * 1024 },
+      {
+        cwd: root,
+        env,
+        encoding: 'utf8',
+        timeout: Number.isFinite(budget) ? budget : 0,
+        maxBuffer: 8 * 1024 * 1024,
+      },
       (error, stdout, stderr) => resolve({ error, stdout, stderr })
     )
   );

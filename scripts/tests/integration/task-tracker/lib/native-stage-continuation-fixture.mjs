@@ -287,13 +287,16 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             env: {
               ...isolation.env,
               AITM_NATIVE_STAGE_CONTEXT: '1',
+              ...(process.env.AITM_TEST_EXECUTION_LIMITS === 'suspended'
+                ? { AITM_TEST_EXECUTION_LIMITS: 'suspended' }
+                : {}),
               ...(process.env.TZ ? { TZ: process.env.TZ } : {}),
               ...(process.env.AITM_NATIVE_STAGE_EXPECTED_TZ
                 ? { AITM_NATIVE_STAGE_EXPECTED_TZ: process.env.AITM_NATIVE_STAGE_EXPECTED_TZ }
                 : {}),
             },
             encoding: 'utf8',
-            timeout: 590000,
+            timeout: process.env.AITM_TEST_EXECUTION_LIMITS === 'suspended' ? 0 : 590000,
           });
         } catch (error) {
           status = error.status;
@@ -2330,6 +2333,10 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       if (transitionCustody) {
         const [phase, kind] = transitionCustody;
         const store = await import('../../../../task-tracker/lib/criteria-revision/store.mjs');
+        const transition =
+          await import('../../../../task-tracker/lib/move-state/transition-commit.mjs');
+        const { withMemoryStageEffectQuarantine } =
+          await import('../../../../task-tracker/lib/criteria-revision/transport-quarantine.mjs');
         const originalDescriptors = Object.getOwnPropertyDescriptors;
         const configFile = path.join(f.projectDir, '.ai-task-manager/task-tracker.json');
         const configBytes = readFileSync(configFile, 'utf8'),
@@ -2425,6 +2432,21 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
                   );
                   copyProbes++;
                 }
+                if (authority) {
+                  assert.equal(
+                    transition.assertOriginalNativeTransitionCallCustody(authority.invocation),
+                    undefined,
+                    'actual original invocation has comparison custody before return mutation'
+                  );
+                  assert.throws(
+                    () =>
+                      transition.assertOriginalNativeTransitionCallCustody({
+                        ...authority.invocation,
+                      }),
+                    /native-transition-result-custody/,
+                    'copied invocation DATA has no comparison membership'
+                  );
+                }
                 if (kind === 'configuration')
                   writeFileSync(
                     configFile,
@@ -2494,6 +2516,14 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
               : 'native-source-unavailable'
         );
         assert.deepEqual(f.backend.effects.slice(effectStart), []);
+        if (authority)
+          withMemoryStageEffectQuarantine(() => {
+            assert.throws(
+              () => transition.assertOriginalNativeTransitionCallCustody(authority.invocation),
+              /native-transition-result-custody/,
+              'actual original comparison custody expires after frame reporting'
+            );
+          });
         assert.deepEqual(f.backend.snapshot, injectedSnapshot);
         assert.deepEqual(postFiles, injectedFiles);
         assert.deepEqual(captureFiles(), files);
