@@ -91,8 +91,9 @@ if (argv[0] === 'search' && argv[1] === 'issues') {
   process.exit(0);
 }
 
-// gh issue create — return URL
+// gh issue create — persist the actual authored body, then return URL
 if (argv[0] === 'issue' && argv[1] === 'create') {
+  const st=loadState();st.body=readFileSync(argv[argv.indexOf('--body-file')+1],'utf8');saveState(st);
   fs.writeSync(1,\`https://github.com/test-owner/test-repo/issues/\${fx.newIssueNumber || 500}\\n\`);
   process.exit(0);
 }
@@ -101,7 +102,7 @@ if (argv[0] === 'issue' && argv[1] === 'create') {
 if (argv[0] === 'issue' && (argv[1] === 'edit' || argv[1] === 'comment' || argv[1] === 'view')) {
   if (argv[1] === 'view') {
     // create-issue tether may probe; return minimal
-    fs.writeSync(1,JSON.stringify({ body: '', state: 'OPEN', projectItems: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } }));
+    fs.writeSync(1,JSON.stringify({ body: loadState().body || '', state: 'OPEN', projectItems: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } }));
   }
   process.exit(0);
 }
@@ -191,7 +192,7 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
     process.exit(0);
   }
   if (/projectItems/.test(stdinBody)) {
-    fs.writeSync(1,JSON.stringify({ data: { repository: { issue: { id: 'ISS_' + JSON.parse(stdinBody).variables.issue, projectItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'PVTI_new', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev' } }] }, comments: { nodes: [] } } } } }));
+    fs.writeSync(1,JSON.stringify({ data: { repository: { issue: { id: 'ISS_' + JSON.parse(stdinBody).variables.issue, projectItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'PVTI_new', project: { id: 'PVT_test' }, fieldValues: {nodes:[],pageInfo:{hasNextPage:false}}, fieldValueByName: { optionId: 'OPT_dev' } }] }, comments: { nodes: [] } } } } }));
     process.exit(0);
   }
   fs.writeSync(1,JSON.stringify({ data: {} }));

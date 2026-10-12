@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { freshUnitDir } from './decomposition-authority-fixtures.mjs';
+import { freshUnitDir } from '../../../unit/task-tracker/lib/decomposition-authority-fixtures.mjs';
 import {
   withIssueLock,
   currentIssueLockOwner,

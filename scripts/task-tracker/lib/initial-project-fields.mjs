@@ -30,8 +30,13 @@ export async function withInitialProjectFields(
       const before = await readBody(),
         parsed = parseIssueFieldDb(before);
       readDecompositionRecords(before);
-      if (!parsed.ok) throw new Error('initial-project-fields:body-fields');
-      const wanted = { estimate: parsed.values.estimate ?? null, size: parsed.values.size ?? null };
+      const unsizedAbsent =
+        !parsed.ok && parsed.reason === 'missing' && estimate === undefined && size === undefined;
+      if (!parsed.ok && !unsizedAbsent) throw new Error('initial-project-fields:body-fields');
+      const wanted = {
+        estimate: parsed.values?.estimate ?? null,
+        size: parsed.values?.size ?? null,
+      };
       if (
         (estimate !== undefined && ceilEstimateHours(Number(estimate)) !== wanted.estimate) ||
         (size !== undefined && String(size).toUpperCase() !== wanted.size)
@@ -51,8 +56,8 @@ export async function withInitialProjectFields(
           throw new Error('initial-project-fields:in-process-owner-required');
         const current = parseIssueFieldDb(await readBody());
         if (
-          !current.ok ||
-          ['estimate', 'size'].some((key) => (current.values[key] ?? null) !== wanted[key])
+          (!current.ok && !(unsizedAbsent && current.reason === 'missing')) ||
+          ['estimate', 'size'].some((key) => (current.values?.[key] ?? null) !== wanted[key])
         )
           throw new Error('initial-project-fields:body-drift');
         if (itemId) {

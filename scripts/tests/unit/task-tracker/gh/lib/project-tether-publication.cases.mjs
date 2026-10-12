@@ -12,6 +12,43 @@ import {
 import { parseIssueFieldDb } from '../../../../../task-tracker/issue-field-db.mjs';
 import { readDecompositionRecords } from '../../../../../task-tracker/lib/decomposition-records.mjs';
 export function registerTetherPublicationCases({ cfg, makeRunner, actualTether }) {
+  test('unsized initial tether preserves an absent field cache and performs no numeric setters', async () => {
+    const body = '## Scope\nUnestimated initial idea.\n';
+    let numeric = 0;
+    const fixture = estimationPublicationFixture({
+      cfg,
+      issueNumber: 1987,
+      getBody: () => body,
+      setBody: () => {
+        throw new Error('no initial body effect');
+      },
+      getProject: () => ({ estimate: null, size: null }),
+    });
+    const base = makeRunner({ projectItemOnAttempt: 2 }).runGql;
+    const result = await actualTether({
+      cfg,
+      issueNumber: 1987,
+      status: 'backlog',
+      initialValues: true,
+      sleep: async () => {},
+      runGql: async (q, v) => {
+        if (
+          q.includes('updateProjectV2ItemFieldValue') &&
+          [cfg.fieldEstimate, cfg.sizeFieldId].includes(v.field)
+        )
+          numeric++;
+        return base(q, v);
+      },
+      deps: {
+        ...fixture,
+        fetchIssueBody: async () => ({ body }),
+        projectValuesForIssue: async () => ({ estimate: null, size: null }),
+      },
+    });
+    assert.equal(result.itemId, 'VISIBLE_ITEM');
+    assert.equal(numeric, 0);
+    assert.equal(readDecompositionRecords(body).publication, null);
+  });
   const tetherIssueToProject = actualTether;
   for (const estimate of [23, 24, 25])
     test(`real creator tether initial ${estimate} preserves initial fields without publication history`, async () => {

@@ -327,3 +327,6 @@ for (const mode of ['invalid-estimate', 'inherited-owner', 'timestamp-only'])
       }
     }
   });
+
+import { registerPublicationSubprocessCases } from './publication-subprocess.cases.mjs';
+registerPublicationSubprocessCases();
