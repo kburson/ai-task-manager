@@ -8,17 +8,19 @@ import { ownershipDecision } from './ownership-policy.mjs';
 import { stripBodyVersion } from './versioned-issue-write.mjs';
 
 function comparableSourceBody(body) {
-  return stripBodyVersion(body).replace(
-    /<!-- aitm-last-known-state state="(backlog|refine|ready-for-plan|plan|develop|test|review|done)" ts="([^"]+)" -->/g,
-    (marker, state, ts) => {
-      const parsed = Date.parse(ts);
-      if (!Number.isFinite(parsed)) return marker;
-      const canonical = new Date(parsed).toISOString();
-      return ts === canonical || ts === canonical.replace('.000Z', 'Z')
-        ? '<!-- aitm-last-known-state state="' + state + '" -->'
-        : marker;
-    }
-  );
+  return stripBodyVersion(body)
+    .replace(
+      /<!-- aitm-last-known-state state="(backlog|refine|ready-for-plan|plan|develop|test|review|done)" ts="([^"]+)" -->/g,
+      (marker, state, ts) => {
+        const parsed = Date.parse(ts);
+        if (!Number.isFinite(parsed)) return marker;
+        const canonical = new Date(parsed).toISOString();
+        return ts === canonical || ts === canonical.replace('.000Z', 'Z')
+          ? '<!-- aitm-last-known-state state="' + state + '" -->'
+          : marker;
+      }
+    )
+    .trim();
 }
 export const DECOMPOSITION_PLAN_EXIT_GUARD_ID = 'plan-exit-decomposition';
 export async function evaluateIssueDecomposition({

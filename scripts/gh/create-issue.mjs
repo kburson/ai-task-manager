@@ -569,13 +569,12 @@ async function main() {
       );
       if (assessment.status !== 'confirmed') {
         console.error(
-          'partial-success: inspect #' +
+          'create-issue: delivery authority remains unconfirmed for #' +
             issueNumber +
-            ' and run npx aitm resume ' +
+            '; run npx aitm resume ' +
             issueNumber +
-            ' after restoring current authority; do not create a duplicate.'
+            ' before scoped delivery; creation is confirmed, so do not create a duplicate.'
         );
-        process.exitCode = 6;
       }
     }
     console.log('https://github.com/' + cfg.repo + '/issues/' + issueNumber);

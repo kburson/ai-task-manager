@@ -133,7 +133,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:24df72bfd1b8935264715d148d848e91c8015e264ab432407c504dd177e4a0f6"
+        "sitesSha256": "sha256:9eaf0f7e2e29d983872dd5598dcb3e5d379646e6c2d700e8d2a3ca7b3c23cc0e"
       },
       "rationale": "Current shared assessment emits typed pending, required and unavailable refusals; dynamically selected fallback sites stay inventoried and cannot admit prose waivers or erase publication intent."
     },

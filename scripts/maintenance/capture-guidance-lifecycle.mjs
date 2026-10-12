@@ -433,7 +433,25 @@ if (args[0] === 'api' && args[1] === 'graphql') {
     process.exit(2);
   }
   if (recertification && inlineQuery) {
-    if (inlineQuery.includes('pullRequest(number:')) {
+    if (inlineQuery.includes('viewer{login}')) {
+      const pageInfo = { hasNextPage: false, endCursor: null };
+      process.stdout.write(JSON.stringify({ data: {
+        viewer: { login: 'fixture-operator' },
+        repository: { issue: {
+          id: 'ISSUE_CAPTURE', number: 2100, body,
+          assignees: { nodes: [{ login: 'fixture-operator' }] },
+          projectItems: { nodes: [{ id: 'I1', project: { id: 'P1' },
+            fieldValueByName: { name: snapshot.state.replace(/(^|-)\\w/g, (m) => m.toUpperCase()) },
+            fieldValues: { nodes: [
+              { __typename: 'ProjectV2ItemFieldNumberValue', id: 'VALUE_ESTIMATE', number: 4, field: { id: 'ESTIMATE', name: 'Estimate' } },
+              { __typename: 'ProjectV2ItemFieldSingleSelectValue', id: 'VALUE_SIZE', name: 'S', field: { id: 'SIZE', name: 'Size' } }
+            ], pageInfo }
+          }], pageInfo },
+          comments: { nodes: [], pageInfo },
+          subIssues: { nodes: [], pageInfo }
+        } }
+      } }) + '\\n');
+    } else if (inlineQuery.includes('pullRequest(number:')) {
       const { execFileSync } = require('node:child_process');
       const tree = execFileSync('git', ['rev-parse', snapshot.head + '^{tree}'], { encoding: 'utf8' }).trim();
       const parent = execFileSync('git', ['rev-parse', snapshot.head + '^'], { encoding: 'utf8' }).trim();

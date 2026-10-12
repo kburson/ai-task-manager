@@ -1,6 +1,8 @@
 // @story #1991 — real collector and stateful provider ports for recovery tests.
+import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
+initializeFixtureActor(import.meta.url, 'codex');
 import { currentUnitAuthority } from './decomposition-unit-admission-fixture.mjs';
-import { hash } from './decomposition-authority-fixtures.mjs';
+import { fixture, observed, freshUnitDir, hash } from './decomposition-authority-fixtures.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -121,4 +123,47 @@ export async function currentGuardContext(ctx) {
       decomposition: { subject: f.subject, runtime: f.runtime, projectDir: f.projectDir },
     },
   };
+}
+
+import { createDecompositionRuntime } from '../../../../task-tracker/lib/decomposition-authority.mjs';
+export async function preparePromoteAuthority(deps, issueNumber, cfg) {
+  if (!deps?.decomposition?.projectValuesForIssue) return;
+  const raw = (await deps.pexec('gh', ['issue', 'view', String(issueNumber)])).stdout;
+  if (!/aitm-last-known-state: plan/.test(raw) && !/^## Deep-Dive Analysis/m.test(raw)) return;
+  const values = await deps.decomposition.projectValuesForIssue();
+  const f = fixture(values.estimate);
+  f.values.project = { ...f.values.project, ...values, projectId: cfg.projectId };
+  f.values.forecast = { ...f.values.forecast, estimate: values.estimate, size: values.size };
+  f.body = raw.replace(/<!-- aitm-fields:[^]*?-->/g, formatIssueFieldDb(values));
+  if (!/^## User Story$/m.test(f.body))
+    f.body =
+      '## User Story\nAs a release operator\nI want to stop partial publication\nSo that consumers receive complete releases\n\n' +
+      f.body;
+  if (!/^## Scope$/m.test(f.body))
+    f.body += '\n## Scope\nExercise one bounded promotion boundary.\n';
+  if (!/^## Acceptance Criteria$/m.test(f.body))
+    f.body += '\n## Acceptance Criteria\n- [ ] Preserve the current promotion boundary.\n';
+  const subject = {
+    repository: cfg.repo,
+    issue: Number(issueNumber),
+    projectId: cfg.projectId,
+    projectItemId: 'PVTI_a',
+  };
+  f.deps.readIssue = async () => observed({ number: Number(issueNumber), body: f.body });
+  f.deps.readBackIssue = f.deps.readIssue;
+  const root = freshUnitDir('promote-current-');
+  const runtime = createDecompositionRuntime({ cfg, projectDir: root, deps: f.deps });
+  await runtime.refresh(subject);
+  const mutate = deps.mutateIssueBody;
+  deps.mutateIssueBody = async (input) =>
+    mutate({
+      ...input,
+      mutate: () => {
+        f.body = input.mutate(f.body);
+        return f.body;
+      },
+    });
+  const fetch = deps.fetchIssueBody;
+  deps.fetchIssueBody = async (...args) => ({ ...(await fetch(...args)), body: f.body });
+  deps.decomposition = { subject, runtime, projectDir: root };
 }

@@ -13,7 +13,7 @@ import {
   runPromote as rawRunPromote,
   verbPromote,
 } from '../../../../task-tracker/verbs/promote.mjs';
-import { fixture, observed, freshUnitDir } from '../lib/decomposition-authority-fixtures.mjs';
+import { preparePromoteAuthority } from '../lib/decomposition-governed-fixtures.mjs';
 import { createDecompositionRuntime } from '../../../../task-tracker/lib/decomposition-authority.mjs';
 import { formatIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
 import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
@@ -21,46 +21,8 @@ import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement
 // Isolate the verb's withIssueLock dir from the live project tree.
 process.env.AI_TASK_MANAGER_PROJECT_DIR = mkdtempSync(join(projectScratchDir('test'), 'promote-'));
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
-async function prepareCurrentAuthority(deps, issueNumber) {
-  if (!deps?.decomposition?.projectValuesForIssue) return;
-  const raw = (await deps.pexec('gh', ['issue', 'view', String(issueNumber)])).stdout;
-  if (!/aitm-last-known-state: plan/.test(raw) && !/^## Deep-Dive Analysis/m.test(raw)) return;
-  const values = await deps.decomposition.projectValuesForIssue();
-  const f = fixture(values.estimate);
-  f.values.project = { ...f.values.project, ...values, projectId: cfg.projectId };
-  f.values.forecast = { ...f.values.forecast, estimate: values.estimate, size: values.size };
-  f.body = raw.replace(/<!-- aitm-fields:[^]*?-->/g, formatIssueFieldDb(values));
-  if (!/^## User Story$/m.test(f.body)) f.body = USER_STORY_SECTION + '\n' + f.body;
-  if (!/^## Scope$/m.test(f.body))
-    f.body += '\n## Scope\nExercise one bounded promotion boundary.\n';
-  if (!/^## Acceptance Criteria$/m.test(f.body))
-    f.body += '\n## Acceptance Criteria\n- [ ] Preserve the current promotion boundary.\n';
-  const subject = {
-    repository: cfg.repo,
-    issue: Number(issueNumber),
-    projectId: cfg.projectId,
-    projectItemId: 'PVTI_a',
-  };
-  f.deps.readIssue = async () => observed({ number: Number(issueNumber), body: f.body });
-  f.deps.readBackIssue = f.deps.readIssue;
-  const root = freshUnitDir('promote-current-');
-  const runtime = createDecompositionRuntime({ cfg, projectDir: root, deps: f.deps });
-  await runtime.refresh(subject);
-  const mutate = deps.mutateIssueBody;
-  deps.mutateIssueBody = async (input) =>
-    mutate({
-      ...input,
-      mutate: () => {
-        f.body = input.mutate(f.body);
-        return f.body;
-      },
-    });
-  const fetch = deps.fetchIssueBody;
-  deps.fetchIssueBody = async (...args) => ({ ...(await fetch(...args)), body: f.body });
-  deps.decomposition = { subject, runtime, projectDir: root };
-}
 async function runPromote(options) {
-  await prepareCurrentAuthority(options.deps, options.issueNumber);
+  await preparePromoteAuthority(options.deps, options.issueNumber, cfg);
   return rawRunPromote(options);
 }
 function makeDeps({
@@ -422,7 +384,7 @@ test('spawnVerbTimeout: test → undefined, others → finite budget', async () 
 });
 // --- verbPromote: process.exit + stdout/stderr trapped, deps injected ---
 async function runVerb(rest, deps) {
-  if (deps && rest[0]) await prepareCurrentAuthority(deps, Number(rest[0]));
+  if (deps && rest[0]) await preparePromoteAuthority(deps, Number(rest[0]), cfg);
   const realExit = process.exit;
   const realErr = process.stderr.write.bind(process.stderr);
   const realOut = process.stdout.write.bind(process.stdout);

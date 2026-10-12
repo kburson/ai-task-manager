@@ -421,3 +421,15 @@ test('nested epic split consumes its current decomposition plan while preserving
   assert.ok(r.proposals.every((p) => p.planMetadata.includes('**Source-plan**: docs/nested.md')));
   assert.match(f.authority.body, /Source-plan\*\*: docs\/plan.md/);
 });
+
+test('native guard body trimming preserves unchanged source authority', async () => {
+  const f = await kindFixture(7);
+  f.authority.body = f.authority.body.replace(/<!-- aitm-body-version version="[0-9]+" -->/g, '');
+  const r = await decompositionPlanExitGuard.run({
+    issueNumber: 1,
+    cfg: f.cfg,
+    body: f.authority.body.trim(),
+    deps: { decomposition: f.deps },
+  });
+  assert.equal(r.ok, true, r.reason);
+});
