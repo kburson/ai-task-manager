@@ -1,0 +1,14 @@
+▶ #1089 verification stage ownership
+  ✔ pins the shared command-classification vocabulary and owning stages (0.682459ms)
+  ✔ Develop separates affected iteration checks from exact-SHA finalization (0.195667ms)
+  ✔ Test reuses finalization evidence and executes complete lanes plus targeted commands (0.577125ms)
+  ✔ Review validates exact-SHA Test evidence and does not run standard commands (0.138708ms)
+✔ #1089 verification stage ownership (2.197833ms)
+ℹ tests 4
+ℹ suites 1
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.324083

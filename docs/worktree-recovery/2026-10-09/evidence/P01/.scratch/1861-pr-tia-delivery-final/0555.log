@@ -1,0 +1,24 @@
+✔ child outcome carries the real Test identity plus parent lineage, never a skipped receipt (3.881209ms)
+✔ root epic incomplete telemetry uses actual merged delivery identity without invented parent commands (1.707292ms)
+✔ incomplete outcome derives known subtotal from immutable timing source without numeric fabrication (0.503542ms)
+✔ incomplete record refuses forged subtotal, changed source, wrong linkage and missing actual receipt (0.881291ms)
+✔ incomplete rendering names unknown remainder and calibration excludes incomplete evidence (0.397833ms)
+✔ incomplete outcomes never enter quantitative calibration (2.095584ms)
+✔ incomplete writer rejects changed write payload and missing or conflicting fresh readback (1.435209ms)
+✔ incomplete writer returns full unique canonical evidence only after fresh readback (0.567916ms)
+✔ immutable outcome timing source permits append-only close tail and refuses mutation or linkage drift (1.609375ms)
+✔ source successor verifies complete appended actor evidence and preserved footer (29.990375ms)
+✔ original timing snapshot cannot silently discard malformed work rows (0.539291ms)
+✔ supported ISO fractional historical timing rows remain represented (0.325166ms)
+✔ incomplete source proof carries closed exact Test provenance and refuses omitted or forged modes (1.890916ms)
+✔ calendar-normalized impossible original timing dates are refused (0.290541ms)
+✔ persisted predecessor v2 remains readable without invented proof fields (0.995709ms)
+✔ new provenance uses an explicit schema generation (0.226875ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 52.757375

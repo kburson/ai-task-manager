@@ -1,0 +1,26 @@
+▶ guard-parity: plan→develop
+  ✔ accept fixture: planned-estimate gate + body-gates ok (2.859125ms)
+  ✔ refuse fixture: missing planned-estimate appendix refuses both paths (0.560583ms)
+✔ guard-parity: plan→develop (3.970708ms)
+▶ guard-parity: develop→test
+  ✔ accept fixture: code-complete-gate ok when AC ticked + commit-trail present (1.839959ms)
+  ✔ refuse fixture: unticked AC + missing commit-trail refuses both paths (0.383541ms)
+✔ guard-parity: develop→test (2.349417ms)
+▶ guard-parity: test→review
+  ✔ accept fixture: skipped — see fixture _reason (0.205875ms)
+  ✔ refuse fixture: review-preflight refusal-set agrees across paths (1.474208ms)
+✔ guard-parity: test→review (2.224667ms)
+▶ guard-parity: test→review via-registry (#267)
+  ✔ refuse fixture: completeness gate fires identically on promote and review paths (4.775708ms)
+  ✔ refuse fixture: missing dod-verified marker refuses on both paths with same reason (1.756459ms)
+  ✔ accept fixture: dod-verified present + every checkbox ticked passes both paths (0.827542ms)
+✔ guard-parity: test→review via-registry (#267) (7.690375ms)
+✔ adopted narrative Scope is a separate Test-exit obligation (1.48475ms)
+ℹ tests 10
+ℹ suites 4
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20.181

@@ -1,0 +1,16 @@
+✔ projects ordered v2 acs and checkboxes intent without writing (3.250834ms)
+✔ keeps intent stable across evaluation times and is idempotent on projected body (0.567583ms)
+✔ incomplete acceptance and unrelated unchecked requirements do not fabricate derived proof (0.234208ms)
+✔ marker-present unticked keys are ticked without restamping (0.283958ms)
+✔ checked unstamped keys receive markers without another tick (0.234ms)
+✔ independently complete checked and marked body has no pending normalization (0.178542ms)
+✔ changed HEAD produces fresh marker bytes despite equal decision intent (0.417125ms)
+✔ projected body bytes match the pinned pre-refactor legacy output (0.659917ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.3175

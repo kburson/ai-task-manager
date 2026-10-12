@@ -1,0 +1,16 @@
+✔ buildSweepReport: flags non-canonical bodies and counts failures (3.904208ms)
+✔ buildSweepReport: all-canonical corpus reports zero failures (0.841959ms)
+✔ buildSweepReport: tolerates missing body field (0.17975ms)
+✔ formatSweepReport: success summary names the corpus size (0.402333ms)
+✔ formatSweepReport: failure summary lists offending issue and ratio (0.126958ms)
+✔ hasStrictDiscussMarker: matches only a bare-token line, not prose/backtick mentions (0.093167ms)
+✔ buildSweepReport: {discuss} stub is skipped, not failed (0.630541ms)
+✔ formatSweepReport: skipped stubs are listed distinctly and noted in the summary (0.219916ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.740708

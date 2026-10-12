@@ -1,0 +1,4 @@
+PASS: runPlan(ready-for-plan) promotes R4P→Plan via verbPromote
+PASS: runPlan refuses any non-R4P current state and never delegates to promote
+PASS: runPlan validates args
+PASS: discover.mjs no longer exports verbPlan

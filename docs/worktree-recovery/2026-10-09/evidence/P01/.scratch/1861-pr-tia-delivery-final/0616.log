@@ -1,0 +1,17 @@
+✔ entry and timing history queries preserve both independent C1 8x8 projections (0.72625ms)
+✔ every non-self executable edge is accepted by entry history (0.141458ms)
+✔ history-only edges remain distinct and never authorize executable movement (0.58ms)
+✔ Shelve from Ready for Planning is sanctioned timing history without widening action scope (1.10825ms)
+✔ action policy returns frozen allowed, refused, unknown, and bootstrap outcomes (0.153917ms)
+✔ action descriptors preserve home states, delegation, demote, Shelve/Park, and refine policy (0.164917ms)
+✔ compatibility exports are derived from canonical history and action policy (0.188084ms)
+✔ history and action policy keep a sibling-only package dependency boundary (3.646333ms)
+✔ migrated consumers import lifecycle policy rather than owning action/history tables (6.478625ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.575334

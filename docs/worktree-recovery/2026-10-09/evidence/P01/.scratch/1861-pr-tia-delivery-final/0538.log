@@ -1,0 +1,11 @@
+✔ runVerifiers passes env to pexec when env option provided (1.979958ms)
+✔ runVerifiers passes no env to pexec when env option omitted (0.12675ms)
+✔ dod-stamp builds cleanEnv without ISSUE_LOCK_HELD_ENV (0.102583ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.423791

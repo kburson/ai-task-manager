@@ -1,0 +1,26 @@
+✔ two clones share one durable intent, burn OID, and receipt (4025.616459ms)
+✔ remote identity mismatch refuses before a push (157.941042ms)
+✔ separate processes race two burn grants and retain one immutable burn (1927.856917ms)
+✔ burn push crash checkpoints reconcile one burn and never publish a receipt (5008.905ms)
+✔ lost burn push response reconciles exactly one remote burn (2378.0675ms)
+✔ fresh authority refuses expired or revoked grant after intent reservation (4024.445709ms)
+✔ two operations racing one original intent yield one reservation and one POST (968.060208ms)
+✔ branch write refusal leaves no journal ref or provider comment (529.643417ms)
+✔ validated reader refuses a force reset of a seen journal (995.514042ms)
+✔ reader rejects an unknown schema anywhere in remote history (1720.180125ms)
+✔ production adapter rejects a local remote without explicit test allowance (83.566334ms)
+✔ same owner and repository on a different host cannot be journal authority (97.787916ms)
+✔ configured second push URL refuses before any journal I/O (118.918166ms)
+✔ fresh clone does not recreate deleted journal when exact intent comment survives (2322.309042ms)
+✔ fresh clone rejects a pinned burn OID missing from rewound history (1928.604875ms)
+✔ separate processes publish one v3 intent and one v4 receipt across two clones (4005.802042ms)
+✔ intent request survives process crashes without a second POST (6384.014625ms)
+✔ receipt request survives process crashes without a second POST (24131.227ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60814.871375

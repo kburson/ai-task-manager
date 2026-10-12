@@ -1,0 +1,13 @@
+✔ takes the issue interlock before the receipt path and serializes an exact-SHA no-op (56.97975ms)
+✔ a second invocation for the same issue refuses and names the holding run (57.852625ms)
+✔ the Test entry interlock has no force, environment, or config bypass (0.437666ms)
+✔ a dead same-host holder is reclaimed through the #656 liveness path (98.843125ms)
+✔ different issues can both hold their Test entry interlocks concurrently (61.234917ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 279.076167

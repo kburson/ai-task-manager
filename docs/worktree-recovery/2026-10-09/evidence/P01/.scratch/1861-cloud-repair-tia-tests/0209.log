@@ -1,0 +1,16 @@
+PASS: parseArgs extracts all flags
+PASS: parseArgs accepts #N and trailing-h estimate
+PASS: parseArgs rejects unknown flags
+PASS: validateArgs rejects each missing/invalid field
+PASS: buildRationaleMarker emits canonical shape and round-trips
+PASS: buildRationaleMarker four-flag combo lands tokens in slots, reason in rationale
+PASS: buildRationaleMarker emits rank as number
+PASS: buildRationaleMarker rejects missing/empty reason
+PASS: applyRationaleMarker strips existing + prepends new
+PASS: runRefine happy path — tether + body marker + promote
+PASS: Refine converges off-grid input on the half-hour ceiling
+PASS: runRefine surfaces tether failure and skips promote
+PASS: runRefine forwards --rank + --labels
+PASS: runRefine omits rank/labels when not supplied
+
+All refine verb tests passed.

@@ -1,0 +1,30 @@
+✔ both promotion paths provide the production intent adapter and Develop target (46.613167ms)
+✔ every lifecycle command maps to one explicit Cursor trigger and target contract (0.706084ms)
+✔ command Cursor requests reject inferred or extra targets (0.263291ms)
+✔ every caller seam produces the canonical argv shape + verb context (0.765542ms)
+✔ every caller seam relays the host exit code verbatim (2.558166ms)
+✔ runtime(→close) seam: canonical argv + runtime context + status parity (94.637791ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 153.279084
+
+⛔ Refusing to move #1711 to develop:
+   BLOCKED: #1711 is in plan; shared guard evaluator threw
+
+Use `/task unblock` (or close the blockers) before retrying this move.
+
+[task-tracker] Could not move 42 to test: move-state exited 1
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test
+[task-tracker] Could not move 42 to test: move-state exited 2
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test
+[task-tracker] Could not move 42 to test: move-state exited 3
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test
+[task-tracker] Could not move 42 to test: move-state exited 5
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test
+[task-tracker] Could not move 42 to test: move-state exited 7
+[task-tracker] Run manually: node scripts/gh/move-state.mjs 42 test

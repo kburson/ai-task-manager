@@ -1,0 +1,15 @@
+✔ timing singleton renders Unknown totals and the known lower bound (0.505375ms)
+✔ operator timing summary never renders unavailable values as null or zero (0.13025ms)
+✔ board projection keeps null authoritative totals and explicit Unknown display (0.418792ms)
+✔ complete actor engagement does not make unavailable review or idle estimates zero (0.073ms)
+✔ board publication resolves fallback field IDs and writes Unknown once without clearing (0.2385ms)
+✔ board publication preserves transport failures instead of claiming telemetry success (0.253416ms)
+✔ canonical singleton visible projection preserves Unknown and lower-bound provenance (3.101791ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.265584

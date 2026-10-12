@@ -1,0 +1,16 @@
+mutate-issue-body-scripts-help-audit.test.mjs: all assertions passed
+✔ backfill-plan-metadata: --help prints usage, never lists or writes (0.764083ms)
+✔ backfill-plan-metadata: -h is a recognized alias for --help (0.108416ms)
+✔ backfill-plan-metadata: default (no flags) audits only, no writes (0.314041ms)
+✔ heal-functional-dod: --help exits without writing (via parseArgs exit hook) (0.236125ms)
+✔ heal-functional-dod: default parse has apply=false (audit-only) (0.081125ms)
+✔ heal-vc-refs: --help exits without writing (via parseArgs exit hook) (0.163125ms)
+✔ heal-vc-refs: default parse has apply=false (audit-only) (0.069333ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.596333

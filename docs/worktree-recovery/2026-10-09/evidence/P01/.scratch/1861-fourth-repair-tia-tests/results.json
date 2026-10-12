@@ -1,0 +1,23 @@
+[
+  {
+    "file": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2685,
+    "log": "0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 19384,
+    "log": "0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 38499,
+    "log": "0002.log"
+  }
+]
