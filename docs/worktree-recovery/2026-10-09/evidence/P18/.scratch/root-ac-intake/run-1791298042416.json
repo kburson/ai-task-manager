@@ -1,0 +1,16 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "issue-body",
+    "1904",
+    "--operation-file",
+    ".scratch/root-ac-intake/plan-pointer-operation.json"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T14:47:17.065Z",
+  "end": "2026-10-06T14:47:22.417Z",
+  "exitCode": 0,
+  "stdout": "issue-body: ok version=16\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' issue-body 1904 --operation-file .scratch/root-ac-intake/plan-pointer-operation.json\n"
+}

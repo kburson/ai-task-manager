@@ -1,0 +1,2 @@
+- [ ] Select the formal root `## Acceptance Criteria` for functional AC derivation and AC body-invariant checks when approved Scope embeds a lower-level AC heading.
+- [ ] Preserve requirement text, source offsets, proof markers and existing canonical body validation; retain supported legacy heading fallback when no canonical section exists.

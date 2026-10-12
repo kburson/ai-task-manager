@@ -1,0 +1,115 @@
+
+up to date in 560ms
+Already on 'codex/fixture-parent'
+
+up to date in 1s
+merge-back: verification refused: Command failed: node verify.mjs
+
+up to date in 285ms
+Switched to branch 'other-parent'
+
+up to date in 270ms
+Already on 'codex/fixture-parent'
+
+up to date in 199ms
+merge-back: verification refused: Command failed: node verify.mjs
+Rebasing (1/1)
+
+                                                                                
+Successfully rebased and updated refs/heads/codex/fixture-child.
+
+up to date in 202ms
+Already on 'codex/fixture-parent'
+Rebasing (1/1)
+error: could not apply 3df80c2... child feature
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 3df80c2... child feature
+
+up to date in 320ms
+✔ #1882: registered CLI integrates from child into its already checked-out parent and retains checkout (1833.243583ms)
+✔ #1882: failed configured evidence leaves parent tip and child checkout intact (1914.289625ms)
+✔ #1882: invalid CLI options refuse before any Git change (219.23775ms)
+✔ #1882: wrong recorded parent checkout refuses without switching it (273.776584ms)
+✔ #1882: a parent checkout changed during verification is retained and refused (1167.317375ms)
+✔ #1882: malformed child config refuses without falling back to host suites (340.390334ms)
+✔ #1902: already-contained merged child integrates the original reviewed SHA and topology (1398.315417ms)
+✔ #1902: contained merge history remains exact when configured verification refuses (1085.439541ms)
+✔ #1902: divergent child still rebases onto the current parent before verification (1065.922375ms)
+✔ #1902: divergent rebase conflict still refuses verification and parent integration (449.335042ms)
+✔ #1902: dirty recorded parent refuses without changing either reviewed tip (279.493833ms)
+✔ #1902: parent dirt introduced by verification refuses integration and is retained (1260.828083ms)
+
+up to date in 838ms
+
+up to date in 278ms
+
+up to date in 1s
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history/.scratch/merge-back-provider-WArKQB/verify.mjs:1
+import {execFileSync} from 'node:child_process'; import {readFileSync} from 'node:fs'; const actual=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(); if(readFileSync('receipt-head.txt','utf8')!==actual) throw new Error('stale evidence');
+                                                                                                                                                                                                                                  ^
+
+Error: stale evidence
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history/.scratch/merge-back-provider-WArKQB/verify.mjs:1:227
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v26.8.1
+merge-back: verification refused: Command failed: node verify.mjs
+
+up to date in 269ms
+merge-back: verification refused: merge-back: verifier changed source or HEAD
+npm notice run merge-back-fixture@1.0.0 test:unit
+npm notice run node section.mjs unit
+npm notice run merge-back-fixture@1.0.0 test:integration
+npm notice run node section.mjs integration
+npm notice run merge-back-fixture@1.0.0 test:slow
+npm notice run node section.mjs slow
+✔ #1882: project verification executes configured and declared commands without default suites (1623.370375ms)
+✔ #1882: stale-head evidence is a failed verification, never a suite fallback (2163.909958ms)
+✔ #1882: rejected issue commands refuse plan construction before execution (80.714167ms)
+✔ #1882: invalid provider configuration cannot silently select Node full suites (76.391833ms)
+✔ #1882: a passing verifier that changes source cannot authorize integration (598.293542ms)
+✔ #1882: Node default verifies each existing suite section (1106.751667ms)
+✔ divergent child path: sync-skip, rebase child, test, ff, cleanup (0.942208ms)
+✔ #1611: cleanup detaches a configured upstream before safe child deletion (0.198458ms)
+✔ nested epic follows the same recursive merge-back path into its immediate epic parent (0.758708ms)
+✔ grandparent advanced: epic is rebased onto trunk before the child merge (0.139041ms)
+✔ rebase conflict on the child refuses before any merge (0.580292ms)
+✔ post-rebase test failure refuses the merge and skips cleanup (0.285583ms)
+✔ #864: the test-runner runs bounded sections, not the retired test:all (0.284417ms)
+✔ refuses a non-child issue (0.344375ms)
+✔ requires child, git, and a test runner (0.18675ms)
+✔ #1485: graph mapping preserves a valid parent custom branch (0.555625ms)
+✔ #1601: graph mapping preserves the current issue custom branch and worktree (0.203834ms)
+✔ #1601: malformed and ambiguous current issue authority map to authorityError (0.214292ms)
+✔ #1485: a parent body with no authority marker preserves canonical fallback (0.143042ms)
+✔ #1485: a root node with no parent carries no authority fields (0.136958ms)
+✔ #1485: malformed and ambiguous parent authority map to parentAuthorityError (0.187208ms)
+✔ #1485: a non-null parent with an unavailable body refuses (0.108042ms)
+✔ #1485: graph loader prefetches child and immediate epic by issue number (0.159ms)
+✔ #1601: production graph loading reads own and parent worktree authority separately (0.179042ms)
+✔ #1485: a node outside the prefetched set fails closed rather than being fabricated (0.073417ms)
+✔ #1486: merge-back delegates authority and parent fetching to the shared adapter (0.212333ms)
+✔ #1601: a recorded custom child branch drives rebase, merge, and cleanup (0.126542ms)
+✔ #1601: recorded child path and checked-out branch mismatches refuse before mutation (0.149417ms)
+✔ #1485: a recorded custom epic branch drives rebase, checkout, and fast-forward (0.114166ms)
+✔ #1485: parent authority failure refuses before any git or test-runner call (0.092542ms)
+✔ #1485: the CLI wires the prefetched keyed graph, not a constant single node (0.334625ms)
+✔ #1882: preservation retains the child checkout, branch and upstream after integration (0.110083ms)
+✔ #1882: non-boolean verification cannot silently authorize a merge (0.254875ms)
+✔ #1882: invalid preservation values refuse before any Git mutation (0.104625ms)
+✔ #1882: verification head drift refuses before parent integration (0.13725ms)
+✔ #1882: parent integration uses the verified commit rather than a movable child ref (0.153917ms)
+✔ #1902: contained-child verification race still refuses integration and cleanup (0.150041ms)
+ℹ tests 49
+ℹ suites 0
+ℹ pass 49
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11489.568333

@@ -1,0 +1,842 @@
+{
+  "issue": 1904,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "branch": "codex/root-ac-derivation",
+  "base": "e802e425d1d4efbc058c154d0f09b7b90116446c",
+  "status": "SOURCE_READY_UNCOMMITTED; native hook staging refused; TIA timed out, not CODE_COMPLETE task",
+  "files": [
+    {
+      "path": "scripts/task-tracker/lib/ac-section.mjs",
+      "sha256": "2842d6fce7c9ebb42a367d3df68e11ba332cb7141717d0ac4fbdfffa0adbaa9c",
+      "bytes": 1701
+    },
+    {
+      "path": "scripts/task-tracker/lib/functional-dod-evidence.mjs",
+      "sha256": "5739785b9397fd3b4011ecac1d64615053f696da02c510b74df2e0898436aa65",
+      "bytes": 16156
+    },
+    {
+      "path": "scripts/task-tracker/lib/body-invariants.mjs",
+      "sha256": "7c25ff68ebbfe3a1f6070c15d3f47a7e45d265b2e3fdbafc2ef5f7ed3aad1e2b",
+      "bytes": 41145
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs",
+      "sha256": "12e7b499bb6033c1f3f5d8970753abe5530da840c12b53db77a87ecd3ec31c7d",
+      "bytes": 6308
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-06-1904-root-ac-consumers.md",
+      "sha256": "8db635ca3c8b5344e6a6c1b758f24fc4d084860ded4f9f76960fc471e04f0061",
+      "bytes": 5259
+    }
+  ],
+  "gitStatus": "M scripts/task-tracker/lib/body-invariants.mjs\n M scripts/task-tracker/lib/functional-dod-evidence.mjs\n?? docs/superpowers/plans/2026-10-06-1904-root-ac-consumers.md\n?? scripts/task-tracker/lib/ac-section.mjs\n?? scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs",
+  "approvedPlanSha256": "8db635ca3c8b5344e6a6c1b758f24fc4d084860ded4f9f76960fc471e04f0061",
+  "forecast": "01M48VAF2HM6228HJXCYBZGYZZ",
+  "checks": [
+    {
+      "path": ".scratch/root-ac-intake/run-1791297498002.json",
+      "command": [
+        "node",
+        "scripts/gh/create-issue.mjs",
+        "--shape",
+        "defect",
+        "--title",
+        "Select formal root acceptance criteria in functional derivation and body guards",
+        "--scope-file",
+        ".scratch/root-ac-intake/scope.md",
+        "--ac-file",
+        ".scratch/root-ac-intake/acs.md",
+        "--story-origin-file",
+        ".scratch/root-ac-intake/story-origin.md",
+        "--verification-commands-file",
+        ".scratch/root-ac-intake/vc.md",
+        "--reproduction-file",
+        ".scratch/root-ac-intake/reproduction.md",
+        "--root-cause-file",
+        ".scratch/root-ac-intake/root-cause.md",
+        "--fix-direction-file",
+        ".scratch/root-ac-intake/fix-direction.md",
+        "--out-of-scope-file",
+        ".scratch/root-ac-intake/out-of-scope.md",
+        "--priority",
+        "p0",
+        "--assignee",
+        "kburson",
+        "--dry-run"
+      ],
+      "start": "2026-10-06T14:38:17.607Z",
+      "end": "2026-10-06T14:38:18.002Z",
+      "exitCode": 2
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297539330.json",
+      "command": [
+        "node",
+        "scripts/gh/create-issue.mjs",
+        "--shape",
+        "defect",
+        "--title",
+        "Select formal root acceptance criteria in functional derivation and body guards",
+        "--scope-file",
+        ".scratch/root-ac-intake/scope.md",
+        "--ac-file",
+        ".scratch/root-ac-intake/acs.md",
+        "--story-origin-file",
+        ".scratch/root-ac-intake/story-origin.md",
+        "--verification-commands-file",
+        ".scratch/root-ac-intake/vc.md",
+        "--reproduction-file",
+        ".scratch/root-ac-intake/reproduction.md",
+        "--root-cause-file",
+        ".scratch/root-ac-intake/root-cause.md",
+        "--fix-direction-file",
+        ".scratch/root-ac-intake/fix-direction.md",
+        "--out-of-scope-file",
+        ".scratch/root-ac-intake/out-of-scope.md",
+        "--priority",
+        "p0",
+        "--assignee",
+        "kburson",
+        "--dry-run"
+      ],
+      "start": "2026-10-06T14:38:58.548Z",
+      "end": "2026-10-06T14:38:59.330Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297572067.json",
+      "command": [
+        "gh",
+        "search",
+        "issues",
+        "Acceptance Criteria heading",
+        "--repo",
+        "kburson/ai-task-manager",
+        "--limit",
+        "30",
+        "--json",
+        "number,title,state,url"
+      ],
+      "start": "2026-10-06T14:39:31.171Z",
+      "end": "2026-10-06T14:39:32.067Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297576279.json",
+      "command": [
+        "node",
+        "scripts/gh/create-issue.mjs",
+        "--shape",
+        "defect",
+        "--title",
+        "Select formal root acceptance criteria in functional derivation and body guards",
+        "--scope-file",
+        ".scratch/root-ac-intake/scope.md",
+        "--ac-file",
+        ".scratch/root-ac-intake/acs.md",
+        "--story-origin-file",
+        ".scratch/root-ac-intake/story-origin.md",
+        "--verification-commands-file",
+        ".scratch/root-ac-intake/vc.md",
+        "--reproduction-file",
+        ".scratch/root-ac-intake/reproduction.md",
+        "--root-cause-file",
+        ".scratch/root-ac-intake/root-cause.md",
+        "--fix-direction-file",
+        ".scratch/root-ac-intake/fix-direction.md",
+        "--out-of-scope-file",
+        ".scratch/root-ac-intake/out-of-scope.md",
+        "--priority",
+        "p0",
+        "--assignee",
+        "kburson"
+      ],
+      "start": "2026-10-06T14:39:08.895Z",
+      "end": "2026-10-06T14:39:36.279Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297604539.json",
+      "command": [
+        "npx",
+        "aitm",
+        "start",
+        "1904",
+        "--role",
+        "agent"
+      ],
+      "start": "2026-10-06T14:39:52.089Z",
+      "end": "2026-10-06T14:40:04.539Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297618805.json",
+      "command": [
+        "gh",
+        "issue",
+        "view",
+        "1904",
+        "--json",
+        "body,title,state,url"
+      ],
+      "start": "2026-10-06T14:40:18.089Z",
+      "end": "2026-10-06T14:40:18.805Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297622520.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:40:20.698Z",
+      "end": "2026-10-06T14:40:22.520Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297672414.json",
+      "command": [
+        "npx",
+        "aitm",
+        "reconcile",
+        "accept-live",
+        "1904"
+      ],
+      "start": "2026-10-06T14:41:03.459Z",
+      "end": "2026-10-06T14:41:12.414Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297706828.json",
+      "command": [
+        "npx",
+        "aitm",
+        "comment",
+        "1904",
+        "--key",
+        "deep-dive.analysis-v1",
+        "--body-file",
+        ".scratch/root-ac-intake/deep-dive.md"
+      ],
+      "start": "2026-10-06T14:41:39.824Z",
+      "end": "2026-10-06T14:41:46.828Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297731769.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:42:08.723Z",
+      "end": "2026-10-06T14:42:11.769Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297732345.json",
+      "command": [
+        "gh",
+        "api",
+        "repos/kburson/ai-task-manager/issues/1904/comments",
+        "--jq",
+        ".[] | select(.body | contains(\"#1904 Deep-Dive Analysis\")) | {id,node_id}"
+      ],
+      "start": "2026-10-06T14:42:11.936Z",
+      "end": "2026-10-06T14:42:12.345Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297745439.json",
+      "command": [
+        "npx",
+        "aitm",
+        "mirror-deep-dive",
+        "--from-comment",
+        "6018716065",
+        "1904"
+      ],
+      "start": "2026-10-06T14:42:19.742Z",
+      "end": "2026-10-06T14:42:25.439Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297759945.json",
+      "command": [
+        "npx",
+        "aitm",
+        "user-story",
+        "1904",
+        "--as",
+        "release operators delivering issues whose Scope embeds accepted requirements",
+        "--want",
+        "evaluate the formal acceptance criteria because embedded source headings currently shadow the governed checklist",
+        "--so-that",
+        "false completion refusals and skipped verifier checks are prevented while approved requirements stay immutable"
+      ],
+      "start": "2026-10-06T14:42:32.537Z",
+      "end": "2026-10-06T14:42:39.945Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297775848.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:42:52.775Z",
+      "end": "2026-10-06T14:42:55.848Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297821375.json",
+      "command": [
+        "npx",
+        "aitm",
+        "refine",
+        "1904",
+        "--size",
+        "XS",
+        "--estimate",
+        "2",
+        "--priority",
+        "p0",
+        "--rank",
+        "1",
+        "--reason",
+        "Actual restored approved Scope shadows root AC derivation; bounded pure selector and consumer regression repair."
+      ],
+      "start": "2026-10-06T14:43:10.229Z",
+      "end": "2026-10-06T14:43:41.375Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297835795.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:43:49.847Z",
+      "end": "2026-10-06T14:43:55.795Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297901804.json",
+      "command": [
+        "npx",
+        "aitm",
+        "refine",
+        "1904",
+        "--size",
+        "XS",
+        "--estimate",
+        "2",
+        "--priority",
+        "p0",
+        "--rank",
+        "1",
+        "--reason",
+        "Deep dive is posted/mirrored; exact canonical AC consumer reproduction supports one bounded selector repair and focused tests."
+      ],
+      "start": "2026-10-06T14:44:22.688Z",
+      "end": "2026-10-06T14:45:01.804Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791297933798.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:45:28.272Z",
+      "end": "2026-10-06T14:45:33.798Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298017964.json",
+      "command": [
+        "npx",
+        "aitm",
+        "plan",
+        "1904"
+      ],
+      "start": "2026-10-06T14:46:27.411Z",
+      "end": "2026-10-06T14:46:57.964Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298042416.json",
+      "command": [
+        "npx",
+        "aitm",
+        "issue-body",
+        "1904",
+        "--operation-file",
+        ".scratch/root-ac-intake/plan-pointer-operation.json"
+      ],
+      "start": "2026-10-06T14:47:17.065Z",
+      "end": "2026-10-06T14:47:22.417Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298050761.json",
+      "command": [
+        "npx",
+        "prettier",
+        "--write",
+        "docs/superpowers/plans/2026-10-06-1904-root-ac-consumers.md"
+      ],
+      "start": "2026-10-06T14:47:29.833Z",
+      "end": "2026-10-06T14:47:30.761Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298069306.json",
+      "command": [
+        "npx",
+        "aitm",
+        "auto",
+        "both"
+      ],
+      "start": "2026-10-06T14:47:48.107Z",
+      "end": "2026-10-06T14:47:49.306Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298087354.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:47:56.479Z",
+      "end": "2026-10-06T14:48:07.354Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298178157.json",
+      "command": [
+        "npx",
+        "aitm",
+        "comment",
+        "1904",
+        "--key",
+        "deep-dive.analysis-v1",
+        "--body-file",
+        ".scratch/root-ac-intake/deep-dive.md"
+      ],
+      "start": "2026-10-06T14:49:32.470Z",
+      "end": "2026-10-06T14:49:38.157Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298206643.json",
+      "command": [
+        "npx",
+        "aitm",
+        "plan-estimate",
+        "1904",
+        "--evidence-file",
+        ".scratch/root-ac-intake/estimate.json"
+      ],
+      "start": "2026-10-06T14:47:33.627Z",
+      "end": "2026-10-06T14:50:06.643Z",
+      "exitCode": 1
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298206670.json",
+      "command": [
+        "npx",
+        "aitm",
+        "mirror-deep-dive",
+        "--from-comment",
+        "6018716065",
+        "1904"
+      ],
+      "start": "2026-10-06T14:49:55.023Z",
+      "end": "2026-10-06T14:50:06.670Z",
+      "exitCode": 10
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298221266.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:50:09.435Z",
+      "end": "2026-10-06T14:50:21.266Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298227011.json",
+      "command": [
+        "gh",
+        "issue",
+        "view",
+        "1904",
+        "--json",
+        "body,assignees,state,url"
+      ],
+      "start": "2026-10-06T14:50:26.519Z",
+      "end": "2026-10-06T14:50:27.011Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298245754.json",
+      "command": [
+        "npx",
+        "aitm",
+        "mirror-deep-dive",
+        "--from-comment",
+        "6018716065",
+        "1904"
+      ],
+      "start": "2026-10-06T14:50:40.235Z",
+      "end": "2026-10-06T14:50:45.754Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298277770.json",
+      "command": [
+        "npx",
+        "aitm",
+        "issue-body",
+        "1904",
+        "--operation-file",
+        ".scratch/root-ac-intake/deep-dive-heading-operation.json"
+      ],
+      "start": "2026-10-06T14:51:13.994Z",
+      "end": "2026-10-06T14:51:17.770Z",
+      "exitCode": 1
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298351934.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:52:18.193Z",
+      "end": "2026-10-06T14:52:31.935Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298466901.json",
+      "command": [
+        "npx",
+        "aitm",
+        "plan-estimate",
+        "1904",
+        "--evidence-file",
+        ".scratch/root-ac-intake/estimate.json"
+      ],
+      "start": "2026-10-06T14:51:25.058Z",
+      "end": "2026-10-06T14:54:26.902Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298496013.json",
+      "command": [
+        "npx",
+        "aitm",
+        "issue-body",
+        "1904",
+        "--operation-file",
+        ".scratch/root-ac-intake/deep-dive-registered-reversal.json"
+      ],
+      "start": "2026-10-06T14:54:50.604Z",
+      "end": "2026-10-06T14:54:56.013Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298525779.json",
+      "command": [
+        "npx",
+        "aitm",
+        "issue-body",
+        "1904",
+        "--operation-file",
+        ".scratch/root-ac-intake/deep-dive-registered-fill.json"
+      ],
+      "start": "2026-10-06T14:55:20.547Z",
+      "end": "2026-10-06T14:55:25.779Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298558667.json",
+      "command": [
+        "npx",
+        "aitm",
+        "comment",
+        "1904",
+        "--key",
+        "deep-dive.correction-audit-v1",
+        "--body-file",
+        ".scratch/root-ac-intake/correction-audit.md"
+      ],
+      "start": "2026-10-06T14:55:53.441Z",
+      "end": "2026-10-06T14:55:58.667Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298581783.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:56:11.587Z",
+      "end": "2026-10-06T14:56:21.783Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298603406.json",
+      "command": [
+        "npx",
+        "aitm",
+        "plan-approve",
+        "1904"
+      ],
+      "start": "2026-10-06T14:56:33.427Z",
+      "end": "2026-10-06T14:56:43.407Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298624393.json",
+      "command": [
+        "npx",
+        "aitm",
+        "explain",
+        "1904",
+        "--json"
+      ],
+      "start": "2026-10-06T14:56:57.170Z",
+      "end": "2026-10-06T14:57:04.393Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298677867.json",
+      "command": [
+        "npx",
+        "aitm",
+        "promote",
+        "1904"
+      ],
+      "start": "2026-10-06T14:57:13.238Z",
+      "end": "2026-10-06T14:57:57.868Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298765044.json",
+      "command": [
+        "node",
+        "--test",
+        "scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs"
+      ],
+      "start": "2026-10-06T14:59:24.878Z",
+      "end": "2026-10-06T14:59:25.044Z",
+      "exitCode": 1
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298817528.json",
+      "command": [
+        "node",
+        "--test",
+        "scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs"
+      ],
+      "start": "2026-10-06T15:00:17.358Z",
+      "end": "2026-10-06T15:00:17.528Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298839230.json",
+      "command": [
+        "npx",
+        "prettier",
+        "--write",
+        "scripts/task-tracker/lib/ac-section.mjs",
+        "scripts/task-tracker/lib/functional-dod-evidence.mjs",
+        "scripts/task-tracker/lib/body-invariants.mjs",
+        "scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs"
+      ],
+      "start": "2026-10-06T15:00:38.156Z",
+      "end": "2026-10-06T15:00:39.230Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298842265.json",
+      "command": [
+        "node",
+        "--test",
+        "scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/functional-dod-evidence.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/body-invariants.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/functional-dod-project.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/functional-dod-derive.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/demonstrable-ac-gate.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/refine-exit-vc-citation-guardrail.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/agent-review/validators/body-sections.test.mjs"
+      ],
+      "start": "2026-10-06T15:00:41.680Z",
+      "end": "2026-10-06T15:00:42.265Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791298982917.json",
+      "command": [
+        "npm",
+        "run",
+        "format:check"
+      ],
+      "start": "2026-10-06T15:02:02.660Z",
+      "end": "2026-10-06T15:03:02.917Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791299002935.json",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "start": "2026-10-06T15:01:54.140Z",
+      "end": "2026-10-06T15:03:22.936Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791299005573.json",
+      "command": [
+        "git",
+        "diff",
+        "--",
+        "scripts/task-tracker/lib/body-invariants.mjs",
+        "scripts/task-tracker/lib/functional-dod-evidence.mjs"
+      ],
+      "start": "2026-10-06T15:03:25.555Z",
+      "end": "2026-10-06T15:03:25.573Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791299716971.json",
+      "command": [
+        "npx",
+        "aitm",
+        "occupancy",
+        "help"
+      ],
+      "start": "2026-10-06T15:15:15.525Z",
+      "end": "2026-10-06T15:15:16.971Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791299721448.json",
+      "command": [
+        "node",
+        "scripts/maintenance/verify-affected-or-cloud.mjs"
+      ],
+      "start": "2026-10-06T15:02:01.424Z",
+      "end": "2026-10-06T15:15:21.448Z",
+      "exitCode": null,
+      "error": "spawnSync node ETIMEDOUT"
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791299824508.json",
+      "command": [
+        "npx",
+        "aitm",
+        "pause",
+        "Author handoff: native Git hook binding refused; source ready with 78 focused checks green, TIA incomplete at 800-second ceiling."
+      ],
+      "start": "2026-10-06T15:16:58.176Z",
+      "end": "2026-10-06T15:17:04.508Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791299887209.json",
+      "command": [
+        "npx",
+        "aitm",
+        "occupancy",
+        "--release",
+        "1904"
+      ],
+      "start": "2026-10-06T15:18:05.977Z",
+      "end": "2026-10-06T15:18:07.209Z",
+      "exitCode": 0
+    },
+    {
+      "path": ".scratch/root-ac-intake/run-1791299937675.json",
+      "command": [
+        "npx",
+        "aitm",
+        "occupancy",
+        "--release",
+        "1904"
+      ],
+      "start": "2026-10-06T15:18:56.262Z",
+      "end": "2026-10-06T15:18:57.675Z",
+      "exitCode": 0
+    }
+  ],
+  "privateDownstreamProofs": [
+    ".scratch/root-ac-intake/actual-consumer-reproduction.json",
+    ".scratch/root-ac-intake/actual-consumer-green.json"
+  ],
+  "gitStageRefusal": {
+    "command": "git -C /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation add scripts/task-tracker/lib/ac-section.mjs scripts/task-tracker/lib/functional-dod-evidence.mjs scripts/task-tracker/lib/body-invariants.mjs scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs docs/superpowers/plans/2026-10-06-1904-root-ac-consumers.md",
+    "receipt": "PreToolUse tool rejection before execution, no spawned command",
+    "text": "Command blocked by PreToolUse hook: [task-tracker] Native hook session has no active issue binding.",
+    "noRetry": true
+  },
+  "remaining": [
+    "Native bound root staging/commit/trace/push/draft PR ci-slow/attach",
+    "Actual exact-head complete hosted CI",
+    "Native exact-head AC stamps/Test and independent Review/approval/provider delivery/Close (root-owned)"
+  ],
+  "tiaRunningSession": null,
+  "tiaResult": {
+    "receipt": ".scratch/root-ac-intake/run-1791299721448.json",
+    "command": [
+      "node",
+      "scripts/maintenance/verify-affected-or-cloud.mjs"
+    ],
+    "start": "2026-10-06T15:02:01.424Z",
+    "end": "2026-10-06T15:15:21.448Z",
+    "elapsedSeconds": 800.024,
+    "exitCode": null,
+    "error": "spawnSync node ETIMEDOUT",
+    "stdoutBytes": 647112,
+    "stderr": "",
+    "failures": [
+      "Error: stale evidence"
+    ],
+    "tail": "✔ demote: test→develop landed write carries develop marker (#295 closure semantics) (0.139667ms)\nℹ tests 8\nℹ suites 0\nℹ pass 8\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 147.2185\n✔ runDemote hard-refuses with no --rework (from review) (0.70325ms)\n✔ runDemote hard-refuses with no --rework (from test) (0.092167ms)\n✔ runDemote treats a whitespace-only --rework as absent (0.067708ms)\n✔ runDemote with a real --rework from a legal source demotes and threads the reason (0.518625ms)\n✔ runDemote still refuses an illegal source even with --rework (0.185875ms)\n✔ defaultRunMoveState appends --demote and --demote-reason when a reason is present (0.30725ms)\n✔ defaultRunMoveState omits --demote-reason when the reason is blank (0.159ms)\n✔ parseArgs extracts issue number and --rework in both forms (0.441292ms)\n✔ #932 demote-strips-VC-evidence: uncheck + drop run-props, keep declaration (0.981667ms)\n✔ #932 demote-preserves-protected: no invariant marker is lost (1.423958ms)\n✔ #932 re-promote-restamps-new-sha: stripped item re-stamps against the new HEAD, not the old (0.2465ms)\n✔ #932 demote-with-nothing-to-strip: a body with only declarations is a safe no-op (0.087333ms)\n✔ #1557 compatibility repair accepts only the exact valid stranded provenance tuple (0.878792ms)\n✔ #932 runDemote wires invalidateEvidence into the state-recording mutate and reports it (1.785167ms)\n✔ #848 AC6: demote LEGAL_FROM/DEMOTE_TARGET unchanged by the park addition (0.107ms)\nℹ tests 15\nℹ suites 0\nℹ pass 15\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 155.121833\n✔ Develop owns exact-head implementation verification as a resident action (0.69525ms)\n✔ Develop verification runs the finalizer and persists its receipt (0.177208ms)\n✔ Develop verification accepts project-provider required classifications at exact head (2.156167ms)\n✔ Develop verification rejects malformed project-provider required classifications (0.228625ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 94.190541\n"
+  },
+  "tiaKnownDescendantsEnded": ".scratch/root-ac-intake/tia-known-descendants-ended.json",
+  "pausedReadback": ".scratch/root-ac-intake/author-paused-readback.json"
+}

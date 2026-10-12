@@ -1,0 +1,2 @@
+- [ ] Functional derivation and AC verifier/citation checks select the formal root AC section instead of embedded Scope source headings, without modifying Scope bytes. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Regression coverage preserves legacy supported headings and existing malformed/duplicate canonical body refusals. <!-- aitm-verified vc-list="vc:1" -->

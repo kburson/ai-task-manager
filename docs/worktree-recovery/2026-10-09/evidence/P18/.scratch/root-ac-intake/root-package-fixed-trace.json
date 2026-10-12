@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "✓ Commit trace updated for #1904.\n",
+    ""
+  ],
+  "pid": 93131,
+  "stdout": "✓ Commit trace updated for #1904.\n",
+  "stderr": ""
+}

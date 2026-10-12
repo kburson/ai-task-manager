@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "Resumed #1904.\n",
+    ""
+  ],
+  "pid": 4869,
+  "stdout": "Resumed #1904.\n",
+  "stderr": ""
+}

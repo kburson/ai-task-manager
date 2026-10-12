@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "[task-tracker] ✓ Checked \"Preserve requirement text, source offsets, proof markers and existing canonical body validation; retain supported legacy heading fallback when no canonical section exists.\" on #1904 (unverified — audit marker recorded)\n",
+    ""
+  ],
+  "pid": 64369,
+  "stdout": "[task-tracker] ✓ Checked \"Preserve requirement text, source offsets, proof markers and existing canonical body validation; retain supported legacy heading fallback when no canonical section exists.\" on #1904 (unverified — audit marker recorded)\n",
+  "stderr": ""
+}
