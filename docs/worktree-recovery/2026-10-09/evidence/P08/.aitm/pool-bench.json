@@ -1,0 +1,12 @@
+{
+  "story": "#863",
+  "workload": {
+    "tasks": 8,
+    "perTaskMs": 120,
+    "pool": 4
+  },
+  "serialWallMs": 977,
+  "parallelWallMs": 244,
+  "speedupRatio": 4,
+  "peakConcurrency": 4
+}

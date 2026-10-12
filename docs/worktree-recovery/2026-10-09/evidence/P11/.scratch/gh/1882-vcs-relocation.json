@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "node --test scripts/tests/unit/task-tracker/merge-back.test.mjs scripts/tests/unit/task-tracker/merge-back-cli.test.mjs scripts/tests/unit/task-tracker/merge-back-verification.test.mjs",
+  "replacement": "node --test scripts/tests/unit/task-tracker/merge-back.test.mjs scripts/tests/integration/task-tracker/merge-back-cli.test.mjs scripts/tests/integration/task-tracker/merge-back-verification.test.mjs"
+}

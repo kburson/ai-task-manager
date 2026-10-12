@@ -1,0 +1,203 @@
+#!/usr/bin/env node
+// cspell:words nocorrect noglob
+// INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
+// Plumbing: invoked only by the Claude Code hook runner, never by a human or
+// the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+//
+// PreToolUse hook — enforces read/write path scoping on Bash commands.
+//
+// Write permissions: project root only (scratch lives under `./.scratch/`, which is
+//                    inside the project root, with purpose subfolders
+//                    `gh/`, `plan/`, `heal/`, `inspect/`). System `/tmp` and
+//                    `/private/tmp` are NOT writable — use `./.scratch/<sub>/`
+//                    instead. All other destinations → block.
+// Read permissions:  project root + ~/.claude/ + ~/.codex/skills/ + system binaries.
+//                    All other sources → block.
+// ~/.claude/ writes: always blocked (read-only for the task manager).
+//
+// Detects write targets via output redirections (>/>>), tee, and common
+// write-oriented commands. Everything else is treated as a read.
+//
+// `/tmp` contract (issue #199): system `/tmp` and `/private/tmp` are out of
+// scope for both reads and writes. The canonical scratch directory is
+// project-local `./.scratch/` (see CLAUDE.md "Tool Usage Rules"). This matches
+// the activity-guard `.scratch/**` carve-out; `.tmp/**` remains runtime/output.
+//
+// FAIL-CLOSED contract (issue #751): the guard must never fail *open*. Two
+// distinct failure modes are handled separately below:
+//   1. A malformed stdin payload (unparseable JSON) is NOT a guard failure — it
+//      is a bad harness payload, and today's intentional pass-through behavior
+//      is preserved (exit 0, no block).
+//   2. Any *internal* evaluation error — a dependency module that throws during
+//      its own import/eval, a config-load throw, or an unexpected exception in
+//      the guard logic — must fail CLOSED: emit `{"decision":"block"}` with a
+//      guard-failure reason and a non-zero exit. A single broken dependency
+//      must never silently disable every Bash protection at once.
+// The guard-logic dependency imports are therefore performed via dynamic
+// `import()` *inside* the try/catch (a static top-level import that threw at
+// module-eval time would crash node before any handler could fail it closed).
+// Out of scope: a hook whose script *file* is entirely missing — node never
+// starts, so it cannot self-defend; that case is guarded at install/startup.
+
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { homedir } from 'node:os';
+import { basename, isAbsolute, join, resolve } from 'node:path';
+
+// --- Phase 1: parse stdin -------------------------------------------------
+// A malformed payload is not a guard failure — preserve the intentional
+// pass-through (exit 0, no block). This stays OUTSIDE the fail-closed try below
+// so a bad harness payload can never be mistaken for an internal guard error.
+let input;
+try {
+  input = JSON.parse(readFileSync(0, 'utf8'));
+} catch {
+  process.exit(0); // malformed payload — don't block
+}
+
+// --- Phase 2: evaluate, failing CLOSED on any internal error --------------
+try {
+  await evaluate(input);
+  process.exit(0); // all checks passed
+} catch (err) {
+  failClosed(err);
+}
+
+// Normal policy block — a command violated a rule. Exit 0 with the decision
+// (Claude Code reads the block from the stdout JSON, not the exit code).
+function block(reason) {
+  process.stdout.write(JSON.stringify({ decision: 'block', reason }));
+  process.exit(0);
+}
+
+// Fail closed — the guard could not complete evaluation. Emit a block decision
+// AND exit non-zero, so an unchecked command is never allowed through.
+function failClosed(err) {
+  const detail = err && err.message ? err.message : String(err);
+  const reason =
+    'Bash guard failed to evaluate and is failing CLOSED (blocking) rather than ' +
+    'allowing an unchecked command through. Internal guard error: ' +
+    detail +
+    '\n  Fix the guard before re-running; do not bypass it.';
+  process.stdout.write(JSON.stringify({ decision: 'block', reason }));
+  process.exit(1);
+}
+
+async function evaluate(input) {
+  // #751 AC3 — test-only fault-injection seam. Lets the regression test force
+  // the guard's internal evaluation to throw, so the fail-closed path can be
+  // exercised deterministically from a subprocess. Never set in production.
+  if (process.env.AITM_GUARD_FORCE_THROW) {
+    throw new Error(process.env.AITM_GUARD_FORCE_THROW);
+  }
+
+  // Guard-logic dependencies are imported dynamically so a throw during their
+  // own module evaluation is catchable and fails closed (see contract above).
+  const {
+    evaluateGhEdit,
+    evaluateGhCreate,
+    evaluateGhApiCreate,
+    evaluateProtectedCommentMutation,
+    splitCommandSegments,
+  } = await import('./lib/gh-edit-guard.mjs');
+  const { classifyBashWorktreeCommand, evaluateBashWorktreeBinding } =
+    await import('./lib/bash-worktree-guard.mjs');
+  const { readWorktreeIdentity, resolveCurrentSessionWorktreeBinding } =
+    await import('./lib/worktree-binding-guard.mjs');
+  const { evaluateGhProject } = await import('./lib/gh-project-guard.mjs');
+  const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
+  const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
+  const { configPath } = await import('./paths.mjs');
+  const { resolveInvocationDirectory, parseDirectGit, inspectQuotedHeredocs } =
+    await import('./lib/mutation-context.mjs');
+
+  const rawCommand = input?.tool_input?.command ?? '';
+  const heredoc = inspectQuotedHeredocs(rawCommand);
+  const command = heredoc.executable ? rawCommand : heredoc.source;
+  if (!command) process.exit(0);
+
+  const invocationDir = resolveInvocationDirectory(input);
+  const directGit = parseDirectGit(command, invocationDir);
+  const effectiveDir = directGit.cwd || invocationDir;
+  const projectRoot = readWorktreeIdentity({ projectDir: effectiveDir }).worktreePath;
+
+  const homeDir = homedir();
+  const claudeDir = join(homeDir, '.claude');
+  const codexSkillsDir = join(homeDir, '.codex', 'skills');
+
+  // Unconditionally dangerous patterns — block regardless of path.
+  const ALWAYS_BLOCK = [
+    { pattern: 'rm -rf /', label: 'recursive delete from root' },
+    { pattern: 'sudo ', label: 'sudo elevation' },
+    { pattern: '> /dev/', label: 'device write' },
+    { pattern: 'mkfs', label: 'filesystem format' },
+    { pattern: 'dd if=', label: 'raw disk write (dd)' },
+  ];
+
+  for (const { pattern, label } of ALWAYS_BLOCK) {
+    if (command.includes(pattern)) {
+      block(`Command contains dangerous pattern (${label}): ${pattern}`);
+    }
+  }
+
+  // #1166 — refuse writes, verification, and task verbs from a checkout other
+  // than this session's recorded bound worktree. Navigation and read-only
+  // inspection remain available so the operator can reach the corrective path.
+  const worktreeClassification = classifyBashWorktreeCommand(command);
+  if (worktreeClassification.guarded) {
+    const invokingDir = effectiveDir;
+    const bound = resolveCurrentSessionWorktreeBinding({
+      invokingDir,
+      deps: { sessionId: input.session_id },
+    });
+    const invoking = bound ? readWorktreeIdentity({ projectDir: invokingDir }) : null;
+    const worktreeResult = evaluateBashWorktreeBinding({
+      command: rawCommand,
+      invocationDir,
+      projectRoot,
+      bound,
+      invoking,
+      classification: worktreeClassification,
+    });
+    if (worktreeResult.block) block(worktreeResult.reason);
+  }
+
+  // Write-allowed prefixes — project root only. `./.scratch/` lives inside the
+  // project root and is the canonical scratch directory. System `/tmp` and
+  // `/private/tmp` are deliberately excluded.
+  const WRITE_ALLOWED = [projectRoot + '/'];
+  const allowedPath = (candidate, prefixes) =>
+    candidate === projectRoot || prefixes.some((prefix) => candidate.startsWith(prefix));
+    const nested = readGitAlias(target, aliases, root);
+    if (nested === undefined) return false;
+    const nextSeen = new Set(seen);
+    nextSeen.add(target);
+    return aliasInvokesCommit(nested, {
+      aliases,
+      root,
+      seen: nextSeen,
+      depth: depth + 1,
+    });
+  }
+
+  function parseGitCommitSegment(segment, root) {
+    const direct = parseDirectGit(segment, invocationDir);
+    if (direct.kind === 'commit') return { args: direct.args, effectiveDir: direct.cwd };
+    const tokens = shellWords(segment);
+    const gitIndex = tokens.findIndex((token) => basename(token) === 'git');
+    if (gitIndex < 0) return false;
+    let index = gitIndex + 1;
+    const aliases = new Map();
+    for (let cursor = gitIndex + 1; cursor < tokens.length - 1; cursor += 1) {
+      if (tokens[cursor] !== '-c') continue;
+      const match = String(tokens[cursor + 1] || '').match(/^alias\.([^=]+)=(.+)$/);
+      if (match) aliases.set(match[1], match[2]);
+    }
+    while (index < tokens.length) {
+      index = gitSubcommandIndex(tokens, index);
+      const token = tokens[index];
+      if (!token) return false;
+      if (token === 'commit') return { args: tokens.slice(index + 1), effectiveDir: root };
+      const alias = readGitAlias(token, aliases, root);
+      if (aliasInvokesCommit(alias, { aliases, root, seen: new Set([token]) })) {
+        return { args: tokens.slice(index + 1), effectiveDir: root };

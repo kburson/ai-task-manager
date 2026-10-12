@@ -1,0 +1,7 @@
+A continuous Codex session can fail Review when more than eight hours pass between published timing checkpoints, even when its native transcript shows sustained tool activity. This adds a dry-run-first `heal-timing-log --continuity-session SID` mode that recovers neutral observations from the completed native transcript window. It preserves every original row, unknown duration, word cursor and engagement total, leaving the eight-hour validator and general backdating guard unchanged.
+
+Apply requires the canonical comment identity, body hash and completed transcript-prefix hash from dry-run; it archives before/candidate evidence, rereads both sources and verifies exact read-back. Interrupted, unexplained, ambiguous or changed evidence refuses before writing. Full-Auto timing-format work in #1901 remains separate.
+
+Validation: regression controls observed RED then GREEN;150 declared timing controls,9 actual npm-pack controls and the complete138-file affected selection pass locally. The audited admission inventory includes the actual helper import. Repository lint and format checks passed; native Test will finalize the exact current SHA. A read-only rehearsal on ai-peer-review #187 uses its genuine native transcript and canonical timing source, with the unchanged Review validator red before and green after one neutral checkpoint. Full and slow suites will be verified through hosted CI artifacts before delivery.
+
+Refs #1926 — governed closure follows delivery receipt verification.

@@ -1,0 +1,49 @@
+{
+  "observedAt": "2026-10-05T22:58:57.530Z",
+  "ownSid": "01a10a24-827a-79b0-8acd-88087f8133a1",
+  "reviewedHead": "ecc0e1dfe9f9984de602488c6e85c534d35bc31a",
+  "currentHead": "ecc0e1dfe9f9984de602488c6e85c534d35bc31a",
+  "branch": "codex/1899-cloud-coverage",
+  "headPreserved": true,
+  "branchPreserved": true,
+  "statusPreserved": true,
+  "untrackedCollateralPreserved": true,
+  "activeBinding": null,
+  "timer": {
+    "schema": "aitm.actor-timing-state/v1",
+    "actor": "v1:27da2fbeefb99ce0fde28bc8c550459dd0bbfc298e86183d11642f48320a2930",
+    "provider": "codex",
+    "sid": "01a10a24-827a-79b0-8acd-88087f8133a1",
+    "state": {
+      "active": null,
+      "lastActive": "#1899",
+      "entryStartTs": null,
+      "wordsAtEntryStart": 0,
+      "fullWordsAtEntryStart": 478522,
+      "totalActiveMinutes": 0,
+      "discoverBucket": null,
+      "lastWordMarker": 6969,
+      "lastFullWordMarker": 478522,
+      "pausedAtTs": "2026-10-05T22:58:51.597Z",
+      "paused": true,
+      "pauseReasonSlug": "other",
+      "pauseReasonText": "1899-independent-code-review-complete"
+    }
+  },
+  "report": ".scratch/1899/independent-review/review-ecc0e1df.md",
+  "coverage": {
+    "changedFiles": 7,
+    "reviewedFiles": 7,
+    "residualUnreviewedFiles": []
+  },
+  "findings": [
+    {
+      "priority": "P2",
+      "file": "scripts/task-tracker/lib/verification-providers/project.mjs",
+      "line": 52,
+      "code": "targeted-classification-shadows-configured-coverage-prerequisite"
+    }
+  ],
+  "noSourceEdits": true,
+  "noNativeTestOrLifecycleStage": true
+}

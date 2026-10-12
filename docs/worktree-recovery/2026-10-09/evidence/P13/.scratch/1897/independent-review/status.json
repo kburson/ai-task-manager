@@ -1,0 +1,13 @@
+{
+  "bin": "git",
+  "args": [
+    "status",
+    "--porcelain"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+  "startedAt": "2026-10-05T21:54:08.861Z",
+  "endedAt": "2026-10-05T21:54:08.948Z",
+  "status": 0,
+  "stdout": "",
+  "stderr": ""
+}

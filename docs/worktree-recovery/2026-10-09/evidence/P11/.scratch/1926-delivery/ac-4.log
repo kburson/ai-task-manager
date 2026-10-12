@@ -1,0 +1,3 @@
+[task-tracker] ac-stamp on #1926: running 1 verifier(s) for AC "General backdating and unexplained-gap controls remain enforced; #1901 event-derived duration/format behavior is unchanged."…
+  ✓ node --test scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-log.test.mjs scripts/tests/unit/task-tracker/core/gh-timing-comment-actors.test.mjs scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence.test.mjs (exit=0)
+[task-tracker] ✓ ac-stamp on #1926: run-props (key=fe162f10) upserted onto the AC line's aitm-verified marker (sha=16e8a1a2).

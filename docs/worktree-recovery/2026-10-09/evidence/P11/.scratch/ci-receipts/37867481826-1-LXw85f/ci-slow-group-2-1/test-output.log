@@ -1,0 +1,29 @@
+
+> @kburson/ai-task-manager@0.1.0 test:slow
+> node scripts/run-tests.mjs --lane slow --shard 2/3
+
+▶ lane=slow (19 files)
+
+▶ scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs ... ok (117ms)
+▶ scripts/tests/slow/task-tracker/graphql-usage-disposable.test.mjs ... ok (54ms)
+▶ scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs ... ok (16.9s)
+▶ scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs ... ok (7.8s)
+▶ scripts/tests/slow/task-tracker/lib/cli.test.mjs ... ok (13.8s)
+▶ scripts/tests/slow/task-tracker/lib/create-issue.test.mjs ... ok (3.1s)
+▶ scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs ... ok (334ms)
+▶ scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs ... ok (215ms)
+▶ scripts/tests/slow/task-tracker/lib/issue-authoring.test.mjs ... ok (2.6s)
+▶ scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs ... ok (7.5s)
+▶ scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs ... ok (5.3s)
+▶ scripts/tests/slow/task-tracker/lib/move-state.test.mjs ... ok (3.8s)
+▶ scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs ... ok (2.9s)
+▶ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs ... ok (32.2s)
+▶ scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs ... ok (3.3s)
+▶ scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs ... ok (933ms)
+▶ scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs ... ok (3.6s)
+▶ scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs ... ok (378ms)
+▶ scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs ... ok (107ms)
+
+run-tests: lane 'slow' bounded sections: serial=105.0s/600s (19 files); aggregate=105.0s
+
+All 19 test files passed.

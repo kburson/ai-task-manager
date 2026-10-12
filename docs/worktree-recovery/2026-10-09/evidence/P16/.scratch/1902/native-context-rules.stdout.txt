@@ -1,0 +1,242 @@
+skill/shared/rules/bind.md
+<!-- aitm-skill-version: 1.0.0 -->
+
+# Bind — compatibility pointer
+
+Emit `aitm-skill-loaded:rules/bind:1.0.0` on first load. `npx aitm start #N --role agent|orchestrator` and its typed result own binding, timer, board read-back, and receipt. Detailed human reference: `../references/bind-detail.md`; current command help and Explain govern.
+Governed creation shapes include epic, stub, sub-issue, solo, and defect; use `rules/create-issue.md`.
+
+- **Timer must not already be running on a different issue.** Pause before switching. Verify the requested issue, active binding, worktree, branch, and command argument agree.
+- **Workspace check.** For parallel scope in MAIN, create a worktree first. **Drift check.** Reconcile recorded and live state through the sanctioned verb before continuing.
+- On eligible Plan-or-later bind, load `.ai-task-manager/templates/pickup-directive.md`. If `PICKUP DIRECTIVE DEFERRED` appears for Backlog/Refine, do NOT load or follow it; follow the returned state action.
+- A `{discuss}` / 💬 DISCUSSION REQUESTED bind means brainstorm **before** any deep-dive or refine. On resolution call `finalizeDiscussion` and show the ✅ end delimiter; do not treat chat text as the marker write.
+- Historical `{discuss}` brainstorming trigger (#405, #486) applies here; the current discussion result governs.
+- Use `aitm-verified vc-list="vc:N"` for demonstrable AC citations. The create-issue rule owns authoring details.
+
+## `{discuss}` brainstorming trigger (#405, #486)
+
+Preserve the discussion gate above.
+
+## Session recovery
+
+- **Session recovery:** if the local binding is absent, re-run `/task #N` to re-register. Legacy `.claude/` state is fallback only. After a context reset, discard prior guidance receipts and follow `templates/session-boot.md` before lifecycle mutation.
+
+skill/shared/rules/state-walk.md
+<!-- aitm-skill-version: 1.2.0 -->
+<!-- aitm-rule-id: state-movement -->
+
+# State movement — compatibility pointer
+
+Emit `aitm-skill-loaded:rules/state-walk:1.2.0` on first load. The current `npx aitm explain #N --json` result and the executed verb own readiness and revalidation. Human detail: `../references/state-walk-detail.md`.
+
+## 8-state model
+
+Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done. Use `/task refine` for Backlog entry, `/task plan` for JIT Plan entry, `/task promote` for one forward step, `/task demote --rework` for Test/Review rework, and `/task close` for Done. No direct `move-state.mjs <N> <state>` stage jump. `/task discover` is pre-issue ideation; story authoring and Plan approval use `rules/user-story-quality.md`.
+
+## Decision gates
+
+- Forward one state. Reads current state, picks legal next state, runs the gate.
+- `/task promote` from Plan refuses unless the current Plan approval and transition guards pass.
+- Plan → Develop requires current story intent, estimate, source binding, and `/task plan-approve` evidence. A decomposition guard may refuse; do not relabel work or bypass it.
+- Only a current explicit `aitm.workflow-exception/v1` GitHub record may alter a named gate. Its preflight is read-only; execution revalidates. `waived` is not `passed`.
+- `/task ac-stamp <label>` and `/task test` are Develop/Test-stage helpers, not state-walking verbs. Neither advances the kanban board on its own the way `promote`/`demote`/`close` do. Test runs declared commands at an exact clean SHA; Review reuses the receipt.
+- Board ↔ local field-DB disagreement. Run before any other verb on a drifted issue. Use `/task reconcile`, then re-query the decision; a remembered state is not authority.
+- Review approval and Close are separate. After a refusal, drift, human decision, or external merge, query Explain again before choosing the next lifecycle action.
+
+skill/shared/rules/full-auto.md
+<!-- aitm-skill-version: 1.0.0 -->
+<!-- aitm-rule-id: full-auto -->
+
+# rules/full-auto.md
+
+Tier-2. Load when the user names Full-Auto or any manual review boundary. On first read, emit:
+
+```
+aitm-skill-loaded:rules/full-auto:1.0.0
+```
+
+## Default
+
+Full-Auto is the built-in default for new AITM sessions. Do not ask the user to choose routine review gates on first bind. Continue through governed lifecycle steps without babysitting, while preserving evidence, exact-SHA, CI, worktree, ownership, receipt, and provider-action protections. An explicit pause or a hard blocker still stops execution.
+
+## Exact user phrases
+
+The three controls are independent and additive. Translate them without a follow-up question:
+
+| User phrase          | Session command             | Boundary                                           |
+| -------------------- | --------------------------- | -------------------------------------------------- |
+| `manual plan review` | `npx aitm auto manual-plan` | Human approval before Plan → Develop               |
+| `manual code review` | `npx aitm auto manual-code` | Human pull-request approval before merge authority |
+| `manual task review` | `npx aitm auto manual-task` | Human approval before Review → Done                |
+
+Apply every named phrase when the user combines them. `Full-Auto` runs `npx aitm auto both`. The inverse per-boundary commands are `auto-plan`, `auto-code`, and `auto-task`; `reset` clears session overrides and restores project then built-in precedence.
+
+## Workflow-policy boundary
+
+Full-Auto controls who may satisfy the ordinary plan, PR-code, and final-task
+review gates. It is not a workflow exception and cannot waive planning or
+semantic-review requirements. Only a current explicit GitHub-native workflow
+exception record can do that, and every affected action must revalidate it.
+
+An active `provider.managed-execution: deny` constraint is stronger than
+Full-Auto. Do not launch or retry a managed reviewer/provider when it applies,
+even when a caller requests one or retry logic would normally do so. A waived
+review remains `waived`, distinct from `passed`, and completion approval remains
+an independent decision.
+
+## Manual code review
+
+Manual code review replaces the spawned implementation-review agent for that run. Do not spawn an implementation-review agent. Complete implementation verification, open the pull request, and wait until required CI is green before requesting the configured eligible human reviewer. AITM may assign that user as the PR reviewer; assignment alone is never approval evidence.
+
+The approval must be from the configured human reviewer, must not be from the PR author or a bot, and must apply to the exact accepted head SHA. Stale-head approval, a pending review request, or an agent review cannot authorize merge. If eligible exact-head approval is absent, preserve the branch and issue state and surface `PROMPT_REQUIRED: manual-code-review`; retry delivery after the human review.
+
+skill/shared/rules/user-story-quality.md
+<!-- aitm-skill-version: 1.0.0 -->
+<!-- aitm-rule-id: user-story-quality -->
+
+# rules/user-story-quality.md
+
+Tier-2. Load this rule for issue creation, governed story authoring, Plan work,
+Plan approval, or plan splitting. On first read, emit:
+
+```
+aitm-skill-loaded:rules/user-story-quality:1.0.0
+```
+
+## Lifecycle boundary
+
+User Story input is optional before Plan approval. Backlog, Refine, and Ready
+for Planning may contain an empty story or the exact canonical template. If an
+agent supplies substantive prose at any stage, it must already pass the
+objective story-quality validator; optional input is not permission to save bad
+prose. Plan approval requires a substantive, valid three-line story and a valid
+authoritative Story Intent. Develop and later states are not retroactively
+reopened or demoted by this contract.
+
+An objective validator passing means only that deterministic checks passed. It
+does not prove that semantic stakeholder-value review happened.
+
+## Evidence to inspect
+
+Before writing or approving a story, read the issue Scope and Acceptance
+Criteria, governing specification and active plan, native dependencies, the
+current deep dive, and sibling tasks. Repair missing evidence in its authority
+source. Never invent a stakeholder, need, or value merely to satisfy a gate.
+
+## Story Intent schema and authority
+
+Story Intent has exactly four non-empty, single-line labeled bullets:
+
+```markdown
+- **Beneficiary:** <human or operational role receiving the benefit>
+- **Capability:** <behavior or safeguard the work enables>
+- **Need:** <gap, condition, or failure that makes it necessary>
+- **Value or failure prevented:** <improvement or avoided failure>
+```
+
+Use exactly one authority source, in this order:
+
+1. A child linked to a governed plan uses its exact selected task's
+   `#### Story Intent`.
+2. A root issue linked to a governed plan uses that plan's root
+   `## Story Intent`.
+3. Only when no plan is linked, use `### Story Intent` inside the one current
+   root `## Deep-Dive Analysis` section.
+
+Do not fall back past an unreadable, conflicting, stale, or malformed linked
+plan. A historical plan used by `split-plan` must have valid intent for every
+task; do not synthesize missing intent from titles or generic prose.
+
+## Seven-question semantic review
+
+Answer all seven questions from the inspected evidence before Plan approval or
+splitting. If any answer is no, repair the intent or story first.
+
+### 1. Stakeholder
+
+Is the actor a real human or operational role that receives the benefit, rather
+than the agent performing the work?
+
+### 2. Capability
+
+Does the desire identify behavior or a safeguard, rather than task completion?
+
+### 3. Need
+
+Can a reader tell what gap, condition, or failure made the work necessary?
+
+### 4. Counterfactual value
+
+Does the outcome explain what improves or what failure is avoided if the
+capability exists?
+
+### 5. Source grounding
+
+Are all claims supported by Scope, Acceptance Criteria, the governing
+specification, the plan, dependency analysis, or deep dive?
+
+### 6. Sibling distinctness
+
+Would a sibling task receive materially different prose because it contributes
+a different capability or safeguard?
+
+### 7. Standalone readability
+
+Can a reviewer understand the story without opening the implementation plan?
+
+## Authoring and examples
+
+Render approved prose from the authoritative intent as:
+
+```text
+As a <beneficiary>
+I want to <capability> because <need>
+So that <value or failure prevented>
+```
+
+Operational roles and traceability can be legitimate when the story names the
+concrete safeguard and consequence. For example, a release operator may need to
+stop partial publication so consumers receive complete releases, and a security
+auditor may need an attributable change trail so an unauthorized change can be
+investigated and prevented from recurring.
+
+Administrative substitutes are not stakeholder value. Do not use the coding
+agent as beneficiary, describe completing a numbered task as the capability, or
+claim only that an issue advances, governance is followed, or implementation is
+traceable.
+
+Quoted obsolete instructions may appear in tests or migration notes, but they
+must not become active guidance. For example, these are counterexamples:
+
+```text
+Non-stub shapes require user-story.md.
+The required fragments include user-story.md for non-stub shapes.
+```
+
+## Workflow routes and repairs
+
+- **Creation:** `--user-story-file` may be omitted. Omission renders the normal
+  `## User Story` heading with no prose. A supplied exact canonical template is
+  also a draft; supplied substantive prose must pass draft validation. Scope,
+  Acceptance Criteria, Story Origin, and all unrelated gates remain required.
+- **Authoring:** use `npx aitm user-story`; do not edit governed story prose
+  around its fresh-body and exact-read-back transaction.
+- **Plan:** resolve current intent, apply all seven questions, and repair source
+  evidence before approval. Use `.ai-task-manager/templates/plan-file.md` in an
+  installed project, or `templates/plan-file.md` in this package repository.
+- **Approval:** missing or stale story bindings are repaired only by reviewing
+  current evidence and rerunning `npx aitm plan-approve #N`. Approval never
+  rewrites the story and remains JIT-bound to current trunk and source bytes.
+- **Splitting:** validate every task intent and rendered story before the first
+  fragment, preflight, or GitHub create side effect. Enrich every task in a
+  historical plan before retrying; never create a partial sibling set.
+
+Canonical Plan instruction:
+
+```text
+Before Plan approval, read rules/user-story-quality.md. Resolve Story Intent
+from the active governed plan or, only when no plan is linked, the deep dive.
+Apply all seven review questions and repair unsupported claims. An empty or
+canonical-template story is allowed during intake; it is not approval-ready.
+```
+

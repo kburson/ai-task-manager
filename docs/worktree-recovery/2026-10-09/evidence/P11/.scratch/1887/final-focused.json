@@ -1,0 +1,37 @@
+{
+  "schema": "issue1887.execution/v1",
+  "runId": "7507cf12-d427-448f-90a5-8cc48ecb5519",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1887,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "node",
+    "--test",
+    "scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-test.test.mjs"
+  ],
+  "sourceCommit": "12ecd7df9f58dc60cf7a9bc42c33c9b019976068",
+  "dirtyPaths": [
+    "M docs/guides/workflow.md",
+    " M scripts/task-tracker/lib/action-decision/test.mjs",
+    " M scripts/task-tracker/lib/verification-receipt-retirement.mjs",
+    " M scripts/task-tracker/verbs/test.mjs",
+    " M scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+    " M scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs",
+    " M scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs"
+  ],
+  "dirtyDiffSHA256": "3c89966e94a45613e96eddf7bcaa94ff6c666c3c93c7afcbdc1a80a162ce6df8",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T02:11:37.198Z",
+  "stdout": ".scratch/1887/final-focused.log",
+  "finishedAt": "2026-10-05T02:11:42.378Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "f27b8e673e81e7dcce2e5ff8e9f347bb12351f9b7f5307421fb812fc1d31321f"
+}

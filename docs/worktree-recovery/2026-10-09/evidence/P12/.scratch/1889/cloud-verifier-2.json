@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `npm run test:slow` <!-- id=4 -->",
+  "replacement": "- [ ] `node scripts/maintenance/verify-ci-receipts.mjs` <!-- id=4 -->"
+}

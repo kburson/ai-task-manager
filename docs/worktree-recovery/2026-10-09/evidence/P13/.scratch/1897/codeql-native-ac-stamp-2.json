@@ -1,0 +1,12 @@
+{
+  "args": [
+    "aitm",
+    "ac-stamp",
+    "Stamping and evidence-gated checking target the canonical AC while preserving source Scope and citation bytes."
+  ],
+  "status": 0,
+  "stdout": "[task-tracker] ac-stamp on #1897: running 1 verifier(s) for AC \"Stamping and evidence-gated checking target the canonical AC while preserving source Scope and citation bytes.\"…\n  ✓ node --test scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-vc-list-774.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-non-demonstrable-marker.test.mjs (exit=0)\n[task-tracker] ✓ ac-stamp on #1897: run-props (key=98b5ec02) upserted onto the AC line's aitm-verified marker (sha=344a6abb).\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ac-stamp Stamping and evidence-gated checking target the canonical AC while preserving source Scope and citation bytes.\n",
+  "capturedAt": "2026-10-05T23:57:37.202Z",
+  "metadataNote": "Wrapper capture time after command return; actual native verifier timestamps remain unchanged in stdout/live marker."
+}

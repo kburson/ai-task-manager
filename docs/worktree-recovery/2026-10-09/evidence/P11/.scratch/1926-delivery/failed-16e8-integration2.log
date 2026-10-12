@@ -1,0 +1,1001 @@
+integration group 2/3	UNKNOWN STEP	﻿2026-10-09T00:42:57.2962843Z Current runner version: '2.337.0'
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2983381Z ##[group]Runner Image Provisioner
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2984128Z Hosted Compute Agent
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2984644Z Version: 20261002.596
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2985217Z Commit: c3d12f3313a95f25162a1503be624f3b0617f8c0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2985891Z Build Date: 2026-10-02T22:28:27Z
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2986486Z Worker ID: {92dba3c9-1440-4be3-8a6e-c8cb99db0077}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2987333Z Region: westus3
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2987821Z Cloud: Azure
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2988314Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2989717Z ##[group]Operating System
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2990265Z Ubuntu
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2990780Z 24.04.5
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2991256Z LTS
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2991711Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2992188Z ##[group]Runner Image
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2992710Z Image: ubuntu-24.04
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2993240Z Version: 20261004.327.1
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2994282Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261004.327/images/ubuntu/Ubuntu2404-Readme.md
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2995551Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261004.327
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2996311Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2997395Z ##[group]GITHUB_TOKEN Permissions
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2998896Z Contents: read
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2999497Z Metadata: read
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.2999974Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.3001632Z Secret source: Actions
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.3002469Z Cache mode: write
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.3003054Z Prepare workflow directory
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.3445959Z Prepare all required actions
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.3483427Z Getting action download info
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.6230377Z Download action repository 'actions/checkout@v5' (SHA:fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:57.9047311Z Download action repository 'actions/setup-node@v5' (SHA:a0853c24544627f65ddf259abe73b1d18a591444)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.0459154Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.8426890Z Complete job name: integration group 2/3
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9150323Z ##[group]Run actions/checkout@v5
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9151438Z with:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9152131Z   fetch-depth: 0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9152916Z   repository: kburson/ai-task-manager
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9159927Z   token: ***
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9160653Z   ssh-strict: true
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9161399Z   ssh-user: git
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9162148Z   persist-credentials: true
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9162956Z   clean: true
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9163699Z   sparse-checkout-cone-mode: true
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9164567Z   fetch-tags: false
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9165322Z   show-progress: true
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9166073Z   lfs: false
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9166872Z   submodules: false
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9167647Z   set-safe-directory: true
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9168495Z   allow-unsafe-pr-checkout: false
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9169562Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9170406Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9171514Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9172458Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9173368Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9174291Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:58.9175161Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.0036484Z Syncing repository: kburson/ai-task-manager
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.0039355Z ##[group]Getting Git version info
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.0040621Z Working directory is '/home/runner/work/ai-task-manager/ai-task-manager'
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.0042454Z [command]/usr/bin/git version
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.1576172Z git version 2.55.0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.1601421Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.1608559Z Temporarily overriding HOME='/home/runner/work/_temp/97607b03-df7b-40ac-b7d3-ab1754963ef6' before making global git config changes
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.1611445Z Adding repository directory to the temporary git global config as a safe directory
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.1614040Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2117744Z Deleting the contents of '/home/runner/work/ai-task-manager/ai-task-manager'
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2121320Z ##[group]Initializing the repository
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2124357Z [command]/usr/bin/git init /home/runner/work/ai-task-manager/ai-task-manager
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2226929Z hint: Using 'master' as the name for the initial branch. This default branch name
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2228200Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2229377Z hint: to use in all of your new repositories, which will suppress this warning,
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2230339Z hint: call:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2231119Z hint:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2232132Z hint: 	git config --global init.defaultBranch <name>
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2233042Z hint:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2233731Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2234616Z hint: 'development'. The just-created branch can be renamed via this command:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2235404Z hint:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2236221Z hint: 	git branch -m <name>
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2237209Z hint:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2237992Z hint: Disable this message with "git config set advice.defaultBranchName false"
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2238999Z Initialized empty Git repository in /home/runner/work/ai-task-manager/ai-task-manager/.git/
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2240891Z [command]/usr/bin/git remote add origin https://github.com/kburson/ai-task-manager
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2283561Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2286719Z ##[group]Disabling automatic garbage collection
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2287521Z [command]/usr/bin/git config --local gc.auto 0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2319184Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2320203Z ##[group]Setting up auth
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2321017Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.2348337Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.5009133Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.5042638Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.5232315Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.5262196Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.5462759Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.5499044Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.5500282Z ##[group]Fetching the repository
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:42:59.5506685Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/* +391968643bf5da3ea86af44ecf99dfca0b923208:refs/remotes/pull/1927/merge
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1504337Z From https://github.com/kburson/ai-task-manager
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1509031Z  * [new branch]        1356-review-receipt-reuse -> origin/1356-review-receipt-reuse
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1509704Z  * [new branch]        ai-memory               -> origin/ai-memory
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1510258Z  * [new branch]        aipr-setup              -> origin/aipr-setup
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1510714Z  * [new branch]        archive/XPR-SPR-SAR-experiment -> origin/archive/XPR-SPR-SAR-experiment
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1511225Z  * [new branch]        back-set-package-version -> origin/back-set-package-version
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1511812Z  * [new branch]        chore/db-ignore-and-codex-token-burn-guide -> origin/chore/db-ignore-and-codex-token-burn-guide
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1512745Z  * [new branch]        claude/1187-heal-departure-at -> origin/claude/1187-heal-departure-at
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1513267Z  * [new branch]        claude/1562-merge-method-reconcile -> origin/claude/1562-merge-method-reconcile
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1513834Z  * [new branch]        claude/1755-final-acceptance-ad486a -> origin/claude/1755-final-acceptance-ad486a
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1514446Z  * [new branch]        claude/aad-yml-config-exploration-6d0cf6 -> origin/claude/aad-yml-config-exploration-6d0cf6
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1515093Z  * [new branch]        claude/articles-book-publication-6a7dfe -> origin/claude/articles-book-publication-6a7dfe
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1515906Z  * [new branch]        claude/pull-branch-trunk-origin-c647e3 -> origin/claude/pull-branch-trunk-origin-c647e3
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1516690Z  * [new branch]        claude/readme-update-current-state-5d1f2c -> origin/claude/readme-update-current-state-5d1f2c
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1518047Z  * [new branch]        claude/resume-session-837-bf8599 -> origin/claude/resume-session-837-bf8599
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1518881Z  * [new branch]        claude/task-912-13506a  -> origin/claude/task-912-13506a
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1519621Z  * [new branch]        claude/task-923-bb70a6  -> origin/claude/task-923-bb70a6
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1520128Z  * [new branch]        claude/task-935-demote-guard -> origin/claude/task-935-demote-guard
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1520586Z  * [new branch]        claude/task-978-e174fb  -> origin/claude/task-978-e174fb
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1521020Z  * [new branch]        claude/task-979-17fbdf  -> origin/claude/task-979-17fbdf
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1521536Z  * [new branch]        claude/trunk-drift-reverify-3ff5d2 -> origin/claude/trunk-drift-reverify-3ff5d2
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1522039Z  * [new branch]        cleanup-memory          -> origin/cleanup-memory
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1522639Z  * [new branch]        codex/1117-state-components -> origin/codex/1117-state-components
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1523256Z  * [new branch]        codex/1208-weighted-test-pool -> origin/codex/1208-weighted-test-pool
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1524089Z  * [new branch]        codex/1219-tiered-test-spec -> origin/codex/1219-tiered-test-spec
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1524655Z  * [new branch]        codex/1254-test-receipt-reuse -> origin/codex/1254-test-receipt-reuse
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1525159Z  * [new branch]        codex/1260-pull-next-guidance -> origin/codex/1260-pull-next-guidance
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1525664Z  * [new branch]        codex/1262-reference-mode-repin -> origin/codex/1262-reference-mode-repin
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1526154Z  * [new branch]        codex/1262-tia-design-plan -> origin/codex/1262-tia-design-plan
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1527000Z  * [new branch]        codex/1263-test-corpus-registry -> origin/codex/1263-test-corpus-registry
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1527671Z  * [new branch]        codex/1268-implementation-plan -> origin/codex/1268-implementation-plan
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1528238Z  * [new branch]        codex/1269-guided-co-review-start-spec -> origin/codex/1269-guided-co-review-start-spec
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1528777Z  * [new branch]        codex/1272-spec-plan-archive -> origin/codex/1272-spec-plan-archive
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1529287Z  * [new branch]        codex/1273-active-budget-control -> origin/codex/1273-active-budget-control
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1529892Z  * [new branch]        codex/1279-post-split-wbs-admission -> origin/codex/1279-post-split-wbs-admission
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1530478Z  * [new branch]        codex/1281-child-decomposition-scope -> origin/codex/1281-child-decomposition-scope
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1531211Z  * [new branch]        codex/1284-legacy-epic-branch-resolution -> origin/codex/1284-legacy-epic-branch-resolution
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1531741Z  * [new branch]        codex/1287-wbs-readiness -> origin/codex/1287-wbs-readiness
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1532225Z  * [new branch]        codex/1292-co-review-fixture-cost -> origin/codex/1292-co-review-fixture-cost
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1532704Z  * [new branch]        codex/1293-test-import-wave -> origin/codex/1293-test-import-wave
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1533324Z  * [new branch]        codex/1294-serial-classification -> origin/codex/1294-serial-classification
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1533839Z  * [new branch]        codex/1295-github-action-capture -> origin/codex/1295-github-action-capture
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1534321Z  * [new branch]        codex/1296-packaging-canary -> origin/codex/1296-packaging-canary
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1534924Z  * [new branch]        codex/1297-release-closed-binding -> origin/codex/1297-release-closed-binding
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1535438Z  * [new branch]        codex/1304-slow-lane-partition -> origin/codex/1304-slow-lane-partition
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1536003Z  * [new branch]        codex/1314-co-review-reference-archive -> origin/codex/1314-co-review-reference-archive
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1536692Z  * [new branch]        codex/1317-docs-only-lane-skip -> origin/codex/1317-docs-only-lane-skip
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1537446Z  * [new branch]        codex/1319-derived-checkbox -> origin/codex/1319-derived-checkbox
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1538165Z  * [new branch]        codex/1322-co-review-consistent-snapshot -> origin/codex/1322-co-review-consistent-snapshot
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1538721Z  * [new branch]        codex/1331-coreview-wave -> origin/codex/1331-coreview-wave
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1539224Z  * [new branch]        codex/1356-receipt-reuse-hardening -> origin/codex/1356-receipt-reuse-hardening
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1539801Z  * [new branch]        codex/1359-co-review-session-fixture -> origin/codex/1359-co-review-session-fixture
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1540360Z  * [new branch]        codex/1365-reviewer-bash-guard -> origin/codex/1365-reviewer-bash-guard
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1540885Z  * [new branch]        codex/1367-reviewer-handoff-prose -> origin/codex/1367-reviewer-handoff-prose
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1541443Z  * [new branch]        codex/1369-co-review-claude-handoff -> origin/codex/1369-co-review-claude-handoff
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1541968Z  * [new branch]        codex/1372-stale-review-grant -> origin/codex/1372-stale-review-grant
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1542804Z  * [new branch]        codex/1374-co-review-archive-recovery -> origin/codex/1374-co-review-archive-recovery
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1543846Z  * [new branch]        codex/1381-governed-delivery-convergence-spec -> origin/codex/1381-governed-delivery-convergence-spec
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1544813Z  * [new branch]        codex/1406-reviewer-full-permissions -> origin/codex/1406-reviewer-full-permissions
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1545695Z  * [new branch]        codex/1408-offline-gh-reconciliation -> origin/codex/1408-offline-gh-reconciliation
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1546749Z  * [new branch]        codex/1411-residue-audit-reconciliation -> origin/codex/1411-residue-audit-reconciliation
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1547617Z  * [new branch]        codex/1412-stale-sandbox-reaper -> origin/codex/1412-stale-sandbox-reaper
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1548430Z  * [new branch]        codex/1421-resume-review-timer -> origin/codex/1421-resume-review-timer
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1549360Z  * [new branch]        codex/1442-same-second-timing-repair -> origin/codex/1442-same-second-timing-repair
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1550230Z  * [new branch]        codex/1464-close-lineage -> origin/codex/1464-close-lineage
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1550917Z  * [new branch]        codex/1468-delivery-recovery -> origin/codex/1468-delivery-recovery
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1551640Z  * [new branch]        codex/1470-legacy-attribution -> origin/codex/1470-legacy-attribution
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1552148Z  * [new branch]        codex/1558-ask-the-script-spec -> origin/codex/1558-ask-the-script-spec
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1552701Z  * [new branch]        codex/1558-guidance-replacement-plan -> origin/codex/1558-guidance-replacement-plan
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1553223Z  * [new branch]        codex/1558-guidance-review -> origin/codex/1558-guidance-review
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1553732Z  * [new branch]        codex/1558-guidance-spec-review -> origin/codex/1558-guidance-spec-review
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1554256Z  * [new branch]        codex/1558-hydration-wbs-review -> origin/codex/1558-hydration-wbs-review
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1554919Z  * [new branch]        codex/1558-waived-close-repair -> origin/codex/1558-waived-close-repair
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1555471Z  * [new branch]        codex/1615-node24-npm-pack-reports -> origin/codex/1615-node24-npm-pack-reports
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1556079Z  * [new branch]        codex/1618-detect-incompatible-workflows -> origin/codex/1618-detect-incompatible-workflows
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1556881Z  * [new branch]        codex/1619-receipt-attribution-recovery -> origin/codex/1619-receipt-attribution-recovery
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1557436Z  * [new branch]        codex/1631-package-boundary -> origin/codex/1631-package-boundary
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1557950Z  * [new branch]        codex/1683-review-waiver-delivery -> origin/codex/1683-review-waiver-delivery
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1558440Z  * [new branch]        codex/1685-ci-stacked-pr -> origin/codex/1685-ci-stacked-pr
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1558951Z  * [new branch]        codex/1690-review-waiver-authority -> origin/codex/1690-review-waiver-authority
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1559553Z  * [new branch]        codex/1691-lifecycle-authority-research -> origin/codex/1691-lifecycle-authority-research
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1560160Z  * [new branch]        codex/1692-install-contract-manifest -> origin/codex/1692-install-contract-manifest
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1560686Z  * [new branch]        codex/1693-doctor-engine-cli -> origin/codex/1693-doctor-engine-cli
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1561161Z  * [new branch]        codex/1696-full-auto-default -> origin/codex/1696-full-auto-default
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1561745Z  * [new branch]        codex/1702-workflow-waiver-canonical-instant -> origin/codex/1702-workflow-waiver-canonical-instant
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1562376Z  * [new branch]        codex/1703-user-story-value-quality -> origin/codex/1703-user-story-value-quality
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1562994Z  * [new branch]        codex/1706-remove-extracted-review-coupling -> origin/codex/1706-remove-extracted-review-coupling
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1563747Z  * [new branch]        codex/1716-plan-approval-evidence-repair -> origin/codex/1716-plan-approval-evidence-repair
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1564284Z  * [new branch]        codex/1719-story-cost-plan -> origin/codex/1719-story-cost-plan
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1564778Z  * [new branch]        codex/1719-story-cost-spec-review -> origin/codex/1719-story-cost-spec-review
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1565308Z  * [new branch]        codex/1719-story-intent-amendment -> origin/codex/1719-story-intent-amendment
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1565870Z  * [new branch]        codex/1720-plan-transition-authority -> origin/codex/1720-plan-transition-authority
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1566376Z  * [new branch]        codex/1725-mcp-plan-xpr -> origin/codex/1725-mcp-plan-xpr
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1567032Z  * [new branch]        codex/1764-approval-triad-spec -> origin/codex/1764-approval-triad-spec
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1567556Z  * [new branch]        codex/1768-review-lifecycle-spec -> origin/codex/1768-review-lifecycle-spec
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1568124Z  * [new branch]        codex/1779-project-provider-receipts -> origin/codex/1779-project-provider-receipts
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1568716Z  * [new branch]        codex/1781-actionable-refusal-explain -> origin/codex/1781-actionable-refusal-explain
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1569278Z  * [new branch]        codex/1782-project-npm-ci-args -> origin/codex/1782-project-npm-ci-args
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1569831Z  * [new branch]        codex/1783-one-issue-local-trunk-close -> origin/codex/1783-one-issue-local-trunk-close
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1570394Z  * [new branch]        codex/1787-delivery-waiver-design -> origin/codex/1787-delivery-waiver-design
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1570906Z  * [new branch]        codex/1806-hook-launcher-spec -> origin/codex/1806-hook-launcher-spec
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1571424Z  * [new branch]        codex/1809-method-neutral-delivery -> origin/codex/1809-method-neutral-delivery
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1571936Z  * [new branch]        codex/1818-graphql-usage-plan -> origin/codex/1818-graphql-usage-plan
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1572566Z  * [new branch]        codex/1830-mutation-guard-context -> origin/codex/1830-mutation-guard-context
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1573156Z  * [new branch]        codex/1831-codex-skills-read-scope -> origin/codex/1831-codex-skills-read-scope
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1573747Z  * [new branch]        codex/1838-1839-graphql-usage -> origin/codex/1838-1839-graphql-usage
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1574183Z  * [new branch]        codex/1841-draft        -> origin/codex/1841-draft
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1574593Z  * [new branch]        codex/1841-guard-audit  -> origin/codex/1841-guard-audit
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1575022Z  * [new branch]        codex/1847-1851-proposals -> origin/codex/1847-1851-proposals
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1575451Z  * [new branch]        codex/1847-1852-interlock -> origin/codex/1847-1852-interlock
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1575971Z  * [new branch]        codex/1847-governed-criteria-revisions -> origin/codex/1847-governed-criteria-revisions
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1576667Z  * [new branch]        codex/1848-backlog-design-drafts -> origin/codex/1848-backlog-design-drafts
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1577274Z  * [new branch]        codex/1857-continuation -> origin/codex/1857-continuation
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1577802Z  * [new branch]        codex/1859-consolidated-safety-5076a2ab -> origin/codex/1859-consolidated-safety-5076a2ab
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1578401Z  * [new branch]        codex/1859-delivery-history-d3a92172 -> origin/codex/1859-delivery-history-d3a92172
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1578966Z  * [new branch]        codex/1901-draft        -> origin/codex/1901-draft
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1579404Z  * [new branch]        codex/1926-timing-continuity -> origin/codex/1926-timing-continuity
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1579916Z  * [new branch]        codex/876-centralize-test-corpus -> origin/codex/876-centralize-test-corpus
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1580433Z  * [new branch]        codex/937-promote-test-parity -> origin/codex/937-promote-test-parity
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1580905Z  * [new branch]        codex/939-full-auto-merge -> origin/codex/939-full-auto-merge
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1581510Z  * [new branch]        codex/977-duration-field-labels -> origin/codex/977-duration-field-labels
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1582023Z  * [new branch]        codex/agentic-diagram-gallery -> origin/codex/agentic-diagram-gallery
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1582652Z  * [new branch]        codex/ai-peer-review-design -> origin/codex/ai-peer-review-design
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1583398Z  * [new branch]        codex/aitm-mcp-adapter-architecture -> origin/codex/aitm-mcp-adapter-architecture
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1584019Z  * [new branch]        codex/archive-1053-pre-github-native-pivot -> origin/codex/archive-1053-pre-github-native-pivot
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1584670Z  * [new branch]        codex/archive-1054-pre-github-native-pivot -> origin/codex/archive-1054-pre-github-native-pivot
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1585279Z  * [new branch]        codex/audit-1633-done-delivery-survey -> origin/codex/audit-1633-done-delivery-survey
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1585866Z  * [new branch]        codex/audit-1635-1624-delivery-recovery -> origin/codex/audit-1635-1624-delivery-recovery
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1586499Z  * [new branch]        codex/backlog-history-epic -> origin/codex/backlog-history-epic
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1588061Z  * [new branch]        codex/chore-1512-full-auto-default -> origin/codex/chore-1512-full-auto-default
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1588794Z  * [new branch]        codex/chore-github-native-records -> origin/codex/chore-github-native-records
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1589340Z  * [new branch]        codex/chore-latest-dependencies -> origin/codex/chore-latest-dependencies
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1589851Z  * [new branch]        codex/claude-hook-cleanup -> origin/codex/claude-hook-cleanup
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1590362Z  * [new branch]        codex/defect-1481-receipt-integrity -> origin/codex/defect-1481-receipt-integrity
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1590946Z  * [new branch]        codex/defect-1485-merge-back-authority -> origin/codex/defect-1485-merge-back-authority
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1591515Z  * [new branch]        codex/defect-1488-review-bind-timer -> origin/codex/defect-1488-review-bind-timer
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1592281Z  * [new branch]        codex/defect-1490-squash-delivery-proof -> origin/codex/defect-1490-squash-delivery-proof
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1592862Z  * [new branch]        codex/defect-1574-historical-intent -> origin/codex/defect-1574-historical-intent
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1593548Z  * [new branch]        codex/defect-1583-secondary-squash-recovery -> origin/codex/defect-1583-secondary-squash-recovery
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1594218Z  * [new branch]        codex/defect-1595-vc-citation -> origin/codex/defect-1595-vc-citation
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1594753Z  * [new branch]        codex/defect-1597-tombstone-recovery -> origin/codex/defect-1597-tombstone-recovery
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1595340Z  * [new branch]        codex/defect-1599-test-receipt-ac-tick -> origin/codex/defect-1599-test-receipt-ac-tick
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1595972Z  * [new branch]        codex/defect-1601-merge-back-child-authority -> origin/codex/defect-1601-merge-back-child-authority
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1596778Z  * [new branch]        codex/defect-1603-epic-test-deferral -> origin/codex/defect-1603-epic-test-deferral
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1597369Z  * [new branch]        codex/defect-1632-trunk-delivery-gate -> origin/codex/defect-1632-trunk-delivery-gate
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1598034Z  * [new branch]        codex/defect-1755-delivery-attribution-exception -> origin/codex/defect-1755-delivery-attribution-exception
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1598758Z  * [new branch]        codex/defect-1802-close-readiness-trunk-default -> origin/codex/defect-1802-close-readiness-trunk-default
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1599344Z  * [new branch]        codex/estimation-rubric-spec -> origin/codex/estimation-rubric-spec
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1599987Z  * [new branch]        codex/feature-1514-externalize-forecast-comparables -> origin/codex/feature-1514-externalize-forecast-comparables
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1600742Z  * [new branch]        codex/feature-1557-blocked-disposition-dependencies -> origin/codex/feature-1557-blocked-disposition-dependencies
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1601548Z  * [new branch]        codex/graphql-usage-and-backlog-specs -> origin/codex/graphql-usage-and-backlog-specs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1602107Z  * [new branch]        codex/graphql-usage-spike-story -> origin/codex/graphql-usage-spike-story
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1602673Z  * [new branch]        codex/issue-1486-graph-node-authority -> origin/codex/issue-1486-graph-node-authority
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1603309Z  * [new branch]        codex/issue-1516-author-finalization-contract -> origin/codex/issue-1516-author-finalization-contract
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1603920Z  * [new branch]        codex/issue-1573-merge-method-help -> origin/codex/issue-1573-merge-method-help
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1604486Z  * [new branch]        codex/issue-1579-governed-plan-policy -> origin/codex/issue-1579-governed-plan-policy
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1605068Z  * [new branch]        codex/issue-1581-reviewer-lint-policy -> origin/codex/issue-1581-reviewer-lint-policy
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1605702Z  * [new branch]        codex/issue-1591-legacy-index-reconciliation -> origin/codex/issue-1591-legacy-index-reconciliation
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1606356Z  * [new branch]        codex/issue-1592-remove-co-review-runtime -> origin/codex/issue-1592-remove-co-review-runtime
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1607099Z  * [new branch]        codex/issue-1609-finalize-cli-result -> origin/codex/issue-1609-finalize-cli-result
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1607622Z  * [new branch]        codex/node-24-runtime-floor -> origin/codex/node-24-runtime-floor
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1608112Z  * [new branch]        codex/pages-evidence-diagrams -> origin/codex/pages-evidence-diagrams
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1608591Z  * [new branch]        codex/parallel-chore-mode -> origin/codex/parallel-chore-mode
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1609118Z  * [new branch]        codex/stabilization-authority-design -> origin/codex/stabilization-authority-design
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1609620Z  * [new branch]        codex/uninstall-cleanup -> origin/codex/uninstall-cleanup
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1610150Z  * [new branch]        delivered-plans         -> origin/delivered-plans
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1610587Z  * [new branch]        docs/article-series-updates -> origin/docs/article-series-updates
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1611171Z  * [new branch]        docs/linkedin-articles  -> origin/docs/linkedin-articles
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1611629Z  * [new branch]        feature/1099-publish-articles -> origin/feature/1099-publish-articles
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1612134Z  * [new branch]        feature/1101-bibliography-links -> origin/feature/1101-bibliography-links
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1612608Z  * [new branch]        feature/1102-diagram-drift -> origin/feature/1102-diagram-drift
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1613098Z  * [new branch]        feature/1158-kind-aware-test-lanes -> origin/feature/1158-kind-aware-test-lanes
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1613631Z  * [new branch]        feature/1218-verification-plugins -> origin/feature/1218-verification-plugins
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1614145Z  * [new branch]        feature/1250-declarable-verify -> origin/feature/1250-declarable-verify
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1614756Z  * [new branch]        feature/1869            -> origin/feature/1869
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1615202Z  * [new branch]        feature/854-assert-file-excludes -> origin/feature/854-assert-file-excludes
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1615674Z  * [new branch]        feature/922-sandbox-flake -> origin/feature/922-sandbox-flake
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1616174Z  * [new branch]        feature/952-testall-lane-migration -> origin/feature/952-testall-lane-migration
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1616876Z  * [new branch]        feature/964-strict-argv-manifest -> origin/feature/964-strict-argv-manifest
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1617402Z  * [new branch]        feature/968-movestate-trunkref -> origin/feature/968-movestate-trunkref
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1617992Z  * [new branch]        feature/child/1006      -> origin/feature/child/1006
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1618600Z  * [new branch]        feature/child/1006-finalize -> origin/feature/child/1006-finalize
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1619025Z  * [new branch]        feature/child/1037      -> origin/feature/child/1037
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1619539Z  * [new branch]        feature/child/1038      -> origin/feature/child/1038
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1619905Z  * [new branch]        feature/child/1039      -> origin/feature/child/1039
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1620279Z  * [new branch]        feature/child/1040      -> origin/feature/child/1040
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1620644Z  * [new branch]        feature/child/1274      -> origin/feature/child/1274
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1621020Z  * [new branch]        feature/child/1275      -> origin/feature/child/1275
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1621388Z  * [new branch]        feature/child/1276      -> origin/feature/child/1276
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1621750Z  * [new branch]        feature/child/1277      -> origin/feature/child/1277
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1622116Z  * [new branch]        feature/child/1278      -> origin/feature/child/1278
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1622477Z  * [new branch]        feature/child/1324      -> origin/feature/child/1324
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1622856Z  * [new branch]        feature/child/1325      -> origin/feature/child/1325
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1623217Z  * [new branch]        feature/child/1658      -> origin/feature/child/1658
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1623578Z  * [new branch]        feature/child/1659      -> origin/feature/child/1659
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1624047Z  * [new branch]        feature/child/1660      -> origin/feature/child/1660
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1624487Z  * [new branch]        feature/child/1661      -> origin/feature/child/1661
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1624851Z  * [new branch]        feature/child/1674      -> origin/feature/child/1674
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1625216Z  * [new branch]        feature/child/1678      -> origin/feature/child/1678
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1625579Z  * [new branch]        feature/child/1837      -> origin/feature/child/1837
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1625957Z  * [new branch]        feature/epic/1005       -> origin/feature/epic/1005
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1626335Z  * [new branch]        feature/epic/1006       -> origin/feature/epic/1006
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1626917Z  * [new branch]        feature/epic/1048       -> origin/feature/epic/1048
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1627289Z  * [new branch]        feature/epic/1067       -> origin/feature/epic/1067
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1627649Z  * [new branch]        feature/epic/1118       -> origin/feature/epic/1118
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1628007Z  * [new branch]        feature/epic/1122       -> origin/feature/epic/1122
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1628364Z  * [new branch]        feature/epic/1178       -> origin/feature/epic/1178
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1628722Z  * [new branch]        feature/epic/1558       -> origin/feature/epic/1558
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1629083Z  * [new branch]        feature/epic/1624       -> origin/feature/epic/1624
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1629504Z  * [new branch]        feature/epic/1847/child/1852 -> origin/feature/epic/1847/child/1852
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1629976Z  * [new branch]        feature/epic/1847/child/1853 -> origin/feature/epic/1847/child/1853
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1630419Z  * [new branch]        feature/epic/1847/child/1854 -> origin/feature/epic/1847/child/1854
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1630885Z  * [new branch]        feature/epic/1847/child/1855 -> origin/feature/epic/1847/child/1855
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1631324Z  * [new branch]        feature/epic/1847/parent -> origin/feature/epic/1847/parent
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1631746Z  * [new branch]        feature/epic/1857/parent -> origin/feature/epic/1857/parent
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1632154Z  * [new branch]        feature/epic/1918/parent -> origin/feature/epic/1918/parent
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1632548Z  * [new branch]        feature/epic/859        -> origin/feature/epic/859
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1632939Z  * [new branch]        feature/epic/987        -> origin/feature/epic/987
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1633323Z  * [new branch]        fix-old-hooks           -> origin/fix-old-hooks
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1633746Z  * [new branch]        fix/1104-timezone-timing-row -> origin/fix/1104-timezone-timing-row
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1634195Z  * [new branch]        fix/947-closed-child-gate -> origin/fix/947-closed-child-gate
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1634808Z  * [new branch]        fix/949-ci-shallow-provenance -> origin/fix/949-ci-shallow-provenance
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1635235Z  * [new branch]        ignore-vscode           -> origin/ignore-vscode
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1635648Z  * [new branch]        scheduled-archive-trimmer -> origin/scheduled-archive-trimmer
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1636053Z  * [new branch]        setup-aipr              -> origin/setup-aipr
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1636430Z  * [new branch]        setup/config            -> origin/setup/config
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1636924Z  * [new branch]        spec/grok-provider-adapter -> origin/spec/grok-provider-adapter
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1637357Z  * [new branch]        tarball-management      -> origin/tarball-management
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1637731Z  * [new branch]        trunk                   -> origin/trunk
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1638104Z  * [new branch]        update-aipr-setup       -> origin/update-aipr-setup
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1638624Z  * [new branch]        worktree-agent-a0c46a2ad403e0420 -> origin/worktree-agent-a0c46a2ad403e0420
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1639149Z  * [new branch]        worktree-agent-a3404f6127ec70d95 -> origin/worktree-agent-a3404f6127ec70d95
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1639668Z  * [new branch]        worktree-agent-a5f5f4656cd9e586d -> origin/worktree-agent-a5f5f4656cd9e586d
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1640181Z  * [new branch]        worktree-agent-a6584b7cdfde5a3cb -> origin/worktree-agent-a6584b7cdfde5a3cb
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1640696Z  * [new branch]        worktree-agent-a9fbb044d83216a08 -> origin/worktree-agent-a9fbb044d83216a08
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1641207Z  * [new branch]        worktree-agent-abe694a686a870374 -> origin/worktree-agent-abe694a686a870374
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1641702Z  * [new ref]           391968643bf5da3ea86af44ecf99dfca0b923208 -> pull/1927/merge
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1642983Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1643352Z ##[group]Determining the checkout info
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1643729Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1644088Z [command]/usr/bin/git sparse-checkout disable
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1644754Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1645528Z ##[group]Checking out the ref
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.1645870Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1927/merge
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4237077Z Note: switching to 'refs/remotes/pull/1927/merge'.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4237409Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4237647Z You are in 'detached HEAD' state. You can look around, make experimental
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4238107Z changes and commit them, and you can discard any commits you make in this
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4238531Z state without impacting any branches by switching back to a branch.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4238775Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4238965Z If you want to create a new branch to retain commits you create, you may
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4239367Z do so (now or later) by using -c with the switch command. Example:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4239584Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4239735Z   git switch -c <new-branch-name>
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4239893Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4240005Z Or undo this operation with:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4240156Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4240245Z   git switch -
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4240370Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4240568Z Turn off this advice by setting config variable advice.detachedHead to false
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4240815Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4241131Z HEAD is now at 39196864 Merge 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281 into e49543f2e93c6d5ce768322b8cb36bad8639bc61
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4257390Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4299386Z [command]/usr/bin/git log -1 --format=%H
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4321754Z 391968643bf5da3ea86af44ecf99dfca0b923208
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4538135Z ##[group]Run set -euo pipefail
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4538475Z ^[[36;1mset -euo pipefail^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4538994Z ^[[36;1msource=$(jq -er '.sourceCommit | select(test("^[0-9a-f]{40}$"))' scripts/tests/fixtures/1857/1866-current/final-capture-manifest.json)^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4539579Z ^[[36;1mif ! git cat-file -e "$source^{commit}" 2>/dev/null; then^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4539928Z ^[[36;1m  git fetch --no-tags origin "$source"^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4540195Z ^[[36;1mfi^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4540413Z ^[[36;1mgit cat-file -e "$source^{commit}"^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4752733Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4753004Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4753274Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4753597Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4753849Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4754117Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4754441Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.4754685Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6131067Z ##[group]Run git fetch --no-tags origin trunk:trunk
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6131442Z ^[[36;1mgit fetch --no-tags origin trunk:trunk^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6186325Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6186679Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6186947Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6187287Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6187541Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6187795Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6188072Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.6188317Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9697284Z From https://github.com/kburson/ai-task-manager
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9697783Z  * [new branch]        trunk      -> trunk
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9794055Z ##[group]Run actions/setup-node@v5
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9794281Z with:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9794452Z   node-version: 24
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9794624Z   cache: npm
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9794785Z   always-auth: false
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9794965Z   check-latest: false
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9797322Z   token: ***
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9797511Z   package-manager-cache: true
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9797714Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9797923Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9798359Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9798573Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9798791Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9799012Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:03.9799214Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:04.0970597Z Found in cache @ /opt/hostedtoolcache/node/24.21.0/x64
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:04.1007668Z ##[group]Environment details
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:04.1009951Z (node:2096) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:04.1010679Z (Use `node --trace-deprecation ...` to show where the warning was created)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:08.4604302Z node: v24.21.0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:08.4604552Z npm: 11.19.0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:08.4604725Z yarn: 1.22.22
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:08.4605570Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:08.4627234Z [command]/opt/hostedtoolcache/node/24.21.0/x64/bin/npm config get cache
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:08.8147395Z /home/runner/.npm
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:09.1488525Z Cache hit for: node-cache-Linux-x64-npm-cc486ca1b1418d5126392d04f46db0de0a3accc61a7c1efe42448bcc19b5f0c0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:09.1569399Z (node:2096) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.2668295Z Received 33767279 of 33767279 (100.0%), 35.4 MBs/sec
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.2668781Z Cache Size: ~32 MB (33767279 B)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.2689069Z [command]/usr/bin/tar -xf /home/runner/work/_temp/7f8c8daa-b51a-4c72-8f60-d0a42bd2b1cc/cache.tzst -P -C /home/runner/work/ai-task-manager/ai-task-manager --use-compress-program unzstd
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.3844153Z Cache restored successfully
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.3860884Z Cache restored from key: node-cache-Linux-x64-npm-cc486ca1b1418d5126392d04f46db0de0a3accc61a7c1efe42448bcc19b5f0c0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.3997974Z ##[group]Run npm ci
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.3998201Z ^[[36;1mnpm ci^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.4099280Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.4099503Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.4099737Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.4100031Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.4100256Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.4100470Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.4100693Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:10.4100898Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8780899Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8789182Z added 319 packages, and audited 320 packages in 7s
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8789566Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8789841Z 102 packages are looking for funding
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8790240Z   run `npm fund` for details
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8823597Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8824103Z 9 vulnerabilities (3 low, 1 moderate, 5 high)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8824322Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8824592Z To address all issues (including breaking changes), run:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8824890Z   npm audit fix --force
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8825037Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8825155Z Run `npm audit` for details.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8831988Z npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8832547Z npm warn install-scripts   puppeteer@25.11.0 (postinstall: node install.mjs)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8832894Z npm warn install-scripts
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.8833389Z npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9311009Z ##[group]Run node --input-type=module <<'NODE'
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9311344Z ^[[36;1mnode --input-type=module <<'NODE'^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9311599Z ^[[36;1mimport { readFileSync } from 'node:fs';^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9311889Z ^[[36;1mimport { execFileSync } from 'node:child_process';^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9312252Z ^[[36;1mconst lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9312627Z ^[[36;1mfor (const [location, pkg] of Object.entries(lock.packages)) {^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9313204Z ^[[36;1m  if (!location || pkg.dev || pkg.link) continue;^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9313529Z ^[[36;1m  const name = pkg.name ?? location.split('node_modules/').at(-1);^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9313934Z ^[[36;1m  execFileSync('npm', ['cache', 'add', `${name}@${pkg.version}`], { stdio: 'inherit' });^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9314254Z ^[[36;1m}^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9314518Z ^[[36;1m// #1892: offline consumers resolve runtime ranges without this repo's lock.^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9314970Z ^[[36;1m// Warm the complete currently resolved graph as well as locked tarballs.^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9315364Z ^[[36;1mconst manifest = JSON.parse(readFileSync('package.json', 'utf8'));^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9315685Z ^[[36;1mexecFileSync('npm', [^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9315959Z ^[[36;1m  'install', '--ignore-scripts', '--no-audit', '--no-fund',^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9316323Z ^[[36;1m  '--package-lock=false', '--prefix', '.tmp/aitm/offline-runtime-cache',^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9317186Z ^[[36;1m  ...Object.entries(manifest.dependencies).map(([name, range]) => `${name}@${range}`),^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9317716Z ^[[36;1m], { stdio: 'inherit' });^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9318009Z ^[[36;1mNODE^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9375537Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9375753Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9375989Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9376273Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9376500Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9376956Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9377275Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:17.9377560Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2158608Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2159338Z added 6 packages in 311ms
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2312021Z ##[group]Run npm run format:check
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2312442Z ^[[36;1mnpm run format:check^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2392896Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2393223Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2393591Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2394047Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2394389Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2394738Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2395095Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.2395429Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.3257648Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.3258183Z > @kburson/ai-task-manager@0.1.0 format:check
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.3258578Z > prettier --check .
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.3258716Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:20.4044995Z Checking formatting...
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6167542Z All matched files use Prettier code style!
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6620729Z ##[group]Run npm run lint
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6620979Z ^[[36;1mnpm run lint^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6677400Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6677618Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6677860Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6678153Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6678397Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6678618Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6678860Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.6679068Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.7475730Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.7476468Z > @kburson/ai-task-manager@0.1.0 lint
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.7478046Z > npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals && npm run lint:guidance-release
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.7478924Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.8241438Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.8242121Z > @kburson/ai-task-manager@0.1.0 lint:js
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.8242433Z > eslint .
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:47.8242546Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:58.5211984Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:58.5212738Z > @kburson/ai-task-manager@0.1.0 lint:md
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:58.5213460Z > markdownlint-cli2 "**/*.md"
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:58.5213661Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:58.6807160Z markdownlint-cli2 v0.23.3 (markdownlint v0.41.1)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:58.6813147Z Finding: **/*.md **/*.md !.tmp/** !.scratch/** !node_modules/** !.git/** !.worktrees/** !.claude/worktrees/** !reports/** !coverage/** !output/** !docs/postmortems/** !docs/ai-memory/** !docs/peer-reviews/** !docs/reviews/1857-expanded/**/review-*-author-response-*.md !docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-author-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-reviewer-*-review.md !docs/superpowers/reviews/**/*-review-*-author-response-*.md !docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md !docs/superpowers/reviews/**/review-*-author-response-*.md !docs/superpowers/reviews/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md !docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md !docs/superpowers/reviews/1219/**/protocol-runs/** !.ai-task-manager/memory/** !.superpowers/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/** !.ai-task-manager/runtime/test-fixtures/**
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:43:58.7566145Z Linting: 841 files
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:05.6662686Z Summary: 0 issues in 0 files
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:05.7739290Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:05.7739984Z > @kburson/ai-task-manager@0.1.0 lint:spell
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:05.7740611Z > cspell --no-progress "**/*.{md,mjs,js,json}"
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:05.7740962Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.3096243Z CSpell: Files checked: 3120, Issues found: 0 in 0 files.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.4440143Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.4442357Z > @kburson/ai-task-manager@0.1.0 lint:tmp
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.4442887Z > node scripts/maintenance/lint-no-system-tmp.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.4443151Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.6144058Z lint:tmp — 2092 file(s) clean
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.6972952Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.6973691Z > @kburson/ai-task-manager@0.1.0 lint:fleet-sandbox
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.6974405Z > node scripts/maintenance/lint-fleet-sandbox-isolation.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.6974750Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.7898500Z lint:fleet-sandbox — 1359 test file(s) clean
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.8731230Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.8731988Z > @kburson/ai-task-manager@0.1.0 lint:test-layout
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.8732632Z > node scripts/tests/tools/audit-test-layout.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.8732934Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.9073970Z audit-test-layout: all 1259 test files declare a canonical scripts/tests/<unit|integration|slow>/ lane.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.9870547Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.9871383Z > @kburson/ai-task-manager@0.1.0 lint:test-entrypoint-imports
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.9871887Z > node scripts/tests/tools/audit-test-entrypoint-imports.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:21.9872115Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.1265296Z audit-test-entrypoint-imports: no discovered test entrypoint imports among 1259 files.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.2134565Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.2135288Z > @kburson/ai-task-manager@0.1.0 lint:story-tags
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.2135889Z > node scripts/tests/tools/audit-story-tags.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.2136165Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.2778978Z audit-story-tags: all 1259 test files carry a @story tag.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.3568684Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.3569402Z > @kburson/ai-task-manager@0.1.0 lint:line-cap
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.3569824Z > node scripts/tests/tools/audit-line-cap.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.3570001Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6777319Z audit-line-cap: all test files within 800-line code-LOC limit
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6779119Z audit-line-cap: review 403-line feature file above soft 400: scripts/tests/integration/task-tracker/core/templates.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6781040Z audit-line-cap: review 758-line feature file above soft 400: scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6782444Z audit-line-cap: review 508-line feature file above soft 400: scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6783717Z audit-line-cap: review 503-line feature file above soft 400: scripts/tests/integration/task-tracker/graphql-usage-baseline.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6785030Z audit-line-cap: review 728-line feature file above soft 400: scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6786344Z audit-line-cap: review 451-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6787736Z audit-line-cap: review 787-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-close.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6788987Z audit-line-cap: review 798-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6790200Z audit-line-cap: review 787-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6791523Z audit-line-cap: review 558-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6792574Z audit-line-cap: review 607-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-review.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6793656Z audit-line-cap: review 796-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6794709Z audit-line-cap: review 660-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/action-test.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6795773Z audit-line-cap: review 685-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6797191Z audit-line-cap: review 526-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/delivery-waiver-journal.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6798446Z audit-line-cap: review 411-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/epic-rank-wave-lock.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6799712Z audit-line-cap: review 547-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/epic-rank-wave-recovery.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6801484Z audit-line-cap: review 585-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6803097Z audit-line-cap: review 795-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6804565Z audit-line-cap: review 418-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/evidence-v2/delivery-flow.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6806008Z audit-line-cap: review 640-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/github-records-coordinator-replacement.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6808335Z audit-line-cap: review 410-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/github-records-initialization.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6809761Z audit-line-cap: review 774-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6811135Z audit-line-cap: review 562-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6812380Z audit-line-cap: review 506-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6813928Z audit-line-cap: review 506-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6815312Z audit-line-cap: review 624-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6816848Z audit-line-cap: review 436-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6818242Z audit-line-cap: review 633-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6819684Z audit-line-cap: review 560-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6821126Z audit-line-cap: review 730-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6822600Z audit-line-cap: review 437-line feature file above soft 400: scripts/tests/integration/task-tracker/lib/verification-receipt.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6823975Z audit-line-cap: review 638-line feature file above soft 400: scripts/tests/integration/task-tracker/local-trunk-close.integration.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6825391Z audit-line-cap: review 663-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6826401Z audit-line-cap: review 435-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6827497Z audit-line-cap: review 794-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6828352Z audit-line-cap: review 408-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6829190Z audit-line-cap: review 546-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/local-trunk-close-authority.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6829969Z audit-line-cap: review 730-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6830717Z audit-line-cap: review 628-line feature file above soft 400: scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6831435Z audit-line-cap: review 714-line feature file above soft 400: scripts/tests/slow/task-tracker/core/verify-develop.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6832289Z audit-line-cap: review 799-line feature file above soft 400: scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6833016Z audit-line-cap: review 555-line feature file above soft 400: scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6833745Z audit-line-cap: review 793-line feature file above soft 400: scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6834478Z audit-line-cap: review 800-line feature file above soft 400: scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6835144Z audit-line-cap: review 710-line feature file above soft 400: scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6835777Z audit-line-cap: review 414-line feature file above soft 400: scripts/tests/unit/providers/parity.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6836458Z audit-line-cap: review 440-line feature file above soft 400: scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6837385Z audit-line-cap: review 542-line feature file above soft 400: scripts/tests/unit/task-tracker/core/gh-timing-comment-actors.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6838140Z audit-line-cap: review 799-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6838859Z audit-line-cap: review 757-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/action-presentation.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6839740Z audit-line-cap: review 411-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6840549Z audit-line-cap: review 547-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6841388Z audit-line-cap: review 796-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/agent-review/validators/timing-log-sequence.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6842156Z audit-line-cap: review 493-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/close-gates-lineage.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6842846Z audit-line-cap: review 422-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/code-complete-gate.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6843725Z audit-line-cap: review 420-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6844850Z audit-line-cap: review 529-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/decomposition-plan-exit-gate.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6845993Z audit-line-cap: review 514-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6847393Z audit-line-cap: review 743-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-incident-reconciliation.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6848655Z audit-line-cap: review 746-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-incident-records.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6849869Z audit-line-cap: review 495-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-integration-proof.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6851139Z audit-line-cap: review 482-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6852362Z audit-line-cap: review 746-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-records.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6853607Z audit-line-cap: review 561-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6854956Z audit-line-cap: review 439-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-waived-receipt.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6856169Z audit-line-cap: review 644-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-waiver-close-recovery.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6857808Z audit-line-cap: review 467-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-waiver-consumption.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6859148Z audit-line-cap: review 738-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/delivery-waiver-reverification.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6860436Z audit-line-cap: review 621-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/epic-r4p-orchestration.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6861750Z audit-line-cap: review 703-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/epic-rank-wave-source.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6863007Z audit-line-cap: review 410-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/estimation/outcome-telemetry.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6864631Z audit-line-cap: review 414-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/estimation/records.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6865515Z audit-line-cap: review 441-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/false-delivery-close-recovery.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6866407Z audit-line-cap: review 596-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/contract-source.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6867720Z audit-line-cap: review 800-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/coordination-authority.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6868779Z audit-line-cap: review 615-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/delivery-contract.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6869775Z audit-line-cap: review 679-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/github-comment-store.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6870663Z audit-line-cap: review 524-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6871710Z audit-line-cap: review 786-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-authority-adversarial.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6872731Z audit-line-cap: review 784-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-multi-replacement.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6873714Z audit-line-cap: review 642-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-nested-authority.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6874802Z audit-line-cap: review 771-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-replacement-capability.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6875827Z audit-line-cap: review 800-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-snapshot-boundary.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6877018Z audit-line-cap: review 796-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment-temporal.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6877904Z audit-line-cap: review 800-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/github-records/work-assignment.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6891613Z audit-line-cap: review 437-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/graphql-usage-records.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6892901Z audit-line-cap: review 690-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/guard-registry-plan-exit.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6894141Z audit-line-cap: review 455-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6895338Z audit-line-cap: review 710-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/guidance-candidate-oracle.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6896436Z audit-line-cap: review 461-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/guidance-validator.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6897876Z audit-line-cap: review 551-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/heal-timing-log.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6899051Z audit-line-cap: review 660-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/incorporated-close.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6900149Z audit-line-cap: review 464-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/markers.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6901320Z audit-line-cap: review 473-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6902488Z audit-line-cap: review 534-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6903635Z audit-line-cap: review 796-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/r4p-jit-boundaries.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6904829Z audit-line-cap: review 520-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/ready-for-plan-migration.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6906106Z audit-line-cap: review 638-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/reopened-close-recovery.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6907509Z audit-line-cap: review 401-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/review-receipt-reuse.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6908705Z audit-line-cap: review 434-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6909959Z audit-line-cap: review 421-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/reviewed-scope-readiness.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6911050Z audit-line-cap: review 436-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/reviewed-scope-record.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6912121Z audit-line-cap: review 786-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/state-action-resume.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6913177Z audit-line-cap: review 516-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/state-boundary-order.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6914264Z audit-line-cap: review 693-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6915334Z audit-line-cap: review 526-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/user-story-quality.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6916368Z audit-line-cap: review 405-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/verb-preflight.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6917730Z audit-line-cap: review 431-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/verification-provider-registry.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6919068Z audit-line-cap: review 479-line feature file above soft 400: scripts/tests/unit/task-tracker/lib/workflow-policy/exception-partitions.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6920295Z audit-line-cap: review 637-line feature file above soft 400: scripts/tests/unit/task-tracker/merge-back.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6921493Z audit-line-cap: review 689-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6922799Z audit-line-cap: review 703-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-delivered-idempotence.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6924193Z audit-line-cap: review 788-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-false-delivery-recovery-wiring.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6925515Z audit-line-cap: review 460-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6926925Z audit-line-cap: review 668-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/close-reopened-recovery-wiring.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6928146Z audit-line-cap: review 461-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6929164Z audit-line-cap: review 764-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/deliver-default-deps.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6929875Z audit-line-cap: review 755-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6930567Z audit-line-cap: review 401-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6931285Z audit-line-cap: review 710-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6931978Z audit-line-cap: review 792-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6932656Z audit-line-cap: review 427-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6933352Z audit-line-cap: review 789-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.6934039Z audit-line-cap: review 584-line feature file above soft 400: scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.7676719Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.7677328Z > @kburson/ai-task-manager@0.1.0 lint:test-reach
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.7677802Z > node scripts/maintenance/lint-test-coverage-reach.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.7678242Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8449133Z lint:test-reach — 30 test file(s) exercise no repo source (32 baselined, 0 new):
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8449971Z   [baseline] scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8450697Z   [baseline] scripts/tests/unit/task-tracker/core/adapter-dedup.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8451341Z   [baseline] scripts/tests/unit/task-tracker/core/adapter-token-floor.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8452039Z   [baseline] scripts/tests/unit/task-tracker/core/assignee-default-docs-793.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8452787Z   [baseline] scripts/tests/unit/task-tracker/core/beta-report-templates-497.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8453492Z   [baseline] scripts/tests/unit/task-tracker/core/ci-actions-node-pins.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8454213Z   [baseline] scripts/tests/unit/task-tracker/core/ci-memory-parity-index.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8454944Z   [baseline] scripts/tests/unit/task-tracker/core/codex-support-matrix.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8455657Z   [baseline] scripts/tests/unit/task-tracker/core/defect-first-doc.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8456344Z   [baseline] scripts/tests/unit/task-tracker/core/demonstrable-ac-doc.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8457410Z   [baseline] scripts/tests/unit/task-tracker/core/discuss-label-action-499.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8458178Z   [baseline] scripts/tests/unit/task-tracker/core/docs-735-attribution.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8459035Z   [baseline] scripts/tests/unit/task-tracker/core/docs-issue-body-forbiddance.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8459907Z   [baseline] scripts/tests/unit/task-tracker/core/evidence-marker-guidance.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8460815Z   [baseline] scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8461835Z   [baseline] scripts/tests/unit/task-tracker/core/guard-trust-boundary-doc.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8462642Z   [baseline] scripts/tests/unit/task-tracker/core/lock-primitive-doc.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8463146Z   [baseline] scripts/tests/unit/task-tracker/core/memory-seed-docs.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8463653Z   [baseline] scripts/tests/unit/task-tracker/core/pickup-directive-has-checkpoint.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8464172Z   [baseline] scripts/tests/unit/task-tracker/core/pickup-directive-recovery.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8464699Z   [baseline] scripts/tests/unit/task-tracker/core/pickup-directive-token-floor.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8465182Z   [baseline] scripts/tests/unit/task-tracker/core/relicense-manifest.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8465628Z   [baseline] scripts/tests/unit/task-tracker/core/relicense-no-mit.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8466495Z   [baseline] scripts/tests/unit/task-tracker/core/scope-rename.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8467135Z   [baseline] scripts/tests/unit/task-tracker/core/sequence-rules-docs.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8467576Z   [baseline] scripts/tests/unit/task-tracker/core/session-boot.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8468014Z   [baseline] scripts/tests/unit/task-tracker/core/session-state-template.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8468540Z   [baseline] scripts/tests/unit/task-tracker/core/state-walk-ac-stamp-test-carveout.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8469061Z   [baseline] scripts/tests/unit/task-tracker/core/worker-context-contract.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8469501Z   [baseline] scripts/tests/unit/task-tracker/coverage-config.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.8470175Z lint:test-reach — 1259 test file(s) scanned, 30 baselined offender(s), 0 new
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.9355634Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.9356307Z > @kburson/ai-task-manager@0.1.0 lint:doc-anchors
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.9357070Z > node scripts/maintenance/lint-doc-anchors.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.9357369Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:23.9619163Z lint:doc-anchors — 38 anchor(s) across 3 doc(s) clean
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.0448790Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.0449525Z > @kburson/ai-task-manager@0.1.0 lint:action-refusals
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.0449953Z > node scripts/maintenance/lint-action-refusals.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.0450145Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.5076273Z lint:action-refusals: 36 registered guards frozen
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6010681Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6011413Z > @kburson/ai-task-manager@0.1.0 lint:guidance-release
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6012150Z > node scripts/maintenance/generate-guidance-release.mjs --check
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6012594Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6514267Z guidance release manifest agrees with catalog and parser
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6685923Z ##[group]Run node scripts/inspect/ai-memory-parity.mjs --mode index
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6686355Z ^[[36;1mnode scripts/inspect/ai-memory-parity.mjs --mode index^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6743502Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6743724Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6743943Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6744224Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6744458Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6744675Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6744893Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.6745102Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8837034Z PASS index: MEMORY.md lists 74 file(s); all resolve, all 74 durable files listed.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8927301Z ##[group]Run set -euo pipefail
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8927572Z ^[[36;1mset -euo pipefail^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8927809Z ^[[36;1mfiles=$(git diff --name-only trunk...HEAD)^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8928061Z ^[[36;1mecho "Changed files:"^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8928255Z ^[[36;1mecho "$files"^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8928446Z ^[[36;1mif [ -z "$files" ]; then^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8928708Z ^[[36;1m  echo "docs_only=false" >> "$GITHUB_OUTPUT"^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8928959Z ^[[36;1m  exit 0^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8929124Z ^[[36;1mfi^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8929361Z ^[[36;1mif echo "$files" | grep -Eqv '^(docs/|.+\.md$|\.gitignore$)'; then^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8929674Z ^[[36;1m  echo "docs_only=false" >> "$GITHUB_OUTPUT"^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8929901Z ^[[36;1melse^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8930090Z ^[[36;1m  echo "docs_only=true" >> "$GITHUB_OUTPUT"^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8930311Z ^[[36;1mfi^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8986202Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8986413Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8986891Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8987171Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8987382Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8987595Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8987814Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.8988019Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9083270Z Changed files:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9083636Z scripts/lib/self-doc.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9084042Z scripts/task-tracker/heal-timing-log.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9084519Z scripts/task-tracker/lib/heal-timing-continuity.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9085133Z scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9085779Z scripts/tests/unit/task-tracker/core/package-boundary.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9086425Z scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9182403Z ##[group]Run mkdir -p .tmp/aitm
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9182666Z ^[[36;1mmkdir -p .tmp/aitm^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9183056Z ^[[36;1mnode scripts/maintenance/ci-test-shards.mjs plan "integration" "3" > .tmp/aitm/shard-plan.json^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9237899Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9238114Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9238336Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9238610Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9238836Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9239046Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9239272Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9239480Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9803714Z ##[group]Run set +e
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9803932Z ^[[36;1mset +e^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9804242Z ^[[36;1mnpm run "test:integration" -- --shard "2/3" 2>&1 | tee .tmp/aitm/test-output.log^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9804583Z ^[[36;1mresult=${PIPESTATUS[0]}^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9804985Z ^[[36;1mprintf '%s\n' "$result" > .tmp/aitm/exit-code.txt^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9805238Z ^[[36;1mexit "$result"^[[0m
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9864193Z shell: /usr/bin/bash -e {0}
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9864411Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9864645Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9864928Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9865156Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9865379Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9865611Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:24.9865814Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:25.0654877Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:25.0655587Z > @kburson/ai-task-manager@0.1.0 test:integration
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:25.0656335Z > node scripts/run-tests.mjs --lane integration --shard 2/3
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:25.0656801Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:25.1338057Z ▶ lane=integration (82 files)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:44:25.1338329Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2839479Z ▶ scripts/tests/integration/gh/gh-call-census.test.mjs ... ok (324ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2841903Z ▶ scripts/tests/integration/meta/captured-commit-bytes.test.mjs ... ok (165ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2842813Z ▶ scripts/tests/integration/providers/transcript-resolver.test.mjs ... ok (285ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2843752Z ▶ scripts/tests/integration/review/peer-review-decommission.test.mjs ... ok (468ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2844601Z ▶ scripts/tests/integration/review/peer-review-migration-guard.test.mjs ... ok (242ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2845528Z ▶ scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs ... ok (106ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2846428Z ▶ scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs ... ok (57ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2848303Z ▶ scripts/tests/integration/task-tracker/delivery-content-comparison.integration.test.mjs ... ok (997ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2849184Z ▶ scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs ... ok (158ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2849895Z ▶ scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs ... ok (592ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2850543Z ▶ scripts/tests/integration/task-tracker/graphql-usage-baseline.test.mjs ... ok (337ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2851135Z ▶ scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs ... ok (5.7s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2851728Z ▶ scripts/tests/integration/task-tracker/graphql-usage-dispatch.test.mjs ... ok (61ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2852298Z ▶ scripts/tests/integration/task-tracker/graphql-usage-report.test.mjs ... ok (538ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2852962Z ▶ scripts/tests/integration/task-tracker/graphql-usage-storage.test.mjs ... ok (491ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2854034Z ▶ scripts/tests/integration/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs ... ok (95ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2855191Z ▶ scripts/tests/integration/task-tracker/lib/active-time-provider.test.mjs ... ok (52ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2856324Z ▶ scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs ... ok (724ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2857702Z ▶ scripts/tests/integration/task-tracker/lib/captured-commit-bytes.test.mjs ... ok (113ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2859099Z ▶ scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs ... ok (3.5s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2860219Z ▶ scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs ... ok (903ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2872716Z ▶ scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs ... ok (153ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2873516Z ▶ scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs ... ok (97ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2874152Z ▶ scripts/tests/integration/task-tracker/lib/duplicate-child-guard.test.mjs ... ok (893ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2875038Z ▶ scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs ... ok (72ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2875650Z ▶ scripts/tests/integration/task-tracker/lib/evidence-v2/codec.test.mjs ... ok (162ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2876246Z ▶ scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs ... ok (1.9s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2877355Z ▶ scripts/tests/integration/task-tracker/lib/evidence-v2/rehearsal-cli.test.mjs ... ok (2.5s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2877950Z ▶ scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs ... ok (103ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2878507Z ▶ scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs ... ok (106ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2879055Z ▶ scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs ... ok (93ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2879697Z ▶ scripts/tests/integration/task-tracker/lib/governed-issue-record-writes.test.mjs ... ok (78ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2880339Z ▶ scripts/tests/integration/task-tracker/lib/guidance-actual-traffic.test.mjs ... ok (100ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2880953Z ▶ scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs ... FAIL (exit 1)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2881561Z ▶ scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs ... ok (363ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2882161Z ▶ scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs ... ok (4.9s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2882764Z ▶ scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs ... ok (8.0s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2883349Z ▶ scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs ... ok (2.4s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2883930Z ▶ scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs ... ok (124ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2884502Z ▶ scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs ... ok (171ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2885098Z ▶ scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs ... ok (256ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2885707Z ▶ scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs ... ok (4.2s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2886360Z ▶ scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs ... ok (17.6s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2887695Z ▶ scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs ... ok (551ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2888528Z ▶ scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs ... ok (22.8s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2889109Z ▶ scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs ... ok (16.8s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2889688Z ▶ scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs ... ok (1.5s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2890291Z ▶ scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs ... ok (384ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2890858Z ▶ scripts/tests/integration/task-tracker/lib/lint-doc-anchors.test.mjs ... ok (140ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2891474Z ▶ scripts/tests/integration/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs ... ok (40ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2892108Z ▶ scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs ... ok (955ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2892748Z ▶ scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs ... ok (2.1s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2893430Z ▶ scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs ... ok (129ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2894167Z ▶ scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs ... ok (3.2s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2894869Z ▶ scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs ... ok (3.3s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2895528Z ▶ scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs ... ok (3.2s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2896122Z ▶ scripts/tests/integration/task-tracker/lib/process-timeouts.test.mjs ... ok (436ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2897545Z ▶ scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs ... ok (239ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2898512Z ▶ scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs ... ok (3.7s)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2899419Z ▶ scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs ... ok (354ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2900518Z ▶ scripts/tests/integration/task-tracker/lib/runtime-repair-target.test.mjs ... ok (427ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2901391Z ▶ scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs ... ok (547ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2901976Z ▶ scripts/tests/integration/task-tracker/lib/scratch-dir-prototype.test.mjs ... ok (268ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2902547Z ▶ scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs ... ok (278ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2903125Z ▶ scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs ... ok (251ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2904155Z ▶ scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs ... ok (287ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2905227Z ▶ scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs ... ok (387ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2906096Z ▶ scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs ... ok (239ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2906962Z ▶ scripts/tests/integration/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs ... ok (256ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2907632Z ▶ scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs ... ok (506ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2908264Z ▶ scripts/tests/integration/task-tracker/verbs/close-trunk-delivery-gate.test.mjs ... ok (69ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2908972Z ▶ scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs ... ok (834ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2909732Z ▶ scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-receipt.test.mjs ... ok (291ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2910644Z ▶ scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs ... ok (696ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2911506Z ▶ scripts/tests/integration/task-tracker/verbs/delivery-waiver-authority.test.mjs ... ok (272ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2912600Z ▶ scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs ... ok (382ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2913445Z ▶ scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs ... ok (169ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2914121Z ▶ scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs ... ok (184ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2914777Z ▶ scripts/tests/integration/task-tracker/verbs/local-trunk-close-authority.test.mjs ... ok (130ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2915413Z ▶ scripts/tests/integration/task-tracker/verbs/resume-binding-generation.test.mjs ... ok (514ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2916011Z ▶ scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs ... ok (204ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2916726Z ▶ scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs ... ok (217ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2917089Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2917204Z 1 of 82 test file(s) failed:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2917339Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2917654Z ── scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs ──
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2918273Z ✔ tracked invalid override refuses a read-only operational route before normal dispatch (246.038988ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2918927Z ✔ invalid catalog refuses before GitHub, lock, or session effects without network skip (9766.482364ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2919437Z ✔ dynamic issue-bind route cannot bypass admission (211.790907ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2919949Z ✔ direct verb hub refuses invalid guidance before context construction (245.314543ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2920531Z ✔ direct verb executables refuse invalid guidance before their own main paths (1694.668312ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2921074Z ✔ direct verb help-shaped arguments cannot bypass admission (1688.168106ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2921754Z ✔ unsupported direct-hub recovery words are admitted as operational (432.081311ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2922348Z ✔ session annotation requires a durable issue write, not a zero-exit or local change (0.57558ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2922947Z ✔ timing-post observation distinguishes durable issue writes from queued rows (0.342826ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2923592Z ✔ package installer refuses invalid guidance before init writes (263.582496ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2924143Z ✔ direct support-script path refuses invalid guidance before its own parser (205.175053ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2924648Z ✔ guidance validation remains a routed recovery command (349.385747ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2925158Z ✔ top-level help remains available while the selected catalog is invalid (331.40969ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2925757Z ✔ command help, guidance source, and package version remain effect-free recovery routes (880.819495ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2926410Z ✖ admission inventory accounts for every canonical command, alias, and classified executable (127.44782ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2928157Z ✔ every registered operational token refuses an invalid catalog (15080.876006ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2928812Z ✔ every supported direct operational entrypoint refuses an invalid catalog (9145.324745ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2929186Z ℹ tests 17
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2929360Z ℹ suites 0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2929534Z ℹ pass 16
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2929696Z ℹ fail 1
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2929865Z ℹ cancelled 0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2930044Z ℹ skipped 0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2930209Z ℹ todo 0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2930403Z ℹ duration_ms 40676.07335
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2930527Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2930620Z ✖ failing tests:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2930717Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2931000Z test at scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs:316:1
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2931659Z ✖ admission inventory accounts for every canonical command, alias, and classified executable (127.44782ms)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2932175Z   AssertionError [ERR_ASSERTION]: scripts/task-tracker/heal-timing-log.mjs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2932492Z   + actual - expected
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2932680Z   
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2932831Z     [
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2933035Z       './lib/direct-guidance-admission.mjs',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2933298Z       './gh-timing-comment.mjs',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2933541Z   +   './lib/heal-timing-continuity.mjs',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2933802Z       './lib/heal-actor-opener-replays.mjs',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2934026Z       './locks.mjs',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2934197Z       './paths.mjs',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2934370Z       './config.mjs',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2934569Z       '../gh/lib/github-projects.mjs',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2934772Z   
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2935376Z       at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs:342:12)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2935977Z       at Test.runInAsyncScope (node:async_hooks:227:14)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2936290Z       at Test.run (node:internal/test_runner/test:1402:25)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2936836Z       at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2937379Z       at Test.postRun (node:internal/test_runner/test:1542:19)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2937744Z       at Test.run (node:internal/test_runner/test:1467:12)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2938134Z       at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2938470Z     generatedMessage: false,
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2938675Z     code: 'ERR_ASSERTION',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2938867Z     actual: [Array],
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2939042Z     expected: [Array],
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2939246Z     operator: 'deepStrictEqual',
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2939451Z     diff: 'simple'
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2939613Z   }
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.2939699Z 
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3039986Z ##[error]Process completed with exit code 1.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3114947Z ##[group]Run actions/upload-artifact@v4
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3115191Z with:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3115367Z   name: ci-integration-2-1
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3115757Z   path: .tmp/aitm/test-timing.json
+integration group 2/3	UNKNOWN STEP	.tmp/aitm/exit-code.txt
+integration group 2/3	UNKNOWN STEP	.tmp/aitm/shard-plan.json
+integration group 2/3	UNKNOWN STEP	.tmp/aitm/test-output.log
+integration group 2/3	UNKNOWN STEP	
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3116164Z   include-hidden-files: true
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3116364Z   if-no-files-found: error
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3116792Z   retention-days: 14
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3116988Z   compression-level: 6
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3117326Z   overwrite: false
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3117487Z env:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3117685Z   AITM_SOURCE_HEAD: 16e8a1a20bd5a75d6029d8aaf0a7f18941ffd281
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3117951Z   GIT_AUTHOR_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3118168Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3118375Z   GIT_COMMITTER_NAME: kendrick burson
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3118594Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.3118800Z ##[endgroup]
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.4443505Z (node:24907) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.4444172Z (Use `node --trace-deprecation ...` to show where the warning was created)
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.4498327Z Multiple search paths detected. Calculating the least common ancestor of all paths
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.4501452Z The least common ancestor is /home/runner/work/ai-task-manager/ai-task-manager/.tmp/aitm. This will be the root directory of the artifact
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.4502574Z With the provided path, there will be 4 files uploaded
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.4507344Z Artifact name is valid!
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.4508162Z Root directory input is valid!
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.8005980Z Beginning upload of artifact content to blob storage
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:13.8196389Z (node:24907) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.0180137Z Uploaded bytes 10273
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.0740867Z Finished uploading artifact content to blob storage!
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.0741774Z SHA256 digest of uploaded artifact zip is 8b1edb134f71a86e0a92348fdde72488c457a5b54e9661c65e94ac46ab427ca8
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.0742626Z Finalizing artifact upload
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.3489712Z Artifact ci-integration-2-1.zip successfully finalized. Artifact ID 11588741590
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.3490395Z Artifact ci-integration-2-1 has been successfully uploaded! Final size is 10273 bytes. Artifact ID is 11588741590
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.3496021Z Artifact download URL: https://github.com/kburson/ai-task-manager/actions/runs/37866166773/artifacts/11588741590
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.3654302Z Post job cleanup.
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4379091Z [command]/usr/bin/git version
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4418841Z git version 2.55.0
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4450903Z Temporarily overriding HOME='/home/runner/work/_temp/ae2b48b5-21e0-4f7b-9796-ba40ed97efce' before making global git config changes
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4451707Z Adding repository directory to the temporary git global config as a safe directory
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4455914Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4486898Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4515742Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4728139Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4750156Z http.https://github.com/.extraheader
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4758760Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.4789869Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.5011123Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.5044901Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.5375741Z Evaluate and set job outputs
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.5381519Z Set output 'skip_tests'
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.5383131Z Cleaning up orphan processes
+integration group 2/3	UNKNOWN STEP	2026-10-09T00:47:14.5666773Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

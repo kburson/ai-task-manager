@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-05T21:45:35.250Z",
+  "head": "15faa18e18b31a5965a15d0482750c6c0b9d125d",
+  "hashes": [
+    {
+      "path": "docs/superpowers/plans/2026-10-05-1897-canonical-ac-heading.md",
+      "sha256": "b515403c024ee9f6f97f6e2f8bf84c810b45fae63737ee8abe70b29510ba69a0",
+      "indexMatchesVerifiedWorkingBytes": true
+    },
+    {
+      "path": "scripts/task-tracker/lib/ac-evidence.mjs",
+      "sha256": "1e47bfc1e724b26b2a7320605f624a81c7b88d21dd7df95f334eaa54ba88d48b",
+      "indexMatchesVerifiedWorkingBytes": true
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs",
+      "sha256": "e25552c215b84f9192540337fa8af5152bb15542a5ca460dfc5b61989f630aaf",
+      "indexMatchesVerifiedWorkingBytes": true
+    }
+  ],
+  "diffCheck": {
+    "status": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+}

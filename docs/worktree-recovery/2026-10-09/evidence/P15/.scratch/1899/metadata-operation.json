@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Plan Metadata\n\n",
+  "replacement": "## Plan Metadata\n\n- **Implementation-plan**: docs/superpowers/plans/2026-10-05-1899-project-provider-cloud-coverage.md\n- **Verification-boundary**: affected provider/receipt tests on host; authentic exact-head hosted full suites\n\n"
+}

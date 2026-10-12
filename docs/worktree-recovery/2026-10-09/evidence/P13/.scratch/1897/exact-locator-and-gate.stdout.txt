@@ -1,0 +1,375 @@
+scripts/task-tracker/lib/ac-evidence.mjs
+    // Strict canonical form only: all of key/cmd/exit/sha/ts must be present
+    // and exit numeric — a partial fragment does not count as evidence.
+    if (props.key == null || props.cmd == null || props.sha == null || props.ts == null) {
+      return null;
+    }
+    const exit = Number(props.exit);
+    if (!Number.isFinite(exit)) return null;
+    return {
+      key: String(props.key).toLowerCase(),
+      cmd: props.cmd,
+      exit,
+      sha: props.sha,
+      ts: props.ts,
+    };
+  }
+  // Legacy half-quoted colon form.
+  const m = src.match(AC_EVIDENCE_LEGACY_RE);
+  if (!m) return null;
+  return {
+    key: m[1].toLowerCase(),
+    cmd: m[2],
+    exit: Number(m[3]),
+    sha: m[4],
+    ts: m[5],
+  };
+}
+
+function locateAcSection(body) {
+  const src = String(body || '');
+  const m = src.match(AC_HEADING_RE);
+  if (!m) return null;
+  const start = m.index + m[0].length;
+  const rest = src.slice(start);
+  const end = rest.match(SECTION_END_RE);
+  const endIdx = end ? start + end.index : src.length;
+  return { start, end: endIdx };
+}
+
+// Parse every checkbox line inside the `## Acceptance Criteria` section that
+// carries an `aitm-verified-by` marker. Lines without that marker (plain ACs
+// the operator never declared a verifier for) are skipped — they are not
+// evidence-gated. Returns objects:
+//   { label, lineIndex, checked, evidenceCommands, evidenceMarker, key }
+export function parseEvidenceAcs(body) {
+  const src = String(body || '');
+  const loc = locateAcSection(src);
+  if (!loc) return [];
+  const vcItems = parseVerificationCommands(src);
+  const lines = src.split('\n');
+  const startLine = src.slice(0, loc.start).split('\n').length - 1;
+  const endLine = src.slice(0, loc.end).split('\n').length;
+  const out = [];
+  for (let i = startLine; i < endLine && i < lines.length; i += 1) {
+    const box = lines[i].match(BOX_RE);
+    if (!box) continue;
+    const rest = box[4];
+    const commands = extractCommands(rest, vcItems);
+    if (!commands.length) continue; // no aitm-verified-by → not gated
+    out.push({
+      label: stripMarkers(rest),
+      lineIndex: i,
+      checked: box[2] === 'x',
+      evidenceCommands: commands,
+      evidenceMarker: parseAcEvidence(rest),
+      key: acKeyForLabel(rest),
+    });
+  }
+  return out;
+}
+
+// Find the parsed AC item whose stripped label equals the requested label.
+// The requested label is itself stripped first, so callers can pass either the
+// raw body line or the visible text.
+export function findEvidenceAc(body, requestedLabel) {
+  const wanted = stripMarkers(requestedLabel);
+  return parseEvidenceAcs(body).find((it) => it.label === wanted) || null;
+}
+
+// #891 — locate a checkbox line inside `## Acceptance Criteria` by visible
+// label REGARDLESS of whether it carries a declared verifier. `parseEvidenceAcs`
+// skips verifier-less lines entirely (nothing to gate on evidence-wise), so it
+// cannot answer "is this label an AC at all" — callers that need to apply the
+// demonstrable-AC opt-out rule (marker required when no verifier is declared)
+// use this instead. Returns `{ label, lineIndex, checked, raw }` (raw includes
+// any trailing markers, for testing NON_DEMONSTRABLE_TAG_RE against) or null.
+export function findAcSectionCheckbox(body, requestedLabel) {
+  const src = String(body || '');
+  const loc = locateAcSection(src);
+  if (!loc) return null;
+  const wanted = stripMarkers(requestedLabel);
+  const lines = src.split('\n');
+  const startLine = src.slice(0, loc.start).split('\n').length - 1;
+  const endLine = src.slice(0, loc.end).split('\n').length;
+  for (let i = startLine; i < endLine && i < lines.length; i += 1) {
+    const box = lines[i].match(BOX_RE);
+    if (!box) continue;
+    const rest = box[4];
+    if (stripMarkers(rest) !== wanted) continue;
+    return { label: stripMarkers(rest), lineIndex: i, checked: box[2] === 'x', raw: rest };
+  }
+  return null;
+}
+
+// #481 — Idempotently record a run on the AC line matching `label` by upserting
+// run-props (`exit`/`sha`/`ts`) plus the AC `key` onto the line's existing
+// `aitm-verified` declaration — the single-expandable marker. The declaration's
+// `cmd` is preserved by the upsert. Any legacy sibling `aitm-ac-evidence` marker
+// on the line is stripped so a migrated line ends with exactly one marker.
+// Returns the (possibly-unchanged) body. Throws when no matching
+// evidence-bearing AC line exists or when evidence fields are malformed.
+export function stampAcEvidenceMarker(body, label, evidence) {
+  const { cmd, sha, ts, exit } = evidence || {};
+  if (typeof cmd !== 'string' || typeof sha !== 'string' || typeof ts !== 'string') {
+    throw new Error('stampAcEvidenceMarker: evidence requires { cmd, sha, ts, exit }');
+  }
+  const src = String(body || '');
+  const target = findEvidenceAc(src, label);
+  if (!target) {
+    throw new Error(
+      `stampAcEvidenceMarker: no evidence-bearing AC line matching "${stripMarkers(label)}" found`
+    );
+  }
+  const key = target.key;
+  const exitN = Number.isFinite(exit) ? Number(exit) : 0;
+
+  const lines = src.split('\n');
+  const line = lines[target.lineIndex];
+  // Strip any legacy sibling marker, then upsert run-props onto the line's
+  // `aitm-verified` declaration (the `cmd` declaration is preserved).
+  const stripped = line
+    .replace(AC_EVIDENCE_ANY_RE, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+$/, '');
+  const next = upsertProofMarker(stripped, {
+    exit: String(exitN),
+    sha: String(sha),
+    ts: String(ts),
+    key: String(key),
+    ...markerProvenanceProperties(evidence),
+  });
+  if (next === line) return src;
+  lines[target.lineIndex] = next;
+  return lines.join('\n');
+}
+
+// #443 — stamp the AC evidence marker AND reconcile that AC's declared verifier
+// command(s) into `## Verification Commands` in one body transform. `ac-stamp`
+// historically stamped only the inline `aitm-ac-evidence` proof marker and left
+// the command unlisted in the VC section, so `review-preflight`'s
+// `auditEvidenceMarkers().missingVerificationCommands` refused `test → review`
+// for any AC carrying a non-standard verifier (e.g. a spike's `grep -qF …`
+// probe). #429 had to be unblocked by hand with `buildEvidenceBackfill`; this
+// closes the gap at the moment evidence is recorded.
+//
+// Scope: only the just-stamped AC's own declared commands are reconciled, so an
+// unrelated AC's gap is not silently dragged into this transaction. Idempotent:
+// on a re-run the command is already in the VC set, so the intersection is empty
+// and the body returns unchanged (no duplicate VC entry). Reuses the shared
+// `insertVerificationCommands` primitive — no logic copy — which carries the
+// #296 heading-level-aware section-end detection.
+export function stampAcEvidenceAndReconcile(body, label, evidence) {
+  const stamped = stampAcEvidenceMarker(body, label, evidence);
+  const target = findEvidenceAc(stamped, label);
+  if (!target) return stamped;
+  const declared = new Set(target.evidenceCommands);
+  const audit = auditEvidenceMarkers(stamped);
+  const toInsert = audit.missingVerificationCommands.filter((cmd) => declared.has(cmd));
+  if (!toInsert.length) return stamped;
+  return insertVerificationCommands(stamped.split('\n'), toInsert).join('\n');
+}
+
+scripts/task-tracker/verbs/check.mjs
+export function appendUnverifiedTickAudit(body, { label, ts }) {
+  const visible = stripMarkers(label);
+  const marker = `<!-- aitm-unverified-tick label="${escapeValue(visible)}" ts="${escapeValue(String(ts))}" -->`;
+  const src = String(body);
+  if (src.includes(marker)) return src;
+  return `${src.replace(/\s+$/, '')}\n\n${marker}\n`;
+}
+
+// #660 — shared implementation behind `ensureChecked` (desired='checked') and
+// `ensureUnchecked` (desired='unchecked'). The verb name fully determines the
+// end-state; the matched line's current glyph never inverts the operation.
+// Idempotent: when the line is already in the desired state the call is a no-op
+// (exit 0, body untouched, no evidence gate) and prints an "Already …" line.
+//
+// `ensureChecked` semantics that `ensureUnchecked` does NOT share:
+//   - the special-label routes (`deep dive complete` → ensureDeepDive,
+//     `discussion complete` → markDiscussed),
+//   - the evidence-tick gate on a real `- [ ]`→`- [x]` transition (and the
+//     `--allow-unverified-ticks` honest hatch).
+// Un-ticking is never a claim of proof, so `ensureUnchecked` runs no gate.
+async function runEnsure(ctx, desired) {
+  const { cfg, statePath, projectDir, rest, pexec } = ctx;
+  const checking = desired === 'checked';
+  const reviewed = parseReviewedCheckArgs(rest, desired);
+  // #295 — body writes go through mutateIssueBody({mutate}); closure runs on
+  // FRESH base each push attempt. #567 — threads the optional
+  // `allowUnverifiedTicks` bypass for the non-demonstrable-AC hatch.
+  const mutateBody = ({ issueNumber, repo, mutate, allowUnverifiedTicks = false }) =>
+    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec }, allowUnverifiedTicks });
+  const s = loadState(statePath);
+  if (!s.active || s.active === 'discover') {
+    console.error('no active task');
+    process.exit(1);
+  }
+
+  const verbName = checking ? 'ensureChecked' : 'ensureUnchecked';
+  if (reviewed) {
+    const result = await recordReviewedScope({ ctx, ...reviewed });
+    console.log(
+      `[task-tracker] ${result.status === 'no-op' ? 'Already checked' : 'Checked'} reviewed Scope on ${s.active}`
+    );
+    return result;
+  }
+  const parsed = parseCheckArgs(rest);
+  const issueNum = s.active.replace(/^#/, '');
+
+  // Batch mode: any --label / --labels-file present.
+  if (parsed.labels.length || parsed.labelsFile) {
+    const labels = [...parsed.labels];
+    if (parsed.labelsFile) {
+      const { readFile } = await import('node:fs/promises');
+      const raw = await readFile(parsed.labelsFile, 'utf8');
+      for (const line of raw.split('\n')) {
+        const t = line.trim();
+        if (t) labels.push(t);
+      }
+    }
+    if (!labels.length) {
+      console.error(
+        `Usage: /task ${verbName} --label "<label>" [--label ...] | --labels-file <path>`
+      );
+      process.exit(1);
+    }
+    return runEnsureBatch({
+      ctx,
+      desired,
+      issueNum,
+      active: s.active,
+      labels,
+      allowUnverifiedTicks: parsed.allowUnverifiedTicks,
+    });
+  }
+
+  const label = parsed.positional.join(' ').trim();
+  if (!label) {
+    console.error(`Usage: /task ${verbName} "<label>"`);
+    process.exit(1);
+  }
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const body = stdout;
+
+  const directoryWrite = await writeDirectoryContractOperation({
+    repository: cfg.repo,
+    issue: Number(issueNum),
+    issueBody: body,
+    action: 'set-check',
+    label,
+    checked: checking,
+    pexec,
+    deps: ctx.deps?.contractWrite,
+  });
+  if (directoryWrite.status === 'directory-written') {
+    const action = checking ? 'Checked' : 'Unchecked';
+    console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active} via Delivery Contract`);
+    return;
+  }
+scripts/tests/unit/task-tracker/lib/ac-evidence-vc-list-774.test.mjs
+#!/usr/bin/env node
+// @story #774
+// @story #804
+// #774 — the AC-evidence runner must consume the canonical by-id `vc-list`
+// citation (the form #773's Refine-exit guardrail mandates), not just the
+// legacy embedded/ordinal `cmd`. These cases pin the three read-sites that were
+// widened to resolve `props['vc-list']`: extractCommands (via parseEvidenceAcs/
+// findEvidenceAc) and parseAcEvidence (recognizing a stamped vc-list marker).
+
+import { strict as assert } from 'node:assert';
+import test from 'node:test';
+import {
+  parseEvidenceAcs,
+  findEvidenceAc,
+  stampAcEvidenceMarker,
+} from '../../../../task-tracker/lib/ac-evidence.mjs';
+
+const VC_LIST_BODY = [
+  '## Verification Commands',
+  '',
+  '- [ ] `node --test x.test.mjs` <!-- id=1 -->',
+  '- [ ] `npm run lint` <!-- id=3 -->',
+  '',
+  '## Acceptance Criteria',
+  '',
+  '- [ ] Runner resolves a by-id vc-list citation <!-- aitm-verified vc-list="vc:1" -->',
+  '- [ ] Multi-command by-id citation <!-- aitm-verified vc-list="vc:1 vc:3" -->',
+  '',
+  '## Definition of Done',
+  '',
+].join('\n');
+
+test('#774 parseEvidenceAcs resolves a vc-list citation to its VC command(s)', () => {
+  const acs = parseEvidenceAcs(VC_LIST_BODY);
+  assert.equal(acs.length, 2, 'both vc-list ACs are gated');
+  assert.deepEqual(
+    acs[0].evidenceCommands,
+    ['node --test x.test.mjs'],
+    'single vc-list citation resolves by id'
+  );
+  assert.deepEqual(
+    acs[1].evidenceCommands,
+    ['node --test x.test.mjs', 'npm run lint'],
+    'multi vc-list citation resolves each id in order'
+  );
+});
+
+test('#804 an empty vc-list on a verified AC THROWS at resolution — no silent zero-command green', () => {
+  const EMPTY_VC_LIST_BODY = [
+    '## Verification Commands',
+    '',
+    '- [ ] `node --test x.test.mjs` <!-- id=1 -->',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [ ] Verified AC with an empty citation <!-- aitm-verified vc-list="" -->',
+    '',
+    '## Definition of Done',
+    '',
+  ].join('\n');
+  assert.throws(
+    () => parseEvidenceAcs(EMPTY_VC_LIST_BODY),
+    /no resolvable verification command/,
+    'the code-complete resolver fails loudly instead of reading the AC as satisfied'
+  );
+});
+
+test('#804 a valid vc-list still resolves and stays gated (strictness does not over-fire)', () => {
+  const acs = parseEvidenceAcs(VC_LIST_BODY);
+  assert.equal(acs.length, 2, 'both real vc-list ACs remain gated after the strict change');
+});
+
+test('#774 findEvidenceAc locates a vc-list-declared AC by its stripped label', () => {
+  const ac = findEvidenceAc(VC_LIST_BODY, 'Runner resolves a by-id vc-list citation');
+  assert.ok(ac, 'the vc-list AC is found (extractCommands no longer returns [])');
+  assert.deepEqual(ac.evidenceCommands, ['node --test x.test.mjs']);
+});
+
+test('#774 stamping a vc-list AC preserves vc-list and yields recognized evidence', () => {
+  const label = 'Runner resolves a by-id vc-list citation';
+  const stamped = stampAcEvidenceMarker(VC_LIST_BODY, label, {
+    cmd: 'node --test x.test.mjs',
+    sha: 'abc1234',
+    ts: '2026-07-09T00:00:00.000Z',
+    exit: 0,
+  });
+  assert.ok(
+    stamped.includes('vc-list="vc:1"'),
+    'the vc-list declaration is preserved by the stamp'
+  );
+  assert.ok(!/ cmd="/.test(stamped), 'no forbidden cmd attribute is introduced');
+  const target = findEvidenceAc(stamped, label);
+  assert.ok(
+    target && target.evidenceMarker,
+    'the stamped vc-list marker is recognized as evidence'
+  );
+  assert.equal(target.evidenceMarker.cmd, 'vc:1', 'evidence surfaces the vc-list citation as cmd');
+  assert.equal(target.evidenceMarker.exit, 0);
+  assert.equal(target.evidenceMarker.sha, 'abc1234');
+});
+

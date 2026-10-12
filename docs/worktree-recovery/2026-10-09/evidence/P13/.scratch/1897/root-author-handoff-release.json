@@ -1,0 +1,45 @@
+{
+  "receipts": [
+    {
+      "command": [
+        "npx",
+        "aitm",
+        "pause",
+        "1897-author-handoff"
+      ],
+      "startedAt": "2026-10-05T20:47:36.435Z",
+      "finishedAt": "2026-10-05T20:47:42.935Z",
+      "status": 0,
+      "stdout": "Paused #1897: +Unknown active min (wall 3), +91 words. Use \"/task resume\" to resume.\n",
+      "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' pause 1897-author-handoff\n"
+    },
+    {
+      "command": [
+        "npx",
+        "aitm",
+        "occupancy",
+        "--release",
+        "#1897"
+      ],
+      "startedAt": "2026-10-05T20:47:42.938Z",
+      "finishedAt": "2026-10-05T20:47:44.213Z",
+      "status": 0,
+      "stdout": "Released occupancy #1897: provider=codex sid=01a1045d-6c1 worktree=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac\n",
+      "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' occupancy --release #1897\n"
+    },
+    {
+      "command": [
+        "npx",
+        "aitm",
+        "occupancy",
+        "--release",
+        "#1897"
+      ],
+      "startedAt": "2026-10-05T20:47:44.213Z",
+      "finishedAt": "2026-10-05T20:47:45.180Z",
+      "status": 0,
+      "stdout": "Occupancy #1897: no claim found.\n",
+      "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' occupancy --release #1897\n"
+    }
+  ]
+}

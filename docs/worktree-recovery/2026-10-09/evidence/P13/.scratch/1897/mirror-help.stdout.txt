@@ -1,0 +1,34 @@
+/task mirror-deep-dive — Mirror a deep-dive analysis from an existing comment or repair one legacy block placement.
+
+  Purpose: Mirror a deep-dive analysis from an existing comment or repair one legacy block placement.
+  Usage:  /task mirror-deep-dive (--from-comment <id|url> | --repair-placement) [#N]
+
+  Arguments:
+    [#N]
+        Optional issue number; defaults to the active task.
+    --from-comment <id|url>
+        source comment (id, URL, or #issuecomment-<id>)
+    --repair-placement
+        relocate one existing block after Pickup without fetching a comment
+
+  Preconditions:
+    A target issue and exactly one mode are required: a valid source comment, or one unambiguous existing block for placement repair.
+
+  Effects:
+    Copies source prose into the canonical section, or relocates the existing block byte-for-byte through the versioned body writer.
+
+  Output:
+    Prints the source comment or placement-repair result and updated issue reference.
+
+  Exit codes:
+    0  success (or idempotent no-op)
+    1  runtime error (message on stderr)
+    2  usage error / unknown verb
+
+  Examples:
+    /task mirror-deep-dive --from-comment 4866618296 667
+    /task mirror-deep-dive --repair-placement 667
+
+  Related:
+    plan
+    save-plan

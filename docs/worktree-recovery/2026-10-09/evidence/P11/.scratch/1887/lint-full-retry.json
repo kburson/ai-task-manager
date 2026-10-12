@@ -1,0 +1,36 @@
+{
+  "schema": "issue1887.execution/v1",
+  "runId": "9187198e-25f8-4574-aaa9-f56a4592d854",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1887,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "npm",
+    "run",
+    "lint"
+  ],
+  "sourceCommit": "12ecd7df9f58dc60cf7a9bc42c33c9b019976068",
+  "dirtyPaths": [
+    "M docs/guides/workflow.md",
+    " M scripts/task-tracker/lib/action-decision/legacy-refusals.json",
+    " M scripts/task-tracker/lib/action-decision/test.mjs",
+    " M scripts/task-tracker/lib/verification-receipt-retirement.mjs",
+    " M scripts/task-tracker/verbs/test.mjs",
+    " M scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+    " M scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs",
+    " M scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs"
+  ],
+  "dirtyDiffSHA256": "9b345333215aba1ce0b7166c44b6407db2c839f3d9a117e4b3f17a44a612fdd2",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T02:14:04.752Z",
+  "stdout": ".scratch/1887/lint-full-retry.log",
+  "finishedAt": "2026-10-05T02:14:35.357Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "ec8934dc57ec90c0c6a2544d85bae7f19f350ae44ff41dd518505c4b95dfbd4e"
+}

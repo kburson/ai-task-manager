@@ -1,0 +1,18 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "start",
+    "1902",
+    "--role",
+    "agent",
+    "--allow-foreign-worktree"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+  "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+  "startedAt": "2026-10-06T12:29:01.316Z",
+  "endedAt": "2026-10-06T12:29:12.168Z",
+  "exitCode": 0,
+  "stdout": "\n🚧 PICKUP DIRECTIVE DEFERRED — #1902 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #1902`.\nStarted #1902.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 1902 --role agent --allow-foreign-worktree\naitm: action capture unavailable; continuing without capture: ENOENT: no such file or directory, open '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history/.tmp/aitm/state/task-tracker-state.json'\n⚠ #1902 move-invariants indeterminate\n  board       : backlog\n  recorded    : (none)\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"none\"). Cannot auto-reconcile without fabricating provenance — reporting only.\n"
+}

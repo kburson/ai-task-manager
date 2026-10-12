@@ -1,0 +1,15 @@
+{
+  "bin": "npx",
+  "args": [
+    "aitm",
+    "occupancy",
+    "--release",
+    "1897"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+  "startedAt": "2026-10-05T23:55:43.110Z",
+  "endedAt": "2026-10-05T23:55:43.988Z",
+  "status": 0,
+  "stdout": "Occupancy #1897: no claim found.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' occupancy --release 1897\n"
+}
