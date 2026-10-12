@@ -236,4 +236,18 @@ export function registerAdaptivePublicationCases() {
       rmSync(c.dir, { recursive: true, force: true });
     }
   });
+  test('adaptive half-hour forecast preserves projections and classifies 23.5 as mandatory 24', async () => {
+    const c = adaptiveCase(23.5);
+    try {
+      const result = await applyPlanEstimateAuthority(c.args);
+      assert.equal(result.status, 'converged', result.reason ?? 'publication failed');
+      assert.equal(c.state.board.estimate, 23.5);
+      assert.equal(c.state.bodyFields.estimate, 23.5);
+      const r = readDecompositionRecords(c.f.body);
+      assert.equal(r.publication.proposal.estimate.hours, 24);
+      assert.equal(r.assessment.status, 'must-decompose');
+    } finally {
+      rmSync(c.dir, { recursive: true, force: true });
+    }
+  });
 }

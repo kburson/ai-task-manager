@@ -1,18 +1,20 @@
+import { normalizeDecompositionHours } from './decomposition-policy.mjs';
+import { parseIssueFieldDb } from '../issue-field-db.mjs';
 // @story #1988 — earlier Plan forecasts are historical only after confirmed revision.
+const normalizedHours = (value) => (value == null ? null : normalizeDecompositionHours(value));
 export function confirmedEstimateProjectionRevision({ publication, project, bodyFields }) {
   if (
     !publication ||
     !['pending', 'complete'].includes(publication.status) ||
-    publication.writerId === 'plan-estimate-adaptive' ||
-    publication.proposal.estimate.basis === 'proposed'
+    publication.writerId === 'plan-estimate-adaptive'
   )
     return false;
   const hours = publication.proposal.estimate.hours,
     size = publication.proposal.size;
   return (
     publication.subject.projectItemId === project?.projectItemId &&
-    project.estimate === hours &&
-    bodyFields?.estimate === hours &&
+    normalizedHours(project.estimate) === hours &&
+    normalizedHours(bodyFields?.estimate) === hours &&
     project.size === size &&
     bodyFields?.size === size &&
     ['project-estimate', 'body-fields'].every((resource) =>
@@ -83,4 +85,48 @@ export async function publicationForecastTransitionUsable(current, publication, 
   } catch {
     return false;
   }
+}
+
+export function publicationProposalMatchesAuthority(current, publication) {
+  const project = current.sourceObservations.readProject.value,
+    body = parseIssueFieldDb(current.sourceObservations.readIssue.value.body);
+  if (!body.ok) return false;
+  if (
+    publication.writerId === 'plan-estimate-compatibility' &&
+    publication.proposal.estimate.basis === 'proposed'
+  ) {
+    return (
+      current.sourceObservations.readForecast.value?.proposals?.some(
+        (proposal) =>
+          proposal.proposalId === publication.proposal.estimate.proposalId &&
+          proposal.hours === publication.proposal.estimate.hours &&
+          (proposal.size ?? project.size) === publication.proposal.size
+      ) ?? false
+    );
+  }
+  return (
+    normalizedHours(project?.estimate) === publication.proposal.estimate.hours &&
+    normalizedHours(body.values.estimate) === publication.proposal.estimate.hours &&
+    project.size === publication.proposal.size &&
+    body.values.size === publication.proposal.size
+  );
+}
+export function estimateProjectionFromProposals({ hours, size, proposals }) {
+  let proposalId = null;
+  const tiers = ['XS', 'S', 'M', 'L', 'XL'];
+  for (const proposal of proposals ?? []) {
+    if (proposal.hours !== null && (hours === null || proposal.hours >= hours)) {
+      hours = proposal.hours;
+      proposalId = proposal.proposalId;
+    }
+    if (tiers.indexOf(proposal.size) > tiers.indexOf(size)) size = proposal.size;
+  }
+  return {
+    estimate: {
+      basis: proposalId ? 'proposed' : hours === null ? 'unset' : 'published',
+      hours,
+      proposalId,
+    },
+    size,
+  };
 }

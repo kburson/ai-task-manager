@@ -452,4 +452,67 @@ export function registerEstimatePublicationCases() {
       removePublicationDir(c.dir, { recursive: true, force: true });
     }
   });
+  test('published lower value completes truthfully while a higher human proposal still restricts implementation', async () => {
+    const publish = await loadPublisher(),
+      c = await publicationCase(23);
+    c.f.values.forecast = {
+      estimate: 10,
+      size: 'M',
+      recordId: null,
+      proposals: [
+        {
+          proposalId: 'comment:IC_human:human-attention',
+          hours: 25,
+          size: 'M',
+          sourceDigest: 'a'.repeat(64),
+        },
+      ],
+    };
+    const initial = await publicationCollect({
+        subject: publicationSubject,
+        cfg: publicationCfg,
+        projectDir: c.dir,
+        deps: c.f.deps,
+      }),
+      intended = structuredClone(initial.input);
+    const { hash } = await import('./decomposition-authority-fixtures.mjs');
+    intended.observations.find((o) => o.resource === 'project').digest = hash({
+      projectId: 'PVT_a',
+      projectItemId: 'PVTI_a',
+      estimate: 23,
+      size: 'M',
+    });
+    const { decompositionInputDigest } =
+      await import('../../../../task-tracker/lib/decomposition-assessment.mjs');
+    c.args.expectedInputDigest = initial.inputDigest;
+    c.args.deps.intendedInputDigest = decompositionInputDigest(intended);
+    try {
+      const result = await publish(c.args);
+      assert.equal(result.status, 'recorded', result.reason ?? 'publication failed');
+      const r = publicationRecords(c.f.body);
+      assert.equal(r.publication.proposal.estimate.hours, 23);
+      assert.equal(r.assessment.estimate.basis, 'proposed');
+      assert.equal(r.assessment.estimate.hours, 25);
+      assert.equal(r.assessment.capabilities.includes('scoped-implementation'), false);
+      assert.equal(c.f.values.project.estimate, 23);
+    } finally {
+      removePublicationDir(c.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('inflation keeps actual half-hour values while the assessment uses the whole-hour threshold', async () => {
+    const c = recoveryInflationFixture();
+    c.args.estimate = '23.5';
+    try {
+      const result = await realInflate(c.args, c.cfg, c.deps);
+      assert.equal(result.status, 'recorded', result.reason ?? 'publication failed');
+      assert.equal(c.f.values.project.estimate, 23.5);
+      assert.match(c.f.body, /"estimate":23\.5/);
+      const r = publicationRecords(c.f.body);
+      assert.equal(r.publication.proposal.estimate.hours, 24);
+      assert.equal(r.assessment.status, 'must-decompose');
+    } finally {
+      removePublicationDir(c.dir, { recursive: true, force: true });
+    }
+  });
 }

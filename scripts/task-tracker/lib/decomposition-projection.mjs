@@ -1,4 +1,7 @@
-import { publicationForecastTransitionUsable } from './decomposition-publication-inputs.mjs';
+import {
+  publicationForecastTransitionUsable,
+  publicationProposalMatchesAuthority,
+} from './decomposition-publication-inputs.mjs';
 // @story #1987 — privately owned assessment mutation and exact read-back.
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID, createHash } from 'node:crypto';
@@ -571,8 +574,7 @@ export async function withDecompositionPublicationOwner(
           candidate.status === 'complete' &&
           (current.input.availability.status !== 'complete' ||
             current.inputDigest !== candidate.intendedInputDigest ||
-            current.input.estimate.hours !== candidate.proposal.estimate.hours ||
-            current.input.size !== candidate.proposal.size)
+            !publicationProposalMatchesAuthority(current, candidate))
         )
           refuse('publication-authority');
         let result = await writeRecords(candidate, current);

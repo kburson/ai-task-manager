@@ -1,3 +1,4 @@
+import { estimateProjectionFromProposals } from './decomposition-publication-inputs.mjs';
 // @story #1988 — concrete six-effect adaptive Plan adapter.
 import {
   executeEstimateWriter,
@@ -39,12 +40,22 @@ export async function publishAdaptivePlanAuthority({ issueNumber, forecastEnvelo
           estimate: plan.humanHours,
           size: plan.size,
           recordId: forecastEnvelope.recordId,
-          proposals: [],
+          proposals: (initial.sourceObservations.readForecast.value.proposals ?? []).filter(
+            (proposal) => !proposal.proposalId.endsWith(':planned-estimate')
+          ),
           observedProjections: [fields, fields],
         };
         const observation = input.observations.find((o) => o.resource === 'forecast');
         observation.identity = forecastEnvelope.recordId;
         observation.digest = estimateEffectDigest(forecast);
+        Object.assign(
+          input,
+          estimateProjectionFromProposals({
+            hours: plan.humanHours,
+            size: plan.size,
+            proposals: forecast.proposals,
+          })
+        );
         return input;
       },
       deps: {

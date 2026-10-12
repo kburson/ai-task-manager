@@ -1,3 +1,9 @@
+import {
+  readEstimateWriterAuthority,
+  estimateOperationId,
+} from './estimate-writer-publication.mjs';
+import { estimateEffectDigest } from './decomposition-publication.mjs';
+import { publishPlannedCommentRevision } from './decomposition-proposal-writer.mjs';
 // Refine/Planned-Estimate comment protocol (#134).
 //
 // The `### 🛠 Refine estimate` comment is posted by applyRefinementEstimate
@@ -21,6 +27,23 @@ const REFINE_COMMENT_MARKER_RE = /<!--\s*aitm-refined-estimate:\s*(\d+)\s*-->/;
 const PLANNED_HEADER_RE = /^###\s+Planned Estimate\s*$/m;
 const EMPTY_SIZE_ROW_RE = /^\|\s*Size\s*\|\s*—\s*\|\s*—\s*\|/m;
 const EMPTY_ESTIMATE_ROW_RE = /^\|\s*Estimate \(h\)\s*\|\s*—\s*\|\s*—\s*\|/m;
+
+function plannedAppendixRange(body) {
+  const match = String(body).match(PLANNED_HEADER_RE);
+  if (!match) return null;
+  const tail = String(body).slice(match.index + match[0].length),
+    next = tail.match(/^#{1,3}\s+/m);
+  return {
+    start: match.index,
+    end: next ? match.index + match[0].length + next.index : String(body).length,
+  };
+}
+function replacePlannedAppendix(body, appendix) {
+  const range = plannedAppendixRange(body);
+  const head = range ? body.slice(0, range.start).replace(/\s+$/, '') : body.replace(/\s+$/, '');
+  const tail = range ? body.slice(range.end) : '';
+  return `${head}${appendix}\n${tail}`;
+}
 
 export function hasPlannedAppendix(body = '') {
   return PLANNED_HEADER_RE.test(String(body));
@@ -139,6 +162,7 @@ export async function findRefineEstimateComment({ cfg, issueNumber, deps = {} } 
     if (m && Number(m[1]) === Number(issueNumber)) {
       return {
         id: c.id,
+        nodeId: c.node_id ?? String(c.id),
         body,
         hasPlannedAppendix: hasPlannedAppendix(body),
       };
@@ -170,17 +194,38 @@ export async function appendPlannedEstimate({
   if (!comment) {
     return { status: 'no-refine-comment' };
   }
-  if (comment.hasPlannedAppendix) {
-    return { status: 'duplicate', commentId: comment.id };
-  }
   const appendix = buildPlannedAppendix({ planned, current, rationale });
-  const nextBody = `${comment.body.replace(/\s+$/, '')}${appendix}\n`;
-  try {
-    await patchComment({ cfg, commentId: comment.id, body: nextBody });
-  } catch (err) {
-    return { status: 'patch-failed', error: err.message, commentId: comment.id };
+  const nextBody = replacePlannedAppendix(comment.body, appendix);
+  if (comment.hasPlannedAppendix) {
+    if (nextBody !== comment.body || !cfg.projectId)
+      return { status: 'duplicate', commentId: comment.id };
+    const currentAuthority = await readEstimateWriterAuthority({ cfg, issueNumber, deps });
+    const operationId = estimateOperationId('plan-estimate-compatibility', {
+      comment: comment.nodeId ?? String(comment.id),
+      body: estimateEffectDigest(nextBody),
+    });
+    if (
+      currentAuthority.publication?.operationId !== operationId ||
+      currentAuthority.publication.status !== 'pending'
+    )
+      return { status: 'duplicate', commentId: comment.id };
   }
-  return { status: 'appended', commentId: comment.id };
+  const result = await publishPlannedCommentRevision({
+    cfg,
+    issueNumber,
+    comment,
+    nextBody,
+    planned: { estimate: planned.estimate ?? current.estimate, size: planned.size ?? current.size },
+    patchComment,
+    findComment: () => findRefineEstimateComment({ cfg, issueNumber, deps }),
+    listComments: deps.listComments ?? defaultListComments,
+    deps,
+  });
+  return {
+    ...result,
+    status: result.status === 'recorded' ? 'appended' : result.status,
+    commentId: comment.id,
+  };
 }
 
 export async function upsertPlannedEstimate({
@@ -198,16 +243,8 @@ export async function upsertPlannedEstimate({
   const patchComment = deps.patchComment || defaultPatchComment;
   const comment = await findRefineEstimateComment({ cfg, issueNumber, deps });
   if (!comment) return { status: 'no-refine-comment' };
-  const match = comment.body.match(PLANNED_HEADER_RE);
-  const head = match
-    ? comment.body.slice(0, match.index).replace(/\s+$/, '')
-    : comment.body.replace(/\s+$/, '');
-  const appendix = buildPlannedAppendix({
-    current: refine,
-    planned: plan,
-    rationale,
-  });
-  const nextBody = `${head}${appendix}\n`;
+  const appendix = buildPlannedAppendix({ current: refine, planned: plan, rationale });
+  const nextBody = replacePlannedAppendix(comment.body, appendix);
   if (nextBody === comment.body) return { status: 'current', commentId: comment.id };
   await patchComment({ cfg, commentId: comment.id, body: nextBody });
   return { status: 'updated', commentId: comment.id };
@@ -226,7 +263,9 @@ export async function clearPlannedEstimate({ cfg, issueNumber, deps = {} } = {})
   if (!comment) return { status: 'no-refine-comment' };
   const match = comment.body.match(PLANNED_HEADER_RE);
   if (!match) return { status: 'no-appendix', commentId: comment.id };
-  const nextBody = `${comment.body.slice(0, match.index).replace(/\s+$/, '')}\n`;
+  const range = plannedAppendixRange(comment.body);
+  const nextBody =
+    comment.body.slice(0, range.start).replace(/\s+$/, '') + '\n' + comment.body.slice(range.end);
   try {
     await patchComment({ cfg, commentId: comment.id, body: nextBody });
   } catch (error) {

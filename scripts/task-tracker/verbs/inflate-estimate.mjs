@@ -1,9 +1,9 @@
 // `inflate-estimate` verb — appends a "Discovered work — estimate inflation" section to
-// the existing `<!-- aitm-refined-estimate: N -->` comment and atomically
-// updates the Size + Estimate board fields and the aitm-fields block in the
+// the existing `<!-- aitm-refined-estimate: N -->` comment and updates through resumable publication
+// the Size + Estimate board fields and the aitm-fields block in the
 // issue body.
 //
-// Each invocation appends a dated block; re-runs do NOT overwrite prior inflations.
+// Each revision appends one keyed audit block; exact retries preserve its history.
 
 import {
   executeEstimateWriter,

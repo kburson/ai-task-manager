@@ -262,7 +262,7 @@ function readPorts({ cfg, projectDir, deps }) {
         }))
         .sort((a, b) => b.estimate - a.estimate);
       const published = known[0] ?? { estimate: null, size: null, recordId: null };
-      const proposalResult = collectCommentProposals({
+      const proposalResult = collectDecompositionCommentProposals({
         comments,
         subject,
         body,
@@ -296,7 +296,14 @@ function readPorts({ cfg, projectDir, deps }) {
   };
   return Object.fromEntries(Object.keys(defaults).map((key) => [key, deps[key] ?? defaults[key]]));
 }
-function collectCommentProposals({ comments, subject, body, published, board, bodyFields }) {
+export function collectDecompositionCommentProposals({
+  comments,
+  subject,
+  body,
+  published,
+  board,
+  bodyFields,
+}) {
   let available = true;
   let publication = null;
   try {

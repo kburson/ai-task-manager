@@ -738,3 +738,6 @@ import { registerEstimatePublicationCases } from './decomposition-publication.ca
 registerEstimatePublicationCases();
 import { registerAdaptivePublicationCases } from './decomposition-adaptive-publication.cases.mjs';
 registerAdaptivePublicationCases();
+
+import { registerProposalPublicationCases } from './decomposition-proposal-publication.cases.mjs';
+registerProposalPublicationCases();

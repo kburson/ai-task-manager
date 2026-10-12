@@ -1,3 +1,5 @@
+import { normalizeDecompositionHours } from './decomposition-policy.mjs';
+import { estimateProjectionFromProposals } from './decomposition-publication-inputs.mjs';
 // @story #1988 — adapter preparation; only current reads grant ownership.
 import { createHash } from 'node:crypto';
 import { projectItemForIssue } from '../../gh/lib/github-projects.mjs';
@@ -45,6 +47,14 @@ export function intendedPublishedRevisionInput(initial, proposal) {
   input.observations.find((o) => o.resource === 'forecast').digest = forecast
     ? estimateEffectDigest(forecast)
     : null;
+  Object.assign(
+    input,
+    estimateProjectionFromProposals({
+      hours: proposal.estimate.hours,
+      size: proposal.size,
+      proposals: forecast?.proposals,
+    })
+  );
   return input;
 }
 export async function executeEstimateWriter({
@@ -95,7 +105,16 @@ export async function executeEstimateWriter({
     subject,
     operationId,
     expectedInputDigest: prior?.beforeInputDigest ?? initial.inputDigest,
-    proposal,
+    proposal: {
+      ...proposal,
+      estimate: {
+        ...proposal.estimate,
+        hours:
+          proposal.estimate.hours === null
+            ? null
+            : normalizeDecompositionHours(proposal.estimate.hours),
+      },
+    },
     effects: adapters,
     deps: {
       runtime,

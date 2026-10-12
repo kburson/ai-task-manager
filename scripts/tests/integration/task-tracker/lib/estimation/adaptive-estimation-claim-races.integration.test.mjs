@@ -1,6 +1,10 @@
 // @story #1091
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {
+  estimationIssueBody,
+  estimationPublicationFixture,
+} from '../../../../fixtures/estimation-publication.mjs';
 
 import { buildEstimationForecast } from '../../../../../task-tracker/lib/estimation/forecast-model.mjs';
 import { buildEstimationOutcome } from '../../../../../task-tracker/lib/estimation/outcome-builder.mjs';
@@ -234,7 +238,7 @@ test('two production Plan authority runtimes with the same initial projection ap
   const plan = forecast.payload.plan;
   const refine = forecast.payload.refine;
   const board = { size: plan.size, estimate: plan.humanHours };
-  let issueBody = `<!-- aitm-fields: {"schema":1,"values":{"size":"${plan.size}","estimate":${plan.humanHours}}} -->`;
+  let issueBody = estimationIssueBody(board);
   const refineBody = [
     '### 🛠 Refine estimate',
     '',
@@ -261,6 +265,8 @@ test('two production Plan authority runtimes with the same initial projection ap
       data: {
         repository: {
           issue: {
+            number: issue,
+            repository: { nameWithOwner: repository },
             body: issueBody,
             comments: {
               nodes: [commentNode('IC_refine', refineBody), ...recordComments],
@@ -272,6 +278,7 @@ test('two production Plan authority runtimes with the same initial projection ap
                   id: 'ITEM_1091',
                   project: { id: cfg.projectId },
                   fieldValues: {
+                    pageInfo: { hasNextPage: false },
                     nodes: [
                       { name: 'Plan', field: { id: cfg.kanbanFieldId } },
                       { name: board.size, field: { id: cfg.fieldIds.size } },
@@ -297,6 +304,16 @@ test('two production Plan authority runtimes with the same initial projection ap
     },
   };
   const deps = {
+    ...estimationPublicationFixture({
+      cfg,
+      issueNumber: issue,
+      getBody: () => issueBody,
+      setBody: (next) => {
+        issueBody = next;
+      },
+      getProject: () => board,
+      graphql,
+    }),
     graphql,
     recordIo,
     loadProjectFieldDefs: () => [
@@ -315,6 +332,8 @@ test('two production Plan authority runtimes with the same initial projection ap
     )
   );
 
+  for (const result of results)
+    assert.equal(result.status, 'converged', result.reason ?? 'authority did not converge');
   assert.equal(writes, 1);
   assert.equal(results[0].forecastRecordId, results[1].forecastRecordId);
   assert.equal(results[0].forecastRecordId, forecastEnvelope.recordId);
