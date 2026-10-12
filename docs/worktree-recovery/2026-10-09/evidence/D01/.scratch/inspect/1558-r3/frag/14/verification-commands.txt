@@ -1,0 +1,1 @@
+node --test scripts/tests/integration/task-tracker/lib/action-test.test.mjs scripts/tests/unit/task-tracker/lib/guard-parity-mid-stages.test.mjs scripts/tests/unit/task-tracker/lib/test-407-binding-survives.test.mjs

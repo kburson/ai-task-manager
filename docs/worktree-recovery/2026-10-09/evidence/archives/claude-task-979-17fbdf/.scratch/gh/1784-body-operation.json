@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "### What is actually missing",
+  "replacement": "### Story Intent\n\n- **Beneficiary:** an auditor of the AITM peer-review record\n- **Capability:** read a recorded terminal reviewer decision for the #1755 specification review\n- **Need:** the review exchange ends at author-response-2 with no reviewer turn after it, so the specification's approval status is undetermined in the record\n- **Value or failure prevented:** prevents a delivered specification from appearing reviewed-and-settled when its review never terminated, and makes the post-delivery timing of the decision explicit rather than implied\n\n### What is actually missing"
+}

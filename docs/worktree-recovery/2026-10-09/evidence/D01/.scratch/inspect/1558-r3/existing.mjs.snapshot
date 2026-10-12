@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+const r3 = fs.readFileSync('.scratch/inspect/1558-r3/wbs-r3.md','utf8');
+const cmds = [...r3.matchAll(/^Run: `(.+)`\s*$/gm)].map(m=>m[1]);
+const files = new Set();
+for (const c of cmds) for (const tok of c.split(/\s+/)) if (/\.mjs$/.test(tok)) files.add(tok);
+let exist=0, missing=0;
+for (const f of [...files].sort()) {
+  const ok = fs.existsSync(f);
+  if (ok) exist++; else missing++;
+  console.log((ok?'EXISTS  ':'MISSING ')+f);
+}
+console.log('existing:',exist,'missing (future deliverables):',missing);

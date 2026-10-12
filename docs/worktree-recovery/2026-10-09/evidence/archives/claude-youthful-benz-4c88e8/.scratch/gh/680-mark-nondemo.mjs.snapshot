@@ -1,0 +1,27 @@
+import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
+import { loadConfig } from '../../scripts/task-tracker/config.mjs';
+
+const cfg = await loadConfig();
+const repo = cfg.repo;
+
+const HEAD = new RegExp('^## ');
+const BOX = new RegExp('^- \\[[ x]\\] ');
+const TAG = new RegExp('aitm-non-demonstrable', 'i');
+
+const res = await mutateIssueBody({
+  issueNumber: 680,
+  repo,
+  mutate: (body) => {
+    const lines = body.split('\n');
+    let inAc = false;
+    const out = lines.map((l) => {
+      if (HEAD.test(l)) inAc = l.trim() === '## Acceptance Criteria';
+      if (!inAc) return l;
+      if (!BOX.test(l)) return l;
+      if (TAG.test(l)) return l;
+      return l + ' <!-- aitm-non-demonstrable -->';
+    });
+    return out.join('\n');
+  },
+});
+console.log('ok', JSON.stringify(res?.status ?? res));

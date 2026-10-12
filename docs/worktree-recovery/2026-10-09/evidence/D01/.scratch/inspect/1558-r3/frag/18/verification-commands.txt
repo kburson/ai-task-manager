@@ -1,0 +1,1 @@
+node --test scripts/tests/integration/task-tracker/lib/action-close.test.mjs scripts/tests/integration/task-tracker/lib/action-parity.test.mjs scripts/tests/unit/task-tracker/lib/guard-parity-review-done.test.mjs scripts/tests/unit/task-tracker/lib/close-gate-order.test.mjs

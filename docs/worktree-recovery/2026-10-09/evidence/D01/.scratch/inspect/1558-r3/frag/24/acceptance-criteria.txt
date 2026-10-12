@@ -1,0 +1,2 @@
+- [ ] Every migrating lifecycle obligation maps to enforcement/protocol and complete validated catalog content, with human documentation preserved. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+- [ ] Adoption, trust, recovery, attestation limitations, and scoped historical supersession are documented accurately. <!-- aitm-verified vc-list="vc:1 vc:2" -->

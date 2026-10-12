@@ -1,0 +1,34 @@
+{
+  "schema": "aitm.workflow-exception-request/v2",
+  "action": "record",
+  "authorizationSource": {
+    "schema": "aitm.authorization-source/v1",
+    "adapter": "codex-session/v1",
+    "sessionId": "01a0da95-d03a-7d92-b709-7ed75c79c8c2",
+    "messageId": "msg_01a0daaa-2ef4-7100-b974-fcba868fb5a6",
+    "statementHash": "sha256:2c50abda1da14ed1a62b4731814f1086abf6f3b367c124f919236f50edde8ddb"
+  },
+  "constraints": [],
+  "exceptionId": "delivery-01m3da0yk2fg05420b7c7dwd9b",
+  "expiresAt": "2026-10-02T23:59:59.000Z",
+  "reason": "PR #1785 was merged by the operator with a merge commit after AITM recorded a squash intent for the exact accepted head. The merged commit is reachable from trunk, includes that head, and changes only the intended #1784 review document. Waive only the merge-method match so delivery can record the observed merge truthfully.",
+  "requirementIds": ["delivery.verification.merge-method"],
+  "scopeKind": "delivery",
+  "deliveryScope": {
+    "schema": "aitm.delivery-exception-scope/v1",
+    "repository": "kburson/ai-task-manager",
+    "issue": 1784,
+    "exceptionKind": "delivery.invariant-waiver",
+    "pullRequest": 1785,
+    "acceptedHeadSha": "edaa8e402f340af3ca15b5b36ec845b038040d58",
+    "baseRef": "trunk",
+    "resolvedTrunkRef": "origin/trunk",
+    "requirementId": "delivery.verification.merge-method",
+    "deliveryOperationId": "01M3DA0YK3P64AD1D79SKV6KH3"
+  },
+  "waiverScopeDigest": "sha256:cfb00d1f353dec7f785472cd36a9ab50f817a7662fadfd2af8bbc010fac9022b",
+  "scopeIdentity": "sha256:0c9cc702125b144a4237f084d49ca4b8719a3bf147e2655b0a410b1f0503ffe2",
+  "priorRecordId": null,
+  "priorRevision": null,
+  "proposalDigest": "sha256:c771de8c97144fb872197f14d35e4d771989213ae01a0f0820249dad6c69a40b"
+}

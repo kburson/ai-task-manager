@@ -1,0 +1,5 @@
+import sys
+from pathlib import Path
+p=Path(sys.argv[1])
+s=p.read_text()
+if not s.startswith('[#106]'): p.write_text('[#106] '+s)

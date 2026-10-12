@@ -1,0 +1,5 @@
+- **kind**: code
+- **parent**: #1495
+- **related**: #1490, #1488, #1485
+- **discovered-during**: user-approved planning of rewrite-stable evidence and cycle-scoped delivery
+- **scope-boundary**: One independently reviewable child of the architecture epic; not a successor defect in the original chain

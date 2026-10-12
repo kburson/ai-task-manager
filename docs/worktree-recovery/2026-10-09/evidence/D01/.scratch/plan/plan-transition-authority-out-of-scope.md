@@ -1,0 +1,6 @@
+- Reclassifying a legitimate waiver as an approval.
+- Rewriting or deleting workflow-exception history.
+- Automatically approving issues that lack completed Plan evidence.
+- General migration of every historical approval marker.
+- Changing Plan Adjustment semantics.
+- Weakening current-policy checks after an exception is revoked.

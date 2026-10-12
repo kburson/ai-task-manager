@@ -1,0 +1,16 @@
+{
+  "reason": "User requested all workspace hooks disabled for cleanup",
+  "configPreviouslyExisted": false,
+  "files": [
+    {
+      "path": ".codex/hooks.json",
+      "backup": ".scratch/hooks-disabled-2026-10-09/.codex__hooks.json",
+      "sha256": "913575a4801e3b1df32b4382d11af72458e9a0f595c49e9afdc54259c2328a50"
+    },
+    {
+      "path": ".claude/settings.json",
+      "backup": ".scratch/hooks-disabled-2026-10-09/.claude__settings.json",
+      "sha256": "d4ce3dca24d36cf01a24b2b32bc8c984ea72bb89da07810c541cdbc52daa5848"
+    }
+  ]
+}

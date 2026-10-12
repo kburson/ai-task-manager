@@ -1,0 +1,41 @@
+import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
+import { loadConfig } from '../../scripts/task-tracker/config.mjs';
+
+const cfg = await loadConfig();
+
+const META = [
+  '## Plan Metadata',
+  '',
+  '- **Size**: M',
+  '- **Estimate**: 6',
+  '- **Priority**: P2',
+  '- **Kind**: code',
+  '- **Wave**: n/a — standalone defect',
+  '- **Blocks**: #680',
+  '- **Dependencies**: none',
+  '- **Risk**: touches the delivery-authorization path; the existing verifier equality check must survive unchanged and is covered by a dedicated regression test',
+  '- **New module**: `scripts/task-tracker/lib/delivery-method-reconciliation.mjs`',
+  '- **Touched**: `scripts/task-tracker/verbs/deliver.mjs`, `scripts/task-tracker/verbs/close.mjs`',
+  '- **Explicit non-goal**: relaxing `lib/delivery-verification.mjs:517`',
+].join('\n');
+
+const HEAD = new RegExp('^## ');
+
+const res = await mutateIssueBody({
+  issueNumber: 1562,
+  repo: cfg.repo,
+  mutate: (body) => {
+    const lines = body.split('\n');
+    const start = lines.findIndex((l) => l.trim() === '## Plan Metadata');
+    if (start === -1) throw new Error('Plan Metadata heading not found');
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i += 1) {
+      if (HEAD.test(lines[i])) {
+        end = i;
+        break;
+      }
+    }
+    return [...lines.slice(0, start), META, '', ...lines.slice(end)].join('\n');
+  },
+});
+console.log('plan-metadata:', JSON.stringify(res?.status ?? res));

@@ -1,0 +1,54 @@
+import json,os,subprocess,concurrent.futures,collections,csv
+D='.scratch/worktree-audit/';x=json.load(open(D+'classified.json'))
+def git(p,args):
+ try:
+  r=subprocess.run(['git','-C',p]+args,capture_output=True,text=True,timeout=25)
+  return r.stdout.strip() if not r.returncode else 'ERROR: '+r.stderr.strip()
+ except subprocess.TimeoutExpired:return 'ERROR: timeout'
+def check(d):
+ p=d['worktree'];d['priorCategory']=d['category'];d['priorReason']=d['reason']
+ if not os.path.lexists(p+'/.git'):return d
+ if os.path.realpath(git(p,['rev-parse','--show-toplevel']))!=os.path.realpath(p):
+  d['category']='PRESERVE-VERIFY';d['reason']='Cannot verify worktree identity';return d
+ d['HEAD']=git(p,['rev-parse','HEAD']);d['status']=git(p,['status','--porcelain=v1','-uall'])
+ d['notOnLocalTrunk']=git(p,['rev-list','--count','trunk..HEAD']);d['notOnRemoteTrunk']=git(p,['rev-list','--count','origin/trunk..HEAD'])
+ d['commitsNotOnTrunk']=git(p,['log','--max-count=15','--format=%h %s','origin/trunk..HEAD'])
+ a=d['notOnLocalTrunk'];b=d['notOnRemoteTrunk']
+ if not a.isdigit() or not b.isdigit():d['category']='PRESERVE-VERIFY';d['reason']='Cannot establish exact commit reachability from both trunk references'
+ elif int(a)>0 or int(b)>0:
+  d['category']='PRESERVE-COMMITS';d['reason']=f'Keep for deeper investigation: {a} commits not on local trunk, {b} not on origin/trunk. Prior assessment: '+d['priorReason']
+ elif d['status']:
+  d['category']='PRESERVE-WIP';d['reason']='Uncommitted/untracked files remain despite full trunk reachability'
+ elif d['priorCategory']=='CULL-CANDIDATE':d['reason']='All HEAD commits reachable from both local trunk and origin/trunk; archive local evidence before removal'
+ return d
+with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:x['registered']=list(pool.map(check,x['registered']))
+x['policy']='Preserve any worktree with any commit not reachable from local trunk or origin/trunk. PR merges and patch equivalence do not override exact commit ancestry.'
+json.dump(x,open(D+'classified.json','w'),indent=2)
+counts=collections.Counter(d['category'] for d in x['registered']);print(dict(counts))
+for d in x['registered']:
+ if d['category']=='CULL-CANDIDATE':print('CANDIDATE',d['worktree'])
+old=list(csv.DictReader(open(D+'worktree-inventory.csv')));lookup={d['worktree']:d for d in x['registered']}
+fields=list(old[0])+['commits_not_on_local_trunk','commits_not_on_origin_trunk']
+for row in old:
+ if row['kind']!='registered':continue
+ d=lookup[row['path']];row.update(classification=d['category'],reason=d['reason'],head=d['HEAD'],dirty_files=len(d.get('status','').splitlines()),ahead=d.get('notOnRemoteTrunk',row['ahead']),commits_not_on_local_trunk=d.get('notOnLocalTrunk',''),commits_not_on_origin_trunk=d.get('notOnRemoteTrunk',''))
+with open(D+'worktree-inventory.csv','w') as f:
+ w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(old)
+lines=['WORKTREE CLEANUP INVENTORY — STRICT COMMIT REACHABILITY',x['policy'],'No worktrees, branches, registrations, or chats have been removed.','Primary checkout is protected and excluded from worktree candidates.','Counts: '+str(dict(counts)),'Ignored evidence must be archived/reviewed before any removal. The non-Git remnant/wrapper findings remain separate and are not worktree commit decisions.','']
+for category in ['CULL-CANDIDATE','PRESERVE-COMMITS','PRESERVE-WIP','PRESERVE-LIVE','PRESERVE-OPEN','PRESERVE-UNPROVEN','PRESERVE-PROJECT','PRESERVE-VERIFY','STALE-REGISTRATION']:
+ group=[d for d in x['registered'] if d['category']==category]
+ if not group:continue
+ lines+=['===== '+category+' ('+str(len(group))+') =====']
+ for d in group:
+  lines+=[d['worktree'],'  HEAD: '+d['HEAD'],'  Reason: '+d['reason']]
+  if d.get('status'):lines+=['  Uncommitted files:',d['status']]
+  if d.get('commitsNotOnTrunk'):lines+=['  Commits not on origin/trunk (up to 15):',d['commitsNotOnTrunk']]
+  if d.get('archiveBeforeRemoval'):lines+=['  Archive/review: '+', '.join(d['archiveBeforeRemoval'])]
+  lines+=['']
+lines+=['===== NON-GIT REMNANTS =====']
+for d in x['residue']:lines+=[d['category']+' '+d['path'],'  '+d['reason']]
+lines+=['===== CODEX WRAPPERS =====']
+for d in x['wrappers']:lines+=[d['category']+' '+d['path']+' | '+(', '.join(d['files']) or 'empty')]
+open(D+'worktree-inventory.txt','w').write('\n'.join(lines)+'\n')
+assert all(d.get('notOnLocalTrunk')=='0' and d.get('notOnRemoteTrunk')=='0' and not d['status'] for d in x['registered'] if d['category']=='CULL-CANDIDATE')
+print('Verified strict candidate criteria and rewrote TXT, CSV, JSON.')

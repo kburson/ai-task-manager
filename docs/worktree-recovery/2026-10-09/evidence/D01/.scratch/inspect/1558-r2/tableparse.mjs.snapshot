@@ -1,0 +1,47 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const planText = fs.readFileSync('.scratch/inspect/1558-r2/r2.md', 'utf8');
+
+// Exactly the embedded command's table parser.
+const table = planText.split('## Hydration map\n')[1].split('## Child contracts\n')[0];
+const expected = new Map();
+for (const line of table.split('\n')) {
+  const cells = line.split('|').map((cell) => cell.trim());
+  if (!/^\d+$/.test(cells[1] || '')) continue;
+  expected.set(Number(cells[1]), cells[3] === 'None' ? [] : cells[3].split(',').map(Number));
+}
+console.log('parsed rows:', expected.size);
+assert.equal(expected.size, 26);
+
+let inversions = 0;
+let missingGo = 0;
+for (const [rank, deps] of expected) {
+  for (const d of deps) {
+    if (!(d < rank)) {
+      inversions += 1;
+      console.log(`RANK-INVERSION rank ${rank} depends on ${d}`);
+    }
+  }
+  if (rank >= 9 && !deps.includes(8)) {
+    missingGo += 1;
+    console.log(`MISSING-GO-EDGE runtime rank ${rank} lacks a direct dependency on WBS 8`);
+  }
+}
+console.log('rank inversions:', inversions);
+console.log('runtime children (ranks 9-26) missing direct WBS 8 edge:', missingGo);
+console.log(
+  'rank 1 prerequisites:',
+  JSON.stringify(expected.get(1)),
+  '| rank 26:',
+  JSON.stringify(expected.get(26))
+);
+
+// Verifier column present for all 26 rows
+let vcRows = 0;
+for (const line of table.split('\n')) {
+  const cells = line.split('|').map((c) => c.trim());
+  if (!/^\d+$/.test(cells[1] || '')) continue;
+  if (cells[4]) vcRows += 1;
+}
+console.log('rows carrying a verifier id:', vcRows);

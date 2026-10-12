@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- **Review mode**: manual peer review; the  package is not used\n- **Change surface**: one new file under ; no code, tests, package manifest, or dependencies",
+  "replacement": "- **Review mode**: manual peer review; the `ai-peer-review` package is not used\n- **Change surface**: one new file under `docs/peer-reviews/spec/`; no code, tests, package manifest, or dependencies"
+}

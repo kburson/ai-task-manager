@@ -1,0 +1,6 @@
+A merged pull request whose observed merge method differs from the configured method has a named recovery lane that produces a terminal close
+The receipt records the merge method actually observed, and an append-only reconciliation record beside it flags the divergence from the configured intent
+The lane requires an explicit flag and an operator-supplied reason; it is never entered implicitly
+The lane refuses when the pull request is unmerged, or when its head does not match the accepted SHA — it reconciles the method only, never what shipped
+`delivery-verification.mjs` still refuses to write a receipt naming a merge method that was not observed, proven by a test asserting the original refusal survives
+The operator-facing refusal message names the recovery lane instead of leaving `--force` as the only discoverable escape

@@ -1,0 +1,1 @@
+Do not remove delivery receipts, accept an unmerged pull request, bypass required hosted CI, weaken expected-head matching, infer success from cumulative trunk inclusion alone, accept conflicting or extra issue tokens, mutate an existing Git commit, or permit arbitrary Timing Log row deletion.

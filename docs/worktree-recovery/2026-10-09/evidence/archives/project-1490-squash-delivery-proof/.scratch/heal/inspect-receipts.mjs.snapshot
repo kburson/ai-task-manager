@@ -1,0 +1,21 @@
+import { readFileSync } from 'node:fs';
+
+const body = readFileSync('./.scratch/gh/1490-body.md', 'utf8');
+const pattern = /<!-- aitm-verification-receipt stage="([a-z-]+)" data="([^"]+)" -->/g;
+let match;
+while ((match = pattern.exec(body)) !== null) {
+  const decoded = JSON.parse(Buffer.from(match[2], 'base64').toString('utf8'));
+  console.log(
+    'stage=' + decoded.stage,
+    'receiptId=' + decoded.receiptId,
+    'commitSha=' + decoded.commitSha,
+    'branch=' + (decoded.executionContext ? decoded.executionContext.branch : 'n/a'),
+    'supersedes=' + decoded.supersedes
+  );
+}
+console.log('--- stale sha outside receipt payloads ---');
+for (const line of body.split('\n')) {
+  if (line.includes('d6a3dece') && !line.includes('aitm-verification-receipt')) {
+    console.log(line.slice(0, 160));
+  }
+}

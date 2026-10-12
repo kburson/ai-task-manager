@@ -1,0 +1,48 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "lineage-identity",
+      "description": "Expose numeric parent issue identity in lineage results with compatibility tests",
+      "baseHumanHours": 0.5,
+      "signals": {
+        "modules": ["resolve-epic-lineage", "epic-branching"],
+        "dependencies": ["github-sub-issue-graph"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "merge-back-authority",
+      "description": "Implement authority-aware two-node merge-back graph loading and opaque branch routing",
+      "baseHumanHours": 1.5,
+      "signals": {
+        "modules": ["merge-back", "issue-worktree-location", "github-projects"],
+        "dependencies": ["lineage-identity", "durable-worktree-authority"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "real-git-and-delivery",
+      "description": "Prove custom-branch merge-back with real Git and complete governed verification",
+      "baseHumanHours": 1,
+      "signals": {
+        "modules": ["epic-tree-tests", "verify-develop", "governed-delivery"],
+        "dependencies": ["merge-back-authority", "bounded-test-lanes"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "governed test sandbox plus real scratch Git repository",
+    "expectedMinutes": 15
+  },
+  "risks": [
+    "Branch authority silently degrading to canonical fallback",
+    "Numeric issue identity being inferred from an opaque ref",
+    "Child graph node reused for the immediate epic lookup",
+    "Git mutation occurring before authority failure",
+    "Changed test blobs invalidating the retained #1226 baseline"
+  ],
+  "comparableIssueIds": [1284, 1464]
+}

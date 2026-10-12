@@ -1,0 +1,3 @@
+As a candidate maintainer,
+I want to have clause-complete decision and presentation fixtures,
+So that size measurements never reward missing instructions or obligations.

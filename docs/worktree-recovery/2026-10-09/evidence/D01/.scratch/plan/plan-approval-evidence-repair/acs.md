@@ -1,0 +1,4 @@
+- [ ] Evidence repair succeeds only for a later-stage issue with durable Plan completion, current planning evidence, Full-Auto authority, and a revoked exception that covered `approval.plan`; it writes automated provenance and an audit without claiming human approval. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+- [ ] Repair refuses missing or ambiguous lifecycle evidence, active waivers, rejected or cancelled plans, existing human approval, and non-Full-Auto invocation. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+- [ ] Repair is idempotent and preserves Plan Adjustment content byte-for-byte. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+- [ ] Existing `plan-approve` behavior and the Agent Review required-comment contract remain green. <!-- aitm-verified vc-list="vc:1 vc:2" -->

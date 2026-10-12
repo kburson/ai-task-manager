@@ -1,0 +1,112 @@
+{
+  "artifact": {
+    "blob": "b0071bed5c3738111d9e21a5b0f5333c8108a8a2",
+    "digest": "sha256:93bc5ed4ec50214957e36152768ba769b79290b2c5c8b1359964f1ed3e05c567",
+    "head": "3dcfecec1c6a64f25372e44bf71ab3d182e082c1",
+    "path": "docs/superpowers/specs/2026-09-12-1219-tiered-test-execution-design.md"
+  },
+  "authority": {
+    "authority_policy": "unavailable",
+    "challenge_ttl_ms": 900000,
+    "verifier": null
+  },
+  "challenges": [],
+  "claim_ttl_ms": 28800000,
+  "claims": {
+    "author": {
+      "claim_id": "claim-4bf62fb6-0378-470f-ad46-cba863fa24ec",
+      "claimed_at": "2026-09-12T17:22:16.514Z",
+      "expires_at": "2026-09-13T01:22:16.514Z",
+      "host": "codex",
+      "last_activity_at": "2026-09-12T17:22:16.514Z",
+      "pid": 4645,
+      "role": "author",
+      "session_fingerprint": "sha256:17b0f7687638e5979626da70ea1c87d911de9cde19a8d0723e99d40c06d65c45"
+    },
+    "reviewer": {
+      "claim_id": "claim-b2882f13-9c07-4d41-bf46-102bd9ed3a00",
+      "claimed_at": "2026-09-12T17:17:14.907Z",
+      "expires_at": "2026-09-13T01:17:14.907Z",
+      "host": "claude-code",
+      "last_activity_at": "2026-09-12T17:17:14.907Z",
+      "pid": 99298,
+      "role": "reviewer",
+      "session_fingerprint": "sha256:b442aba55add2575a307df23836f008c2fd2f4224f4758748bf984fd912fefe5"
+    }
+  },
+  "commit_mode": "normal",
+  "current_actor": null,
+  "deliveries": [
+    {
+      "delivery_id": "reviewer-turn-1-to-author",
+      "digest": "sha256:11eff84c1338a6f925322dff9915785f1a42cbeeab3b5bd8e6c9a2995a2b0ebb",
+      "recipient": "author"
+    },
+    {
+      "delivery_id": "author-turn-1-to-reviewer",
+      "digest": "sha256:fcc77f76f7cfd7b697292bac06d79142701c7405bae56311c527bc40b18f0440",
+      "recipient": "reviewer"
+    },
+    {
+      "delivery_id": "reviewer-turn-2-to-author",
+      "digest": "sha256:9f5bcf0a6d31ad8d59973be9bb672c90ed5a4771da78d6b290f290eb624bbc25",
+      "recipient": "author"
+    },
+    {
+      "delivery_id": "author-turn-2-to-reviewer",
+      "digest": "sha256:a0e143d36fe76defad73866df5db0380a49eb12a35d2eb2184d179ce90a610c3",
+      "recipient": "reviewer"
+    },
+    {
+      "delivery_id": "reviewer-turn-3-to-author",
+      "digest": "sha256:9154c446da9b2c36118501d85825885d35e80faa58653171ffef345066bdab17",
+      "recipient": "author"
+    }
+  ],
+  "intervention": null,
+  "max_turns": 10,
+  "next_action": null,
+  "review_id": "review-03ff5087c2d09fdb34d6bf44fdb2928a",
+  "reviewer_boundary": {
+    "branch": "trunk",
+    "head": "3dcfecec1c6a64f25372e44bf71ab3d182e082c1",
+    "index_digest": "sha256:dc10da1a81f6e0198f2f19f79ed5e44710aaa975da595539d6e2f920c95df1b2",
+    "refs_digest": "sha256:397a80cb6ca10bcb0d10df3db792a5acd78481f092dade943aee30282eeec11b",
+    "worktree_digest": "sha256:fe2970b477fe1cfda82e745c0309ad6b7c0c02f2e46b2687c9e27e80a7d68e71"
+  },
+  "revision": 9,
+  "schema": "ai-peer-review.protocol/v1",
+  "sequence": 16,
+  "startup": {
+    "author_startup_digest": "sha256:3727900c02acf6ed643403718770eb5ab3015037627ffdcdbfc7773d1a1c165f",
+    "author_transport_capability": "resume-only",
+    "bootstrap": null,
+    "context": {
+      "artifact_kind": "spec",
+      "artifact_name": "2026-09-12-1219-tiered-test-execution-design",
+      "issue": 1219,
+      "repository_root": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager",
+      "review_date": "2026-09-12",
+      "review_id": "review-03ff5087c2d09fdb34d6bf44fdb2928a",
+      "review_path_template": "<issue>/<kind>",
+      "reviews_root": "docs/superpowers/reviews",
+      "schema": "ai-peer-review.context/v1"
+    },
+    "context_digest": "sha256:f20b852aac6092040e9f6753be701e6769aebe75aa81ae710e4c0dde8d30fe2d",
+    "destination": "docs/superpowers/reviews/1219/spec",
+    "no_commit_baseline": null,
+    "reviewer_invitation_digest": "sha256:019e80a1703bdf4399f413d55f37b1982d429ad7213d8de5fc0a93f4a72196ff",
+    "transport_mode": "manual"
+  },
+  "state": "accepted",
+  "supplements": [],
+  "terminal_evidence": {
+    "commit": "dfbaf400d77928f6eb3e04e400db36609f82d4c1",
+    "manifest_digest": "sha256:6e81383dcc3f2308e4afc294285d96fc32daad15bdc379971c76a27d878d3ec2"
+  },
+  "transports": {
+    "author": "resume-only",
+    "reviewer": "resume-only"
+  },
+  "turns_used": 3
+}

@@ -1,0 +1,17 @@
+npm notice run @kburson/ai-peer-review@0.3.0 npx
+npm notice run 'aitm' promote 106
+[task-tracker] WARN: configuration is missing 1 known project field id(s): Blocked By (cfg.fieldBlockedBy). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[task-tracker] WARN: configuration is missing 1 known project field id(s): Blocked By (cfg.fieldBlockedBy). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+npm notice run @kburson/ai-peer-review@0.3.0 lint
+npm notice run eslint . && markdownlint-cli2 "**/*.md" && cspell --no-progress "**/*.{md,mjs,js,json}"
+markdownlint-cli2 v0.23.3 (markdownlint v0.41.1)
+Finding: **/*.md !node_modules/** !coverage/** !.scratch/** !.ai-task-manager/memory/** !.ai-task-manager/templates/** !.claude/commands/task.md !AGENTS.md !templates/author-response.md !templates/reviewer-response.md !templates/human-decision.md !test/golden/templates/** !docs/superpowers/peer-reviews/**/*author-response-*.md !docs/superpowers/peer-reviews/**/*reviewer-response-*.md
+Linting: 92 files
+Summary: 0 issues in 0 files
+CSpell: Files checked: 278, Issues found: 0 in 0 files.
+npm notice run @kburson/ai-peer-review@0.3.0 format:check
+npm notice run prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+✗ #106 verification failed in sandbox (2 command(s)).
+promote: promote: delegate /task test exited 3; recorded state left at "develop".

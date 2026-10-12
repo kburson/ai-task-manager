@@ -1,0 +1,4 @@
+[task-tracker] dod-stamp tests on #1562: running 2 verifier(s)…
+  ✓ npm test (exit=0)
+  ✓ npm run test:slow (exit=0)
+[task-tracker] ✓ dod-stamp tests on #1562: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=f0a11c21).

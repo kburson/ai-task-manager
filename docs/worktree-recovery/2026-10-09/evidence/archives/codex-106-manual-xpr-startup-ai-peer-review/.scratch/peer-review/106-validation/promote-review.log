@@ -1,0 +1,30 @@
+npm notice run @kburson/ai-peer-review@0.3.0 npx
+npm notice run 'aitm' promote 106
+[task-tracker] WARN: configuration is missing 1 known project field id(s): Blocked By (cfg.fieldBlockedBy). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[task-tracker] WARN: configuration is missing 1 known project field id(s): Blocked By (cfg.fieldBlockedBy). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+Issue #106: 16 timing rows
+  Engaged            : 75 min  (active 75 + review 0)
+  Session            : 75 min
+  Review             : 0 min  (threshold 5 min)
+  Plan               : 4 min
+  Stage Time (per visit):
+    backlog#1: 1m 29s
+    refine#1: 41s
+    ready-for-plan#1: 29s
+    plan#1: 4m 10s
+    develop#1: 49m 54s
+    test#1: 4m 16s
+    develop#2: 3m 56s
+    test#2: 11m 26s
+    review#1: open
+  Stage Time (totals):
+    backlog: 1m 29s
+    refine: 41s
+    ready-for-plan: 29s
+    plan: 4m 10s
+    develop: 53m 50s
+    test: 15m 42s
+Fields updated on GitHub Projects board.
+✓ #106 moved to Review — all verification passed.
+Review #106: Full-Auto continuation remains active.
+✓ #106 promoted: test → review (alias:review)

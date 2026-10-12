@@ -1,0 +1,2 @@
+- [ ] Test and its promote delegate agree on all knowable readiness checks; explanation runs no test/sandbox/provider effect. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Execution refreshes authority and reports post-ready test outcomes truthfully. <!-- aitm-verified vc-list="vc:1" -->

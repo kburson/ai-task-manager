@@ -1,0 +1,1 @@
+`delivery-attribution.mjs` requires every source subject to carry canonical tokens; `delivery-preflight.mjs` treats mixed attributed and unattributed history as terminal conflict. The generic workflow-exception catalog intentionally makes commit provenance nonwaivable.

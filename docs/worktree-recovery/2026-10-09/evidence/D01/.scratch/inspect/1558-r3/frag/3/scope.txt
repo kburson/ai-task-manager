@@ -1,0 +1,1 @@
+Create `scripts/tests/helpers/guidance-legacy-authority.mjs` and `guidance-legacy-authority.test.mjs`; own deterministic store/scenario builders under `scripts/tests/fixtures/1558/legacy-workflow/`. Extend the existing captureLegacyWorkflow launcher to use these fixtures. Consume, do not redefine, WBS 2 transport/preload functions. No frozen loaded text or candidate model.
