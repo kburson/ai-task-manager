@@ -527,3 +527,7 @@ import { registerDecompositionRemoteCases } from './decomposition-remote.cases.m
 registerDecompositionRemoteCases();
 
 registerDecompositionTargetCases();
+
+// @story #1992
+import { registerDecompositionCompositionCases } from './decomposition-composition.cases.mjs';
+registerDecompositionCompositionCases();

@@ -390,6 +390,13 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'scripts/task-tracker/lib/initial-project-fields.mjs',
   ];
   for (const entry of estimatePublicationEntries) assert.ok(files.includes(entry));
+  // #1992: measured +3 shipped census JSON, census guide and recovery guide.
+  const compositionProofEntries = [
+    'docs/guides/decomposition-adapter-census.json',
+    'docs/guides/decomposition-adapter-census.md',
+    'docs/guides/decomposition-recovery.md',
+  ];
+  for (const entry of compositionProofEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
     ENTRY_CEILING +
     estimatePublicationEntries.length +
@@ -452,7 +459,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #1986: measured +2 for the strict assessment and record codec only.
     2 + // #1987: measured +2 for current authority and protected projection only.
     3 + // #1990: exactly three fresh hook/effect composition modules.
-    1; // #1989: one current continuation composition helper; no new dependency.
+    1 + // #1989: one current continuation composition helper; no new dependency.
+    compositionProofEntries.length;
   for (const module of [
     'decomposition-activity',
     'decomposition-hook-authority',
