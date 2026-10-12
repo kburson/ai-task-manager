@@ -97,7 +97,11 @@ test('matching catalog inputs refuse initial fixture drift before public CLI rep
       capture.identity.implementationFiles.find((committed) => committed.path === record.path)
         ?.sha256 !== record.sha256
   );
-  capture.identity.implementationFiles = currentInputs;
+  // Replay inputs are only the tracked initial catalog, not the complete source inventory.
+  // Preserve every required source entry while substituting its current working bytes.
+  capture.identity.implementationFiles = capture.identity.implementationFiles.map(
+    (record) => currentInputs.find((input) => input.path === record.path) ?? record
+  );
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot, capture }),
     uncommitted
