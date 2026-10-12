@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `node scripts/dev-env/verify-local-worktree.mjs` <!-- id=4 -->",
+  "replacement": "- [ ] `node --test scripts/tests/integration/dev-env/verify-local-worktree.test.mjs` <!-- id=4 -->"
+}

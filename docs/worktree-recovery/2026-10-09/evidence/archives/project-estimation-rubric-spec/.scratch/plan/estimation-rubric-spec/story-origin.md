@@ -1,0 +1,5 @@
+- **kind**: code
+- **requested-by**: user-approved estimation-rubric architecture discussion
+- **prerequisite**: #1818 GraphQL usage measurement baseline
+- **related**: #1091, #1514, #1682, #1688, #1719, #1744, #1817; `ai-peer-review` #57 and #70
+- **boundary**: AITM owns the implementation; project repositories own their story records

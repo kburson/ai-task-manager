@@ -1,0 +1,1 @@
+- [ ] Deliver "### Task 6: Waived receipt and merge verification" exactly as specified in the pinned source plan. <!-- aitm-verified vc-list="vc:1" -->

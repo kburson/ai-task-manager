@@ -1,0 +1,96 @@
+✖ authorized equal-rank peers enter Plan while another peer is developing (1.162875ms)
+✖ every lower board state blocks both granted and ungranted target ranks (0.169375ms)
+✖ closed Not Planned, board drift, unknown disposition and pending recovery never prove completed Done (0.132625ms)
+✔ ungranted opted-in ranks retain one active member budget and strict lower Done (0.140375ms)
+✖ changed graph, partial rank membership, revoked grant and isolation collisions refuse (0.1585ms)
+✔ dependency refusal, missing graph identity and a duplicate child fail closed (0.12275ms)
+✔ legacy sequential admission is preserved without rank authority (0.104333ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 3
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 254.336625
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs:20:1
+✖ authorized equal-rank peers enter Plan while another peer is developing (1.162875ms)
+  AssertionError [ERR_ASSERTION]: {"ok":false,"reason":"wip-budget: #140 already active","advancing":[140]}
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs:23:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs:27:1
+✖ every lower board state blocks both granted and ungranted target ranks (0.169375ms)
+  AssertionError [ERR_ASSERTION]: backlog, granted=true
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs:33:14)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs:39:1
+✖ closed Not Planned, board drift, unknown disposition and pending recovery never prove completed Done (0.132625ms)
+  AssertionError [ERR_ASSERTION]: {"closeReason":"not_planned"}
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs:45:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs:59:1
+✖ changed graph, partial rank membership, revoked grant and isolation collisions refuse (0.1585ms)
+  AssertionError [ERR_ASSERTION]: The "string" argument must be of type string. Received type undefined (undefined)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs:65:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /^rank-wave-/,
+    operator: 'match',
+    diff: 'simple'
+  }

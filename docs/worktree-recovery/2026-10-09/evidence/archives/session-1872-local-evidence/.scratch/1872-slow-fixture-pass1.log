@@ -1,0 +1,106 @@
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs:4
+#!/usr/bin/env node
+^
+
+SyntaxError: Invalid or unexpected token
+    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:93:18)
+    at #translate (node:internal/modules/esm/loader:441:20)
+    at afterLoad (node:internal/modules/esm/loader:509:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)
+    at afterResolve (node:internal/modules/esm/loader:614:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)
+    at node:internal/modules/esm/loader:639:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:547:22)
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs (95.064167ms)
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/cli.test.mjs:4
+#!/usr/bin/env node
+^
+
+SyntaxError: Invalid or unexpected token
+    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:93:18)
+    at #translate (node:internal/modules/esm/loader:441:20)
+    at afterLoad (node:internal/modules/esm/loader:509:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)
+    at afterResolve (node:internal/modules/esm/loader:614:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)
+    at node:internal/modules/esm/loader:639:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:547:22)
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/cli.test.mjs (106.056375ms)
+✔ happy path: creates, tethers, substitutes placeholders (854.746833ms)
+✔ explicit --assignee is forwarded to gh issue create (744.876084ms)
+✔ missing projectId: exits non-zero before calling gh (280.910667ms)
+✔ tether failure: prints recovery command and exits non-zero (588.722ms)
+✔ --parent flag forwards to project-tether (547.557583ms)
+✔ --no-tether: skips tether step entirely (529.619833ms)
+✔ --shape sub-issue: refuses creation under a Done parent epic (470.000083ms)
+✔ --shape sub-issue: AITM_SKIP_PARENT_STATE_GATE=1 bypasses the Done-parent check (624.971916ms)
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/move-state.test.mjs:4
+#!/usr/bin/env node
+^
+
+SyntaxError: Invalid or unexpected token
+    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:93:18)
+    at #translate (node:internal/modules/esm/loader:441:20)
+    at afterLoad (node:internal/modules/esm/loader:509:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)
+    at afterResolve (node:internal/modules/esm/loader:614:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)
+    at node:internal/modules/esm/loader:639:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:547:22)
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/move-state.test.mjs (103.793792ms)
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:5
+#!/usr/bin/env node
+^
+
+SyntaxError: Invalid or unexpected token
+    at compileSourceTextModule (node:internal/modules/esm/utils:355:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:93:18)
+    at #translate (node:internal/modules/esm/loader:441:20)
+    at afterLoad (node:internal/modules/esm/loader:509:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:514:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:567:36)
+    at afterResolve (node:internal/modules/esm/loader:614:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:12)
+    at node:internal/modules/esm/loader:639:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:547:22)
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs (103.044083ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 8
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4776.692584
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs (95.064167ms)
+  'test failed'
+
+test at scripts/tests/slow/task-tracker/lib/cli.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/cli.test.mjs (106.056375ms)
+  'test failed'
+
+test at scripts/tests/slow/task-tracker/lib/move-state.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/move-state.test.mjs (103.793792ms)
+  'test failed'
+
+test at scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs (103.044083ms)
+  'test failed'

@@ -1,0 +1,25 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "secondary-squash-verification",
+      "description": "Add secondary-target attribution regressions and repair the default multi-source squash predicate",
+      "baseHumanHours": 4,
+      "signals": {
+        "modules": ["delivery-verification", "deliver-verb"],
+        "dependencies": ["complete-source-inventory", "external-squash-recovery"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["focused-unit", "develop-iteration", "fast", "slow"],
+    "isolation": "one delivery predicate plus focused pure and verb-boundary regressions",
+    "expectedMinutes": 25
+  },
+  "risks": [
+    "A loose membership check could accept an unrelated target",
+    "A fallback change could weaken canonical attribution or zero-write refusal"
+  ],
+  "comparableIssueIds": [1490, 1574]
+}

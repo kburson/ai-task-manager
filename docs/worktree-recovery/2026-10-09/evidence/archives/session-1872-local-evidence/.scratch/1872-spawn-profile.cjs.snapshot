@@ -1,0 +1,32 @@
+const cp = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+for (const name of ['spawnSync', 'execFileSync']) {
+  const original = cp[name];
+  cp[name] = function(command, args, ...rest) {
+    const start = process.hrtime.bigint();
+    try { return original.call(this, command, args, ...rest); }
+    finally {
+      const label = Array.isArray(args) ? String(args[0] || '') : '';
+      fs.appendFileSync(process.env.AITM_PERFORMANCE_TRACE, JSON.stringify({
+        pid: process.pid, ppid: process.ppid, api: name,
+        command: path.basename(String(command)), operation: path.basename(label),
+        ms: Number(process.hrtime.bigint() - start) / 1e6
+      }) + '\n');
+    }
+  };
+}
+require('node:module').syncBuiltinESMExports();
+const copyOriginal = fs.cpSync;
+fs.cpSync = function(source, target, options) {
+  const start = process.hrtime.bigint();
+  try { return copyOriginal.call(this, source, target, options); }
+  finally {
+    fs.appendFileSync(process.env.AITM_PERFORMANCE_TRACE, JSON.stringify({
+      pid: process.pid, ppid: process.ppid, api: 'cpSync', command: 'copy',
+      operation: path.basename(String(source)),
+      ms: Number(process.hrtime.bigint() - start) / 1e6
+    }) + '\n');
+  }
+};
+require('node:module').syncBuiltinESMExports();

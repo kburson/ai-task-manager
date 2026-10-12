@@ -1,0 +1,12 @@
+✔ delivery Explain exposes only named read ports (0.71575ms)
+✔ archived recertification retains its observed authority and original runner provenance (31.647291ms)
+✔ current recertification captures complete simulated authority without executing actions (18604.706792ms)
+✔ current recertification replays start from identical current authority bytes (17786.779417ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 36780.210375
