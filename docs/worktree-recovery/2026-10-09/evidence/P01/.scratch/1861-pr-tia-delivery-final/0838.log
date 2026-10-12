@@ -1,0 +1,17 @@
+✔ omits a matching unattributed source record with two repository parents (1.248542ms)
+✔ accepts GitHub ellipsis truncation when immutable inspection proves the full merge title (0.774375ms)
+✔ preserves strict attribution input for one parent (0.126083ms)
+✔ preserves strict attribution input for mismatched title (0.073583ms)
+✔ preserves strict attribution input for malformed parents (0.079458ms)
+✔ preserves strict attribution input when repository inspection fails (0.124917ms)
+✔ preserves strict attribution input when immutable records are malformed (0.105583ms)
+✔ refuses merged attribution when the provider inventory is not proven complete (0.064ms)
+✔ does not inspect attributed source subjects (0.099875ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.844792

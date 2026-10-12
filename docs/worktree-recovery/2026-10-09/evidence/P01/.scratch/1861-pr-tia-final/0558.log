@@ -1,0 +1,21 @@
+✔ production estimation transport uses the #1070 store without direct REST comment code (0.872958ms)
+✔ production estimation transport resolves the issue node and writes through GraphQL (0.57975ms)
+✔ record construction generates canonical ULIDs and validates the complete envelope (4.184917ms)
+✔ current forecast, outcome, and rubric payloads validate their exact schemas (0.797625ms)
+✔ published v1 forecasts with fractional hours remain readable but cannot be newly created (1.530042ms)
+✔ forecast rejects invalid sizes, WBS identity/totals, stage totals, and P80 ordering (0.215166ms)
+✔ forecast rejects arbitrary fractions on every published estimate surface (0.271958ms)
+✔ outcomes require a frozen forecast and coherent non-negative actuals (0.125791ms)
+✔ rubrics require unique outcome identities and coherent samples (0.132833ms)
+✔ published v1 rubrics without planning thresholds remain readable for migration (0.15025ms)
+✔ known estimation record types are validated and correlated by the canonical envelope (0.982208ms)
+✔ visible renderers expose evidence while presentation edits leave payload hashes unchanged (2.061ms)
+✔ immutable estimation writes use the comment store and accept success only after read-back (1.529458ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.509916

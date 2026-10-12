@@ -1,0 +1,35 @@
+✔ production child reader retains complete paginated child identity and refuses malformed pages (2.715583ms)
+✔ production worktree reader compares binding identity and observes dirty paths without writing (0.28475ms)
+✔ production delivery reader uses canonical parent lineage and current receipt evidence (2.525583ms)
+✔ production delivery rejects evidence-v2 without invoking its mutating close runner (0.286708ms)
+✔ production guard adapter reads dependencies and refuses missing local commit objects (0.891958ms)
+✔ production close reaches ready with fresh authority and only read transports (8.320666ms)
+✔ production close collector and terminal authority guard refuse changed delivery after ready (2.606875ms)
+✔ production close observes workflow policy when a guard requires enrichment (4.283667ms)
+✔ production close cannot select ordinary completion for a CLOSED GitHub issue in Review (2.342958ms)
+✔ production close refuses issue-body changes even when semantic scope is unchanged (1.4515ms)
+✔ production close refuses a changed issue revision with byte-identical body (1.253041ms)
+✔ production close cannot bypass pending recovery on an OPEN issue in Review (2.764084ms)
+✔ production close retains immutable initial and current issue revisions (1.702125ms)
+✔ ordinary close collects current authority without effects (3.2485ms)
+✔ close fails closed on missing objects and retains independent guard blockers (1.500625ms)
+✔ close cannot convert a missing receipt or child read into readiness (1.836333ms)
+✔ production close adapter fails closed without read-only delivery and guard seams (0.795792ms)
+✔ production guards pin both child and epic delivery proofs to the verified immutable tip (2.048083ms)
+✔ collector preserves all seven fields on read failure and does not execute effects (2.903084ms)
+✔ epic child refusals and independent child approval requests survive close collection (0.48025ms)
+✔ close preserves approval requests alongside attribution investigation (0.719375ms)
+✔ incorporated and malformed evidence-v2 authority cannot select a special close lane (0.683875ms)
+✔ a current Review state selects sanctioned close navigation (0.048ms)
+✔ Done remains terminal and cannot select another close (0.035666ms)
+✔ Review promotion delegates to the close collector (0.542166ms)
+✔ close retains approval and investigation requests simultaneously (1.292417ms)
+✔ missing workflow-policy reader is a typed indeterminate result (1.13375ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57.571667

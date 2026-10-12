@@ -1,0 +1,11 @@
+✔ real timing CLI publishes Unknown from a unique canonical source without stale numeric fallback (1045.313209ms)
+✔ real timing CLI rejects ambiguous canonical source before any write (609.397708ms)
+✔ real timing CLI refuses malformed work rows rather than silently dropping them (567.937208ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2226.093708

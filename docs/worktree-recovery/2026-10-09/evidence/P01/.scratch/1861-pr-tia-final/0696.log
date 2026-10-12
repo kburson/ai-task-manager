@@ -1,0 +1,22 @@
+✔ close evidence accepts a docs-only Test receipt with three recorded lane skips (3.230791ms)
+✔ close evidence refuses a receipt when live Verification Commands changed (0.703833ms)
+✔ close evidence keeps all five classifications required without a valid lane skip (0.196334ms)
+✔ close evidence distinguishes no Test receipt for the exact final SHA (0.082625ms)
+✔ close evidence distinguishes multiple Test receipts for the exact final SHA (0.481958ms)
+✔ the close outcome runtime needs no override for the #1146-equivalent fixture (5.56325ms)
+✔ the close outcome runtime accepts a resolved historical delivery SHA (1.256792ms)
+✔ the close outcome runtime without a resolver still selects the current branch head (0.359584ms)
+✔ the close outcome runtime rejects a non-function verification SHA resolver (0.318583ms)
+▶ the close outcome runtime rejects malformed resolved verification SHAs
+  ✔ null (0.245083ms)
+  ✔ uppercase (0.11075ms)
+  ✔ non-SHA (0.110292ms)
+✔ the close outcome runtime rejects malformed resolved verification SHAs (0.802041ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.016834

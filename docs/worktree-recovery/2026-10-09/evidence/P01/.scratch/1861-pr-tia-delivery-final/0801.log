@@ -1,0 +1,72 @@
+#925 is already fully closed; no terminal writes were repeated.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+✔ fully converged Delivered close retry is an exact read-only success (1.28ms)
+✔ completed disposition step refuses a conflicting live terminal disposition (0.335041ms)
+✔ open Done recovery refuses a disposition that contradicts its completed step (0.120625ms)
+✔ pending disposition step refuses a contradictory live terminal disposition (0.116166ms)
+✔ partial Delivered close transaction exposes only its missing suffix (0.523958ms)
+✔ malformed, duplicate, and contradictory Delivered close records fail closed (0.232625ms)
+✔ Delivered close transaction marker round-trips exact canonical bytes (1.045042ms)
+✔ duplicate or malformed Delivered close markers refuse during read (0.29525ms)
+✔ completed Delivered close retry performs no terminal mutation (10.447541ms)
+✔ successful Delivered close persists a complete terminal transaction (28.246458ms)
+✔ explicit restart audits a stale pre-terminal transaction before replacing and replaying it (20.401083ms)
+✔ restart adopts an audit-backed replacement body after the body-write response was lost (16.659541ms)
+✔ partial Delivered close runs only the missing terminal suffix (43.424125ms)
+✔ Done-board open-issue retry resumes at issue close without replaying earlier steps (6.369875ms)
+✔ closed Done retry resumes only labels and binding from durable issue step (5.770708ms)
+✔ closed not-Done issue resumes its delivered-close transaction (7.428583ms)
+✔ open Review partial retry rechecks lifecycle authority before a pending board effect (4.89975ms)
+✔ pending Delivered disposition is adopted without overwriting it (4.816209ms)
+✔ durable effects without checkpoints are observed and adopted before replay (21.198833ms)
+✔ newer binding conflict survives a terminal close retry untouched (4.909417ms)
+✔ stale pre-close binding residue resumes without refreshing close authority (5.031875ms)
+✔ Done-state durable retry bypasses ordinary Review gates without force or renewed approval (4.149791ms)
+✔ disposition read outage after transaction discovery fails closed (2.495209ms)
+✔ label cleanup failure leaves labels and binding transaction steps pending (3.313375ms)
+✔ markerless open Done close is adopted into a complete durable transaction (7.078375ms)
+✔ receipt-gate injection does not implicitly bypass fresh verification (3.105083ms)
+Closed #925.
+Closed #925.
+Closed #925.
+Closed #925.
+#925 is already fully closed; no terminal writes were repeated.
+✔ lost transaction-checkpoint response is adopted without repeating durable effects (963.798958ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1171.298583
+[task-tracker] ⛔ Refusing to close #925: close-authority-drift: fresh Review-to-Done guards refused.
+[task-tracker] ⛔ Refusing to finalize #925: a newer binding or occupancy claim supersedes the terminal cleanup authority (no-recovery-backed-replacement).
+#925 terminal disposition could not be read after transaction discovery: project field unavailable
+No convergence mutation was attempted; retry later.
+[task-tracker] warn: failed to strip ToDo label on #925: label API unavailable
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:fresh-input. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-authority-drift: fresh Review-to-Done guards refused.
+[task-tracker] ⛔ Refusing to close #925: close-authority-drift: fresh Review-to-Done guards refused.
+[task-tracker] ⛔ Refusing to close #925: close-authority-drift: fresh Review-to-Done guards refused.

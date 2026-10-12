@@ -1,0 +1,25 @@
+▶ chore-mode state, scope, and commit contract
+  ✔ readChoreMode returns defaults when state file is missing (1.695958ms)
+  ✔ readChoreMode returns defaults when state JSON is malformed (0.847958ms)
+  ✔ readChoreMode returns defaults when choreMode key is absent (0.887083ms)
+  ✔ writeChoreMode → readChoreMode round-trip (1.646625ms)
+  ✔ writeChoreMode preserves other top-level keys (1.503958ms)
+  ✔ readChoreMode coerces non-string/non-boolean fields to defaults (1.626584ms)
+  ✔ chore-mode activation records a durable audit marker (1.039709ms)
+  ✔ audit log is append-only and survives chore-mode off (2.756834ms)
+  ✔ chore-mode bypass does not cover installed guard paths (1.47ms)
+  ✔ checkChoreCommitSubject allows `chore: ` prefix (0.720875ms)
+  ✔ checkChoreCommitSubject refuses feat/fix/docs/etc subjects (0.701291ms)
+  ✔ checkChoreCommitSubject requires a space after the colon (0.527792ms)
+  ✔ checkChoreCommitSubject is case-sensitive (0.686375ms)
+  ✔ checkChoreCommitSubject tolerates non-string input (0.535583ms)
+  ✔ checkChoreCommitSubject allows scoped chore subjects (0.511208ms)
+✔ chore-mode state, scope, and commit contract (130.954375ms)
+ℹ tests 15
+ℹ suites 1
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 134.591875

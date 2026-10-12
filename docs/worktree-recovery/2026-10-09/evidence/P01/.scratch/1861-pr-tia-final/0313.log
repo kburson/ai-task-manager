@@ -1,0 +1,12 @@
+✔ default and tracked field schemas share the terminal Disposition contract (1.618083ms)
+✔ config loader and authoring preserve fieldDisposition compatibility projection (0.186583ms)
+✔ fresh-init shell projects the generic disposition field into task-tracker config (1.401625ms)
+✔ workflow guide documents the positive delivered-only query (1.720958ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.505458

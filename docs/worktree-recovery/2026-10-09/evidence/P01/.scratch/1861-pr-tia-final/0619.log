@@ -1,0 +1,11 @@
+✔ local-trunk ID is closed and cannot enter an ordinary or PR waiver (0.939625ms)
+✔ v2 local record binds exact scope, digest, identity, and expiry (7.160542ms)
+✔ v2 request accepts local scope while rejecting mismatched kind and ID (0.999125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.847459

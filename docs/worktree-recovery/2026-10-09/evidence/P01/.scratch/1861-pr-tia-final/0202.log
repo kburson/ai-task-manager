@@ -1,0 +1,30 @@
+Closed #1381.
+#1381 is already fully closed; no terminal writes were repeated.
+Closed #1381.
+Closed #1381.
+✔ A to B reused-branch delivery closes historical A through production seams and retries read-only (161.729959ms)
+✔ interrupted A delivery recovers its receipt after the branch advances without provider action (3.752667ms)
+✔ reused-branch composition fails closed on ambiguous PR and corrupt record histories (11.78525ms)
+✔ historical recovery refuses unreadable trunk, unreachable merge, and altered authorized bytes (5.666625ms)
+✔ composed close refuses stale lifecycle, approval, PR, merge, method, and attribution evidence (214.60125ms)
+✔ partial Delivered terminal transaction resumes only its exact suffix under durable authority (57.680791ms)
+✔ close rejects malformed provider timestamps before receipt or terminal mutation (1.807042ms)
+✔ #1382 and #1383 project one approved ledger but produce distinct terminal record chains (25.173083ms)
+✔ amendment gates keep Phase B ledger authority after #1381 Done and block chain or #939 drift (18.101458ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 506.576583
+[task-tracker] ⛔ Refusing to close #1381: review-authorization-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/aitm-1381-close-wiring-ws8w3R for #1381
+[task-tracker] ⛔ Refusing to close #1381: delivery-preflight:head-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #1381: delivery-preflight:head-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #1381: review-authorization-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #1381: close-delivery-receipt:missing. Run `/task deliver` until a verified exact-head receipt exists, then retry. If a delivery intent is pending because an invariant failed, prepare an exact waiver with `/task workflow-exception prepare #N --input-file <proposal.json>`.
+[task-tracker] ⛔ Refusing to close #1381: close-delivery-receipt:merge-commit-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #1381: delivery-verification:merge-method-source-disagreement predicate=merge-method-source-disagreement recovery="correct the failed predicate through the governed workflow and retry delivery". Run `/task deliver` until a verified exact-head receipt exists, then retry. For a historical or external merge-method discrepancy, use `/task deliver <N> --reconcile-merge-method <merge|squash|rebase> --reason "<why>"`.
+[task-tracker] ⛔ Refusing to close #1381: delivery-verification:merge-commit-bytes predicate=merge-commit-bytes recovery="correct the failed predicate through the governed workflow and retry delivery". Run `/task deliver` until a verified exact-head receipt exists, then retry.

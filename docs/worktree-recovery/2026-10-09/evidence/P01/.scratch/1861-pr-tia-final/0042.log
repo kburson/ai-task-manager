@@ -1,0 +1,12 @@
+self-bind-resume.test.mjs: ok
+already active: #1140
+✔ same-issue resume restores fleet evidence without timing writes (146.800708ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.478375
+[dependency-disposition] #1140: binding remains active; retry dependency projection (dependency-disposition:config)

@@ -1,0 +1,29 @@
+▶ guard-parity-review-done: registry == state-object walk
+  ✔ accept: approved + clean deps passes both paths (208.51475ms)
+  ✔ refuse: missing review-approved marker — both paths refuse with review-exit-review-approved (23.231291ms)
+  ✔ refuse: missing dod-verified marker — both paths refuse with review-exit-close-gates (21.480667ms)
+  ✔ refuse: missing both markers — both refusals surface together (10.697583ms)
+  ✔ rollback: review → test bypasses review-exit-done guards (0.413167ms)
+✔ guard-parity-review-done: registry == state-object walk (265.758333ms)
+ℹ tests 5
+ℹ suites 1
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 267.7975
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 279) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }

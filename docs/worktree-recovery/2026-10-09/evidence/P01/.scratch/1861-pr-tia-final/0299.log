@@ -1,0 +1,13 @@
+✔ a marked unticked lifecycle box is recognized as lifecycle (excluded) (0.858292ms)
+✔ a plain unticked lifecycle box is excluded (no regression) (0.077667ms)
+✔ a waived unticked AC is excluded (never blocks close) (0.1275ms)
+✔ a genuine unticked non-lifecycle, non-waived AC still blocks (0.15275ms)
+✔ fenced example checkboxes are still ignored (0.059542ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.348625

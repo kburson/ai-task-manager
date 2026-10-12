@@ -1,0 +1,19 @@
+✔ flat layout (Claude): deterministic path, no disk required (1.157667ms)
+✔ date-bucketed layout (Codex): finds the rollout file by sid suffix (80.335291ms)
+✔ #1092: a Codex Desktop thread id resolves its native rollout suffix (19.991916ms)
+✔ date-bucketed layout: returns null when no matching file exists (22.745875ms)
+✔ cwd-session-dir layout treats GROK_HOME as the provider home itself (26.801041ms)
+✔ cwd-session-dir layout defaults Grok home beneath homedir (27.474042ms)
+✔ cwd-session-dir layout returns null instead of selecting another session (23.071042ms)
+✔ missing adapter / sid / homedir → null (0.138708ms)
+✔ null transcriptLayout → null (provider declares no resolvable transcript) (0.103625ms)
+✔ format parity: both providers feed identical session-ref marker grammar (23.485375ms)
+✔ degradation parity: unresolvable Codex path → sid-only marker (jsonl="") (23.151166ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 252.473708

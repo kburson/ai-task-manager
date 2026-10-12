@@ -1,0 +1,27 @@
+✔ collectAssignedInventory exhaustively pages and rejects a repeated cursor (1.490667ms)
+▶ collectAssignedInventory fails closed on malformed pagination and ambiguous identities
+  ✔ missing next cursor (0.11225ms)
+  ✔ changing total count (0.090208ms)
+  ✔ duplicate repository issue identity (0.083833ms)
+  ✔ incomplete assignee page (0.14775ms)
+  ✔ pagination safety limit (0.13775ms)
+✔ collectAssignedInventory fails closed on malformed pagination and ambiguous identities (1.458875ms)
+✔ inspectReadyForPlanMigration is zero-write and rejects a mixed two-scan identity set (9.848375ms)
+✔ inspectReadyForPlanMigration rejects unexpected or identity-conflicting Status options (0.21125ms)
+✔ applyReadyForPlanMigration journals read-back before option/config cutover and resumes (21.502083ms)
+✔ apply refuses assignee drift before option rename (9.638625ms)
+✔ apply requires the configured Backlog option id in item read-back (8.168125ms)
+✔ saved-view verification requires assigned filters and a Status board (0.300708ms)
+✔ new journal stores the immutable plan for post-rename resume (9.094083ms)
+✔ a completed journal returns a complete idempotent result (8.309292ms)
+✔ operator migration documentation records the exact cutover and saved-view contracts (1.895458ms)
+✔ recovery reporting names the exact durable phase and retry command (0.100708ms)
+✔ dry run always inspects live inventory while apply resumes the durable plan (0.452542ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 78.380041

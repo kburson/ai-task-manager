@@ -1,0 +1,12 @@
+✔ root epic forks from trunk (0.855583ms)
+✔ nested sub-epic forks from its parent epic head, not trunk (0.090375ms)
+✔ refuses to cut an epic branch for a non-epic issue (0.269625ms)
+✔ requires an issue and injected git (0.099375ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.591125

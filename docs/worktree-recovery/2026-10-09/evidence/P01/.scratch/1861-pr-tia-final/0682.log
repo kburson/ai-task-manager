@@ -1,0 +1,14 @@
+✔ fresh current body, not the caller snapshot, is scanned when no normalization is pending (0.855458ms)
+✔ failed current-body read refuses instead of returning the stale caller snapshot (0.435917ms)
+✔ missing complete evaluator cannot enter the old derive-before-readiness path (0.09ms)
+✔ missing execution HEAD refuses instead of stamping unknown provenance (0.09025ms)
+✔ both execution HEAD reads use the authoritative project directory (0.381334ms)
+✔ an absent authoritative directory refuses before any HEAD read (0.0755ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.617

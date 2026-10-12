@@ -1,0 +1,15 @@
+✔ #806 parseFunctionalDodKeys resolves a single-id vc-list citation (AC1) (2.045083ms)
+✔ #806 multi-id vc-list resolves each cited id in order (AC4) (0.194375ms)
+✔ #806 legacy inline cmd on a Functional DoD line still resolves — no regression (AC5) (0.119333ms)
+✔ #806 a citation to a tombstoned id throws loudly (AC4 tombstone semantics) (0.445167ms)
+✔ #806 extractVerifiedCommands resolves vc-list against supplied vcItems (0.085125ms)
+✔ #806 extractVerifiedCommands on a vc-list label with no vcItems throws (parity with AC path) (0.068625ms)
+✔ #806 hasVerifiedDeclaration is a non-throwing presence check for vc-list and legacy forms (0.101041ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.113
