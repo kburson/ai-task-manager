@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { refreshGovernedDecomposition } from '../task-tracker/lib/decomposition-plan-exit-guard.mjs';
+import { getProjectDir } from '../task-tracker/paths.mjs';
 import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'create-issue');
 // Atomic issue creation: gh issue create + project tether + sub-issue link +
@@ -101,6 +103,16 @@ function extractIssueNumber(urlOrText) {
   const trimmed = String(urlOrText).trim();
   if (/^\d+$/.test(trimmed)) return Number(trimmed);
   return null;
+}
+
+// @story #1991 — initial values are assessed; they are not an existing estimate revision.
+export async function assessCreatedIssueContinuation({
+  issueNumber,
+  cfg,
+  projectDir = getProjectDir(),
+  deps = {},
+}) {
+  return refreshGovernedDecomposition({ issueNumber, cfg, projectDir, deps });
 }
 
 export function formatCreatedIssueToken(issueNumber) {
@@ -547,7 +559,26 @@ async function main() {
       substitutePlaceholders(issueNumber, bodyContent, args, cfg.repo);
     }
 
-    console.log(`https://github.com/${cfg.repo}/issues/${issueNumber}`);
+    if (!skipTether) {
+      const assessment = await assessCreatedIssueContinuation({ issueNumber, cfg });
+      console.error(
+        'create-issue: current decomposition ' +
+          (assessment.current?.assessment.status ?? assessment.status) +
+          ' for #' +
+          issueNumber
+      );
+      if (assessment.status !== 'confirmed') {
+        console.error(
+          'partial-success: inspect #' +
+            issueNumber +
+            ' and run npx aitm resume ' +
+            issueNumber +
+            ' after restoring current authority; do not create a duplicate.'
+        );
+        process.exitCode = 6;
+      }
+    }
+    console.log('https://github.com/' + cfg.repo + '/issues/' + issueNumber);
   } finally {
     if (tmpDir) {
       try {

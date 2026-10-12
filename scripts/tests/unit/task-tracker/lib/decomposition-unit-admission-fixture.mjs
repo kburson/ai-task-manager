@@ -8,7 +8,13 @@ import { mapSubIssueNodes } from '../../../../gh/lib/wave-admission.mjs';
 import { parseIssueKind } from '../../../../task-tracker/lib/issue-kind.mjs';
 import { hash } from './decomposition-authority-fixtures.mjs';
 import { formatIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
-export async function currentUnitAuthority({ body, issue = 1, repository = 'o/r', hours = 7 }) {
+export async function currentUnitAuthority({
+  body,
+  issue = 1,
+  repository = 'o/r',
+  hours = 7,
+  childTerminal = true,
+}) {
   const f = fixture(hours);
   let complete = body;
   if (!/^## User Story$/m.test(complete))
@@ -69,8 +75,8 @@ export async function currentUnitAuthority({ body, issue = 1, repository = 'o/r'
       number: issue + 1000,
       title: 'One bounded child',
       body: childBody,
-      state: 'CLOSED',
-      stateReason: 'COMPLETED',
+      state: childTerminal ? 'CLOSED' : 'OPEN',
+      stateReason: childTerminal ? 'COMPLETED' : null,
       labels: { nodes: [{ name: 'feature' }], pageInfo: { hasNextPage: false } },
       projectItems: {
         nodes: [
@@ -79,7 +85,10 @@ export async function currentUnitAuthority({ body, issue = 1, repository = 'o/r'
             project: { id: 'PVT_a' },
             fieldValues: {
               nodes: [
-                { name: 'Done', field: { id: 'STATUS', name: 'Status' } },
+                {
+                  name: childTerminal ? 'Done' : 'Ready for Planning',
+                  field: { id: 'STATUS', name: 'Status' },
+                },
                 { number: 1, field: { id: 'RANK', name: 'Rank' } },
               ],
               pageInfo: { hasNextPage: false },

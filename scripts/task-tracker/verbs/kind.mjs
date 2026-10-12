@@ -20,6 +20,11 @@
 // already-stamped evidence marker on an item whose kind-membership didn't
 // change.
 
+import { assertGovernedMutationSession } from './issue-body.mjs';
+import {
+  assertGovernedDecompositionRecovery,
+  refreshGovernedDecomposition,
+} from '../lib/decomposition-plan-exit-guard.mjs';
 import { readFileSync } from 'node:fs';
 import { loadState } from '../state.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -66,13 +71,23 @@ export async function verbKind(ctx) {
     process.exit(1);
   }
 
+  assertGovernedMutationSession(loadState(statePath), Number(target));
+  const recovery = {
+    issueNumber: Number(target),
+    cfg,
+    projectDir: ctx.projectDir,
+    deps: ctx.deps ?? {},
+  };
+  await assertGovernedDecompositionRecovery(recovery);
   if (kind === 'epic') {
     const reconcileEpicMetadata = ctx.reconcileEpicMetadata || defaultReconcileEpicMetadata;
     await reconcileEpicMetadata({
       issueNumber: Number(target),
       repo: cfg.repo,
       forceEpic: true,
-      deps: { pexec },
+      deps: { ...ctx.deps, pexec },
+      cfg,
+      projectDir: ctx.projectDir,
     });
     console.log(`[task-tracker] ✓ kind on #${target}: set to "epic".`);
     return;
@@ -81,7 +96,8 @@ export async function verbKind(ctx) {
   await mutateIssueBody({
     issueNumber: target,
     repo: cfg.repo,
-    deps: { pexec },
+    deps: { ...ctx.deps, pexec },
+    validateFreshBaseAsync: (body) => assertGovernedDecompositionRecovery({ ...recovery, body }),
     mutate: (base) => {
       const marked = setIssueKindMarker(base, kind);
       const loc = locateFunctionalSection(marked);
@@ -93,6 +109,11 @@ export async function verbKind(ctx) {
     },
   });
 
+  const reassessed = await refreshGovernedDecomposition(recovery);
+  console.log(
+    '[task-tracker] decomposition after kind: ' +
+      (reassessed.current?.assessment.status ?? reassessed.status)
+  );
   const verb = kind === 'code' ? 'cleared (code is the default lane)' : `set to "${kind}"`;
   console.log(`[task-tracker] ✓ kind on #${target}: ${verb}.`);
 }

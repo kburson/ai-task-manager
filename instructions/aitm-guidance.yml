@@ -649,7 +649,7 @@ entries:
           anchor: reviewed-scope-evidence
 
   - id: protocol.decomposition-continuation
-    revision: 2
+    revision: 3
     binds:
       action_ids:
         - resume
@@ -674,7 +674,10 @@ entries:
         decomposition requires reviewed preparation and governed split or conversion. A prior agent waiver
         cannot supply current permission. Fresh hooks also fence source, generator, document and remote
         deliverable effects. Epic planning readiness cannot authorize completion; terminal materialized
-        children and existing lifecycle gates remain required. Own governed scope revisions are preparation,
+        children and existing lifecycle gates remain required. Plan exit and decompose-check consume this same
+        current assessment. Exact kind and split recovery require usable original scope, selected plan and
+        ownership; metadata reassessment preserves unresolved publication intent. Initial child values are
+        assessed after creation without inventing an estimate revision. Own governed scope revisions are preparation,
         while mixed new deliverables require scoped capability. Identical recorded history and physically
         contained scratch diagnostics remain available. Advisory review remains advisory.
       triggered_when:

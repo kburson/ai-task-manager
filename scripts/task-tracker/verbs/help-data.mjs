@@ -425,13 +425,18 @@ export const VERB_REFERENCE = {
   },
   'decompose-check': {
     topic: 'board',
-    summary: 'Classify whether a planned issue is atomic or requires decomposition.',
+    summary: 'Inspect current decomposition assessment and delivery readiness.',
     usage: '/task decompose-check <issue> [--plan <path>] [--json]',
     flags: [
-      { flag: '--plan <path>', desc: 'override the plan linked from Plan Metadata' },
+      {
+        flag: '--plan <path>',
+        desc: 'compatibility input; current bound source authority remains authoritative',
+      },
       { flag: '--json', desc: 'emit the structured classification result' },
     ],
-    exitCodes: [{ code: 3, meaning: 'the issue must split and has no valid waiver' }],
+    exitCodes: [
+      { code: 3, meaning: 'current scoped completion is restricted, pending, or unavailable' },
+    ],
     examples: ['/task decompose-check 1052 --json'],
   },
   'split-plan': {

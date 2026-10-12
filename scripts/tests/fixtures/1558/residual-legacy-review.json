@@ -133,9 +133,9 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:d31132d3bdadf1a56bbdea58b1589054ce886712b607e1a567cb690f8ba7e711"
+        "sitesSha256": "sha256:24df72bfd1b8935264715d148d848e91c8015e264ab432407c504dd177e4a0f6"
       },
-      "rationale": "Decomposition warnings and refusals require the reviewed WBS and cannot be waived by generic prose."
+      "rationale": "Current shared assessment emits typed pending, required and unavailable refusals; dynamically selected fallback sites stay inventoried and cannot admit prose waivers or erase publication intent."
     },
     {
       "guardId": "plan-exit-deep-dive",
