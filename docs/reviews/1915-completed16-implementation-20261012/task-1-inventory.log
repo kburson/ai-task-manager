@@ -1,0 +1,14 @@
+✔ scanner distinguishes explicit, HTTP, opaque, bypass, and REST paths (11.232ms)
+✔ source-level scan matches committed expectations (340.459042ms)
+✔ multiline executable calls and shell continuations remain visible (0.220417ms)
+✔ moving a source site cannot hide behind an unchanged per-file count (247.340875ms)
+✔ dynamic run wrappers remain visible as uncovered GraphQL-capable dispatches (0.182416ms)
+✔ production inventory includes the dynamic issue-creation dispatch (238.046708ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 908.364375

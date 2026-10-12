@@ -3786,6 +3786,122 @@ export async function readMemoryNativeStageTransition(input) {
 }
 
 // @story #1855 — fixed original dispatch journal under the existing comment lock.
+// #1915 — separate current GET custody for the authentic completed16 restart.
+const existingTransitionResponses = new WeakMap();
+async function existingStageTransitionAuthority(input) {
+  const unchanged = commentStoreContinuity(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+  ]);
+  const { backend, capability, context, token, invocation } = input;
+  assertMemoryCapability(backend, capability, context);
+  const code = await import('../move-state/move-state-core.mjs');
+  unchanged();
+  const m = memory(backend),
+    journal = m.nativeStageRecords.at(-1);
+  const current = () => {
+    unchanged();
+    assertMemoryCapability(backend, capability, context);
+    const intent = code.readExistingNativeStageTransitionIntent(
+      token,
+      backend,
+      invocation,
+      context
+    );
+    validateNativeOrder(m);
+    validateNativeStageJournal(journal);
+    if (
+      m.nativeStageRecords.at(-1) !== journal ||
+      journal.steps.length !== 16 ||
+      journal.steps.some((step) => step.readback === null) ||
+      canonicalRecordJson(journal.header) !== canonicalRecordJson(intent.header)
+    )
+      revisionError('completed16-existing-read-authority');
+  };
+  current();
+  return { m, journal, current };
+}
+export async function acquireMemoryExistingNativeStageTransition(input) {
+  const { m, current } = await existingStageTransitionAuthority(input);
+  current();
+  acquireTimingResourceLock(m, input);
+}
+export function releaseMemoryExistingNativeStageTransition(input) {
+  assertCommentStoreKeys(input, ['backend', 'token', 'invocation']);
+  releaseTimingResourceLock(memory(input.backend), input);
+}
+export function assertMemoryExistingNativeStageTransitionResponse(input, response) {
+  const retained = existingTransitionResponses.get(response);
+  if (!retained) revisionError('completed16-existing-read-response');
+  const descriptors = assertCommentStoreKeys(input, [
+    'backend',
+    'capability',
+    'context',
+    'token',
+    'invocation',
+  ]);
+  if (
+    Object.keys(retained.authority).some(
+      (key) => descriptors[key].value !== retained.authority[key]
+    )
+  )
+    revisionError('completed16-existing-read-response');
+  assertMemoryCapability(input.backend, input.capability, input.context);
+  assertTransitionResponseData(retained, response);
+}
+export async function readMemoryExistingNativeStageTransition(input) {
+  const { m, journal, current: check } = await existingStageTransitionAuthority(input);
+  const current = () => {
+    check();
+    timingLock(m, input);
+  };
+  current();
+  const { reconstructNativeStageTransitionComment } = await import('./stage-execution.mjs');
+  current();
+  const derived = await reconstructNativeStageTransitionComment({
+    header: journal.header,
+    steps: journal.steps,
+  });
+  current();
+  const step = journal.steps[15];
+  const selected = m.nativeStageResources.comments.filter(
+    (comment) => comment.nodeId === step.intent.nodeId
+  );
+  const census = clone(m.nativeStageResources.comments);
+  current();
+  if (selected.length !== 1 || selected[0].id !== step.intent.commentId)
+    revisionError('completed16-existing-read-current');
+  const response = { stdout: selected[0].bytes, stderr: '', exitCode: 0 };
+  const sameCurrent = () => {
+    current();
+    if (
+      !derived.complete ||
+      canonicalRecordJson(response) !== canonicalRecordJson(step.readback.read.response) ||
+      canonicalRecordJson(census) !== canonicalRecordJson(step.readback.census) ||
+      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
+      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
+      m.observation.stage !== derived.stage
+    )
+      revisionError('completed16-existing-read-current');
+  };
+  sameCurrent();
+  const result = operation(m, 'native-stage-existing-transition-read', () => {
+    sameCurrent();
+    return response;
+  });
+  existingTransitionResponses.set(result, {
+    authority: Object.fromEntries(
+      Object.entries(Object.getOwnPropertyDescriptors(input)).map(([key, d]) => [key, d.value])
+    ),
+    descriptors: assertCommentStoreKeys(result, ['stdout', 'stderr', 'exitCode']),
+    bytes: canonicalRecordJson(result),
+  });
+  return result;
+}
+
 const nativeTailDispatchIntentReads = new WeakSet();
 const nativeTailDispatchIntentChecks = new WeakMap();
 const nativeTailDispatchPersisting = new WeakSet();

@@ -229,7 +229,7 @@ export async function withGovernedRevisionMutation({ context, observe }, fn) {
 
 // Only an actual live original Core entry can reach this read-only pending
 // exception. The general mutation policy remains unchanged and blocked.
-export function assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known) {
+export function assertNativeStageOriginalEntryPolicy(ctx, capability, origin, known, handoff) {
   const current = active.getStore();
   const held = current && observations.get(current.observation);
   if (
@@ -237,7 +237,8 @@ export function assertNativeStageOriginalEntryPolicy(ctx, capability, origin, kn
     held.originalStageEntry.ctx !== ctx ||
     held.originalStageEntry.origin !== origin ||
     held.originalStageEntry.known !== known ||
-    current.capability !== capability
+    current.capability !== capability ||
+    (arguments.length >= 5 && handoff !== held.originalStageEntry.handoff)
   )
     throw new RevisionPolicyError(outcome('indeterminate', 'revision-authority-unavailable'));
   held.originalStageEntry.check();
@@ -254,9 +255,9 @@ function originalStageReadState(held) {
     currentContract: held.originalStageEntry.origin.currentContract,
   };
 }
-export async function tryNativeStageOriginalEntry(ctx) {
+export async function tryNativeStageOriginalEntry(ctx, restartCall) {
   const core = await import('../move-state/move-state-core.mjs');
-  core.assertOriginalNativeStageEntry(ctx);
+  core.consumeOriginalNativeStageRestartCall(ctx, restartCall);
   const backend = ctx.revisionBackend;
   if (!backend) return null;
   assertRevisionMemory(backend);
@@ -269,9 +270,16 @@ export async function tryNativeStageOriginalEntry(ctx) {
   return withMemoryInterlock(backend, context, async (capability) => {
     const snapshot = canonicalRecordJson(backend.snapshot);
     const authority = canonicalRecordJson(readMemoryAuthority(backend, context));
+    let originalStageEntry = null;
     const check = () => {
       core.assertOriginalNativeStageEntry(ctx);
       assertMemoryCapability(backend, capability, context);
+      if (originalStageEntry?.admitted) {
+        core.assertCompleted16ResumeFrame(ctx, restartCall);
+        if (authority !== canonicalRecordJson(readMemoryAuthority(backend, context)))
+          throw new RevisionPolicyError(outcome('blocked', 'revision-conflict'));
+        return;
+      }
       if (
         snapshot !== canonicalRecordJson(backend.snapshot) ||
         authority !== canonicalRecordJson(readMemoryAuthority(backend, context))
@@ -305,6 +313,17 @@ export async function tryNativeStageOriginalEntry(ctx) {
     });
     check();
     const observation = Object.freeze({});
+    originalStageEntry = { ctx, origin, known, check, admitted: false, handoff: null };
+    const handoff = Object.freeze({
+      restartCall,
+      onFrameAdmitted() {
+        if (originalStageEntry.admitted)
+          throw new RevisionPolicyError(outcome('blocked', 'revision-conflict'));
+        core.assertCompleted16ResumeFrame(ctx, restartCall);
+        originalStageEntry.admitted = true;
+      },
+    });
+    originalStageEntry.handoff = handoff;
     observations.set(observation, {
       backend,
       context,
@@ -312,25 +331,33 @@ export async function tryNativeStageOriginalEntry(ctx) {
       state,
       approval: null,
       raw: backend.observation,
-      originalStageEntry: { ctx, origin, known, check },
+      originalStageEntry,
     });
     try {
       return await runMemoryContext(
         { backend, context, capability, observation, activity: 'stage-write' },
         async () => {
-          const result = await core.evaluateOriginalNativeStageRestart(
-            ctx,
-            capability,
-            origin,
-            known
-          );
-          check();
-          const final = await observeRevision({ context, deps: backend });
-          check();
-          if (canonicalRecordJson(final) !== canonicalRecordJson(state))
-            throw new RevisionPolicyError(outcome('blocked', 'revision-conflict'));
-          core.assertOriginalNativeStageEntrySources(ctx);
-          return result;
+          try {
+            const result = await core.evaluateOriginalNativeStageRestart(
+              ctx,
+              capability,
+              origin,
+              known,
+              handoff
+            );
+            check();
+            const final = await observeRevision({ context, deps: backend });
+            check();
+            if (canonicalRecordJson(final) !== canonicalRecordJson(state))
+              throw new RevisionPolicyError(outcome('blocked', 'revision-conflict'));
+            core.assertOriginalNativeStageEntrySources(ctx);
+            return result;
+          } catch (error) {
+            if (!originalStageEntry.admitted) throw error;
+            return core.freshCompleted16UnverifiedResult();
+          } finally {
+            core.expireCompleted16ResumeFrame(ctx, restartCall);
+          }
         }
       );
     } finally {

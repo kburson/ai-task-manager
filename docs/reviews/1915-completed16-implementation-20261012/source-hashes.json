@@ -1,0 +1,9 @@
+{
+  "scripts/task-tracker/lib/move-state/move-state-core.mjs": "5127e296aa8bb1cf2a74dac547101d8ce98efcbbd87b59235380aabaa420549d",
+  "scripts/task-tracker/lib/criteria-revision/policy.mjs": "a01426a5de24a317bb98c7d0a126e31cc290fff6e5a82f160b910c1902562cc0",
+  "scripts/task-tracker/lib/criteria-revision/store.mjs": "2e7acb96a5b482cd8eee021379d88ac447d36631937cbd137ce6fdbba16b24b0",
+  "scripts/task-tracker/lib/move-state/transition-commit.mjs": "6126ce0b6f1849fe04a8c8c5f92a4d6c84d64f586c858bb54a3722f995a3a183",
+  "scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs": "92e3b6d5d488b987e10ec5d5c7186d9bb3fa091d9616ff018b8bbab96af89d54",
+  "scripts/tests/helpers/native-stage-completed16-resume-controls.mjs": "6aee70d094795287dc45c698ca8dfb539c6882799055b5412f8095287c62ffdf",
+  "scripts/tests/integration/task-tracker/lib/revision-transport-quarantine.test.mjs": "0f817c4f92af364918d7bc89465f7dabca1137899f9b03ae8b5b22861e3b6d20"
+}

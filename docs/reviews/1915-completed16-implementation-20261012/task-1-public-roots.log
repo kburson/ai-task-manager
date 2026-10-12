@@ -1,0 +1,36 @@
+✔ actual shared pexec refuses nested and supplied memory capability before native process dispatch (649.47225ms)
+✔ actual shared execFile refuses nested and supplied memory capability before native process dispatch (357.310166ms)
+✔ actual shared spawn refuses nested and supplied memory capability before native process dispatch (352.681083ms)
+✔ memory quarantine survives asynchronous work scheduled inside its original lifetime (286.363666ms)
+✔ outside memory scope actual shared native transports keep ordinary offline behavior (705.994958ms)
+✔ actual new-tests comment default read cannot dispatch GitHub from memory authority (321.348292ms)
+✔ actual new-tests comment default write cannot dispatch GitHub from memory authority (363.955208ms)
+✔ actual timing find default refuses memory OS dispatch (588.641333ms)
+✔ actual timing legacy default refuses memory OS dispatch (292.442959ms)
+✔ actual timing canonical default refuses memory OS dispatch (303.331958ms)
+✔ actual timing update default refuses memory OS dispatch (284.722541ms)
+✔ stage-only timing update refuses before fallback transport (1071.667417ms)
+✔ stage-only timing create refuses before fallback transport (541.690209ms)
+✔ stage-only timing post-default refuses before fallback transport (271.59325ms)
+✔ stage-only body entry refuses before public callbacks (313.839791ms)
+✔ stage-only body failure-audit refuses before public callbacks (302.202958ms)
+✔ stage-only body versioned refuses before public callbacks (315.690042ms)
+✔ stage-only body mutate refuses input getters before observation (0.504875ms)
+✔ stage-only body versioned refuses input getters before observation (0.107792ms)
+✔ stage-only post15 write refuses context getters before native selection (0.344833ms)
+✔ stage-only post15 write refuses an ordinarily reachable callback route (0.744ms)
+✔ stage-only post15 repair refuses context getters before native selection (0.116583ms)
+✔ stage-only post15 repair refuses an ordinarily reachable callback route (0.270958ms)
+✔ stage-only post15 tail refuses context getters before native selection (0.140709ms)
+✔ stage-only post15 tail refuses an ordinarily reachable callback route (0.118708ms)
+✔ native consistency public inputs deny before caller access (0.499958ms)
+✔ transition16 new public roots refuse forged input before caller descriptors are consumed (0.877458ms)
+✔ completed16 public roots cannot create original-call, read or result custody from caller DATA (0.649166ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7570.484834

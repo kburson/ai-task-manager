@@ -3370,24 +3370,55 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
               const backend = createRevisionMemory(selected);
               const result = await moveState({ ...originalRetryContext, revisionBackend: backend });
               assert.equal(result.phase, 'native-stage-resume', 'real admission at ' + ordinal);
-              assert.equal(result.preparationReason, 'known-prefix-continuation-unavailable');
-              assert.equal(result.exit, 4);
-              assert.deepEqual(backend.snapshot, selected);
-              assert.deepEqual(
-                backend.effects.filter(
-                  (name) =>
-                    ![
-                      'authority-read',
-                      'page-read',
-                      'native-history-readback',
-                      'native-proof-record-readback',
-                    ].includes(name)
-                ),
-                [],
-                'only fixed reads, never writes at admission'
-              );
+              if (ordinal === 16) {
+                const { assertResumeResult, unverifiedPartial } =
+                  await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
+                assertResumeResult(result, unverifiedPartial());
+                assert.equal(
+                  backend.effects.filter((name) => name === 'native-stage-existing-transition-read')
+                    .length,
+                  1,
+                  'completed16 must execute its actual existing-comment read'
+                );
+                assert.deepEqual(
+                  backend.snapshot,
+                  selected,
+                  'Task1 has not released original17/18'
+                );
+                assert.deepEqual(
+                  backend.snapshot.nativeStageRecords.at(-1).steps.slice(0, 16),
+                  selected.nativeStageRecords.at(-1).steps
+                );
+              } else {
+                assert.equal(result.preparationReason, 'known-prefix-continuation-unavailable');
+                assert.equal(result.exit, 4);
+                assert.deepEqual(backend.snapshot, selected);
+                assert.deepEqual(
+                  backend.effects.filter(
+                    (name) =>
+                      ![
+                        'authority-read',
+                        'page-read',
+                        'native-history-readback',
+                        'native-proof-record-readback',
+                      ].includes(name)
+                  ),
+                  [],
+                  'only fixed reads, never writes at admission'
+                );
+              }
               assert.deepEqual(captureFiles(), files);
             }
+            const { qualifyCompleted16ReadControls, qualifyCompleted16OriginalCall } =
+              await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
+            const resumeControls = {
+              t,
+              originalContext: originalRetryContext,
+              snapshots: knownSnapshots,
+              captureFiles,
+            };
+            await qualifyCompleted16ReadControls(resumeControls);
+            await qualifyCompleted16OriginalCall(resumeControls);
           }
           assert.equal(
             (await observeRevision({ context: f.context, deps: createRevisionMemory(snapshot) }))

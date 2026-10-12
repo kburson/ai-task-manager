@@ -669,3 +669,50 @@ test('transition16 new public roots refuse forged input before caller descriptor
   });
   assert.equal(gets, 0);
 });
+
+// @story #1915
+test('completed16 public roots cannot create original-call, read or result custody from caller DATA', async () => {
+  const core = await import('../../../../task-tracker/lib/move-state/move-state-core.mjs');
+  const store = await import('../../../../task-tracker/lib/criteria-revision/store.mjs');
+  const native = await import('../../../../task-tracker/lib/move-state/transition-commit.mjs');
+  let gets = 0;
+  const value = {};
+  for (const key of ['backend', 'capability', 'context', 'token', 'invocation', 'stdout'])
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      get() {
+        gets++;
+        throw new Error('forged getter');
+      },
+    });
+  await withMemoryStageEffectQuarantine(async () => {
+    for (const invoke of [
+      () => core.consumeOriginalNativeStageRestartCall(value, value),
+      () => core.assertCompleted16ResumeFrame(value, value),
+      () => core.beginExistingNativeTransitionRead(value, value),
+      () => core.assertExistingNativeTransitionInput(value, value),
+      () => core.readExistingNativeTransitionExpected(value, value),
+      () => core.readExistingNativeStageTransitionIntent(value, value, value, value),
+      () => core.assertExistingNativeTransitionComparison(value, value),
+    ])
+      assert.throws(invoke, refused);
+    await assert.rejects(core.readCompleted16NativeTransitionComment(value, value), refused);
+    await assert.rejects(native.readExistingTransitionCommit(value, value), refused);
+    assert.throws(
+      () => native.assertExistingNativeTransitionResult(value, value, value),
+      TypeError
+    );
+    for (const name of [
+      'acquireMemoryExistingNativeStageTransition',
+      'readMemoryExistingNativeStageTransition',
+    ])
+      await assert.rejects(store[name](value), TypeError);
+    assert.throws(() => store.releaseMemoryExistingNativeStageTransition(value), TypeError);
+    assert.throws(
+      () => store.assertMemoryExistingNativeStageTransitionResponse(value, value),
+      TypeError
+    );
+  });
+  await assert.rejects(native.readExistingTransitionCommit(value, value), TypeError);
+  assert.equal(gets, 0);
+});
