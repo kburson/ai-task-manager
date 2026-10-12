@@ -40,3 +40,21 @@ The user's branch naming configuration for this project is:
 - `feature/epic/<epic-id>/defect/<defect-id>`
 
 Use the issue's native epic lineage to choose the pattern. This project instruction takes precedence over the generic `codex/` default and the old flat script fallback. Treat these patterns as end-user project configuration. Do not add or change script-based branch configuration merely to enforce this instruction. The user selected this existing `feature/epic/` convention on 2026-10-05.
+
+## Full-Auto review authority
+
+Full-Auto is the standing default in this workspace. Resolve the effective session
+review policy through the AITM task workflow before asking for approval. Genuine
+accepted SAR/SPR and XPR remain required where specified; after their acceptance,
+continue ordinary plan approval in Full-Auto instead of adding a human wait.
+Use `aitm auto both` for an explicit Full-Auto instruction and the sanctioned
+`TT_FULL_AUTO=1` approval path when its normal prerequisites are met.
+
+A current explicit manual review choice or an artifact-specific human hold takes
+precedence until the user releases it. Otherwise, generic skill/plan language
+about a human handoff does not introduce a manual review gate. Preserve native
+dependency, estimate/decomposition, source, worktree, exact-head verification,
+provider, delivery and closure gates. A technical refusal must be reported as its
+actual blocker; never present it as a request for already-delegated approval.
+Record avoidable approval-wait gaps separately from productive effort, preserving
+authentic event timestamps and SessionTime history.

@@ -21,7 +21,7 @@ refinement, estimate or execution-stop gate. The original recipe is not rewritte
 | 11   | Accepted plan+approved spec+current source/live tree independently deep-dived; no material contract divergence. See post-review-deep-dive.md. No child lifecycle completion stamp fabricated.                                                                            |
 | 12   | Native1918 hydration timing checkpoint and complete current inventory:1915 zero children;1918 existing 16 children; no duplicate creation.                                                                                                                               |
 | 13   | Rank6/1920 native dependency and one integration owner preserved.12h serial slice forecast; stale14h whole-story estimate and parent rollup must be revalidated.≥24h decomposition gate intact. No new children to refine.                                               |
-| 14   | Stop for human plan approval. Child Plan/Develop/source/estimate/ownership gates still due; fresh implementation agent is later. No implementation performed.                                                                                                            |
+| 14   | Full-Auto authority confirmed; no human approval wait. Sanctioned Plan approval follows actual Plan-entry/source/estimate/ownership prerequisites. The prior17m12s unnecessary wait is recorded in full-auto-correction.md. No implementation performed.                 |
 
 ## Native scope and gate evidence
 
@@ -32,9 +32,9 @@ uses the same governed promoter. An Explain query for the nonregistered action
 name `plan` is indeterminate and is not used as authorization. No gate was waived. Normal child binding now records this existing b957 integration checkout and active #1915 timing; no branch/worktree was created. The first metadata operation refused because its section omitted the newline before the next heading. Native local preflight reproduced that exact refusal, the canonical section boundary was corrected, and the governed retry succeeded at version46. No writer or guard was changed.
 
 The approved design is one increment of the full known1–16 story. Formal issue
-verification currently names an absent `criteria-revision-transition-recovery.test.mjs`.
+verification originally named absent `criteria-revision-transition-recovery.test.mjs`. The sanctioned correction at body version48 now names the genuine three-file known-prefix/recovery/complete coverage.
 The plan names genuine existing known-prefix-entry/recovery-from-comment/complete-saga
-coverage and requires a sanctioned declaration repair before evidence stamping;
+coverage with the declaration now repaired and actual execution/evidence still required;
 no empty test, skipped check or new defect is substituted.
 
 ## Author self-review before peer review
