@@ -649,11 +649,12 @@ entries:
           anchor: reviewed-scope-evidence
 
   - id: protocol.decomposition-continuation
-    revision: 1
+    revision: 2
     binds:
       action_ids:
         - resume
-      guard_ids: []
+      guard_ids:
+        - develop-exit-code-complete
       remediation_ids:
         - refresh-decomposition
     agent:
@@ -671,7 +672,11 @@ entries:
         A missing or stale assessment requires sanctioned start or resume with confirmed read-back. Pending
         estimate intent requires its original writer recovery; refresh never clears unknown effects. Mandatory
         decomposition requires reviewed preparation and governed split or conversion. A prior agent waiver
-        cannot supply current permission. Advisory review remains advisory.
+        cannot supply current permission. Fresh hooks also fence source, generator, document and remote
+        deliverable effects. Epic planning readiness cannot authorize completion; terminal materialized
+        children and existing lifecycle gates remain required. Own governed scope revisions are preparation,
+        while mixed new deliverables require scoped capability. Identical recorded history and physically
+        contained scratch diagnostics remain available. Advisory review remains advisory.
       triggered_when:
         - Current decomposition is required, pending, or unavailable.
       execution:

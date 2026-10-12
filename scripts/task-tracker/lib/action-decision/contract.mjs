@@ -114,17 +114,17 @@ const decompositionArgs = args(['issue', 'operationId'], {
 export const CODE_DEFINITIONS = Object.freeze({
   'decomposition-required': decisionBlocked(
     'decomposition-required',
-    ['decomposition-continuation'],
+    ['decomposition-continuation', 'develop-exit-code-complete'],
     { phases: ['collection', 'evaluation'], argumentSchema: decompositionArgs }
   ),
   'decomposition-assessment-pending': decisionBlocked(
     'decomposition-assessment-pending',
-    ['decomposition-continuation'],
+    ['decomposition-continuation', 'develop-exit-code-complete'],
     { phases: ['collection', 'evaluation'], argumentSchema: decompositionArgs }
   ),
   'decomposition-authority-unavailable': decisionIndeterminate(
     'decomposition-authority-unavailable',
-    ['decomposition-continuation'],
+    ['decomposition-continuation', 'develop-exit-code-complete'],
     decompositionArgs,
     { disposition: 'registered-remediation' }
   ),

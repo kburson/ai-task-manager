@@ -1,3 +1,4 @@
+// @story #1990
 // @story #1767
 // @story #1857
 // @story #1873
@@ -13,7 +14,10 @@ import { syncBuiltinESMExports } from 'node:module';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test, { mock } from 'node:test';
-import { captureGuidanceLifecycle } from '../../../../maintenance/capture-guidance-lifecycle.mjs';
+import {
+  captureGuidanceLifecycle,
+  guidanceLifecycleReplayInputs,
+} from '../../../../maintenance/capture-guidance-lifecycle.mjs';
 import { fileURLToPath } from 'node:url';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const fixtureRoot = path.join(projectRoot, 'scripts/tests/fixtures/1558');
@@ -87,9 +91,19 @@ test('matching catalog inputs refuse initial fixture drift before public CLI rep
     assert.equal(committed.status, 0);
     record.sha256 = `sha256:${createHash('sha256').update(committed.stdout).digest('hex')}`;
   }
+  const currentInputs = guidanceLifecycleReplayInputs();
+  const uncommitted = currentInputs.find(
+    (record) =>
+      capture.identity.implementationFiles.find((committed) => committed.path === record.path)
+        ?.sha256 !== record.sha256
+  );
+  capture.identity.implementationFiles = currentInputs;
   assert.throws(
     () => buildCurrentRecertificationDecision({ projectRoot, capture }),
-    /capture-replay-identity|Invalid timing actor|TIMING_ACTOR_INVALID/
+    uncommitted
+      ? (error) =>
+          error.message === 'guidance-feasibility:capture-committed-source:' + uncommitted.path
+      : /capture-replay-identity|Invalid timing actor|TIMING_ACTOR_INVALID/
   );
   assert.equal(cliCalls, 0, 'initial fixture drift must refuse before real CLI replay');
 });

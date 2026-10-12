@@ -1,3 +1,4 @@
+// @story #1990
 // @story #1210
 // Generic, marker-owned issue comments. This remains separate from the AITM
 // record-envelope store, whose narrower contract is intentional.
@@ -234,6 +235,15 @@ export async function upsertOwnedComment({ repository, issue, key, body, deps = 
     return { status: 'no-op', id: matches[0].id, body: expectedBody };
   }
 
+  // The governed adapter supplies this effect fence; unchanged history has returned above.
+  if (deps.beforeWrite)
+    await deps.beforeWrite({
+      repository,
+      issue,
+      key,
+      body: expectedBody,
+      existing: matches[0] ?? null,
+    });
   if (matches.length === 0) {
     let created;
     try {

@@ -1521,6 +1521,7 @@
       "staticImports": [
         "node:fs",
         "node:path",
+        "./lib/decomposition-activity.mjs",
         "./lib/worktree-binding-guard.mjs",
         "./lib/mutation-context.mjs",
         "./lib/assignee-guard.mjs",
@@ -2409,6 +2410,7 @@
         "./lib/apply-patch-targets.mjs",
         "./lib/mutation-context.mjs",
         "./lib/worktree-binding-guard.mjs",
+        "./lib/decomposition-activity.mjs",
         "./lib/artifact-write-policy.mjs",
         "./lib/installed-guard-path.mjs",
         "./lib/workflow-policy/enforcement.mjs"

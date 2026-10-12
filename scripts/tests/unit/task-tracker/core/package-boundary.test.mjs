@@ -451,7 +451,14 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #1954: strict shared project membership reader; measured delta is one runtime file.
     2 + // #1986: measured +2 for the strict assessment and record codec only.
     2 + // #1987: measured +2 for current authority and protected projection only.
+    3 + // #1990: exactly three fresh hook/effect composition modules.
     1; // #1989: one current continuation composition helper; no new dependency.
+  for (const module of [
+    'decomposition-activity',
+    'decomposition-hook-authority',
+    'decomposition-effect-admission',
+  ])
+    assert.ok(files.includes('scripts/task-tracker/lib/' + module + '.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/action-decision/decomposition.mjs'));
   assert.ok(files.includes('scripts/run-tests-shards.mjs'));
   assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));

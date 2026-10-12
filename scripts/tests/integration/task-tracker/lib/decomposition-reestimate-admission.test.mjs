@@ -1,3 +1,5 @@
+// @story #1990
+import { registerDecompositionTargetCases } from './decomposition-target.cases.mjs';
 // @story #1989
 import { formatIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
 import { replaceDecompositionRecords } from '../../../../task-tracker/lib/decomposition-records.mjs';
@@ -517,3 +519,11 @@ test('read-only session observation refuses stale projection without repairing i
     f.native.close();
   }
 });
+
+import { registerDecompositionHookCases } from './decomposition-hook.cases.mjs';
+registerDecompositionHookCases();
+
+import { registerDecompositionRemoteCases } from './decomposition-remote.cases.mjs';
+registerDecompositionRemoteCases();
+
+registerDecompositionTargetCases();
