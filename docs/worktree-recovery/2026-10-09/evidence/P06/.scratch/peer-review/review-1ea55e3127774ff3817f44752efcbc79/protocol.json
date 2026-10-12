@@ -1,0 +1,103 @@
+{
+  "artifact": {
+    "blob": "0fb2aaeb4955afb41629e9b2e4f3de930fb9be33",
+    "digest": "sha256:58a41985ff691814e0374a27e32d097a34ed95390d459321c0391121cec1b125",
+    "head": "0a7e3c6a6283feddd4a7d7f16d81ac856cc5f1eb",
+    "path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md"
+  },
+  "authority": {
+    "authority_policy": "unavailable",
+    "challenge_ttl_ms": 900000,
+    "verifier": null
+  },
+  "challenges": [],
+  "claim_ttl_ms": 28800000,
+  "claims": {
+    "author": {
+      "claim_id": "claim-8b77725a-36f0-409b-b7b4-2f8d303edb9e",
+      "claimed_at": "2026-09-20T20:31:53.451Z",
+      "expires_at": "2026-09-21T04:31:53.451Z",
+      "host": "codex",
+      "last_activity_at": "2026-09-20T20:31:53.451Z",
+      "pid": 28173,
+      "role": "author",
+      "session_fingerprint": "sha256:43cb4fd5092989dd837ce1e68485335a8fe08ae750ec96419a461e45e172381b"
+    },
+    "reviewer": {
+      "claim_id": "claim-466838e4-b5b6-4904-aec2-577e1a389d7f",
+      "claimed_at": "2026-09-20T20:28:22.129Z",
+      "expires_at": "2026-09-21T04:28:22.129Z",
+      "host": "codex",
+      "last_activity_at": "2026-09-20T20:28:22.129Z",
+      "pid": 4723,
+      "role": "reviewer",
+      "session_fingerprint": "sha256:63dde00893c2bcc6a55bed7f6d9424a621a97ecca480a80bedd6a9bdaed7b826"
+    }
+  },
+  "commit_mode": "normal",
+  "current_actor": null,
+  "deliveries": [
+    {
+      "delivery_id": "reviewer-turn-1-to-author",
+      "digest": "sha256:bd2b5479a660d3535000bac7228620f75a98c3f84023d3e0ba84e12b63e46a2b",
+      "recipient": "author"
+    },
+    {
+      "delivery_id": "author-turn-1-to-reviewer",
+      "digest": "sha256:fbddf4cf3a444334cff5ffbd9d9cda8ed35a06f7ebea6bc1f662401575e7279e",
+      "recipient": "reviewer"
+    },
+    {
+      "delivery_id": "reviewer-turn-2-to-author",
+      "digest": "sha256:ee3b40528476f7a6a80b86c6014f3ece2196c3a413b14d12f2ccb52901d1b925",
+      "recipient": "author"
+    }
+  ],
+  "intervention": null,
+  "max_turns": 10,
+  "next_action": null,
+  "review_id": "review-1ea55e3127774ff3817f44752efcbc79",
+  "reviewer_boundary": {
+    "branch": "codex/aitm-mcp-adapter-architecture",
+    "head": "0a7e3c6a6283feddd4a7d7f16d81ac856cc5f1eb",
+    "index_digest": "sha256:5bee0ed26d11dfcbee7a69535963a9ae33d352a19f5282785dc5f6144e4afc88",
+    "refs_digest": "sha256:adde8f65937e2af994d2956e7d0d95c38ccd36b0b2bdd3aa93798a4eb42dd7f8",
+    "worktree_digest": "sha256:fdddad9bb519e81da0ba738ce6e103656cf3b45f68de22e5c679ba68ba837833"
+  },
+  "revision": 7,
+  "schema": "ai-peer-review.protocol/v1",
+  "sequence": 12,
+  "startup": {
+    "author_startup_digest": "sha256:cbab1f026c6bfc25ac7d20da0568da68f3f5cec8f826b6dcf1e24e4d4a7275a3",
+    "author_transport_capability": "resume-only",
+    "bootstrap": null,
+    "context": {
+      "artifact_kind": "spec",
+      "artifact_name": "2026-09-20-aitm-mcp-adapter-architecture-design",
+      "issue": null,
+      "record_id": "review-1ea55e3127774ff3817f44752efcbc79",
+      "repository_root": "/Users/kpburson/.codex/worktrees/planning/ai-task-manager",
+      "review_date": "2026-09-20",
+      "review_id": "review-1ea55e3127774ff3817f44752efcbc79",
+      "review_path_template": "SPR",
+      "reviews_root": "docs/superpowers/reviews/aitm-mcp-adapter-architecture",
+      "schema": "ai-peer-review.context/v1"
+    },
+    "context_digest": "sha256:d18d85d2d7dd0a2f2133bfc2aca6556e02070e704f0ef1b78ed5295113a11fef",
+    "destination": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR",
+    "no_commit_baseline": null,
+    "reviewer_invitation_digest": "sha256:ad7fea8ff8d231d3335f68615c8cd9e9e313aca0a76cc086ccdff45cfa91a9da",
+    "transport_mode": "manual"
+  },
+  "state": "accepted",
+  "supplements": [],
+  "terminal_evidence": {
+    "commit": "7a0b08c7ce42d83e80565227761414708ddf008d",
+    "manifest_digest": "sha256:a81025898b146a77430c442c4fcde81a33fbf51dc2d72122a204bdf127a44645"
+  },
+  "transports": {
+    "author": "resume-only",
+    "reviewer": "resume-only"
+  },
+  "turns_used": 2
+}

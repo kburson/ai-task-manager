@@ -1,0 +1,30 @@
+{
+  "schema": "ai-peer-review.collateral-reservation/v1",
+  "review_id": "review-1ea55e3127774ff3817f44752efcbc79",
+  "destination": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR",
+  "paths": [
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-1.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-1.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-2.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-2.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-3.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-3.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-4.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-4.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-5.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-5.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-6.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-6.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-7.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-7.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-8.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-8.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-9.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-9.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-reviewer-response-10.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-author-response-10.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-human-decision.md",
+    "docs/superpowers/reviews/aitm-mcp-adapter-architecture/SPR/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-1ea55e3127774ff3817f44752efcbc79-review-manifest.md"
+  ],
+  "recovered_from": null
+}

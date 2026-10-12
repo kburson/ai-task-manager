@@ -1,0 +1,11 @@
+{
+  "schema": "ai-peer-review.claude-launch-state/v1",
+  "review_id": "review-bf339e74f46697b4da5d2d19cb3c822e",
+  "invitation": "/Users/kpburson/.codex/worktrees/aitm-xpr-first-fresh/ai-task-manager/docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/review-bf339e74f46697b4da5d2d19cb3c822e-reviewer-invitation.md",
+  "response": "/Users/kpburson/.codex/worktrees/aitm-xpr-first-fresh/ai-task-manager/docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/review-bf339e74f46697b4da5d2d19cb3c822e-reviewer-response-3.md",
+  "model": "claude-opus-5",
+  "effort": "medium",
+  "session_handle": "e980f03a-6f95-4991-bf8f-b70b1a61ba9e",
+  "session_fingerprint": "sha256:7269798814f6e42c7dbd35031039451c136e87664d5bf2159f1e59823321f699",
+  "protocol_revision": 7
+}
