@@ -1,0 +1,44 @@
+▶ all original phase-11-prefix faults
+  ✔ native-stage-phase-11-prefix-after-effect-readback.test.mjs (102597.879584ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-11-prefix-after-effect-readback.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-11-prefix-after-effect-write.test.mjs (98886.339333ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-11-prefix-after-effect-write.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-11-prefix-after-intent-readback.test.mjs (97545.704875ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-11-prefix-after-intent-readback.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-11-prefix-after-intent-write.test.mjs (97608.088459ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-11-prefix-after-intent-write.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-11-prefix-before-effect-readback.test.mjs (95417.95975ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-11-prefix-before-effect-readback.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-11-prefix-before-effect-write.test.mjs (93130.259833ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-11-prefix-before-effect-write.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-11-prefix-before-intent-readback.test.mjs (91457.85175ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-11-prefix-before-intent-readback.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-11-prefix-before-intent-write.test.mjs (90213.9225ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-11-prefix-before-intent-write.test.mjs: 1 complete original cases
+✔ all original phase-11-prefix faults (192976.067916ms)
+▶ all original phase-12-prefix faults
+  ✔ native-stage-phase-12-prefix-after-effect-readback.test.mjs (106192.738834ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-12-prefix-after-effect-readback.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-12-prefix-after-effect-write.test.mjs (102236.152208ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-12-prefix-after-effect-write.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-12-prefix-after-intent-readback.test.mjs (101745.000083ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-12-prefix-after-intent-readback.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-12-prefix-after-intent-write.test.mjs (101392.037042ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-12-prefix-after-intent-write.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-12-prefix-before-effect-readback.test.mjs (105798.563334ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-12-prefix-before-effect-readback.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-12-prefix-before-effect-write.test.mjs (102894.084208ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-12-prefix-before-effect-write.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-12-prefix-before-intent-readback.test.mjs (101360.92325ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-12-prefix-before-intent-readback.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-12-prefix-before-intent-write.test.mjs (100493.030667ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-12-prefix-before-intent-write.test.mjs: 1 complete original cases
+✔ all original phase-12-prefix faults (207193.729167ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 400564.237875

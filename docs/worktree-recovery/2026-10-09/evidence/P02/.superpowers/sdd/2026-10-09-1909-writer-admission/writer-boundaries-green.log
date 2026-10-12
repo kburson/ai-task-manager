@@ -1,0 +1,32 @@
+✔ independent initializeIssueDirectory pending refuses before original callback or transport selection (103.861208ms)
+✔ independent initializeIssueDirectory stale refuses before original callback or transport selection (230.103917ms)
+✔ independent initializeIssueDirectory malformed refuses before original callback or transport selection (16.947375ms)
+✔ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (16.471ms)
+✔ independent initializeIssueDirectory baseline retains its complete original algorithm (18.131791ms)
+✔ independent initializeIssueDirectory approved retains its complete original algorithm (356.748667ms)
+✔ independent repairIssueDirectory pending refuses before original callback or transport selection (69.893291ms)
+✔ independent repairIssueDirectory stale refuses before original callback or transport selection (233.697791ms)
+✔ independent repairIssueDirectory malformed refuses before original callback or transport selection (19.196541ms)
+✔ independent repairIssueDirectory unavailable refuses before original callback or transport selection (18.79975ms)
+✔ independent repairIssueDirectory baseline retains its complete original algorithm (16.976042ms)
+✔ independent repairIssueDirectory approved retains its complete original algorithm (415.212458ms)
+✔ independent createIssueComment pending refuses before original callback or transport selection (68.468916ms)
+✔ independent createIssueComment stale refuses before original callback or transport selection (218.933708ms)
+✔ independent createIssueComment malformed refuses before original callback or transport selection (16.513166ms)
+✔ independent createIssueComment unavailable refuses before original callback or transport selection (15.7305ms)
+✔ independent createIssueComment baseline retains its complete original algorithm (18.124667ms)
+✔ independent createIssueComment approved retains its complete original algorithm (332.024834ms)
+✔ independent updateIssueComment pending refuses before original callback or transport selection (68.695041ms)
+✔ independent updateIssueComment stale refuses before original callback or transport selection (214.258291ms)
+✔ independent updateIssueComment malformed refuses before original callback or transport selection (16.585958ms)
+✔ independent updateIssueComment unavailable refuses before original callback or transport selection (18.392833ms)
+✔ independent updateIssueComment baseline retains its complete original algorithm (17.237375ms)
+✔ independent updateIssueComment approved retains its complete original algorithm (331.2325ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3025.27325

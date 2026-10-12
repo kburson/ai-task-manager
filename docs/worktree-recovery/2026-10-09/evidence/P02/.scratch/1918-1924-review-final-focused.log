@@ -1,0 +1,43 @@
+✔ partial reporting retains all genuine verified, interrupted, cancellation and current profiles (0.826667ms)
+▶ actual original failure reports verified committed facts after joined work
+  ✔ criteria-revision-partial-14.test.mjs (141910.882791ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-14.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-15.test.mjs (150780.004166ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-15.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-16.test.mjs (159795.289875ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-16.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-unknown.test.mjs (153203.589083ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-unknown.test.mjs: 1 complete original cases
+✔ actual original failure reports verified committed facts after joined work (159807.615ms)
+▶ current authority, cancellation and original interruption profiles stay truthful
+  ✔ criteria-revision-partial-cancel.test.mjs (19750.047959ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-cancel.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-final-authority.test.mjs (144784.026125ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-final-authority.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-final-source.test.mjs (144782.136ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-final-source.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-late-authority.test.mjs (141601.098625ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-late-authority.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-late-input.test.mjs (140666.596292ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-late-input.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-late-source.test.mjs (141561.575ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-late-source.test.mjs: 1 complete original cases
+  ✔ native-stage-board-effect-readback-failAfter.test.mjs (122384.174458ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-board-effect-readback-failAfter.test.mjs: 1 complete original cases
+  ✔ native-stage-phase-12-prefix-after-effect-readback.test.mjs (103334.360959ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-phase-12-prefix-after-effect-readback.test.mjs: 1 complete original cases
+  ✔ native-stage-sentinel-effect-readback-failAfter.test.mjs (129308.778458ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-sentinel-effect-readback-failAfter.test.mjs: 1 complete original cases
+  ✔ native-stage-transition-comment.test.mjs (125101.299125ms)
+  ℹ scripts/tests/integration/task-tracker/lib/native-stage-transition-comment.test.mjs: 1 complete original cases
+✔ current authority, cancellation and original interruption profiles stay truthful (373222.280125ms)
+✔ complete original ordinary facade and public reporting boundaries stay intact (1938.702833ms)
+ℹ scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-partial-boundary.test.mjs, scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs, scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs, scripts/tests/unit/task-tracker/lib/move-state/move-state-board-marker-atomicity.test.mjs, scripts/tests/unit/task-tracker/lib/move-state/move-state-sentinel-write.test.mjs, scripts/tests/unit/task-tracker/lib/move-state/move-state-output.test.mjs, scripts/tests/unit/task-tracker/lib/move-state/move-state-policy.test.mjs, scripts/tests/unit/task-tracker/lib/move-state/move-state-tail-error-diagnostics.test.mjs: 65 complete original cases
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 535242.2205

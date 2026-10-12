@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "New bounded repair child of sibling epic1918 under1847.",
+  "replacement": "New bounded repair child of epic1918 under the active ancestors1855 and1847."
+}

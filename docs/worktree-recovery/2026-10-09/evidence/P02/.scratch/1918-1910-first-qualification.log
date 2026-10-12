@@ -1,0 +1,1366 @@
+✖ actual backlog registration preserves pending current revision authority (103.256291ms)
+✖ actual backlog registration preserves stale current revision authority (245.28375ms)
+✖ actual backlog registration preserves malformed current revision authority (17.495833ms)
+✖ actual backlog registration preserves unavailable current revision authority (16.555333ms)
+✖ actual backlog registration preserves baseline current revision authority (17.741083ms)
+✖ actual backlog registration preserves approved current revision authority (537.098959ms)
+✖ actual develop registration preserves pending current revision authority (74.767917ms)
+✖ actual develop registration preserves stale current revision authority (301.505208ms)
+✖ actual develop registration preserves malformed current revision authority (18.660416ms)
+✖ actual develop registration preserves unavailable current revision authority (20.71625ms)
+✖ actual develop registration preserves baseline current revision authority (19.034209ms)
+✖ actual develop registration preserves approved current revision authority (399.446542ms)
+✖ actual done registration preserves pending current revision authority (108.797292ms)
+✖ actual done registration preserves stale current revision authority (230.3055ms)
+✖ actual done registration preserves malformed current revision authority (16.4855ms)
+✖ actual done registration preserves unavailable current revision authority (16.742958ms)
+✖ actual done registration preserves baseline current revision authority (17.49275ms)
+✖ actual done registration preserves approved current revision authority (516.8545ms)
+✖ actual plan registration preserves pending current revision authority (108.460667ms)
+✖ actual plan registration preserves stale current revision authority (236.849375ms)
+✖ actual plan registration preserves malformed current revision authority (17.621917ms)
+✖ actual plan registration preserves unavailable current revision authority (23.9485ms)
+✖ actual plan registration preserves baseline current revision authority (29.314125ms)
+✖ actual plan registration preserves approved current revision authority (432.941625ms)
+✖ actual ready-for-plan registration preserves pending current revision authority (105.149333ms)
+✖ actual ready-for-plan registration preserves stale current revision authority (220.134792ms)
+✖ actual ready-for-plan registration preserves malformed current revision authority (18.295417ms)
+✖ actual ready-for-plan registration preserves unavailable current revision authority (17.352916ms)
+✖ actual ready-for-plan registration preserves baseline current revision authority (17.426083ms)
+✖ actual ready-for-plan registration preserves approved current revision authority (390.689333ms)
+✖ actual refine registration preserves pending current revision authority (70.753125ms)
+✖ actual refine registration preserves stale current revision authority (223.4185ms)
+✖ actual refine registration preserves malformed current revision authority (16.163ms)
+✖ actual refine registration preserves unavailable current revision authority (16.732209ms)
+✖ actual refine registration preserves baseline current revision authority (16.552625ms)
+✖ actual refine registration preserves approved current revision authority (366.4375ms)
+✖ actual review registration preserves pending current revision authority (73.295917ms)
+✖ actual review registration preserves stale current revision authority (213.477958ms)
+✖ actual review registration preserves malformed current revision authority (15.875042ms)
+✖ actual review registration preserves unavailable current revision authority (16.212042ms)
+✖ actual review registration preserves baseline current revision authority (16.879917ms)
+✖ actual review registration preserves approved current revision authority (499.232459ms)
+✖ actual test registration preserves pending current revision authority (86.658708ms)
+✖ actual test registration preserves stale current revision authority (265.991375ms)
+✖ actual test registration preserves malformed current revision authority (30.945916ms)
+✖ actual test registration preserves unavailable current revision authority (15.741458ms)
+✖ actual test registration preserves baseline current revision authority (15.466042ms)
+✖ actual test registration preserves approved current revision authority (362.549ms)
+✖ actual complete guard evaluator cannot translate pending authority into Explain readiness (98.30725ms)
+✖ actual complete guard evaluator cannot translate stale authority into Explain readiness (282.837875ms)
+✖ actual complete guard evaluator cannot translate malformed authority into Explain readiness (17.632458ms)
+✖ actual complete guard evaluator cannot translate unavailable authority into Explain readiness (17.5545ms)
+✔ independent imports and actual calls discover the current evidence reader frontier (325.507209ms)
+ℹ {"readers":["scripts/task-tracker/lib/ac-evidence.mjs","scripts/task-tracker/lib/evidence-v2/eligibility.mjs","scripts/task-tracker/lib/evidence-v2/subject-inputs.mjs","scripts/task-tracker/lib/functional-dod-evidence.mjs","scripts/task-tracker/lib/verification-receipt.mjs"],"states":["backlog","develop","done","plan","ready-for-plan","refine","review","test"]}
+▶ complete current proof and native execution profiles retain original fixtures and budgets
+  ✔ actual evidence, lifecycle and Explain algorithms (15938.0955ms)
+  ℹ Complete original profile: 133 cases
+  ✔ native-proof-execution (34259.124708ms)
+  ℹ Complete original profile: 29 cases
+  ✔ native-proof-execution-authority (6839.518208ms)
+  ℹ Complete original profile: 10 cases
+  ✔ native-proof-execution-drift (33179.542708ms)
+  ℹ Complete original profile: 24 cases
+  ✔ native-proof-execution-abort (20365.77525ms)
+  ℹ Complete original profile: 3 cases
+✔ complete current proof and native execution profiles retain original fixtures and budgets (34261.478416ms)
+✔ requirements projection consumes actual consolidated AC stamps and native multi-VC declarations (3.307542ms)
+✔ requirements projection uses observed legacy stable identities and current canonical epochs (454.612791ms)
+✔ requirements projection uses observed canonical stable identities and current canonical epochs (1178.37275ms)
+✔ actual ac individual stamper binds current revision and its reader rejects stripped new proof (400.822375ms)
+✔ actual dod individual stamper binds current revision and its reader rejects stripped new proof (416.11ms)
+✔ only exact preserved legacy individual proof survives current revision read side (516.903958ms)
+✔ metadata continuation rejects duplicate body-version control claims before push (515.258166ms)
+✔ caller activity status cannot turn a stale approval into mutation authority (183.949291ms)
+✔ caller activity plan-approve cannot turn a stale approval into mutation authority (145.372542ms)
+✔ caller activity invented-consumer cannot turn a stale approval into mutation authority (157.244084ms)
+✔ unknown mutation activity cannot execute even against an empty verified chain (17.069917ms)
+✔ unconfigured activity retains ordinary gates only after fresh proof that host has no enabled revision domains (0.415125ms)
+✔ registered lifecycle revision guard preserves typed pending authority without publishing admission (73.785541ms)
+✔ registered lifecycle revision guard preserves typed stale authority without publishing admission (269.436708ms)
+✔ registered lifecycle revision guard preserves typed unavailable authority without publishing admission (17.166875ms)
+✔ registered lifecycle revision guard preserves typed malformed authority without publishing admission (16.625667ms)
+✔ registered lifecycle revision guard preserves typed baseline authority without publishing admission (16.834667ms)
+✔ registered lifecycle revision guard preserves typed approved authority without publishing admission (341.744834ms)
+✔ new typed guard conformance requires discovered producer and complete typed emissions while preserving frozen legacy rules (6.773208ms)
+ℹ tests 78
+ℹ suites 0
+ℹ pass 26
+ℹ fail 52
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41873.884917
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual backlog registration preserves pending current revision authority (103.256291ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual backlog registration preserves stale current revision authority (245.28375ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual backlog registration preserves malformed current revision authority (17.495833ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual backlog registration preserves unavailable current revision authority (16.555333ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual backlog registration preserves baseline current revision authority (17.741083ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual backlog registration preserves approved current revision authority (537.098959ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual develop registration preserves pending current revision authority (74.767917ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual develop registration preserves stale current revision authority (301.505208ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual develop registration preserves malformed current revision authority (18.660416ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual develop registration preserves unavailable current revision authority (20.71625ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual develop registration preserves baseline current revision authority (19.034209ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual develop registration preserves approved current revision authority (399.446542ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual done registration preserves pending current revision authority (108.797292ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual done registration preserves stale current revision authority (230.3055ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual done registration preserves malformed current revision authority (16.4855ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual done registration preserves unavailable current revision authority (16.742958ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual done registration preserves baseline current revision authority (17.49275ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual done registration preserves approved current revision authority (516.8545ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual plan registration preserves pending current revision authority (108.460667ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual plan registration preserves stale current revision authority (236.849375ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual plan registration preserves malformed current revision authority (17.621917ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual plan registration preserves unavailable current revision authority (23.9485ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual plan registration preserves baseline current revision authority (29.314125ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual plan registration preserves approved current revision authority (432.941625ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual ready-for-plan registration preserves pending current revision authority (105.149333ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual ready-for-plan registration preserves stale current revision authority (220.134792ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual ready-for-plan registration preserves malformed current revision authority (18.295417ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual ready-for-plan registration preserves unavailable current revision authority (17.352916ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual ready-for-plan registration preserves baseline current revision authority (17.426083ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual ready-for-plan registration preserves approved current revision authority (390.689333ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual refine registration preserves pending current revision authority (70.753125ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual refine registration preserves stale current revision authority (223.4185ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual refine registration preserves malformed current revision authority (16.163ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual refine registration preserves unavailable current revision authority (16.732209ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual refine registration preserves baseline current revision authority (16.552625ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual refine registration preserves approved current revision authority (366.4375ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual review registration preserves pending current revision authority (73.295917ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual review registration preserves stale current revision authority (213.477958ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual review registration preserves malformed current revision authority (15.875042ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual review registration preserves unavailable current revision authority (16.212042ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual review registration preserves baseline current revision authority (16.879917ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual review registration preserves approved current revision authority (499.232459ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual test registration preserves pending current revision authority (86.658708ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual test registration preserves stale current revision authority (265.991375ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual test registration preserves malformed current revision authority (30.945916ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual test registration preserves unavailable current revision authority (15.741458ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual test registration preserves baseline current revision authority (15.466042ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual test registration preserves approved current revision authority (362.549ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:91:3
+✖ actual complete guard evaluator cannot translate pending authority into Explain readiness (98.30725ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:126:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:91:3
+✖ actual complete guard evaluator cannot translate stale authority into Explain readiness (282.837875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback',
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:126:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback', 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:91:3
+✖ actual complete guard evaluator cannot translate malformed authority into Explain readiness (17.632458ms)
+  TypeError: criteria-revision:event-envelope
+      at revisionError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/criteria-revision/schema.mjs:30:9)
+      at readRevisionEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/criteria-revision/records.mjs:266:61)
+      at file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/criteria-revision/store.mjs:815:33
+      at Array.map (<anonymous>)
+      at get createdEvents (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/criteria-revision/store.mjs:815:10)
+      at JSON.stringify (<anonymous>)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:117:29)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:91:3
+✖ actual complete guard evaluator cannot translate unavailable authority into Explain readiness (17.5545ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:126:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

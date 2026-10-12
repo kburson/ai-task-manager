@@ -1,0 +1,414 @@
+✖ independent initializeIssueDirectory pending refuses before original callback or transport selection (83.921417ms)
+✖ independent initializeIssueDirectory stale refuses before original callback or transport selection (161.985166ms)
+✖ independent initializeIssueDirectory malformed refuses before original callback or transport selection (24.659458ms)
+✖ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (21.639916ms)
+✔ independent initializeIssueDirectory baseline retains its complete original algorithm (17.153959ms)
+✔ independent initializeIssueDirectory approved retains its complete original algorithm (282.348625ms)
+✖ independent repairIssueDirectory pending refuses before original callback or transport selection (55.107083ms)
+✖ independent repairIssueDirectory stale refuses before original callback or transport selection (149.303ms)
+✖ independent repairIssueDirectory malformed refuses before original callback or transport selection (19.505292ms)
+✖ independent repairIssueDirectory unavailable refuses before original callback or transport selection (16.716416ms)
+✔ independent repairIssueDirectory baseline retains its complete original algorithm (16.948916ms)
+✔ independent repairIssueDirectory approved retains its complete original algorithm (275.689666ms)
+✖ independent createIssueComment pending refuses before original callback or transport selection (52.234083ms)
+✖ independent createIssueComment stale refuses before original callback or transport selection (143.9635ms)
+✖ independent createIssueComment malformed refuses before original callback or transport selection (16.324541ms)
+✖ independent createIssueComment unavailable refuses before original callback or transport selection (16.329666ms)
+✔ independent createIssueComment baseline retains its complete original algorithm (19.168917ms)
+✔ independent createIssueComment approved retains its complete original algorithm (264.812125ms)
+✖ independent updateIssueComment pending refuses before original callback or transport selection (52.659416ms)
+✖ independent updateIssueComment stale refuses before original callback or transport selection (141.200333ms)
+✖ independent updateIssueComment malformed refuses before original callback or transport selection (19.759291ms)
+✖ independent updateIssueComment unavailable refuses before original callback or transport selection (20.403708ms)
+✔ independent updateIssueComment baseline retains its complete original algorithm (16.823875ms)
+✔ independent updateIssueComment approved retains its complete original algorithm (253.339ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 8
+ℹ fail 16
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2352.342083
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent initializeIssueDirectory pending refuses before original callback or transport selection (83.921417ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'original-body-read',
+  +   'original-comments-read',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'original-body-read',
+  +   'original-comments-read',
+  +   'body-write',
+  +   'original-body-read',
+  +   'original-comments-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'original-body-read', 'original-comments-read', 'singleton-write', 'singleton-write', 'singleton-write', 'singleton-write', 'original-body-read', 'original-comments-read', 'body-write', 'original-body-read', 'original-comments-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent initializeIssueDirectory stale refuses before original callback or transport selection (161.985166ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'original-body-read',
+  +   'original-comments-read',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'original-body-read',
+  +   'original-comments-read',
+  +   'body-write',
+  +   'original-body-read',
+  +   'original-comments-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'original-body-read', 'original-comments-read', 'singleton-write', 'singleton-write', 'singleton-write', 'singleton-write', 'original-body-read', 'original-comments-read', 'body-write', 'original-body-read', 'original-comments-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent initializeIssueDirectory malformed refuses before original callback or transport selection (24.659458ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'original-body-read',
+  +   'original-comments-read',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'original-body-read',
+  +   'original-comments-read',
+  +   'body-write',
+  +   'original-body-read',
+  +   'original-comments-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'original-body-read', 'original-comments-read', 'singleton-write', 'singleton-write', 'singleton-write', 'singleton-write', 'original-body-read', 'original-comments-read', 'body-write', 'original-body-read', 'original-comments-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (21.639916ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'original-body-read',
+  +   'original-comments-read',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'singleton-write',
+  +   'original-body-read',
+  +   'original-comments-read',
+  +   'body-write',
+  +   'original-body-read',
+  +   'original-comments-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'original-body-read', 'original-comments-read', 'singleton-write', 'singleton-write', 'singleton-write', 'singleton-write', 'original-body-read', 'original-comments-read', 'body-write', 'original-body-read', 'original-comments-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent repairIssueDirectory pending refuses before original callback or transport selection (55.107083ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'original-body-read',
+  +   'original-comments-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'original-body-read', 'original-comments-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent repairIssueDirectory stale refuses before original callback or transport selection (149.303ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'original-body-read',
+  +   'original-comments-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'original-body-read', 'original-comments-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent repairIssueDirectory malformed refuses before original callback or transport selection (19.505292ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'original-body-read',
+  +   'original-comments-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'original-body-read', 'original-comments-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent repairIssueDirectory unavailable refuses before original callback or transport selection (16.716416ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'original-body-read',
+  +   'original-comments-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'original-body-read', 'original-comments-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent createIssueComment pending refuses before original callback or transport selection (52.234083ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'comment-create'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'comment-create' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent createIssueComment stale refuses before original callback or transport selection (143.9635ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'comment-create'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'comment-create' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent createIssueComment malformed refuses before original callback or transport selection (16.324541ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'comment-create'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'comment-create' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent createIssueComment unavailable refuses before original callback or transport selection (16.329666ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'comment-create'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'comment-create' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent updateIssueComment pending refuses before original callback or transport selection (52.659416ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'comment-update'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'comment-update' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent updateIssueComment stale refuses before original callback or transport selection (141.200333ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'comment-update'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'comment-update' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent updateIssueComment malformed refuses before original callback or transport selection (19.759291ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'comment-update'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'comment-update' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:132:5
+✖ independent updateIssueComment unavailable refuses before original callback or transport selection (20.403708ms)
+  AssertionError [ERR_ASSERTION]: No original callback or transport runs without fresh admission
+  + actual - expected
+  
+  + [
+  +   'comment-update'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:146:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'comment-update' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,217 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "repair-1919",
+      "description": "UTC timestamp and schema validation budget",
+      "baseHumanHours": 6,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1909",
+      "description": "Ordinary writer admission and ordered locks",
+      "baseHumanHours": 8,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1910",
+      "description": "Current revision evidence and lifecycle readers",
+      "baseHumanHours": 8,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1911",
+      "description": "Hook and bound-session stale work refusal",
+      "baseHumanHours": 8,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1912",
+      "description": "Actor board and sentinel prefix conformance",
+      "baseHumanHours": 6,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1916",
+      "description": "Original rollback and audit compensation",
+      "baseHumanHours": 12,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1920",
+      "description": "Consistency and transition-comment custody",
+      "baseHumanHours": 4,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1913",
+      "description": "Dispatcher and cache continuation",
+      "baseHumanHours": 8,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1915",
+      "description": "Known early prefix genuine reentry",
+      "baseHumanHours": 14,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1924",
+      "description": "Truthful committed partial transition facts",
+      "baseHumanHours": 6,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1921",
+      "description": "Conditional follow-up and tracker persistence",
+      "baseHumanHours": 10,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1914",
+      "description": "Event-field source resource and temporary protocol",
+      "baseHumanHours": 12,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1922",
+      "description": "Exact event-body authorization and terminal completion",
+      "baseHumanHours": 10,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1923",
+      "description": "Known transition tail reentry without duplicate effects",
+      "baseHumanHours": 8,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1925",
+      "description": "Unknown outcomes and idempotent repair",
+      "baseHumanHours": 16,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "repair-1917",
+      "description": "Complete consumer boundary and exact-head integration",
+      "baseHumanHours": 8,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    }
+  ],
+  "testImpact": {
+    "expectedMinutes": 45,
+    "isolation": "Child issue worktrees and exact-head Linux CI; existing twelve-wave integration.",
+    "lanes": [
+      "unit",
+      "integration",
+      "slow"
+    ]
+  },
+  "risks": [
+    "Inherited aggregate failures remain explicitly owned.",
+    "Shared source waves require exclusive ownership and contracts.",
+    "Event-body admission requires exact separate authorization."
+  ],
+  "comparableIssueIds": [
+    1851,
+    1852,
+    1853,
+    1854
+  ]
+}

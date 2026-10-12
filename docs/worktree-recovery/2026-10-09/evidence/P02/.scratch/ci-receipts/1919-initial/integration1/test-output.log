@@ -1,0 +1,21 @@
+
+> @kburson/ai-task-manager@0.1.0 test:integration
+> node scripts/run-tests.mjs --lane integration --shard 1/3
+
+▶ lane=integration (289 files)
+
+file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/run-tests-native-sections.mjs:22
+  throw new Error('run-tests: unknown or malformed native section metadata');
+        ^
+
+Error: run-tests: unknown or malformed native section metadata
+    at fail (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/run-tests-native-sections.mjs:22:9)
+    at file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/run-tests-native-sections.mjs:123:61
+    at Array.map (<anonymous>)
+    at loadSerialSectionMetadata (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/run-tests-native-sections.mjs:121:18)
+    at file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/run-tests.mjs:219:23
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.21.0
