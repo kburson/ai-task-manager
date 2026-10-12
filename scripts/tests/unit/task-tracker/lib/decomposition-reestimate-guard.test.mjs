@@ -741,3 +741,11 @@ registerAdaptivePublicationCases();
 
 import { registerProposalPublicationCases } from './decomposition-proposal-publication.cases.mjs';
 registerProposalPublicationCases();
+
+import {
+  registerShelvePublicationCases,
+  registerShelveLandedCases,
+} from './decomposition-shelve-publication.cases.mjs';
+registerShelvePublicationCases();
+
+registerShelveLandedCases();

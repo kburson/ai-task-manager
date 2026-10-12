@@ -1,3 +1,13 @@
+import {
+  readRegisteredEstimateEffect,
+  reconcileEstimatePredecessor,
+} from './decomposition-writer-registry.mjs';
+import { mutateIssueBody } from './issue-body-mutate.mjs';
+import {
+  DECOMPOSITION_EFFECT_RESOURCES,
+  DECOMPOSITION_WRITER_IDS,
+  exactDecompositionKeys,
+} from './decomposition-assessment.mjs';
 import { normalizeDecompositionHours } from './decomposition-policy.mjs';
 import { estimateProjectionFromProposals } from './decomposition-publication-inputs.mjs';
 // @story #1988 — adapter preparation; only current reads grant ownership.
@@ -57,6 +67,100 @@ export function intendedPublishedRevisionInput(initial, proposal) {
   );
   return input;
 }
+const BEFORE_RE = /<!-- aitm-estimate-before schema="1" payload="([A-Za-z0-9_-]+)" -->/g;
+function beforeFailure(code) {
+  throw new Error(`estimate-publication:${code}`);
+}
+export function readEstimateBeforeRecord(body) {
+  const broad = [...String(body).matchAll(/<!--\s*aitm-estimate-before\b[^>]*-->/g)],
+    matches = [...String(body).matchAll(BEFORE_RE)];
+  if (broad.length !== matches.length || matches.length > 1) beforeFailure('before-record');
+  if (!matches.length) return null;
+  const raw = Buffer.from(matches[0][1], 'base64url').toString('utf8');
+  if (Buffer.byteLength(raw, 'utf8') > 8192) beforeFailure('before-record-limit');
+  const record = JSON.parse(raw);
+  if (
+    raw !== canonicalDecompositionJson(record) ||
+    Buffer.from(raw).toString('base64url') !== matches[0][1]
+  )
+    beforeFailure('before-record-encoding');
+  exactDecompositionKeys(
+    record,
+    [
+      'schema',
+      'subject',
+      'operationId',
+      'writerId',
+      'beforeInputDigest',
+      'intendedInputDigest',
+      'effects',
+    ],
+    'before-record'
+  );
+  if (
+    record.schema !== 'aitm.estimate-before/v1' ||
+    !DECOMPOSITION_WRITER_IDS.includes(record.writerId) ||
+    !Array.isArray(record.effects) ||
+    record.effects.length > 30
+  )
+    beforeFailure('before-record');
+  for (const value of [record.beforeInputDigest, record.intendedInputDigest])
+    if (!/^[a-f0-9]{64}$/.test(value)) beforeFailure('before-record-digest');
+  for (const effect of record.effects) {
+    exactDecompositionKeys(
+      effect,
+      ['id', 'resource', 'targetIdentity', 'beforeDigest', 'intendedDigest', 'permittedDigests'],
+      'before-effect'
+    );
+    if (
+      !DECOMPOSITION_EFFECT_RESOURCES.includes(effect.resource) ||
+      !Array.isArray(effect.permittedDigests) ||
+      effect.permittedDigests.length > 16 ||
+      [effect.beforeDigest, effect.intendedDigest, ...effect.permittedDigests].some(
+        (d) => !/^[a-f0-9]{64}$/.test(d)
+      )
+    )
+      beforeFailure('before-effect');
+  }
+  return record;
+}
+function replaceBeforeRecord(body, record) {
+  const raw = canonicalDecompositionJson(record);
+  if (Buffer.byteLength(raw, 'utf8') > 8192) beforeFailure('before-record-limit');
+  readEstimateBeforeRecord(body);
+  return (
+    String(body).replace(BEFORE_RE, '').trimEnd() +
+    `\n<!-- aitm-estimate-before schema="1" payload="${Buffer.from(raw).toString('base64url')}" -->\n`
+  );
+}
+async function readAdapter(effect) {
+  const result = await effect.read();
+  if (result?.status !== 'observed' || result.digest !== estimateEffectDigest(result.value))
+    beforeFailure('effect-read-back');
+  return result;
+}
+function permittedEffectDigests(effect, before) {
+  const values = [before, effect.value];
+  if (
+    effect.resource === 'project-estimate' &&
+    before &&
+    effect.value &&
+    typeof before === 'object' &&
+    typeof effect.value === 'object' &&
+    Object.keys(before).every((k) => ['estimate', 'size', 'priority', 'rank'].includes(k)) &&
+    canonicalDecompositionJson(Object.keys(before).sort()) ===
+      canonicalDecompositionJson(Object.keys(effect.value).sort())
+  ) {
+    let combinations = [{}];
+    for (const key of Object.keys(before))
+      combinations = combinations.flatMap((v) =>
+        [...new Set([before[key], effect.value[key]])].map((value) => ({ ...v, [key]: value }))
+      );
+    values.push(...combinations);
+  }
+  return [...new Set(values.map(estimateEffectDigest))];
+}
+
 export async function executeEstimateWriter({
   cfg,
   issueNumber,
@@ -65,16 +169,37 @@ export async function executeEstimateWriter({
   proposal,
   effects: makeEffects,
   deriveIntendedInput,
+  deriveProposal,
   deps = {},
 }) {
   const { subject, projectDir } = await resolveEstimateWriterSubject({ cfg, issueNumber, deps });
-  let adapters = [];
+  let adapters = [],
+    beforeRecord = null,
+    supersedes = null,
+    previousPublication = null;
   const runtime = createDecompositionRuntime({
     cfg,
     projectDir,
     deps: {
       ...deps.decomposition,
-      readPublicationEffect: async ({ effect }) => {
+      previewPublicationBody: (base) => {
+        const preview = deps.previewPublicationBody?.(base) ?? base;
+        return beforeRecord ? replaceBeforeRecord(preview, beforeRecord) : preview;
+      },
+      readPublicationEffect: async ({ effect, operationId }) => {
+        if (
+          previousPublication &&
+          operationId === previousPublication.operationId &&
+          previousPublication.operationId !== estimateOperationId(writerId, key)
+        )
+          return readRegisteredEstimateEffect({
+            cfg,
+            issueNumber,
+            publication: previousPublication,
+            effect,
+            collect: () => runtime.collect(subject),
+            deps,
+          });
         const adapter = adapters.find((e) => e.id === effect.id);
         if (!adapter) throw new Error('estimate-publication:unregistered-effect');
         return adapter.read();
@@ -84,6 +209,22 @@ export async function executeEstimateWriter({
   const initial = await runtime.collect(subject),
     operationId = estimateOperationId(writerId, key);
   const prior = initial.publication?.operationId === operationId ? initial.publication : null;
+  previousPublication = initial.publication;
+  supersedes = prior?.supersedes ?? null;
+  if (
+    !prior &&
+    initial.publication?.status === 'pending' &&
+    deps.supersedePending &&
+    ['cancel-plan', 'shelve'].includes(writerId)
+  )
+    supersedes = await reconcileEstimatePredecessor({
+      cfg,
+      issueNumber,
+      publication: initial.publication,
+      collect: () => runtime.collect(subject),
+      deps,
+    });
+  if (deriveProposal) proposal = deriveProposal(initial);
   if (!prior && initial.input.availability.status !== 'complete')
     throw new Error(
       `estimate-publication:authority-unavailable:${initial.input.availability.reasons.join(',')}`
@@ -101,6 +242,107 @@ export async function executeEstimateWriter({
         ? deriveIntendedInput(initial)
         : intendedPublishedRevisionInput(initial, proposal)
     );
+  const saved = readEstimateBeforeRecord(initial.sourceObservations.readIssue.value.body);
+  const previousBefore = prior?.effects.find((effect) => effect.id === 'writer-before-values');
+  if (saved?.operationId === operationId) {
+    if (
+      saved.writerId !== writerId ||
+      canonicalDecompositionJson(saved.subject) !== canonicalDecompositionJson(subject) ||
+      saved.beforeInputDigest !== (prior?.beforeInputDigest ?? initial.inputDigest) ||
+      saved.intendedInputDigest !== intended ||
+      previousBefore?.intendedDigest !== estimateEffectDigest(saved)
+    )
+      beforeFailure('before-record-drift');
+    beforeRecord = saved;
+  } else {
+    if (
+      prior &&
+      (!previousBefore ||
+        previousBefore.status === 'confirmed' ||
+        initial.inputDigest !== prior.beforeInputDigest ||
+        prior.effects.some(
+          (e) =>
+            !['authority-context', 'writer-before-values'].includes(e.id) && e.status !== 'pending'
+        ))
+    )
+      beforeFailure('before-record-missing');
+    beforeRecord = {
+      schema: 'aitm.estimate-before/v1',
+      subject,
+      operationId,
+      writerId,
+      beforeInputDigest: prior?.beforeInputDigest ?? initial.inputDigest,
+      intendedInputDigest: intended,
+      effects: await Promise.all(
+        adapters.map(async (effect) => {
+          const before = await readAdapter(effect);
+          return {
+            id: effect.id,
+            resource: effect.resource,
+            targetIdentity: effect.targetIdentity,
+            beforeDigest: before.digest,
+            intendedDigest: estimateEffectDigest(effect.value),
+            permittedDigests: permittedEffectDigests(effect, before.value),
+          };
+        })
+      ),
+    };
+  }
+  const ids = adapters.map((e) => ({
+    id: e.id,
+    resource: e.resource,
+    targetIdentity: e.targetIdentity,
+    intendedDigest: estimateEffectDigest(e.value),
+  }));
+  if (
+    canonicalDecompositionJson(ids) !==
+    canonicalDecompositionJson(
+      beforeRecord.effects.map(({ id, resource, targetIdentity, intendedDigest }) => ({
+        id,
+        resource,
+        targetIdentity,
+        intendedDigest,
+      }))
+    )
+  )
+    beforeFailure('before-manifest-drift');
+  const business = adapters;
+  const checkpoint = async (owner) => {
+    const state = owner.publication();
+    for (const effect of business) {
+      const evidence = beforeRecord.effects.find((e) => e.id === effect.id),
+        actual = await readAdapter(effect),
+        confirmed = state.effects.find((e) => e.id === effect.id)?.status === 'confirmed';
+      if (
+        confirmed
+          ? actual.digest !== evidence.intendedDigest
+          : !evidence.permittedDigests.includes(actual.digest)
+      )
+        beforeFailure(`effect-drift:${effect.id}`);
+    }
+  };
+  adapters = [
+    {
+      id: 'writer-before-values',
+      resource: 'assessment',
+      targetIdentity: `${subject.repository}#${subject.issue}:estimate-before`,
+      value: beforeRecord,
+      read: async () =>
+        observedEstimateEffect(
+          readEstimateBeforeRecord(
+            (await runtime.collect(subject)).sourceObservations.readIssue.value.body
+          )
+        ),
+      apply: () =>
+        mutateIssueBody({
+          issueNumber,
+          repo: cfg.repo,
+          mutate: (base) => replaceBeforeRecord(base, beforeRecord),
+          deps: deps.decomposition,
+        }),
+    },
+    ...business,
+  ];
   return publishEstimateRevision({
     subject,
     operationId,
@@ -119,8 +361,15 @@ export async function executeEstimateWriter({
     deps: {
       runtime,
       writerId,
+      supersedes,
       intendedInputDigest: intended,
-      beforeEffects: deps.beforePublicationEffects,
+      beforeEffects: async (owner) => {
+        await checkpoint(owner);
+        if (deps.beforePublicationEffects) await deps.beforePublicationEffects(owner);
+      },
+      beforeEffect: checkpoint,
+      afterEffects: deps.afterPublicationEffects,
+      onFailure: deps.onPublicationFailure,
       withEffects: deps.withPublicationEffects,
     },
   });

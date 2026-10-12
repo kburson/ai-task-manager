@@ -4,10 +4,11 @@
 // Ready for Planning. If that promote call throws, completion evidence rolls
 // back so Refine remains honest active WIP.
 
+import { runRefineOrchestration as runRefine } from '../../../fixtures/refinement-orchestration.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { runRefine, REFINE_COMPLETE_MARKER_RE } from '../../../../task-tracker/verbs/refine.mjs';
+import { REFINE_COMPLETE_MARKER_RE, verbRefine } from '../../../../task-tracker/verbs/refine.mjs';
 
 const baseCfg = { repo: 'owner/repo', projectId: 'PVT_FAKE' };
 
@@ -110,4 +111,49 @@ test('a successful Refine completion leaves the refine-complete marker in place'
 
   assert.equal(result.promoted, true);
   assert.match(currentBody, REFINE_COMPLETE_MARKER_RE);
+});
+
+test('Refine CLI exits nonzero and never prints success for partial publication', async () => {
+  const exit = process.exit,
+    out = process.stdout.write,
+    err = process.stderr.write;
+  let stdout = '',
+    stderr = '',
+    code = null;
+  process.stdout.write = (value) => {
+    stdout += value;
+    return true;
+  };
+  process.stderr.write = (value) => {
+    stderr += value;
+    return true;
+  };
+  process.exit = (value) => {
+    code = value;
+    throw new Error('expected CLI exit');
+  };
+  try {
+    await assert.rejects(
+      () =>
+        verbRefine(
+          ['1987', '--size', 'M', '--estimate', '25', '--priority', 'p1', '--reason', 'growth'],
+          baseCfg,
+          {
+            runRefine: async () => ({
+              status: 'partial',
+              issueNumber: 1987,
+              reason: 'unknown provider outcome',
+            }),
+          }
+        ),
+      /expected CLI exit/
+    );
+    assert.equal(code, 1);
+    assert.equal(stdout, '');
+    assert.match(stderr, /unknown provider outcome/);
+  } finally {
+    process.exit = exit;
+    process.stdout.write = out;
+    process.stderr.write = err;
+  }
 });

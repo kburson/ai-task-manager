@@ -1,3 +1,4 @@
+import { upsertPlannedEstimate as realPlannedUpsert } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rmSync } from 'node:fs';
@@ -246,6 +247,63 @@ export function registerAdaptivePublicationCases() {
       const r = readDecompositionRecords(c.f.body);
       assert.equal(r.publication.proposal.estimate.hours, 24);
       assert.equal(r.assessment.status, 'must-decompose');
+    } finally {
+      rmSync(c.dir, { recursive: true, force: true });
+    }
+  });
+  test('production adaptive appendix calls the actual nested upsert with its genuine owner', async () => {
+    const c = adaptiveCase(25);
+    let comment = '<!-- aitm-refined-estimate: 1987 -->\n### Refine estimate\n',
+      patches = 0;
+    const read = c.deps.readProjection;
+    c.deps.readProjection = async () => {
+      const state = await read();
+      const sizes = comment.match(/^\| Size \| ([^|]+) \| ([^|]+) \|/m),
+        hours = comment.match(/^\| Estimate \(h\) \| ([^|]+) \| ([^|]+) \|/m);
+      state.refineAppendix =
+        sizes && hours
+          ? {
+              refine: { size: sizes[1].trim(), humanHours: Number(hours[1]) },
+              plan: { size: sizes[2].trim(), humanHours: Number(hours[2]) },
+            }
+          : null;
+      return state;
+    };
+    c.deps.writeRefineAppendix = async (input) => {
+      assert.ok(input.context, 'adaptive must pass its real owner before the nested helper');
+      const result = await realPlannedUpsert({
+        cfg: c.args.cfg,
+        issueNumber: 1987,
+        refine: { size: input.refine.size, estimate: input.refine.humanHours },
+        plan: { size: input.plan.size, estimate: input.plan.humanHours },
+        rationale: input.plan.rationale,
+        context: input.context,
+        effectId: input.effectId,
+        deps: {
+          listComments: async () => [{ id: 99, node_id: 'IC_refine', body: comment }],
+          patchComment: async ({ body }) => {
+            patches++;
+            comment = body;
+          },
+        },
+      });
+      if (!['updated', 'current'].includes(result.status))
+        throw new Error(result.reason ?? 'nested upsert failed');
+    };
+    try {
+      const result = await applyPlanEstimateAuthority(c.args);
+      assert.equal(result.status, 'converged', result.reason ?? 'publication failed');
+      assert.equal(patches, 1);
+      assert.equal(
+        readDecompositionRecords(c.f.body).publication.writerId,
+        'plan-estimate-adaptive'
+      );
+      assert.equal(
+        readDecompositionRecords(c.f.body).publication.effects.filter(
+          (e) => e.resource === 'plan-appendix'
+        ).length,
+        1
+      );
     } finally {
       rmSync(c.dir, { recursive: true, force: true });
     }

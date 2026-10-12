@@ -1,3 +1,4 @@
+import { assertDecompositionPublicationOwner } from './decomposition-projection.mjs';
 // @story #1988 — comment-only proposal intent, exact bytes and current classification.
 import { executeEstimateWriter, observedEstimateEffect } from './estimate-writer-publication.mjs';
 import { collectDecompositionCommentProposals } from './decomposition-authority.mjs';
@@ -43,12 +44,32 @@ export async function publishPlannedCommentRevision({
   issueNumber,
   comment,
   nextBody,
-  planned,
+  planned = {},
   patchComment,
   findComment,
   listComments,
+  context,
+  effectId = 'appendix',
   deps = {},
 }) {
+  if (context) {
+    if (
+      context.subject?.issue !== issueNumber ||
+      context.subject?.repository !== cfg.repo.toLowerCase()
+    )
+      throw new Error('estimate-publication:foreign-context');
+    await assertDecompositionPublicationOwner(context, {
+      subject: context.subject,
+      operationId: context.operationId,
+      effectId,
+      requireIntent: true,
+    });
+    await patchComment({ cfg, commentId: comment.id, body: nextBody });
+    const actual = await findComment();
+    if (actual?.id !== comment.id || actual.body !== nextBody)
+      throw new Error('estimate-publication:comment-readback');
+    return { status: 'recorded', operationId: context.operationId };
+  }
   const nodeId = comment.nodeId ?? String(comment.id),
     proposal = {
       estimate: {
@@ -72,6 +93,34 @@ export async function publishPlannedCommentRevision({
     key: { comment: nodeId, body: estimateEffectDigest(nextBody) },
     proposal,
     deps,
+    deriveProposal: (initial) => {
+      const project = initial.sourceObservations.readProject.value;
+      const parsed = collectDecompositionCommentProposals({
+        comments: intendedComments,
+        subject: initial.input.subject,
+        body: initial.sourceObservations.readIssue.value.body,
+        published: initial.sourceObservations.readForecast.value?.recordId
+          ? initial.sourceObservations.readForecast.value
+          : null,
+        board: project,
+        bodyFields: parseIssueFieldDb(initial.sourceObservations.readIssue.value.body).values,
+      });
+      if (!parsed.available) throw new Error('estimate-publication:proposal-unavailable');
+      const target = parsed.proposals.find(
+        (p) => p.proposalId === `comment:${nodeId}:planned-estimate`
+      );
+      return {
+        estimate:
+          target?.hours != null
+            ? { basis: 'proposed', hours: target.hours, proposalId: target.proposalId }
+            : {
+                basis: project.estimate === null ? 'unset' : 'published',
+                hours: project.estimate,
+                proposalId: null,
+              },
+        size: target?.size ?? project.size,
+      };
+    },
     deriveIntendedInput: (initial) =>
       intendedCommentProposalInput({
         initial,

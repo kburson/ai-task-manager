@@ -1,3 +1,5 @@
+import { publishFieldEstimateRevision } from '../../task-tracker/lib/decomposition-field-writer.mjs';
+import { assertDecompositionPublicationOwner } from '../../task-tracker/lib/decomposition-projection.mjs';
 import { fetchIssueProjectMembership, membershipNextCursor } from './project-membership.mjs';
 import { gql } from './github-projects.mjs';
 import { ensureParentEpicTitle } from './epic-retitle.mjs';
@@ -156,7 +158,14 @@ async function linkSubIssue({
   });
 }
 
-async function writeField({ cfg, itemId, fieldId, value, runGql }) {
+async function writeField({ cfg, itemId, fieldId, value, runGql, context, effectId }) {
+  if (context)
+    await assertDecompositionPublicationOwner(context, {
+      subject: context.subject,
+      operationId: context.operationId,
+      effectId,
+      requireIntent: true,
+    });
   if (!fieldId) return;
   if (value?.singleSelectOptionId) {
     await runGql(
@@ -181,7 +190,18 @@ async function writeField({ cfg, itemId, fieldId, value, runGql }) {
   }
 }
 
-async function writeFields({ cfg, itemId, status, priority, size, estimate, rank, runGql }) {
+async function writeFields({
+  cfg,
+  itemId,
+  status,
+  priority,
+  size,
+  estimate,
+  rank,
+  runGql,
+  context,
+  effectId,
+}) {
   const statusKey = STATUS_CONFIG_KEYS[String(status || '').toLowerCase()];
   if (statusKey) {
     await writeField({
@@ -190,6 +210,8 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, rank
       fieldId: cfg.kanbanFieldId,
       value: { singleSelectOptionId: cfg[statusKey] },
       runGql,
+      context,
+      effectId,
     });
   }
 
@@ -201,6 +223,8 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, rank
       fieldId: cfg.priorityFieldId,
       value: { singleSelectOptionId: cfg[priorityKey] },
       runGql,
+      context,
+      effectId,
     });
   }
 
@@ -224,6 +248,8 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, rank
       fieldId: cfg.sizeFieldId,
       value: { singleSelectOptionId: sizeOptionId },
       runGql,
+      context,
+      effectId,
     });
   }
 
@@ -234,6 +260,8 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, rank
       fieldId: cfg.fieldEstimate || cfg.fieldIds?.estimate,
       value: { number: ceilEstimateHours(Number(estimate)) },
       runGql,
+      context,
+      effectId,
     });
   }
 
@@ -259,6 +287,8 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, rank
         fieldId: rankFieldId,
         value: { number: Number(rank) },
         runGql,
+        context,
+        effectId,
       });
     }
   }
@@ -317,6 +347,9 @@ export async function tetherIssueToProject({
   runGql = defaultRunGql,
   reconcileEpicMetadata,
   sleep: sleepFn = sleep,
+  context,
+  effectId,
+  deps = {},
 } = {}) {
   if (!cfg?.repo) throw new Error('repo not configured');
   if (!cfg.projectId) throw new Error('projectId not configured');
@@ -330,6 +363,68 @@ export async function tetherIssueToProject({
     if (projectLinked) return;
     await ensureProjectLinked({ cfg, repositoryId, runGql });
     projectLinked = true;
+  }
+
+  async function publishExistingFields(itemId) {
+    const raw = (values) => writeFields({ cfg, itemId, runGql, ...values });
+    if (context) {
+      if (
+        context.subject?.issue !== issueNumber ||
+        context.subject?.repository !== cfg.repo.toLowerCase()
+      )
+        throw new Error('estimate-publication:foreign-context');
+      await assertDecompositionPublicationOwner(context, {
+        subject: context.subject,
+        operationId: context.operationId,
+        effectId,
+        requireIntent: true,
+      });
+      await ensureLinked();
+      await raw({ status, priority, size, estimate, rank, context, effectId });
+      return;
+    }
+    if (estimate === undefined) {
+      await ensureLinked();
+      await raw({ status, priority, size, rank });
+      return;
+    }
+    const result = await publishFieldEstimateRevision({
+      cfg,
+      issueNumber,
+      writerId: 'project-tether',
+      key: {
+        estimate: ceilEstimateHours(Number(estimate)),
+        size: normalizeSize(size) || null,
+        priority: normalizePriority(priority) || null,
+        rank: rank ?? null,
+        status: status ?? null,
+      },
+      estimate: ceilEstimateHours(Number(estimate)),
+      size: normalizeSize(size) || undefined,
+      deps: {
+        ...deps,
+        projectItemForIssue: deps.projectItemForIssue ?? (async () => ({ itemId })),
+      },
+      writeField: ({ field, value, context, effectId }) =>
+        raw({ [field]: value, context, effectId }),
+      beforeEffects: async (context) => {
+        await assertDecompositionPublicationOwner(context, {
+          subject: context.subject,
+          operationId: context.operationId,
+          effectId: 'estimate',
+          requireIntent: true,
+        });
+        await ensureLinked();
+        await raw({ status, priority, rank, context, effectId: 'estimate' });
+      },
+    });
+    if (result.status === 'unchanged') {
+      await ensureLinked();
+      await raw({ status, priority, size, estimate, rank });
+      return;
+    }
+    if (result.status !== 'recorded')
+      throw new Error(`project-tether:estimate-${result.status}:${result.reason}`);
   }
 
   let lastProject = null;
@@ -351,17 +446,8 @@ export async function tetherIssueToProject({
     if (sideItems.length > 0) {
       const item = sideItems[0];
       lastProject = item.project || lastProject;
-      await ensureLinked();
-      await writeFields({
-        cfg,
-        itemId: item.id,
-        status,
-        priority,
-        size,
-        estimate,
-        rank,
-        runGql,
-      });
+      await publishExistingFields(item.id);
+      /* fields are owned above */
       if (parentIssueNumber) {
         const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
         await linkSubIssue({
@@ -386,17 +472,7 @@ export async function tetherIssueToProject({
     const verified = await projectItemForIssue({ cfg, issueId: issue.id, runGql });
     lastProject = verified.project || lastProject;
     if (verified.item?.id) {
-      await ensureLinked();
-      await writeFields({
-        cfg,
-        itemId: verified.item.id,
-        status,
-        priority,
-        size,
-        estimate,
-        rank,
-        runGql,
-      });
+      await publishExistingFields(verified.item.id);
       if (parentIssueNumber) {
         const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
         await linkSubIssue({

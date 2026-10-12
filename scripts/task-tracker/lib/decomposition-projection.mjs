@@ -475,6 +475,11 @@ export async function withDecompositionPublicationOwner(
           assessment: assessDecomposition(current.input, { publication: candidate }),
           publication: candidate,
         };
+        if (deps.previewPublicationBody)
+          replaceDecompositionRecords(
+            deps.previewPublicationBody(current.sourceObservations.readIssue.value.body),
+            after
+          );
         const cap = Object.freeze({
           context: ctx,
           beforeDigest: sha(before),

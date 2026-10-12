@@ -112,6 +112,7 @@ async function publishEstimateRevisionOwned({
       try {
         if (deps.beforeEffects) await deps.beforeEffects(owner);
         for (const adapter of effects) {
+          if (deps.beforeEffect) await deps.beforeEffect(owner);
           await assertDecompositionPublicationOwner(owner, {
             subject,
             operationId,
@@ -152,6 +153,7 @@ async function publishEstimateRevisionOwned({
           state.updatedAt = new Date().toISOString();
           await owner.persistPublication(state);
         }
+        if (deps.afterEffects) await deps.afterEffects(owner);
         const current = await owner.collectCurrent();
         if (
           current.input.availability.status !== 'complete' ||
@@ -169,6 +171,7 @@ async function publishEstimateRevisionOwned({
           replayed: matching,
         };
       } catch (error) {
+        if (deps.onFailure) await deps.onFailure(owner, error);
         return {
           status: 'partial',
           operationId,

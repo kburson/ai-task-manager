@@ -4,6 +4,7 @@
 
 import { readDecompositionRecords } from '../../../../task-tracker/lib/decomposition-records.mjs';
 
+import { registerRefineCommentPublicationCases } from './refine-comment-publication.cases.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { publicationCommentDeps } from './refine-comment-publication-fixtures.mjs';
@@ -13,6 +14,7 @@ import {
   ensureRefineEstimateComment,
   appendPlannedEstimate,
   clearPlannedEstimate,
+  restorePlannedEstimate,
   repopulateEmptyPlannedAppendix,
   planPlannedEstimateGate,
   buildPlannedAppendix,
@@ -487,90 +489,4 @@ test('repopulateEmptyPlannedAppendix reports no-refine-comment when missing', as
 
 console.log('All refine-estimate-comment tests defined.');
 
-test('exact append retry reconciles an already patched proposal before claiming duplicate success', async () => {
-  let patches = 0,
-    unreadable = false;
-  const deps = publicationCommentDeps({
-    cfg,
-    issueNumber: 1987,
-    current: { size: 'M', estimate: 10 },
-    deps: {
-      listComments: async () => [{ id: 99, body: baseComment(1987) }],
-      patchComment: async () => {
-        patches++;
-      },
-    },
-  });
-  const patch = deps.patchComment,
-    list = deps.listComments;
-  deps.patchComment = async (args) => {
-    const result = await patch(args);
-    unreadable = true;
-    return result;
-  };
-  deps.listComments = async () => {
-    if (unreadable) {
-      unreadable = false;
-      throw new Error('readback interrupted');
-    }
-    return list();
-  };
-  const args = {
-    cfg,
-    issueNumber: 1987,
-    planned: { size: 'M', estimate: 25 },
-    current: { size: 'M', estimate: 10 },
-    rationale: 'larger scope',
-    deps,
-  };
-  assert.equal((await appendPlannedEstimate(args)).status, 'partial');
-  assert.equal(
-    readDecompositionRecords((await deps.decomposition.readIssue()).value.body).publication.status,
-    'pending'
-  );
-  const second = await appendPlannedEstimate(args);
-  assert.equal(second.status, 'appended', second.reason ?? 'retry did not complete');
-  assert.equal(
-    readDecompositionRecords((await deps.decomposition.readIssue()).value.body).publication.status,
-    'complete'
-  );
-  assert.equal(patches, 1);
-});
-
-for (const mode of ['upsert', 'clear'])
-  test(
-    mode + ' preserves later inflation and review history after the planned appendix',
-    async () => {
-      const history = '\n### Discovered work — estimate inflation\nHistorical verified work.\n';
-      let original =
-        baseComment(1987) +
-        buildPlannedAppendix({
-          current: { size: 'M', estimate: 10 },
-          planned: { size: 'M', estimate: 25 },
-          rationale: 'old proposal',
-        }) +
-        '\n' +
-        history;
-      const deps = publicationCommentDeps({
-        cfg,
-        issueNumber: 1987,
-        current: { size: 'M', estimate: 10 },
-        deps: {
-          listComments: async () => [{ id: 99, body: original }],
-          patchComment: async () => {},
-        },
-      });
-      if (mode === 'upsert')
-        await upsertPlannedEstimate({
-          cfg,
-          issueNumber: 1987,
-          refine: { size: 'M', estimate: 10 },
-          plan: { size: 'M', estimate: 23 },
-          rationale: 'updated proposal',
-          deps,
-        });
-      else await clearPlannedEstimate({ cfg, issueNumber: 1987, deps });
-      const current = (await deps.listComments())[0].body;
-      assert.ok(current.endsWith(history), 'unrelated later history must retain exact bytes');
-    }
-  );
+registerRefineCommentPublicationCases({ cfg, baseComment, emptyAppendixComment });

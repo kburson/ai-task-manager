@@ -74,7 +74,7 @@ export async function publishAdaptivePlanAuthority({ issueNumber, forecastEnvelo
           targetIdentity,
           value,
           read: async () => observedEstimateEffect(select(await deps.readProjection())),
-          apply: () => deps[write](input),
+          apply: (context) => deps[write]({ ...input, context, effectId: id }),
         });
         const fields = { estimate: plan.humanHours, size: plan.size };
         return [

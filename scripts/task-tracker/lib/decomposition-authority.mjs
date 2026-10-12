@@ -43,6 +43,7 @@ import { parsePreloadedIssueComments } from './github-records/github-comment-sto
 import {
   confirmedEstimateProjectionRevision,
   forecastPublicationTransition,
+  confirmedForecastRetirement,
 } from './decomposition-publication-inputs.mjs';
 import { AUDIT_HEADER } from './reevaluate-estimate.mjs';
 import { readDecompositionRecords, replaceDecompositionRecords } from './decomposition-records.mjs';
@@ -253,6 +254,16 @@ function readPorts({ cfg, projectDir, deps }) {
           active.length === 1 &&
           readyId === active[0].envelope.recordId &&
           p.forecast?.recordId === readyId);
+      if (
+        await confirmedForecastRetirement({
+          publication: readDecompositionRecords(body).publication,
+          active,
+          ready,
+          project: { ...p.board, projectItemId: subject.projectItemId },
+          bodyFields: p.bodyFields,
+        })
+      )
+        complete = true;
       if (active.length !== p.activeForecastRecordIds.length) complete = false;
       const known = active
         .map((record) => ({
@@ -362,8 +373,21 @@ export function collectDecompositionCommentProposals({
       continue;
     }
     if (hours === null && size === null) continue;
+    const operationKeys = [
+      ...masked.matchAll(
+        /<!-- aitm-estimate-operation: ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}) -->/g
+      ),
+    ];
+    if (operationKeys.length > 1) {
+      available = false;
+      continue;
+    }
     const sourceDigest = sha(raw),
-      targetIdentity = `comment:${comment.id}`;
+      targetIdentity = `comment:${mode === 'human-attention' && operationKeys.length === 1 ? operationKeys[0][1] : comment.id}`;
+    if (proposals.some((p) => p.proposalId === `${targetIdentity}:${mode}`)) {
+      available = false;
+      continue;
+    }
     const retired =
       publication &&
       same(publication.subject, subject) &&

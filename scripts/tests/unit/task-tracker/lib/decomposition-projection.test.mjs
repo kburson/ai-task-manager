@@ -367,7 +367,7 @@ test('text effect observations use exact UTF8 digest convention', async () => {
   const a = await collect(f);
   const pub = publication(a.inputDigest, {
     intendedInputDigest: a.inputDigest,
-    proposal: { estimate: { basis: 'proposed', hours: 7, proposalId: 'proposal-a' }, size: 'M' },
+    proposal: { estimate: { basis: 'published', hours: 7, proposalId: null }, size: 'M' },
   });
   const { hash } = await import('./decomposition-authority-fixtures.mjs');
   pub.effects = [

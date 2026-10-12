@@ -52,6 +52,9 @@ export const DECOMPOSITION_WRITER_IDS = Object.freeze([
   'migrate-project',
   'bind-issues-to-new-project',
   'issue-body',
+  'cancel-plan',
+  'shelve',
+  'event-field',
 ]);
 export const DECOMPOSITION_EFFECT_RESOURCES = Object.freeze([
   'project-estimate',
@@ -501,7 +504,7 @@ function expectedCapabilities(value, publication = null) {
     return [...BASE, 'publication-reconcile'];
   if (value.status === 'indeterminate')
     return ['inspect', 'checkpoint', 'decomposition-prepare', 'authority-recover'];
-  if (value.status === 'must-decompose') return [...BASE];
+  if (value.status === 'must-decompose' || value.estimate.basis === 'unset') return [...BASE];
   if (value.status === 'epic-readiness-required') {
     const flags = readinessObservation(value);
     const result = [...BASE];
