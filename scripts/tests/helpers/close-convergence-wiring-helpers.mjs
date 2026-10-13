@@ -57,6 +57,7 @@ export async function runClose({
   childSnapshot = { status: 'ok', children: [] },
   timingBody = '',
   timingResult = { ok: true },
+  timingProjection,
   convergenceTailProfile,
   gateReviewToDone,
   mutationResult,
@@ -213,6 +214,7 @@ export async function runClose({
     },
     runLogIssueTime: async () => {
       calls.logIssueTime += 1;
+      return timingProjection;
     },
   };
   const githubClient = {
