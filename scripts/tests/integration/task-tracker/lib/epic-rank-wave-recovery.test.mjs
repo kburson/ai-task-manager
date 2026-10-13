@@ -6,9 +6,13 @@ import {
   executeRankWaveWrite,
   inspectRankWavePublication,
 } from '../../../../task-tracker/lib/epic-rank-wave-store.mjs';
-import { buildEpicOrchestrationPlanMarker } from '../../../../task-tracker/lib/epic-orchestration-plan.mjs';
+import { buildPlanApprovedMarker } from '../../../../task-tracker/lib/markers.mjs';
+import {
+  buildEpicOrchestrationPlanMarker,
+  parseEpicOrchestrationPlan,
+} from '../../../../task-tracker/lib/epic-orchestration-plan.mjs';
 const at = '2026-10-04T01:00:00.000Z';
-function fixture() {
+function fixture({ legacyNumbers } = {}) {
   const children = [140, 144].map((number) => ({
     number,
     rank: 2,
@@ -40,7 +44,15 @@ function fixture() {
     sessionId: 'native-parent',
     generation: 'parent-gen',
   };
-  let body = buildEpicOrchestrationPlanMarker({ children, trunkSha: '1'.repeat(40) });
+  const approval = legacyNumbers
+    ? buildPlanApprovedMarker(at, { mode: 'full-auto', trunkSha: '1'.repeat(40) }) + '\n'
+    : '';
+  let body =
+    approval +
+    buildEpicOrchestrationPlanMarker({
+      children: legacyNumbers ? children.filter((c) => legacyNumbers.includes(c.number)) : children,
+      trunkSha: '1'.repeat(40),
+    });
   const comments = [],
     journal = new Map();
   let posts = 0,
@@ -560,4 +572,63 @@ test('fresh human reauthorization supersedes unavailable historical transcripts 
   assert.equal((await inspect()).status, 'ready');
   f.runtime.verifySource = async () => ({ status: 'blocked', code: 'source-host-unavailable' });
   assert.equal((await inspect()).status, 'blocked');
+});
+
+// @story #2008
+test('registered fresh authorization directly adopts the changed legacy graph and resumes one publication', async () => {
+  const f = fixture({ legacyNumbers: [140] }),
+    original = f.body,
+    p = await prepared(f);
+  assert.equal((await record(f, p)).status, 'recorded');
+  const adopted = parseEpicOrchestrationPlan(f.body);
+  assert.equal(adopted.schema, 2);
+  assert.deepEqual(
+    adopted.graph.map((c) => c.number),
+    [140, 144]
+  );
+  assert.equal(adopted.trunkSha, '1'.repeat(40));
+  assert.equal(f.body.split('\n')[0], original.split('\n')[0]);
+  assert.equal(
+    (
+      await inspectRankWavePublication({
+        repository: 'o/r',
+        epic: 107,
+        rank: 2,
+        now: at,
+        runtime: f.runtime,
+      })
+    ).status,
+    'ready'
+  );
+  assert.equal((await resume(f, f.comments[0])).status, 'recorded');
+  assert.equal(f.posts, 1);
+});
+test('legacy graph adoption refuses bad source or worker bindings before publication', async () => {
+  for (const refusal of ['source', 'bindings']) {
+    const f = fixture({ legacyNumbers: [140] }),
+      original = f.body,
+      p = await prepared(f);
+    if (refusal === 'source') f.runtime.verifySource = async () => ({ status: 'blocked' });
+    else f.runtime.verifyBindings = async () => ({ ok: false });
+    assert.equal((await record(f, p)).status, 'blocked');
+    assert.equal(f.posts, 0);
+    assert.equal(f.body, original);
+  }
+});
+test('graph drift during direct legacy authorization retains the original schema-1 pointer', async () => {
+  const f = fixture({ legacyNumbers: [140] }),
+    original = f.body,
+    p = await prepared(f);
+  const create = f.runtime.createRecord;
+  f.runtime.createRecord = async (wave) => {
+    const result = await create(wave);
+    f.children[1].blockedBy.push(140);
+    return result;
+  };
+  const result = await record(f, p);
+  assert.equal(result.status, 'blocked');
+  assert.equal(result.code, 'rank-wave-graph-stale');
+  assert.equal(f.posts, 1);
+  assert.equal(f.body, original);
+  assert.equal(parseEpicOrchestrationPlan(f.body).schema, 1);
 });
