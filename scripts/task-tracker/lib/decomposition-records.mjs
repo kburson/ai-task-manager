@@ -150,6 +150,14 @@ function visibleSection(assessment, publication) {
       lines.push(`- Signal: ${signal.code} ${signal.value} (${signal.level})`);
     for (const blocker of assessment.blockers) lines.push(`- Blocker: ${blocker.code}`);
   } else lines.push('- Assessment: unavailable');
+  if (publication?.status === 'pending') {
+    const intended = publication.proposal;
+    lines.push(
+      '- Pending intended estimate: ' +
+        (intended.estimate.hours === null ? 'unset' : 'proposed ' + intended.estimate.hours + 'h')
+    );
+    lines.push('- Pending intended size: ' + (intended.size ?? 'unset'));
+  }
   if (publication) lines.push(`- Publication: ${publication.status} (${publication.operationId})`);
   return `${lines.join('\n')}\n\n`;
 }

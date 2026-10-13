@@ -806,7 +806,12 @@ async function evaluateCompletedAction({
         },
       };
     }
-    const decomposition = await observeDecompositionForAction({ actionId, attempt, ...context });
+    const decomposition = await observeDecompositionForAction({
+      actionId,
+      state: canonicalState,
+      attempt,
+      ...context,
+    });
     if (['plan', 'develop', 'test', 'review'].includes(canonicalState)) {
       blockers.push(...decomposition.blockers);
       if (

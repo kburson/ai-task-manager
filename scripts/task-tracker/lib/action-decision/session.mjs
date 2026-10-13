@@ -376,7 +376,12 @@ export async function collectSessionReadiness({
         },
       };
     }
-    const decomposition = await observeDecompositionForAction({ actionId, attempt, ...context });
+    const decomposition = await observeDecompositionForAction({
+      actionId,
+      state: normalizeStateId(board?.state),
+      attempt,
+      ...context,
+    });
     observations.push(...decomposition.observations);
     warnings = decomposition.warnings;
   }
