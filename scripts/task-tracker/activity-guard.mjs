@@ -35,6 +35,7 @@ import {
   evaluateHookDecomposition,
   decompositionActivityUnavailable,
 } from './lib/decomposition-activity.mjs';
+import { decompositionTargetActivity } from './lib/decomposition-local-targets.mjs';
 import { readWorktreeIdentity } from './lib/worktree-binding-guard.mjs';
 import {
   resolveInvocationDirectory,
@@ -155,10 +156,27 @@ try {
       return { relative: resolved.relative, activity: classifyEdit(resolved.relative, policy) };
     })
     .filter((target) => !/^\.(?:scratch|tmp)(?:\/|$)/.test(target.relative));
+  activity = decompositionTargetActivity({
+    activity,
+    targets,
+    issue,
+    exactBinding: bindingMatches(
+      observedIdentity,
+      readExactSessionBinding(projectRoot, { sessionId: input.session_id }),
+      issue
+    ),
+  });
   const recognized =
     targets.length > 0 ||
     (declared.length === 0 &&
-      ['WRITE_CODE', 'WRITE_DOCS', 'WRITE_ISSUE', 'COMMIT_CODE', 'COMMIT_DOCS'].includes(activity));
+      [
+        'WRITE_CODE',
+        'WRITE_DOCS',
+        'WRITE_ISSUE',
+        'COMMIT_CODE',
+        'COMMIT_DOCS',
+        'RUN_BUILD',
+      ].includes(activity));
   if (Number.isSafeInteger(issue) && issue > 0 && recognized) {
     decompositionCheckpoint =
       activity === 'COMMIT_CODE' &&

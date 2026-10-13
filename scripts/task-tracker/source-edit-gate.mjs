@@ -56,6 +56,7 @@ import {
   decompositionActivityUnavailable,
   evaluateHookDecomposition,
 } from './lib/decomposition-activity.mjs';
+import { decompositionTargetActivity } from './lib/decomposition-local-targets.mjs';
 import { artifactPathPolicy } from './lib/artifact-write-policy.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 import {
@@ -560,9 +561,18 @@ async function runHookUnchecked(payload, deps = {}) {
       cfg,
       projectDir,
       targets: scopedTargets,
-      activity: scopedTargets.some((t) => t.activity === 'WRITE_CODE')
-        ? 'WRITE_CODE'
-        : 'WRITE_DOCS',
+      activity: decompositionTargetActivity({
+        activity: scopedTargets.some((t) => t.activity === 'WRITE_CODE')
+          ? 'WRITE_CODE'
+          : 'WRITE_DOCS',
+        targets: scopedTargets,
+        issue: decompositionIssue,
+        exactBinding: bindingMatches(
+          existsSync(projectDir) ? readWorktreeIdentity({ projectDir }) : null,
+          decompositionBinding,
+          decompositionIssue
+        ),
+      }),
       deps,
     });
     if (admission.decision === 'block') {
