@@ -452,7 +452,10 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #1986: measured +2 for the strict assessment and record codec only.
     2 + // #1987: measured +2 for current authority and protected projection only.
     3 + // #1990: exactly three fresh hook/effect composition modules.
-    1; // #1989: one current continuation composition helper; no new dependency.
+    1 + // #1989: one current continuation composition helper; no new dependency.
+    1; // #2006: exactly one bounded target classifier; the repair plan/tests remain excluded.
+  for (const added of ['scripts/task-tracker/lib/decomposition-local-targets.mjs'])
+    assert.ok(files.includes(added), 'required reviewed addition missing: ' + added);
   for (const module of [
     'decomposition-activity',
     'decomposition-hook-authority',

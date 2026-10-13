@@ -17,7 +17,8 @@ export function runRefineOrchestration(input) {
         await revision.beforeEffects();
         await revision.writeField({ field: 'estimate', value: revision.estimate });
         await revision.writeField({ field: 'size', value: revision.size });
-        await revision.applyBody();
+        // This isolated port represents a changed publication, not the unchanged path.
+        await revision.applyBody({ source: 'changed-publication-test-double' });
         return { status: 'recorded' };
       },
     },
