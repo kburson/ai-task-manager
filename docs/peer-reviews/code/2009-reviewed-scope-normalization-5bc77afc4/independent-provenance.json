@@ -1,0 +1,126 @@
+{
+  "sourceHead": "5bc77afc43afb205036702d37aee13f57db06fa7",
+  "reviewerSession": "01a137f9-6f7f-73d1-b9f3-9829f2283d65",
+  "tarball": {
+    "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2009-reviewed-scope-normalization/.scratch/runtime/2009-5bc77afc4/kburson-ai-task-manager-0.1.0.tgz",
+    "sha256": "493593b737626a15661c42c5711938cf3788f294a5bda7d6ee1a2c1d42a2bbce",
+    "integrity": "sha512-DTeC5LMbpBm7ki5SDRETAIzLgNEEHlVR6uJutNWeC91mHf+3Jbjgm9UreGKkhDKBamS7JAEsdpQUSC0zUZfLyg==",
+    "size": 3005031,
+    "modulesVerified": [
+      "scripts/task-tracker/lib/epic-rank-wave-refinement.mjs",
+      "scripts/gh/lib/wave-admission.mjs",
+      "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs",
+      "scripts/task-tracker/lib/epic-orchestration-plan.mjs"
+    ]
+  },
+  "liveGraph": {
+    "children": 11,
+    "exactRetainedGraph": true,
+    "matchedCommentNodeIds": [
+      "IC_kwDOVGnu1M8AAAABbvS-nw"
+    ],
+    "graph": [
+      {
+        "number": 3,
+        "rank": 2,
+        "blockedBy": [],
+        "refinementDigest": "e0cfb24505df058238165950a3956de4cde6096fb23a5587bf98979c3844ca61"
+      },
+      {
+        "number": 4,
+        "rank": 4,
+        "blockedBy": [
+          13
+        ],
+        "refinementDigest": "0fb942813b30c18877c07de31bb70d128886a07a41fc22020a5c5a96c4b0f96f"
+      },
+      {
+        "number": 5,
+        "rank": 4,
+        "blockedBy": [
+          4
+        ],
+        "refinementDigest": "ca62b752c2db8010c0cfd10e12cdda1e592918bdb0ae123e39ce34189bd0dcda"
+      },
+      {
+        "number": 6,
+        "rank": 4,
+        "blockedBy": [
+          13
+        ],
+        "refinementDigest": "64d758f4eb7e21215af75c7e1087372411e912e845bf2c0b2259ebcdc82a8c58"
+      },
+      {
+        "number": 7,
+        "rank": 4,
+        "blockedBy": [
+          4,
+          5
+        ],
+        "refinementDigest": "508693f714ba03297ef565274647f8fd3443d6aa8f79fb873071dc35e863462c"
+      },
+      {
+        "number": 8,
+        "rank": 5,
+        "blockedBy": [
+          6,
+          7
+        ],
+        "refinementDigest": "6ce4467fcadb4af632ef75f2059165c794765e89ba2fadb635da215d74d20c05"
+      },
+      {
+        "number": 9,
+        "rank": 6,
+        "blockedBy": [
+          8,
+          14
+        ],
+        "refinementDigest": "2754359d2972c1898c374f5d9aaab642dc6f1a43673b16ea544f2b64f910c28c"
+      },
+      {
+        "number": 10,
+        "rank": 7,
+        "blockedBy": [
+          8,
+          9
+        ],
+        "refinementDigest": "2c7115368f74bae5ba45e7e19e4656968bfeb7de823af341bfb3e5773a397100"
+      },
+      {
+        "number": 11,
+        "rank": 8,
+        "blockedBy": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          13,
+          14
+        ],
+        "refinementDigest": "661b8052fcc5aa97b5af8420c667d87efac1c6c17e96c22d1bff3ba8b5f3220c"
+      },
+      {
+        "number": 13,
+        "rank": 3,
+        "blockedBy": [
+          3
+        ],
+        "refinementDigest": "ed0551789217fc101e735a73123ffbc11447cc4970e96a1208c2d7caa6b5bb8f"
+      },
+      {
+        "number": 14,
+        "rank": 4,
+        "blockedBy": [
+          13
+        ],
+        "refinementDigest": "b841cf3c53400fdfcc249290075146e839a8549fde13c7eebf4b4e259d59c7b9"
+      }
+    ]
+  },
+  "verifiedAt": "2026-10-14T02:07:44.773Z",
+  "reviewerBindingGeneration": "09d71717-2014-4f46-9f26-f0d08467024f"
+}
