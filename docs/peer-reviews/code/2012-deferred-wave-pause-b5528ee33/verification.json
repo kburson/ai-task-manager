@@ -1,0 +1,30 @@
+{
+  "issue": 2012,
+  "reviewerSession": "01a138f7-8083-7d31-9344-a35863d2499e",
+  "sourceCommit": "b5528ee33b517202aa5091d5271404e1ae79c795",
+  "specification": "PASS",
+  "code": "ChangesRequested",
+  "boundedLocalTarballAdoption": "Refused",
+  "independentChecks": {
+    "affectedTests": 127,
+    "adjacentTests": 19,
+    "probeCases": 20,
+    "sourcePackageOutcomeMatches": 20,
+    "expectedProbeMatches": 14,
+    "expectedProbeMismatches": 6,
+    "packageFilesMatched": 917,
+    "reportReproductionExitCode": 0
+  },
+  "files": {
+    "review.md": "e6128111a7eb51f50cda4b27c676fb0d6a7b9a4d34913059d2c7637b94329b9c",
+    "affected.log": "0676aa9b58c173f275238acfbe3b177fcd578477a85345a8bec171ea38ee9474",
+    "adjacent.log": "d5dde8b0c83de8c107ca0018b88a40a27fe1410f944ef4dfa59e8316c354e2da",
+    "comparison.json": "da43eb02ca83228da6c5d56e0c79a6fe40d32b17912a041e3880d6ef7991c955",
+    "package-check.json": "0a20c0b6ab29e8d91c238008278a22755f8aee47d6bcfec0a4f6dccbb1fbc432"
+  },
+  "documentChecks": {
+    "formatCommand": "node_modules/.bin/prettier --ignore-path /dev/null --check docs/peer-reviews/code/2012-deferred-wave-pause-b5528ee33/*.{md,json}",
+    "formatExitCode": 0,
+    "lintNote": "Repository markdown and spelling configuration excludes docs/peer-reviews; no lint coverage for this report is claimed."
+  }
+}

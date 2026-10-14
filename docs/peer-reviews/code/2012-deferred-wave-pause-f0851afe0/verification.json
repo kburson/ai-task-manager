@@ -1,0 +1,38 @@
+{
+  "issue": 2012,
+  "reviewerSession": "01a138f7-8083-7d31-9344-a35863d2499e",
+  "sourceCommit": "f0851afe0c5c9467ab728f3b8d11f413bcba8533",
+  "fixBase": "efc7fae4750a9204b85d26c82a555991a45379bf",
+  "priorFindings": {
+    "R2-1": "ADDRESSED",
+    "R2-2": "ADDRESSED",
+    "R2-3": "ADDRESSED"
+  },
+  "verdicts": {
+    "specification": "PASS",
+    "code": "ChangesRequested",
+    "boundedLocalTarballAdoption": "Refused"
+  },
+  "newFinding": {
+    "id": "R3-1",
+    "priority": "P2",
+    "summary": "Comma-prefixed independent positive clauses become false admission targets under preceding negation"
+  },
+  "independentChecks": {
+    "focusedTestsPassed": 108,
+    "priorInputsPassed": 45,
+    "additionalInputs": 27,
+    "additionalFailures": 4,
+    "totalInputs": 72,
+    "sourcePackageIdenticalOutcomes": 72,
+    "packageFilesMatched": 917,
+    "authorEvidenceEntriesHashVerified": 10
+  },
+  "files": {
+    "review.md": "eabd5f551a8095546da93cb588faafbb1bf1d332e8fce60a1a950419c76be09d",
+    "focused.log": "5edf71d44fc05821d59a07c0f0813ba75c6c3e924257905ccf07234607d66047",
+    "comparison.json": "ea29eddf73a70baa77c0aa841f3ae311e7ea236a7225129c217fd89fd5dc1626",
+    "package-check.json": "726c3108f0cd050daf789f1beb845d8ced82c644ab7c6c46734ad353e17bccfe",
+    "author-evidence-check.json": "7f1e5a232d24bcd7d0078ff7b0e347753303e8dfe30f3e922f95b136a082ac4a"
+  }
+}

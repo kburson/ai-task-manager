@@ -1,0 +1,47 @@
+{
+  "issue": 2012,
+  "sourceCommit": "9abd90a50bc83ddf57d6f296dd1c5889431d1876",
+  "fixBase": "fa1fe791153be656600f35c56c67051d7932684b",
+  "publicationHead": "9ee6d5bed8456ab68170009f670cdb0ee7e71179",
+  "reviewerSession": "01a138f7-8083-7d31-9344-a35863d2499e",
+  "model": "gpt-6-astra",
+  "reasoningEffort": "high",
+  "bindingGeneration": "2b804158-8bc9-4224-829d-3d2d451d2b14",
+  "verdicts": {
+    "specification": "PASS",
+    "code": "ChangesRequested",
+    "boundedTarballAdoption": "Refused"
+  },
+  "findings": [
+    {
+      "id": "R5-1",
+      "priority": 1,
+      "file": "scripts/task-tracker/lib/epic-rank-wave-source.mjs",
+      "start": 424,
+      "end": 429
+    }
+  ],
+  "freshFocused": {
+    "tests": 159,
+    "passed": 159,
+    "failed": 0
+  },
+  "replay": {
+    "inputs": 147,
+    "priorInputs": 88,
+    "authorConsumerControls": 15,
+    "newIndependentControls": 44,
+    "passed": 142,
+    "failed": 5,
+    "sourceTarballParity": true
+  },
+  "packedFilesVerified": 917,
+  "tarballSHA256": "1e4beb5e12657cacb0335d100cdc317e7f45eb2fd062ea47c28cb9f47a20bebb",
+  "files": {
+    "review.md": "75b42101cf12924007db01c2534a871a213a73924b23b176f26d9c8ea19a352d",
+    "comparison.json": "2e52bb5b0b796442acb8237cb16507b1e3e40fad01ac10165297c6d2a9f8d695",
+    "package-check.json": "0b9e99a01317ef9e63d84ea525af22be5c69bad90fe8a9a79dfbfab72ef29c9f",
+    "author-evidence-check.json": "3d24c09c1433d3b0e3a0314cb4c59336596f50afb45ce289cf8b1701a58262e1",
+    "focused.log": "d6fa28502cae0f875aa17f5cb351de4033652a54338659249913b30783537bcd"
+  }
+}

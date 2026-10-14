@@ -1,0 +1,39 @@
+✔ exact completion pause preserves original authority during the native later-human rescan (11.672625ms)
+✔ explicit current-wave completion conditions defer only their attached pause or stop (5.520333ms)
+✔ immediate unconditional matching pause stop and revocation still refuse (10.333834ms)
+✔ a deferred pause never conceals another matching withdrawal in the same message (6.713083ms)
+✔ ambiguous and unrelated conditions do not waive a current-wave withdrawal (5.43825ms)
+✔ explicit other-wave and other-epic instructions retain their independent scope (3.250375ms)
+✔ a scheduled completion pause grants neither standalone nor later-wave permission (1.598208ms)
+✔ live scans retain later revocation beyond deferred pause and unrelated conversation (2.538042ms)
+✔ deferred pause does not alter exact source hashes or historical observation cutoffs (2.7165ms)
+✖ completion-related operational chatter does not redirect independent commands to admission (3.352041ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 9
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 119.414167
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:188:1
+✖ completion-related operational chatter does not redirect independent commands to admission (3.352041ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete pause. Please hold off on deployment.
+  + actual - expected
+
+  + 'blocked'
+  - 'verified'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:196:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'verified',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

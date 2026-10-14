@@ -1,0 +1,36 @@
+{
+  "issue": 2012,
+  "reviewerSession": "01a138f7-8083-7d31-9344-a35863d2499e",
+  "sourceCommit": "efc7fae4750a9204b85d26c82a555991a45379bf",
+  "fixBase": "b5528ee33b517202aa5091d5271404e1ae79c795",
+  "priorFindings": {
+    "P1": "NOT ADDRESSED in full; original literals fixed",
+    "P2": "ADDRESSED; related new regression recorded separately"
+  },
+  "verdicts": {
+    "specification": "PASS",
+    "code": "ChangesRequested",
+    "boundedLocalTarballAdoption": "Refused"
+  },
+  "checks": {
+    "focusedTestsPassed": 79,
+    "priorProbesPassed": 20,
+    "additionalProbes": 25,
+    "additionalProbeFailures": 9,
+    "allProbeCases": 45,
+    "sourcePackageIdenticalOutcomes": 45,
+    "packageFilesMatched": 917,
+    "authorLogEntriesHashesVerified": 9
+  },
+  "limitations": [
+    "Full slow/canonical Test/Review/Done pending",
+    "No installed runtime or native readiness claim"
+  ],
+  "files": {
+    "review.md": "46bba9ec579fc8a26dae2ada0c2ee01a7d7442fd714b32b504f0f404caf4ed83",
+    "focused.log": "50013a2d6fb2010c921170b3dc8fd952fa183e5e08a806767aa127cb7532d031",
+    "comparison.json": "18f1d598fb6e2f23b6d5d3038f8b48b8faf690e86c646de16d3ca840364ed54f",
+    "package-check.json": "187454618e9299af83ab88a91ec23d8fc85013261458f002a4438b4daf82aa5e",
+    "author-evidence-check.json": "6df3b7071beb21c07b8ae47a27a780a199fbf6334c51c63d714b3f3460fd8a70"
+  }
+}

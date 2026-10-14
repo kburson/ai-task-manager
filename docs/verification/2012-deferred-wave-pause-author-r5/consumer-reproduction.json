@@ -1,0 +1,34 @@
+{
+  "observation": "read-only actual consumer failure, not native readiness",
+  "consumerRoot": "/Users/kpburson/.codex/worktrees/voice-bff-epic-2/AIVC",
+  "diagnostics": [
+    {
+      "path": ".scratch/runtime/2012-fa1fe7911/actual-source-context.json",
+      "sha256": "2453a6def310b8da4f75fe378e52cd47a8a352778870d9f68fc5f10af986c613"
+    },
+    {
+      "path": ".scratch/runtime/2012-fa1fe7911/actual-wave-show.json",
+      "sha256": "4a5dcebd1547ea6b95dbf3053e5be55f06bfc50fd704c99892dceeec4a5e85c3"
+    }
+  ],
+  "sourceResult": {
+    "status": "blocked",
+    "code": "rank-wave-source-contradiction"
+  },
+  "waveShowResult": {
+    "schema": "aitm.epic-wave-result/v1",
+    "status": "blocked",
+    "code": "rank-wave-source-unverified"
+  },
+  "selectedAuthorization": {
+    "messageId": "msg_01a1375a-73db-7920-aba3-c2eb9f066b9b",
+    "statementHash": "sha256:fb308dfe394c8c625669bf5f3bed306e641945d8209533f2b1f1e57567223c5d",
+    "statement": "Authorize parallel execution for epic #2 rank 4 stories #4, #5, #6, #7, #14.",
+    "index": 12041,
+    "submittedAt": "2026-10-13T22:20:37.212Z"
+  },
+  "soleSubsequentStatement": "A \u2014 create and coordinate the two AITM chats: Sol 6.1/high to finish #2012, then Astra 6/high to review it. Resume #5 and #7, finish wave 4, then pause before #8 and save the handoff.",
+  "rootReportedParentGenerationPrefix": "39179",
+  "consumerEditsByAuthor": false,
+  "spellingNote": "cspell:ignore AIVC identifiers"
+}

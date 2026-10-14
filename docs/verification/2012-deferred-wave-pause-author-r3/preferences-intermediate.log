@@ -1,0 +1,212 @@
+✔ exact completion pause preserves original authority during the native later-human rescan (12.2965ms)
+✔ explicit current-wave completion conditions defer only their attached pause or stop (6.707ms)
+✔ immediate unconditional matching pause stop and revocation still refuse (10.58125ms)
+✔ a deferred pause never conceals another matching withdrawal in the same message (8.116792ms)
+✔ ambiguous and unrelated conditions do not waive a current-wave withdrawal (6.797125ms)
+✔ explicit other-wave and other-epic instructions retain their independent scope (3.720667ms)
+✔ a scheduled completion pause grants neither standalone nor later-wave permission (2.87725ms)
+✔ live scans retain later revocation beyond deferred pause and unrelated conversation (3.309417ms)
+✔ deferred pause does not alter exact source hashes or historical observation cutoffs (3.62875ms)
+✔ completion-related operational chatter does not redirect independent commands to admission (4.499959ms)
+✔ independent review reproduction 1: when wave 4 is complete I need you to pause.  I will start a fresh chat session to continue #2 (1.617041ms)
+✔ independent review reproduction 2: Stop deployment and parallel execution for epic #2 rank 4. (1.060583ms)
+✔ independent review reproduction 3: When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 4. (0.964458ms)
+✔ independent review reproduction 4: Hold off on deployment and parallel execution for epic #2 rank 4. (1.093ms)
+✔ independent review reproduction 5: When wave 4 is complete pause. Stop deployment. (1.12125ms)
+✔ independent review reproduction 6: When wave 4 is complete pause. Do not start deployment. (1.220208ms)
+✔ independent review reproduction 7: When wave 4 is complete pause. I do not want to start deployment. (0.952875ms)
+✔ independent review reproduction 8: When wave 4 is complete pause. Stop now. (1.158958ms)
+✔ independent review reproduction 9: When wave 4 is complete pause and revoke epic #2 rank 4. (1.1475ms)
+✔ independent review reproduction 10: When wave 4 is complete do not pause. (1.045708ms)
+✔ independent review reproduction 11: When wave 5 is complete pause. (1.087958ms)
+✔ independent review reproduction 12: When wave 4 is complete pause. Pause epic #2 rank 4 now. (1.648209ms)
+✔ independent review reproduction 13: When wave 4 is complete pause. We should not run tests yet. (1.94325ms)
+✔ independent review reproduction 14: When wave 4 is complete pause. Do not execute tests. (1.41325ms)
+✔ independent review reproduction 15: When wave 4 is complete pause. Do not proceed with testing. (1.112ms)
+✔ independent review reproduction 16: When wave 4 is complete pause. I do not want to run tests. (1.276416ms)
+✔ independent review reproduction 17: I do not want to run tests. (1.140875ms)
+✔ independent review reproduction 18: I do not want to start deployment. (1.19225ms)
+✔ independent review reproduction 19: When wave 4 is complete pause. I do not want to run epic #2 rank 4 in parallel. (1.173458ms)
+✔ independent review reproduction 20: When wave 4 is complete pause. Stop deploying and running epic #2 rank 4 in parallel. (1.519792ms)
+✔ shared withdrawal verbs evaluate every coordinated operational and admission target (15.650334ms)
+✔ coordinated targets retain separate numeric-wave and epic scope (4.082ms)
+✔ negated preferences carry negation to the actual operation without withdrawing admission (11.136ms)
+✔ negated admission preferences and mixed operational preferences still withdraw authority (5.899375ms)
+✔ fix round 2 reproduction 21: Stop deployment, tests, and parallel execution for epic #2 rank 4. (1.089167ms)
+✔ fix round 2 reproduction 22: Stop deployment, parallel execution for epic #2 rank 4. (0.855542ms)
+✔ fix round 2 reproduction 23: When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 4. (1.281084ms)
+✔ fix round 2 reproduction 24: When wave 4 is complete pause. I do not want to run tests or execute epic #2 rank 4. (0.804792ms)
+✔ fix round 2 reproduction 25: When wave 4 is complete pause. I do not want to run tests and execute epic #2 rank 4. (0.839792ms)
+✔ fix round 2 reproduction 26: I do not want to run tests or execute epic #2 rank 4. (0.808917ms)
+✔ fix round 2 reproduction 27: When wave 4 is complete pause. I do not want you to run tests or start epic #2 rank 4. (0.730208ms)
+✔ fix round 2 reproduction 28: When wave 4 is complete pause. I do not want to run tests or start deployment. (0.847333ms)
+✔ fix round 2 reproduction 29: When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 5. (0.931709ms)
+✔ fix round 2 reproduction 30: Stop deployment & parallel execution for epic #2 rank 4. (1.028417ms)
+✔ fix round 2 reproduction 31: Stop deployment, and parallel execution for epic #2 rank 4. (0.867334ms)
+✔ fix round 2 reproduction 32: When wave 4 is complete pause. Stop deployment for epic #2 rank 4 and parallel execution for epic #3 rank 4. (0.8235ms)
+✔ fix round 2 reproduction 33: When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 5. (0.894125ms)
+✔ fix round 2 reproduction 34: When wave 4 is complete pause. Do not stop deployment and parallel execution for epic #2 rank 4. (2.1625ms)
+✔ fix round 2 reproduction 35: When wave 4 is complete pause. Do not run tests and parallel execution for epic #2 rank 4. (1.393292ms)
+✔ fix round 2 reproduction 36: When wave 4 is complete pause. I do not want to run tests, but stop now. (1.15325ms)
+✔ fix round 2 reproduction 37: When wave 4 is complete pause. I do not want to stop epic #2 rank 4. (1.044375ms)
+✔ fix round 2 reproduction 38: Stop deployment and parallel execution for epic #2 rank 3 and 4. (1.011917ms)
+✔ fix round 2 reproduction 39: Stop deployment and parallel execution for epic #2 rank 3 and 5. (1.082042ms)
+✔ fix round 2 reproduction 40: Stop parallel execution for epic #3 rank 4 and parallel execution for epic #2 rank 4. (1.129833ms)
+✖ fix round 2 reproduction 41: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now. (1.790917ms)
+✖ fix round 2 reproduction 42: When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now. (1.402291ms)
+✔ fix round 2 reproduction 43: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. (1.321167ms)
+✔ fix round 2 reproduction 44: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop deployment. (1.763834ms)
+✔ fix round 2 reproduction 45: When wave 4 is complete stop parallel execution for epic #2 rank 4 and deployment. Stop now. (2.10525ms)
+✔ comma target lists preserve numeric member lists and separate other-epic scope (3.568708ms)
+✖ preference scope follows coordinated verbs and ends at independent subjects and clauses (2.436375ms)
+✖ deferred coordinated targets provide only scoped relevance to later independent stops (1.213959ms)
+✔ direct human scope and historical human scope with enablement clarification are accepted (9.206459ms)
+✔ exact labeled proposal acceptance and one unambiguous recommended yes are accepted (3.918917ms)
+✔ ambiguous alternatives, agent relay and unrelated intent are refused (3.069333ms)
+✔ exact hashes, chronology, host repository linkage and bounded context are required (3.145667ms)
+✔ quoted injection and contradictory later human scope never grant authority (2.121417ms)
+✔ externally quoted permission remains untrusted when preceded by ordinary user prose (0.896ms)
+✔ revocation requires a human revocation intent and cannot reuse enablement as revocation (2.852709ms)
+✔ re-authorization after a revocation requires a later authentic human instruction (2.100208ms)
+✔ sequential intent, unrelated yes and selecting an enable proposal cannot become revocation authority (2.916ms)
+✔ single-letter words and qualified questions do not select a labeled authorization (6.054042ms)
+✔ omitting a later human reversal from references cannot preserve authorization (6.184875ms)
+✔ historical verification respects the record cutoff and rejects a source newer than that record (2.082334ms)
+✔ negated, deferring and incidental affirmative words cannot accept a displayed proposal (5.612958ms)
+✔ current authority survives unrelated later messages and independent rank authorizations (9.5435ms)
+✔ an omitted explicit wave reversal remains effective after unrelated conversation (3.499ms)
+✔ scope-complete questions and negated requests do not become direct authorization (2.040042ms)
+✔ member-scoped reversals apply to the current wave and ignore disjoint children (1.521458ms)
+✔ explicit matching wave reversals refuse across ordinary human phrasings (3.527541ms)
+✔ direct full scope needs an unqualified permission rather than a conditional or deferred request (2.323041ms)
+✔ yes to a sequential or negative assistant proposal cannot authorize parallel admission (3.1445ms)
+✔ sequential test instructions and answers to unrelated later questions preserve wave authority (4.158959ms)
+✔ a yes cannot be attached to an older proposal by omitting the actual intervening assistant question (0.847ms)
+✔ positive permission questions remain usable as exact displayed proposals (1.829ms)
+✔ parallel test commands, comparative wording and alternative choices do not grant admission (5.852083ms)
+✔ scoped status and negative revocation chatter preserve genuine wave permission (4.41425ms)
+✔ agreement with an authentic revocation does not contradict that revocation (0.963791ms)
+✔ direct trailing parallel execution retains explicit admission intent (0.775458ms)
+✔ negated pause and approval of tests remain distinct from withdrawal of admission (2.449792ms)
+✔ a neutral or negated clause cannot hide a genuine reversal in another clause (3.495458ms)
+✔ scope tokens cannot turn unrelated parallel operations into story admission (2.87675ms)
+✔ CI, completion, close approval, PR approval and timer chatter keep admission permission (2.819792ms)
+✔ explicit isolation on a second line does not obscure direct admission permission (0.826333ms)
+✔ sequential agreement does not reverse an authentic revocation (1.148375ms)
+✔ ordinary leading, trailing, possessive and joined reversal wording cannot preserve withdrawn authority (9.831708ms)
+✔ natural admission articles, isolation order and explicit approval remain unambiguous (2.899709ms)
+✔ each reversal verb keeps its own object when joined with an extra polite prefix (1.8525ms)
+✔ a reason or unrelated follow-on operation cannot conceal withdrawal of admission (4.854958ms)
+✔ ordinary smart punctuation and negation modifiers cannot conceal a withdrawal (4.751459ms)
+✔ scope before a withdrawal verb remains authoritative context (3.05575ms)
+✔ spelled-out modal negation withdraws admission as contracted negation does (5.757542ms)
+✔ running and quantified testing instructions are neutral activities (2.014792ms)
+✔ scope field punctuation stays distinct from a withdrawal reason separator (2.079583ms)
+✖ sentence-final withdrawal and negated verbs revoke native permission (4.80475ms)
+✔ withdrawal pronouns and empty objects retain the nearest scoped subject (9.314417ms)
+✔ a verb-shaped noun cannot cut the scope off its preceding withdrawal (9.593125ms)
+ℹ tests 107
+ℹ suites 0
+ℹ pass 102
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 242.245625
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 41: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now. (1.790917ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 42: When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now. (1.402291ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:417:1
+✖ preference scope follows coordinated verbs and ends at independent subjects and clauses (2.436375ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete pause. I do not want to run tests and I want to execute epic #2 rank 4.
+  + actual - expected
+
+  + 'blocked'
+  - 'verified'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:442:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'verified',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:446:1
+✖ deferred coordinated targets provide only scoped relevance to later independent stops (1.213959ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete stop deployment, tests, and parallel execution for epic #2 rank 4. Stop now.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:473:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source.test.mjs:681:1
+✖ sentence-final withdrawal and negated verbs revoke native permission (4.80475ms)
+  AssertionError [ERR_ASSERTION]: Rank 2 should pause, CI is red.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source.test.mjs:696:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

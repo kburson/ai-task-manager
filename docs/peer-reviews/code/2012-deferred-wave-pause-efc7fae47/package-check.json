@@ -1,0 +1,64 @@
+{
+  "sourceCommit": "efc7fae4750a9204b85d26c82a555991a45379bf",
+  "publicationHead": "4f8a24aff86b84e33a2b78b7a89312ebda6816a6",
+  "size": 3005997,
+  "sha256": "72b31d495dd4b828116674684276a1dc84187129d7a0e3153b297547aeb976b6",
+  "sha512SRI": "sha512-XhS7COS6LAbcUGB+KU+2SkdzeBUHzq58J0ZJU+2Ez2aO6exVROA2LqaKHqZwrUulFRhBvBYZDt+n8aw7kfKqew==",
+  "packedFileCount": 917,
+  "mismatches": [],
+  "publicationDiff": [
+    "docs/verification/2012-deferred-wave-pause-author-r2/package-comparison.json",
+    "docs/verification/2012-deferred-wave-pause-author-r2/package-inventory.json",
+    "docs/verification/2012-deferred-wave-pause-author-r2/package-provenance.json"
+  ],
+  "productionFixDiff": [
+    "scripts/task-tracker/lib/epic-rank-wave-source.mjs",
+    "scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs"
+  ],
+  "modules": {
+    "scripts/task-tracker/lib/epic-rank-wave-source.mjs": {
+      "sha256": "8781dbeade60f6f82057493a2efb1bd59b35462f60a1155e395500b5f398f1f5",
+      "unchangedFromAcceptedBase": false
+    },
+    "scripts/task-tracker/lib/epic-orchestration-plan.mjs": {
+      "sha256": "470780dbb033bc6cd784e4323378d0006a0d43b6be2987ecaf3fa159fe139b92",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-refinement.mjs": {
+      "sha256": "88235288c4791d7ba474c20f220f82749efe9d48097844cb61a0f5ac47840e42",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/gh/lib/wave-admission.mjs": {
+      "sha256": "9ae090dc9777973939b48f3fa57fdd9026942171c49cf13a87d3de0b4cae1b21",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs": {
+      "sha256": "4191951b0608ec2fc238865ea9f65e2e4826da6f9e3cff4976dff29b33de74bf",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-authority.mjs": {
+      "sha256": "36268489784a879c06399d67c3304e210a4615115621abb439ac070e038fd361",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/workflow-policy/authority-resolver.mjs": {
+      "sha256": "b3be4a1b6fc2a9840d223198e2ab740e780d5cd848841672b0f07f9c6036e768",
+      "unchangedFromAcceptedBase": true
+    },
+    "bin/aitm.mjs": {
+      "sha256": "decc8fa85508c2c6d5cf260315a7da4e58964d1c56c2c51b044e6a196fa6e05d",
+      "unchangedFromAcceptedBase": true
+    },
+    "bin/cli.mjs": {
+      "sha256": "998d676439ea8735bf7d7fc65d6d0c90936bf4585106dc5de32391a0c642891f",
+      "unchangedFromAcceptedBase": true
+    }
+  },
+  "reportSha256": "9b209ca4ff7fcca9d0bc00b93cbcae7a6668be60384f720a0483d95c3116377b",
+  "regressionFileSha256": "8f8effadf2e165d17c425f140fcd1558f5719af8c0a3e0c9e55c8dbd39d39b26",
+  "rawInventorySha256": "d479445880a12c13a5b09e2aacaf553361045decf153ad97b34e5d102ffb8012",
+  "committedInventorySha256": "f584fd1e1d93b36ff4d5de222388874fbd6f5337fdcced9bd0313c03fe2cbfea",
+  "oldReviewSha256": "e6128111a7eb51f50cda4b27c676fb0d6a7b9a4d34913059d2c7637b94329b9c",
+  "oldPackageSha256": "5d00afbead05bb23fc824f85709d4ee91a0a4e7cdf89397e82c3f4f3c7d46626",
+  "rawAndCommittedInventoryFilesEqual": true,
+  "allInventorySizesHashesAndBlobIdsMatched": true
+}

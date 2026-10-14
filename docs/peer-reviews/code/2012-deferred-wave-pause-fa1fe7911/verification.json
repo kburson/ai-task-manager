@@ -1,0 +1,40 @@
+{
+  "issue": 2012,
+  "reviewerSession": "01a138f7-8083-7d31-9344-a35863d2499e",
+  "sourceCommit": "fa1fe791153be656600f35c56c67051d7932684b",
+  "fixBase": "f0851afe0c5c9467ab728f3b8d11f413bcba8533",
+  "findingDisposition": {
+    "R3-1": "ADDRESSED"
+  },
+  "verdicts": {
+    "specification": "PASS",
+    "code": "Approved",
+    "boundedLocalTarballAdoption": "Approved"
+  },
+  "approvedTarball": {
+    "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/runtime/2012-fa1fe7911/kburson-ai-task-manager-0.1.0.tgz",
+    "size": 3006321,
+    "sha256": "eb2921cf0e0ae4ae47c4178369bc5edfe9aec12671b72641a1f800ec2fd84315",
+    "sha512SRI": "sha512-Y+nA81cJiKfNgWofLWf1EH947KEUuPBfqpWrJxnc0gEpcG5Zrr5aMBaq/RFVyi5ij5V+d7YiJOCiKONrQJLkrA=="
+  },
+  "checks": {
+    "focusedTestsPassed": 136,
+    "priorInputsPassed": 72,
+    "newBoundaryInputsPassed": 16,
+    "allInputsPassed": 88,
+    "sourcePackageIdenticalOutcomes": 88,
+    "packageFilesMatched": 917,
+    "authorEvidenceEntriesHashVerified": 7
+  },
+  "limits": [
+    "Full upstream slow/canonical Test/Review/Done pending",
+    "No installed runtime or live AIVC readiness claim"
+  ],
+  "files": {
+    "review.md": "7860bb058880a03a84cecc46a1c2a29ecc8ca0a6b49de221112b86965c79eceb",
+    "focused.log": "640b75e76023771239ab768de98dece1cc235d5b96808f9b3a4dbb520c99c278",
+    "comparison.json": "5ca705f4cbce9edc5b83094510fd8f349e80f325b26be64561f09b92d5762e91",
+    "package-check.json": "b1b270916bdd8519dfe1e3b0e2deda5f62d85ca6a170361daf67473374754b1b",
+    "author-evidence-check.json": "3bd3ff1c77b0b9340112c973d4dd8b6aa46822ecd4e47eaee8eeb8dd7fb8d2e3"
+  }
+}

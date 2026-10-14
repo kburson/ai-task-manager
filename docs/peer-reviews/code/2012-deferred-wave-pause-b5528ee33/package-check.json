@@ -1,0 +1,54 @@
+{
+  "sourceCommit": "b5528ee33b517202aa5091d5271404e1ae79c795",
+  "publicationHead": "ba55a86ccb6e605b819c4d4006237ad46126e644",
+  "size": 3005649,
+  "sha256": "5d00afbead05bb23fc824f85709d4ee91a0a4e7cdf89397e82c3f4f3c7d46626",
+  "sha512SRI": "sha512-sZk3O8miTyYDLoUZRRgeA+SujIhoo31HTex47tsGgQdHqnjof+yjwECSV9oTNuOYEU2NIhPHcy45rlBE8po9tA==",
+  "packedFileCount": 917,
+  "mismatches": [],
+  "publicationDiff": ["docs/verification/2012-deferred-wave-pause-author/package-provenance.json"],
+  "baseProductionDiff": [
+    "scripts/task-tracker/lib/epic-rank-wave-source.mjs",
+    "scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs"
+  ],
+  "moduleChecks": {
+    "scripts/task-tracker/lib/epic-rank-wave-source.mjs": {
+      "sha256": "b32af3e47146843155f1fc23b67112e8800831efb6affb149b4c26f97ac3b169",
+      "unchangedFromSourceBase": false
+    },
+    "scripts/task-tracker/lib/epic-orchestration-plan.mjs": {
+      "sha256": "470780dbb033bc6cd784e4323378d0006a0d43b6be2987ecaf3fa159fe139b92",
+      "unchangedFromSourceBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-refinement.mjs": {
+      "sha256": "88235288c4791d7ba474c20f220f82749efe9d48097844cb61a0f5ac47840e42",
+      "unchangedFromSourceBase": true
+    },
+    "scripts/gh/lib/wave-admission.mjs": {
+      "sha256": "9ae090dc9777973939b48f3fa57fdd9026942171c49cf13a87d3de0b4cae1b21",
+      "unchangedFromSourceBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs": {
+      "sha256": "4191951b0608ec2fc238865ea9f65e2e4826da6f9e3cff4976dff29b33de74bf",
+      "unchangedFromSourceBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-authority.mjs": {
+      "sha256": "36268489784a879c06399d67c3304e210a4615115621abb439ac070e038fd361",
+      "unchangedFromSourceBase": true
+    },
+    "scripts/task-tracker/lib/workflow-policy/authority-resolver.mjs": {
+      "sha256": "b3be4a1b6fc2a9840d223198e2ab740e780d5cd848841672b0f07f9c6036e768",
+      "unchangedFromSourceBase": true
+    },
+    "bin/aitm.mjs": {
+      "sha256": "decc8fa85508c2c6d5cf260315a7da4e58964d1c56c2c51b044e6a196fa6e05d",
+      "unchangedFromSourceBase": true
+    },
+    "bin/cli.mjs": {
+      "sha256": "998d676439ea8735bf7d7fc65d6d0c90936bf4585106dc5de32391a0c642891f",
+      "unchangedFromSourceBase": true
+    }
+  },
+  "regressionSha256": "573602173592ebd3677daf337e244ee1b0bfe4288da76aede33a8802f962eb3a",
+  "inventorySha256": "5f26010277e82a8f7623e8d36226aa9ac7cbe926f22ce115fa9324cb4482048d"
+}
