@@ -356,6 +356,10 @@ export async function restoreRankWaveWorktree(args) {
       });
       if (
         !readback.path.exists ||
+        !same(
+          before.path.identities,
+          readback.path.identities.slice(0, before.path.identities.length)
+        ) ||
         readback.refs !== before.refs ||
         readback.parentHead !== before.parentHead ||
         !same(

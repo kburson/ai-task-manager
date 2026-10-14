@@ -6,7 +6,7 @@ import { normalizeStateId } from './lifecycle-policy/index.mjs';
 import { reconcileRankWaveRefinement } from './epic-rank-wave-refinement.mjs';
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { pexec as run } from '../../gh/lib/gh-client.mjs';
-import { readFileSync, mkdirSync, writeFileSync, realpathSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, realpathSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import { getProvider } from '../../providers/index.mjs';
@@ -14,7 +14,7 @@ import { resolveTranscriptPath } from '../../providers/transcript-resolver.mjs';
 import { gql } from '../../gh/lib/github-projects.mjs';
 import { aiAppName, currentSessionId } from '../word-counter.mjs';
 import { getActiveTask } from '../session-state.mjs';
-import { getProjectDir } from '../paths.mjs';
+import { getProjectDir, activeTaskPath } from '../paths.mjs';
 import { fetchEpicChildren, enrichChildrenWithBlockedBy } from './epic-children-gate.mjs';
 import { readOccupancy } from './occupancy.mjs';
 import { occupancyPath } from '../paths.mjs';
@@ -255,13 +255,38 @@ export function createRankWaveRuntime(ctx, { admissionLockContext = null, ports 
     },
     verifyRetainedNative: observeRetainedRankWaveNative,
     async readRecoveryClaims(binding) {
-      const active = getActiveTask(binding.sessionId, binding.worktree);
-      if (
-        active?.issue === `#${binding.issue}` &&
-        active.entryStartTs &&
-        !active.pausedAtTs &&
-        !active.closedAt
-      )
+      const file = activeTaskPath(binding.sessionId, binding.worktree);
+      let stat;
+      try {
+        stat = lstatSync(file);
+      } catch (error) {
+        if (error.code === 'ENOENT') return rowsAt();
+        throw new Error('rank-wave: retained worker timer unreadable', { cause: error });
+      }
+      let active;
+      try {
+        if (!stat.isFile() || stat.uid !== process.getuid?.()) throw new Error('unsafe file');
+        active = JSON.parse(readFileSync(file, 'utf8'));
+        if (
+          !active ||
+          typeof active !== 'object' ||
+          Array.isArray(active) ||
+          !Object.hasOwn(active, 'issue') ||
+          !(active.issue === null || /^#[1-9][0-9]*$/.test(active.issue)) ||
+          !Object.hasOwn(active, 'entryStartTs') ||
+          ['entryStartTs', 'pausedAtTs', 'closedAt'].some(
+            (key) =>
+              Object.hasOwn(active, key) &&
+              active[key] !== null &&
+              (typeof active[key] !== 'string' || !Number.isFinite(Date.parse(active[key])))
+          ) ||
+          (active.issue === null && active.entryStartTs !== null)
+        )
+          throw new Error('uncertain timer shape');
+      } catch (error) {
+        throw new Error('rank-wave: retained worker timer unreadable', { cause: error });
+      }
+      if (active.entryStartTs && !active.pausedAtTs && !active.closedAt)
         throw new Error('rank-wave: retained worker timer active');
       return rowsAt();
     },

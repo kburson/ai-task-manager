@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import { writeFileSync, rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { retainedRecoveryFixture as fixture } from '../../../helpers/retained-recovery-fixture.mjs';
-import { sealRankWaveRecord } from '../../../../task-tracker/lib/epic-rank-wave-authority.mjs';
+import {
+  sealRankWaveRecord,
+  rankWaveProposal,
+} from '../../../../task-tracker/lib/epic-rank-wave-authority.mjs';
 import { rankWaveDigest } from '../../../../task-tracker/lib/epic-rank-wave-policy.mjs';
 import { serializeIssueWorktreeLocationMarker } from '../../../../task-tracker/lib/issue-worktree-location.mjs';
 
@@ -463,6 +466,91 @@ test('production child dependency observations do not invalidate completed check
     f.child.dependencyStates = new Map([[101, 'done']]);
     f.child.optionalObservation = undefined;
     assert.equal((await f.restore()).status, 'restored');
+  } finally {
+    f.cleanup();
+  }
+});
+
+test('replaced destination ancestor after preflight is indeterminate and retains checkout', async () => {
+  const { mkdirSync, renameSync } = await import('node:fs');
+  const f = fixture();
+  try {
+    const namespace = path.join(f.root, 'namespace');
+    mkdirSync(namespace);
+    f.binding.worktree = path.join(namespace, 'retained-child');
+    f.child.body = serializeIssueWorktreeLocationMarker({
+      worktreePath: f.binding.worktree,
+      worktreeBranch: f.binding.branch,
+      sessionId: f.binding.sessionId,
+      ts: '2026-10-04T01:00:00.000Z',
+    });
+    const record = { ...f.wave.record, bindings: [f.binding] };
+    record.proposalDigest = rankWaveDigest(rankWaveProposal(record));
+    f.comments[0].wave = sealRankWaveRecord(record);
+    f.input.retainedDigest = f.comments[0].wave.digest;
+    f.runtime.addRestoredWorktree = (binding) => {
+      renameSync(namespace, namespace + '-retained');
+      mkdirSync(namespace);
+      f.git(['worktree', 'add', '--', binding.worktree, binding.branch]);
+    };
+    const refs = f.git(['show-ref']);
+    const result = await f.restore();
+    assert.equal(result.status, 'indeterminate', JSON.stringify(result));
+    assert.equal(existsSync(path.join(f.binding.worktree, 'tracked.txt')), true);
+    assert.equal(existsSync(namespace + '-retained'), true);
+    assert.equal(f.git(['show-ref']), refs);
+  } finally {
+    f.cleanup();
+  }
+});
+
+test('production recovery refuses uncertain retained timer evidence while allowing genuine absence', async () => {
+  const { mkdirSync } = await import('node:fs');
+  const { activeTaskPath } = await import('../../../../task-tracker/paths.mjs');
+  const { createRankWaveRuntime } =
+    await import('../../../../task-tracker/lib/epic-rank-wave-runtime.mjs');
+  const f = fixture();
+  try {
+    const runtime = createRankWaveRuntime(
+      { cfg: { repo: 'o/r' }, projectDir: f.root },
+      { ports: { rows: () => ({}) } }
+    );
+    assert.deepEqual(await runtime.readRecoveryClaims(f.binding), {});
+    assert.equal((await f.restore()).status, 'restored');
+    writeFileSync(path.join(f.root, '.git', 'info', 'exclude'), '.tmp/\n');
+    f.runtime.readRecoveryClaims = runtime.readRecoveryClaims;
+    const file = activeTaskPath(f.binding.sessionId, f.binding.worktree);
+    mkdirSync(path.dirname(file), { recursive: true });
+    for (const raw of [
+      '',
+      '{',
+      'null',
+      '[]',
+      '{}',
+      '{"issue":"#140"}',
+      '{"issue":"#140","entryStartTs":"invalid"}',
+    ]) {
+      writeFileSync(file, raw);
+      await assert.rejects(runtime.readRecoveryClaims(f.binding), /retained worker timer/);
+      assert.equal((await f.restore()).status, 'blocked');
+    }
+    rmSync(file);
+    mkdirSync(file);
+    await assert.rejects(runtime.readRecoveryClaims(f.binding), /retained worker timer/);
+    assert.equal((await f.restore()).status, 'blocked');
+    rmSync(file, { recursive: true });
+    const active = { issue: '#140', entryStartTs: '2026-10-14T01:00:00.000Z' };
+    writeFileSync(file, JSON.stringify(active));
+    await assert.rejects(runtime.readRecoveryClaims(f.binding), /retained worker timer active/);
+    for (const state of [
+      { issue: null, entryStartTs: null },
+      { ...active, pausedAtTs: '2026-10-14T02:00:00.000Z' },
+      { ...active, closedAt: '2026-10-14T02:00:00.000Z' },
+    ]) {
+      writeFileSync(file, JSON.stringify(state));
+      assert.deepEqual(await runtime.readRecoveryClaims(f.binding), {});
+      assert.equal((await f.restore()).status, 'already-restored');
+    }
   } finally {
     f.cleanup();
   }
