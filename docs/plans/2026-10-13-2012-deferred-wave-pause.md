@@ -70,3 +70,9 @@ git log --oneline -1
 ## Exclusions
 
 No installed runtime, source transcript/hash/cutoff, wave grant, binding/provider identity, global peer-review runtime, unrelated timing software, #2009 lifecycle, consumer adoption, Task Review/Close or cloud merge changes.
+
+## Bounded consumer reproduction clarification
+
+The approved completion-pause scope also covers the explicit numeric sequencing form: finish wave 4, then pause before #8 and save the handoff. Actual native consumer verification of approved source fa1fe791153be656600f35c56c67051d7932684b exposed this wording as an immediate contradiction while the original authorization/hash/identity/chronology remained intact.
+
+This is an implementation clarification within the existing Scope and Acceptance Criteria, not new authorization or a new capability. Only an explicit completion of the matching current numeric wave can defer the attached pause/stop. A numeric next-story handoff boundary does not authorize that story or a later wave. Unknown conditions, immediate commands and independent matching withdrawals remain effective; completion context supplies only refusal relevance, never new permission or an inherited delay for Stop now. Neither source authority nor an installed consumer package may be edited to satisfy verification.

@@ -626,3 +626,175 @@ test('independent polite and subject clauses retain their own operation and nega
     assert.equal((await rescan([statement])).result.status, expected, statement);
   }
 });
+
+// Exact inputs from the approved 88-case review; prior 72 are retained above.
+const approvedReviewExtensions = [
+  [
+    'When wave 4 is complete pause. I do not want to run tests, we can start deployment.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, you should execute epic #2 rank 4.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please run tests and start deployment.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please do not start deployment.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, we will not execute tests.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please do not stop epic #2 rank 4.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please stop epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, we will not execute epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please never execute epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please never execute epic #2 rank 5.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please hold off on parallel execution for epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please stop the unfamiliar activity.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, execute tests, and start epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please execute tests, then start deployment.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please start deployment, but revoke epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, we will start deployment, and you should execute tests.',
+    'verified',
+  ],
+];
+
+for (const [index, [statement, expected]] of approvedReviewExtensions.entries()) {
+  test('approved review extension ' + (index + 73) + ': ' + statement, async () => {
+    assert.equal((await rescan([statement])).result.status, expected, statement);
+  });
+}
+
+const actualSequenceOwner =
+  'A — create and coordinate the two AITM chats: Sol 6.1/high to finish #2012, then Astra 6/high to review it. Resume #5 and #7, finish wave 4, then pause before #8 and save the handoff.';
+
+test('actual consumer owner sequencing preserves the unchanged original wave authority', async () => {
+  const { result, context, source } = await rescan([actualSequenceOwner]);
+  assert.equal(result.status, 'verified');
+  assert.deepEqual(context.subsequentStatements, []);
+  assert.deepEqual(result.authority.source, source);
+  assert.deepEqual(result.authority.scope, scope);
+});
+
+test('latest actual owner operational and future-handoff messages remain neutral', async () => {
+  for (const statement of [
+    'Finish Astra’s re-review, adopt the corrected runtime once approved, then drive #5 and #7 to Done. Keep all collateral committed and PRs current, then pause before #8 and save the handoff.',
+    'make sure to commit all work, push to origin and merge to the feature trunk before marking them done.\n\nI have already started an agent session  named "Continue Epic #2" -- please let him know where the handoff doc is when you finish #5 + #7.',
+  ]) {
+    assert.equal((await rescan([statement])).result.status, 'verified', statement);
+  }
+});
+
+test('explicit matching numeric-wave completion sequence defers only its attached stop', async () => {
+  for (const statement of [
+    'Finish wave 4, then pause.',
+    'Complete rank 4, then stop.',
+    'Please finish wave 4 then pause before #8 and save the handoff.',
+    'Resume #5 and #7, finish wave 4, then pause before #8.',
+    'When wave 4 is complete pause before #8 and save the handoff.',
+  ]) {
+    assert.equal((await rescan([statement])).result.status, 'verified', statement);
+  }
+});
+
+test('completion sequences never conceal independent immediate or mixed withdrawals', async () => {
+  for (const statement of [
+    'Finish wave 4, then pause. Stop now.',
+    'Stop now. Finish wave 4, then pause.',
+    'Finish wave 4, then pause, but stop now.',
+    'Finish wave 4, then pause and revoke epic #2 rank 4.',
+    'Finish wave 4, then pause now.',
+    'Finish wave 4, then stop immediately.',
+    'Finish wave 4, then pause before #8. Stop parallel execution for epic #2 rank 4.',
+    'Revoke epic #2 rank 4. Finish wave 4, then pause before #8.',
+  ]) {
+    assert.equal((await rescan([statement])).result.status, 'blocked', statement);
+  }
+});
+
+test('unknown or unrelated completion predicates do not waive a matching-wave stop', async () => {
+  for (const statement of [
+    'Finish work, then pause epic #2 rank 4.',
+    'Finish wave 5, then pause epic #2 rank 4.',
+    'If CI is green, finish wave 4, then pause epic #2 rank 4.',
+    'Maybe finish wave 4, then pause epic #2 rank 4.',
+    'Do not finish wave 4, then pause epic #2 rank 4.',
+    'Finish wave 4, then pause before tests.',
+    'Finish wave 4, then pause before #4.',
+    'Finish wave 4, then pause until tests pass.',
+    'Finish wave 4, then pause whenever convenient.',
+  ]) {
+    assert.equal((await rescan([statement])).result.status, 'blocked', statement);
+  }
+});
+
+test('unrelated-wave and neutral operation sequences stay independently scoped', async () => {
+  for (const statement of [
+    'Finish wave 5, then pause wave 5.',
+    'Finish wave 4, then pause epic #3 rank 4.',
+    'Finish wave 4, then stop reviewing CI. Do not start deployment.',
+    'Finish wave 4, then pause before #8. Stop deployment.',
+  ]) {
+    assert.equal((await rescan([statement])).result.status, 'verified', statement);
+  }
+});
+
+test('sequencing text cannot grant standalone or later-wave authority and source scans stay live', async () => {
+  assert.equal((await rescan([], { selected: actualSequenceOwner })).result.status, 'blocked');
+  assert.equal(
+    (await rescan([actualSequenceOwner], { targetScope: { ...scope, rank: 5, members: [8] } }))
+      .result.status,
+    'blocked'
+  );
+  assert.equal(
+    (await rescan([actualSequenceOwner], { changeHash: true })).result.status,
+    'blocked'
+  );
+  const late = { text: 'Revoke epic #2 rank 4.', at: '2026-10-14T00:55:00.000Z' };
+  assert.equal(
+    (await rescan([actualSequenceOwner, late], { through: '2026-10-14T00:50:00.000Z' })).result
+      .status,
+    'verified'
+  );
+  assert.equal(
+    (await rescan([actualSequenceOwner, ...Array.from({ length: 70 }, () => 'Inspect CI.'), late]))
+      .result.status,
+    'blocked'
+  );
+});
