@@ -197,3 +197,116 @@ test('completion-related operational chatter does not redirect independent comma
     assert.equal(result.status, 'verified', statement);
   }
 });
+
+// Independent review inputs; literal expected behavior is the owner/spec contract.
+const reviewCases = [
+  [
+    'when wave 4 is complete I need you to pause.  I will start a fresh chat session to continue #2',
+    'verified',
+  ],
+  ['Stop deployment and parallel execution for epic #2 rank 4.', 'blocked'],
+  [
+    'When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 4.',
+    'blocked',
+  ],
+  ['Hold off on deployment and parallel execution for epic #2 rank 4.', 'blocked'],
+  ['When wave 4 is complete pause. Stop deployment.', 'verified'],
+  ['When wave 4 is complete pause. Do not start deployment.', 'verified'],
+  ['When wave 4 is complete pause. I do not want to start deployment.', 'verified'],
+  ['When wave 4 is complete pause. Stop now.', 'blocked'],
+  ['When wave 4 is complete pause and revoke epic #2 rank 4.', 'blocked'],
+  ['When wave 4 is complete do not pause.', 'verified'],
+  ['When wave 5 is complete pause.', 'verified'],
+  ['When wave 4 is complete pause. Pause epic #2 rank 4 now.', 'blocked'],
+  ['When wave 4 is complete pause. We should not run tests yet.', 'verified'],
+  ['When wave 4 is complete pause. Do not execute tests.', 'verified'],
+  ['When wave 4 is complete pause. Do not proceed with testing.', 'verified'],
+  ['When wave 4 is complete pause. I do not want to run tests.', 'verified'],
+  ['I do not want to run tests.', 'verified'],
+  ['I do not want to start deployment.', 'verified'],
+  ['When wave 4 is complete pause. I do not want to run epic #2 rank 4 in parallel.', 'blocked'],
+  [
+    'When wave 4 is complete pause. Stop deploying and running epic #2 rank 4 in parallel.',
+    'blocked',
+  ],
+];
+
+for (const [index, [statement, expected]] of reviewCases.entries()) {
+  test('independent review reproduction ' + (index + 1) + ': ' + statement, async () => {
+    const { result, context } = await rescan([statement]);
+    assert.equal(result.status, expected, statement);
+    if (expected === 'blocked') {
+      assert.equal(result.code, 'rank-wave-source-contradiction');
+      assert.deepEqual(context.subsequentStatements, [statement]);
+    } else {
+      assert.deepEqual(context.subsequentStatements, []);
+    }
+  });
+}
+
+test('shared withdrawal verbs evaluate every coordinated operational and admission target', async () => {
+  for (const prefix of ['', 'When wave 4 is complete pause. ']) {
+    for (const target of [
+      'Stop deployment and parallel execution for epic #2 rank 4.',
+      'Hold off on deployment and parallel execution for epic #2 rank 4.',
+      'Stop deploying and running epic #2 rank 4 in parallel.',
+      'Pause tests and parallel execution for epic #2 rank 4.',
+      'Stop deployment or parallel execution for epic #2 rank 4.',
+      'Stop deployment, and parallel execution for epic #2 rank 4.',
+      'Stop deployment & parallel execution for epic #2 rank 4.',
+      'Stop deployment and parallel execution for epic #2 rank 3 and 4.',
+      'Stop parallel execution for epic #3 rank 4 and parallel execution for epic #2 rank 4.',
+    ]) {
+      assert.equal((await rescan([prefix + target])).result.status, 'blocked', prefix + target);
+    }
+  }
+});
+
+test('coordinated targets retain separate numeric-wave and epic scope', async () => {
+  for (const statement of [
+    'When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 5.',
+    'When wave 4 is complete pause. Stop deployment and parallel execution for epic #3 rank 4.',
+    'When wave 4 is complete pause. Stop deployment for epic #2 rank 4 and parallel execution for epic #3 rank 4.',
+    'When wave 4 is complete pause. Stop deployment and tests.',
+    'When wave 4 is complete pause. Do not stop deployment and parallel execution for epic #2 rank 4.',
+  ]) {
+    assert.equal((await rescan([statement])).result.status, 'verified', statement);
+  }
+});
+
+test('negated preferences carry negation to the actual operation without withdrawing admission', async () => {
+  for (const statement of [
+    'I do not want to run tests.',
+    'I do not want to start deployment.',
+    'I do not want you to execute tests.',
+    'I do not really want to run tests.',
+    'I never want to run tests.',
+    'I do not want to stop epic #2 rank 4.',
+  ]) {
+    for (const prefix of ['', 'When wave 4 is complete pause. ']) {
+      assert.equal(
+        (await rescan([prefix + statement])).result.status,
+        'verified',
+        prefix + statement
+      );
+    }
+  }
+});
+
+test('negated admission preferences and mixed operational preferences still withdraw authority', async () => {
+  for (const statement of [
+    'I do not want to run epic #2 rank 4 in parallel.',
+    'I do not want you to execute epic #2 rank 4.',
+    'I do not really want to run epic #2 rank 4.',
+    'I never want to run epic #2 rank 4.',
+    'I do not want to run tests and parallel execution for epic #2 rank 4.',
+    'I do not want to start deployment. Stop now.',
+    'I do not want to run tests, but revoke epic #2 rank 4.',
+  ]) {
+    assert.equal(
+      (await rescan(['When wave 4 is complete pause. ' + statement])).result.status,
+      'blocked',
+      statement
+    );
+  }
+});
