@@ -1,8 +1,9 @@
-// @story #1872
+// @story #1872 #2009
 import { parseRefinementSnapshot } from './refinement-snapshot.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { parseProofMarker, serializeProofMarker } from './proof-marker.mjs';
 import { rankWaveDigest } from './epic-rank-wave-policy.mjs';
+import { stripReviewedPointer } from './reviewed-scope/model.mjs';
 
 // Retain historical snapshot identity and semantic inputs across lifecycle ticks.
 export function rankWaveRefinementIdentity(body, { labels } = {}) {
@@ -22,7 +23,9 @@ export function rankWaveRefinementIdentity(body, { labels } = {}) {
       new RegExp(`^##\\s+${name}\\s*$([\\s\\S]*?)(?=^##\\s+|$(?![\\s\\S]))`, 'im')
     );
     if (!match) throw new Error('rank-wave: refinement section missing');
-    return match[1]
+    const semanticText =
+      name === 'Scope' ? match[1].split('\n').map(stripReviewedPointer).join('\n') : match[1];
+    return semanticText
       .trim()
       .replace(/^- \[[x ]\]/gm, '- [ ]')
       .replace(/<!--\s*aitm-ac-evidence(?::[^\s]+)?\s[\s\S]*?-->/g, '')
