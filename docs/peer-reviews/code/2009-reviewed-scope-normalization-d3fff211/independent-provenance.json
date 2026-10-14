@@ -1,0 +1,56 @@
+{
+  "sourceHead": "d3fff21188461a900065e4636bf7a8b75d36a642",
+  "sourceBase": "909e35f1db8c85dc218d69b80dd5167e3c0987f6",
+  "reviewerSession": "01a137f9-6f7f-73d1-b9f3-9829f2283d65",
+  "binding": {
+    "issue": "#2009",
+    "entryStartTs": "2026-10-14T01:15:25.161Z",
+    "wordsAtStart": 73,
+    "boundAt": "2026-10-14T01:15:25.315Z",
+    "worktreePath": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2009-reviewed-scope-normalization",
+    "worktreeBranch": "codex/2009-reviewed-scope-normalization",
+    "worktreeResolvedAt": "2026-10-14T01:15:25.159Z",
+    "bindingGenerationId": "eea8992e-4761-49f0-b70a-bf4e48338c48",
+    "kanbanState": "develop"
+  },
+  "preferences": {
+    "noPushToOrigin": false,
+    "mainThreadOnly": false,
+    "driveSubIssuesToReview": true,
+    "pauseTimerOnBlockingQuestion": true,
+    "noConfirmAfterDeepDive": true,
+    "askGatesBeforeParallel": true,
+    "gateAssigneeMatch": true,
+    "formatting": {
+      "noEmojis": true,
+      "currencyInBackticks": true
+    },
+    "scratchDir": "./.scratch/"
+  },
+  "tarball": {
+    "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2009-reviewed-scope-normalization/.scratch/runtime/2009-d3fff211/kburson-ai-task-manager-0.1.0.tgz",
+    "sha256": "9dcb289ab72a0207d2b4c916bde90c0262c47558c5acc1d0ae3835e8fb14c460",
+    "integrity": "sha512-HSij3ssmvEgCsGlWDJTgOF3cjYlcS57IjqfPComZ5oVOpNWsszwVqc7ownj5k54UOfLd4m5P1DvXERx1Jf+m7A==",
+    "size": 3004437,
+    "modulesVerified": [
+      "scripts/task-tracker/lib/epic-rank-wave-refinement.mjs",
+      "scripts/task-tracker/lib/epic-orchestration-plan.mjs",
+      "scripts/task-tracker/lib/reviewed-scope/model.mjs"
+    ]
+  },
+  "liveHashes": [
+    {
+      "repository": "kburson/AIVC",
+      "issue": 4,
+      "bodySha256": "e18d3ef3829f68f1e059b549398c2a9931646d80ed1770ef10c064cdc8e26710",
+      "digest": "0fb942813b30c18877c07de31bb70d128886a07a41fc22020a5c5a96c4b0f96f"
+    },
+    {
+      "repository": "kburson/AIVC",
+      "issue": 6,
+      "bodySha256": "3b306026f8210797dccbee98dde6411065217b79ca31ea2a715a6ec49a3b722e",
+      "digest": "64d758f4eb7e21215af75c7e1087372411e912e845bf2c0b2259ebcdc82a8c58"
+    }
+  ],
+  "verifiedAt": "2026-10-14T01:16:56.782Z"
+}
