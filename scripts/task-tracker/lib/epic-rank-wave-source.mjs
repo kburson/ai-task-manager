@@ -417,22 +417,50 @@ function contextualReversalScope(text, scope) {
   }
   return reversalScope('', scope);
 }
+function completionSequence(prefix, scope) {
+  const sequence = prefix
+    .trim()
+    .match(
+      /(?:^|,)\s*(?:please\s+)?(?:finish|complete)\s+(?:the\s+)?(?:wave|rank(?:[-\s]+wave)?)\s*#?(\d+)\s*,?\s*then\s*(?:please\s*)?$/i
+    );
+  if (!sequence || Number(sequence[1]) !== scope.rank) return false;
+  return !/\b(?:if|unless|until|before|when|once|after|not|never|maybe|assuming)\b|don['’]?t/i.test(
+    prefix.slice(0, sequence.index)
+  );
+}
+function futureStoryHandoff(object, scope) {
+  const boundary = object
+    .trim()
+    .match(/^before\s+(?:story\s+)?#(\d+)(?:\s+and\s+save\s+(?:the\s+)?handoff)?$/i);
+  return !!boundary && Number(boundary[1]) > 0 && !scope.members.includes(Number(boundary[1]));
+}
 function completionCondition(prefix, scope) {
   const completion = prefix
     .trim()
     .match(
       /^(?:when|once|after)\s+(?:the\s+)?(?:wave|rank(?:[-\s]+wave)?)\s*#?(\d+)\s+(?:is\s+(?:complete|completed|done)|has\s+(?:finished|completed)|finished|completed)\b\s*,?\s*(?:(?:(?:I|we)\s+(?:need|want)\s+you\s+to|please|you\s+(?:must|should))\s*)?$/i
     );
-  return completion !== null && Number(completion[1]) === scope.rank;
+  return (
+    (completion !== null && Number(completion[1]) === scope.rank) ||
+    completionSequence(prefix, scope)
+  );
 }
 function deferredCompletionStop(prefix, object, verb, scope) {
   if (
     !/^(?:pause|stop)$/.test(verb) ||
     !admissionTarget(object) ||
-    /\b(?:now|immediately|at once|before|until)\b/i.test(object)
+    /\b(?:now|immediately|at once|until)\b/i.test(object) ||
+    (/\bbefore\b/i.test(object) && !futureStoryHandoff(object, scope))
   )
     return false;
   const target = reversalScope(principalObject(object), scope);
+  if (
+    completionSequence(prefix, scope) &&
+    object.trim() &&
+    !futureStoryHandoff(object, scope) &&
+    !target.specified
+  )
+    return false;
   return (!target.specified || target.matches) && completionCondition(prefix, scope);
 }
 function contradictsWaveClause(
@@ -535,31 +563,38 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   // clause must never cancel a genuine reversal elsewhere in the message.
   const sentences = text.split(/[.;!?\n]+/);
   const completionContexts = [];
-  for (const sentence of sentences) {
-    const deferredBoundaries = [];
-    const clauses = sentence
-      .split(
-        /,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause)\b|please\s+(?:(?:do not|don['’]?t|never)\s+)?(?:revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)\b|(?:I|we|you|they|he|she)\s+(?:will|would|can|could|should|must|do|did|want|run|execute|start|stop|pause|revoke|withdraw)\b)|\s+(?:and|or)\s+(?=(?:I|we|you|they|he|she)\b)/i
-      )
-      .map((part) => part.trim())
-      .filter(Boolean);
-    for (const [index, clause] of clauses.entries()) {
-      if (
-        contradictsWaveClause(
-          clause,
-          scope,
-          purpose,
-          clauses.slice(0, index).join(', '),
-          completionContexts.join('. '),
-          deferredBoundaries
+  // Revisit only this same human statement with its matching completion
+  // scopes, so an earlier independent stop cannot hide behind a later future
+  // boundary. This context may refuse authority, never supply it or a delay.
+  for (const revisit of [false, true]) {
+    for (const sentence of sentences) {
+      const deferredBoundaries = [];
+      const clauses = sentence
+        .split(
+          /,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause)\b|please\s+(?:(?:do not|don['’]?t|never)\s+)?(?:revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)\b|(?:I|we|you|they|he|she)\s+(?:will|would|can|could|should|must|do|did|want|run|execute|start|stop|pause|revoke|withdraw)\b)|\s+(?:and|or)\s+(?=(?:I|we|you|they|he|she)\b)/i
         )
-      )
-        return true;
+        .map((part) => part.trim())
+        .filter(Boolean);
+      for (const [index, clause] of clauses.entries()) {
+        if (
+          contradictsWaveClause(
+            clause,
+            scope,
+            purpose,
+            clauses.slice(0, index).join(', '),
+            completionContexts.join('. '),
+            deferredBoundaries
+          )
+        )
+          return true;
+      }
+      // Scope comes only from a recognized completion boundary. Classification
+      // and retention share the same coordinated admission targets.
+      if (!revisit) {
+        if (completionCondition(sentence, scope)) completionContexts.push(sentence);
+        completionContexts.push(...deferredBoundaries);
+      }
     }
-    // Scope comes only from a recognized completion boundary. Classification
-    // and retention share the same coordinated admission targets.
-    if (completionCondition(sentence, scope)) completionContexts.push(sentence);
-    completionContexts.push(...deferredBoundaries);
   }
   const reply = text.trim();
   if (

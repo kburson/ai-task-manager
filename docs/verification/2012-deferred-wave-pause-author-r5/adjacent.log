@@ -1,0 +1,27 @@
+✔ epic orchestration plan binds the complete child graph and strict execution policy (1.419959ms)
+✔ R4P-origin Plan approval is bound to current trunk before Develop (1.128125ms)
+✔ epic Plan exit requires a durable graph matching live children and trunk (0.385917ms)
+✔ plan approval stamps trunk and complete epic orchestration provenance (5.683167ms)
+✔ plan approval discovers children for an implicit epic before stamping approval (1.13225ms)
+✔ legacy Plan epic without kind or R4P markers still freezes children and trunk (29.547291ms)
+✔ fresh authorization directly adopts schema-1 added child without changing Plan approval (1.711875ms)
+✔ refresh still refuses schema-1 added child (0.370334ms)
+✔ revoke still refuses schema-1 added child (0.143625ms)
+✔ fresh authorization directly adopts schema-1 removed child without changing Plan approval (0.361875ms)
+✔ refresh still refuses schema-1 removed child (0.1445ms)
+✔ revoke still refuses schema-1 removed child (0.090542ms)
+✔ fresh authorization directly adopts schema-1 changed rank without changing Plan approval (0.178417ms)
+✔ refresh still refuses schema-1 changed rank (0.091917ms)
+✔ revoke still refuses schema-1 changed rank (0.103709ms)
+✔ fresh authorization directly adopts schema-1 changed dependencies without changing Plan approval (0.148ms)
+✔ refresh still refuses schema-1 changed dependencies (0.071584ms)
+✔ revoke still refuses schema-1 changed dependencies (0.067625ms)
+✔ schema-2 fresh adoption drops previous rank pointers and preserves trunk authority (0.3475ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 760.581792
