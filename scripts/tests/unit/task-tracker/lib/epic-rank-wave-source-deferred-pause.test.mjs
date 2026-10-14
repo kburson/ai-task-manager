@@ -798,3 +798,51 @@ test('sequencing text cannot grant standalone or later-wave authority and source
     'blocked'
   );
 });
+
+// Unknown outer predicates must not become unconditional completion boundaries.
+for (const statement of [
+  'Provided CI is green, finish wave 4, then pause epic #2 rank 4.',
+  'Subject to approval, finish wave 4, then pause epic #2 rank 4.',
+  'On condition that tests pass, finish wave 4, then stop epic #2 rank 4.',
+  'Possibly, finish wave 4, then pause epic #2 rank 4.',
+  'Provided CI is green, finish wave 4, then pause before #8.',
+]) {
+  test('guarded completion sequence refuses: ' + statement, async () => {
+    const { result, context } = await rescan([statement]);
+    assert.equal(result.status, 'blocked');
+    assert.equal(result.code, 'rank-wave-source-contradiction');
+    assert.deepEqual(context.subsequentStatements, [statement]);
+  });
+}
+
+test('member resumption is a bounded independent prefix for completion sequencing', async () => {
+  for (const statement of [
+    'Resume #5 and #7, finish wave 4, then pause before #8.',
+    'Please resume #5, #7, complete wave 4, then stop epic #2 rank 4.',
+  ]) {
+    const { result, context } = await rescan([statement]);
+    assert.equal(result.status, 'verified', statement);
+    assert.deepEqual(context.subsequentStatements, []);
+  }
+});
+
+test('guarded or unknown resumption prefixes cannot hide a matching stop', async () => {
+  for (const statement of [
+    'Provided CI is green, Resume #5 and #7, finish wave 4, then pause before #8.',
+    'Resume #5 and #7 provided CI is green, finish wave 4, then pause before #8.',
+    'Possibly resume #5 and #7, finish wave 4, then pause epic #2 rank 4.',
+    'Resume #8, finish wave 4, then pause epic #2 rank 4.',
+    'Review CI, finish wave 4, then pause epic #2 rank 4.',
+  ]) {
+    assert.equal((await rescan([statement])).result.status, 'blocked', statement);
+  }
+});
+
+test('unrelated guarded completion sequences retain their scoped behavior', async () => {
+  for (const statement of [
+    'Provided CI is green, finish wave 4, then pause epic #3 rank 4.',
+    'Provided CI is green, finish wave 5, then pause wave 5.',
+  ]) {
+    assert.equal((await rescan([statement])).result.status, 'verified', statement);
+  }
+});
