@@ -539,7 +539,7 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
     const deferredBoundaries = [];
     const clauses = sentence
       .split(
-        /,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause)\b)|\s+(?:and|or)\s+(?=(?:I|we|you|they|he|she)\b)/i
+        /,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause)\b|please\s+(?:(?:do not|don['’]?t|never)\s+)?(?:revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)\b|(?:I|we|you|they|he|she)\s+(?:will|would|can|could|should|must|do|did|want|run|execute|start|stop|pause|revoke|withdraw)\b)|\s+(?:and|or)\s+(?=(?:I|we|you|they|he|she)\b)/i
       )
       .map((part) => part.trim())
       .filter(Boolean);
