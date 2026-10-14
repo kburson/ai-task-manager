@@ -1,0 +1,44 @@
+{
+  "issue": 2012,
+  "sourceCommit": "ceb8e75a94a1c49188e831fa9624d75c005e8f52",
+  "fixBase": "9abd90a50bc83ddf57d6f296dd1c5889431d1876",
+  "publicationHead": "151fe900a6a83cbbf2c872e516b3892124aff921",
+  "reviewerSession": "01a138f7-8083-7d31-9344-a35863d2499e",
+  "model": "gpt-6-astra",
+  "reasoningEffort": "high",
+  "bindingGeneration": "6423ff4e-aa61-4d8b-b5ba-9be6760c2bf6",
+  "verdicts": {
+    "R5_1": "ADDRESSED",
+    "specification": "PASS",
+    "code": "Approved",
+    "boundedTarballAdoption": "Approved"
+  },
+  "findings": [],
+  "freshFocused": {
+    "tests": 167,
+    "passed": 167,
+    "failed": 0
+  },
+  "replay": {
+    "inputs": 171,
+    "priorInputs": 147,
+    "newIndependentControls": 24,
+    "passed": 171,
+    "failed": 0,
+    "sourceTarballParity": true
+  },
+  "packedFilesVerified": 917,
+  "approvedTarball": {
+    "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/runtime/2012-ceb8e75a9/kburson-ai-task-manager-0.1.0.tgz",
+    "size": 3006760,
+    "sha256": "3d6aed85f863ff16fe9216e46d2536821486d6d4c3a47855882fd7cdacfa4f9b",
+    "sha512SRI": "sha512-4Tl+eD3IcZoc2khSHjQiKloZ90au1QOYZP7fNPMuDghCcRzoGBK9w1zTvanMBc59Vz3IxBEg3VlCnUG7h1Y/wQ=="
+  },
+  "files": {
+    "review.md": "8296b988a9422a610956ee1f28306bc9a6c1e4a151f09c58e3177fe318837fed",
+    "comparison.json": "9db48b5488d32f3ec2c5f92cc7793ec8f0b80a55cf69a3bbda438fef2cdab764",
+    "package-check.json": "83a55ed3bc6d4381992a0d366e8eb1a78787c82c1cb274aa57dcac34e8fe3ec9",
+    "author-evidence-check.json": "648713f0cbc50f0b51758a6c63c069f4bfaf914df1c1de9ea24aea6e5b8ee50b",
+    "focused.log": "f6b180292bbbc08870448656a76c6c8848cfb1af4bf6864f166ce33747ffa14e"
+  }
+}
