@@ -418,14 +418,19 @@ function contextualReversalScope(text, scope) {
   return reversalScope('', scope);
 }
 function completionSequence(prefix, scope) {
+  // Accept only the sequence itself or explicit resumption of current members.
+  // Arbitrary comma prefixes may carry an unknown outer condition.
   const sequence = prefix
     .trim()
     .match(
-      /(?:^|,)\s*(?:please\s+)?(?:finish|complete)\s+(?:the\s+)?(?:wave|rank(?:[-\s]+wave)?)\s*#?(\d+)\s*,?\s*then\s*(?:please\s*)?$/i
+      /^(?:(?:please\s+)?resume\s+(#\d+(?:(?:\s*,\s*|\s+and\s+)#\d+)*)\s*,\s*)?(?:please\s+)?(?:finish|complete)\s+(?:the\s+)?(?:wave|rank(?:[-\s]+wave)?)\s*#?(\d+)\s*,?\s*then\s*(?:please\s*)?$/i
     );
-  if (!sequence || Number(sequence[1]) !== scope.rank) return false;
-  return !/\b(?:if|unless|until|before|when|once|after|not|never|maybe|assuming)\b|don['’]?t/i.test(
-    prefix.slice(0, sequence.index)
+  if (!sequence || Number(sequence[2]) !== scope.rank) return false;
+  return (
+    !sequence[1] ||
+    [...sequence[1].matchAll(/#(\d+)/g)].every((member) =>
+      scope.members.includes(Number(member[1]))
+    )
   );
 }
 function futureStoryHandoff(object, scope) {
