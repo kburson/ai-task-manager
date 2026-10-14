@@ -20,7 +20,7 @@
     "committedInventoryPath": "docs/verification/2012-deferred-wave-pause-author-r2/package-inventory.json",
     "inventorySha256": "d479445880a12c13a5b09e2aacaf553361045decf153ad97b34e5d102ffb8012",
     "committedInventoryFormat": "wrapper; files are identical to immutable raw package-inventory.json array",
-    "committedInventorySha256": "ee6396d4fb156fa7176c6b7cc1ac9614dfbe4d5e26a1319ef9bd82c537771126"
+    "committedInventorySha256": "f584fd1e1d93b36ff4d5de222388874fbd6f5337fdcced9bd0313c03fe2cbfea"
   },
   "moduleHashes": {
     "scripts/task-tracker/lib/epic-rank-wave-source.mjs": {
