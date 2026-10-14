@@ -1352,7 +1352,7 @@ const DIRECT_SELF_DOC = Object.freeze({
     classification: 'live-maintenance-or-migration',
     synopsis: 'Repair one missing Timing Log departure before an unpaired reengagement.',
     usage:
-      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--recover-redundant-same-second-reengagement] [--yes]',
+      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--recover-redundant-same-second-reengagement] [--allow-foreign-worktree] [--yes]',
     arguments: [
       argument('<issue#>', 'Issue whose Timing Log is inspected.'),
       argument(APPLY_FLAG, 'Write the selected missing departure repair.'),
@@ -1370,7 +1370,11 @@ const DIRECT_SELF_DOC = Object.freeze({
       ),
       argument(
         '--recover-redundant-same-second-reengagement',
-        'Remove one exact standalone zero-duration resumed row between same-second demoted:develop and develop:started rows; requires --row-index and is mutually exclusive with other recovery or insertion options.'
+        'Remove one exact standalone zero-duration resumed row between same-second demoted:develop/develop:started or authenticated zero-work develop:completed/test:started rows; requires --row-index and is mutually exclusive with other recovery or insertion options.'
+      ),
+      argument(
+        '--allow-foreign-worktree',
+        'Existing routing-only scope exception; recovery predicates remain unchanged.'
       ),
       argument('--yes', 'Skip confirmation for apply.'),
     ],
