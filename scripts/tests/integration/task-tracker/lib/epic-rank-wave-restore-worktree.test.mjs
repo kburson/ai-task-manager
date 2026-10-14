@@ -555,3 +555,89 @@ test('production recovery refuses uncertain retained timer evidence while allowi
     f.cleanup();
   }
 });
+
+test('retained native recovery recognizes authenticated historical worktree execution after primary checkout startup', async () => {
+  const { mkdirSync } = await import('node:fs');
+  const { pathToFileURL } = await import('node:url');
+  const { observeRetainedRankWaveNative } =
+    await import('../../../../task-tracker/lib/epic-rank-wave-bindings.mjs');
+  const f = fixture();
+  try {
+    const home = path.join(f.root, 'native-home');
+    const binding = { ...f.binding, sessionId: '00000000-0000-4000-8000-000000000141' };
+    const directory = path.join(home, '.codex', 'sessions', '2026', '10', '14');
+    mkdirSync(directory, { recursive: true });
+    const file = path.join(directory, `rollout-2026-10-14T00-00-00-${binding.sessionId}.jsonl`);
+    const metadata = { type: 'session_meta', payload: { id: binding.sessionId, cwd: f.root } };
+    const command = {
+      type: 'event_msg',
+      payload: {
+        type: 'item_completed',
+        thread_id: binding.sessionId,
+        turn_id: 'fixture-turn',
+        item: {
+          type: 'CommandExecution',
+          id: 'fixture-exec',
+          cwd: pathToFileURL(binding.worktree).href,
+          status: 'completed',
+          exit_code: 0,
+        },
+      },
+    };
+    const save = (rows) =>
+      writeFileSync(file, rows.map((e) => JSON.stringify(e)).join('\n') + '\n');
+    save([metadata, command]);
+    assert.deepEqual(await observeRetainedRankWaveNative(binding, { home }), {
+      verified: true,
+      sessionId: binding.sessionId,
+    });
+    assert.equal(existsSync(binding.worktree), false);
+    for (const evidence of [
+      { type: 'turn_context', payload: { cwd: binding.worktree } },
+      {
+        ...command,
+        payload: { ...command.payload, item: { ...command.payload.item, cwd: binding.worktree } },
+      },
+    ]) {
+      save([metadata, evidence]);
+      assert.equal((await observeRetainedRankWaveNative(binding, { home })).verified, true);
+    }
+    for (const evidence of [
+      {
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: binding.worktree }],
+        },
+      },
+      { ...command, payload: { ...command.payload, thread_id: 'foreign-thread' } },
+      {
+        ...command,
+        payload: { ...command.payload, item: { ...command.payload.item, status: 'in_progress' } },
+      },
+      {
+        ...command,
+        payload: {
+          ...command.payload,
+          item: { ...command.payload.item, cwd: f.root, command: [binding.worktree] },
+        },
+      },
+    ]) {
+      save([metadata, evidence]);
+      await assert.rejects(observeRetainedRankWaveNative(binding, { home }));
+    }
+    save([command, metadata]);
+    await assert.rejects(observeRetainedRankWaveNative(binding, { home }));
+    save([
+      {
+        ...metadata,
+        payload: { ...metadata.payload, cwd: path.join(f.root, 'missing-foreign-root') },
+      },
+      command,
+    ]);
+    await assert.rejects(observeRetainedRankWaveNative(binding, { home }));
+  } finally {
+    f.cleanup();
+  }
+});
