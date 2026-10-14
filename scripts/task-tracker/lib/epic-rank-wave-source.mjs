@@ -349,13 +349,21 @@ function principalObject(text) {
     .trim();
 }
 function coordinatedObjects(text) {
-  const normalized = text.replace(/,\s+(?=(?:and|or|&)\s+)/gi, ' ');
-  const principal = principalObject(normalized);
-  const suffix = normalized.slice(normalized.indexOf(principal) + principal.length);
-  // Preserve numeric lists and condition/reason tails. Each shared-verb target
-  // keeps its own scope instead of inheriting a neutral sibling's classification.
-  return principal.split(/\s+(?:and|or|&)\s+(?!#?\d+\b)/i).map((part) => part + suffix);
+  // Commas delimit targets before a true condition/reason tail. Numeric lists
+  // belong to their scoped object, never to a separate target.
+  const principal = text
+    .split(
+      /\b(?:until|while|before|after|because|since|so|as(?!\s+many\b)|pending|till|unless|if|once|when)\b|—|:(?!\s*[#\[\d])/i
+    )[0]
+    .trim();
+  if (!principal) return [text];
+  const suffix = text.slice(text.indexOf(principal) + principal.length);
+  return principal
+    .split(/,(?!\s*#?\d+\b)\s*(?:(?:and|or)(?:\s+|$))?|\s+(?:and|or|&)(?!\s*#?\d+\b)\s+/i)
+    .filter((part, index) => part.trim() || index === 0)
+    .map((part) => part + suffix);
 }
+
 function admissionTarget(text) {
   // Only the head activity is neutral. A CI/test/review reason appended to
   // an admission object cannot conceal its withdrawal.
@@ -432,13 +440,16 @@ function contradictsWaveClause(
   scope,
   purpose,
   precedingClauses = '',
-  completionContext = ''
+  completionContext = '',
+  deferredBoundaries = []
 ) {
   const verbs = [
     ...text.matchAll(
       /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)(?![\w'’-])/gi
     ),
   ];
+  let preference = null;
+  let previousObject = null;
   for (const [index, match] of verbs.entries()) {
     const verb = match[1].toLowerCase();
     // A command-shaped noun belongs to the current object. Keep evaluating
@@ -460,12 +471,21 @@ function contradictsWaveClause(
     const fullObject = text.slice(match.index + match[1].length, nextCommand?.index ?? text.length);
     // An infinitival preference belongs to its actual operation. Preserve its
     // negation there, rather than classifying the truncated "to" as admission.
-    if (verb === 'want' && nextCommand && /^\s*(?:(?:you|us|them)\s+)?to\s*$/i.test(fullObject))
-      continue;
-    const negated =
+    const directlyNegated =
       /(?:do not|don['’]?t|n['’]t|never|no longer|not|cannot)\s+(?:(?:actually|really|ever|please)\s+)*(?:want\s+(?:(?:you|us|them)\s+)?to\s+)?$/i.test(
         text.slice(0, match.index)
       );
+    if (verb === 'want' && nextCommand && /^\s*(?:(?:you|us|them)\s+)?to\s*$/i.test(fullObject)) {
+      preference = directlyNegated;
+      previousObject = null;
+      continue;
+    }
+    // A preference covers its coordinated operations, not a new subject,
+    // polite independent command, sentence, or adversative clause.
+    if (previousObject !== null && !/(?:\s+(?:and|or|&)|,)\s*$/i.test(previousObject))
+      preference = null;
+    const negated = directlyNegated || preference === true;
+    previousObject = fullObject;
     for (const object of coordinatedObjects(fullObject)) {
       const target = principalObject(object);
       const objectScope = reversalScope(target, scope);
@@ -483,16 +503,15 @@ function contradictsWaveClause(
         continue;
       }
       if (/^(?:revoke|withdraw|cancel|stop|hold off|wait on|pause)$/.test(verb)) {
-        if (
-          !negated &&
-          !deferredCompletionStop(
-            [precedingClauses, text.slice(0, match.index)].filter((part) => part.trim()).join(', '),
-            object,
-            verb,
-            scope
-          )
-        )
-          return true;
+        if (!negated) {
+          const prefix = [precedingClauses, text.slice(0, match.index)]
+            .filter((part) => part.trim())
+            .join(', ');
+          if (!deferredCompletionStop(prefix, object, verb, scope)) return true;
+          // Emit the same matching target that was classified above. Consumers
+          // may inherit its scope, never its completion condition.
+          deferredBoundaries.push([prefix, verb, object].join(' '));
+        }
       } else if (negated) return true;
       if (
         !negated &&
@@ -517,9 +536,10 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   const sentences = text.split(/[.;!?\n]+/);
   const completionContexts = [];
   for (const sentence of sentences) {
+    const deferredBoundaries = [];
     const clauses = sentence
       .split(
-        /,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)|\s+and\s+(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)/i
+        /,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause)\b)|\s+(?:and|or)\s+(?=(?:I|we|you|they|he|she)\b)/i
       )
       .map((part) => part.trim())
       .filter(Boolean);
@@ -530,25 +550,16 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
           scope,
           purpose,
           clauses.slice(0, index).join(', '),
-          completionContexts.join('. ')
+          completionContexts.join('. '),
+          deferredBoundaries
         )
       )
         return true;
     }
-    // Only a completion boundary supplies admission context to later sentences.
-    // Ordinary status, testing and other-epic operations remain independent.
-    const stop = sentence.match(/\b(pause|stop)\b/i);
-    if (
-      completionCondition(sentence, scope) ||
-      (stop &&
-        deferredCompletionStop(
-          sentence.slice(0, stop.index),
-          sentence.slice(stop.index + stop[1].length),
-          stop[1].toLowerCase(),
-          scope
-        ))
-    )
-      completionContexts.push(sentence);
+    // Scope comes only from a recognized completion boundary. Classification
+    // and retention share the same coordinated admission targets.
+    if (completionCondition(sentence, scope)) completionContexts.push(sentence);
+    completionContexts.push(...deferredBoundaries);
   }
   const reply = text.trim();
   if (

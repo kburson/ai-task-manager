@@ -310,3 +310,186 @@ test('negated admission preferences and mixed operational preferences still with
     );
   }
 });
+
+// FIX ROUND 2: immutable independent review extensions and their literal contract.
+const fixRound2Cases = [
+  ['Stop deployment, tests, and parallel execution for epic #2 rank 4.', 'blocked'],
+  ['Stop deployment, parallel execution for epic #2 rank 4.', 'blocked'],
+  [
+    'When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests or execute epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests and execute epic #2 rank 4.',
+    'blocked',
+  ],
+  ['I do not want to run tests or execute epic #2 rank 4.', 'blocked'],
+  [
+    'When wave 4 is complete pause. I do not want you to run tests or start epic #2 rank 4.',
+    'blocked',
+  ],
+  ['When wave 4 is complete pause. I do not want to run tests or start deployment.', 'verified'],
+  [
+    'When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 5.',
+    'verified',
+  ],
+  ['Stop deployment & parallel execution for epic #2 rank 4.', 'blocked'],
+  ['Stop deployment, and parallel execution for epic #2 rank 4.', 'blocked'],
+  [
+    'When wave 4 is complete pause. Stop deployment for epic #2 rank 4 and parallel execution for epic #3 rank 4.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 5.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. Do not stop deployment and parallel execution for epic #2 rank 4.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. Do not run tests and parallel execution for epic #2 rank 4.',
+    'blocked',
+  ],
+  ['When wave 4 is complete pause. I do not want to run tests, but stop now.', 'blocked'],
+  ['When wave 4 is complete pause. I do not want to stop epic #2 rank 4.', 'verified'],
+  ['Stop deployment and parallel execution for epic #2 rank 3 and 4.', 'blocked'],
+  ['Stop deployment and parallel execution for epic #2 rank 3 and 5.', 'verified'],
+  [
+    'Stop parallel execution for epic #3 rank 4 and parallel execution for epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop deployment.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete stop parallel execution for epic #2 rank 4 and deployment. Stop now.',
+    'blocked',
+  ],
+];
+
+for (const [index, [statement, expected]] of fixRound2Cases.entries()) {
+  test('fix round 2 reproduction ' + (index + 21) + ': ' + statement, async () => {
+    const { result, context } = await rescan([statement]);
+    assert.equal(result.status, expected, statement);
+    assert.deepEqual(context.subsequentStatements, expected === 'blocked' ? [statement] : []);
+    if (expected === 'blocked') assert.equal(result.code, 'rank-wave-source-contradiction');
+  });
+}
+
+test('comma target lists preserve numeric member lists and separate other-epic scope', async () => {
+  for (const [statement, expected] of [
+    [
+      'Stop deployment, tests, and parallel stories #4, #5, #6, #7, #14 of epic #2 rank 4.',
+      'blocked',
+    ],
+    [
+      'Stop deployment for epic #2 rank 4, tests, and parallel execution for epic #3 rank 4.',
+      'verified',
+    ],
+    ['When wave 4 is complete pause. Stop deployment, tests, and lint.', 'verified'],
+    [
+      'When wave 4 is complete pause. Stop deployment because tests failed and parallel execution for epic #2 rank 4 is green.',
+      'verified',
+    ],
+  ]) {
+    assert.equal((await rescan([statement])).result.status, expected, statement);
+  }
+});
+
+test('preference scope follows coordinated verbs and ends at independent subjects and clauses', async () => {
+  for (const [statement, expected] of [
+    [
+      'When wave 4 is complete pause. I do not want to run tests and run epic #2 rank 4.',
+      'blocked',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests or execute tests or start epic #2 rank 4.',
+      'blocked',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests and I want to execute epic #2 rank 4.',
+      'verified',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests, but execute epic #2 rank 4.',
+      'verified',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests. Execute epic #2 rank 4.',
+      'verified',
+    ],
+    ['When wave 4 is complete pause. I want to run tests or execute epic #2 rank 4.', 'verified'],
+    ['When wave 4 is complete pause. I do not want to run tests and please stop now.', 'blocked'],
+  ]) {
+    assert.equal((await rescan([statement])).result.status, expected, statement);
+  }
+});
+
+test('deferred coordinated targets provide only scoped relevance to later independent stops', async () => {
+  for (const [statement, expected] of [
+    [
+      'When wave 4 is complete stop deployment, tests, and parallel execution for epic #2 rank 4. Stop now.',
+      'blocked',
+    ],
+    [
+      'When wave 4 is complete stop deployment, tests, and parallel execution for epic #2 rank 4. Stop deployment.',
+      'verified',
+    ],
+    [
+      'When wave 4 is complete stop deployment, tests, and parallel execution for epic #2 rank 4. I do not want to run tests.',
+      'verified',
+    ],
+    [
+      'When wave 4 is complete stop deployment and parallel execution for epic #3 rank 4. Stop deployment.',
+      'verified',
+    ],
+    [
+      'When wave 4 is complete stop deployment and parallel execution for epic #2 rank 5. Pause wave 5.',
+      'verified',
+    ],
+    [
+      'When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now after tests pass.',
+      'blocked',
+    ],
+  ]) {
+    assert.equal((await rescan([statement])).result.status, expected, statement);
+  }
+});
+
+test('comma-coordinated preference operations retain negation before an independent stop boundary', async () => {
+  for (const [statement, expected] of [
+    [
+      'When wave 4 is complete pause. I do not want to run tests, execute epic #2 rank 4.',
+      'blocked',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests, run tests, and execute epic #2 rank 4.',
+      'blocked',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests, execute tests, and start deployment.',
+      'verified',
+    ],
+    ['When wave 4 is complete pause. I do not want to run tests, stop now.', 'blocked'],
+  ]) {
+    assert.equal((await rescan([statement])).result.status, expected, statement);
+  }
+});
