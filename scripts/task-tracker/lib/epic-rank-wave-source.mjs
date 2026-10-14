@@ -348,6 +348,14 @@ function principalObject(text) {
     )[0]
     .trim();
 }
+function coordinatedObjects(text) {
+  const normalized = text.replace(/,\s+(?=(?:and|or|&)\s+)/gi, ' ');
+  const principal = principalObject(normalized);
+  const suffix = normalized.slice(normalized.indexOf(principal) + principal.length);
+  // Preserve numeric lists and condition/reason tails. Each shared-verb target
+  // keeps its own scope instead of inheriting a neutral sibling's classification.
+  return principal.split(/\s+(?:and|or|&)\s+(?!#?\d+\b)/i).map((part) => part + suffix);
+}
 function admissionTarget(text) {
   // Only the head activity is neutral. A CI/test/review reason appended to
   // an admission object cannot conceal its withdrawal.
@@ -449,44 +457,50 @@ function contradictsWaveClause(
           ) &&
             !/^["”`)/]/.test(text.slice(next.index + next[1].length)))
       );
-    const object = text.slice(match.index + match[1].length, nextCommand?.index ?? text.length);
+    const fullObject = text.slice(match.index + match[1].length, nextCommand?.index ?? text.length);
+    // An infinitival preference belongs to its actual operation. Preserve its
+    // negation there, rather than classifying the truncated "to" as admission.
+    if (verb === 'want' && nextCommand && /^\s*(?:(?:you|us|them)\s+)?to\s*$/i.test(fullObject))
+      continue;
     const negated =
-      /(?:do not|don['’]?t|n['’]t|never|no longer|not|cannot)\s+(?:(?:actually|really|ever|please)\s+)*$/i.test(
+      /(?:do not|don['’]?t|n['’]t|never|no longer|not|cannot)\s+(?:(?:actually|really|ever|please)\s+)*(?:want\s+(?:(?:you|us|them)\s+)?to\s+)?$/i.test(
         text.slice(0, match.index)
       );
-    const target = principalObject(object);
-    const objectScope = reversalScope(target, scope);
-    const relevant = objectScope.specified
-      ? objectScope.matches
-      : contextualReversalScope(
-          [completionContext, precedingClauses, text.slice(0, match.index)]
-            .filter((part) => part.trim())
-            .join(', '),
-          scope
-        ).matches;
-    if (!relevant || !admissionTarget(object)) continue;
-    if (purpose === 'revoke') {
-      if (negated && /^(?:revoke|withdraw)$/.test(verb)) return true;
-      continue;
-    }
-    if (/^(?:revoke|withdraw|cancel|stop|hold off|wait on|pause)$/.test(verb)) {
+    for (const object of coordinatedObjects(fullObject)) {
+      const target = principalObject(object);
+      const objectScope = reversalScope(target, scope);
+      const relevant = objectScope.specified
+        ? objectScope.matches
+        : contextualReversalScope(
+            [completionContext, precedingClauses, text.slice(0, match.index)]
+              .filter((part) => part.trim())
+              .join(', '),
+            scope
+          ).matches;
+      if (!relevant || !admissionTarget(object)) continue;
+      if (purpose === 'revoke') {
+        if (negated && /^(?:revoke|withdraw)$/.test(verb)) return true;
+        continue;
+      }
+      if (/^(?:revoke|withdraw|cancel|stop|hold off|wait on|pause)$/.test(verb)) {
+        if (
+          !negated &&
+          !deferredCompletionStop(
+            [precedingClauses, text.slice(0, match.index)].filter((part) => part.trim()).join(', '),
+            object,
+            verb,
+            scope
+          )
+        )
+          return true;
+      } else if (negated) return true;
       if (
         !negated &&
-        !deferredCompletionStop(
-          [precedingClauses, text.slice(0, match.index)].filter((part) => part.trim()).join(', '),
-          object,
-          verb,
-          scope
-        )
+        /^(?:run|execute|switch(?: to)?|use|keep|go)$/.test(verb) &&
+        /\b(?:sequential(?:ly)?|serial(?:ly)?|one at a time|one by one)\b/i.test(object)
       )
         return true;
-    } else if (negated) return true;
-    if (
-      !negated &&
-      /^(?:run|execute|switch(?: to)?|use|keep|go)$/.test(verb) &&
-      /\b(?:sequential(?:ly)?|serial(?:ly)?|one at a time|one by one)\b/i.test(object)
-    )
-      return true;
+    }
   }
   if (purpose === 'revoke') return false;
   for (const unapproved of text.matchAll(/(.*?)\s+(?:is|are)\s+not approved?\b/gi)) {
