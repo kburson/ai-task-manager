@@ -10,7 +10,7 @@ The human approved this bounded design October 14, 2026. Completed AIVC peers re
 
 ## Story Intent
 
-- **Beneficiary:** epic delivery operator
+- **Beneficiary:** delivery operator overseeing epics
 - **Capability:** safely restore retained completed child checkouts
 - **Need:** missing directories block authenticated wave continuation
 - **Value or failure prevented:** completed work remains accessible without losing refs or weakening ownership and lifecycle safeguards
@@ -23,7 +23,7 @@ Recovery authenticates current parent, immutable history and recording-time sour
 
 - Priority: P1
 - Size: M
-- Estimate: 6 hours
+- Estimate: 7.5 hours (adaptive Plan convergence from 6 base human hours)
 - Labels: bug
 
 ## Implementation Tasks
@@ -38,7 +38,7 @@ Files: scripts/task-tracker/verbs/epic-wave.mjs; scripts/task-tracker/lib/comman
 4. Validate canonical non-symlink owned destination ancestry and absent/clean exact matching checkout. Verify existing branch exact head, source ancestry and complete refs; recheck live authority and physical state before effect.
 5. Execute one bounded argument-array Git worktree add of the existing branch with scrubbed Git redirection environment. No force, branch creation/reset, registration prune/repair or cleanup.
 6. Read back exact clean tuple/head and refs. Return restored/already-restored only on proof; return typed refusal before effects, indeterminate after failed or uncertain attempted effects, retaining evidence.
-7. Cover selector/history/source tampering, wrong parent/role/session/generation/repository, nonchild/rank/non-Done/reopened, branch/head/ancestry/location drift, filesystem/claim/registration conflicts, races, Git failure/timeout/read-back uncertainty and ambient Git redirection.
+7. Cover selector/history/source tampering, wrong role/parent/session/generation/repository, nonchild/rank/reopened, head/source/location drift, symlink/path/claim/registration conflicts, races, failure/timeout/uncertain read-back and ambient Git redirection.
 
 Tests: scripts/tests/integration/task-tracker/lib/epic-rank-wave-restore-worktree.test.mjs; scripts/tests/unit/task-tracker/verbs/epic-wave.test.mjs. Run existing epic-wave routes/runtime regression files as declared on the issue.
 
