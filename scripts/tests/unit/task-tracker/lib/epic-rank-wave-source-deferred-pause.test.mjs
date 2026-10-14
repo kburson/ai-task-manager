@@ -493,3 +493,136 @@ test('comma-coordinated preference operations retain negation before an independ
     assert.equal((await rescan([statement])).result.status, expected, statement);
   }
 });
+
+// FIX ROUND 3: exact independent review extensions and literal outcomes.
+const fixRound3Cases = [
+  ['Stop lint, tests, deployment, and parallel execution for epic #2 rank 4.', 'blocked'],
+  ['Stop lint, tests, deployment, and parallel execution for epic #2 rank 5.', 'verified'],
+  ['Stop deployment, tests & parallel execution for epic #2 rank 4.', 'blocked'],
+  ['Stop deployment, tests, or parallel execution for epic #2 rank 4.', 'blocked'],
+  ['Stop tests and parallel execution for epic #2 ranks 3, 4 and 5.', 'blocked'],
+  ['Stop tests and parallel execution for epic #2 ranks 3, 5 and 6.', 'verified'],
+  ['Stop tests, deployment, and stories #4, #5, #6 of epic #2 rank 4.', 'blocked'],
+  ['Stop tests, deployment, and stories #8, #9, #10 of epic #2 rank 5.', 'verified'],
+  [
+    'When wave 4 is complete pause. Stop parallel execution for epic #3 rank 4, deployment for epic #2 rank 4.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. Stop testing because parallel execution for epic #2 rank 4 is complete.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. Stop tests, deployment, and lint because parallel execution for epic #2 rank 4 is complete.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. Stop parallel execution for epic #2 rank 4 because tests and deployment failed.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I never want to run tests, execute tests, or start epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I never want to run tests, execute tests, or start deployment.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please execute epic #2 rank 4.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, I will execute epic #2 rank 4.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests and we should execute epic #2 rank 4.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests and please stop parallel execution for epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause lint, tests, and parallel execution for epic #2 rank 4. Please stop now.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause lint, tests, and parallel execution for epic #2 rank 4. Pause wave 5.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause tests and parallel execution for epic #3 rank 4. Stop tests.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause parallel execution for epic #2 rank 4, tests, and deployment. Stop immediately.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause tests, deployment, and parallel execution for epic #2 rank 4. I do not want to execute tests.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause tests, deployment, and parallel execution for epic #2 rank 4. I do not want to execute epic #2 rank 4.',
+    'blocked',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, please start deployment.',
+    'verified',
+  ],
+  [
+    'When wave 4 is complete pause. I do not want to run tests, I will start deployment.',
+    'verified',
+  ],
+  ['I do not want to run tests, please start deployment.', 'verified'],
+];
+
+for (const [index, [statement, expected]] of fixRound3Cases.entries()) {
+  test('fix round 3 reproduction ' + (index + 46) + ': ' + statement, async () => {
+    const { result, context } = await rescan([statement]);
+    assert.equal(result.status, expected, statement);
+    assert.deepEqual(context.subsequentStatements, expected === 'blocked' ? [statement] : []);
+    if (expected === 'blocked') assert.equal(result.code, 'rank-wave-source-contradiction');
+  });
+}
+
+test('independent polite and subject clauses retain their own operation and negation', async () => {
+  for (const [statement, expected] of [
+    [
+      'When wave 4 is complete pause. I do not want to run tests, please do not execute tests.',
+      'verified',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests, please do not execute epic #2 rank 4.',
+      'blocked',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests, I will not execute epic #2 rank 4.',
+      'blocked',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests, we will start deployment.',
+      'verified',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests, please revoke epic #2 rank 4.',
+      'blocked',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests, please execute tests and start deployment.',
+      'verified',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests or execute epic #2 rank 4.',
+      'blocked',
+    ],
+    [
+      'When wave 4 is complete pause. I do not want to run tests, execute tests, and start epic #2 rank 4.',
+      'blocked',
+    ],
+  ]) {
+    assert.equal((await rescan([statement])).result.status, expected, statement);
+  }
+});
