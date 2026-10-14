@@ -1,0 +1,109 @@
+[
+  {
+    "name": "review-red",
+    "declaredExitCode": 1,
+    "hashesVerified": true,
+    "tail": [
+      "      at async Test.run (node:internal/test_runner/test:1409:7)",
+      "      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {",
+      "    generatedMessage: false,",
+      "    code: 'ERR_ASSERTION',",
+      "    actual: 'blocked',",
+      "    expected: 'verified',",
+      "    operator: 'strictEqual',",
+      "    diff: 'simple'",
+      "  }"
+    ]
+  },
+  {
+    "name": "focused",
+    "declaredExitCode": 0,
+    "hashesVerified": true,
+    "tail": [
+      "\u2714 a verb-shaped noun cannot cut the scope off its preceding withdrawal (14.780584ms)",
+      "\u2139 tests 136",
+      "\u2139 suites 0",
+      "\u2139 pass 136",
+      "\u2139 fail 0",
+      "\u2139 cancelled 0",
+      "\u2139 skipped 0",
+      "\u2139 todo 0",
+      "\u2139 duration_ms 524.166375"
+    ]
+  },
+  {
+    "name": "affected",
+    "declaredExitCode": 0,
+    "hashesVerified": true,
+    "tail": [
+      "\u2714 a verb-shaped noun cannot cut the scope off its preceding withdrawal (34.74925ms)",
+      "\u2139 tests 208",
+      "\u2139 suites 0",
+      "\u2139 pass 208",
+      "\u2139 fail 0",
+      "\u2139 cancelled 0",
+      "\u2139 skipped 0",
+      "\u2139 todo 0",
+      "\u2139 duration_ms 10641.711667"
+    ]
+  },
+  {
+    "name": "adjacent",
+    "declaredExitCode": 0,
+    "hashesVerified": true,
+    "tail": [
+      "\u2714 schema-2 fresh adoption drops previous rank pointers and preserves trunk authority (22.763917ms)",
+      "\u2139 tests 19",
+      "\u2139 suites 0",
+      "\u2139 pass 19",
+      "\u2139 fail 0",
+      "\u2139 cancelled 0",
+      "\u2139 skipped 0",
+      "\u2139 todo 0",
+      "\u2139 duration_ms 1177.726042"
+    ]
+  },
+  {
+    "name": "fast",
+    "declaredExitCode": 0,
+    "hashesVerified": true,
+    "tail": [
+      "\u25b6 scripts/tests/unit/task-tracker/verbs/verb-test-sandbox-env.test.mjs ... ok (497ms)",
+      "\u25b6 scripts/tests/unit/tools/compare-test-fixtures.test.mjs ... ok (146ms)",
+      "\u25b6 scripts/tests/unit/tools/coverage-threshold-parse.test.mjs ... ok (150ms)",
+      "",
+      "\u25b6 scheduling: 922 pure unit file(s) at pool concurrency 9 (peak 9); 39 direct-subprocess file(s) at pool concurrency 2 (peak 2); 0 explicit-safe slow file(s) at pool concurrency 2 (peak 0); 0 explicit-unsafe/integration/unmarked-slow file(s) serial",
+      "",
+      "run-tests: lane 'fast' bounded sections: pooled=43.5s/600s (922 files); subprocess=61.2s/600s (39 files); aggregate=104.8s",
+      "",
+      "All 961 test files passed."
+    ]
+  },
+  {
+    "name": "lint",
+    "declaredExitCode": 0,
+    "hashesVerified": true,
+    "tail": [
+      "npm notice run @kburson/ai-task-manager@0.1.0 lint:doc-anchors",
+      "npm notice run node scripts/maintenance/lint-doc-anchors.mjs",
+      "lint:doc-anchors \u2014 38 anchor(s) across 3 doc(s) clean",
+      "npm notice run @kburson/ai-task-manager@0.1.0 lint:action-refusals",
+      "npm notice run node scripts/maintenance/lint-action-refusals.mjs",
+      "lint:action-refusals: 36 registered guards frozen",
+      "npm notice run @kburson/ai-task-manager@0.1.0 lint:guidance-release",
+      "npm notice run node scripts/maintenance/generate-guidance-release.mjs --check",
+      "guidance release manifest agrees with catalog and parser"
+    ]
+  },
+  {
+    "name": "format",
+    "declaredExitCode": 0,
+    "hashesVerified": true,
+    "tail": [
+      "npm notice run @kburson/ai-task-manager@0.1.0 format:check",
+      "npm notice run prettier --check .",
+      "Checking formatting...",
+      "All matched files use Prettier code style!"
+    ]
+  }
+]
