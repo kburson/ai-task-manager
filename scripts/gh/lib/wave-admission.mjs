@@ -1,3 +1,4 @@
+// @story #2009
 // Wave admission gate for the Grooming → Analysis transition on epic sub-issues.
 //
 // `admit({ parentEpicNumber, rank, repo, projectId, fetchSiblings })`
@@ -39,7 +40,10 @@ import {
 } from '../../task-tracker/lib/closed-issue-convergence.mjs';
 import { normalizeStateId } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
-import { rankWaveRefinementIdentity } from '../../task-tracker/lib/epic-rank-wave-refinement.mjs';
+import {
+  rankWaveLegacyRefinementIdentity,
+  rankWaveRefinementIdentity,
+} from '../../task-tracker/lib/epic-rank-wave-refinement.mjs';
 import { verifyRefinementSnapshot } from '../../task-tracker/lib/refinement-snapshot.mjs';
 import { observeDependencyReadiness } from '../../task-tracker/lib/dependency-disposition.mjs';
 
@@ -544,6 +548,7 @@ export function mapSubIssueNodes(subs, cfgOrProjectId, { allowPlanProjection = f
     let childEvidenceError = null;
     let hasCurrentRefinement = false;
     let refinementDigest = null;
+    let legacyRefinementDigest = null;
     if (recoveryMarkerPresent && !recovery)
       childEvidenceError = 'unauthorized-close recovery marker malformed';
     else if (projectMatches.length > 1)
@@ -582,11 +587,15 @@ export function mapSubIssueNodes(subs, cfgOrProjectId, { allowPlanProjection = f
     }
     if (labels && !labels.pageInfo?.hasNextPage && Array.isArray(labels.nodes)) {
       try {
-        refinementDigest = rankWaveRefinementIdentity(sub.body, {
-          labels: labels.nodes.map((l) => l?.name).filter(Boolean),
-        });
+        const completeLabels = labels.nodes.map((l) => l?.name).filter(Boolean);
+        refinementDigest = rankWaveRefinementIdentity(sub.body, { labels: completeLabels });
+        if (issueClosed && refinementDigest)
+          legacyRefinementDigest = rankWaveLegacyRefinementIdentity(sub.body, {
+            labels: completeLabels,
+          });
       } catch {
         refinementDigest = null;
+        legacyRefinementDigest = null;
       }
     }
     out.push({
@@ -605,6 +614,7 @@ export function mapSubIssueNodes(subs, cfgOrProjectId, { allowPlanProjection = f
       dependencyReadiness: 'unknown',
       hasCurrentRefinement,
       refinementDigest,
+      ...(issueClosed ? { legacyRefinementDigest } : {}),
       ...(childEvidenceError ? { childEvidenceError } : {}),
     });
   }
