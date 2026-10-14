@@ -1,6 +1,7 @@
 // @story #1872
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { restoreRankWaveWorktree } from '../lib/epic-rank-wave-restore-worktree.mjs';
 import { createRankWaveRuntime } from '../lib/epic-rank-wave-runtime.mjs';
 import { exactRankWaveKeys } from '../lib/epic-rank-wave-authority.mjs';
 import {
@@ -21,6 +22,7 @@ export function parseEpicWaveArgs(rest = []) {
       'revoke',
       'lock-show',
       'lock-release',
+      'restore-worktree',
     ].includes(action)
   )
     throw new TypeError('epic-wave: action');
@@ -53,6 +55,8 @@ export async function runEpicWave(ctx, deps = {}) {
   const repository = ctx.cfg.repo,
     epic = args.epic;
   const now = (deps.now ?? (() => new Date().toISOString()))();
+  if (args.action === 'restore-worktree')
+    return restoreRankWaveWorktree({ repository, epic, input, now, runtime });
   if (args.action === 'lock-show') {
     if (input) throw new TypeError('epic-wave: lock-show takes no input');
     return runtime.inspectLock();
@@ -94,7 +98,16 @@ export async function verbEpicWave(ctx) {
   const result = await runEpicWave(ctx);
   console.log(JSON.stringify({ schema: 'aitm.epic-wave-result/v1', ...result }));
   if (
-    !['prepared', 'recorded', 'ready', 'legacy', 'ungranted', 'released'].includes(result.status) &&
+    ![
+      'prepared',
+      'recorded',
+      'ready',
+      'legacy',
+      'ungranted',
+      'released',
+      'restored',
+      'already-restored',
+    ].includes(result.status) &&
     parseEpicWaveArgs(ctx.rest).action !== 'lock-show'
   )
     process.exitCode = result.status === 'indeterminate' ? 6 : 4;

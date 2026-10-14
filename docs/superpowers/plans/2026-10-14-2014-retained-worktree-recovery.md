@@ -1,3 +1,5 @@
+<!-- cspell:ignore AIVC -->
+
 # Retained completed-child worktree recovery — #2014
 
 ## Scope
@@ -38,7 +40,7 @@ Files: scripts/task-tracker/verbs/epic-wave.mjs; scripts/task-tracker/lib/comman
 4. Validate canonical non-symlink owned destination ancestry and absent/clean exact matching checkout. Verify existing branch exact head, source ancestry and complete refs; recheck live authority and physical state before effect.
 5. Execute one bounded argument-array Git worktree add of the existing branch with scrubbed Git redirection environment. No force, branch creation/reset, registration prune/repair or cleanup.
 6. Read back exact clean tuple/head and refs. Return restored/already-restored only on proof; return typed refusal before effects, indeterminate after failed or uncertain attempted effects, retaining evidence.
-7. Cover selector/history/source tampering, wrong role/parent/session/generation/repository, nonchild/rank/reopened, head/source/location drift, symlink/path/claim/registration conflicts, races, failure/timeout/uncertain read-back and ambient Git redirection.
+7. Cover selector/history/source tampering, wrong role/parent/session/generation/repository, unrelated child/rank/reopened, head/source/location drift, symlink/path/claim/registration conflicts, races, failure/timeout/uncertain read-back and ambient Git redirection.
 
 Tests: scripts/tests/integration/task-tracker/lib/epic-rank-wave-restore-worktree.test.mjs; scripts/tests/unit/task-tracker/verbs/epic-wave.test.mjs. Run existing epic-wave routes/runtime regression files as declared on the issue.
 

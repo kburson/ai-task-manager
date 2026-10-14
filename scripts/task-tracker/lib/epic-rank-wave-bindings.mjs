@@ -54,7 +54,7 @@ export function nativeRankWaveTranscript(binding, { home = homedir() } = {}) {
     cwd: binding.worktree,
   });
 }
-export async function observeRankWaveNative(binding, { home = homedir() } = {}) {
+async function readRankWaveNativeCwd(binding, { home = homedir() } = {}) {
   const file = nativeRankWaveTranscript(binding, { home });
   if (!file) throw new Error('rank-wave: native transcript unavailable');
   const events = (await readFile(file, 'utf8'))
@@ -74,6 +74,15 @@ export async function observeRankWaveNative(binding, { home = homedir() } = {}) 
     if (!records.length) throw new Error('rank-wave: native identity unavailable');
     cwd = records[0].cwd;
   } else throw new Error('rank-wave: native identity adapter unavailable');
+  return cwd;
+}
+export async function observeRetainedRankWaveNative(binding, options = {}) {
+  const cwd = await readRankWaveNativeCwd(binding, options);
+  if (cwd !== binding.worktree) throw new Error('rank-wave: retained native location mismatch');
+  return { verified: true, sessionId: binding.sessionId };
+}
+export async function observeRankWaveNative(binding, options = {}) {
+  const cwd = await readRankWaveNativeCwd(binding, options);
   if (discoverRankWavePhysical(cwd).commonDir !== binding.commonDir)
     throw new Error('rank-wave: native repository mismatch');
   return { verified: true, sessionId: binding.sessionId };

@@ -579,7 +579,7 @@
     "scripts/task-tracker/lib/close-gates-lineage.mjs|461|gh-api-graphql|planned",
     "scripts/task-tracker/lib/deep-dive.mjs|572|out-of-scope|out-of-scope",
     "scripts/task-tracker/lib/epic-children-gate.mjs|345|gh-api-graphql|planned",
-    "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs|83|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs|89|gh-api-graphql|planned",
     "scripts/task-tracker/lib/estimation/runtime-adapter.mjs|232|gh-api-graphql|planned",
     "scripts/task-tracker/lib/gh-edit-guard.mjs|417|out-of-scope|out-of-scope",
     "scripts/task-tracker/lib/gh-edit-guard.mjs|423|out-of-scope|out-of-scope",
