@@ -1,0 +1,154 @@
+{
+  "issue": 2012,
+  "planningHead": "68103a59be2bc040d0c288daf7c24928911bdf0d",
+  "sourceBase": "2fd90eb3f84f442e0329783943ed432b45d25473",
+  "authorSession": "01a138e5-7d07-7671-883d-e4ef5d43f917",
+  "model": "gpt-6.1-sol",
+  "reasoningEffort": "high",
+  "preservedHandoffSourceHash": "18e364af853e1f540d37715fd78552f258492242efed1d324f535448f3ed7dda",
+  "preservedHandoffTestHash": "168f3175868404f45cd93780446f9676946ac6c3b050e1133bb195c1c35d959a",
+  "additionalRepair": "Classify deploying and deployment as neutral operational objects; regression: When wave 4 is complete pause. Please hold off on deployment. Mixed deployment hold plus immediate stop remains blocked.",
+  "verifiedModuleHashes": {
+    "scripts/task-tracker/lib/epic-rank-wave-source.mjs": "b32af3e47146843155f1fc23b67112e8800831efb6affb149b4c26f97ac3b169",
+    "scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs": "573602173592ebd3677daf337e244ee1b0bfe4288da76aede33a8802f962eb3a"
+  },
+  "checks": [
+    {
+      "name": "baseline-red",
+      "command": "node --test .scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs",
+      "exitCode": 1,
+      "summary": "7 of 10 groups failed against planning HEAD; expected RED",
+      "log": "docs/verification/2012-deferred-wave-pause-author/baseline-red.log",
+      "logSha256": "8f1ffd926a78ce7f37d5a6def17d07d29b1ac9afc6bb24d24bb237096f1eb7e5",
+      "testedRegressionSha256": "168f3175868404f45cd93780446f9676946ac6c3b050e1133bb195c1c35d959a",
+      "testedProductionSha256": "6154b529f59abc940bdad6cab105df7775f63257b4d1b5d93bdcb1cf57b00484",
+      "rawLogSha256": "2839ad1c2ebfd4c5d36f8aef7ddcb0eae0f8b6ffb3e3cd3d36e03bd5006b6a25",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "deployment-context-red",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs",
+      "exitCode": 1,
+      "summary": "9 passed and 1 failed; expected RED",
+      "log": "docs/verification/2012-deferred-wave-pause-author/deployment-context-red.log",
+      "logSha256": "1a0cb472793aafaf13f11134974d57fdc912c3e903f1f680ccf8543d9a557f49",
+      "testedProductionSha256": "18e364af853e1f540d37715fd78552f258492242efed1d324f535448f3ed7dda",
+      "testedRegressionSha256": "64564050174456e38fcf8f6ac0cfa62921b9bdf9ae1f5a405b4fd40491276f33",
+      "rawLogSha256": "87d34ce28054ea9a9fa0a1710d23783a1ef31cba46018af4f72dd9954292c922",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "focused",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave-source.test.mjs scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs",
+      "exitCode": 0,
+      "summary": "55 tests passed",
+      "log": "docs/verification/2012-deferred-wave-pause-author/focused.log",
+      "logSha256": "b0134a9cdfc8568c1e1bbf56a607a41a150c34e886602e370800ba4be9575dcf",
+      "rawLogSha256": "b0134a9cdfc8568c1e1bbf56a607a41a150c34e886602e370800ba4be9575dcf",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "affected",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave*.test.mjs scripts/tests/unit/task-tracker/gh/lib/wave-admission.test.mjs scripts/tests/integration/task-tracker/lib/epic-rank-wave*.test.mjs",
+      "exitCode": 0,
+      "summary": "127 tests passed",
+      "log": "docs/verification/2012-deferred-wave-pause-author/affected.log",
+      "logSha256": "e2877ae54a742193c2ad0b639380e74f59b61fb7a85fa88c89341a55eec18e46",
+      "rawLogSha256": "e2877ae54a742193c2ad0b639380e74f59b61fb7a85fa88c89341a55eec18e46",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "fast",
+      "command": "npm test",
+      "exitCode": 0,
+      "summary": "961 files passed",
+      "log": "docs/verification/2012-deferred-wave-pause-author/fast.log",
+      "logSha256": "03dd3c17206af4f6c5cfd1f4d10679dfe779d2baee18e5809e6b4f779da88f91",
+      "rawLogSha256": "03dd3c17206af4f6c5cfd1f4d10679dfe779d2baee18e5809e6b4f779da88f91",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "exitCode": 0,
+      "summary": "all declared lint stages passed",
+      "log": "docs/verification/2012-deferred-wave-pause-author/lint.log",
+      "logSha256": "2915ff5badaac900ad2ec23f9a44cb579e88fda8b92f2f7fa017d6ee7b8937fd",
+      "rawLogSha256": "2915ff5badaac900ad2ec23f9a44cb579e88fda8b92f2f7fa017d6ee7b8937fd",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "format",
+      "command": "npm run format:check",
+      "exitCode": 0,
+      "summary": "all matched files formatted",
+      "log": "docs/verification/2012-deferred-wave-pause-author/format.log",
+      "logSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "rawLogSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    }
+  ],
+  "pending": [
+    "full slow lane",
+    "canonical upstream Test, Review and Done",
+    "independent standalone Astra review",
+    "Root admission and consumer adoption"
+  ],
+  "historicalPreservedProposalChecks": [
+    {
+      "name": "focused",
+      "exitCode": 0,
+      "log": "docs/verification/2012-deferred-wave-pause-author/preserved-proposal-focused.log",
+      "logSha256": "887fffcf5593450e53da8f6bd121300435344ddda02f5f3ed776e706ff9c550d",
+      "productionSha256": "18e364af853e1f540d37715fd78552f258492242efed1d324f535448f3ed7dda",
+      "regressionSha256": "168f3175868404f45cd93780446f9676946ac6c3b050e1133bb195c1c35d959a",
+      "scope": "historical; does not prove final corrected source",
+      "rawLogSha256": "887fffcf5593450e53da8f6bd121300435344ddda02f5f3ed776e706ff9c550d",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "affected",
+      "exitCode": 0,
+      "log": "docs/verification/2012-deferred-wave-pause-author/preserved-proposal-affected.log",
+      "logSha256": "3e4c5d7e7bfcff8713df27f113a75b4ce5fdd0dc5c96bfbb3a57a0615cb367a3",
+      "productionSha256": "18e364af853e1f540d37715fd78552f258492242efed1d324f535448f3ed7dda",
+      "regressionSha256": "168f3175868404f45cd93780446f9676946ac6c3b050e1133bb195c1c35d959a",
+      "scope": "historical; does not prove final corrected source",
+      "rawLogSha256": "3e4c5d7e7bfcff8713df27f113a75b4ce5fdd0dc5c96bfbb3a57a0615cb367a3",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "fast",
+      "exitCode": 0,
+      "log": "docs/verification/2012-deferred-wave-pause-author/preserved-proposal-fast.log",
+      "logSha256": "5be4a0b74aeaad3b8e91f2bfab03e669d5a6b38d552db35485cbef76064944d1",
+      "productionSha256": "18e364af853e1f540d37715fd78552f258492242efed1d324f535448f3ed7dda",
+      "regressionSha256": "168f3175868404f45cd93780446f9676946ac6c3b050e1133bb195c1c35d959a",
+      "scope": "historical; does not prove final corrected source",
+      "rawLogSha256": "5be4a0b74aeaad3b8e91f2bfab03e669d5a6b38d552db35485cbef76064944d1",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "lint",
+      "exitCode": 1,
+      "log": "docs/verification/2012-deferred-wave-pause-author/preserved-proposal-lint.log",
+      "logSha256": "4d52d80f22d19e35401ffad839b59751e280abdafbf4752d1b784e70f9512842",
+      "productionSha256": "18e364af853e1f540d37715fd78552f258492242efed1d324f535448f3ed7dda",
+      "regressionSha256": "168f3175868404f45cd93780446f9676946ac6c3b050e1133bb195c1c35d959a",
+      "scope": "historical; does not prove final corrected source",
+      "rawLogSha256": "4d52d80f22d19e35401ffad839b59751e280abdafbf4752d1b784e70f9512842",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    },
+    {
+      "name": "format",
+      "exitCode": 0,
+      "log": "docs/verification/2012-deferred-wave-pause-author/preserved-proposal-format.log",
+      "logSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "productionSha256": "18e364af853e1f540d37715fd78552f258492242efed1d324f535448f3ed7dda",
+      "regressionSha256": "168f3175868404f45cd93780446f9676946ac6c3b050e1133bb195c1c35d959a",
+      "scope": "historical; does not prove final corrected source",
+      "rawLogSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "logNormalization": "trailing whitespace trimmed for Git; original raw log remains under .scratch/2012-author"
+    }
+  ]
+}
