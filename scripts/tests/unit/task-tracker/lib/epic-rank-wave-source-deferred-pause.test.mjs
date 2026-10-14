@@ -1,0 +1,199 @@
+// @story #2012
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { writeFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
+import { createUnitRootFixture } from '../../../helpers/unit-runtime-root.mjs';
+import {
+  createRankWaveSourceLoader,
+  verifyRankWaveSource,
+} from '../../../../task-tracker/lib/epic-rank-wave-source.mjs';
+import { hashAuthorizationStatement } from '../../../../task-tracker/lib/workflow-policy/authority-resolver.mjs';
+
+const scope = { repository: 'o/r', epic: 2, rank: 4, members: [4, 5, 6, 7, 14] };
+const authorization =
+  'Authorize parallel execution for epic #2 rank 4 stories #4, #5, #6, #7, #14.';
+const deferredPause =
+  'when wave 4 is complete I need you to pause.  I will start a fresh chat session to continue #2';
+
+// Test-owned transcript identity and timestamps; only the human wording is reproduced.
+async function rescan(
+  later,
+  { targetScope = scope, selected = authorization, changeHash = false, through = null } = {}
+) {
+  const dir = createUnitRootFixture('rank-wave-deferred-pause');
+  const transcriptPath = path.join(dir, 'native.jsonl');
+  const source = {
+    schema: 'aitm.rank-wave-source/v1',
+    sessionId: 'native-session',
+    messages: [{ messageId: 'selected', statementHash: hashAuthorizationStatement(selected) }],
+  };
+  if (changeHash) source.messages[0].statementHash = 'sha256:' + '0'.repeat(64);
+  const message = (text, id, timestamp) => ({
+    type: 'response_item',
+    timestamp,
+    payload: { type: 'message', id, role: 'user', content: [{ type: 'input_text', text }] },
+  });
+  const transcript = [
+    { type: 'session_meta', payload: { id: 'native-session', cwd: dir } },
+    message(selected, 'selected', '2026-10-14T00:40:00.000Z'),
+    ...later.map((value, i) =>
+      message(
+        typeof value === 'string' ? value : value.text,
+        'later-' + i,
+        typeof value === 'string' ? '2026-10-14T00:47:01.848Z' : value.at
+      )
+    ),
+  ]
+    .map(JSON.stringify)
+    .join('\n');
+  try {
+    writeFileSync(transcriptPath, transcript);
+    const loadContext = createRankWaveSourceLoader({
+      resolveTranscriptPath: async () => transcriptPath,
+      resolveRepository: async () => 'o/r',
+    });
+    const result = await verifyRankWaveSource({
+      source,
+      scope: targetScope,
+      recordingActor: 'codex/session:test-recorder',
+      loadContext,
+      through,
+    });
+    const context = !changeHash ? await loadContext(source, { scope: targetScope, through }) : null;
+    return { result, context, source };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('exact completion pause preserves original authority during the native later-human rescan', async () => {
+  assert.equal(
+    hashAuthorizationStatement(authorization),
+    'sha256:fb308dfe394c8c625669bf5f3bed306e641945d8209533f2b1f1e57567223c5d'
+  );
+  const { result, context, source } = await rescan([deferredPause]);
+  assert.equal(result.status, 'verified');
+  assert.deepEqual(context.subsequentStatements, []);
+  assert.deepEqual(result.authority.source, source);
+  assert.deepEqual(result.authority.scope, scope);
+});
+
+test('explicit current-wave completion conditions defer only their attached pause or stop', async () => {
+  for (const statement of [
+    'When wave 4 is complete, pause.',
+    'Once rank 4 is done, stop.',
+    'After wave 4 has finished please pause.',
+    'When rank-wave 4 is complete I want you to pause.',
+    'When wave 4 is complete please stop parallel execution for epic #2 rank 4.',
+  ]) {
+    const { result } = await rescan([statement]);
+    assert.equal(result.status, 'verified', statement);
+  }
+});
+
+test('immediate unconditional matching pause stop and revocation still refuse', async () => {
+  for (const statement of [
+    'Pause epic #2 rank 4.',
+    'Pause now.',
+    'Stop now.',
+    'Pause.',
+    'Stop.',
+    'Stop parallel execution for epic #2 rank 4.',
+    'Revoke epic #2 rank 4.',
+    'When wave 4 is complete pause now.',
+    'When wave 4 is complete stop immediately.',
+    'Pause parallel execution for epic #2 rank 4 until wave 4 is complete.',
+  ]) {
+    const { result } = await rescan([statement]);
+    assert.equal(result.status, 'blocked', statement);
+    assert.equal(result.code, 'rank-wave-source-contradiction', statement);
+  }
+});
+
+test('a deferred pause never conceals another matching withdrawal in the same message', async () => {
+  for (const statement of [
+    'When wave 4 is complete pause, but revoke parallel execution for epic #2 rank 4.',
+    'Revoke epic #2 rank 4. When wave 4 is complete pause.',
+    'When wave 4 is complete pause and stop parallel execution for epic #2 rank 4.',
+    'When wave 4 is complete pause, but stop now.',
+    'When wave 4 is complete pause and do not run epic #2 rank 4.',
+    'When wave 4 is complete pause. Stop now.',
+    'When wave 4 is complete pause; pause now.',
+    'When wave 4 is complete pause. Stop deployment, but stop now.',
+  ]) {
+    const { result } = await rescan([statement]);
+    assert.equal(result.status, 'blocked', statement);
+  }
+});
+
+test('ambiguous and unrelated conditions do not waive a current-wave withdrawal', async () => {
+  for (const statement of [
+    'If wave 4 is complete pause parallel execution for epic #2 rank 4.',
+    'Unless wave 4 is complete pause parallel execution for epic #2 rank 4.',
+    'When wave 4 is complete do not run epic #2 rank 4.',
+    'When wave 4 is complete withdraw parallel execution for epic #2 rank 4.',
+    'When wave 5 is complete pause epic #2 rank 4.',
+    'When wave 4 is incomplete pause.',
+    'When wave 4 is complete after CI passes pause.',
+    'When wave 4 is complete. Pause now.',
+  ]) {
+    const { result } = await rescan([statement]);
+    assert.equal(result.status, 'blocked', statement);
+  }
+});
+
+test('explicit other-wave and other-epic instructions retain their independent scope', async () => {
+  for (const statement of [
+    'Pause epic #2 rank 5.',
+    'Stop epic #3 rank 4.',
+    'Pause wave 5.',
+    'When wave 5 is complete pause.',
+  ]) {
+    const { result } = await rescan([statement]);
+    assert.equal(result.status, 'verified', statement);
+  }
+});
+
+test('a scheduled completion pause grants neither standalone nor later-wave permission', async () => {
+  assert.equal((await rescan([], { selected: deferredPause })).result.status, 'blocked');
+  const laterScope = { ...scope, rank: 5, members: [8] };
+  assert.equal(
+    (await rescan([deferredPause], { targetScope: laterScope })).result.status,
+    'blocked'
+  );
+});
+
+test('live scans retain later revocation beyond deferred pause and unrelated conversation', async () => {
+  const later = [deferredPause, ...Array.from({ length: 65 }, () => 'Inspect CI output.')];
+  later.push('Revoke parallel execution for epic #2 rank 4.');
+  const { result, context } = await rescan(later);
+  assert.equal(result.status, 'blocked');
+  assert.equal(context.subsequentStatements.at(-1), later.at(-1));
+  assert.equal(
+    (await rescan([deferredPause, 'Inspect CI output.', 'Stop now.'])).result.status,
+    'blocked'
+  );
+});
+
+test('deferred pause does not alter exact source hashes or historical observation cutoffs', async () => {
+  assert.equal((await rescan([deferredPause], { changeHash: true })).result.status, 'blocked');
+  const later = [deferredPause, { text: 'Revoke epic #2 rank 4.', at: '2026-10-14T00:55:00.000Z' }];
+  assert.equal(
+    (await rescan(later, { through: '2026-10-14T00:50:00.000Z' })).result.status,
+    'verified'
+  );
+  assert.equal((await rescan(later)).result.status, 'blocked');
+});
+
+test('completion-related operational chatter does not redirect independent commands to admission', async () => {
+  for (const statement of [
+    'When wave 4 is complete stop reviewing CI. Please hold off on deployment.',
+    'When wave 4 is complete pause epic #3 rank 4. Stop deployment.',
+    'When wave 4 is complete pause. Please hold off on deployment.',
+    'When wave 4 is complete pause. Stop deployment.',
+  ]) {
+    const { result } = await rescan([statement]);
+    assert.equal(result.status, 'verified', statement);
+  }
+});

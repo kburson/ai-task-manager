@@ -45,7 +45,7 @@ Source base 2fd90eb3f84f442e0329783943ed432b45d25473 preserves accepted #2008 gr
 
 - Modify scripts/task-tracker/lib/epic-rank-wave-source.mjs only within conditional contradiction classification.
 - Add scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs using a test-owned native transcript, real loader and verifier.
-- Keep exact source schema, hashes, identity, transcript cutoff and complete later-human rescans unchanged.
+- Keep exact source schema, hashes, identity, transcript cutoff and complete later-human scans unchanged.
 
 #### Steps
 
