@@ -118,7 +118,13 @@ Timing repair follows the same exactness rule. The dry-run-first command
 `demoted:develop` / `resumed` / `develop:started` triple with zero time, no
 delta, and unchanged cursors. Mutation requires the identical command with
 `--apply --yes`, followed by whole-log validation and exact readback; near misses
-remain untouched.
+remain untouched. The same mode also accepts the shared
+`develop:completed` / `resumed` / `test:started` sibling only when all three
+rows have zero credited work, identical numeric word and full-word cursors,
+no actor identity, and exactly one matching canonical transition UUID. It
+removes only the redundant `resumed` row and preserves Unknown totals. The
+existing `--allow-foreign-worktree` flag is accepted for routing; recovery
+predicates and unknown-flag refusal remain unchanged.
 
 Incident convergence has a separate authority path: an immutable ledger ID and
 canonical digest must receive explicit human approval. The incident ledger is
