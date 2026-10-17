@@ -83,11 +83,13 @@ function fixture(t) {
     writes: [],
     reads: 0,
     caller: 'current-owner',
+    provider: 'codex',
     boundIssue: '#2022',
   };
   const deps = {
     getProjectDir: () => root,
     currentSessionId: () => state.caller,
+    aiAppName: () => state.provider,
     getActiveTask: (caller) =>
       caller === 'current-owner' ? { issue: state.boundIssue, worktreePath: root } : null,
     now: () => end + 60_000,
@@ -159,6 +161,12 @@ for (const [name, change] of [
     'foreign caller',
     (s) => {
       s.caller = 'replacement';
+    },
+  ],
+  [
+    'foreign provider',
+    (s) => {
+      s.provider = 'claude';
     },
   ],
   [
