@@ -107,6 +107,7 @@ async function evaluate(input) {
   const { evaluateGhProject } = await import('./lib/gh-project-guard.mjs');
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
+  const { registeredReviewCommandPaths } = await import('./lib/registered-review-command.mjs');
   const { configPath } = await import('./paths.mjs');
   const { resolveInvocationDirectory, parseDirectGit, inspectQuotedHeredocs } =
     await import('./lib/mutation-context.mjs');
@@ -320,7 +321,7 @@ async function evaluate(input) {
   // --- Extract all absolute paths ---
   // Lookbehind ensures we match only boundary-anchored paths, not mid-segment slashes
   // inside relative paths like node_modules/pkg/sub.
-  const absPathRe = /(?<=^|[\s='"(`])\/[a-zA-Z0-9._~-]+(?:\/[a-zA-Z0-9._~-]+)*/gm;
+  const absPathRe = /(?<=^|[\s='"(`])\/[a-zA-Z0-9._~@-]+(?:\/[a-zA-Z0-9._~@-]+)*/gm;
   const allPaths = new Set(scanned.match(absPathRe) ?? []);
 
   // --- Validate write targets ---
@@ -337,9 +338,10 @@ async function evaluate(input) {
   }
 
   // --- Validate read/exec paths (everything not identified as a write target) ---
+  const registeredPaths = registeredReviewCommandPaths(command, { homeDir });
   for (const p of allPaths) {
     if (writePaths.has(p)) continue; // already validated above
-    if (!allowedPath(p, READ_ALLOWED) && !isCodexSkillsRead(p)) {
+    if (!allowedPath(p, READ_ALLOWED) && !isCodexSkillsRead(p) && !registeredPaths.has(p)) {
       block(
         `Access to path outside allowed scope: ${p}\n  (reads permitted in project root, ~/.claude/, ~/.codex/skills/, and system binaries; system \`/tmp\` is not in scope — use \`./.scratch/\` for scratch)`
       );
