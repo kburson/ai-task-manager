@@ -44,9 +44,20 @@ test(
       writeFileSync(path.join(root, 'package.json'), JSON.stringify(value));
     save();
     saveManifest();
+    const importRefusal = path.join(project, 'refuse-review-imports.mjs');
+    writeFileSync(
+      importRefusal,
+      `
+      import { registerHooks } from 'node:module';
+      registerHooks({ resolve(specifier, context, nextResolve) {
+        if (specifier.includes('ai-peer-review')) throw new Error('Review runtime import is forbidden');
+        return nextResolve(specifier, context);
+      }});
+    `
+    );
     const command = `${node} ${cli} help --json`;
     const run = (input) => {
-      const result = spawnSync(process.execPath, [GUARD], {
+      const result = spawnSync(process.execPath, ['--import', importRefusal, GUARD], {
         cwd: project,
         env: {
           ...process.env,

@@ -39,10 +39,18 @@
 // Out of scope: a hook whose script *file* is entirely missing — node never
 // starts, so it cannot self-defend; that case is guarded at install/startup.
 
-import { readFileSync } from 'node:fs';
+import {
+  closeSync,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  readSync,
+  realpathSync,
+} from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { basename, isAbsolute, join, resolve } from 'node:path';
+import { basename, isAbsolute, join, normalize, resolve } from 'node:path';
 
 // --- Phase 1: parse stdin -------------------------------------------------
 // A malformed payload is not a guard failure — preserve the intentional
@@ -107,7 +115,6 @@ async function evaluate(input) {
   const { evaluateGhProject } = await import('./lib/gh-project-guard.mjs');
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
-  const { registeredReviewCommandPaths } = await import('./lib/registered-review-command.mjs');
   const { configPath } = await import('./paths.mjs');
   const { resolveInvocationDirectory, parseDirectGit, inspectQuotedHeredocs } =
     await import('./lib/mutation-context.mjs');
@@ -755,5 +762,86 @@ async function evaluate(input) {
       // unreadable config → fail closed (null); the guard blocks accordingly.
     }
     return null;
+  }
+}
+
+// @story #2020
+// Read-only recognition of an already registered review command. This grants
+// neither participant identity nor any write permission and executes no package code.
+
+function readJson(file, limit) {
+  if (!lstatSync(file).isFile()) throw new Error('not an ordinary registration file');
+  const fd = openSync(file, 'r');
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size > limit) throw new Error('registration file too large');
+    const bytes = Buffer.alloc(limit + 1);
+    const count = readSync(fd, bytes, 0, bytes.length, 0);
+    if (count > limit) throw new Error('registration file too large');
+    return JSON.parse(bytes.subarray(0, count).toString('utf8'));
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function physicalPath(value, directory = false) {
+  return (
+    typeof value === 'string' &&
+    isAbsolute(value) &&
+    normalize(value) === value &&
+    realpathSync(value) === value &&
+    (directory ? lstatSync(value).isDirectory() : lstatSync(value).isFile())
+  );
+}
+
+function registeredReviewCommandPaths(command, { homeDir }) {
+  const none = new Set();
+  // Only a single direct invocation: no wrappers, Node flags before the script,
+  // shell expansions, aliases, redirections or compound commands gain permission.
+  if (typeof command !== 'string' || /[;&|<>`$\\\r\n'"()*?{}!~]/.test(command)) return none;
+  const [node, entrypoint] = command.trim().split(/\s+/);
+  if (!isAbsolute(node || '') || !isAbsolute(entrypoint || '')) return none;
+  try {
+    const directory = join(
+      homeDir,
+      ...(process.platform === 'win32' ? ['AppData', 'Local'] : ['.config']),
+      'ai-peer-review'
+    );
+    const record = readJson(join(directory, 'runtime-selection.json'), 8192);
+    const keys = [
+      'schema',
+      'selection_id',
+      'package_root',
+      'node_executable',
+      'package_name',
+      'registered_at',
+    ];
+    if (
+      !record ||
+      Object.keys(record).sort().join(',') !== keys.sort().join(',') ||
+      record.schema !== 'ai-peer-review.runtime-selection/v1' ||
+      record.package_name !== '@kburson/ai-peer-review' ||
+      typeof record.selection_id !== 'string' ||
+      !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(record.selection_id) ||
+      typeof record.registered_at !== 'string' ||
+      !Number.isFinite(Date.parse(record.registered_at)) ||
+      new Date(record.registered_at).toISOString() !== record.registered_at ||
+      node !== record.node_executable ||
+      !physicalPath(record.package_root, true) ||
+      entrypoint !== join(record.package_root, 'bin', 'peer-review.mjs') ||
+      !physicalPath(node) ||
+      !physicalPath(entrypoint)
+    )
+      return none;
+    const manifest = readJson(join(record.package_root, 'package.json'), 65536);
+    if (
+      manifest?.name !== '@kburson/ai-peer-review' ||
+      !['./bin/peer-review.mjs', 'bin/peer-review.mjs'].includes(manifest.bin?.['peer-review'])
+    )
+      return none;
+    return new Set([node, entrypoint]);
+  } catch {
+    // Missing, stale or malformed data supplies no exception to normal policy.
+    return none;
   }
 }

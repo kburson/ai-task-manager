@@ -4,7 +4,7 @@
 
 **Goal:** Let the already registered local review command execute through AITM's existing Bash hook without unrelated outside-path permissions.
 
-**Architecture:** A data-only helper reads the account selection and package manifest. It returns only the exact registered Node and CLI paths for a conservative direct invocation. The existing guard consumes that Set only after its existing write and lifecycle checks.
+**Architecture:** A private data-only matcher inside the existing hook reads the account selection and package manifest. It returns only the exact registered Node and CLI paths for a conservative direct invocation. The existing guard consumes that Set only after its existing write and lifecycle checks.
 
 **Tech Stack:** Node standard libraries and the real hook subprocess integration harness; no new dependency.
 
@@ -37,9 +37,9 @@
 
 **Files:**
 
-- Create: `scripts/task-tracker/lib/registered-review-command.mjs`
 - Modify: `scripts/task-tracker/bash-guard.mjs`
 - Test: `scripts/tests/integration/task-tracker/core/bash-guard-registered-runtime.test.mjs`
+- Test: `scripts/tests/integration/review/peer-review-decommission.test.mjs`
 
 **Interfaces:**
 
@@ -59,7 +59,7 @@ Include negative variants for missing/malformed/extra-field/retargeted registrat
 - [ ] Step 2: Run `node --test scripts/tests/integration/task-tracker/core/bash-guard-registered-runtime.test.mjs`.
       Expected: the registered pair fails with the observed outside-scope refusal; negative cases retain their expected refusals. A setup/import failure is not the intended RED.
 
-- [ ] Step 3: Add the smallest synchronous data matcher with bounded JSON reads. Check the closed schema, UUID/time, absolute normalized physical targets and manifest name/bin declaration. Do not execute installation code. Unsupported or inconsistent input returns an empty Set. Wire only the existing read/execute conditional:
+- [ ] Step 3: Add the smallest private synchronous data matcher inside the existing hook with bounded JSON reads. Check the closed schema, UUID/time, absolute normalized physical targets and manifest name/bin declaration. Do not execute installation code. Unsupported or inconsistent input returns an empty Set. Wire only the existing read/execute conditional:
 
 ```js
 if (!allowedPath(p, READ_ALLOWED) && !isCodexSkillsRead(p) && !registeredPaths.has(p)) {
@@ -76,3 +76,7 @@ if (!allowedPath(p, READ_ALLOWED) && !isCodexSkillsRead(p) && !registeredPaths.h
 ## Self-review
 
 The one task covers all three acceptance criteria and all five review-focus cases. There are no inter-task interface conflicts or new dependencies. The implementation WBS is two human hours; AITM adds 1.5 hours of required repository verification overhead, yielding size M and 3.5 human hours. The AI forecast remains separately derived by AITM; no operation or provider budget changes. The human has approved this exact bounded repair and inline execution; this plan makes that decision executable without expanding it.
+
+## CI-driven implementation correction
+
+The first full run reproduced two constraints locally: a separate shipped helper raises the existing 917-entry package ceiling to 918, and the old decommission test forbids even registration-data references. Keep the package ceiling unchanged by keeping the private matcher in the existing hook. Preserve dependency/runtime separation by allowing registration data only in that hook, rejecting runtime imports there, retaining every other production-source prohibition, and running the real guard fixture with a loader that refuses any peer-review runtime import. All behavior, scope and original deadlines stay unchanged.
