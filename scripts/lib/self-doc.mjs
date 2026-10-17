@@ -1314,7 +1314,7 @@ const DIRECT_SELF_DOC = Object.freeze({
     synopsis:
       'Audit or heal historical Timing Log rows, proven actor opener replays and continuous session checkpoints.',
     usage:
-      'heal-timing-log (<issue#> [--actor-opener-replays|--continuity-session SID] [--apply|--check-only] [--expected-source-sha SHA --expected-comment-id ID --expected-transcript-sha SHA] | --sweep [--state open|closed|all] [--scope N,N] [--apply]) [--yes]',
+      'heal-timing-log (<issue#> [--actor-opener-replays|--continuity-session SID|--rebaseline-session SID] [--apply|--check-only] [--expected-source-sha SHA --expected-comment-id ID --expected-transcript-sha SHA] | --sweep [--state open|closed|all] [--scope N,N] [--apply]) [--yes]',
     arguments: [
       argument('<issue#>|--sweep', 'Single issue or corpus mode.'),
       argument('--state/--scope', 'Sweep filters.'),
@@ -1329,8 +1329,12 @@ const DIRECT_SELF_DOC = Object.freeze({
         'Recover neutral observations from the native Codex transcript; refuses interrupted or unexplained windows and preserves accounting.'
       ),
       argument(
+        '--rebaseline-session SID',
+        'Recover an authenticated native relocation rebaseline through the current bound operator, preserving historical actor identity, Unknown contribution and every prior row; apply requires all dry-run identities.'
+      ),
+      argument(
         '--expected-transcript-sha SHA',
-        'Continuity apply also requires the completed transcript prefix hash from dry-run.'
+        'Continuity and relocation apply require the native transcript prefix hash from dry-run.'
       ),
       argument(
         '--expected-source-sha SHA/--expected-comment-id ID',

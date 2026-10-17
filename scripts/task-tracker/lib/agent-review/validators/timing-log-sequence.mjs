@@ -1,4 +1,8 @@
-import { deriveActorEngagement, isUnknownActorRecovery } from '../../timing-engagement.mjs';
+import {
+  deriveActorEngagement,
+  isUnknownActorRecovery,
+  hasSealedActorBoundary,
+} from '../../timing-engagement.mjs';
 // Agent Review Gate — V3 timing-log-sequence validator (#812, rewritten for the
 // timing model v2 grammar under #828).
 //
@@ -300,6 +304,7 @@ export function validate(context = {}) {
       ms - gapMs > SUSPICIOUS_GAP_SEC * 1000 &&
       gapRow &&
       !isUnknownActorRecovery(row) &&
+      !hasSealedActorBoundary(gapRow, row, rows) &&
       !isDepartureEvent(gapRow.event)
     ) {
       failures.push(
