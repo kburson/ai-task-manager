@@ -59,7 +59,7 @@ export function parseTimingRows(body) {
     const idleSec = secMatch ? Number(secMatch[2]) : 0;
     const lexical = parseTimingRow(line);
     rows.push({
-      ...(lexical?.actorKey ? { actorKey: lexical.actorKey } : {}),
+      ...(lexical?.actorKey ? { actorKey: lexical.actorKey, cells: lexical.cells } : {}),
       ...(lexical?.engagement ? { engagement: lexical.engagement } : {}),
       ts: lexical?.ts,
       tsMs: parseTs(cells[tsCol] ?? ''),
