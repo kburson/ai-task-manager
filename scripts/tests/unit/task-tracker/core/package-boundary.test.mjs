@@ -421,7 +421,10 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     8 + // #1859: six reviewed-scope modules, readiness guard and operator guide.
     12 + // #1872: ten admission modules, the collection grouping module and operator guide.
     1 + // #1904: shared root AC section locator; actual package delta is exactly one file.
-    1; // #1954: strict shared project membership reader; measured delta is one runtime file.
+    1 + // #1954: strict shared project membership reader; measured delta is one runtime file.
+    2; // #2022: audited rebaseline recovery and native execution proof reader.
+  assert.ok(files.includes('scripts/task-tracker/lib/heal-timing-rebaseline.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/timing-rebaseline-proof.mjs'));
   assert.ok(files.includes('scripts/run-tests-shards.mjs'));
   assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(
