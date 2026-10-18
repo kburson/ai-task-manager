@@ -29,6 +29,8 @@ import {
   updateTimingComment as realUpdateTimingComment,
 } from './gh-timing-comment.mjs';
 import { recoverTimingContinuity } from './lib/heal-timing-continuity.mjs';
+import { recoverActorEvidence } from './lib/heal-actor-evidence-recovery.mjs';
+import { recoverTimingRebaseline } from './lib/heal-timing-rebaseline.mjs';
 import { recoverActorOpenerReplays } from './lib/heal-actor-opener-replays.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
@@ -57,7 +59,9 @@ export async function runHeal({
   repo,
   apply = false,
   actorOpenerReplays = false,
+  actorEvidenceRecovery,
   continuitySession,
+  rebaselineSession,
   expectedTranscriptSha,
   expectedSourceSha,
   expectedCommentId,
@@ -69,6 +73,40 @@ export async function runHeal({
     throw new TypeError('timing-continuity:conflicting-modes');
   const findTimingComment = deps.findTimingComment || realFindTimingComment;
   const updateTimingComment = deps.updateTimingComment || realUpdateTimingComment;
+
+  if (actorEvidenceRecovery != null) {
+    if (actorOpenerReplays || continuitySession != null || rebaselineSession != null)
+      throw new TypeError('actor-evidence-recovery:conflicting-modes');
+    return recoverActorEvidence({
+      issueNumber,
+      repo,
+      profile: actorEvidenceRecovery,
+      apply,
+      expectedSourceSha,
+      expectedCommentId,
+      readCanonicalTimingSource: deps.readCanonicalTimingSource || realReadCanonicalTimingSource,
+      updateTimingComment,
+      projectDir: deps.getProjectDir?.() || getProjectDir(),
+      deps,
+    });
+  }
+  if (rebaselineSession != null) {
+    if (continuitySession != null || actorOpenerReplays)
+      throw new TypeError('timing-rebaseline:conflicting-modes');
+    return recoverTimingRebaseline({
+      issueNumber,
+      repo,
+      sessionId: rebaselineSession,
+      apply,
+      expectedSourceSha,
+      expectedCommentId,
+      expectedTranscriptSha,
+      readCanonicalTimingSource: deps.readCanonicalTimingSource || realReadCanonicalTimingSource,
+      updateTimingComment,
+      projectDir: deps.getProjectDir?.() || getProjectDir(),
+      deps,
+    });
+  }
 
   if (continuitySession != null)
     return recoverTimingContinuity({
@@ -176,14 +214,22 @@ export function parseArgs(argv) {
     yes: false,
     delayMs: 0,
     actorOpenerReplays: false,
+    actorEvidenceRecovery: null,
     continuitySession: null,
+    rebaselineSession: null,
     expectedTranscriptSha: null,
     expectedSourceSha: null,
     expectedCommentId: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--continuity-session') out.continuitySession = argv[++i];
+    if (a === '--actor-evidence-recovery') out.actorEvidenceRecovery = argv[++i];
+    else if (a.startsWith('--actor-evidence-recovery='))
+      out.actorEvidenceRecovery = a.slice('--actor-evidence-recovery='.length);
+    else if (a === '--rebaseline-session') out.rebaselineSession = argv[++i];
+    else if (a.startsWith('--rebaseline-session='))
+      out.rebaselineSession = a.slice('--rebaseline-session='.length);
+    else if (a === '--continuity-session') out.continuitySession = argv[++i];
     else if (a.startsWith('--continuity-session='))
       out.continuitySession = a.slice('--continuity-session='.length);
     else if (a === '--expected-transcript-sha') out.expectedTranscriptSha = argv[++i];
@@ -219,6 +265,7 @@ export function printUsage(out = process.stdout) {
       '  node scripts/task-tracker/heal-timing-log.mjs --sweep [--state open|closed|all] [--apply] [--scope N,N,...] [--delay-ms N] [--yes]\n' +
       '  Actor replays: <issue#> --actor-opener-replays [--apply --expected-source-sha SHA --expected-comment-id ID]\n' +
       '  Continuous session: <issue#> --continuity-session SID [--apply --expected-source-sha SHA --expected-comment-id ID --expected-transcript-sha SHA]\n' +
+      '  Relocation rebaseline: <issue#> --rebaseline-session SID [--apply --expected-source-sha SHA --expected-comment-id ID --expected-transcript-sha SHA]\n' +
       '  Default: dry-run (read-only). --apply writes. Sweep default --state all.\n' +
       '  --delay-ms N  wait N milliseconds between issue reads (0-60000; default 0)\n' +
       '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply sweep\n'
@@ -275,7 +322,9 @@ async function healUnderLock({
   repo,
   apply,
   actorOpenerReplays,
+  actorEvidenceRecovery,
   continuitySession,
+  rebaselineSession,
   expectedTranscriptSha,
   expectedSourceSha,
   expectedCommentId,
@@ -293,7 +342,9 @@ async function healUnderLock({
         repo,
         apply,
         actorOpenerReplays,
+        actorEvidenceRecovery,
         continuitySession,
+        rebaselineSession,
         expectedTranscriptSha,
         expectedSourceSha,
         expectedCommentId,
@@ -308,7 +359,12 @@ async function healUnderLock({
 
 async function runPerIssue(args, { repo, out, deps }) {
   const res = await healUnderLock({ ...args, issueNumber: args.issue, repo, deps });
-  if (args.actorOpenerReplays || args.continuitySession) {
+  if (
+    args.actorOpenerReplays ||
+    args.actorEvidenceRecovery ||
+    args.continuitySession ||
+    args.rebaselineSession
+  ) {
     out.write(JSON.stringify(res) + '\n');
     return;
   }
@@ -414,6 +470,8 @@ export async function main(argv, deps = {}) {
         '--scope',
         '--delay-ms',
         '--continuity-session',
+        '--rebaseline-session',
+        '--actor-evidence-recovery',
         '--expected-transcript-sha',
         '--expected-source-sha',
         '--expected-comment-id',
@@ -427,6 +485,39 @@ export async function main(argv, deps = {}) {
   }
 
   const args = parseArgs(argv);
+  if (
+    args.actorEvidenceRecovery !== null &&
+    (args.sweep ||
+      args.actorOpenerReplays ||
+      args.continuitySession !== null ||
+      args.rebaselineSession !== null ||
+      args.expectedTranscriptSha !== null ||
+      args.actorEvidenceRecovery !== 'aivc-63-2026-10-17' ||
+      (args.apply &&
+        (!/^[a-f0-9]{64}$/.test(args.expectedSourceSha ?? '') || !args.expectedCommentId?.trim())))
+  ) {
+    err.write(
+      'historical actor evidence recovery requires its reviewed profile, separate per-issue mode and dry-run identities for apply\n'
+    );
+    return exit(2);
+  }
+  if (args.rebaselineSession !== null) {
+    if (
+      args.sweep ||
+      args.actorOpenerReplays ||
+      args.continuitySession !== null ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(args.rebaselineSession) ||
+      (args.apply &&
+        (!/^[a-f0-9]{64}$/.test(args.expectedSourceSha ?? '') ||
+          !args.expectedCommentId?.trim() ||
+          !/^[a-f0-9]{64}$/.test(args.expectedTranscriptSha ?? '')))
+    ) {
+      err.write(
+        'relocation recovery is a separate per-issue mode; apply requires all dry-run identities\n'
+      );
+      return exit(2);
+    }
+  }
   if (args.help || (!args.sweep && !args.issue)) {
     printUsage(out);
     return exit(args.help ? 0 : 2);
@@ -434,6 +525,8 @@ export async function main(argv, deps = {}) {
   if (
     (args.actorOpenerReplays && args.sweep) ||
     (!args.actorOpenerReplays &&
+      !args.actorEvidenceRecovery &&
+      !args.rebaselineSession &&
       !args.continuitySession &&
       (args.expectedSourceSha || args.expectedCommentId))
   ) {
@@ -454,7 +547,9 @@ export async function main(argv, deps = {}) {
   }
   if (
     (args.continuitySession !== null && (args.actorOpenerReplays || args.sweep)) ||
-    (args.continuitySession === null && args.expectedTranscriptSha !== null) ||
+    (args.continuitySession === null &&
+      args.rebaselineSession === null &&
+      args.expectedTranscriptSha !== null) ||
     (args.continuitySession !== null &&
       !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(args.continuitySession)) ||
     (args.continuitySession &&

@@ -77,7 +77,7 @@ export async function publishMigrationFields({
       if (result === false) throw new Error(`project-migration:field-unconfirmed:${step.key}`);
     }
   };
-  const applyBody = () =>
+  const applyBody = (context = null) =>
     mutateBody({
       issueNumber,
       repo: cfg.repo,
@@ -85,12 +85,25 @@ export async function publishMigrationFields({
       mutate: (base) => {
         const live = parseIssueFieldDb(base);
         if (!live.ok) throw new Error('project-migration:body-fields');
-        return ensureIssueFieldDb(base, fieldDefs, values, { overrideKeys: Object.keys(values) })
-          .body;
+        if (!context && (live.values.estimate !== estimate || live.values.size !== size))
+          throw new Error('project-migration:estimate-authority-changed');
+        const overrideKeys = Object.keys(values).filter(
+          (key) => context || !['estimate', 'size'].includes(key)
+        );
+        return ensureIssueFieldDb(base, fieldDefs, values, { overrideKeys }).body;
       },
     });
   if (unchanged && !retry) {
     await applyOrdinary();
+    const fresh = await readEstimateWriterAuthority({ cfg, issueNumber, deps });
+    const actual = fresh.sourceObservations.readProject.value;
+    if (
+      fresh.input.subject.projectItemId !== itemId ||
+      fresh.publication?.status === 'pending' ||
+      actual?.estimate !== estimate ||
+      actual?.size !== size
+    )
+      throw new Error('project-migration:estimate-authority-changed');
     await applyBody();
     return { status: 'unchanged', itemId };
   }

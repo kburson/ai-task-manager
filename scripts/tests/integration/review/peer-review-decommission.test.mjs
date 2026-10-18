@@ -1,4 +1,4 @@
-// @story #1592
+// @story #1592 #2020
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -72,7 +72,7 @@ test('task CLI starts when the extracted review package cannot be imported', () 
     import { registerHooks } from 'node:module';
     import { pathToFileURL } from 'node:url';
     registerHooks({ resolve(specifier, context, nextResolve) {
-      if (specifier === 'ai-peer-review' || specifier.startsWith('ai-peer-review/')) {
+      if (['ai-peer-review', '@kburson/ai-peer-review'].some(name => specifier === name || specifier.startsWith(name + '/'))) {
         throw new Error('Extracted review package must not be loaded by AITM');
       }
       return nextResolve(specifier, context);
@@ -111,11 +111,18 @@ test('published dependency graph and production sources are independent of the e
       (relative) => !relative.startsWith('scripts/tests/') && /\.(?:mjs|json)$/.test(relative)
     )
   )) {
-    assert.doesNotMatch(
-      source,
-      /ai-peer-review|peer-review-adapter|cachePeerReviewStatus/,
-      relative
-    );
+    // #2020 permits only the existing Bash hook to read registration data.
+    // It does not restore a dependency, runtime adapter or protocol ownership.
+    assert.doesNotMatch(source, /peer-review-adapter|cachePeerReviewStatus/, relative);
+    if (relative === 'scripts/task-tracker/bash-guard.mjs') {
+      assert.doesNotMatch(
+        source,
+        /(?:from\s*|import\s*\(?\s*|require\s*\(\s*)['"][^'"]*ai-peer-review/,
+        relative
+      );
+    } else {
+      assert.doesNotMatch(source, /ai-peer-review/, relative);
+    }
   }
 });
 

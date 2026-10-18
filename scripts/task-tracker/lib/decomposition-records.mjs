@@ -17,7 +17,8 @@ export const DECOMPOSITION_BODY_BYTE_LIMIT = 65536;
 const MARKER_RE = /<!--\s*aitm-decomposition-(assessment|publication)\b[\s\S]*?(?:-->|$)/g;
 const SECTION_RE = /^##\s+Decomposition Assessment\s*$/i;
 const PROGRESS_RE = /^##\s+(?:AITM\s+)?Progress Markers\s*$/i;
-const ATTR_RE = /([a-zA-Z0-9_-]+)="(?:[^"]|&quot;)*"/g;
+// Keep entity text in the non-quote class to avoid exponential search when a quote is missing.
+const ATTR_RE = /([a-zA-Z0-9_-]+)="[^"]*"/g;
 
 function layout(body) {
   const { originalLines, structuralLines } = markdownViews(body);
@@ -150,6 +151,14 @@ function visibleSection(assessment, publication) {
       lines.push(`- Signal: ${signal.code} ${signal.value} (${signal.level})`);
     for (const blocker of assessment.blockers) lines.push(`- Blocker: ${blocker.code}`);
   } else lines.push('- Assessment: unavailable');
+  if (publication?.status === 'pending') {
+    const intended = publication.proposal;
+    lines.push(
+      '- Pending intended estimate: ' +
+        (intended.estimate.hours === null ? 'unset' : 'proposed ' + intended.estimate.hours + 'h')
+    );
+    lines.push('- Pending intended size: ' + (intended.size ?? 'unset'));
+  }
   if (publication) lines.push(`- Publication: ${publication.status} (${publication.operationId})`);
   return `${lines.join('\n')}\n\n`;
 }

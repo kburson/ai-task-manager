@@ -73,6 +73,7 @@ export async function verbKind(ctx) {
 
   assertGovernedMutationSession(loadState(statePath), Number(target));
   const recovery = {
+    requirePlan: false,
     issueNumber: Number(target),
     cfg,
     projectDir: ctx.projectDir,
