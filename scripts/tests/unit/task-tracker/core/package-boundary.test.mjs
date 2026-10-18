@@ -453,7 +453,12 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #1987: measured +2 for current authority and protected projection only.
     3 + // #1990: exactly three fresh hook/effect composition modules.
     1 + // #1989: one current continuation composition helper; no new dependency.
-    1; // #2006: exactly one bounded target classifier; the repair plan/tests remain excluded.
+    1 + // #2006: exactly one bounded target classifier; the repair plan/tests remain excluded.
+    2 + // #2022: audited rebaseline recovery and native execution proof reader.
+    1; // #2026: exactly one closed historical actor-evidence recovery module.
+  assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-evidence-recovery.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/heal-timing-rebaseline.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/timing-rebaseline-proof.mjs'));
   for (const added of ['scripts/task-tracker/lib/decomposition-local-targets.mjs'])
     assert.ok(files.includes(added), 'required reviewed addition missing: ' + added);
   for (const module of [
