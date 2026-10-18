@@ -114,7 +114,7 @@ export function decompositionRefusal(result, issue) {
       : { noAutomaticRemediation: { reason: 'operator-reviewed-evidence-required' } }),
   };
 }
-export async function assertGovernedDecompositionRecovery(options) {
+export async function assertGovernedDecompositionRecovery({ requirePlan = true, ...options }) {
   const result = await evaluateIssueDecomposition(options);
   const reasons = result.input.availability.reasons;
   // Recovery requires its own source/plan/ownership, not estimate publication convergence.
@@ -124,7 +124,10 @@ export async function assertGovernedDecompositionRecovery(options) {
     source.value?.number !== Number(options.issueNumber) ||
     typeof source.value?.body !== 'string' ||
     result.sourceObservations.readSelectedPlan.status !== 'observed' ||
-    result.input.plan.availability !== 'available' ||
+    !(
+      result.input.plan.availability === 'available' ||
+      (!requirePlan && result.input.plan.availability === 'absent')
+    ) ||
     reasons.includes('scope-unavailable')
   )
     throw new Error('decomposition:recovery-source-unavailable');

@@ -1,4 +1,4 @@
-// @story #1166
+// @story #1166 #2020
 
 import { strict as assert } from 'node:assert';
 import { execFileSync, spawn } from 'node:child_process';
@@ -58,7 +58,11 @@ async function runGuard({ cwd, payloadCwd = cwd, command, sessionId }) {
   return await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [GUARD], {
       cwd,
-      env: { ...process.env, AI_TASK_MANAGER_SESSION_ID: sessionId },
+      env: {
+        ...process.env,
+        AI_TASK_MANAGER_PROJECT_DIR: payloadCwd,
+        AI_TASK_MANAGER_SESSION_ID: sessionId,
+      },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let stdout = '';

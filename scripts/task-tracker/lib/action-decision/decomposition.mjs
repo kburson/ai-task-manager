@@ -74,18 +74,25 @@ export async function inspectBoundDecomposition(ctx, target) {
   return { status: 'bound', decomposition: current };
 }
 
-export async function observeDecompositionForAction({ actionId, subject, attempt, runtime }) {
+export async function observeDecompositionForAction({
+  actionId,
+  state,
+  subject,
+  attempt,
+  runtime,
+}) {
   const scope = 'decomposition:' + subject.repository + ':' + subject.issue;
   const observation = await attempt.observe({
     resource: 'decomposition',
     identity: 'issue:' + subject.issue + ':3',
     scope,
-    collect: async (request) => ({
-      ...request,
-      value: await (sessionNetworkSkipped()
-        ? Promise.reject(new Error('decomposition:authority-read-skipped'))
-        : runtime.collect(subject)),
-    }),
+    collect: async (request) => {
+      if (sessionNetworkSkipped()) throw new Error('decomposition:authority-read-skipped');
+      const current = await runtime.collect(subject);
+      // Internal provider snapshots contain Maps; observe only decision authority in the JSON domain.
+      const { input, inputDigest, assessment, publication, projection } = current;
+      return { ...request, value: { input, inputDigest, assessment, publication, projection } };
+    },
   });
   let current = observation.status === 'observed' ? observation.value : null;
   try {
@@ -107,11 +114,13 @@ export async function observeDecompositionForAction({ actionId, subject, attempt
   if (
     current?.assessment?.status === 'must-decompose' ||
     (current?.assessment?.status === 'epic-readiness-required' &&
-      !current.capabilities.includes(
-        ['close', 'deliver', 'review', 'test', 'promote'].includes(actionId)
-          ? 'scoped-completion'
-          : 'scoped-implementation'
-      ))
+      !(actionId === 'promote' && state === 'plan'
+        ? current.input.epicReadiness.planning
+        : current.capabilities.includes(
+            ['close', 'deliver', 'review', 'test', 'promote'].includes(actionId)
+              ? 'scoped-completion'
+              : 'scoped-implementation'
+          )))
   )
     codes.push('decomposition-required');
   if (current?.assessment?.status === 'pending') codes.push('decomposition-assessment-pending');

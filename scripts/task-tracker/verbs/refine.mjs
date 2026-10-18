@@ -25,7 +25,8 @@ import { fieldOptionMap } from '../../gh/lib/github-projects.mjs';
 import { verbPromote } from './promote.mjs';
 import { parseRationaleMarker, RATIONALE_MARKER_RE } from '../lib/apply-refinement-estimate.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { ensureIssueFieldDb } from '../issue-field-db.mjs';
+import { readEstimateWriterAuthority } from '../lib/estimate-writer-publication.mjs';
+import { parseIssueFieldDb, ensureIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { serializeMarker } from '../lib/marker-grammar.mjs';
@@ -322,11 +323,16 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   // FRESH base on each push attempt. `newBody` is held for the round-trip
   // validation below.
   let newBody = null;
-  const applyBody = async () =>
+  const applyBody = async (context = null) =>
     mutateBody({
       issueNumber,
       repo: cfg.repo,
       mutate: (base) => {
+        if (!context) {
+          const live = parseIssueFieldDb(base);
+          if (!live.ok || live.values.estimate !== estimateNum || live.values.size !== size)
+            throw new Error('refine:estimate-authority-changed');
+        }
         let next = applyRationaleMarker(base, marker);
         // #450 — defense-in-depth: refuse to stamp refine-complete if stub
         // placeholders are still present (guard layer also catches this at promote).
@@ -350,7 +356,11 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
               estimate: estimateNum,
               rank: rankNum,
             },
-            { overrideKeys: ['priority', 'size', 'estimate', 'rank'] }
+            {
+              overrideKeys: context
+                ? ['priority', 'size', 'estimate', 'rank']
+                : ['priority', 'rank'],
+            }
           );
           next = refreshed.body;
         } catch (err) {
@@ -381,6 +391,14 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   });
   if (publication.status === 'unchanged') {
     await prepare();
+    const fresh = await readEstimateWriterAuthority({ cfg, issueNumber, deps });
+    const actual = fresh.sourceObservations.readProject.value;
+    if (
+      fresh.publication?.status === 'pending' ||
+      actual?.estimate !== estimateNum ||
+      actual?.size !== size
+    )
+      throw new Error('refine:estimate-authority-changed');
     await applyBody();
   } else if (publication.status !== 'recorded') return { ...publication, issueNumber };
   newBody ??= await fetchBody({ issueNumber, repo: cfg.repo });

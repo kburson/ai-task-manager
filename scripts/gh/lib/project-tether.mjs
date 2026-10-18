@@ -467,7 +467,7 @@ async function tetherIssueToProjectOwned({
     });
     if (result.status === 'unchanged') {
       await ensureLinked();
-      await raw({ status, priority, size, estimate, rank });
+      await raw({ status, priority, rank });
       return;
     }
     if (result.status !== 'recorded')

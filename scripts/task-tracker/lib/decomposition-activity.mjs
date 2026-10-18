@@ -4,6 +4,7 @@ import {
   validateDecompositionPublication,
   deriveDecompositionCapabilities,
 } from './decomposition-assessment.mjs';
+import { isDecompositionPreparationTargets } from './decomposition-local-targets.mjs';
 import { sessionNetworkSkipped } from './verb-preflight.mjs';
 import { stripBodyVersion } from './versioned-issue-write.mjs';
 import { collectHookDecompositionSnapshot } from './decomposition-hook-authority.mjs';
@@ -33,10 +34,15 @@ export function evaluateDecompositionActivity({
     let needed = 'scoped-deliverable';
     if (['COMMIT_CODE', 'COMMIT_DOCS'].includes(activity)) needed = 'checkpoint';
     else if (
-      activity === 'WRITE_CODE' ||
+      ['WRITE_CODE', 'RUN_BUILD'].includes(activity) ||
       targets.some((target) => target.activity === 'WRITE_CODE')
     )
       needed = 'scoped-implementation';
+    else if (
+      activity === 'decomposition-prepare' &&
+      isDecompositionPreparationTargets(targets, issue)
+    )
+      needed = 'decomposition-prepare';
     else if (
       targets.some((target) =>
         ['WRITE_DOCS', 'WRITE_ISSUE', 'WRITE_OTHER'].includes(target.activity)
