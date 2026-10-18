@@ -73,3 +73,25 @@ test('a linked-worktree issue lock permits owned publication refresh and exclude
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('unavailable Git discovery refuses before entering an issue mutation', async () => {
+  const dir = freshUnitDir('publication-worktree-unavailable-');
+  const main = path.join(dir, 'main');
+  execFileSync('git', ['init', main], { cwd: dir, stdio: 'pipe' });
+  const priorPath = process.env.PATH;
+  let entered = false;
+  try {
+    process.env.PATH = path.join(dir, 'unavailable-bin');
+    await assert.rejects(
+      () =>
+        withIssueLock({ issue: subject.issue, projDir: main }, async () => {
+          entered = true;
+        }),
+      /lock-root-unavailable/
+    );
+    assert.equal(entered, false);
+  } finally {
+    process.env.PATH = priorPath;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

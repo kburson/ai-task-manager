@@ -62,8 +62,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { issueLockPath } from './paths.mjs';
-import { findMainWorktreePath } from './fleet-registry.mjs';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 // #656 — the mtime TTL is no longer the primary staleness signal. It is an
 // outer backstop, raised well above the longest expected guarded action (a
@@ -275,9 +276,26 @@ export async function withIssueLock(opts, fn) {
   if (!invokingProjDir) throw new Error('withIssueLock: projDir is required');
   // #2031: every checkout must acquire the same physical issue lock. Preserve
   // standalone runtime roots; only actual Git checkout roots share a lock root.
-  const projDir = existsSync(path.join(invokingProjDir, '.git'))
-    ? findMainWorktreePath(invokingProjDir)
-    : invokingProjDir;
+  let projDir = invokingProjDir;
+  if (existsSync(path.join(invokingProjDir, '.git'))) {
+    try {
+      const list = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+        cwd: invokingProjDir,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: GIT_TIMEOUT_MS,
+      });
+      const main = list
+        .split(/\n\n/)[0]
+        .match(/^worktree (.+)$/m)?.[1]
+        ?.trim();
+      if (!main || !path.isAbsolute(main) || !statSync(main).isDirectory())
+        throw new Error('invalid main checkout');
+      projDir = main;
+    } catch (cause) {
+      throw new Error('issue-lock:lock-root-unavailable', { cause });
+    }
+  }
 
   const token = issueLockToken(issue);
 
