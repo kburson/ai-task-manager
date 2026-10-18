@@ -47,6 +47,7 @@ import { parseTimingRow } from '../../../../task-tracker/lib/timing-row-reader.m
 import { deriveActorEngagement } from '../../../../task-tracker/lib/timing-engagement.mjs';
 import { validate } from '../../../../task-tracker/lib/agent-review/validators/timing-log-sequence.mjs';
 import { main } from '../../../../task-tracker/heal-timing-log.mjs';
+import { getActiveTask, setActiveTask } from '../../../../task-tracker/session-state.mjs';
 const hash = (body) => createHash('sha256').update(body).digest('hex');
 const now = Date.parse('2026-10-19T00:00:00Z');
 function transport(t, body = original) {
@@ -56,7 +57,7 @@ function transport(t, body = original) {
     body,
     writes: [],
     reads: 0,
-    binding: { issue: '#63', entryStartTs: now - 1000, worktreePath: dir },
+    binding: { issue: '#63', entryStartTs: new Date(now - 1000).toISOString(), worktreePath: dir },
   };
   const source = () => ({
     status: 'found',
@@ -165,11 +166,14 @@ for (const binding of [
   null,
   { issue: 64 },
   { issue: 63, entryStartTs: null },
-  { issue: 63, entryStartTs: now, closedAt: 'closed' },
+  { issue: 63, entryStartTs: '' },
+  { issue: 63, entryStartTs: 'invalid' },
+  { issue: 63, entryStartTs: now },
+  { issue: 63, entryStartTs: new Date(now - 1000).toISOString(), closedAt: 'closed' },
 ])
   test(`unbound, paused, wrong or closed operator refuses ${JSON.stringify(binding)}`, async (t) => {
     const { state, deps } = transport(t);
-    state.binding = binding;
+    state.binding = binding == null ? null : { ...state.binding, ...binding };
     await assert.rejects(runHeal({ ...apply, deps }), /current-owner-binding/);
     assert.equal(state.writes.length, 0);
   });
@@ -335,3 +339,13 @@ for (const suffix of [appended, appended.replace('| update |', '| made-up-event 
     assert.equal(state.writes.length, 0);
   });
 }
+
+test('native persisted owner binding with ISO entry timestamp authorizes the exact audited apply', async (t) => {
+  const { state, deps, dir } = transport(t);
+  setActiveTask('authenticated-test-operator', state.binding, dir);
+  deps.getActiveTask = getActiveTask;
+  const result = await runHeal({ ...apply, deps });
+  assert.equal(result.status, 'healed');
+  assert.equal(state.writes.length, 1);
+  assert.equal(readFileSync(path.join(result.evidenceDir, 'before.md'), 'utf8'), original);
+});

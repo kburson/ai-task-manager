@@ -109,7 +109,8 @@ export async function recoverActorEvidence({
     if (
       (deps.aiAppName ?? aiAppName)() !== 'codex' ||
       String(binding?.issue).replace('#', '') !== String(issueNumber) ||
-      !Number.isFinite(binding?.entryStartTs) ||
+      typeof binding?.entryStartTs !== 'string' ||
+      !Number.isFinite(Date.parse(binding.entryStartTs)) ||
       binding.closedAt ||
       !binding.worktreePath ||
       realpathSync(binding.worktreePath) !== realpathSync(projectDir)
