@@ -17,7 +17,7 @@ export const DECOMPOSITION_BODY_BYTE_LIMIT = 65536;
 const MARKER_RE = /<!--\s*aitm-decomposition-(assessment|publication)\b[\s\S]*?(?:-->|$)/g;
 const SECTION_RE = /^##\s+Decomposition Assessment\s*$/i;
 const PROGRESS_RE = /^##\s+(?:AITM\s+)?Progress Markers\s*$/i;
-const ATTR_RE = /([a-zA-Z0-9_-]+)="(?:[^"]|&quot;)*"/g;
+const ATTR_RE = /([a-zA-Z0-9_-]+)="[^"]*"/g;
 
 function layout(body) {
   const { originalLines, structuralLines } = markdownViews(body);

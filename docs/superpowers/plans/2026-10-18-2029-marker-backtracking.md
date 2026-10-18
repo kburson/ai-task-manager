@@ -23,11 +23,11 @@ One implementation task, two human hours, Size S. First add real public-API subp
 
 ### Task 1: Preserve quoted syntax with bounded malformed rejection
 
-Files: scripts/task-tracker/lib/marker-grammar.mjs; scripts/task-tracker/lib/decomposition-records.mjs; scripts/tests/unit/task-tracker/lib/marker-quote-backtracking.test.mjs.
+Files: scripts/task-tracker/lib/marker-grammar.mjs; scripts/task-tracker/lib/decomposition-records.mjs; scripts/tests/integration/task-tracker/lib/marker-quote-backtracking.test.mjs.
 
 - [ ] Write both public-API subprocess regression tests and observe timeout RED.
 - [ ] Simplify the three overlapping expressions, preserving capture groups.
 - [ ] Observe GREEN, valid entity roundtrip, duplicate and malformed rejection.
 - [ ] Verify full exact-head CI including slow lanes; native Test, Review and governed delivery.
 
-Verification: node --test scripts/tests/unit/task-tracker/lib/marker-quote-backtracking.test.mjs; existing grammar and decomposition-reestimate-guard tests; npm test; npm run test:slow; npm run lint; npm run format:check.
+Verification: node --test scripts/tests/integration/task-tracker/lib/marker-quote-backtracking.test.mjs; existing grammar and decomposition-reestimate-guard tests; npm test; npm run test:slow; npm run lint; npm run format:check.
