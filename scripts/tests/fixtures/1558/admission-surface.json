@@ -1103,9 +1103,7 @@
       "path": "scripts/gh/lib/field-defs-drift.mjs",
       "classification": "internal-library-or-orchestration",
       "command": null,
-      "staticImports": [
-        "node:fs"
-      ],
+      "staticImports": ["node:fs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
@@ -1547,12 +1545,7 @@
       "path": "scripts/task-tracker/agent-guard.mjs",
       "classification": "internal-hook-or-guard",
       "command": null,
-      "staticImports": [
-        "node:fs",
-        "node:path",
-        "./fleet-registry.mjs",
-        "./paths.mjs"
-      ],
+      "staticImports": ["node:fs", "node:path", "./fleet-registry.mjs", "./paths.mjs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
@@ -1562,9 +1555,7 @@
       "path": "scripts/task-tracker/assert-file-excludes.mjs",
       "classification": "internal-library-or-orchestration",
       "command": null,
-      "staticImports": [
-        "node:fs"
-      ],
+      "staticImports": ["node:fs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
@@ -1661,12 +1652,7 @@
       "path": "scripts/task-tracker/bash-guard.mjs",
       "classification": "internal-hook-or-guard",
       "command": null,
-      "staticImports": [
-        "node:fs",
-        "node:child_process",
-        "node:os",
-        "node:path"
-      ],
+      "staticImports": ["node:fs", "node:child_process", "node:os", "node:path"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
@@ -1713,10 +1699,7 @@
       "path": "scripts/task-tracker/config-get.mjs",
       "classification": "internal-library-or-orchestration",
       "command": null,
-      "staticImports": [
-        "fs",
-        "./paths.mjs"
-      ],
+      "staticImports": ["fs", "./paths.mjs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
@@ -1851,11 +1834,7 @@
       "path": "scripts/task-tracker/graphql-usage-baseline.mjs",
       "classification": "internal-library-or-orchestration",
       "command": null,
-      "staticImports": [
-        "node:fs/promises",
-        "node:util",
-        "./lib/graphql-usage/baseline.mjs"
-      ],
+      "staticImports": ["node:fs/promises", "node:util", "./lib/graphql-usage/baseline.mjs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Offline read-only baseline qualification companion. No lifecycle authority, enrollment or transport; explicit supplied files only.",
@@ -1865,10 +1844,7 @@
       "path": "scripts/task-tracker/graphql-usage-launch.mjs",
       "classification": "internal-library-or-orchestration",
       "command": null,
-      "staticImports": [
-        "node:child_process",
-        "./lib/graphql-usage/collection.mjs"
-      ],
+      "staticImports": ["node:child_process", "./lib/graphql-usage/collection.mjs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
@@ -2195,11 +2171,7 @@
       "path": "scripts/task-tracker/hooks/codex-prompt-timestamp.mjs",
       "classification": "internal-hook-or-guard",
       "command": null,
-      "staticImports": [
-        "node:fs",
-        "node:url",
-        "node:path"
-      ],
+      "staticImports": ["node:fs", "node:url", "node:path"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
@@ -2209,12 +2181,7 @@
       "path": "scripts/task-tracker/hooks/grok-wire.mjs",
       "classification": "internal-hook-or-guard",
       "command": null,
-      "staticImports": [
-        "node:child_process",
-        "node:fs",
-        "node:url",
-        "node:path"
-      ],
+      "staticImports": ["node:child_process", "node:fs", "node:url", "node:path"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
@@ -2224,11 +2191,7 @@
       "path": "scripts/task-tracker/hooks/memory-index.mjs",
       "classification": "internal-hook-or-guard",
       "command": null,
-      "staticImports": [
-        "node:fs",
-        "node:url",
-        "node:path"
-      ],
+      "staticImports": ["node:fs", "node:url", "node:path"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
@@ -2258,11 +2221,7 @@
       "path": "scripts/task-tracker/hooks/on-stop.mjs",
       "classification": "internal-hook-or-guard",
       "command": null,
-      "staticImports": [
-        "node:fs",
-        "node:path",
-        "../paths.mjs"
-      ],
+      "staticImports": ["node:fs", "node:path", "../paths.mjs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
@@ -2272,11 +2231,7 @@
       "path": "scripts/task-tracker/hooks/on-user-prompt.mjs",
       "classification": "internal-hook-or-guard",
       "command": null,
-      "staticImports": [
-        "../paths.mjs",
-        "../orphan-finalize.mjs",
-        "node:fs"
-      ],
+      "staticImports": ["../paths.mjs", "../orphan-finalize.mjs", "node:fs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
@@ -2312,11 +2267,7 @@
       "path": "scripts/task-tracker/lib/guard-entrypoint.mjs",
       "classification": "internal-hook-or-guard",
       "command": null,
-      "staticImports": [
-        "node:fs",
-        "node:path",
-        "./project-dir.mjs"
-      ],
+      "staticImports": ["node:fs", "node:path", "./project-dir.mjs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
@@ -2404,12 +2355,7 @@
       "path": "scripts/task-tracker/orchestrator-lock.mjs",
       "classification": "internal-library-or-orchestration",
       "command": null,
-      "staticImports": [
-        "node:fs",
-        "node:path",
-        "./fleet-registry.mjs",
-        "./paths.mjs"
-      ],
+      "staticImports": ["node:fs", "node:path", "./fleet-registry.mjs", "./paths.mjs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
@@ -2900,10 +2846,7 @@
       "path": "scripts/task-tracker/verify-epic-114.mjs",
       "classification": "test-fixture-or-retired-one-shot",
       "command": null,
-      "staticImports": [
-        "node:fs",
-        "node:path"
-      ],
+      "staticImports": ["node:fs", "node:path"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Historical one-shot verifier retained in the shipped tree for compatibility evidence.",
@@ -2934,10 +2877,7 @@
       "path": "scripts/task-tracker/verify-sweep-comment.mjs",
       "classification": "test-fixture-or-retired-one-shot",
       "command": null,
-      "staticImports": [
-        "node:child_process",
-        "./config.mjs"
-      ],
+      "staticImports": ["node:child_process", "./config.mjs"],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Historical one-shot verifier retained in the shipped tree for compatibility evidence.",
