@@ -49,12 +49,21 @@
 // Read-only verbs (`status`, `list`, `bind`) MUST NOT call this — that is
 // asserted by `tests/verb-locks.test.mjs`.
 
-import { mkdirSync, rmdirSync, writeFileSync, readFileSync, unlinkSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  rmdirSync,
+  writeFileSync,
+  readFileSync,
+  unlinkSync,
+  statSync,
+} from 'node:fs';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { issueLockPath } from './paths.mjs';
+import { findMainWorktreePath } from './fleet-registry.mjs';
 
 // #656 — the mtime TTL is no longer the primary staleness signal. It is an
 // outer backstop, raised well above the longest expected guarded action (a
@@ -254,7 +263,7 @@ export async function withIssueLock(opts, fn) {
   const {
     issue,
     verb = 'unknown',
-    projDir,
+    projDir: invokingProjDir,
     sessionId = process.env.CLAUDE_SESSION_ID ||
       process.env.AI_TASK_MANAGER_SESSION_ID ||
       process.env.CODEX_SESSION_ID ||
@@ -263,7 +272,12 @@ export async function withIssueLock(opts, fn) {
     retries = ISSUE_LOCK_DEFAULT_RETRIES,
   } = opts || {};
   if (!issue) throw new Error('withIssueLock: issue is required');
-  if (!projDir) throw new Error('withIssueLock: projDir is required');
+  if (!invokingProjDir) throw new Error('withIssueLock: projDir is required');
+  // #2031: every checkout must acquire the same physical issue lock. Preserve
+  // standalone runtime roots; only actual Git checkout roots share a lock root.
+  const projDir = existsSync(path.join(invokingProjDir, '.git'))
+    ? findMainWorktreePath(invokingProjDir)
+    : invokingProjDir;
 
   const token = issueLockToken(issue);
 

@@ -472,6 +472,19 @@ export const CODE_DEFINITIONS = Object.freeze({
     argumentSchema: args(['guardId'], { guardId: stringType }),
     disposition: 'none',
   }),
+  'epic-wip-capacity-exceeded': definition({
+    code: 'epic-wip-capacity-exceeded',
+    domain: 'operational-warning',
+    producers: ['refine-exit-wip-budget'],
+    severity: 'warning',
+    statuses: ['ready', 'blocked', 'indeterminate'],
+    phases: ['evaluation'],
+    argumentSchema: args(['activeIssues', 'budget'], {
+      activeIssues: stringType,
+      budget: positiveIntegerType,
+    }),
+    disposition: 'none',
+  }),
   'test-develop-finalization-pending': definition({
     code: 'test-develop-finalization-pending',
     domain: 'operational-warning',
