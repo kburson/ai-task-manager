@@ -1,3 +1,4 @@
+import { inspectBoundDecomposition } from '../lib/action-decision/decomposition.mjs';
 // @story #1889
 import { isDeepStrictEqual } from 'node:util';
 import { timingActorKey } from '../lib/timing-actor.mjs';
@@ -275,7 +276,7 @@ export async function verbResume(ctx) {
       });
       console.log(`Resumed ${s.lastActive}.`);
       await wakeReviewResidents(ctx, s.lastActive);
-      return;
+      return inspectBoundDecomposition(ctx, s.lastActive);
     } catch (error) {
       rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
     }
@@ -326,7 +327,7 @@ export async function verbResume(ctx) {
     });
     console.log(`already active: ${normalizedTarget}`);
     await wakeReviewResidents(ctx, normalizedTarget);
-    return;
+    return inspectBoundDecomposition(ctx, normalizedTarget);
   }
 
   const occupancyClaim = claimForBind(ctx, normalizedTarget);
@@ -558,6 +559,7 @@ export async function verbResume(ctx) {
           : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
     );
     await wakeReviewResidents(ctx, normalizedTarget);
+    return inspectBoundDecomposition(ctx, normalizedTarget);
   } catch (error) {
     rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
   }

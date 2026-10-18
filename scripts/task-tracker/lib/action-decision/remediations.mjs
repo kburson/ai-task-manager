@@ -4,6 +4,23 @@ const FULL_HEAD = /^[a-f0-9]{40,64}$/;
 
 const REMEDIATIONS = Object.freeze([
   Object.freeze({
+    id: 'refresh-decomposition',
+    actionId: 'resume',
+    verb: 'resume',
+    argumentSchema: Object.freeze({
+      type: 'object',
+      additionalProperties: false,
+      required: Object.freeze(['issue']),
+      properties: Object.freeze({ issue: POSITIVE_INTEGER }),
+    }),
+    humanRequired: false,
+    providerAction: false,
+    destructive: false,
+    fullAutoAllowed: true,
+    guidanceId: 'protocol.decomposition-continuation',
+  }),
+
+  Object.freeze({
     id: 'record-plan-approval',
     actionId: 'promote',
     verb: 'plan-approve',

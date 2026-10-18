@@ -394,17 +394,17 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/reject.mjs', 71, 'event-call', "'rejected:develop'", [
       'rejected:develop',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 257, 'event-call', "'resumed'", [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 258, 'event-call', "'resumed'", [
       'resumed',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/resume.mjs',
-      504,
+      505,
       'event-call',
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 531, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 532, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),

@@ -215,13 +215,19 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 60,
+          "line": 78,
+          "fingerprint": "sha256:2eeffb902617f011b1997b60559577715b20040ff8806b1bd90c892b45f6592a",
+          "kind": "refusal"
+        },
+        {
+          "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
+          "line": 95,
           "fingerprint": "sha256:35ab73220d5c1a4b647728fd346de0fcce347f558603dcefadb1056ebe79e6ee",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 75,
+          "line": 113,
           "fingerprint": "sha256:7c2785bf0d639ed741cdcdd532b8eb5c1a7036c8d03ca66c1866e6434647de85",
           "kind": "refusal"
         }
@@ -370,51 +376,21 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 144,
-          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "line": 106,
+          "fingerprint": "sha256:937ee8e1eaa09ea2778622d753476b597a8c9beb70300c8a9e702571e5cefc71",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 148,
-          "fingerprint": "sha256:0273e77a3125381a1f885e3cdd8c5274e55d2ba108a85204e6aa79fa20786f97",
-          "kind": "warning"
-        },
-        {
-          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 155,
-          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "line": 177,
+          "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 182,
-          "fingerprint": "sha256:7e0969e6ba1a1ece545cfee2babb2e5e0d87eee5d6328d9ca9c65fc5ae81d5e0",
-          "kind": "warning"
-        },
-        {
-          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 191,
-          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
+          "line": 174,
+          "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 197,
-          "fingerprint": "sha256:feacfa082bbf9a20957f8af0288781882368dd6d6b5e29c4f1650c41e185bbb6",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 201,
-          "fingerprint": "sha256:3280f6bb967992f1fba1fd865b02bf753d40e56af8908665b91a1b60f5357856",
-          "kind": "warning"
-        },
-        {
-          "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 207,
-          "fingerprint": "sha256:4be05a4834cac55badf5de0a5d0a1bd85049961c33db02e89adfb6a747245f05",
-          "kind": "warning"
         }
       ]
     },

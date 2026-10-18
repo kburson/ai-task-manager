@@ -1,6 +1,14 @@
 // @story #1091
 import { strict as assert } from 'node:assert';
-import test from 'node:test';
+import test, { after } from 'node:test';
+import { rmSync } from 'node:fs';
+import { fixture, observed, freshUnitDir } from '../decomposition-authority-fixtures.mjs';
+import {
+  formatIssueFieldDb,
+  stripIssueFieldDb,
+} from '../../../../../task-tracker/issue-field-db.mjs';
+const fixtureDirs = [];
+after(() => fixtureDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 
 import {
   adoptLegacyPlanForecast,
@@ -67,6 +75,42 @@ function harness({ failAfter } = {}) {
     readyForecastRecordId: null,
     frozenForecastRecordId: null,
   };
+  const f = fixture(20),
+    dir = freshUnitDir('plan-authority-existing-');
+  fixtureDirs.push(dir);
+  f.body = stripIssueFieldDb(f.body) + '\n' + formatIssueFieldDb(state.bodyFields) + '\n';
+  const body = () => f.body;
+  const decomposition = {
+    ...f.deps,
+    readIssue: async () => observed({ number: 1091, body: body() }),
+    readBackIssue: async () => observed({ number: 1091, body: body() }),
+    fetchBody: async () => body(),
+    pushBody: async (_repo, _issue, next) => {
+      f.body = next;
+    },
+    readProject: async () => observed({ ...f.values.project, ...state.board }),
+    readForecast: async () => {
+      const active = state.forecasts.filter((record) => record.supersededBy == null),
+        record = active[0];
+      const value = {
+        estimate: record ? (record.payload?.plan.humanHours ?? state.board.estimate) : null,
+        size: record ? (record.payload?.plan.size ?? state.board.size) : null,
+        recordId: record?.recordId ?? null,
+        payloadHash: record?.payloadHash ?? null,
+        proposals: [],
+        observedProjections: [{ ...state.board }, { ...state.bodyFields }],
+      };
+      if (record && state.readyForecastRecordId !== record.recordId) {
+        value.publicationTransition = {
+          recordId: record.recordId,
+          payloadHash: record.payloadHash,
+          readyRecordId: state.readyForecastRecordId,
+        };
+        return { ...observed(value), status: 'unavailable' };
+      }
+      return observed(value);
+    },
+  };
   let writes = 0;
   const maybeFail = () => {
     writes += 1;
@@ -76,6 +120,10 @@ function harness({ failAfter } = {}) {
     state,
     writes: () => writes,
     deps: {
+      cfg: { repo: 'o/r', projectId: 'PVT_a' },
+      projectDir: dir,
+      decomposition,
+      projectItemForIssue: async () => ({ itemId: 'PVTI_a' }),
       readProjection: async () => structuredClone(state),
       writeRefineAppendix: async ({ refine, plan }) => {
         state.refineAppendix = { refine, plan };
@@ -91,6 +139,7 @@ function harness({ failAfter } = {}) {
       },
       writeBodyFields: async ({ size, estimate }) => {
         state.bodyFields = { size, estimate };
+        f.body = stripIssueFieldDb(f.body) + '\n' + formatIssueFieldDb(state.bodyFields) + '\n';
         maybeFail();
       },
       writeForecast: async ({ envelope }) => {
@@ -100,12 +149,14 @@ function harness({ failAfter } = {}) {
         state.forecasts.push({
           recordId: envelope.recordId,
           payloadHash: envelope.payloadHash,
+          payload: envelope.payload,
           commentNodeId: 'IC_forecast',
         });
         maybeFail();
       },
       writeForecastReadyMarker: async ({ recordId }) => {
         state.readyForecastRecordId = recordId;
+        f.body = upsertForecastReadyMarker(f.body, recordId);
         maybeFail();
       },
     },
@@ -215,15 +266,14 @@ test('concurrent Plan convergence claims the forecast generation and appends it 
 test('every interrupted seam replays convergently without duplicating the forecast', async () => {
   for (let failAfter = 1; failAfter <= 6; failAfter += 1) {
     const h = harness({ failAfter });
-    await assert.rejects(
-      applyPlanEstimateAuthority({
-        issueNumber: 1091,
-        refine: forecast.refine,
-        forecastEnvelope,
-        deps: h.deps,
-      }),
-      new RegExp(`injected-after-${failAfter}`)
-    );
+    const partial = await applyPlanEstimateAuthority({
+      issueNumber: 1091,
+      refine: forecast.refine,
+      forecastEnvelope,
+      deps: h.deps,
+    });
+    assert.equal(partial.status, 'partial');
+    assert.match(partial.reason, new RegExp(`injected-after-${failAfter}`));
     const result = await applyPlanEstimateAuthority({
       issueNumber: 1091,
       refine: forecast.refine,
@@ -310,6 +360,7 @@ test('audited Plan re-entry may supersede exactly one prior active forecast', as
     supersededBy: null,
   });
   const replacement = { ...forecastEnvelope, supersedes: priorRecordId };
+  await h.deps.writeForecastReadyMarker({ recordId: priorRecordId });
 
   const result = await applyPlanEstimateAuthority({
     issueNumber: 1091,
@@ -355,38 +406,25 @@ test('adaptive execution refreshes rubric, builds forecast, creates an envelope,
 });
 
 test('legacy baseline adoption freezes only an exact matching Develop projection', async () => {
-  const state = {
-    lifecycleState: 'develop',
-    refineAppendix: {
-      refine: forecast.refine,
-      plan: { size: forecast.plan.size, humanHours: forecast.plan.humanHours },
-    },
-    board: { size: forecast.plan.size, estimate: forecast.plan.humanHours },
-    bodyFields: { size: forecast.plan.size, estimate: forecast.plan.humanHours },
-    forecasts: [],
-    readyForecastRecordId: null,
-  };
+  const h = harness();
+  h.state.lifecycleState = 'develop';
+  h.state.refineAppendix = { refine: forecast.refine, plan: forecast.plan };
+  h.state.board = { size: forecast.plan.size, estimate: forecast.plan.humanHours };
+  await h.deps.writeBodyFields({ size: forecast.plan.size, estimate: forecast.plan.humanHours });
+  const before = h.writes();
   const result = await adoptLegacyPlanForecast({
     issueNumber: 1091,
     forecastEnvelope,
-    deps: {
-      readProjection: async () => structuredClone(state),
-      writeForecast: async ({ envelope }) => {
-        state.forecasts.push({
-          recordId: envelope.recordId,
-          payloadHash: envelope.payloadHash,
-          commentNodeId: 'IC_adopted',
-          supersededBy: null,
-        });
-      },
-      writeForecastReadyMarker: async ({ recordId }) => {
-        state.readyForecastRecordId = recordId;
-      },
-    },
+    deps: h.deps,
   });
   assert.equal(result.status, 'converged');
-  assert.equal(result.forecastCommentNodeId, 'IC_adopted');
-  assert.equal(state.readyForecastRecordId, forecastEnvelope.recordId);
+  assert.equal(result.forecastCommentNodeId, 'IC_forecast');
+  assert.equal(h.state.readyForecastRecordId, forecastEnvelope.recordId);
+  assert.equal(
+    h.writes() - before,
+    2,
+    'adoption writes only forecast and ready; existing estimate is not revised'
+  );
 });
 
 test('legacy baseline adoption refuses mismatches, existing evidence, or non-Develop state', async () => {

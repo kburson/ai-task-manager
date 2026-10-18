@@ -938,3 +938,6 @@ export function appendAuditMarker(body, { kind, ts, detail } = {}) {
   }
   return `${placeProgressMarker(src, marker)}\n`;
 }
+
+// @story #1987 — shared strict decomposition record boundary.
+export { readDecompositionRecords, replaceDecompositionRecords } from './decomposition-records.mjs';

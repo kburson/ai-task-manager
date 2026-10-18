@@ -1,5 +1,6 @@
 // @story #123
 import assert from 'node:assert/strict';
+import { installStatefulGhBody } from '../../../fixtures/stateful-gh-body.mjs';
 import { mkdtempSync, writeFileSync, chmodSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -16,6 +17,7 @@ function makeTempEnv(ghScript) {
   const ghMock = join(binDir, 'gh');
   writeFileSync(ghMock, ghScript);
   chmodSync(ghMock, 0o755);
+  installStatefulGhBody({ binDir, transport: ghScript });
 
   // Minimal config that update-event-fields.mjs needs
   const aitm = join(temp, '.ai-task-manager');

@@ -1,4 +1,7 @@
-import { runLogicalRecordClaim } from './record-claim.mjs';
+import {
+  publishAdaptivePlanAuthority,
+  hasPendingAdaptivePublication,
+} from '../decomposition-adaptive-writer.mjs';
 import { validateEstimationForecast } from './forecast-record.mjs';
 
 function fail(category) {
@@ -63,10 +66,6 @@ export async function executeAdaptivePlanEstimate({ issueNumber, planInput, cfg,
   });
 }
 
-function equal(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
 function appendixProjection(value) {
   if (!value?.refine || !value?.plan) return null;
   return {
@@ -93,14 +92,6 @@ async function read(deps) {
   return state;
 }
 
-async function writeAndConfirm({ deps, writer, input, confirms, category }) {
-  if (typeof deps[writer] !== 'function') fail('dependencies');
-  await deps[writer](input);
-  const state = await read(deps);
-  if (!confirms(state)) fail(`${category}-readback`);
-  return state;
-}
-
 async function applyPlanEstimateAuthorityUnlocked({
   issueNumber,
   refine,
@@ -120,80 +111,18 @@ async function applyPlanEstimateAuthorityUnlocked({
     expectedIssue: issueNumber,
     requireCurrentSchema: true,
   });
-  const plan = forecastEnvelope.payload.plan;
-  const publishedRefine = forecastEnvelope.payload.refine;
-  let state = await read(deps);
+  const state = await read(deps);
   if (state.lifecycleState !== 'plan') fail('not-in-plan');
   if (state.frozenForecastRecordId && state.frozenForecastRecordId !== forecastEnvelope.recordId) {
     fail('frozen');
   }
   desiredForecast(state, forecastEnvelope);
 
-  const appendix = appendixProjection({ refine: publishedRefine, plan });
-  if (!equal(appendixProjection(state.refineAppendix), appendix)) {
-    state = await writeAndConfirm({
-      deps,
-      writer: 'writeRefineAppendix',
-      input: { issueNumber, refine: publishedRefine, plan },
-      confirms: (next) => equal(appendixProjection(next.refineAppendix), appendix),
-      category: 'refine-appendix',
-    });
-  }
-  if (state.board?.estimate !== plan.humanHours) {
-    state = await writeAndConfirm({
-      deps,
-      writer: 'writeBoardEstimate',
-      input: { issueNumber, estimate: plan.humanHours },
-      confirms: (next) => next.board?.estimate === plan.humanHours,
-      category: 'board-estimate',
-    });
-  }
-  if (state.board?.size !== plan.size) {
-    state = await writeAndConfirm({
-      deps,
-      writer: 'writeBoardSize',
-      input: { issueNumber, size: plan.size },
-      confirms: (next) => next.board?.size === plan.size,
-      category: 'board-size',
-    });
-  }
-  if (state.bodyFields?.estimate !== plan.humanHours || state.bodyFields?.size !== plan.size) {
-    state = await writeAndConfirm({
-      deps,
-      writer: 'writeBodyFields',
-      input: { issueNumber, estimate: plan.humanHours, size: plan.size },
-      confirms: (next) =>
-        next.bodyFields?.estimate === plan.humanHours && next.bodyFields?.size === plan.size,
-      category: 'body-fields',
-    });
-  }
-  let stored = desiredForecast(state, forecastEnvelope);
-  if (!stored) {
-    state = await writeAndConfirm({
-      deps,
-      writer: 'writeForecast',
-      input: { issueNumber, envelope: forecastEnvelope },
-      confirms: (next) => desiredForecast(next, forecastEnvelope) !== null,
-      category: 'forecast',
-    });
-    stored = desiredForecast(state, forecastEnvelope);
-  }
-  if (state.readyForecastRecordId !== stored.recordId) {
-    state = await writeAndConfirm({
-      deps,
-      writer: 'writeForecastReadyMarker',
-      input: { issueNumber, recordId: stored.recordId },
-      confirms: (next) => next.readyForecastRecordId === stored.recordId,
-      category: 'forecast-ready',
-    });
-  }
-  if (
-    state.board?.estimate !== state.bodyFields?.estimate ||
-    state.board?.size !== state.bodyFields?.size
-  ) {
-    fail('projection-divergence');
-  }
+  const result = await publishAdaptivePlanAuthority({ issueNumber, forecastEnvelope, deps });
+  if (result.status !== 'recorded') return result;
+  const stored = desiredForecast(await read(deps), forecastEnvelope);
   return {
+    ...result,
     status: 'converged',
     forecastRecordId: stored.recordId,
     forecastCommentNodeId: stored.commentNodeId,
@@ -206,14 +135,7 @@ export async function applyPlanEstimateAuthority({
   forecastEnvelope,
   deps = {},
 } = {}) {
-  return runLogicalRecordClaim(
-    deps,
-    {
-      key: `forecast:${issueNumber}:${forecastEnvelope?.payloadHash ?? forecastEnvelope?.recordId ?? 'invalid'}`,
-      issue: issueNumber,
-    },
-    () => applyPlanEstimateAuthorityUnlocked({ issueNumber, refine, forecastEnvelope, deps })
-  );
+  return applyPlanEstimateAuthorityUnlocked({ issueNumber, refine, forecastEnvelope, deps });
 }
 
 async function adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, deps }) {
@@ -230,13 +152,25 @@ async function adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, 
     requireCurrentSchema: true,
   });
   const plan = forecastEnvelope.payload.plan;
-  let state = await read(deps);
+  const state = await read(deps);
   const appendix = appendixProjection(state.refineAppendix);
   const active = state.forecasts.filter((forecast) => forecast.supersededBy == null);
+  const resuming = Boolean(
+    deps.cfg &&
+    (active.length || state.readyForecastRecordId) &&
+    (await hasPendingAdaptivePublication({ issueNumber, forecastEnvelope, deps }))
+  );
   if (
     state.lifecycleState !== 'develop' ||
-    state.readyForecastRecordId !== null ||
-    active.length !== 0 ||
+    (state.readyForecastRecordId !== null &&
+      !(resuming && state.readyForecastRecordId === forecastEnvelope.recordId)) ||
+    (active.length !== 0 &&
+      !(
+        resuming &&
+        active.length === 1 &&
+        active[0].recordId === forecastEnvelope.recordId &&
+        active[0].payloadHash === forecastEnvelope.payloadHash
+      )) ||
     appendix?.plan?.size !== plan.size ||
     appendix?.plan?.humanHours !== plan.humanHours ||
     state.board?.size !== plan.size ||
@@ -246,22 +180,11 @@ async function adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, 
   ) {
     fail('legacy-adoption-projection');
   }
-  state = await writeAndConfirm({
-    deps,
-    writer: 'writeForecast',
-    input: { issueNumber, envelope: forecastEnvelope },
-    confirms: (next) => desiredForecast(next, forecastEnvelope) !== null,
-    category: 'legacy-adoption-forecast',
-  });
-  const stored = desiredForecast(state, forecastEnvelope);
-  await writeAndConfirm({
-    deps,
-    writer: 'writeForecastReadyMarker',
-    input: { issueNumber, recordId: stored.recordId },
-    confirms: (next) => next.readyForecastRecordId === stored.recordId,
-    category: 'legacy-adoption-ready',
-  });
+  const result = await publishAdaptivePlanAuthority({ issueNumber, forecastEnvelope, deps });
+  if (result.status !== 'recorded') return result;
+  const stored = desiredForecast(await read(deps), forecastEnvelope);
   return {
+    ...result,
     status: 'converged',
     forecastRecordId: stored.recordId,
     forecastCommentNodeId: stored.commentNodeId,
@@ -269,12 +192,5 @@ async function adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, 
 }
 
 export async function adoptLegacyPlanForecast({ issueNumber, forecastEnvelope, deps = {} } = {}) {
-  return runLogicalRecordClaim(
-    deps,
-    {
-      key: `forecast:${issueNumber}:${forecastEnvelope?.payloadHash ?? forecastEnvelope?.recordId ?? 'invalid'}`,
-      issue: issueNumber,
-    },
-    () => adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, deps })
-  );
+  return adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, deps });
 }

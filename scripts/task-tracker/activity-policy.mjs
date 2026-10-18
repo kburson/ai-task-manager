@@ -24,7 +24,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { artifactShellTargets, artifactPathPolicy } from './lib/artifact-write-policy.mjs';
 import { splitCommandSegments } from './lib/gh-edit-guard.mjs';
-import { discoverBashActivity, inspectQuotedHeredocs } from './lib/mutation-context.mjs';
+import {
+  discoverBashActivity,
+  inspectQuotedHeredocs,
+  discoversScopedScript,
+  isCheckpointOnlyBash,
+} from './lib/mutation-context.mjs';
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -292,9 +297,11 @@ export function scratchShellTargets(command) {
     : null;
 }
 
-export function classifyBash(command, policy = DEFAULT_POLICY) {
+export function classifyBash(command, policy = DEFAULT_POLICY, invocationDir = process.cwd()) {
   if (typeof command !== 'string' || !command) return 'READ_*';
   const cmd = command.replace(/^\s+/, '');
+  // @story #1990 — a literal generator beside a checkpoint remains a scoped effect.
+  if (discoversScopedScript(cmd, invocationDir)) return 'WRITE_CODE';
   if (scratchShellTargets(cmd)) return 'WRITE_SCRATCH';
 
   // A compound command may stage a document after writing source. Inspect all
@@ -449,4 +456,16 @@ export function loadPolicy(cwd) {
   } catch {
     return DEFAULT_POLICY;
   }
+}
+
+// @story #1990 — the effect boundary uses exact supported command semantics.
+export function classifyDecompositionBash(
+  command,
+  policy = DEFAULT_POLICY,
+  invocationDir = process.cwd()
+) {
+  const activity = classifyBash(command, policy, invocationDir);
+  return activity === 'COMMIT_CODE' && !isCheckpointOnlyBash(command, invocationDir)
+    ? 'WRITE_CODE'
+    : activity;
 }

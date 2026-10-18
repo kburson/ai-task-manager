@@ -206,6 +206,7 @@ export async function runPlanEstimate({
     planned: effectivePlanned,
     current: effectiveCurrent,
     rationale,
+    deps: deps.plannedComment ?? deps,
   });
 
   // An EMPTY (pre-#171 all-em-dash) appendix returns `duplicate` from append;
@@ -217,6 +218,7 @@ export async function runPlanEstimate({
       planned: effectivePlanned,
       current: effectiveCurrent,
       rationale,
+      deps: deps.plannedComment ?? deps,
     });
     return { ...healed, target };
   }

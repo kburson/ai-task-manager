@@ -1,3 +1,4 @@
+// @story #1990
 // @story #1872
 // @story #65
 // Tests for scripts/task-tracker/activity-guard.mjs
@@ -8,6 +9,12 @@
 // from the project root resolved via `git rev-parse --show-toplevel`. Each
 // test sets up a temp git repo so the guard sees a known state.
 
+import {
+  nativeHookAuthority,
+  hookProviderResponse,
+  installHookProvider,
+  runNativeHookFixture,
+} from '../../../helpers/native-decomposition-hook-fixture.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -28,6 +35,9 @@ const GUARD = path.resolve(
   'task-tracker',
   'activity-guard.mjs'
 );
+const authority65 = await nativeHookAuthority(65);
+const authority1830 = await nativeHookAuthority(1830);
+const providerStates = new Map();
 const SOURCE_GUARD = path.join(path.dirname(GUARD), 'source-edit-gate.mjs');
 const BASH_GUARD = path.join(path.dirname(GUARD), 'bash-guard.mjs');
 // ---------------------------------------------------------------------------
@@ -47,6 +57,7 @@ function makeRepo({ state } = {}) {
     path.join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
     JSON.stringify(stateObj)
   );
+  providerStates.set(dir, state);
   return dir;
 }
 
@@ -58,28 +69,13 @@ function makeRepoNoState() {
 }
 
 function runGuard({ cwd, payload, stdinRaw, env = process.env, guardPath = GUARD }) {
-  const stdin = stdinRaw !== undefined ? stdinRaw : JSON.stringify(payload);
-  const result = spawnSync('node', [guardPath], {
-    cwd,
-    env,
-    input: stdin,
-    encoding: 'utf8',
-  });
-  return {
-    code: result.status,
-    stdout: result.stdout,
-    stderr: result.stderr,
-    decision: parseDecision(result.stdout),
-  };
-}
-
-function parseDecision(stdout) {
-  if (!stdout) return null;
-  try {
-    return JSON.parse(stdout);
-  } catch {
-    return null;
-  }
+  if (
+    providerStates.has(cwd) &&
+    (!payload?.cwd || payload.cwd === cwd) &&
+    !env.AITM_GH_TEST_DOUBLE_BIN?.startsWith(cwd + path.sep)
+  )
+    env = installHookProvider(cwd, authority65, providerStates.get(cwd), env);
+  return runNativeHookFixture({ cwd, payload, stdinRaw, env, guardPath });
 }
 
 function cleanup(dir) {
@@ -456,9 +452,10 @@ function writeSessionCache(dir, sid, record) {
   const sessDir = path.join(dir, '.tmp', 'aitm', 'sessions', sid);
   mkdirSync(sessDir, { recursive: true });
   writeFileSync(path.join(sessDir, 'active-task.json'), JSON.stringify(record));
+  if (record.issue === '#65') providerStates.set(dir, record.kanbanState);
 }
 
-test('session kanbanState cache supplies state when global state field is absent', () => {
+test('fresh provider state supplies lifecycle when global state is absent', () => {
   const dir = makeRepo({/* no legacy state */});
   writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'develop' });
   try {
@@ -472,7 +469,7 @@ test('session kanbanState cache supplies state when global state field is absent
   }
 });
 
-test('session kanbanState overrides legacy global state when both present', () => {
+test('fresh provider lifecycle overrides older global state', () => {
   // Legacy says develop (would allow), session cache says refine (would block).
   // Session cache wins (it mirrors the body-marker source of truth).
   const dir = makeRepo({ state: 'develop' });
@@ -490,7 +487,7 @@ test('session kanbanState overrides legacy global state when both present', () =
   }
 });
 
-test('session cache for a different issue is ignored', () => {
+test('unavailable provider lifecycle cannot borrow a different issue cache', () => {
   const dir = makeRepo({/* no legacy state */});
   writeSessionCache(dir, 'sess-a', { issue: '#999', kanbanState: 'develop' });
   try {
@@ -506,7 +503,7 @@ test('session cache for a different issue is ignored', () => {
   }
 });
 
-test('session cache with invalid kanbanState is ignored; falls back', () => {
+test('invalid provider lifecycle stays unavailable', () => {
   const dir = makeRepo({/* no legacy state */});
   writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'bogus' });
   try {
@@ -522,7 +519,7 @@ test('session cache with invalid kanbanState is ignored; falls back', () => {
   }
 });
 
-test('most-recently-modified session cache wins when multiple match', () => {
+test('latest provider lifecycle observation is used', () => {
   const dir = makeRepo({/* no legacy state */});
   // Older cache says refine
   writeSessionCache(dir, 'sess-old', { issue: '#65', kanbanState: 'refine' });
@@ -579,7 +576,7 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
       mkdirSync(path.join(child, '.ai-task-manager'), { recursive: true });
       writeFileSync(
         path.join(child, '.ai-task-manager', 'task-tracker.json'),
-        JSON.stringify({ repo: 'owner/repo', projectId: 'PVT_test' })
+        JSON.stringify(authority1830.cfg)
       );
       const sid = 'activity-plan-1830';
       setActiveTask(
@@ -593,28 +590,15 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
         child
       );
       mkdirSync(shim);
-      const fixture = {
-        data: {
-          repository: {
-            issue: {
-              assignees: { nodes: [{ login: 'tester' }] },
-              projectItems: {
-                nodes: [{ project: { id: 'PVT_test' }, fieldValueByName: { name: draftingState } }],
-                pageInfo: { hasNextPage: false },
-              },
-            },
-          },
-        },
-      };
+      const fixture = hookProviderResponse(authority1830, draftingState);
+      const snapshotFile = path.join(shim, 'snapshot.json');
+      writeFileSync(snapshotFile, JSON.stringify(fixture));
+      const shellPath = "'" + snapshotFile.replaceAll("'", "'\"'\"'") + "'";
       const script = [
         '#!/bin/sh',
-        'if [ "$1" = issue ]; then',
-        `printf '%s' '${JSON.stringify({ body: '' })}'`,
-        'elif [ "$2" = user ]; then',
-        "printf 'tester\\n'",
-        'else',
-        `printf '%s' '${JSON.stringify(fixture)}'`,
-        'fi',
+        'if [ "$1" = issue ]; then printf "{}"; elif [ "$2" = user ]; then printf "tester"; else cat ' +
+          shellPath +
+          '; fi',
       ].join('\n');
       writeFileSync(path.join(shim, 'gh'), script);
       chmodSync(path.join(shim, 'gh'), 0o755);
@@ -622,6 +606,7 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
         ...process.env,
         AI_TASK_MANAGER_SESSION_ID: sid,
         PATH: shim + path.delimiter + process.env.PATH,
+        AITM_GH_TEST_DOUBLE_BIN: shim,
       };
       const payload = {
         session_id: sid,
@@ -775,6 +760,11 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
         { issue: '#1830', kanbanState: 'review', worktreePath: child, worktreeBranch: 'work/1830' },
         child
       );
+      fixture.data.repository.issue.projectItems.nodes[0].fieldValueByName.name = 'Review';
+      fixture.data.repository.issue.projectItems.nodes[0].fieldValues.nodes.find(
+        (field) => field.field.id === 'STATUS'
+      ).name = 'Review';
+      writeFileSync(snapshotFile, JSON.stringify(fixture));
       const review = runGuard({ cwd: root, payload, env });
       assert.equal(review.decision?.decision, 'block');
       assert.match(review.decision.reason, /state differs|COMMIT_DOCS/);
@@ -805,6 +795,7 @@ test('native hook session selects its own state instead of an environment sessio
     };
     assert.equal(runGuard({ cwd: dir, payload, env }).decision, null);
     setActiveTask('payload-session', { issue: '#65', kanbanState: null }, dir);
+    providerStates.set(dir, null);
     assert.equal(runGuard({ cwd: dir, payload, env }).decision?.decision, 'block');
   } finally {
     cleanup(dir);

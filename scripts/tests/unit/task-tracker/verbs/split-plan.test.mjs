@@ -17,6 +17,8 @@ import {
   parseSplitPlanArgs,
   runSplitPlan,
 } from '../../../../task-tracker/verbs/split-plan.mjs';
+import { governedFixture } from '../lib/decomposition-governed-fixtures.mjs';
+import { observed, hash } from '../lib/decomposition-authority-fixtures.mjs';
 import { parseVerificationCommands } from '../../../../task-tracker/lib/verification-commands.mjs';
 import { extractPlanTasks } from '../../../../task-tracker/lib/decomposition-policy.mjs';
 import { parseStoryIntent } from '../../../../task-tracker/lib/user-story-quality.mjs';
@@ -226,12 +228,14 @@ test('sanctioned creator still refuses explicitly supplied administrative prose'
   }
 });
 
-function orchestrationInput(overrides = {}) {
+async function orchestrationInput(overrides = {}) {
+  const f = await governedFixture(25, { issue: 1052, repository: 'owner/repo' });
   const scratchDir = mkdtempSync(path.join(process.cwd(), '.scratch', 'split-plan-run-test-'));
-  return {
+  const args = {
     issueNumber: 1052,
     mode: 'dry-run',
-    cfg: { repo: 'owner/repo' },
+    cfg: f.cfg,
+    authority: f,
     deps: {
       projectDir: process.cwd(),
       scratchDir,
@@ -253,6 +257,22 @@ function orchestrationInput(overrides = {}) {
     ...overrides,
     cleanup: () => rmSync(scratchDir, { recursive: true, force: true }),
   };
+  f.authority.values.plan = {
+    ...f.authority.values.plan,
+    path: PLAN_PATH,
+    content: input().planText,
+    digest: hash(input().planText),
+  };
+  const sourceBody = await args.deps.fetchIssueBody();
+  const sourceTail = f.authority.body.slice(
+    f.authority.body.indexOf('## Decomposition Assessment')
+  );
+  const sourceHead = f.authority.body.slice(0, f.authority.body.indexOf('## Plan Metadata'));
+  f.authority.body = sourceHead + sourceBody + '\n\n' + sourceTail;
+  args.deps.fetchIssueBody = async () => f.authority.body;
+  args.deps.decomposition = f.deps;
+  await f.runtime.refresh(f.subject);
+  return args;
 }
 
 test('historical tasks remain readable but cannot produce split proposals', () => {
@@ -298,7 +318,7 @@ test('bad final task causes zero fragment, preflight, and create calls', async (
     SECOND_INTENT.replace('security auditor', 'governed delivery agent'),
   ];
   for (const intent of malformed) {
-    const args = orchestrationInput({ mode: 'confirm' });
+    const args = await orchestrationInput({ mode: 'confirm' });
     const calls = { fragments: 0, preflight: 0, create: 0 };
     args.deps.readPlanAtCommit = async () => input().planText.replace(SECOND_INTENT, intent);
     args.deps.writeProposalFragments = async () => {
@@ -363,7 +383,7 @@ test('accepted plan previews six distinct stories with exact normalized selector
 
 test('dry-run preflights every child and performs no live create', async () => {
   const calls = [];
-  const args = orchestrationInput();
+  const args = await orchestrationInput();
   args.deps.runCreator = async (creatorArgs) => {
     calls.push(creatorArgs);
     return { exitCode: 0, stdout: 'rendered body', stderr: '' };
@@ -386,7 +406,7 @@ test('dry-run preflights every child and performs no live create', async () => {
 
 test('reads proposal text from the pinned HEAD commit rather than the working tree', async () => {
   const reads = [];
-  const args = orchestrationInput();
+  const args = await orchestrationInput();
   args.deps.readPlanAtCommit = async (request) => {
     reads.push(request);
     return input().planText;
@@ -429,24 +449,19 @@ test('default plan reader ignores uncommitted working-tree plan changes', async 
     '### Task 1: Uncommitted rewrite\nRun: `node --test wrong.test.mjs`',
     'utf8'
   );
+  const args = await orchestrationInput();
+  args.deps.projectDir = projectDir;
+  args.deps.scratchDir = scratchDir;
+  delete args.deps.resolveHead;
+  delete args.deps.readPlanAtCommit;
+  args.deps.fetchParentIssue = async () => null;
+  args.authority.authority.values.plan = {
+    ...args.authority.authority.values.plan,
+    content: committedPlan,
+    digest: hash(committedPlan),
+  };
   try {
-    const result = await runSplitPlan({
-      issueNumber: 1052,
-      mode: 'dry-run',
-      cfg: { repo: 'owner/repo' },
-      deps: {
-        projectDir,
-        scratchDir,
-        fetchIssueBody: async () => `## Plan Metadata\n- **Plan**: ${PLAN_PATH}`,
-        evaluateIssueDecomposition: async () => ({
-          classification: { status: 'must-split' },
-          planDiagnostic: { path: planFile, source: 'metadata', diagnostic: null },
-          values: { size: 'XL', estimate: 24 },
-        }),
-        fetchParentIssue: async () => null,
-        runCreator: async () => ({ exitCode: 0, stdout: 'rendered', stderr: '' }),
-      },
-    });
+    const result = await runSplitPlan(args);
     assert.deepEqual(
       result.proposals.map((proposal) => proposal.title),
       ['Committed classifier', 'Committed CLI']
@@ -458,7 +473,7 @@ test('default plan reader ignores uncommitted working-tree plan changes', async 
 });
 
 test('human dry-run output exposes complete proposals and future creator argv', async () => {
-  const args = orchestrationInput();
+  const args = await orchestrationInput();
   try {
     const output = formatSplitPlanResult(await runSplitPlan(args));
     assert.match(output, /## Child 1: Classifier/);
@@ -478,9 +493,11 @@ test('hidden and placeholder Governing-spec metadata fall back to the sanctioned
     '<!-- - **Governing-spec**: docs/hidden.md -->',
     '- **Governing-spec**: <!-- TBD -->',
   ]) {
-    const args = orchestrationInput();
-    args.deps.fetchIssueBody = async () =>
-      ['## Plan Metadata', `- **Implementation-plan**: ${PLAN_PATH}`, governingField].join('\n');
+    const args = await orchestrationInput();
+    args.authority.authority.body = args.authority.authority.body.replace(
+      `- **Governing-spec**: ${SPEC_PATH}`,
+      governingField
+    );
     try {
       const result = await runSplitPlan(args);
       assert.ok(
@@ -502,7 +519,7 @@ test('rejects a missing --plan value instead of consuming the next option', () =
 
 test('confirm validates all drafts before the first live creation', async () => {
   const phases = [];
-  const args = orchestrationInput({ mode: 'confirm' });
+  const args = await orchestrationInput({ mode: 'confirm' });
   args.deps.runCreator = async (creatorArgs) => {
     const dry = creatorArgs.includes('--dry-run');
     const title = creatorArgs[creatorArgs.indexOf('--title') + 1];
@@ -525,7 +542,7 @@ test('confirm validates all drafts before the first live creation', async () => 
 
 test('confirm performs no live creation when any draft preflight fails', async () => {
   const phases = [];
-  const args = orchestrationInput({ mode: 'confirm' });
+  const args = await orchestrationInput({ mode: 'confirm' });
   args.deps.runCreator = async (creatorArgs) => {
     const title = creatorArgs[creatorArgs.indexOf('--title') + 1];
     phases.push(`${creatorArgs.includes('--dry-run') ? 'dry' : 'live'}:${title}`);
@@ -543,7 +560,7 @@ test('confirm performs no live creation when any draft preflight fails', async (
 
 test('refuses unresolved parent provenance before any creator call', async () => {
   const calls = [];
-  const args = orchestrationInput();
+  const args = await orchestrationInput();
   args.deps.fetchParentIssue = async () => {
     throw new Error('parent lookup unavailable');
   };
@@ -560,7 +577,7 @@ test('refuses unresolved parent provenance before any creator call', async () =>
 });
 
 test('refuses malformed resolved parent provenance', async () => {
-  const args = orchestrationInput();
+  const args = await orchestrationInput();
   args.deps.fetchParentIssue = async () => 0;
   try {
     await assert.rejects(() => runSplitPlan(args), /resolved parent must be null or a positive/);
@@ -571,7 +588,7 @@ test('refuses malformed resolved parent provenance', async () => {
 
 test('confirm stops on partial live failure and retains created issue numbers', async () => {
   const live = [];
-  const args = orchestrationInput({ mode: 'confirm' });
+  const args = await orchestrationInput({ mode: 'confirm' });
   args.deps.readFile = () => `${input().planText}\n### Task 3: Docs\nRun: \`npm run docs:test\``;
   args.deps.runCreator = async (creatorArgs) => {
     if (creatorArgs.includes('--dry-run')) return { exitCode: 0, stdout: 'rendered', stderr: '' };

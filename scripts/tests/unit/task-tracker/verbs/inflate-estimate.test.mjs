@@ -1,5 +1,10 @@
 // @story #124
 import assert from 'node:assert/strict';
+import { after } from 'node:test';
+import { rmSync } from 'node:fs';
+import { observed, fixture, freshUnitDir } from '../lib/decomposition-authority-fixtures.mjs';
+const directories = [];
+after(() => directories.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 
 import {
   parseArgs,
@@ -87,28 +92,52 @@ const FIELD_DEFS = [
 ];
 
 function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
-  const patched = [];
-  const boardWrites = [];
-  const bodyWrites = [];
-
+  const patched = [],
+    boardWrites = [],
+    bodyWrites = [],
+    dir = freshUnitDir('inflation-existing-');
+  directories.push(dir);
+  let body = issueBody;
+  let values = { size: 'S', estimate: 2 };
+  const f = fixture(2);
+  if (issueBody === ISSUE_BODY) body = f.body.replace('"size":"M"', '"size":"S"');
+  const decomposition = {
+    ...f.deps,
+    readIssue: async () => observed({ number: 42, body }),
+    readBackIssue: async () => observed({ number: 42, body }),
+    readProject: async () =>
+      observed({ projectId: 'PVT_FAKE', projectItemId: 'ITEM_FAKE', ...values, children: [] }),
+    readForecast: async () => observed({ estimate: null, size: null, recordId: null }),
+    fetchBody: async () => body,
+    pushBody: async (_repo, _issue, next) => {
+      body = next;
+    },
+  };
   return {
     deps: {
+      projectDir: dir,
+      decomposition,
       listComments: async () => comments,
-      patchComment: async ({ commentId, body }) => {
-        patched.push({ commentId, body });
+      patchComment: async ({ commentId, body: next }) => {
+        patched.push({ commentId, body: next });
+        comments = comments.map((c) => (c.id === commentId ? { ...c, body: next } : c));
       },
-      getIssueBody: async () => issueBody,
+      getIssueBody: async () => body,
       mutateIssueBody: async ({ mutate }) => {
-        const next = mutate(issueBody);
-        if (next === issueBody) return { status: 'no-op' };
-        bodyWrites.push(next);
+        const next = await mutate(body);
+        if (next !== body) {
+          body = next;
+          bodyWrites.push(next);
+        }
         return { status: 'ok' };
       },
-      projectValuesForIssue: async () => ({ size: 'S', estimate: 2 }),
+      projectValuesForIssue: async () => ({ ...values }),
       projectItemForIssue: async () => ({ issueId: 'ISS_FAKE', itemId: 'ITEM_FAKE' }),
       fieldOptionMap: async () => ({ F_SIZE: { S: 'opt_s', M: 'opt_m', L: 'opt_l' } }),
       writeProjectFieldValue: async (args) => {
         boardWrites.push(args);
+        if (args.fieldId === 'F_EST') values.estimate = args.value.number;
+        else values.size = args.value.singleSelectOptionName;
       },
       loadProjectFieldDefs: () => FIELD_DEFS,
     },
@@ -138,8 +167,8 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
     deps
   );
 
-  assert.equal(result.status, 'appended');
-  assert.equal(result.boardUpdated, true);
+  assert.equal(result.status, 'recorded');
+  assert.equal(boardWrites.length, 2);
 
   // Comment was patched once
   assert.equal(patched.length, 1);
@@ -237,7 +266,7 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
     deps
   );
 
-  assert.equal(result.status, 'appended');
+  assert.equal(result.status, 'recorded');
   assert.equal(patched.length, 1);
 
   // Both inflation sections must be present

@@ -1,3 +1,4 @@
+// @story #1986
 // @story #1926
 // @story #1904
 // @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
@@ -220,6 +221,15 @@ test('package-boundary: shipped README has no dead docs/introduction link', () =
 
 test('package-boundary: total entry count stays under the ceiling', () => {
   const files = packedFiles();
+  // #1986 inventory measured 919 entries versus the prior 917 ceiling:
+  // exactly the strict runtime assessment and record codec, with tests excluded.
+  for (const entry of [
+    'scripts/task-tracker/lib/decomposition-assessment.mjs',
+    'scripts/task-tracker/lib/decomposition-records.mjs',
+    'scripts/task-tracker/lib/decomposition-authority.mjs',
+    'scripts/task-tracker/lib/decomposition-projection.mjs',
+  ])
+    assert.ok(files.includes(entry));
   // #1635 ships one false-delivery recovery authority. Keep its allowance
   // separate so the preserved #1624 branch can apply its exact ceiling change
   // without both histories editing the same base hunk.
@@ -364,8 +374,25 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const graphqlUsageCollectionAllowance = 3;
   // #1838 ships four offline report modules, the companion CLI and operator guide.
   const graphqlUsageReportAllowance = 6;
+  // #1988 measured exactly twelve shipped publication runtime adapters; no spare headroom.
+  const estimatePublicationEntries = [
+    'scripts/task-tracker/lib/decomposition-publication.mjs',
+    'scripts/task-tracker/lib/decomposition-publication-inputs.mjs',
+    'scripts/task-tracker/lib/estimate-writer-publication.mjs',
+    'scripts/task-tracker/lib/decomposition-adaptive-writer.mjs',
+    'scripts/task-tracker/lib/decomposition-proposal-writer.mjs',
+    'scripts/task-tracker/lib/decomposition-field-writer.mjs',
+    'scripts/task-tracker/lib/decomposition-audit-writer.mjs',
+    'scripts/task-tracker/lib/decomposition-cancellation-writer.mjs',
+    'scripts/task-tracker/lib/decomposition-shelve-writer.mjs',
+    'scripts/task-tracker/lib/decomposition-writer-registry.mjs',
+    'scripts/task-tracker/lib/decomposition-migration-writer.mjs',
+    'scripts/task-tracker/lib/initial-project-fields.mjs',
+  ];
+  for (const entry of estimatePublicationEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
     ENTRY_CEILING +
+    estimatePublicationEntries.length +
     recoveryEntryAllowance +
     childIntegrationEntries.length +
     baselineEntries.length +
@@ -422,11 +449,25 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     12 + // #1872: ten admission modules, the collection grouping module and operator guide.
     1 + // #1904: shared root AC section locator; actual package delta is exactly one file.
     1 + // #1954: strict shared project membership reader; measured delta is one runtime file.
+    2 + // #1986: measured +2 for the strict assessment and record codec only.
+    2 + // #1987: measured +2 for current authority and protected projection only.
+    3 + // #1990: exactly three fresh hook/effect composition modules.
+    1 + // #1989: one current continuation composition helper; no new dependency.
+    1 + // #2006: exactly one bounded target classifier; the repair plan/tests remain excluded.
     2 + // #2022: audited rebaseline recovery and native execution proof reader.
     1; // #2026: exactly one closed historical actor-evidence recovery module.
   assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-evidence-recovery.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/heal-timing-rebaseline.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/timing-rebaseline-proof.mjs'));
+  for (const added of ['scripts/task-tracker/lib/decomposition-local-targets.mjs'])
+    assert.ok(files.includes(added), 'required reviewed addition missing: ' + added);
+  for (const module of [
+    'decomposition-activity',
+    'decomposition-hook-authority',
+    'decomposition-effect-admission',
+  ])
+    assert.ok(files.includes('scripts/task-tracker/lib/' + module + '.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/action-decision/decomposition.mjs'));
   assert.ok(files.includes('scripts/run-tests-shards.mjs'));
   assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(

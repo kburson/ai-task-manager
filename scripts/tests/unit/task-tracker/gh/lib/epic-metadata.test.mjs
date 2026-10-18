@@ -1,4 +1,5 @@
 // @story #1130 — canonical Epic metadata convergence.
+import { governedFixture } from '../../lib/decomposition-governed-fixtures.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -61,13 +62,27 @@ test('reconciles the body marker and Epic-specific DoD idempotently', () => {
 });
 
 test('reconciler writes only missing carriers and verifies live readback', async () => {
-  let live = { title: 'Metadata drift', labels: ['bug'], body: BODY };
+  const f = await governedFixture(7, { issue: 42 });
+  f.authority.body = f.authority.body.replace('## AITM Progress Markers', BODY);
+  let live = {
+    title: 'Metadata drift',
+    labels: ['bug'],
+    get body() {
+      return f.authority.body;
+    },
+    set body(value) {
+      f.authority.body = value;
+    },
+  };
   const writes = [];
   const result = await reconcileEpicMetadata({
     issueNumber: 42,
     repo: 'o/r',
     forceEpic: true,
+    cfg: f.cfg,
+    projectDir: f.projectDir,
     deps: {
+      ...f.ctx.deps,
       readIssue: async () => structuredClone(live),
       readDodTemplate: () => DOD,
       mutateIssueBody: async ({ mutate }) => {
@@ -93,7 +108,10 @@ test('reconciler writes only missing carriers and verifies live readback', async
     issueNumber: 42,
     repo: 'o/r',
     forceEpic: true,
+    cfg: f.cfg,
+    projectDir: f.projectDir,
     deps: {
+      ...f.ctx.deps,
       readIssue: async () => structuredClone(live),
       readDodTemplate: () => DOD,
       mutateIssueBody: async ({ mutate }) => {
@@ -111,13 +129,17 @@ test('reconciler writes only missing carriers and verifies live readback', async
 });
 
 test('reconciler fails closed when readback remains incomplete', async () => {
+  const f = await governedFixture(7, { issue: 42 });
   await assert.rejects(
     reconcileEpicMetadata({
       issueNumber: 42,
       repo: 'o/r',
       forceEpic: true,
+      cfg: f.cfg,
+      projectDir: f.projectDir,
       deps: {
-        readIssue: async () => ({ title: 'Metadata drift', labels: [], body: BODY }),
+        ...f.ctx.deps,
+        readIssue: async () => ({ title: 'Metadata drift', labels: [], body: f.authority.body }),
         readDodTemplate: () => DOD,
         mutateIssueBody: async () => ({ status: 'ok' }),
         writeVisible: async () => {},
