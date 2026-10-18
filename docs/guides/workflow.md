@@ -1699,13 +1699,13 @@ See [Authorized epic rank waves](epic-rank-waves.md) for the registered
 The owning operator uses the admitted source-qualified runtime from the bound AIVC worktree, first read-only:
 
 ```sh
-node /path/to/admitted/ai-task-manager/bin/aitm.mjs heal-timing-log 63 --actor-evidence-recovery aivc-63-2026-10-17
+node /path/to/admitted/ai-task-manager/scripts/task-tracker/heal-timing-log.mjs 63 --actor-evidence-recovery aivc-63-2026-10-17
 ```
 
 Before apply, start the owning task normally. Supply both fresh `sourceSha` and `commentId` returned by that dry-run:
 
 ```sh
-node /path/to/admitted/ai-task-manager/bin/aitm.mjs heal-timing-log 63 --actor-evidence-recovery aivc-63-2026-10-17 --apply --expected-source-sha SHA --expected-comment-id ID
+node /path/to/admitted/ai-task-manager/scripts/task-tracker/heal-timing-log.mjs 63 --actor-evidence-recovery aivc-63-2026-10-17 --apply --expected-source-sha SHA --expected-comment-id ID
 ```
 
 The existing issue lock encloses observation, planning, write-once `before.md`/`candidate.md`/`manifest.json` archive, fresh source comparison, authenticated owner recheck and exact canonical read-back. The archive path is returned as `evidenceDir`. If legitimate rows append after dry-run, obtain new identities; never substitute a guessed hash. A repeated canonical recovery is a no-op. This operation does not stamp application verification, Review, approval, delivery or Done. The owning application chat must run its remaining normal gates.
