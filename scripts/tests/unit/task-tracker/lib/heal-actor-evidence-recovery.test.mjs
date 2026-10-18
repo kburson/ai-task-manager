@@ -324,3 +324,14 @@ test('changed ownership before write retains the archive but refuses publication
   await assert.rejects(runHeal({ ...apply, deps }), /current-owner-binding/);
   assert.equal(state.writes.length, 0);
 });
+for (const suffix of [appended, appended.replace('| update |', '| made-up-event |')]) {
+  test('blank-separated appended rows cannot escape the canonical table validator', async (t) => {
+    const body = original.trimEnd() + '\n\n' + suffix + '\n';
+    const { state, deps } = transport(t, body);
+    await assert.rejects(
+      runHeal({ ...apply, expectedSourceSha: hash(body), deps }),
+      /invalid-candidate/
+    );
+    assert.equal(state.writes.length, 0);
+  });
+}

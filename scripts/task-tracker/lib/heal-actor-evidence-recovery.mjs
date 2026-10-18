@@ -4,7 +4,10 @@ import { mkdtempSync, writeFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import { buildReviewContext } from './agent-review/review-gate.mjs';
-import { validate as validateSequence } from './agent-review/validators/timing-log-sequence.mjs';
+import {
+  validate as validateSequence,
+  extractDataRows,
+} from './agent-review/validators/timing-log-sequence.mjs';
 import { currentSessionId, aiAppName } from '../word-counter.mjs';
 import { getActiveTask } from '../session-state.mjs';
 import { timingBodySha } from './heal-actor-opener-replays.mjs';
@@ -64,6 +67,7 @@ export function planActorEvidenceRecovery(body, { profile, repo, issueNumber, co
     .split('\n')
     .map(parseTimingRow)
     .filter((row) => row && isTableTimingTimestamp(row.ts));
+  if (extractDataRows(candidate).length !== rows.length) refuse('invalid-candidate');
   let previous = -Infinity;
   const spans = new Map();
   for (const row of rows) {
