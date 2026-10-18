@@ -130,3 +130,69 @@ test('the mutation host prints active sibling advice without changing the ready 
   assert.equal(result.exit, null);
   assert.ok(warnings.some((message) => message.includes('#11') && message.includes('budget=1')));
 });
+
+for (const blocked of [false, true])
+  test(`Explain retains the registered capacity warning when dependency readiness is ${blocked ? 'blocked' : 'ready'}`, async () => {
+    const { createObservationAttempt } =
+      await import('../../../../task-tracker/lib/action-decision/observations.mjs');
+    const { evaluateAction } =
+      await import('../../../../task-tracker/lib/action-decision/evaluate.mjs');
+    const registry = await import(
+      `../../../../task-tracker/lib/guard-registry.mjs?advisory=explain-${blocked}`
+    );
+    const selected = STATES['ready-for-plan'].exitGuards.filter((guard) =>
+      ['blocked-by-not-done', refineExitWipBudgetGuard.id].includes(guard.id)
+    );
+    assert.equal(selected.length, 2);
+    for (const guard of selected) registry.registerGuard('ready-for-plan', 'exit', guard);
+    const ctx = context(false);
+    const body =
+      '<!-- aitm-last-known-state state="ready-for-plan" ts="2026-10-18T00:00:00.000Z" -->\n## User Story\nAs a delivery operator, prepare independent work.\n## Scope\nPrepare independent work.\n## Acceptance Criteria\n- [ ] Surface a capacity warning.\n';
+    const decision = await evaluateAction({
+      actionId: 'promote',
+      repository: ctx.cfg.repo,
+      issue: ctx.issueNumber,
+      inputs: {
+        state: 'ready-for-plan',
+        head: 'a'.repeat(40),
+        body,
+        sessionState: {},
+        config: ctx.cfg,
+      },
+      attempt: createObservationAttempt({
+        repository: ctx.cfg.repo,
+        issue: ctx.issueNumber,
+        boundaryId: `explain:promote:${ctx.issueNumber}`,
+        now: () => '2026-10-18T00:00:00.000Z',
+        read: async (request) => ({
+          ...request,
+          value:
+            request.resource === 'issue-body'
+              ? { number: ctx.issueNumber, body }
+              : request.resource === 'project-board'
+                ? { state: 'ready-for-plan' }
+                : { active: false },
+        }),
+      }),
+      deps: {
+        effectAttempts: () => [],
+        promotePorts: {
+          projectDir: process.cwd(),
+          sessionPolicy: {},
+          runGuards: (from, to, current) =>
+            registry.runGuards(from, to, {
+              ...current,
+              ...ctx,
+              readDependencies: async () => ({ blockedBy: blocked ? [11] : [] }),
+              fetchBlockerState: async () => 'develop',
+              reconcileDisposition: async () => {},
+            }),
+        },
+      },
+    });
+    assert.equal(decision.status, blocked ? 'blocked' : 'ready', JSON.stringify(decision));
+    assert.deepEqual(decision.warnings, [warning]);
+    if (blocked)
+      assert.ok(decision.blockers.some(({ guardId }) => guardId === 'blocked-by-not-done'));
+    else assert.deepEqual(decision.blockers, []);
+  });
