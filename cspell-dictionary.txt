@@ -8,6 +8,7 @@ affordances
 Agentic
 aitm
 AITM
+AIVC
 Amdahl
 Andrej
 Anysphere

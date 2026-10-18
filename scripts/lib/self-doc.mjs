@@ -1314,7 +1314,7 @@ const DIRECT_SELF_DOC = Object.freeze({
     synopsis:
       'Audit or heal historical Timing Log rows, proven actor opener replays and continuous session checkpoints.',
     usage:
-      'heal-timing-log (<issue#> [--actor-opener-replays|--continuity-session SID|--rebaseline-session SID] [--apply|--check-only] [--expected-source-sha SHA --expected-comment-id ID --expected-transcript-sha SHA] | --sweep [--state open|closed|all] [--scope N,N] [--apply]) [--yes]',
+      'heal-timing-log (<issue#> [--actor-opener-replays|--actor-evidence-recovery PROFILE|--continuity-session SID|--rebaseline-session SID] [--apply|--check-only] [--expected-source-sha SHA --expected-comment-id ID --expected-transcript-sha SHA] | --sweep [--state open|closed|all] [--scope N,N] [--apply]) [--yes]',
     arguments: [
       argument('<issue#>|--sweep', 'Single issue or corpus mode.'),
       argument('--state/--scope', 'Sweep filters.'),
@@ -1323,6 +1323,10 @@ const DIRECT_SELF_DOC = Object.freeze({
       argument(
         '--actor-opener-replays',
         'Per-issue dry-run of proven redundant actor openers; refuses conflicting evidence.'
+      ),
+      argument(
+        '--actor-evidence-recovery PROFILE',
+        'Exact reviewed historical actor recovery; currently aivc-63-2026-10-17 only. Preserves every original row and Unknown; apply requires a current bound owner and both dry-run identities.'
       ),
       argument(
         '--continuity-session SID',

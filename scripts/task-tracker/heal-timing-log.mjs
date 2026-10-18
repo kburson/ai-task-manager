@@ -29,6 +29,7 @@ import {
   updateTimingComment as realUpdateTimingComment,
 } from './gh-timing-comment.mjs';
 import { recoverTimingContinuity } from './lib/heal-timing-continuity.mjs';
+import { recoverActorEvidence } from './lib/heal-actor-evidence-recovery.mjs';
 import { recoverTimingRebaseline } from './lib/heal-timing-rebaseline.mjs';
 import { recoverActorOpenerReplays } from './lib/heal-actor-opener-replays.mjs';
 import { withLock } from './locks.mjs';
@@ -58,6 +59,7 @@ export async function runHeal({
   repo,
   apply = false,
   actorOpenerReplays = false,
+  actorEvidenceRecovery,
   continuitySession,
   rebaselineSession,
   expectedTranscriptSha,
@@ -72,6 +74,22 @@ export async function runHeal({
   const findTimingComment = deps.findTimingComment || realFindTimingComment;
   const updateTimingComment = deps.updateTimingComment || realUpdateTimingComment;
 
+  if (actorEvidenceRecovery != null) {
+    if (actorOpenerReplays || continuitySession != null || rebaselineSession != null)
+      throw new TypeError('actor-evidence-recovery:conflicting-modes');
+    return recoverActorEvidence({
+      issueNumber,
+      repo,
+      profile: actorEvidenceRecovery,
+      apply,
+      expectedSourceSha,
+      expectedCommentId,
+      readCanonicalTimingSource: deps.readCanonicalTimingSource || realReadCanonicalTimingSource,
+      updateTimingComment,
+      projectDir: deps.getProjectDir?.() || getProjectDir(),
+      deps,
+    });
+  }
   if (rebaselineSession != null) {
     if (continuitySession != null || actorOpenerReplays)
       throw new TypeError('timing-rebaseline:conflicting-modes');
@@ -196,6 +214,7 @@ export function parseArgs(argv) {
     yes: false,
     delayMs: 0,
     actorOpenerReplays: false,
+    actorEvidenceRecovery: null,
     continuitySession: null,
     rebaselineSession: null,
     expectedTranscriptSha: null,
@@ -204,7 +223,10 @@ export function parseArgs(argv) {
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--rebaseline-session') out.rebaselineSession = argv[++i];
+    if (a === '--actor-evidence-recovery') out.actorEvidenceRecovery = argv[++i];
+    else if (a.startsWith('--actor-evidence-recovery='))
+      out.actorEvidenceRecovery = a.slice('--actor-evidence-recovery='.length);
+    else if (a === '--rebaseline-session') out.rebaselineSession = argv[++i];
     else if (a.startsWith('--rebaseline-session='))
       out.rebaselineSession = a.slice('--rebaseline-session='.length);
     else if (a === '--continuity-session') out.continuitySession = argv[++i];
@@ -300,6 +322,7 @@ async function healUnderLock({
   repo,
   apply,
   actorOpenerReplays,
+  actorEvidenceRecovery,
   continuitySession,
   rebaselineSession,
   expectedTranscriptSha,
@@ -319,6 +342,7 @@ async function healUnderLock({
         repo,
         apply,
         actorOpenerReplays,
+        actorEvidenceRecovery,
         continuitySession,
         rebaselineSession,
         expectedTranscriptSha,
@@ -335,7 +359,12 @@ async function healUnderLock({
 
 async function runPerIssue(args, { repo, out, deps }) {
   const res = await healUnderLock({ ...args, issueNumber: args.issue, repo, deps });
-  if (args.actorOpenerReplays || args.continuitySession || args.rebaselineSession) {
+  if (
+    args.actorOpenerReplays ||
+    args.actorEvidenceRecovery ||
+    args.continuitySession ||
+    args.rebaselineSession
+  ) {
     out.write(JSON.stringify(res) + '\n');
     return;
   }
@@ -442,6 +471,7 @@ export async function main(argv, deps = {}) {
         '--delay-ms',
         '--continuity-session',
         '--rebaseline-session',
+        '--actor-evidence-recovery',
         '--expected-transcript-sha',
         '--expected-source-sha',
         '--expected-comment-id',
@@ -455,6 +485,22 @@ export async function main(argv, deps = {}) {
   }
 
   const args = parseArgs(argv);
+  if (
+    args.actorEvidenceRecovery !== null &&
+    (args.sweep ||
+      args.actorOpenerReplays ||
+      args.continuitySession !== null ||
+      args.rebaselineSession !== null ||
+      args.expectedTranscriptSha !== null ||
+      args.actorEvidenceRecovery !== 'aivc-63-2026-10-17' ||
+      (args.apply &&
+        (!/^[a-f0-9]{64}$/.test(args.expectedSourceSha ?? '') || !args.expectedCommentId?.trim())))
+  ) {
+    err.write(
+      'historical actor evidence recovery requires its reviewed profile, separate per-issue mode and dry-run identities for apply\n'
+    );
+    return exit(2);
+  }
   if (args.rebaselineSession !== null) {
     if (
       args.sweep ||
@@ -479,6 +525,7 @@ export async function main(argv, deps = {}) {
   if (
     (args.actorOpenerReplays && args.sweep) ||
     (!args.actorOpenerReplays &&
+      !args.actorEvidenceRecovery &&
       !args.rebaselineSession &&
       !args.continuitySession &&
       (args.expectedSourceSha || args.expectedCommentId))
