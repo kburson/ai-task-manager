@@ -1,0 +1,80 @@
+{
+  "issue": 2012,
+  "finding": "R5-1 guarded completion sequence",
+  "sourceCommit": "ceb8e75a94a1c49188e831fa9624d75c005e8f52",
+  "inputReviewCommit": "f9030407a29a1f77c668f480b00146c3e88a7181",
+  "fixBase": "9abd90a50bc83ddf57d6f296dd1c5889431d1876",
+  "acceptedSourceBase": "2fd90eb3f84f442e0329783943ed432b45d25473",
+  "authorSession": "01a138e5-7d07-7671-883d-e4ef5d43f917",
+  "model": "gpt-6.1-sol",
+  "reasoningEffort": "high",
+  "tarball": {
+    "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/runtime/2012-ceb8e75a9/kburson-ai-task-manager-0.1.0.tgz",
+    "size": 3006760,
+    "sha256": "3d6aed85f863ff16fe9216e46d2536821486d6d4c3a47855882fd7cdacfa4f9b",
+    "sha512SRI": "sha512-4Tl+eD3IcZoc2khSHjQiKloZ90au1QOYZP7fNPMuDghCcRzoGBK9w1zTvanMBc59Vz3IxBEg3VlCnUG7h1Y/wQ==",
+    "npmIntegrityMatched": true,
+    "packedFileCount": 917,
+    "allPackedFilesMatchCleanArchive": true,
+    "allPackedFilesMatchGitBlobs": true,
+    "rawInventoryPath": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/runtime/2012-ceb8e75a9/package-inventory.json",
+    "rawInventorySha256": "79454f365010eefa2f155dbff0864fe088d475f7e0e788b0604f161a5a8ad105"
+  },
+  "moduleHashes": {
+    "scripts/task-tracker/lib/epic-rank-wave-source.mjs": {
+      "sha256": "e87a1ec60849aa9784b94fbf9e291c3d2c515d281f79ef6c350389f2401c613d",
+      "unchangedFromAcceptedBase": false
+    },
+    "scripts/task-tracker/lib/epic-orchestration-plan.mjs": {
+      "sha256": "470780dbb033bc6cd784e4323378d0006a0d43b6be2987ecaf3fa159fe139b92",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-refinement.mjs": {
+      "sha256": "88235288c4791d7ba474c20f220f82749efe9d48097844cb61a0f5ac47840e42",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/gh/lib/wave-admission.mjs": {
+      "sha256": "9ae090dc9777973939b48f3fa57fdd9026942171c49cf13a87d3de0b4cae1b21",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs": {
+      "sha256": "4191951b0608ec2fc238865ea9f65e2e4826da6f9e3cff4976dff29b33de74bf",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-authority.mjs": {
+      "sha256": "36268489784a879c06399d67c3304e210a4615115621abb439ac070e038fd361",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/workflow-policy/authority-resolver.mjs": {
+      "sha256": "b3be4a1b6fc2a9840d223198e2ab740e780d5cd848841672b0f07f9c6036e768",
+      "unchangedFromAcceptedBase": true
+    },
+    "bin/aitm.mjs": {
+      "sha256": "decc8fa85508c2c6d5cf260315a7da4e58964d1c56c2c51b044e6a196fa6e05d",
+      "unchangedFromAcceptedBase": true
+    },
+    "bin/cli.mjs": {
+      "sha256": "998d676439ea8735bf7d7fc65d6d0c90936bf4585106dc5de32391a0c642891f",
+      "unchangedFromAcceptedBase": true
+    }
+  },
+  "regressionSha256": "38dd198ebd24a43bc3845003aba1389b3e55a68265ba107f87be1d7945049698",
+  "report": {
+    "path": "docs/verification/2012-deferred-wave-pause-author-r6/report.md",
+    "sha256": "908c40a6465ce02fd8e73d2abda29d79e5a77cf64ab389da7f73201af5af0e5e"
+  },
+  "verification": {
+    "focusedTests": 167,
+    "affectedTests": 239,
+    "adjacentTests": 19,
+    "fastFiles": 961,
+    "independentProbeInputs": 147
+  },
+  "priorRecordsPreserved": true,
+  "consumerInstallationOrReadinessClaimed": false,
+  "pending": [
+    "same Astra exact-source/package re-review",
+    "Root adoption and actual native admission",
+    "full upstream slow/canonical Test/Review/Done"
+  ]
+}

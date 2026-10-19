@@ -1,0 +1,978 @@
+[
+  {
+    "text": "when wave 4 is complete I need you to pause.  I will start a fresh chat session to continue #2",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "Stop deployment and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop deployment and parallel execution for epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Hold off on deployment and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Hold off on deployment and parallel execution for epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Do not start deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to start deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop now.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["When wave 4 is complete pause. Stop now."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause and revoke epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["When wave 4 is complete pause and revoke epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete do not pause.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 5 is complete pause.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Pause epic #2 rank 4 now.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["When wave 4 is complete pause. Pause epic #2 rank 4 now."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. We should not run tests yet.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Do not execute tests.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Do not proceed with testing.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "I do not want to run tests.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "I do not want to start deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run epic #2 rank 4 in parallel.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. I do not want to run epic #2 rank 4 in parallel."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deploying and running epic #2 rank 4 in parallel.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. Stop deploying and running epic #2 rank 4 in parallel."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop deployment, tests, and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop deployment, tests, and parallel execution for epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop deployment, parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop deployment, parallel execution for epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests or execute epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. I do not want to run tests or execute epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests and execute epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. I do not want to run tests and execute epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "I do not want to run tests or execute epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["I do not want to run tests or execute epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want you to run tests or start epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. I do not want you to run tests or start epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests or start deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 5.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "Stop deployment & parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop deployment & parallel execution for epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop deployment, and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop deployment, and parallel execution for epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deployment for epic #2 rank 4 and parallel execution for epic #3 rank 4.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 5.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Do not stop deployment and parallel execution for epic #2 rank 4.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Do not run tests and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. Do not run tests and parallel execution for epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests, but stop now.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. I do not want to run tests, but stop now."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to stop epic #2 rank 4.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "Stop deployment and parallel execution for epic #2 rank 3 and 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop deployment and parallel execution for epic #2 rank 3 and 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop deployment and parallel execution for epic #2 rank 3 and 5.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "Stop parallel execution for epic #3 rank 4 and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "Stop parallel execution for epic #3 rank 4 and parallel execution for epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete stop parallel execution for epic #2 rank 4 and deployment. Stop now.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete stop parallel execution for epic #2 rank 4 and deployment. Stop now."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop lint, tests, deployment, and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "Stop lint, tests, deployment, and parallel execution for epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop lint, tests, deployment, and parallel execution for epic #2 rank 5.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "Stop deployment, tests & parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop deployment, tests & parallel execution for epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop deployment, tests, or parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop deployment, tests, or parallel execution for epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop tests and parallel execution for epic #2 ranks 3, 4 and 5.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop tests and parallel execution for epic #2 ranks 3, 4 and 5."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop tests and parallel execution for epic #2 ranks 3, 5 and 6.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "Stop tests, deployment, and stories #4, #5, #6 of epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": ["Stop tests, deployment, and stories #4, #5, #6 of epic #2 rank 4."],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Stop tests, deployment, and stories #8, #9, #10 of epic #2 rank 5.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop parallel execution for epic #3 rank 4, deployment for epic #2 rank 4.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop testing because parallel execution for epic #2 rank 4 is complete.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop tests, deployment, and lint because parallel execution for epic #2 rank 4 is complete.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop parallel execution for epic #2 rank 4 because tests and deployment failed.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. Stop parallel execution for epic #2 rank 4 because tests and deployment failed."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I never want to run tests, execute tests, or start epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. I never want to run tests, execute tests, or start epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I never want to run tests, execute tests, or start deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests, please execute epic #2 rank 4.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests, I will execute epic #2 rank 4.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests and we should execute epic #2 rank 4.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests and please stop parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause. I do not want to run tests and please stop parallel execution for epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause lint, tests, and parallel execution for epic #2 rank 4. Please stop now.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause lint, tests, and parallel execution for epic #2 rank 4. Please stop now."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause lint, tests, and parallel execution for epic #2 rank 4. Pause wave 5.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause tests and parallel execution for epic #3 rank 4. Stop tests.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause parallel execution for epic #2 rank 4, tests, and deployment. Stop immediately.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause parallel execution for epic #2 rank 4, tests, and deployment. Stop immediately."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause tests, deployment, and parallel execution for epic #2 rank 4. I do not want to execute tests.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause tests, deployment, and parallel execution for epic #2 rank 4. I do not want to execute epic #2 rank 4.",
+    "expected": "blocked",
+    "corrected": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "subsequentStatements": [
+      "When wave 4 is complete pause tests, deployment, and parallel execution for epic #2 rank 4. I do not want to execute epic #2 rank 4."
+    ],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests, please start deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests, I will start deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "I do not want to run tests, please start deployment.",
+    "expected": "verified",
+    "corrected": {
+      "status": "verified",
+      "code": null
+    },
+    "subsequentStatements": [],
+    "historicalRejectedOutcome": {
+      "status": "verified",
+      "code": null
+    }
+  }
+]

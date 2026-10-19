@@ -1,0 +1,767 @@
+[
+  {
+    "text": "when wave 4 is complete I need you to pause.  I will start a fresh chat session to continue #2",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "Stop deployment and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "Hold off on deployment and parallel execution for epic #2 rank 4.",
+    "expected": "blocked",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deployment.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Do not start deployment.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to start deployment.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop now.",
+    "expected": "blocked",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause and revoke epic #2 rank 4.",
+    "expected": "blocked",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete do not pause.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 5 is complete pause.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Pause epic #2 rank 4 now.",
+    "expected": "blocked",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. We should not run tests yet.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Do not execute tests.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Do not proceed with testing.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run tests.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "I do not want to run tests.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "I do not want to start deployment.",
+    "expected": "verified",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. I do not want to run epic #2 rank 4 in parallel.",
+    "expected": "blocked",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "text": "When wave 4 is complete pause. Stop deploying and running epic #2 rank 4 in parallel.",
+    "expected": "blocked",
+    "origin": "prior-review",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "Stop deployment, tests, and parallel execution for epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "Stop deployment, parallel execution for epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "When wave 4 is complete pause. I do not want to run tests or execute epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "When wave 4 is complete pause. I do not want to run tests and execute epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "I do not want to run tests or execute epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "When wave 4 is complete pause. I do not want you to run tests or start epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "verified",
+    "text": "When wave 4 is complete pause. I do not want to run tests or start deployment.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "verified",
+    "text": "When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 5.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "Stop deployment & parallel execution for epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "Stop deployment, and parallel execution for epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "expected": "verified",
+    "text": "When wave 4 is complete pause. Stop deployment for epic #2 rank 4 and parallel execution for epic #3 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "verified",
+    "text": "When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 5.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "verified",
+    "text": "When wave 4 is complete pause. Do not stop deployment and parallel execution for epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "When wave 4 is complete pause. Do not run tests and parallel execution for epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "When wave 4 is complete pause. I do not want to run tests, but stop now.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "expected": "verified",
+    "text": "When wave 4 is complete pause. I do not want to stop epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "Stop deployment and parallel execution for epic #2 rank 3 and 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "expected": "verified",
+    "text": "Stop deployment and parallel execution for epic #2 rank 3 and 5.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "Stop parallel execution for epic #3 rank 4 and parallel execution for epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "verified",
+    "text": "When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "verified",
+    "text": "When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop deployment.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "verified",
+      "code": null
+    },
+    "fixBase": {
+      "status": "verified",
+      "code": null
+    },
+    "tarball": {
+      "status": "verified",
+      "code": null
+    }
+  },
+  {
+    "expected": "blocked",
+    "text": "When wave 4 is complete stop parallel execution for epic #2 rank 4 and deployment. Stop now.",
+    "origin": "r2-boundary",
+    "reviewed": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "fixBase": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    },
+    "tarball": {
+      "status": "blocked",
+      "code": "rank-wave-source-contradiction"
+    }
+  }
+]

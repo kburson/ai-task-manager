@@ -1,0 +1,30 @@
+✖ shared withdrawal verbs evaluate every coordinated operational and admission target (16.541542ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 80.592666
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:247:1
+✖ shared withdrawal verbs evaluate every coordinated operational and admission target (16.541542ms)
+  AssertionError [ERR_ASSERTION]: Stop deployment, and parallel execution for epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:260:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

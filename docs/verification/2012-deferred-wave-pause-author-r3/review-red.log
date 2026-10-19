@@ -1,0 +1,300 @@
+✔ exact completion pause preserves original authority during the native later-human rescan (13.797667ms)
+✔ explicit current-wave completion conditions defer only their attached pause or stop (7.025583ms)
+✔ immediate unconditional matching pause stop and revocation still refuse (9.283708ms)
+✔ a deferred pause never conceals another matching withdrawal in the same message (6.23875ms)
+✔ ambiguous and unrelated conditions do not waive a current-wave withdrawal (7.035166ms)
+✔ explicit other-wave and other-epic instructions retain their independent scope (3.723084ms)
+✔ a scheduled completion pause grants neither standalone nor later-wave permission (2.298083ms)
+✔ live scans retain later revocation beyond deferred pause and unrelated conversation (4.828125ms)
+✔ deferred pause does not alter exact source hashes or historical observation cutoffs (2.888542ms)
+✔ completion-related operational chatter does not redirect independent commands to admission (4.010875ms)
+✔ independent review reproduction 1: when wave 4 is complete I need you to pause.  I will start a fresh chat session to continue #2 (1.04325ms)
+✔ independent review reproduction 2: Stop deployment and parallel execution for epic #2 rank 4. (0.953458ms)
+✔ independent review reproduction 3: When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 4. (0.881458ms)
+✔ independent review reproduction 4: Hold off on deployment and parallel execution for epic #2 rank 4. (1.973709ms)
+✔ independent review reproduction 5: When wave 4 is complete pause. Stop deployment. (1.064542ms)
+✔ independent review reproduction 6: When wave 4 is complete pause. Do not start deployment. (1.448459ms)
+✔ independent review reproduction 7: When wave 4 is complete pause. I do not want to start deployment. (1.162292ms)
+✔ independent review reproduction 8: When wave 4 is complete pause. Stop now. (1.126167ms)
+✔ independent review reproduction 9: When wave 4 is complete pause and revoke epic #2 rank 4. (1.042209ms)
+✔ independent review reproduction 10: When wave 4 is complete do not pause. (0.869833ms)
+✔ independent review reproduction 11: When wave 5 is complete pause. (0.755792ms)
+✔ independent review reproduction 12: When wave 4 is complete pause. Pause epic #2 rank 4 now. (1.332875ms)
+✔ independent review reproduction 13: When wave 4 is complete pause. We should not run tests yet. (1.656209ms)
+✔ independent review reproduction 14: When wave 4 is complete pause. Do not execute tests. (0.885375ms)
+✔ independent review reproduction 15: When wave 4 is complete pause. Do not proceed with testing. (0.755667ms)
+✔ independent review reproduction 16: When wave 4 is complete pause. I do not want to run tests. (1.417ms)
+✔ independent review reproduction 17: I do not want to run tests. (1.534667ms)
+✔ independent review reproduction 18: I do not want to start deployment. (1.332834ms)
+✔ independent review reproduction 19: When wave 4 is complete pause. I do not want to run epic #2 rank 4 in parallel. (1.087916ms)
+✔ independent review reproduction 20: When wave 4 is complete pause. Stop deploying and running epic #2 rank 4 in parallel. (1.439292ms)
+✔ shared withdrawal verbs evaluate every coordinated operational and admission target (13.214292ms)
+✔ coordinated targets retain separate numeric-wave and epic scope (3.749334ms)
+✔ negated preferences carry negation to the actual operation without withdrawing admission (7.724375ms)
+✔ negated admission preferences and mixed operational preferences still withdraw authority (5.507958ms)
+✖ fix round 2 reproduction 21: Stop deployment, tests, and parallel execution for epic #2 rank 4. (1.589292ms)
+✖ fix round 2 reproduction 22: Stop deployment, parallel execution for epic #2 rank 4. (1.675375ms)
+✖ fix round 2 reproduction 23: When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 4. (1.195542ms)
+✖ fix round 2 reproduction 24: When wave 4 is complete pause. I do not want to run tests or execute epic #2 rank 4. (1.216042ms)
+✖ fix round 2 reproduction 25: When wave 4 is complete pause. I do not want to run tests and execute epic #2 rank 4. (1.04625ms)
+✖ fix round 2 reproduction 26: I do not want to run tests or execute epic #2 rank 4. (1.149625ms)
+✖ fix round 2 reproduction 27: When wave 4 is complete pause. I do not want you to run tests or start epic #2 rank 4. (0.96775ms)
+✔ fix round 2 reproduction 28: When wave 4 is complete pause. I do not want to run tests or start deployment. (1.678416ms)
+✔ fix round 2 reproduction 29: When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 5. (1.11925ms)
+✔ fix round 2 reproduction 30: Stop deployment & parallel execution for epic #2 rank 4. (0.975125ms)
+✔ fix round 2 reproduction 31: Stop deployment, and parallel execution for epic #2 rank 4. (0.742625ms)
+✔ fix round 2 reproduction 32: When wave 4 is complete pause. Stop deployment for epic #2 rank 4 and parallel execution for epic #3 rank 4. (0.81475ms)
+✔ fix round 2 reproduction 33: When wave 4 is complete pause. Stop deployment and parallel execution for epic #2 rank 5. (0.812209ms)
+✔ fix round 2 reproduction 34: When wave 4 is complete pause. Do not stop deployment and parallel execution for epic #2 rank 4. (0.686416ms)
+✔ fix round 2 reproduction 35: When wave 4 is complete pause. Do not run tests and parallel execution for epic #2 rank 4. (0.753708ms)
+✔ fix round 2 reproduction 36: When wave 4 is complete pause. I do not want to run tests, but stop now. (1.082292ms)
+✔ fix round 2 reproduction 37: When wave 4 is complete pause. I do not want to stop epic #2 rank 4. (0.991ms)
+✔ fix round 2 reproduction 38: Stop deployment and parallel execution for epic #2 rank 3 and 4. (0.97975ms)
+✔ fix round 2 reproduction 39: Stop deployment and parallel execution for epic #2 rank 3 and 5. (0.919208ms)
+✔ fix round 2 reproduction 40: Stop parallel execution for epic #3 rank 4 and parallel execution for epic #2 rank 4. (0.964583ms)
+✖ fix round 2 reproduction 41: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now. (0.918667ms)
+✖ fix round 2 reproduction 42: When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now. (0.9005ms)
+✔ fix round 2 reproduction 43: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. (1.309417ms)
+✔ fix round 2 reproduction 44: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop deployment. (0.724542ms)
+✔ fix round 2 reproduction 45: When wave 4 is complete stop parallel execution for epic #2 rank 4 and deployment. Stop now. (0.733417ms)
+✖ comma target lists preserve numeric member lists and separate other-epic scope (1.0935ms)
+✖ preference scope follows coordinated verbs and ends at independent subjects and clauses (1.238209ms)
+✖ deferred coordinated targets provide only scoped relevance to later independent stops (1.162ms)
+ℹ tests 62
+ℹ suites 0
+ℹ pass 50
+ℹ fail 12
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 220.778417
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 21: Stop deployment, tests, and parallel execution for epic #2 rank 4. (1.589292ms)
+  AssertionError [ERR_ASSERTION]: Stop deployment, tests, and parallel execution for epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 22: Stop deployment, parallel execution for epic #2 rank 4. (1.675375ms)
+  AssertionError [ERR_ASSERTION]: Stop deployment, parallel execution for epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 23: When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 4. (1.195542ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete pause. Stop deployment, tests, and parallel execution for epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 24: When wave 4 is complete pause. I do not want to run tests or execute epic #2 rank 4. (1.216042ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete pause. I do not want to run tests or execute epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 25: When wave 4 is complete pause. I do not want to run tests and execute epic #2 rank 4. (1.04625ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete pause. I do not want to run tests and execute epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 26: I do not want to run tests or execute epic #2 rank 4. (1.149625ms)
+  AssertionError [ERR_ASSERTION]: I do not want to run tests or execute epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 27: When wave 4 is complete pause. I do not want you to run tests or start epic #2 rank 4. (0.96775ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete pause. I do not want you to run tests or start epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 41: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now. (0.918667ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete stop deployment and parallel execution for epic #2 rank 4. Stop now.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:389:3
+✖ fix round 2 reproduction 42: When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now. (0.9005ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete pause tests and parallel execution for epic #2 rank 4. Stop now.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:391:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:397:1
+✖ comma target lists preserve numeric member lists and separate other-epic scope (1.0935ms)
+  AssertionError [ERR_ASSERTION]: Stop deployment, tests, and parallel stories #4, #5, #6, #7, #14 of epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:413:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:417:1
+✖ preference scope follows coordinated verbs and ends at independent subjects and clauses (1.238209ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete pause. I do not want to run tests and run epic #2 rank 4.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:442:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:446:1
+✖ deferred coordinated targets provide only scoped relevance to later independent stops (1.162ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete stop deployment, tests, and parallel execution for epic #2 rank 4. Stop now.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:473:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

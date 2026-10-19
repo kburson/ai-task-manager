@@ -1,0 +1,75 @@
+{
+  "sourceCommit": "9abd90a50bc83ddf57d6f296dd1c5889431d1876",
+  "fixBase": "fa1fe791153be656600f35c56c67051d7932684b",
+  "publicationHead": "9ee6d5bed8456ab68170009f670cdb0ee7e71179",
+  "tarball": {
+    "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/runtime/2012-9abd90a50/kburson-ai-task-manager-0.1.0.tgz",
+    "size": 3006659,
+    "sha256": "1e4beb5e12657cacb0335d100cdc317e7f45eb2fd062ea47c28cb9f47a20bebb",
+    "sha512SRI": "sha512-EYorihVJdRlkk6FKVdmtn7xfXxLPPYZDgjB8O0KhbwgzpRmbz4RP2pXJiauqXoQu08V61XjwzoiQ7eNAahnCSA==",
+    "npmIntegrityMatched": true,
+    "packedFileCount": 917,
+    "allPackedFilesMatchCleanArchive": true,
+    "allPackedFilesMatchGitBlobs": true,
+    "rawInventoryPath": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/runtime/2012-9abd90a50/package-inventory.json",
+    "rawInventorySha256": "5b5bd479f840eb2c6d3426680bd4d2d68e870a50f8541f9c347be4f09739798e",
+    "committedInventoryPath": "docs/verification/2012-deferred-wave-pause-author-r5/package-inventory.json",
+    "committedInventorySha256": "cd6619d51410f4c0a975954f12f9f85f4f0952e74992fd636fd0faf2db617a62",
+    "committedInventoryFormat": "wrapper; files equals immutable raw array"
+  },
+  "verifiedPackedFiles": 917,
+  "allPackedBytesMatchPinnedGit": true,
+  "allInventoryBlobsVerified": true,
+  "moduleHashes": {
+    "scripts/task-tracker/lib/epic-rank-wave-source.mjs": {
+      "sha256": "3498a702beb7c75694db8c6f846e7b5a331118fc569d8c74292f9dfce7054b64",
+      "unchangedFromAcceptedBase": false
+    },
+    "scripts/task-tracker/lib/epic-orchestration-plan.mjs": {
+      "sha256": "470780dbb033bc6cd784e4323378d0006a0d43b6be2987ecaf3fa159fe139b92",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-refinement.mjs": {
+      "sha256": "88235288c4791d7ba474c20f220f82749efe9d48097844cb61a0f5ac47840e42",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/gh/lib/wave-admission.mjs": {
+      "sha256": "9ae090dc9777973939b48f3fa57fdd9026942171c49cf13a87d3de0b4cae1b21",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs": {
+      "sha256": "4191951b0608ec2fc238865ea9f65e2e4826da6f9e3cff4976dff29b33de74bf",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-authority.mjs": {
+      "sha256": "36268489784a879c06399d67c3304e210a4615115621abb439ac070e038fd361",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/workflow-policy/authority-resolver.mjs": {
+      "sha256": "b3be4a1b6fc2a9840d223198e2ab740e780d5cd848841672b0f07f9c6036e768",
+      "unchangedFromAcceptedBase": true
+    },
+    "bin/aitm.mjs": {
+      "sha256": "decc8fa85508c2c6d5cf260315a7da4e58964d1c56c2c51b044e6a196fa6e05d",
+      "unchangedFromAcceptedBase": true
+    },
+    "bin/cli.mjs": {
+      "sha256": "998d676439ea8735bf7d7fc65d6d0c90936bf4585106dc5de32391a0c642891f",
+      "unchangedFromAcceptedBase": true
+    }
+  },
+  "reportHashVerified": true,
+  "regressionHashVerified": true,
+  "historicalReports": {
+    "docs/peer-reviews/code/2012-deferred-wave-pause-fa1fe7911/review.md": "7860bb058880a03a84cecc46a1c2a29ecc8ca0a6b49de221112b86965c79eceb",
+    "docs/peer-reviews/code/2012-deferred-wave-pause-efc7fae47/review.md": "46bba9ec579fc8a26dae2ada0c2ee01a7d7442fd714b32b504f0f404caf4ed83",
+    "docs/peer-reviews/code/2012-deferred-wave-pause-b5528ee33/review.md": "e6128111a7eb51f50cda4b27c676fb0d6a7b9a4d34913059d2c7637b94329b9c",
+    "docs/peer-reviews/code/2012-deferred-wave-pause-f0851afe0/review.md": "eabd5f551a8095546da93cb588faafbb1bf1d332e8fce60a1a950419c76be09d"
+  },
+  "priorApprovedTarballUnchanged": true,
+  "sourceToPublicationPaths": [
+    "docs/verification/2012-deferred-wave-pause-author-r5/package-comparison.json",
+    "docs/verification/2012-deferred-wave-pause-author-r5/package-inventory.json",
+    "docs/verification/2012-deferred-wave-pause-author-r5/package-provenance.json"
+  ]
+}
