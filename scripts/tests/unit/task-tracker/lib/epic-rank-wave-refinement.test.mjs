@@ -180,9 +180,12 @@ const scopePointerB =
   'd'.repeat(64) +
   '" -->';
 function withScopePointers(content, pointer) {
+  const second = pointer
+    .replace(/comment="([0-9]+)"/g, (_, id) => 'comment="' + (BigInt(id) + 1000n) + '"')
+    .replace(/lineage="([a-f0-9])/, (_, first) => 'lineage="' + (first === 'b' ? 'e' : 'f'));
   return content
     .replace('authentic authority.', `authentic authority. ${pointer}`)
-    .replace('changed obligations as stale.', `changed obligations as stale. ${pointer}`);
+    .replace('changed obligations as stale.', `changed obligations as stale. ${second}`);
 }
 
 test('rank-wave identity survives reviewed Scope pointer addition, update and removal on multiple rows', () => {
@@ -311,4 +314,94 @@ test('real frozen child graph reconciles reviewed Scope evidence progress and re
   );
   assert.equal(malformed[0].refinementDigest, null);
   assert.throws(() => freezeRankGraph(malformed), /graph identity incomplete/);
+});
+
+test('rank-wave normalization retains pointers on non-runtime Scope content', () => {
+  for (const line of [
+    'Narrative documentation.',
+    '- [ ] Verified obligation. <!-- aitm-verified vc-list="vc:1" -->',
+    '- [ ] Agent Review Passed',
+    '```text\n- [ ] Example obligation.\n```',
+    '<!--\n- [ ] Commented obligation.\n-->',
+  ]) {
+    const base = stampRefinementSnapshot(
+      body.replace('Deliver independent stories with authentic authority.', line),
+      { labels }
+    );
+    const changed = base.replace(
+      line,
+      line.replace(/(obligation\.|documentation\.|Passed)/, '$1 ' + scopePointerA)
+    );
+    assert.notEqual(
+      rankWaveRefinementIdentity(changed, { labels }),
+      rankWaveRefinementIdentity(base, { labels }),
+      line
+    );
+  }
+});
+
+test('rank-wave normalization refuses reused comment or lineage across live Scope targets', () => {
+  for (const second of [
+    scopePointerA,
+    scopePointerB.replace('comment="456"', 'comment="123"'),
+    scopePointerB.replace('d'.repeat(64), 'b'.repeat(64)),
+  ]) {
+    const changed = reviewedScopeBody
+      .replace('authentic authority.', 'authentic authority. ' + scopePointerA)
+      .replace('changed obligations as stale.', 'changed obligations as stale. ' + second);
+    assert.throws(
+      () => rankWaveRefinementIdentity(changed, { labels }),
+      /reviewed-scope-pointer-duplicate/
+    );
+  }
+});
+
+test('non-runtime Scope pointers cannot reconcile a stale child to its frozen graph', async () => {
+  const { mapSubIssueNodes } = await import('../../../../gh/lib/wave-admission.mjs');
+  const { freezeRankGraph } =
+    await import('../../../../task-tracker/lib/epic-rank-wave-policy.mjs');
+  const { reconcileRankWaveRefinement } =
+    await import('../../../../task-tracker/lib/epic-rank-wave-refinement.mjs');
+  const baseline = stampRefinementSnapshot(
+    body.replace(
+      'Deliver independent stories with authentic authority.',
+      'Narrative documentation.'
+    ),
+    { labels }
+  );
+  const mapped = (content, state) =>
+    mapSubIssueNodes(
+      [
+        {
+          number: 144,
+          state: 'OPEN',
+          stateReason: null,
+          body: content,
+          labels: { nodes: labels.map((name) => ({ name })), pageInfo: { hasNextPage: false } },
+          projectItems: {
+            nodes: [
+              {
+                project: { id: 'P' },
+                fieldValues: {
+                  nodes: [
+                    { name: state, field: { name: 'Status' } },
+                    { number: 2, field: { name: 'Rank' } },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+      { projectId: 'P' }
+    ).map((child) => ({ ...child, blockedBy: [] }));
+  const graph = freezeRankGraph(mapped(baseline, 'Ready for Planning'));
+  const changed = baseline.replace(
+    'Narrative documentation.',
+    'Narrative documentation. ' + scopePointerA
+  );
+  const current = reconcileRankWaveRefinement(mapped(changed, 'Review'), [{ graph }]);
+  assert.equal(current[0].hasCurrentRefinement, false);
+  assert.equal(current[0].childEvidenceError, 'stale refinement snapshot');
+  assert.notDeepEqual(freezeRankGraph(current), graph);
 });

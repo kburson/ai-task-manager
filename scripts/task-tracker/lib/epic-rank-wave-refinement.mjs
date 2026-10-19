@@ -7,7 +7,9 @@ import {
   isStrictCompletedDone,
   rankWaveDigest,
 } from './epic-rank-wave-policy.mjs';
-import { stripReviewedPointer } from './reviewed-scope/model.mjs';
+import { parsePointer, refuse, stripReviewedPointer } from './reviewed-scope/model.mjs';
+
+import { isEligibleNarrativeScopeTarget, liveLines } from './reviewed-scope/targets.mjs';
 
 // Retain historical snapshot identity and semantic inputs across lifecycle ticks.
 export function rankWaveRefinementIdentity(body, { labels } = {}) {
@@ -36,16 +38,26 @@ function refinementIdentity(body, labels, retainReviewedPointers) {
       new RegExp(`^##\\s+${name}\\s*$([\\s\\S]*?)(?=^##\\s+|$(?![\\s\\S]))`, 'im')
     );
     if (!match) throw new Error('rank-wave: refinement section missing');
-    const semanticText =
-      name === 'Scope'
-        ? match[1]
-            .split('\n')
-            .map((line) => {
-              const normalized = stripReviewedPointer(line);
-              return retainReviewedPointers ? line : normalized;
-            })
-            .join('\n')
-        : match[1];
+    let semanticText = match[1];
+    if (name === 'Scope') {
+      const normalizedLines = new Map();
+      const comments = new Set(),
+        lineages = new Set();
+      for (const { lineIndex, raw } of liveLines(match[1])) {
+        const pointer = parsePointer(raw);
+        if (!pointer || !isEligibleNarrativeScopeTarget(raw)) continue;
+        if (comments.has(pointer.commentId) || lineages.has(pointer.lineage))
+          refuse('reviewed-scope-pointer-duplicate');
+        comments.add(pointer.commentId);
+        lineages.add(pointer.lineage);
+        normalizedLines.set(lineIndex, stripReviewedPointer(raw));
+      }
+      if (!retainReviewedPointers)
+        semanticText = match[1]
+          .split('\n')
+          .map((line, index) => normalizedLines.get(index) ?? line)
+          .join('\n');
+    }
     return semanticText
       .trim()
       .replace(/^- \[[x ]\]/gm, '- [ ]')
