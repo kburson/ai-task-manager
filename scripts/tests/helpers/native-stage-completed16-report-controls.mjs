@@ -98,13 +98,14 @@ function finalPolicySiteLine(kind = 'check') {
   return check.loc.start.line;
 }
 
-export async function qualifyCompleted16Reporting(options) {
-  const { t, originalContext, snapshots, captureFiles } = options;
+async function runCompleted16CleanReporting(
+  { t, originalContext, captureFiles },
+  selected,
+  expected
+) {
   const { moveState } = await import('../../task-tracker/lib/move-state/move-state-core.mjs');
   const { createRevisionMemory } =
     await import('../../task-tracker/lib/criteria-revision/store.mjs');
-  const selected = snapshots.get(16),
-    expected = await expectedCompleted16Tail(selected);
   await t.test('clean original completed18 returns currently verified prior16 facts', async () => {
     const backend = createRevisionMemory(selected),
       files = captureFiles();
@@ -123,6 +124,22 @@ export async function qualifyCompleted16Reporting(options) {
     );
     t.diagnostic('completed16 verified report full trace: ' + JSON.stringify(backend.effects));
   });
+}
+
+export async function qualifyCompleted16CleanReporting(options) {
+  const selected = options.snapshots.get(16);
+  const expected = await expectedCompleted16Tail(selected);
+  await runCompleted16CleanReporting(options, selected, expected);
+}
+
+export async function qualifyCompleted16Reporting(options) {
+  const { t, originalContext, snapshots, captureFiles } = options;
+  const { moveState } = await import('../../task-tracker/lib/move-state/move-state-core.mjs');
+  const { createRevisionMemory } =
+    await import('../../task-tracker/lib/criteria-revision/store.mjs');
+  const selected = snapshots.get(16),
+    expected = await expectedCompleted16Tail(selected);
+  await runCompleted16CleanReporting(options, selected, expected);
   await t.test('post-evaluate policy refusal discards an actual verified report', async () => {
     const backend = createRevisionMemory(selected),
       files = captureFiles(),

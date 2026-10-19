@@ -573,6 +573,12 @@ export async function qualifyCompleted16Variant(options) {
   const { moveState } = await import('../../task-tracker/lib/move-state/move-state-core.mjs');
   const { createRevisionMemory } =
     await import('../../task-tracker/lib/criteria-revision/store.mjs');
+  if (variant.when === 'control' && variant.suffix === 'positive16-probe') {
+    const { qualifyCompleted16CleanReporting } =
+      await import('./native-stage-completed16-report-controls.mjs');
+    await qualifyCompleted16CleanReporting(options);
+    return;
+  }
   if (variant.when === 'control' && variant.suffix === 'task3-final-sites') {
     const { qualifyCompleted16FinalSites } =
       await import('./native-stage-completed16-report-controls.mjs');
