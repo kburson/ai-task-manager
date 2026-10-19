@@ -1,4 +1,4 @@
-// @story #1987
+// @story #1987 #2034
 import test from 'node:test';
 import { buildPlannedAppendix } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
 import { buildAuditCommentBody } from '../../../../task-tracker/lib/reevaluate-estimate.mjs';
@@ -275,6 +275,57 @@ test('only accepted terminal provider child evidence permits epic completion', a
   assert.equal(r.input.epicReadiness.completion, true);
   f.values.project.children[0].boardState = 'review';
   assert.equal((await collect(f)).input.epicReadiness.completion, false);
+});
+test('epic dependency permutations preserve identity and provider arrays', async () => {
+  const f = epicFixture(true);
+  const child = f.values.project.children[0];
+  child.blockedBy = [1990, 1991, 2006];
+  const original = await collect(f);
+  assert.equal(original.input.epicReadiness.completion, true);
+  f.body = replaceDecompositionRecords(f.body, {
+    assessment: original.assessment,
+    publication: null,
+  });
+  const providerOrder = Object.freeze([2006, 1991, 1990]);
+  child.blockedBy = providerOrder;
+  const current = await collect(f);
+  assert.deepEqual(current.input.epicReadiness.children[0].blockedBy, [1990, 1991, 2006]);
+  assert.equal(current.input.epicReadiness.digest, original.input.epicReadiness.digest);
+  assert.equal(current.inputDigest, original.inputDigest);
+  assert.equal(current.projection.status, 'current');
+  assert.equal(current.input.epicReadiness.completion, true);
+  assert.strictEqual(child.blockedBy, providerOrder);
+  assert.deepEqual(providerOrder, [2006, 1991, 1990]);
+});
+test('epic dependency membership changes invalidate stored authority', async () => {
+  const f = epicFixture(true);
+  const child = f.values.project.children[0];
+  child.blockedBy = [1990, 1991, 2006];
+  const original = await collect(f);
+  f.body = replaceDecompositionRecords(f.body, {
+    assessment: original.assessment,
+    publication: null,
+  });
+  child.blockedBy = [1990, 1991, 2007];
+  const current = await collect(f);
+  assert.notEqual(current.input.epicReadiness.digest, original.input.epicReadiness.digest);
+  assert.notEqual(current.inputDigest, original.inputDigest);
+  assert.equal(current.projection.status, 'stale');
+});
+test('epic terminal board drift still invalidates stored authority', async () => {
+  const f = epicFixture(true);
+  const child = f.values.project.children[0];
+  child.blockedBy = [1990, 1991, 2006];
+  const original = await collect(f);
+  f.body = replaceDecompositionRecords(f.body, {
+    assessment: original.assessment,
+    publication: null,
+  });
+  child.boardState = 'review';
+  const current = await collect(f);
+  assert.equal(current.input.epicReadiness.completion, false);
+  assert.notEqual(current.inputDigest, original.inputDigest);
+  assert.equal(current.projection.status, 'stale');
 });
 test('child readiness cannot be supplied as an admission boolean', async () => {
   const f = epicFixture();
