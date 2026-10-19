@@ -7,6 +7,7 @@ import {
   qualifyOriginalCases,
   qualify,
 } from '../../../helpers/criteria-revision-transition-profiles.mjs';
+import { reportingPartition } from '../../../helpers/criteria-revision-reporting-partition.mjs';
 const discovered = discoverOriginalCases();
 const reports = discovered.filter(({ mode }) => mode.startsWith('partial-reporting-'));
 const base = reports.filter(({ mode }) =>
@@ -45,16 +46,17 @@ test('partial reporting retains all genuine verified, interrupted, cancellation 
   assert.equal(current.length, 6);
   assert.deepEqual(originals.map(({ filename }) => filename).sort(), originalNames.sort());
   assert.equal(new Set([...reports, ...originals].map(({ filename }) => filename)).size, 14);
+  const { a, b } = reportingPartition(discovered);
+  assert.deepEqual(
+    [...a, ...b].map(({ filename }) => filename).sort(),
+    [...current, ...originals].map(({ filename }) => filename).sort()
+  );
+  assert.equal(new Set([...a, ...b].map(({ filename }) => filename)).size, 10);
 });
 test(
   'actual original failure reports verified committed facts after joined work',
   { timeout: budget, concurrency: true },
   (t) => qualifyOriginalCases(base, t)
-);
-test(
-  'current authority, cancellation and original interruption profiles stay truthful',
-  { timeout: budget, concurrency: true },
-  (t) => qualifyOriginalCases([...current, ...originals], t)
 );
 test(
   'complete original ordinary facade and public reporting boundaries stay intact',
