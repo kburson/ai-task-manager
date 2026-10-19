@@ -2,20 +2,25 @@
 import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'migrate-project');
 import { execFileSync } from 'node:child_process';
-import { writeFileSync, unlinkSync } from 'node:fs';
-import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
-import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
-import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
+import { getProjectDir } from '../task-tracker/paths.mjs';
+import { ensureIssueFieldDb, parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { buildFieldSyncPlan, loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import {
   fieldOptionMap,
   gh,
   gql,
   projectValuesForIssue,
-  writeProjectFieldValue,
+  projectItemForIssue,
 } from './lib/github-projects.mjs';
-import { tetherIssueToProject } from './lib/project-tether.mjs';
+import {
+  publishMigrationFields,
+  copyInitialMigrationFields,
+  withMigrationIssueOwner,
+  fetchMigrationIssueBody,
+} from '../task-tracker/lib/decomposition-migration-writer.mjs';
+import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
+import { stripBodyVersion } from '../task-tracker/lib/versioned-issue-write.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const args = process.argv.slice(2);
@@ -67,17 +72,67 @@ async function deleteRetiredFields(projectId) {
 
 const projectDir = getProjectDir();
 
-async function writeIssueBody(repo, issueNumber, body) {
-  const tmp = path.join(projectTmpDir(projectDir), `aitm-migrate-${issueNumber}-${Date.now()}.md`);
-  try {
-    writeFileSync(tmp, body, 'utf8');
-    await gh(['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', tmp]);
-  } finally {
-    try {
-      unlinkSync(tmp);
-    } catch {
-      /* best-effort: cleanup; failure is non-fatal */
+export async function migrateProjectIssue({
+  cfg,
+  oldCfg = cfg,
+  issue,
+  fieldDefs,
+  optionMap,
+  dryRun = false,
+  deps = {},
+}) {
+  const issueNumber = Number(issue.number);
+  const run = async () => {
+    let body = await fetchMigrationIssueBody({ cfg, issueNumber, deps });
+    const oldValues = await (deps.projectValuesForIssue ?? projectValuesForIssue)({
+      cfg: oldCfg,
+      fieldDefs,
+      issueNumber,
+    });
+    const ensured = ensureIssueFieldDb(body, fieldDefs, oldValues);
+    const fieldCount = buildFieldSyncPlan({ cfg, fieldDefs, values: ensured.values }).length;
+    if (dryRun) return { status: 'dry-run', healed: ensured.healed, fieldCount };
+    const parsed = parseIssueFieldDb(body);
+    if (!parsed.ok) {
+      if (parsed.reason !== 'missing')
+        return { status: 'refused', reason: `migrate-project:field-db-${parsed.reason}` };
+      await (deps.mutateIssueBody ?? mutateIssueBody)({
+        issueNumber,
+        repo: cfg.repo,
+        deps: deps.decomposition,
+        mutate: (base) => {
+          if (stripBodyVersion(base) !== stripBodyVersion(body))
+            throw new Error('migrate-project:encoding-source-drift');
+          return ensureIssueFieldDb(base, fieldDefs, oldValues).body;
+        },
+      });
+      body = await fetchMigrationIssueBody({ cfg, issueNumber, deps });
+      if (!parseIssueFieldDb(body).ok)
+        return { status: 'partial', reason: 'migrate-project:encoding-unconfirmed' };
     }
+    const membership = await (deps.projectItemForIssue ?? projectItemForIssue)({
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      issueNumber,
+    });
+    const input = { cfg, issueNumber, values: ensured.values, fieldDefs, optionMap, deps };
+    const result = membership.itemId
+      ? await publishMigrationFields({
+          ...input,
+          itemId: membership.itemId,
+          writerId: 'migrate-project',
+        })
+      : await copyInitialMigrationFields({
+          ...input,
+          issueId: membership.issueId ?? issue.id,
+          body,
+        });
+    return { ...result, healed: ensured.healed, fieldCount };
+  };
+  try {
+    return dryRun ? await run() : await withMigrationIssueOwner({ issueNumber, deps }, run);
+  } catch (error) {
+    return { status: 'partial', reason: error.message };
   }
 }
 
@@ -127,39 +182,30 @@ async function main() {
   console.log(`Migrating ${issues.length} ${state} issue(s) into configured project.`);
   let healed = 0;
   let synced = 0;
+  let failed = 0;
   for (const issue of issues) {
-    const oldProjectValues = await projectValuesForIssue({
-      cfg: oldCfg,
-      fieldDefs,
-      issueNumber: issue.number,
-    });
-    const ensured = ensureIssueFieldDb(issue.body || '', fieldDefs, oldProjectValues);
-    if (ensured.healed || ensured.changed) healed++;
-    const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values: ensured.values });
-    console.log(`#${issue.number} ${issue.title}: ${syncPlan.length} field value(s)`);
-    if (dryRun) continue;
-    if (ensured.changed) await writeIssueBody(cfg.repo, issue.number, ensured.body);
-    const { itemId } = await tetherIssueToProject({ cfg, issueNumber: issue.number });
-    for (const item of syncPlan) {
-      await writeProjectFieldValue({
-        projectId: cfg.projectId,
-        itemId,
-        fieldId: item.fieldId,
-        value: item.value,
-        optionMap,
-      });
+    const result = await migrateProjectIssue({ cfg, oldCfg, issue, fieldDefs, optionMap, dryRun });
+    if (result.healed) healed++;
+    console.log(
+      `#${issue.number} ${issue.title}: ${result.fieldCount ?? 0} field value(s), ${result.status}`
+    );
+    if (['copied', 'recorded', 'unchanged'].includes(result.status)) synced++;
+    else if (result.status !== 'dry-run') {
+      failed++;
+      console.error(`#${issue.number}: ${result.reason ?? result.status}`);
     }
-    synced++;
   }
+  if (failed) process.exitCode = 1;
 
   console.log(
     dryRun
       ? `Dry run complete. ${healed} issue body DB(s) would be healed.`
-      : `Migration complete. ${synced} issue(s) synced; ${healed} issue body DB(s) healed.`
+      : `${failed ? 'Migration partial' : 'Migration complete'}. ${synced} issue(s) synced; ${healed} issue body DB(s) healed.`
   );
 }
 
-main().catch((err) => {
-  console.error(`migrate-project: ${err.message}`);
-  process.exit(1);
-});
+if (import.meta.url === `file://${process.argv[1]}`)
+  main().catch((err) => {
+    console.error(`migrate-project: ${err.message}`);
+    process.exit(1);
+  });

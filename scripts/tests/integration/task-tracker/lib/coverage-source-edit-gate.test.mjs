@@ -1,3 +1,4 @@
+// @story #1990
 // @story #644
 // Offline coverage-lift for source-edit-gate.mjs. Exercises the pure decision
 // helper (decideSourceEdit), the path-normalize helpers, the state/cache helpers
@@ -5,6 +6,7 @@
 // fetchIssueSignals + resolveIssueSignals through an injected `gh`, and the
 // runHook PreToolUse orchestration through injected deps — no gh, no network.
 // A throwaway temp project dir backs the fs-touching helpers.
+import { currentUnitAuthority } from '../../../unit/task-tracker/lib/decomposition-unit-admission-fixture.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -269,11 +271,18 @@ test('runHook: chore-mode bypass', async () => {
   );
   assert.equal(r.reason, 'chore-mode-bypass');
 });
-test('runHook: bound + develop + markers via injected resolve → allow', async () => {
+test('runHook: bound + develop + current authority and markers → allow', async () => {
+  const current = await currentUnitAuthority({
+    issue: 644,
+    repository: 'kburson/ai-task-manager',
+    body: '## AITM Progress Markers\n',
+  });
   const r = await runHook(
     { tool_name: 'Edit', tool_input: { file_path: 'scripts/x.mjs' } },
     {
       projectDir: '/proj',
+      cfg: current.cfg,
+      decomposition: { subject: current.subject, runtime: current.runtime },
       isChoreModeActive: () => false,
       loadBoundIssue: () => '#644',
       resolveIssueSignals: async () => ({
@@ -300,7 +309,7 @@ test('runHook: resolve throws → falls through to refuse pre-develop default', 
     }
   );
   assert.equal(r.decision, 'block');
-  assert.equal(r.code, 'source-edit-state-gate');
+  assert.equal(r.code, 'decomposition-authority-unavailable');
 });
 test('runHook: findProjectDir honours env override', async () => {
   const dir = project({ active: 'discover' });

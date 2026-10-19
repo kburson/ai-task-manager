@@ -694,6 +694,9 @@ export async function runPromote({
 
   return {
     status: 'promoted',
+    ...(guardResult.warns?.length
+      ? { warnings: guardResult.warns.map(({ code, args }) => ({ code, args })) }
+      : {}),
     normalizationPersisted,
     from: recorded,
     to: target,

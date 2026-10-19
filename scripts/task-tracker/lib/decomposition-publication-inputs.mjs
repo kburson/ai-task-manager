@@ -1,0 +1,277 @@
+import { canonicalDecompositionJson } from './decomposition-assessment.mjs';
+import { readEstimateBeforeRecord } from './estimate-writer-publication.mjs';
+import { estimateEffectDigest } from './decomposition-publication.mjs';
+import { normalizeDecompositionHours } from './decomposition-policy.mjs';
+import { parseIssueFieldDb } from '../issue-field-db.mjs';
+// @story #1988 — earlier Plan forecasts are historical only after confirmed revision.
+const normalizedHours = (value) => (value == null ? null : normalizeDecompositionHours(value));
+export function confirmedEstimateProjectionRevision({ publication, project, bodyFields }) {
+  if (
+    !publication ||
+    !['pending', 'complete'].includes(publication.status) ||
+    publication.writerId === 'plan-estimate-adaptive'
+  )
+    return false;
+  const hours = publication.proposal.estimate.hours,
+    size = publication.proposal.size;
+  return (
+    publication.subject.projectItemId === project?.projectItemId &&
+    normalizedHours(project.estimate) === hours &&
+    normalizedHours(bodyFields?.estimate) === hours &&
+    project.size === size &&
+    bodyFields?.size === size &&
+    ['project-estimate', 'body-fields'].every((resource) =>
+      publication.effects.some(
+        (effect) =>
+          effect.resource === resource &&
+          effect.status === 'confirmed' &&
+          effect.observedDigest === effect.intendedDigest
+      )
+    )
+  );
+}
+
+export function forecastPublicationTransition({
+  ready,
+  readyId,
+  active,
+  projection,
+  proposalsAvailable,
+}) {
+  if (
+    !proposalsAvailable ||
+    active.length !== 1 ||
+    projection.activeForecastRecordIds.length !== 1 ||
+    ready.length > 1 ||
+    (ready.length === 1 && (!readyId || projection.forecast?.recordId !== readyId))
+  )
+    return null;
+  const envelope = active[0].envelope;
+  return {
+    recordId: envelope.recordId,
+    payloadHash: envelope.payloadHash,
+    readyRecordId: readyId ?? null,
+  };
+}
+export async function publicationForecastTransitionUsable(current, publication, readEffect) {
+  if (
+    current.projection.status === 'malformed' ||
+    !publication ||
+    current.publication?.operationId !== publication.operationId ||
+    current.publication.status !== 'pending' ||
+    current.input.availability.reasons.some(
+      (reason) => !['authority-conflict', 'forecast-unavailable'].includes(reason)
+    )
+  )
+    return false;
+  const transition = current.sourceObservations.readForecast.value?.publicationTransition;
+  if (!transition || typeof readEffect !== 'function') return false;
+  const effect = publication.effects.find(
+    (e) => e.resource === 'forecast' && e.targetIdentity === `record:${transition.recordId}`
+  );
+  const ready = publication.effects.find((e) => e.resource === 'ready-marker');
+  if (!effect || !ready) return false;
+  const { estimateEffectDigest } = await import('./decomposition-publication.mjs');
+  const value = { recordId: transition.recordId, payloadHash: transition.payloadHash };
+  if (
+    effect.intendedDigest !== estimateEffectDigest(value) ||
+    ready.intendedDigest !==
+      estimateEffectDigest(
+        publication.writerId === 'plan-estimate-adaptive' ? transition.recordId : null
+      ) ||
+    (publication.writerId !== 'plan-estimate-adaptive' && transition.readyRecordId !== null)
+  )
+    return false;
+  try {
+    const actual = await readEffect(effect);
+    return (
+      actual?.status === 'observed' &&
+      actual.digest === estimateEffectDigest(actual.value) &&
+      actual.digest === effect.intendedDigest
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function confirmedForecastRetirement({
+  publication,
+  active,
+  ready,
+  project,
+  bodyFields,
+  body,
+}) {
+  if (
+    !publication ||
+    ready.length !== 0 ||
+    active.length !== 1 ||
+    !(
+      confirmedEstimateProjectionRevision({ publication, project, bodyFields }) ||
+      confirmedFieldBaseline({
+        publication,
+        project,
+        bodyFields,
+        body,
+        forecast: active[0]?.envelope,
+      })
+    )
+  )
+    return false;
+  const { estimateEffectDigest } = await import('./decomposition-publication.mjs');
+  const envelope = active[0].envelope;
+  return (
+    publication.effects.some(
+      (e) =>
+        e.resource === 'forecast' &&
+        e.targetIdentity === `record:${envelope.recordId}` &&
+        e.status === 'confirmed' &&
+        e.observedDigest === e.intendedDigest &&
+        e.intendedDigest ===
+          estimateEffectDigest({ recordId: envelope.recordId, payloadHash: envelope.payloadHash })
+    ) &&
+    publication.effects.some(
+      (e) =>
+        e.resource === 'ready-marker' &&
+        e.status === 'confirmed' &&
+        e.observedDigest === e.intendedDigest &&
+        e.intendedDigest === estimateEffectDigest(null)
+    )
+  );
+}
+
+export function publicationProposalMatchesAuthority(current, publication) {
+  const project = current.sourceObservations.readProject.value,
+    body = parseIssueFieldDb(current.sourceObservations.readIssue.value.body);
+  if (!body.ok) return false;
+  if (
+    publication.proposal.estimate.basis === 'proposed' &&
+    !publication.effects.some((effect) => effect.resource === 'project-estimate')
+  ) {
+    return (
+      current.sourceObservations.readForecast.value?.proposals?.some(
+        (proposal) =>
+          proposal.proposalId === publication.proposal.estimate.proposalId &&
+          proposal.hours === publication.proposal.estimate.hours &&
+          (proposal.size ?? project.size) === publication.proposal.size
+      ) ?? false
+    );
+  }
+  if (
+    publication.writerId === 'plan-estimate-compatibility' &&
+    publication.proposal.estimate.basis !== 'proposed'
+  ) {
+    const sizeOnly = current.sourceObservations.readForecast.value?.proposals?.some(
+      (proposal) =>
+        proposal.hours === null &&
+        proposal.size === publication.proposal.size &&
+        publication.effects.some(
+          (effect) =>
+            effect.resource === 'comment' &&
+            proposal.proposalId.startsWith(effect.targetIdentity + ':')
+        )
+    );
+    if (sizeOnly)
+      return (
+        normalizedHours(project?.estimate) === publication.proposal.estimate.hours &&
+        normalizedHours(body.values.estimate) === publication.proposal.estimate.hours
+      );
+  }
+  return (
+    normalizedHours(project?.estimate) === publication.proposal.estimate.hours &&
+    normalizedHours(body.values.estimate) === publication.proposal.estimate.hours &&
+    project.size === publication.proposal.size &&
+    body.values.size === publication.proposal.size
+  );
+}
+export function estimateProjectionFromProposals({ hours, size, proposals }) {
+  let proposalId = null;
+  const tiers = ['XS', 'S', 'M', 'L', 'XL'];
+  for (const proposal of proposals ?? []) {
+    if (proposal.hours !== null && (hours === null || proposal.hours >= hours)) {
+      hours = proposal.hours;
+      proposalId = proposal.proposalId;
+    }
+    if (tiers.indexOf(proposal.size) > tiers.indexOf(size)) size = proposal.size;
+  }
+  return {
+    estimate: {
+      basis: proposalId ? 'proposed' : hours === null ? 'unset' : 'published',
+      hours,
+      proposalId,
+    },
+    size,
+  };
+}
+
+// A migration may repair a fully observed scalar projection to its canonical
+// body value. This grants publication reconciliation only, never implementation.
+export function isMigrationProjectionRepair(current, writerId, proposal) {
+  if (
+    !['migrate-project', 'bind-issues-to-new-project'].includes(writerId) ||
+    current.projection.status === 'malformed' ||
+    current.input.availability.reasons.length !== 1 ||
+    current.input.availability.reasons[0] !== 'authority-conflict'
+  )
+    return false;
+  const issue = current.sourceObservations.readIssue,
+    project = current.sourceObservations.readProject;
+  if (issue.status !== 'observed' || project.status !== 'observed') return false;
+  const body = parseIssueFieldDb(issue.value.body);
+  if (!body.ok) return false;
+  const value = body.values.estimate ?? null,
+    size = body.values.size ?? null;
+  if (value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0))
+    return false;
+  return (
+    normalizedHours(value) === proposal.estimate.hours &&
+    size === proposal.size &&
+    ((project.value.estimate ?? null) !== value || (project.value.size ?? null) !== size)
+  );
+}
+
+export function matchesForecastBaseline({ publication, body, forecast }) {
+  const before = readEstimateBeforeRecord(body),
+    effect = publication?.effects.find((e) => e.id === 'writer-before-values');
+  if (
+    !before ||
+    before.operationId !== publication?.operationId ||
+    before.writerId !== publication.writerId ||
+    canonicalDecompositionJson(before.subject) !==
+      canonicalDecompositionJson(publication.subject) ||
+    effect?.status !== 'confirmed' ||
+    effect.observedDigest !== effect.intendedDigest ||
+    effect.intendedDigest !== estimateEffectDigest(before)
+  )
+    return false;
+  return (
+    (before.forecastBaseline?.recordId ?? null) === (forecast?.recordId ?? null) &&
+    (before.forecastBaseline?.payloadHash ?? null) === (forecast?.payloadHash ?? null)
+  );
+}
+export function confirmedFieldBaseline({ publication, project, bodyFields, body, forecast }) {
+  if (
+    !publication ||
+    !['pending', 'complete'].includes(publication.status) ||
+    !matchesForecastBaseline({ publication, body, forecast })
+  )
+    return false;
+  const before = readEstimateBeforeRecord(body),
+    effect = publication.effects.find((e) => e.id === 'writer-before-values');
+  if (
+    !before?.fieldBaseline ||
+    before.operationId !== publication.operationId ||
+    before.writerId !== publication.writerId ||
+    canonicalDecompositionJson(before.subject) !==
+      canonicalDecompositionJson(publication.subject) ||
+    effect?.status !== 'confirmed' ||
+    effect.observedDigest !== effect.intendedDigest ||
+    effect.intendedDigest !== estimateEffectDigest(before)
+  )
+    return false;
+  return ['estimate', 'size'].every(
+    (key) =>
+      (project?.[key] ?? null) === before.fieldBaseline[key] &&
+      (bodyFields?.[key] ?? null) === before.fieldBaseline[key]
+  );
+}

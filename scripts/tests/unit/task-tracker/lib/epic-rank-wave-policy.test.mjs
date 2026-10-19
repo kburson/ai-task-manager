@@ -156,7 +156,7 @@ test('dependency refusal, missing graph identity and a duplicate child fail clos
   }
 });
 
-test('legacy sequential admission is preserved without rank authority', () => {
-  assert.equal(wipAdvanceDecision({ promotingNumber: 144, children: peers() }).ok, false);
-  assert.equal(findNextEligibleChild(peers()), null);
+test('ordinary capacity is advisory without explicit rank authority', () => {
+  assert.equal(wipAdvanceDecision({ promotingNumber: 144, children: peers() }).ok, true);
+  assert.equal(findNextEligibleChild(peers()).number, 144);
 });

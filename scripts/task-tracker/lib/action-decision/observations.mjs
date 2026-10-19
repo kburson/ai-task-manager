@@ -137,7 +137,7 @@ export function createObservationAttempt({ repository, issue, boundaryId, now, r
   let invalidated = false;
   let finished = false;
 
-  async function observe({ resource, identity, scope, refresh = false } = {}) {
+  async function observe({ resource, identity, scope, refresh = false, collect } = {}) {
     if (invalidated || finished) throw new TypeError('action-observation:closed');
     if (!AUTHORITY_RESOURCE_IDS.includes(resource))
       throw new TypeError('action-observation:resource');
@@ -150,7 +150,12 @@ export function createObservationAttempt({ repository, issue, boundaryId, now, r
     const pending = (async () => {
       let result;
       try {
-        result = await read(request);
+        if (
+          collect !== undefined &&
+          (resource !== 'decomposition' || typeof collect !== 'function')
+        )
+          throw new TypeError('action-observation:collect');
+        result = await (collect ?? read)(request);
       } catch (error) {
         return failure({
           ...request,

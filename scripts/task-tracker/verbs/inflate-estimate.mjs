@@ -1,10 +1,14 @@
 // `inflate-estimate` verb — appends a "Discovered work — estimate inflation" section to
-// the existing `<!-- aitm-refined-estimate: N -->` comment and atomically
-// updates the Size + Estimate board fields and the aitm-fields block in the
+// the existing `<!-- aitm-refined-estimate: N -->` comment and updates through resumable publication
+// the Size + Estimate board fields and the aitm-fields block in the
 // issue body.
 //
-// Each invocation appends a dated block; re-runs do NOT overwrite prior inflations.
+// Each revision appends one keyed audit block; exact retries preserve its history.
 
+import {
+  executeEstimateWriter,
+  observedEstimateEffect,
+} from '../lib/estimate-writer-publication.mjs';
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
@@ -13,7 +17,6 @@ import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
 import {
   projectValuesForIssue,
-  projectItemForIssue,
   fieldOptionMap,
   writeProjectFieldValue,
 } from '../../gh/lib/github-projects.mjs';
@@ -192,113 +195,122 @@ export async function runInflateEstimate(
   cfg,
   deps = {}
 ) {
-  const listComments = deps.listComments || defaultListComments;
-  const patchComment = deps.patchComment || defaultPatchComment;
-  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
-  const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
-  const getProjectItem = deps.projectItemForIssue || projectItemForIssue;
-  const getFieldOptionMap = deps.fieldOptionMap || fieldOptionMap;
-  const writeField = deps.writeProjectFieldValue || writeProjectFieldValue;
-  const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
-
-  const repo = cfg.repo;
-  const newEstimate = parseEstimateHours(estimate);
-
-  // 1. Find the refine-estimate comment
+  const listComments = deps.listComments ?? defaultListComments,
+    patchComment = deps.patchComment ?? defaultPatchComment;
+  const mutateBody = deps.mutateIssueBody ?? defaultMutateIssueBody;
+  const fetchProjectValues = deps.projectValuesForIssue ?? projectValuesForIssue;
+  const fieldDefs = (deps.loadProjectFieldDefs ?? loadProjectFieldDefs)();
+  const newEstimate = parseEstimateHours(estimate),
+    repo = cfg.repo;
   const comments = await listComments({ issueNumber, repo });
-  const refineComment = comments.find((c) => REFINED_ESTIMATE_MARKER_RE.test(c.body));
-  if (!refineComment) {
-    return { status: 'no-refine-comment' };
-  }
-
-  // 2. Read current board values for the "Before" column
-  const fieldDefs = fieldDefsLoader();
-  let beforeSize = null;
-  let beforeEstimate = null;
-  if (cfg.projectId) {
-    try {
-      const projVals = await fetchProjectValues({ cfg, fieldDefs, issueNumber });
-      beforeSize = projVals.size || null;
-      beforeEstimate = typeof projVals.estimate === 'number' ? projVals.estimate : null;
-    } catch {
-      // Non-fatal: fall through with nulls
-    }
-  }
-
-  // 3. Build and append the inflation section
-  const section = buildInflationSection({
-    reason,
-    items,
-    beforeSize: beforeSize || '?',
-    beforeEstimate: beforeEstimate ?? '?',
-    newSize: size,
-    newEstimate,
-  });
-  const patchedBody = refineComment.body + section;
-  await patchComment({ repo, commentId: refineComment.id, body: patchedBody });
-
-  // 4. Update board Size + Estimate fields
-  let boardUpdated = false;
-  if (cfg.projectId) {
-    try {
-      const { itemId } = await getProjectItem({ repo, projectId: cfg.projectId, issueNumber });
-      if (itemId) {
-        const optMap = await getFieldOptionMap(cfg.projectId);
-        const sizeDef = fieldDefs.find((d) => d.key === 'size');
-        const estimateDef = fieldDefs.find((d) => d.key === 'estimate');
-
-        if (sizeDef) {
-          const sizeFieldId = fieldIdFor(cfg, 'size');
-          if (sizeFieldId) {
-            const val = valueForProjectField(size, sizeDef.type);
-            if (val)
-              await writeField({
-                projectId: cfg.projectId,
-                itemId,
-                fieldId: sizeFieldId,
-                value: val,
-                optionMap: optMap,
-              });
-          }
-        }
-        if (estimateDef) {
-          const estimateFieldId = fieldIdFor(cfg, 'estimate');
-          if (estimateFieldId) {
-            const val = valueForProjectField(newEstimate, estimateDef.type);
-            if (val)
-              await writeField({
-                projectId: cfg.projectId,
-                itemId,
-                fieldId: estimateFieldId,
-                value: val,
-                optionMap: optMap,
-              });
-          }
-        }
-        boardUpdated = true;
-      }
-    } catch (err) {
-      process.stderr.write(`warning: board field update failed: ${err.message}\n`);
-    }
-  }
-
-  // 5. Update aitm-fields block in issue body — force-merge new size/estimate
-  try {
-    await mutateBody({
-      issueNumber,
-      repo,
-      mutate: (base) => {
-        const parsed = parseIssueFieldDb(base);
-        const existing = parsed.ok ? parsed.values : defaultFieldValues(fieldDefs);
-        const updated = { ...existing, size, estimate: newEstimate };
-        return `${stripIssueFieldDb(base)}\n\n${formatIssueFieldDb(updated)}\n`;
-      },
+  const refine = comments.filter((c) => REFINED_ESTIMATE_MARKER_RE.test(c.body));
+  if (!refine.length) return { status: 'no-refine-comment' };
+  if (refine.length !== 1) throw new Error('inflate-estimate:ambiguous-refine-comment');
+  const readComment = async () => {
+    const matches = (await listComments({ issueNumber, repo })).filter(
+      (c) => c.id === refine[0].id
+    );
+    if (matches.length !== 1) throw new Error('inflate-estimate:comment-readback');
+    return observedEstimateEffect(matches[0].body);
+  };
+  const readBody =
+    deps.getIssueBody ??
+    (async () =>
+      JSON.parse(
+        (
+          await pexec(
+            'gh',
+            ['issue', 'view', String(issueNumber), '--repo', repo, '--json', 'body'],
+            { timeout: GH_API_TIMEOUT_MS }
+          )
+        ).stdout
+      ).body);
+  const readFields = async () => {
+    const parsed = parseIssueFieldDb(await readBody());
+    if (!parsed.ok) throw new Error('inflate-estimate:fields-readback');
+    return observedEstimateEffect({
+      estimate: parsed.values.estimate ?? null,
+      size: parsed.values.size ?? null,
     });
-  } catch (err) {
-    process.stderr.write(`warning: issue body update failed: ${err.message}\n`);
-  }
-
-  return { status: 'appended', boardUpdated };
+  };
+  return executeEstimateWriter({
+    cfg,
+    issueNumber,
+    writerId: 'inflate-estimate',
+    key: { size, estimate: newEstimate, reason, items },
+    proposal: { estimate: { basis: 'published', hours: newEstimate, proposalId: null }, size },
+    deps,
+    effects: async ({ subject, operationId, createdAt }) => {
+      const before = await fetchProjectValues({ cfg, fieldDefs, issueNumber });
+      const comment = (await readComment()).value,
+        key = `Publication operation: ${operationId}`;
+      const body = comment.includes(key)
+        ? comment
+        : comment +
+          buildInflationSection({
+            reason,
+            items,
+            beforeSize: before.size,
+            beforeEstimate: before.estimate,
+            newSize: size,
+            newEstimate,
+            date: createdAt.slice(0, 10),
+          }) +
+          `\n${key}\n`;
+      const options = await (deps.fieldOptionMap ?? fieldOptionMap)(cfg.projectId);
+      const boardEffect = (field, value, resource) => ({
+        id: field,
+        resource,
+        targetIdentity: subject.projectItemId,
+        value,
+        read: async () =>
+          observedEstimateEffect(
+            (await fetchProjectValues({ cfg, fieldDefs, issueNumber }))[field] ?? null
+          ),
+        apply: async () => {
+          const definition = fieldDefs.find((d) => d.key === field),
+            fieldId = fieldIdFor(cfg, field);
+          if (!definition || !fieldId) throw new Error(`inflate-estimate:field-${field}`);
+          await (deps.writeProjectFieldValue ?? writeProjectFieldValue)({
+            projectId: cfg.projectId,
+            itemId: subject.projectItemId,
+            fieldId,
+            value: valueForProjectField(value, definition.type),
+            optionMap: options,
+          });
+        },
+      });
+      return [
+        {
+          id: 'audit',
+          resource: 'comment',
+          targetIdentity: `comment:${refine[0].id}`,
+          value: body,
+          read: readComment,
+          apply: () => patchComment({ repo, commentId: refine[0].id, body }),
+        },
+        boardEffect('size', size, 'project-size'),
+        boardEffect('estimate', newEstimate, 'project-estimate'),
+        {
+          id: 'fields',
+          resource: 'body-fields',
+          targetIdentity: `${repo}#${issueNumber}:fields`,
+          value: { estimate: newEstimate, size },
+          read: readFields,
+          apply: () =>
+            mutateBody({
+              issueNumber,
+              repo,
+              mutate: (base) => {
+                const parsed = parseIssueFieldDb(base),
+                  existing = parsed.ok ? parsed.values : defaultFieldValues(fieldDefs);
+                return `${stripIssueFieldDb(base)}\n\n${formatIssueFieldDb({ ...existing, size, estimate: newEstimate })}\n`;
+              },
+            }),
+        },
+      ];
+    },
+  });
 }
 
 export async function verbInflateEstimate(argv, cfg) {
@@ -314,8 +326,15 @@ export async function verbInflateEstimate(argv, cfg) {
     process.exit(1);
   }
 
+  if (result.status !== 'recorded') {
+    console.error(
+      `inflate-estimate: ${result.status}: ${result.reason ?? 'publication unconfirmed'}`
+    );
+    process.exitCode = 1;
+    return;
+  }
   console.log(`✓ Inflation section appended to refine-estimate comment on #${parsed.issueNumber}`);
-  if (result.boardUpdated) {
+  if (result.status === 'recorded') {
     console.log(
       `✓ Board Size → ${parsed.size}, Estimate → ${parseEstimateHours(parsed.estimate)}h`
     );

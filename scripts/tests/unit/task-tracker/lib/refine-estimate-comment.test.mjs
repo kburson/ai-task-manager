@@ -1,14 +1,20 @@
 #!/usr/bin/env node
-// @story #134
+// @story #134 #1988
 // Unit tests for scripts/task-tracker/lib/refine-estimate-comment.mjs (#134).
 
+import { readDecompositionRecords } from '../../../../task-tracker/lib/decomposition-records.mjs';
+
+import { registerRefineCommentPublicationCases } from './refine-comment-publication.cases.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import { publicationCommentDeps } from './refine-comment-publication-fixtures.mjs';
 
 import {
   findRefineEstimateComment,
   ensureRefineEstimateComment,
   appendPlannedEstimate,
+  clearPlannedEstimate,
+  restorePlannedEstimate,
   repopulateEmptyPlannedAppendix,
   planPlannedEstimateGate,
   buildPlannedAppendix,
@@ -18,7 +24,7 @@ import {
   PLANNED_ESTIMATE_HEADER,
 } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
 
-const cfg = { repo: 'o/r' };
+const cfg = { repo: 'o/r', projectId: 'PVT_comment', fieldIds: { estimate: 'EST', size: 'SIZE' } };
 
 const baseComment = (n) =>
   `<!-- aitm-refined-estimate: ${n} -->\n### 🛠 Refine estimate\n\nInitial sizing.\n`;
@@ -76,12 +82,17 @@ test('v1 upsert replaces the Plan projection while preserving immutable Refine v
     refine: { size: 'L', estimate: 20 },
     plan: { size: 'XL', estimate: 40 },
     rationale: 'detailed WBS',
-    deps: {
-      listComments: async () => [{ id: 'IC_1091', body: original }],
-      patchComment: async ({ body }) => {
-        written = body;
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 1091,
+      current: { size: 'L', estimate: 20 },
+      deps: {
+        listComments: async () => [{ id: 'IC_1091', body: original }],
+        patchComment: async ({ body }) => {
+          written = body;
+        },
       },
-    },
+    }),
   });
   assert.equal(result.status, 'updated');
   assert.match(written, /\| Size \| L \| XL \| L→XL \|/);
@@ -140,12 +151,17 @@ test('appendPlannedEstimate PATCHes the comment when no appendix is present', as
     planned: { size: 'M', estimate: 4 },
     current: { size: 'M', estimate: 4 },
     rationale: 'no drift',
-    deps: {
-      listComments: async () => [{ id: 'IC_X', body: baseComment(134) }],
-      patchComment: async ({ commentId, body }) => {
-        patchCalls.push({ commentId, body });
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 134,
+      current: { size: 'M', estimate: 4 },
+      deps: {
+        listComments: async () => [{ id: 'IC_X', body: baseComment(134) }],
+        patchComment: async ({ commentId, body }) => {
+          patchCalls.push({ commentId, body });
+        },
       },
-    },
+    }),
   });
   assert.equal(r.status, 'appended');
   assert.equal(r.commentId, 'IC_X');
@@ -161,14 +177,19 @@ test('appendPlannedEstimate is idempotent — duplicate when appendix already pr
     issueNumber: 134,
     planned: { size: 'M', estimate: 4 },
     current: { size: 'M', estimate: 4 },
-    deps: {
-      listComments: async () => [
-        { id: 'IC_Y', body: `${baseComment(134)}\n${PLANNED_ESTIMATE_HEADER}\n\n…\n` },
-      ],
-      patchComment: async ({ commentId, body }) => {
-        patchCalls.push({ commentId, body });
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 134,
+      current: { size: 'M', estimate: 4 },
+      deps: {
+        listComments: async () => [
+          { id: 'IC_Y', body: `${baseComment(134)}\n${PLANNED_ESTIMATE_HEADER}\n\n…\n` },
+        ],
+        patchComment: async ({ commentId, body }) => {
+          patchCalls.push({ commentId, body });
+        },
       },
-    },
+    }),
   });
   assert.equal(r.status, 'duplicate');
   assert.equal(patchCalls.length, 0);
@@ -180,12 +201,17 @@ test('appendPlannedEstimate returns no-refine-comment when missing', async () =>
     issueNumber: 134,
     planned: { size: 'M', estimate: 4 },
     current: { size: 'M', estimate: 4 },
-    deps: {
-      listComments: async () => [],
-      patchComment: async () => {
-        throw new Error('should not patch');
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 134,
+      current: { size: 'M', estimate: 4 },
+      deps: {
+        listComments: async () => [],
+        patchComment: async () => {
+          throw new Error('should not patch');
+        },
       },
-    },
+    }),
   });
   assert.equal(r.status, 'no-refine-comment');
 });
@@ -196,15 +222,20 @@ test('appendPlannedEstimate captures PATCH failure', async () => {
     issueNumber: 134,
     planned: { size: 'M', estimate: 4 },
     current: { size: 'M', estimate: 4 },
-    deps: {
-      listComments: async () => [{ id: 'IC_Z', body: baseComment(134) }],
-      patchComment: async () => {
-        throw new Error('rate limited');
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 134,
+      current: { size: 'M', estimate: 4 },
+      deps: {
+        listComments: async () => [{ id: 'IC_Z', body: baseComment(134) }],
+        patchComment: async () => {
+          throw new Error('rate limited');
+        },
       },
-    },
+    }),
   });
-  assert.equal(r.status, 'patch-failed');
-  assert.match(r.error, /rate limited/);
+  assert.equal(r.status, 'partial');
+  assert.match(r.reason, /rate limited/);
 });
 
 test('planPlannedEstimateGate refuses when comment missing', async () => {
@@ -277,14 +308,19 @@ test('appendPlannedEstimate rejects scalar planned/current before any I/O', asyn
       issueNumber: 191,
       planned: 4,
       current: 4,
-      deps: {
-        listComments: async () => {
-          throw new Error('should not be called');
+      deps: publicationCommentDeps({
+        cfg,
+        issueNumber: 191,
+        current: 4,
+        deps: {
+          listComments: async () => {
+            throw new Error('should not be called');
+          },
+          patchComment: async () => {
+            throw new Error('should not be called');
+          },
         },
-        patchComment: async () => {
-          throw new Error('should not be called');
-        },
-      },
+      }),
     }),
     /appendPlannedEstimate: 'planned' must be \{ size\?, estimate\? \} — got number \(4\)/
   );
@@ -297,7 +333,12 @@ test('appendPlannedEstimate rejects null planned', async () => {
       issueNumber: 191,
       planned: null,
       current: { size: 'M' },
-      deps: { listComments: async () => [], patchComment: async () => {} },
+      deps: publicationCommentDeps({
+        cfg,
+        issueNumber: 191,
+        current: { size: 'M' },
+        deps: { listComments: async () => [], patchComment: async () => {} },
+      }),
     }),
     /'planned' must be \{ size\?, estimate\? \} — got null/
   );
@@ -311,12 +352,17 @@ test('appendPlannedEstimate still works with valid { size, estimate } objects', 
     planned: { size: 'L', estimate: 8 },
     current: { size: 'M', estimate: 4 },
     rationale: 'risk grew',
-    deps: {
-      listComments: async () => [{ id: 'IC_V', body: baseComment(191) }],
-      patchComment: async ({ commentId, body }) => {
-        patchCalls.push({ commentId, body });
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 191,
+      current: { size: 'M', estimate: 4 },
+      deps: {
+        listComments: async () => [{ id: 'IC_V', body: baseComment(191) }],
+        patchComment: async ({ commentId, body }) => {
+          patchCalls.push({ commentId, body });
+        },
       },
-    },
+    }),
   });
   assert.equal(r.status, 'appended');
   assert.equal(patchCalls.length, 1);
@@ -358,12 +404,17 @@ test('repopulateEmptyPlannedAppendix rebuilds an all-em-dash appendix in place',
     planned: { size: 'M', estimate: 4 },
     current: { size: 'M', estimate: 4 },
     rationale: 'healed: concrete values',
-    deps: {
-      listComments: async () => [{ id: 'IC_E', body: emptyAppendixComment(191) }],
-      patchComment: async ({ commentId, body }) => {
-        patchCalls.push({ commentId, body });
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 191,
+      current: { size: 'M', estimate: 4 },
+      deps: {
+        listComments: async () => [{ id: 'IC_E', body: emptyAppendixComment(191) }],
+        patchComment: async ({ commentId, body }) => {
+          patchCalls.push({ commentId, body });
+        },
       },
-    },
+    }),
   });
   assert.equal(r.status, 'repopulated');
   assert.equal(r.commentId, 'IC_E');
@@ -383,12 +434,17 @@ test('repopulateEmptyPlannedAppendix leaves a non-empty appendix untouched', asy
     issueNumber: 191,
     planned: { size: 'M', estimate: 4 },
     current: { size: 'M', estimate: 4 },
-    deps: {
-      listComments: async () => [{ id: 'IC_NE', body: nonEmpty }],
-      patchComment: async ({ commentId, body }) => {
-        patchCalls.push({ commentId, body });
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 191,
+      current: { size: 'M', estimate: 4 },
+      deps: {
+        listComments: async () => [{ id: 'IC_NE', body: nonEmpty }],
+        patchComment: async ({ commentId, body }) => {
+          patchCalls.push({ commentId, body });
+        },
       },
-    },
+    }),
   });
   assert.equal(r.status, 'not-empty');
   assert.equal(patchCalls.length, 0);
@@ -400,12 +456,17 @@ test('repopulateEmptyPlannedAppendix reports no-appendix when none present', asy
     issueNumber: 191,
     planned: { size: 'M', estimate: 4 },
     current: { size: 'M', estimate: 4 },
-    deps: {
-      listComments: async () => [{ id: 'IC_NA', body: baseComment(191) }],
-      patchComment: async () => {
-        throw new Error('should not patch');
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 191,
+      current: { size: 'M', estimate: 4 },
+      deps: {
+        listComments: async () => [{ id: 'IC_NA', body: baseComment(191) }],
+        patchComment: async () => {
+          throw new Error('should not patch');
+        },
       },
-    },
+    }),
   });
   assert.equal(r.status, 'no-appendix');
 });
@@ -416,9 +477,16 @@ test('repopulateEmptyPlannedAppendix reports no-refine-comment when missing', as
     issueNumber: 191,
     planned: { size: 'M', estimate: 4 },
     current: { size: 'M', estimate: 4 },
-    deps: { listComments: async () => [], patchComment: async () => {} },
+    deps: publicationCommentDeps({
+      cfg,
+      issueNumber: 191,
+      current: { size: 'M', estimate: 4 },
+      deps: { listComments: async () => [], patchComment: async () => {} },
+    }),
   });
   assert.equal(r.status, 'no-refine-comment');
 });
 
 console.log('All refine-estimate-comment tests defined.');
+
+registerRefineCommentPublicationCases({ cfg, baseComment, emptyAppendixComment });

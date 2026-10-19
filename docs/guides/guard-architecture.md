@@ -125,7 +125,7 @@ AITM Status Done for every upstream issue; legacy carriers are not evidence.
 | ready-for-plan | entry | `contiguity-entry`                                | Board Status matches the recorded lifecycle state                        |
 | ready-for-plan | exit  | `blocked-by-not-done`                             | Every GitHub native dependency has AITM Status Done                      |
 | ready-for-plan | exit  | `ready-for-plan-exit-epic-children-r4p-or-beyond` | Epic children have reached Ready for Planning or beyond                  |
-| ready-for-plan | exit  | `refine-exit-wip-budget`                          | Epic WIP budget not exceeded                                             |
+| ready-for-plan | exit  | `refine-exit-wip-budget`                          | Ordinary epic WIP warning; explicit rank-wave admission remains enforced |
 | ready-for-plan | exit  | `refine-exit-child-parent-developing-or-beyond`   | Parent epic has reached develop or beyond                                |
 | ready-for-plan | exit  | `child-cannot-lead-epic-exit`                     | An epic issue cannot lead this transition alone                          |
 | plan           | entry | `contiguity-entry`                                | Board Status matches the recorded lifecycle state                        |

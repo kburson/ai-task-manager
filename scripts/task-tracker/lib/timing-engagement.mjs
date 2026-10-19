@@ -27,6 +27,49 @@ export function isUnknownActorRecovery(row) {
   );
 }
 
+// @story #2022 — an exact sealed opener/end is evidence of interval bounds,
+// even when activity within those bounds remains Unknown.
+export function hasSealedActorBoundary(prior, row, rows) {
+  const e = row?.engagement;
+  if (
+    !e ||
+    !prior?.actorKey ||
+    prior.actorKey !== row.actorKey ||
+    !opener(prior.event) ||
+    prior.engagement
+  )
+    return false;
+  const begin = instant(prior.ts);
+  const end = instant(row.ts);
+  if (e.startMs < begin || e.startMs >= begin + 1000 || e.endMs < end || e.endMs >= end + 1000)
+    return false;
+  for (const [cell, cursor] of [
+    [prior.cells?.[6], e.wordStart],
+    [prior.cells?.[8], e.fullWordStart],
+  ]) {
+    if (
+      cursor === null ||
+      !/^\d[\d,]*$/.test(cell ?? '') ||
+      Number(cell.replaceAll(',', '')) !== cursor
+    )
+      return false;
+  }
+  if (
+    rows.some(
+      (other) =>
+        other !== row &&
+        other.actorKey === row.actorKey &&
+        other.engagement &&
+        other.engagement.startMs < e.endMs &&
+        e.startMs < other.engagement.endMs &&
+        other.engagement.startMs !== other.engagement.endMs
+    )
+  )
+    return false;
+  const derived = deriveActorEngagement([prior, row], row.ts);
+  return derived.failures.length === 0 && derived.incompleteActors.length === 0;
+}
+
 const validSpan = (value) =>
   value &&
   typeof value.actorKey === 'string' &&

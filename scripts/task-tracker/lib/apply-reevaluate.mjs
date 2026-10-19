@@ -1,6 +1,13 @@
+import { readDecompositionRecords } from './decomposition-records.mjs';
+import { resolveEstimateOperationId } from './estimate-writer-publication.mjs';
+import { publishFieldEstimateRevision } from './decomposition-field-writer.mjs';
+import {
+  prepareEstimateAudit,
+  publishEstimateAuditProposal,
+} from './decomposition-audit-writer.mjs';
 // Plan-stage re-evaluation: reads Deep-Dive signals from the issue body,
 // rebuckets Size/Estimate, mutates the project board + issue field-DB block,
-// and posts an audit comment. Failures must not block the calling verb.
+// and posts an audit comment. Partial publication remains fenced.
 //
 // Extracted from task-tracker.mjs so the plan→develop hook in
 // verbs/approve.mjs can invoke it without dragging the whole CLI surface in.
@@ -12,14 +19,11 @@ import {
   projectValuesForIssue,
   writeProjectFieldValue,
   fieldOptionMap,
-  projectItemForIssue,
 } from '../../gh/lib/github-projects.mjs';
 import { reevaluateEstimate, buildAuditCommentBody, AUDIT_HEADER } from './reevaluate-estimate.mjs';
-import { parseIssueFieldDb, formatIssueFieldDb, stripIssueFieldDb } from '../issue-field-db.mjs';
+import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs, fieldIdFor } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { mutateIssueBody } from './issue-body-mutate.mjs';
-import { warnMissingFieldId } from './field-config-warn.mjs';
 
 async function defaultPostComment({ issueNumber, repo, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
@@ -54,19 +58,13 @@ async function defaultHasSubIssues({ issueNumber, repo }) {
   }
 }
 
-async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
-  await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
-}
-
 export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}) {
   if (!cfg) throw new Error('applyReevaluate: cfg is required');
   if (!issueNumber) throw new Error('applyReevaluate: issueNumber is required');
 
   const postComment = deps.postComment || defaultPostComment;
-  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
-  const fetchProjectItem = deps.projectItemForIssue || projectItemForIssue;
   const writeField = deps.writeProjectFieldValue || writeProjectFieldValue;
   const optionMapFor = deps.fieldOptionMap || fieldOptionMap;
   const hasSubIssues = deps.hasSubIssues || defaultHasSubIssues;
@@ -117,89 +115,87 @@ export async function applyReevaluate({ cfg, issueNumber, body, deps = {} } = {}
   }
 
   const result = reevaluateEstimate(body, { size: currentSize, estimate: currentEstimate });
-  if (!result.changed) return { status: 'unchanged', result };
+  const key = {
+    size: result.size,
+    estimate: result.estimate,
+    requiresHuman: result.requiresHuman,
+    signals: result.signals,
+  };
+  if (!result.changed) {
+    const publication = readDecompositionRecords(body).publication;
+    if (
+      publication?.writerId !== 'apply-reevaluate' ||
+      publication.status !== 'pending' ||
+      publication.operationId !== resolveEstimateOperationId('apply-reevaluate', key, publication)
+    )
+      return { status: 'unchanged', result };
+  }
 
   const commentBody = buildAuditCommentBody(result);
 
-  if (result.requiresHuman) {
-    try {
-      await postComment({ issueNumber, repo: cfg.repo, body: commentBody });
-    } catch {
-      /* best-effort: GitHub/telemetry side effect; core flow proceeds */
-    }
-    return { status: 'human-attention', result };
-  }
-
-  if (cfg.projectId) {
-    try {
-      const { itemId } = await fetchProjectItem({
-        repo: cfg.repo,
-        projectId: cfg.projectId,
+  if (!cfg.projectId)
+    return {
+      status: 'refused',
+      reason: 'estimate-publication:configured-membership-required',
+      result,
+    };
+  try {
+    const audit = await prepareEstimateAudit({
+      cfg,
+      issueNumber,
+      writerId: 'apply-reevaluate',
+      key,
+      body: commentBody,
+      postComment,
+      deps,
+    });
+    let publication;
+    if (result.requiresHuman)
+      publication = await publishEstimateAuditProposal({
+        cfg,
         issueNumber,
+        writerId: 'apply-reevaluate',
+        key,
+        size: result.size,
+        estimate: result.estimate,
+        audit,
+        deps,
       });
-      if (itemId) {
-        const sizeFieldId = fieldIdFor(cfg, 'size');
-        const estimateFieldId = fieldIdFor(cfg, 'estimate');
-        if (!estimateFieldId) {
-          warnMissingFieldId({
-            cfgKey: 'fieldEstimate',
-            context: 're-eval estimate write skipped',
-          });
-        }
-        if (!sizeFieldId) {
-          warnMissingFieldId({ cfgKey: 'fieldSize', context: 're-eval size write skipped' });
-        }
-        const optionMap = sizeFieldId ? await optionMapFor(cfg.projectId) : {};
-        if (estimateFieldId) {
-          await writeField({
-            projectId: cfg.projectId,
-            itemId,
-            fieldId: estimateFieldId,
-            value: { number: result.estimate },
-          });
-        }
-        if (sizeFieldId) {
-          await writeField({
-            projectId: cfg.projectId,
-            itemId,
-            fieldId: sizeFieldId,
-            value: { singleSelectOptionName: result.size },
-            optionMap,
-          });
-        }
-      }
-    } catch (err) {
-      process.stderr.write(`⚠ re-eval: project field write failed: ${err.message}\n`);
-    }
-  }
-
-  if (dbParsed.ok) {
-    // #295 — re-derive the field-DB block from the FRESH base inside the
-    // closure so a concurrent writer between the pre-flight fetch above and
-    // this write doesn't get clobbered. The size/estimate values are
-    // deterministic from `result` (computed once); only the surrounding
-    // body context is re-read.
-    try {
-      await mutateBody({
+    else {
+      const options = await optionMapFor(cfg.projectId);
+      publication = await publishFieldEstimateRevision({
+        cfg,
         issueNumber,
-        repo: cfg.repo,
-        mutate: (base) => {
-          const parsed = parseIssueFieldDb(base);
-          const baseValues = parsed.ok ? parsed.values : {};
-          const nextValues = { ...baseValues, size: result.size, estimate: result.estimate };
-          return `${stripIssueFieldDb(base)}\n\n${formatIssueFieldDb(nextValues)}\n`;
+        writerId: 'apply-reevaluate',
+        key,
+        estimate: result.estimate,
+        size: result.size,
+        extraEffects: [audit.effect],
+        deps,
+        writeField: async ({ field, value, context }) => {
+          const fieldId = fieldIdFor(cfg, field);
+          if (!fieldId) throw new Error(`estimate-publication:field-${field}`);
+          await writeField({
+            projectId: cfg.projectId,
+            itemId: context.subject.projectItemId,
+            fieldId,
+            value: field === 'estimate' ? { number: value } : { singleSelectOptionName: value },
+            optionMap: options,
+          });
         },
       });
-    } catch (err) {
-      process.stderr.write(`⚠ re-eval: body patch failed: ${err.message}\n`);
     }
+    return {
+      ...publication,
+      status:
+        publication.status === 'recorded'
+          ? result.requiresHuman
+            ? 'human-attention'
+            : 'applied'
+          : publication.status,
+      result,
+    };
+  } catch (error) {
+    return { status: 'refused', reason: error.message, result };
   }
-
-  try {
-    await postComment({ issueNumber, repo: cfg.repo, body: commentBody });
-  } catch {
-    /* best-effort: GitHub/telemetry side effect; core flow proceeds */
-  }
-
-  return { status: 'applied', result };
 }

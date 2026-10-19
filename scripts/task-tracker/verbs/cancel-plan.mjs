@@ -1,3 +1,11 @@
+import { readDecompositionRecords } from '../lib/decomposition-records.mjs';
+import { resolveEstimateOperationId } from '../lib/estimate-writer-publication.mjs';
+import { estimateEffectDigest } from '../lib/decomposition-publication.mjs';
+import {
+  publishCancellationRevision,
+  readCancellationRecovery,
+  cancellationFieldValuesMatch,
+} from '../lib/decomposition-cancellation-writer.mjs';
 // `cancel-plan` verb — Plan -> Ready for Planning (#1213).
 //
 // Plan is intentionally short-lived. This governed backward edge invalidates
@@ -17,7 +25,7 @@ import {
   normalizeStateId,
   validateExecutableTransition,
 } from '../lib/lifecycle-policy/index.mjs';
-import { serializeMarker } from '../lib/marker-grammar.mjs';
+import { parseMarker, serializeMarker } from '../lib/marker-grammar.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { verifyRefinementSnapshot } from '../lib/refinement-snapshot.mjs';
 import {
@@ -25,7 +33,6 @@ import {
   fetchRefinementBoardSnapshot,
   numericBoardFieldMatches,
 } from '../lib/refinement-snapshot-guard.mjs';
-import { clearPlannedEstimate, restorePlannedEstimate } from '../lib/refine-estimate-comment.mjs';
 import { ensureIssueFieldDb, parseIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { tetherIssueToProject } from '../../gh/lib/project-tether.mjs';
@@ -44,7 +51,7 @@ const PLAN_ONLY_MARKERS = Object.freeze([
 ]);
 const PLAN_CANCELLED_MARKER_RE = /<!--\s*aitm-plan-cancelled\s+[^>]*?-->\s*\n?/gi;
 
-function planArtifactMarkers(body) {
+export function planArtifactMarkers(body) {
   const found = [];
   for (const pattern of PLAN_ONLY_MARKERS) {
     for (const match of String(body || '').matchAll(pattern)) found.push(match[0].trim());
@@ -80,7 +87,7 @@ function restoreSnapshotFields(body, snapshot, { fieldDefs = loadProjectFieldDef
   }).body;
 }
 
-async function defaultRestoreBoardFields({ issueNumber, cfg, fields }) {
+async function defaultRestoreBoardFields({ issueNumber, cfg, fields, context, effectId }) {
   let cfgForTether = cfg;
   if (cfg.sizeFieldId && !cfg.sizeOptions && !cfg.sizeOptionMap) {
     cfgForTether = { ...cfg, sizeOptionMap: await fieldOptionMap(cfg.projectId) };
@@ -92,6 +99,8 @@ async function defaultRestoreBoardFields({ issueNumber, cfg, fields }) {
     size: fields.size,
     estimate: Number(fields.estimate),
     rank: Number(fields.rank),
+    context,
+    effectId,
   });
 }
 
@@ -188,8 +197,10 @@ export async function runCancelPlan({ issueNumber, cfg, reason, now, deps = {} }
     live = await getLiveState({ issueNumber, cfg });
   }
   if (recorded !== live) return { status: 'drift-refused', recorded, live };
+  const publication = readDecompositionRecords(originalBody).publication;
+  const targetRetry = recorded === CANCEL_PLAN_TARGET && publication?.writerId === 'cancel-plan';
   const policy = actionPolicyFor('cancel-plan', recorded);
-  if (!policy.ok) return { status: 'invalid-source-refused', from: recorded };
+  if (!policy.ok && !targetRetry) return { status: 'invalid-source-refused', from: recorded };
   const labels =
     issueRecord.labels ||
     (deps.fetchLabels ? await deps.fetchLabels({ issueNumber, cfg }) : undefined);
@@ -214,15 +225,56 @@ export async function runCancelPlan({ issueNumber, cfg, reason, now, deps = {} }
       };
     }
   }
-  if (!boardFieldsMatchCurrentPlan(liveBoardFields, originalFields.values)) {
+  const operationId = resolveEstimateOperationId(
+    'cancel-plan',
+    {
+      reason: why,
+      snapshot: snapshot.digest,
+    },
+    publication
+  );
+  const recovery =
+    publication?.writerId === 'cancel-plan' &&
+    ['pending', 'complete'].includes(publication.status) &&
+    publication.operationId === operationId &&
+    publication.subject.issue === issueNumber &&
+    publication.subject.repository === cfg.repo.toLowerCase() &&
+    publication.subject.projectId === cfg.projectId
+      ? readCancellationRecovery(originalBody, operationId)
+      : null;
+  const resuming = Boolean(
+    recovery &&
+    publication.effects.find((effect) => effect.id === 'recovery')?.intendedDigest ===
+      estimateEffectDigest(recovery)
+  );
+  if (
+    targetRetry &&
+    !(
+      resuming &&
+      publication.effects.every((effect) => effect.status === 'confirmed') &&
+      parseMarker(originalBody.match(/<!--\s*aitm-plan-cancelled\s+[^>]*-->/)?.[0] ?? '')?.props
+        ?.reason === why &&
+      boardFieldsMatchCurrentPlan(liveBoardFields, snapshot.fields) &&
+      boardFieldsMatchCurrentPlan(originalFields.values, snapshot.fields)
+    )
+  )
+    return { status: 'invalid-source-refused', from: recorded };
+  const permitted = (value) =>
+    cancellationFieldValuesMatch(value, recovery?.fields, snapshot.fields);
+  if (
+    resuming
+      ? !(permitted(liveBoardFields) && permitted(originalFields.values))
+      : !boardFieldsMatchCurrentPlan(liveBoardFields, originalFields.values)
+  ) {
     return {
       status: 'board-fields-refused',
       reason: 'live board fields disagree with the current Plan body; cancellation refused',
     };
   }
   if (
-    !backwardTargets(recorded).includes(CANCEL_PLAN_TARGET) ||
-    !validateExecutableTransition(recorded, CANCEL_PLAN_TARGET).ok
+    !targetRetry &&
+    (!backwardTargets(recorded).includes(CANCEL_PLAN_TARGET) ||
+      !validateExecutableTransition(recorded, CANCEL_PLAN_TARGET).ok)
   )
     throw new Error(`cancel-plan: lifecycle policy refuses ${recorded} -> ${CANCEL_PLAN_TARGET}`);
 
@@ -231,137 +283,29 @@ export async function runCancelPlan({ issueNumber, cfg, reason, now, deps = {} }
   const fieldDefs = deps.loadProjectFieldDefs
     ? deps.loadProjectFieldDefs()
     : loadProjectFieldDefs();
-  const plannedEstimateDeps = deps.plannedEstimate || {};
-  let plannedEstimateRecord;
-  try {
-    plannedEstimateRecord = await clearPlannedEstimate({
-      cfg,
-      issueNumber,
-      deps: plannedEstimateDeps,
-    });
-  } catch (error) {
-    return { status: 'planned-estimate-refused', error: error.message };
-  }
-  if (['no-refine-comment', 'no-appendix'].includes(plannedEstimateRecord.status)) {
-    plannedEstimateRecord = null;
-  } else if (plannedEstimateRecord.status !== 'cleared') {
-    return {
-      status: 'planned-estimate-refused',
-      detail: plannedEstimateRecord.status,
-      error: plannedEstimateRecord.error,
-    };
-  }
-
-  let bodyChanged = false;
-  let boardChanged = false;
-  async function restoreCancellationChanges() {
-    let restored = true;
-    if (bodyChanged) {
-      try {
-        await mutateBody({
-          issueNumber,
-          repo: cfg.repo,
-          mutate: (base) => restorePlanArtifacts(base, originalBody, originalFields, { fieldDefs }),
-          allowMarkerLoss: true,
-        });
-      } catch {
-        restored = false;
-      }
-    }
-    if (boardChanged) {
-      try {
-        await restoreBoardFields({ issueNumber, cfg, fields: originalFields.values });
-      } catch {
-        restored = false;
-      }
-    }
-    if (plannedEstimateRecord) {
-      try {
-        await restorePlannedEstimate({
-          cfg,
-          issueNumber,
-          record: plannedEstimateRecord,
-          deps: plannedEstimateDeps,
-        });
-      } catch {
-        restored = false;
-      }
-    }
-    return restored;
-  }
-
-  bodyChanged = true;
-  try {
-    await mutateBody({
-      issueNumber,
-      repo: cfg.repo,
-      mutate: (base) =>
-        restoreSnapshotFields(invalidatePlanArtifacts(base, { reason: why, ts }), snapshot, {
-          fieldDefs,
-        }),
-      allowMarkerLoss: true,
-    });
-  } catch (error) {
-    const restored = await restoreCancellationChanges();
-    return {
-      status: restored
-        ? 'artifact-invalidation-failed-restored'
-        : 'artifact-invalidation-failed-recovery-uncertain',
-      error: error.message,
-    };
-  }
-  boardChanged = true;
-  try {
-    await restoreBoardFields({ issueNumber, cfg, fields: snapshot.fields });
-  } catch (error) {
-    const restored = await restoreCancellationChanges();
-    return {
-      status: restored
-        ? 'field-restore-failed-restored'
-        : 'field-restore-failed-recovery-uncertain',
-      error: error.message,
-    };
-  }
-  let exitCode;
-  let moveError = null;
-  try {
-    exitCode = await runMoveState({
-      issueNumber,
-      target: CANCEL_PLAN_TARGET,
-      reason: why,
-      cfg,
-    });
-  } catch (error) {
-    exitCode = 1;
-    moveError = error;
-  }
-  if (exitCode !== 0) {
-    let liveAfter = null;
-    try {
-      liveAfter = await getLiveState({ issueNumber, cfg });
-    } catch {
-      return { status: 'transition-outcome-ambiguous', exitCode, from: recorded };
-    }
-    if (liveAfter === CANCEL_PLAN_TARGET) {
-      return {
-        status: 'cancelled-with-warning',
-        exitCode,
-        from: recorded,
-        to: CANCEL_PLAN_TARGET,
-      };
-    }
-    if (liveAfter !== recorded) {
-      return { status: 'transition-outcome-ambiguous', exitCode, from: recorded, liveAfter };
-    }
-    const restored = await restoreCancellationChanges();
-    return {
-      status: restored ? 'transition-failed-restored' : 'transition-failed-recovery-uncertain',
-      exitCode,
-      from: recorded,
-      ...(moveError ? { error: moveError.message } : {}),
-    };
-  }
-  return { status: 'cancelled', from: recorded, to: CANCEL_PLAN_TARGET };
+  return (deps.publishCancelPlanRevision ?? publishCancellationRevision)({
+    cfg,
+    issueNumber,
+    resumeAtTarget: targetRetry,
+    reason: why,
+    snapshot,
+    originalBody,
+    originalFields,
+    deps,
+    fetchIssueBody,
+    getLiveState,
+    fetchBoardFields: deps.fetchBoardFields ?? fetchRefinementBoardFields,
+    restoreBoardFields,
+    mutateBody,
+    runMoveState,
+    planArtifactMarkers,
+    targetBody: (base) =>
+      restoreSnapshotFields(invalidatePlanArtifacts(base, { reason: why, ts }), snapshot, {
+        fieldDefs,
+      }),
+    restoreBody: (base, oldBody, oldFields) =>
+      restorePlanArtifacts(base, oldBody, oldFields, { fieldDefs }),
+  });
 }
 
 export function parseArgs(rest = []) {

@@ -9,12 +9,22 @@ import '../../../fixtures/offline-gh-auto.mjs';
 import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
-import { runPromote, verbPromote } from '../../../../task-tracker/verbs/promote.mjs';
+import {
+  runPromote as rawRunPromote,
+  verbPromote,
+} from '../../../../task-tracker/verbs/promote.mjs';
+import { preparePromoteAuthority } from '../lib/decomposition-governed-fixtures.mjs';
+import { createDecompositionRuntime } from '../../../../task-tracker/lib/decomposition-authority.mjs';
+import { formatIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
 import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 // Isolate the verb's withIssueLock dir from the live project tree.
 process.env.AI_TASK_MANAGER_PROJECT_DIR = mkdtempSync(join(projectScratchDir('test'), 'promote-'));
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
+async function runPromote(options) {
+  await preparePromoteAuthority(options.deps, options.issueNumber, cfg);
+  return rawRunPromote(options);
+}
 function makeDeps({
   body = '',
   live = null,
@@ -314,7 +324,7 @@ test('runPromote: bootstrap when lastKnownState absent', async () => {
   const { deps, calls } = makeDeps({ body: '## just a body\n' + DEEP_DIVE_SIGNALS, live: 'plan' });
   plannedEstimateOk(deps, 108);
   const r = await runPromote({ issueNumber: 108, cfg, deps });
-  assert.equal(r.status, 'promoted');
+  assert.equal(r.status, 'promoted', JSON.stringify(r));
   assert.equal(r.bootstrapped, true);
   assert.match(calls.writes[0], /aitm-last-known-state state="plan"/);
 });
@@ -373,7 +383,8 @@ test('spawnVerbTimeout: test → undefined, others → finite budget', async () 
   assert.equal(typeof spawnVerbTimeout('close'), 'number');
 });
 // --- verbPromote: process.exit + stdout/stderr trapped, deps injected ---
-function runVerb(rest, deps) {
+async function runVerb(rest, deps) {
+  if (deps && rest[0]) await preparePromoteAuthority(deps, Number(rest[0]), cfg);
   const realExit = process.exit;
   const realErr = process.stderr.write.bind(process.stderr);
   const realOut = process.stdout.write.bind(process.stdout);
@@ -435,7 +446,8 @@ test('verbPromote: decomposition refusal renders blockers and exits 4', async ()
 
   assert.equal(r.exitCode, 4);
   assert.match(r.stderr, /Refusing to promote #1134 to develop/);
-  assert.match(r.stderr, /BLOCKED:.*Decomposition Waiver/s);
+  assert.match(r.stderr, /BLOCKED:.*split-plan 1134 --dry-run/s);
+  assert.doesNotMatch(r.stderr, /Decomposition Waiver/);
   assert.doesNotMatch(r.stderr, /unknown result status/);
   assert.doesNotMatch(r.stdout, /promoted:/);
 });

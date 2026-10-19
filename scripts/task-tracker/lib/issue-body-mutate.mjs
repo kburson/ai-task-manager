@@ -101,6 +101,7 @@ export async function mutateIssueBody({
   expectedRemovedHeadings = [],
   allowLargeShrink = false,
   allowMarkerAdvance = [],
+  decompositionMutationCapability,
   validateFreshBase,
   validateFreshBaseAsync,
   expectedVersion,
@@ -125,7 +126,12 @@ export async function mutateIssueBody({
         const lost = findLostMarkers(baseBody, next);
         if (lost.length > 0) throw new MarkerLossError(issueNumber, lost);
       }
-      validateMarkerAdvances(baseBody, next, { allowMarkerAdvance });
+      validateMarkerAdvances(baseBody, next, {
+        allowMarkerAdvance,
+        decompositionMutationCapability,
+        issueNumber,
+        repo,
+      });
       // #725 — generic unbounded-deletion guardrail. Independent of the fixed
       // marker allowlist above: refuses when a mutation silently drops a
       // pre-existing `## ` heading or shrinks the body past the threshold

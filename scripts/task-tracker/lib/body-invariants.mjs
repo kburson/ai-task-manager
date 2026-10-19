@@ -1,3 +1,4 @@
+import { validateDecompositionAdvance } from './decomposition-projection.mjs';
 import { locateAcSection } from './ac-section.mjs';
 // @story #1859
 // @story #1629
@@ -52,6 +53,8 @@ import { PROTOCOL_MARKER_RE, validateProtocolAdvance } from './evidence-v2/proto
 const SESSION_REF_COUNT_RE = /<!--\s*aitm-session-ref\s+sid="/gi;
 const WORKTREE_LOCATION_COUNT_RE = /<!--\s*aitm-worktree-location\s+worktree="/gi;
 const AC_STRUCK_COUNT_RE = /<!--\s*aitm-ac-struck\b/gi;
+const DECOMPOSITION_RECORD_RE = (name) =>
+  new RegExp(`<!--\\s*aitm-decomposition-${name}\\b[\\s\\S]*?(?:-->|$)`, 'i');
 const RESIDENT_ACTION_LEDGER_HEAD_RE = /<!--\s*aitm-resident-action-ledger-head\s+[^]*?-->/i;
 
 const PHASE_ADVANCES = Object.freeze({
@@ -160,6 +163,13 @@ function validateLedgerAdvance({ markerId, baseMatch, nextMatch, nextBody }) {
 
 export const INVARIANT_MARKER_PATTERNS = [
   { name: 'aitm-scope-evidence-policy', re: /<!--\s*aitm-scope-evidence-policy/i, kind: 'single' },
+  ...['assessment', 'publication'].map((name) => ({
+    name: `aitm-decomposition-${name}`,
+    re: DECOMPOSITION_RECORD_RE(name),
+    kind: 'advance',
+    strictOccurrences: true,
+    validateAdvance: validateDecompositionAdvance,
+  })),
   {
     name: 'aitm-evidence-v2',
     re: PROTOCOL_MARKER_RE,
@@ -306,22 +316,41 @@ export function findLostMarkers(base, next) {
   return lost;
 }
 
-export function validateMarkerAdvances(baseBody, nextBody, { allowMarkerAdvance = [] } = {}) {
+export function validateMarkerAdvances(
+  baseBody,
+  nextBody,
+  { allowMarkerAdvance = [], decompositionMutationCapability, issueNumber, repo } = {}
+) {
   const allowed = new Set(allowMarkerAdvance);
   for (const marker of INVARIANT_MARKER_PATTERNS.filter((entry) => entry.kind === 'advance')) {
     const baseMatch = marker.re.exec(String(baseBody || ''))?.[0] ?? null;
     const nextMatch = marker.re.exec(String(nextBody || ''))?.[0] ?? null;
-    if (baseMatch === nextMatch) continue;
+    const occurrences = (body) =>
+      [...String(body || '').matchAll(new RegExp(marker.re.source, 'gi'))].map((match) => match[0]);
+    if (
+      marker.strictOccurrences
+        ? JSON.stringify(occurrences(baseBody)) === JSON.stringify(occurrences(nextBody))
+        : baseMatch === nextMatch
+    )
+      continue;
     if (!allowed.has(marker.name)) {
       rejectAdvance(marker.name, baseMatch, nextMatch, 'unauthorized');
     }
-    marker.validateAdvance({
-      markerId: marker.name,
-      baseMatch,
-      nextMatch,
-      baseBody,
-      nextBody,
-    });
+    try {
+      marker.validateAdvance({
+        markerId: marker.name,
+        decompositionMutationCapability,
+        issueNumber,
+        repo,
+        baseMatch,
+        nextMatch,
+        baseBody,
+        nextBody,
+      });
+    } catch (error) {
+      if (marker.strictOccurrences) rejectAdvance(marker.name, baseMatch, nextMatch, error.message);
+      throw error;
+    }
   }
 }
 

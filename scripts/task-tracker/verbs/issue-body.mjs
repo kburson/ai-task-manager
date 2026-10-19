@@ -1,9 +1,15 @@
+// @story #1990
 // @story #1210 #1873
 // Governed, declarative issue-body mutations. Operation files describe a
 // transformation; they never contain a complete body snapshot to push.
 
 import { readFileSync } from 'node:fs';
 
+import {
+  createBodyEffectContext,
+  admitBodyRevision,
+  refreshBodyRevision,
+} from '../lib/decomposition-effect-admission.mjs';
 import { parseBodyVersion } from '../lib/body-version.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { stripBodyVersion } from '../lib/versioned-issue-write.mjs';
@@ -202,10 +208,17 @@ export function applyIssueBodyOperation(baseBody, operationInput, { checkVersion
   );
 }
 
-export async function runIssueBodyOperation({ issueNumber, repo, operation, deps = {} } = {}) {
+export async function runIssueBodyOperation({
+  issueNumber,
+  repo,
+  operation,
+  deps = {},
+  effectContext = null,
+} = {}) {
   if (!repo) fail('repository');
   const mutate = deps.mutateIssueBody || mutateIssueBody;
   let expectedReadBack = null;
+  let activity = null;
   const result = await mutate({
     issueNumber: normalizeIssueNumber(issueNumber),
     repo,
@@ -213,6 +226,11 @@ export async function runIssueBodyOperation({ issueNumber, repo, operation, deps
     expectedVersion: operation.expectedVersion,
     mutate: (base) => {
       expectedReadBack = applyIssueBodyOperation(base, operation, { checkVersion: false });
+      if (effectContext)
+        return admitBodyRevision(effectContext, base, expectedReadBack).then((value) => {
+          activity = value;
+          return expectedReadBack;
+        });
       return expectedReadBack;
     },
   });
@@ -232,6 +250,17 @@ export async function runIssueBodyOperation({ issueNumber, repo, operation, deps
           stripVersionForReadBack(result?.body) === stripVersionForReadBack(expectedReadBack)
         )}`
     );
+  }
+  if (effectContext && activity === 'decomposition-prepare' && result.status === 'ok') {
+    const refreshed = await refreshBodyRevision(effectContext);
+    if (refreshed.status === 'confirmed' && typeof refreshed.body === 'string')
+      return {
+        ...result,
+        body: refreshed.body,
+        version: parseBodyVersion(refreshed.body),
+        decomposition: { status: 'confirmed' },
+      };
+    return { ...result, decomposition: refreshed };
   }
   return result;
 }
@@ -262,6 +291,12 @@ export async function runIssueBodyVerb(ctx, deps = {}) {
     repo: ctx.cfg?.repo,
     operation: parseIssueBodyOperation(raw),
     deps,
+    effectContext: createBodyEffectContext({
+      issue: args.issueNumber,
+      cfg: ctx.cfg,
+      projectDir: ctx.projectDir ?? process.cwd(),
+      deps,
+    }),
   });
 }
 

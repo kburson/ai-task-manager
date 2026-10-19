@@ -4,12 +4,8 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
-import { evaluateIssueDecomposition } from '../lib/decomposition-plan-exit-guard.mjs';
-import {
-  classifyDecomposition,
-  linkedPlanPath,
-  visibleMetadataFieldValue,
-} from '../lib/decomposition-policy.mjs';
+import { assertGovernedDecompositionRecovery } from '../lib/decomposition-plan-exit-guard.mjs';
+import { classifyDecomposition, visibleMetadataFieldValue } from '../lib/decomposition-policy.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { buildSplitProposals, writeProposalFragments } from '../lib/split-plan.mjs';
@@ -116,24 +112,24 @@ export async function runSplitPlan({
     deps,
   });
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
-  const evaluate = deps.evaluateIssueDecomposition || evaluateIssueDecomposition;
   const readPlanAtCommit = deps.readPlanAtCommit || defaultReadPlanAtCommit;
   const fetchParentIssue = deps.fetchParentIssue || defaultFetchParentIssue;
   const resolveHead = deps.resolveHead || defaultResolveHead;
   const runCreator = deps.runCreator || defaultRunCreator;
   const body = await fetchIssueBody({ issueNumber: sourceIssue, repo: cfg.repo });
-  const evaluated = await evaluate({
+  const evaluated = await assertGovernedDecompositionRecovery({
     issueNumber: sourceIssue,
     cfg,
     body,
     planOverride,
-    deps: deps.decomposition || {},
+    projectDir,
+    deps,
   });
   if (!evaluated.planDiagnostic?.path) {
     throw new Error(`split-plan: ${evaluated.planDiagnostic?.diagnostic || 'plan is unavailable'}`);
   }
 
-  const planPath = planOverride || linkedPlanPath(body);
+  const planPath = planOverride || evaluated.input.plan.path;
   if (!planPath) throw new Error('split-plan: source plan provenance is unavailable');
   const governingSpec =
     visibleMetadataFieldValue(body, 'Plan Metadata', 'Governing-spec') || DEFAULT_GOVERNING_SPEC;
@@ -170,6 +166,13 @@ export async function runSplitPlan({
   const scratchDir =
     deps.scratchDir ||
     mkdtempSync(path.join(projectScratchDir('plan', projectDir), `split-${sourceIssue}-`));
+  await assertGovernedDecompositionRecovery({
+    issueNumber: sourceIssue,
+    cfg,
+    projectDir,
+    body,
+    deps,
+  });
   const drafts = [];
   for (const proposal of proposals) {
     const fragments = await (deps.writeProposalFragments ?? writeProposalFragments)({
@@ -201,7 +204,18 @@ export async function runSplitPlan({
 
   const createdChildren = [];
   for (const draft of drafts) {
-    const result = await runCreator([...draft.creatorArgs], { projectDir });
+    let result;
+    try {
+      await assertGovernedDecompositionRecovery({
+        issueNumber: sourceIssue,
+        cfg,
+        projectDir,
+        deps,
+      });
+      result = await runCreator([...draft.creatorArgs], { projectDir });
+    } catch (error) {
+      result = { exitCode: 1, stdout: '', stderr: error.message };
+    }
     if (result.exitCode !== 0) {
       const incompleteIssue = parseCreatedIssueToken(`${result.stdout}\n${result.stderr}`);
       if (incompleteIssue) {

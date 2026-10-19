@@ -192,7 +192,10 @@ test('current package capture preserves lifecycle outcomes and instruction input
   );
   assert.deepEqual(current.identity.productionPackage, archived.identity.productionPackage);
   assert.deepEqual(current.measurement.installedStatic, archived.measurement.installedStatic);
-  assert.equal(current.identity.initialFixtureSha256, archived.identity.initialFixtureSha256);
+  // #1989 Current catalog and complete decomposition provider data change the fixture;
+  // retain the archived identity and require the observed current snapshot instead.
+  assert.notEqual(current.identity.initialFixtureSha256, archived.identity.initialFixtureSha256);
+  assert.equal(current.identity.initialFixtureSha256, current.events[0].snapshotSha256);
   assert.equal(
     current.identity.transcriptSha256,
     'sha256:' + createHash('sha256').update(JSON.stringify(current.events)).digest('hex')

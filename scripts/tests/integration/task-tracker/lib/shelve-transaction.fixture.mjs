@@ -153,6 +153,8 @@ export function harness({
   }
 
   const deps = {
+    // Legacy journal orchestration is verified separately from the real owner cases.
+    publishShelveRevision: ({ runTransaction }) => runTransaction(),
     assertIssueLockHeld: () => {},
     now: () => '2026-08-12T00:05:00.000Z',
     makeTx: () => 'tx-1215',

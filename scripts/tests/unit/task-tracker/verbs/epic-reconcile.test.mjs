@@ -1,4 +1,6 @@
+// @story #1990
 // @story #1182
+import { currentUnitAuthority } from '../lib/decomposition-unit-admission-fixture.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -10,7 +12,7 @@ import {
 import {
   parseEpicReconcileArgs,
   validateEpicDeliverableComment,
-  verbEpicReconcile,
+  verbEpicReconcile as productionReconcile,
 } from '../../../../task-tracker/verbs/epic-reconcile.mjs';
 
 const EPIC = [
@@ -149,7 +151,7 @@ test('verbEpicReconcile validates the comment before one combined versioned muta
       },
       mutateIssueBody: async ({ mutate }) => {
         mutationCalls += 1;
-        nextBody = mutate(nextBody);
+        nextBody = await mutate(nextBody);
         return { status: 'updated' };
       },
       fetchEpicChildren: async () => [],
@@ -196,7 +198,7 @@ test('production comment fetch reads the exact REST comment endpoint', async () 
     },
     deps: {
       mutateIssueBody: async ({ mutate }) => {
-        nextBody = mutate(nextBody);
+        nextBody = await mutate(nextBody);
         return { status: 'updated' };
       },
       fetchEpicChildren: async () => [],
@@ -222,7 +224,7 @@ test('no deliverable flag preserves reconciliation-only compatibility', async ()
     deps: {
       fetchDeliverableComment: async () => assert.fail('must not fetch without the flag'),
       mutateIssueBody: async ({ mutate }) => {
-        nextBody = mutate(nextBody);
+        nextBody = await mutate(nextBody);
         return { status: 'updated' };
       },
       fetchEpicChildren: async () => [],
@@ -232,3 +234,27 @@ test('no deliverable flag preserves reconciliation-only compatibility', async ()
   assert.equal(hasEpicAcReconciledMarker(nextBody), true);
   assert.equal(hasDeliverableMarker(nextBody), false);
 });
+
+async function verbEpicReconcile(ctx) {
+  const current = await currentUnitAuthority({
+    body: EPIC,
+    issue: 1067,
+    repository: 'kburson/ai-task-manager',
+  });
+  const mutateRemote = ctx.deps?.mutateIssueBody;
+  return productionReconcile({
+    ...ctx,
+    cfg: current.cfg,
+    projectDir: current.projectDir,
+    deps: {
+      ...ctx.deps,
+      decomposition: { subject: current.subject, runtime: current.runtime },
+      ...(mutateRemote
+        ? {
+            mutateIssueBody: (input) =>
+              mutateRemote({ ...input, mutate: async () => input.mutate(current.body) }),
+          }
+        : {}),
+    },
+  });
+}
