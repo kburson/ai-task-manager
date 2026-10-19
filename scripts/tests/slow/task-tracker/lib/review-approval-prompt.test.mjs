@@ -91,7 +91,7 @@ function makeGhShim(
 import fs from 'node:fs';
 import {spawnSync} from 'node:child_process';
 const argv = process.argv.slice(2);
-if (argv.includes('--show-toplevel') || (argv.includes('worktree') && argv.includes('-z'))) {
+if (argv.includes('--show-toplevel') || (argv.includes('worktree') && (argv.includes('-z') || argv.includes('list')))) {
   const result = spawnSync(${JSON.stringify(fixtureGitExecutable)}, argv, {stdio:'inherit'});
   process.exit(result.status ?? 1);
 }

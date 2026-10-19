@@ -190,6 +190,9 @@ export async function publishCancellationRevision({
     },
     deps: {
       ...deps,
+      // #2031: cancellation is the registered recovery writer. Reconcile each
+      // predecessor effect from live authority before superseding its intent.
+      supersedePending: true,
       previewPublicationBody: (base) =>
         readCancellationRecovery(base, operationId) ? base : base.trimEnd() + '\n' + marker + '\n',
       afterPublicationEffects: async (context) => {

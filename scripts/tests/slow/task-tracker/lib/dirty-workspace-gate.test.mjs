@@ -64,15 +64,11 @@ function makeGitShim(sandbox, porcelain) {
 import fs from 'node:fs';
 import {spawnSync} from 'node:child_process';
 const args = process.argv.slice(2);
-if (args.includes('--show-toplevel') || (args.includes('worktree') && args.includes('-z'))) {
+if (args.includes('--show-toplevel') || (args.includes('worktree') && (args.includes('-z') || args.includes('list')))) {
   const result = spawnSync(${JSON.stringify(fixtureGitExecutable)}, args, {stdio:'inherit'});
   process.exit(result.status ?? 1);
 }
 
-if (args[0] === 'worktree' && args[1] === 'list') {
-  fs.writeSync(1, \`worktree \${process.cwd()}\\n\\n\`);
-  process.exit(0);
-}
 const i = args.indexOf('status');
 if (i >= 0 && args.slice(i).some(a => a.startsWith('--porcelain'))) {
   fs.writeSync(1, ${JSON.stringify(porcelain)});
@@ -250,7 +246,7 @@ try {
 import fs from 'node:fs';
 import {spawnSync} from 'node:child_process';
 const args = process.argv.slice(2);
-if(args.includes('--show-toplevel')||(args.includes('worktree')&&args.includes('-z'))) {const result=spawnSync(${JSON.stringify(fixtureGitExecutable)},args,{stdio:'inherit'});process.exit(result.status??1);}
+if(args.includes('--show-toplevel')||(args.includes('worktree')&&(args.includes('-z')||args.includes('list')))) {const result=spawnSync(${JSON.stringify(fixtureGitExecutable)},args,{stdio:'inherit'});process.exit(result.status??1);}
 const i = args.indexOf('status');
 if (i >= 0 && args.slice(i).some(a => a.startsWith('--porcelain'))) {
   if (process.cwd() === ${JSON.stringify(altWorktree)}) {

@@ -153,34 +153,37 @@ test('wipAdvanceDecision: allows first child out of R4P (no active sibling)', ()
   assert.deepEqual(d.advancing, []);
 });
 
-test('wipAdvanceDecision: refuses a second child while one already advances', () => {
+test('wipAdvanceDecision: warns for a second child while one already advances', () => {
   const children = [
     { number: 10, state: 'develop', blockedBy: [] }, // already advancing
     { number: 11, state: 'refine', blockedBy: [] }, // wants to advance
   ];
   const d = wipAdvanceDecision({ promotingNumber: 11, children });
-  assert.equal(d.ok, false);
+  assert.equal(d.ok, true);
+  assert.equal(d.warnings[0].code, 'epic-wip-capacity-exceeded');
   assert.deepEqual(d.advancing, [10]);
 });
 
-test('wipAdvanceDecision: dependencies do not bypass the sequential local budget', () => {
+test('wipAdvanceDecision: counts every active sibling in advisory capacity', () => {
   const children = [
     { number: 10, state: 'develop', blockedBy: [] }, // unparked, advancing
     { number: 12, state: 'develop', blockedBy: [11] }, // parked, blocked by the promoting child
     { number: 11, state: 'refine', blockedBy: [] }, // the blocker, wants to advance
   ];
   const d = wipAdvanceDecision({ promotingNumber: 11, children });
-  assert.equal(d.ok, false);
+  assert.equal(d.ok, true);
+  assert.equal(d.warnings[0].code, 'epic-wip-capacity-exceeded');
   assert.deepEqual(d.advancing, [10, 12]);
 });
 
-test('wipAdvanceDecision: a blocked active sibling still consumes the local budget', () => {
+test('wipAdvanceDecision: a blocked active sibling still counts toward the warning', () => {
   const children = [
     { number: 10, state: 'develop', blockedBy: [99] }, // parked on an unrelated blocker
     { number: 11, state: 'refine', blockedBy: [] },
   ];
   const d = wipAdvanceDecision({ promotingNumber: 11, children });
-  assert.equal(d.ok, false);
+  assert.equal(d.ok, true);
+  assert.equal(d.warnings[0].code, 'epic-wip-capacity-exceeded');
   assert.deepEqual(d.advancing, [10]);
 });
 
@@ -202,7 +205,7 @@ test('planRefineWipGate: solo issue (no parent) bypasses', async () => {
   assert.equal(r.ok, true);
 });
 
-test('planRefineWipGate: refuses when an epic sibling already advances', async () => {
+test('planRefineWipGate: warns when an epic sibling already advances', async () => {
   const r = await planRefineWipGate({
     cfg,
     issueNumber: 11,
@@ -220,8 +223,8 @@ test('planRefineWipGate: refuses when an epic sibling already advances', async (
       }),
     },
   });
-  assert.equal(r.ok, false);
-  assert.match(r.blockers[0], /wip-budget-exceeded/);
+  assert.equal(r.ok, true);
+  assert.equal(r.warnings[0].args.activeIssues, '#10');
 });
 
 test('planRefineWipGate: fails closed when sibling fetch throws', async () => {

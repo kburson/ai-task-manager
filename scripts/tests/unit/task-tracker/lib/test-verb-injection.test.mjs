@@ -121,6 +121,10 @@ try {
 import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 const argv = process.argv.slice(2);
 const joined = argv.join(' ');
+if (argv[0] === 'worktree' && argv[1] === 'list') {
+  process.stdout.write(${JSON.stringify(`worktree ${sandbox}\nHEAD ${headSha}\n\n`)});
+  process.exit(0);
+}
 if (joined === 'rev-parse HEAD') {
   process.stdout.write(${JSON.stringify(`${headSha}\n`)});
   process.exit(0);

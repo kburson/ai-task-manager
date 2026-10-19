@@ -66,6 +66,17 @@ function sections(body) {
 }
 export function classifyDecompositionBodyRevision(base, next) {
   if (base === next) return 'checkpoint';
+  const after = sections(next);
+  let before;
+  try {
+    before = sections(base);
+  } catch (error) {
+    if (error.message !== 'duplicate section') throw error;
+    // #2031: repairing malformed existing prose needs full deliverable
+    // authority. Never downgrade it to planning preparation or accept new
+    // duplicate sections; the revised body was validated above.
+    return 'scoped-deliverable';
+  }
   const headingPattern =
     /^#{3,6}\s+(?:(?:Research|Audit|Spike|Scoped)\s+)?(?:Deliverable|Result|Findings|Completion|Delivery|Evidence)\b/i;
   const oldHeadings = new Set(
@@ -77,8 +88,6 @@ export function classifyDecompositionBodyRevision(base, next) {
     )
   )
     return 'scoped-deliverable';
-  const before = sections(base),
-    after = sections(next);
   const changed = [...new Set([...before.keys(), ...after.keys()])].filter(
     (key) => before.get(key) !== after.get(key)
   );

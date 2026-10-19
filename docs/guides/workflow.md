@@ -936,15 +936,20 @@ Session-scoped overrides are additive and apply only to the current agent sessio
 
 Rank is the deterministic order among dependency-ready children. The
 `wave-admission` reader exhaustively loads the epic's sub-issues, but local
-execution is strictly sequential: sharing a rank never authorizes parallel
-work. Solo issues with no parent epic bypass the epic child gate.
+capacity is advisory: an active sibling produces a warning when another child
+enters Plan. Sharing a rank does not grant parallel execution authority. Solo
+issues with no parent epic bypass the epic child gate.
 
 Within a wave, child flow is further constrained:
 
-- **Sequential local WIP rule** — Ready for Planning is the durable child
-  queue. At most one child may occupy Plan, Develop, Test, or Review for an epic
-  at a time. A blocked active child still consumes that budget; local
-  dependencies create no parallel exception. No env override exists.
+- **Advisory WIP budget** — Ready for Planning is the durable child queue.
+  The ordinary epic budget is one active child in Plan, Develop, Test or Review.
+  Further admission warns with the active sibling IDs and continues through
+  all other guards. Blocked active children still count toward the warning.
+  The legacy `gatePlanRefineWip` boolean remains readable; either value uses
+  advisory capacity. Unfinished dependencies, ownership conflicts, unreadable
+  authority and explicit rank-wave admission or isolation rules still refuse.
+  A WIP warning does not authorize parallel agents or overlapping local suites.
 - **Dependency representation** — GitHub native dependencies are the sole live
   graph. AITM projects any unfinished or unreadable dependency to Disposition
   `BLOCKED`; it clears that Disposition when every dependency is Done.
