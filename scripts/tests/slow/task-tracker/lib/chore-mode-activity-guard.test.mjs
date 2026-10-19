@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1990
 // @story #440
 // #440 — chore-mode bypass in the activity-guard PreToolUse hook.
 //
@@ -14,6 +15,10 @@
 // Spawns the real hook as a subprocess (mirrors agent-guard.test.mjs) so the
 // inline decision flow — not just a pure helper — is exercised end-to-end.
 
+import {
+  nativeHookAuthority,
+  installHookProvider,
+} from '../../../helpers/native-decomposition-hook-fixture.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
@@ -22,6 +27,7 @@ import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+const authority440 = await nativeHookAuthority(440);
 const guardScript = fileURLToPath(
   new URL('../../../../task-tracker/activity-guard.mjs', import.meta.url)
 );
@@ -37,7 +43,7 @@ function runGuard({ cwd, stdin }) {
     cwd,
     encoding: 'utf8',
     input: stdin,
-    env: { ...process.env, PWD: cwd },
+    env: installHookProvider(cwd, authority440, 'develop', { ...process.env, PWD: cwd }),
   });
 }
 

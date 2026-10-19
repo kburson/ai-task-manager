@@ -8,20 +8,20 @@ description: Run a provider-neutral, integrity-bound AI peer review for a tracke
 Run `peer-review setup` with an explicit user or project scope, then run
 `peer-review doctor --mode installation` to check package health. Run
 `peer-review doctor` from the active agent session to check current-session
-readiness before a review. Setup installs Codex and Claude provider hooks that
-capture the current model for each CLI invocation; model and effort may change at
-any time in the same session, so never pin them in project configuration.
-Codex hooks cover direct shell calls and `functions.exec` calls that use
-`tools.exec_command`; let the installed hook supply the model for the pending
-command. Do not add `CODEX_MODEL_ID` or a hook token yourself.
-In a Codex linked worktree, the host may load project hooks from the primary
-clone rather than this physical worktree. If `doctor` or a current review command
-reports `APR_IDENTITY_REQUIRED` while `doctor --mode installation` is healthy,
-the active host hook did not supply current-operation model evidence. Inspect
-the host's active hook source, update that source with `setup --update` if
-needed, trust or reload the hook, and rerun `doctor` in the actual agent session.
-Do not fill the gap with a model declaration or a prior-turn model. Existing
-review records remain intact while this is repaired.
+readiness before a review. Setup update removes obsolete package-owned model
+hooks. The review startup records requested provider, model, and effort for
+both roles and binds each role to a provider session. Give a headless author
+session an explicit run-scoped `--author-model <id> --author-effort <id>` when
+its host does not expose these values. Never pin model or effort in project
+configuration. A provider ACK records acceptance of a launch request and its
+session handle; it does not prove what model or effort every later turn used.
+The registered session may change model or effort and continue the review.
+For Claude headless resume, `peer-review launch-reviewer --resume` reuses the
+last selection by default; add `--model <id>` and/or `--effort <id>` to request
+a different selection in the same recorded session.
+If `APR_IDENTITY_REQUIRED` appears on a later command, resume the recorded
+provider session and retry. Do not copy another agent's session ID into this
+process. Existing review records remain intact during recovery.
 After a package upgrade, run `peer-review setup --update --dry-run` then `peer-review setup
 --update` in the affected project, or add `--scope user` for a user-scope
 installation. Update discovers all hosts recorded by the prior setup;
@@ -55,7 +55,7 @@ trying another candidate.
 
 For an unjoined review, `peer-review abandon <workspace> --reason <text>`
 requires a durable fence and complete evidence that no broker, wake, or manual
-Claude launch reached the provider. An absent reviewer join, a hook denial,
+Claude launch reached the provider. An absent reviewer join, a local launch denial,
 missing legacy launch history, or a generic provider failure is insufficient.
 An independent fresh XPR can use a distinct `--reviews-root` or
 `--review-path-template`; verify its new review ID, invitation, and outputs.
@@ -149,11 +149,13 @@ Edit or Write rules by hand. Do not construct Bash rules by hand either.
 
 Surface a `permission-blocked` result immediately with its exact response and
 printed next action. Run that `--resume` command unchanged so the same recorded
-Claude session, model, effort, and prior analysis continue. A provider exit is
+Claude session and prior analysis continue. A provider exit is
 not submission: only a new reviewer decision in protocol authority proves that
 the review was submitted.
 
-Use `automatic-required` only after `peer-review doctor --mode
+Setup defaults to invitation-driven manual transport and removes package-owned
+automatic adapter settings that relied on the old model hook. Use
+`automatic-required` only after `peer-review doctor --mode
 automatic-required` reports every Phase 2 row healthy. Both participants must
 advertise `live-wait` or an official `native-push` adapter, present a current
 resident lease, use compatible adapter versions, and pass the end-to-end health

@@ -2649,10 +2649,16 @@ export async function verbClose(ctx) {
       resolveProjectDir({ issue: issueRef, deps: { invokingDir } }));
   const outcomeWriterForIssue = (
     issueNumber,
-    { requireDedicated = false, resolveVerificationSha, resolveDeliveryAuthority } = {}
+    {
+      requireDedicated = false,
+      resolveVerificationSha,
+      resolveDeliveryAuthority,
+      allowIncompleteTiming = false,
+    } = {}
   ) => {
     if (ctx.estimationOutcomeWriter) return ctx.estimationOutcomeWriter;
     if (
+      !allowIncompleteTiming &&
       typeof ctx.createEstimationOutcomeWriter !== 'function' &&
       (!Number.isInteger(cfg.estimationRubricIssue) || cfg.estimationRubricIssue <= 0)
     ) {
@@ -2671,7 +2677,7 @@ export async function verbClose(ctx) {
       ...(resolveDeliveryAuthority === undefined ? {} : { resolveDeliveryAuthority }),
     });
   };
-  const estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum, {
+  const closeOutcomeOptions = {
     resolveDeliveryAuthority: async ({ issueNumber }) => {
       if (Number(issueNumber) !== Number(closeIssueNum)) {
         throw new TypeError('close-estimation-delivery-authority:issue-mismatch');
@@ -2726,18 +2732,60 @@ export async function verbClose(ctx) {
       }
       return acceptedSha;
     },
-  });
+  };
+  let estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum, closeOutcomeOptions);
+  const activateIncompleteOutcomeWriter = () => {
+    if (!estimationOutcomeWriter) {
+      estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum, {
+        ...closeOutcomeOptions,
+        allowIncompleteTiming: true,
+      });
+    }
+    return estimationOutcomeWriter;
+  };
+
+  const ensurePersistedIncompleteTiming = async (suppliedBody) => {
+    let body = suppliedBody;
+    if (typeof body !== 'string' || body.length === 0) {
+      const { stdout } = await pexec(
+        'gh',
+        ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      body = String(stdout || '');
+    }
+    const parsed = parseIssueFieldDb(body);
+    if (!parsed.ok) throw new TypeError('close-estimation-timing-fields:' + parsed.reason);
+    if (parsed.values?.engagedTime === undefined) {
+      throw new TypeError('close-estimation-timing-fields:engagedTime-missing');
+    }
+    if (parsed.values.engagedTime === null) {
+      activateIncompleteOutcomeWriter();
+      await (ctx.assertFieldsPersisted || assertFieldsPersisted)({
+        cfg,
+        pexec,
+        issueNum: closeIssueNum,
+        estimationOutcomeWriter,
+        acceptedSha: resolvedDeliveryGate?.gateInput?.acceptedSha,
+      });
+    }
+    return body;
+  };
 
   const ensureConvergenceOutcome = async ({ body, targetRef = closeTarget } = {}) => {
     let outcomeBody = String(body ?? '');
     try {
-      if (estimationOutcomeWriter && outcomeBody.length === 0) {
+      if (outcomeBody.length === 0) {
         const { stdout } = await pexec(
           'gh',
           ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
           { timeout: GH_API_TIMEOUT_MS }
         );
         outcomeBody = JSON.parse(stdout).body ?? '';
+      }
+      // Explicit persisted Unknown totals need canonical revalidation.
+      if (parseIssueFieldDb(outcomeBody).values?.engagedTime === null) {
+        outcomeBody = await ensurePersistedIncompleteTiming(outcomeBody);
       }
       await ensureCloseEstimationOutcome({
         issueNumber: closeIssueNum,
@@ -4384,6 +4432,7 @@ export async function verbClose(ctx) {
       );
     }
     const timingProjection = runLogIssueTime ? await runLogIssueTime(closeTarget) : undefined;
+    if (timingProjection?.status === 'incomplete') activateIncompleteOutcomeWriter();
     // Drain original queued rows before projecting or freezing timing. Unknown
     // totals require canonical outcome evidence; field/transport failures refuse.
     if (!SKIP_NETWORK && closeIssueNum) {
@@ -4397,6 +4446,8 @@ export async function verbClose(ctx) {
       });
     }
     await markDeliveredCloseStep('timing');
+  } else if (!SKIP_NETWORK && closeIssueNum) {
+    closeBody = await ensurePersistedIncompleteTiming();
   }
   if (needsDeliveredCloseStep('estimation')) {
     try {

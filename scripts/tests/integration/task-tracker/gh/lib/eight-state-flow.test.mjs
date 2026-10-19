@@ -1,3 +1,5 @@
+// @story #1991 — current collector authority in the eight-state lifecycle fixture.
+import { currentGuardContext } from '../../../../unit/task-tracker/lib/decomposition-governed-fixtures.mjs';
 // @story #54 #1211 #1714
 // Integration smoke test: a fixture epic with sub-issues across two waves runs
 // through the canonical 8-state lifecycle (Backlog → Refine → Ready for
@@ -422,8 +424,8 @@ function approvalHarness(initialBody) {
   };
 }
 
-function planExitContext({ body, projectDir, issueNumber }) {
-  return {
+async function planExitContext({ body, projectDir, issueNumber }) {
+  return currentGuardContext({
     issueNumber,
     cfg: CFG,
     body,
@@ -462,7 +464,7 @@ function planExitContext({ body, projectDir, issueNumber }) {
         ],
       },
     },
-  };
+  });
 }
 
 async function approveAndGuard({ source, projectDir, issueNumber }) {
@@ -475,7 +477,7 @@ async function approveAndGuard({ source, projectDir, issueNumber }) {
     project,
     issueNumber,
     'develop',
-    planExitContext({ body: harness.getBody(), projectDir, issueNumber })
+    await planExitContext({ body: harness.getBody(), projectDir, issueNumber })
   );
   assert.equal(result.ok, true, JSON.stringify(result.refusals));
   return { harness, result };
@@ -517,7 +519,7 @@ async function testApprovalCompositionAndFreshness() {
       await runGuards(
         'plan',
         'develop',
-        planExitContext({
+        await planExitContext({
           body: approvedBody.replace('As a release operator', 'As a registry operator'),
           projectDir,
           issueNumber: 520,
@@ -537,7 +539,7 @@ async function testApprovalCompositionAndFreshness() {
       await runGuards(
         'plan',
         'develop',
-        planExitContext({ body: approvedBody, projectDir, issueNumber: 520 })
+        await planExitContext({ body: approvedBody, projectDir, issueNumber: 520 })
       ),
       'story-approval-stale-intent'
     );
@@ -551,7 +553,7 @@ async function testApprovalCompositionAndFreshness() {
     const recovered = await runGuards(
       'plan',
       'develop',
-      planExitContext({ body: harness.getBody(), projectDir, issueNumber: 520 })
+      await planExitContext({ body: harness.getBody(), projectDir, issueNumber: 520 })
     );
     assert.equal(recovered.ok, true, JSON.stringify(recovered.refusals));
     writeFileSync(path.join(projectDir, 'plan.md'), planText());
@@ -563,7 +565,7 @@ async function testApprovalCompositionAndFreshness() {
       await runGuards(
         'plan',
         'develop',
-        planExitContext({ body: deepDiveFallback, projectDir, issueNumber: 520 })
+        await planExitContext({ body: deepDiveFallback, projectDir, issueNumber: 520 })
       ),
       'story-approval-stale-source'
     );

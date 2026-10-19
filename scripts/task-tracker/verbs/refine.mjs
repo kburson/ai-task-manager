@@ -1,3 +1,4 @@
+import { publishFieldEstimateRevision } from '../lib/decomposition-field-writer.mjs';
 // `refine` verb — Refine-stage field prep + stage-completion marker (#282).
 //
 // Sets Priority + Size + Estimate on the GitHub project board (via
@@ -24,7 +25,8 @@ import { fieldOptionMap } from '../../gh/lib/github-projects.mjs';
 import { verbPromote } from './promote.mjs';
 import { parseRationaleMarker, RATIONALE_MARKER_RE } from '../lib/apply-refinement-estimate.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { ensureIssueFieldDb } from '../issue-field-db.mjs';
+import { readEstimateWriterAuthority } from '../lib/estimate-writer-publication.mjs';
+import { parseIssueFieldDb, ensureIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { serializeMarker } from '../lib/marker-grammar.mjs';
@@ -264,6 +266,11 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     throw new Error(`refine: current state ${recordedState || 'unknown'} is not Backlog or Refine`);
   }
 
+  if (body.includes(STUB_AC_PLACEHOLDER))
+    throw new Error(
+      'stub AC placeholder still present — replace the TBD acceptance criteria before running refine'
+    );
+
   // 1b. Pre-load size option IDs from the project so tetherIssueToProject can
   //     resolve `size: 'S'` → option ID without requiring the config file to
   //     carry sizeOptions (which most installs don't).
@@ -285,18 +292,23 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   if (rankNum != null && Number.isFinite(rankNum)) {
     tetherArgs.rank = rankNum;
   }
-  await tether(tetherArgs);
 
-  // 2b. Add issue labels (separate from project fields).
-  if (labelList.length > 0) {
-    await addLabels({ issueNumber, repo: cfg.repo, labels: labelList });
-  }
-  // Production always reads back the exact live labels. Legacy unit seams that
-  // inject body I/O but predate the snapshot contract may omit fetchLabels;
-  // they continue to characterize their narrower behavior without networking.
   const snapshotEnabled =
     typeof deps.fetchLabels === 'function' || typeof deps.fetchBody !== 'function';
-  const currentLabels = snapshotEnabled ? await fetchLabels({ issueNumber, repo: cfg.repo }) : [];
+  let currentLabels = [];
+  const prepare = async (context) => {
+    const { size: _size, estimate: _estimate, ...other } = tetherArgs;
+    await tether({ ...other, context, effectId: context ? 'estimate' : undefined, deps });
+    // 2b. Add issue labels (separate from project fields).
+    if (labelList.length > 0) {
+      await addLabels({ issueNumber, repo: cfg.repo, labels: labelList });
+    }
+    // Production always reads back the exact live labels. Legacy unit seams that
+    // inject body I/O but predate the snapshot contract may omit fetchLabels;
+    // they continue to characterize their narrower behavior without networking.
+
+    currentLabels = snapshotEnabled ? await fetchLabels({ issueNumber, repo: cfg.repo }) : [];
+  };
 
   // 2c. Write the rationale marker (replace any existing one — last write wins).
   const marker = buildRationaleMarker({
@@ -311,46 +323,85 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   // FRESH base on each push attempt. `newBody` is held for the round-trip
   // validation below.
   let newBody = null;
-  await mutateBody({
+  const applyBody = async (context = null) =>
+    mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) => {
+        if (!context) {
+          const live = parseIssueFieldDb(base);
+          if (!live.ok || live.values.estimate !== estimateNum || live.values.size !== size)
+            throw new Error('refine:estimate-authority-changed');
+        }
+        let next = applyRationaleMarker(base, marker);
+        // #450 — defense-in-depth: refuse to stamp refine-complete if stub
+        // placeholders are still present (guard layer also catches this at promote).
+        if (next.includes(STUB_AC_PLACEHOLDER)) {
+          throw new Error(
+            'stub AC placeholder still present — replace the TBD acceptance criteria before running refine'
+          );
+        }
+        // 2d. Backlog entry begins active WIP. Only a run already in Refine
+        // declares the work current and stamps completion evidence.
+        if (completesRefinement) next = stampRefineCompleteMarker(next);
+        // #223 — refresh the aitm-fields body cache.
+        try {
+          const fieldDefs = loadFieldDefs();
+          const refreshed = ensureFieldDb(
+            next,
+            fieldDefs,
+            {
+              priority: priorityNorm.toUpperCase(),
+              size,
+              estimate: estimateNum,
+              rank: rankNum,
+            },
+            {
+              overrideKeys: context
+                ? ['priority', 'size', 'estimate', 'rank']
+                : ['priority', 'rank'],
+            }
+          );
+          next = refreshed.body;
+        } catch (err) {
+          process.stderr.write(
+            `[refine] WARN: aitm-fields cache refresh skipped: ${err.message}\n`
+          );
+        }
+        if (completesRefinement && snapshotEnabled) {
+          next = stampRefinementSnapshot(next, { labels: currentLabels });
+        }
+        newBody = next;
+        return next;
+      },
+    });
+
+  const publication = await (deps.publishRefinementRevision ?? publishFieldEstimateRevision)({
+    cfg,
     issueNumber,
-    repo: cfg.repo,
-    mutate: (base) => {
-      let next = applyRationaleMarker(base, marker);
-      // #450 — defense-in-depth: refuse to stamp refine-complete if stub
-      // placeholders are still present (guard layer also catches this at promote).
-      if (next.includes(STUB_AC_PLACEHOLDER)) {
-        throw new Error(
-          'stub AC placeholder still present — replace the TBD acceptance criteria before running refine'
-        );
-      }
-      // 2d. Backlog entry begins active WIP. Only a run already in Refine
-      // declares the work current and stamps completion evidence.
-      if (completesRefinement) next = stampRefineCompleteMarker(next);
-      // #223 — refresh the aitm-fields body cache.
-      try {
-        const fieldDefs = loadFieldDefs();
-        const refreshed = ensureFieldDb(
-          next,
-          fieldDefs,
-          {
-            priority: priorityNorm.toUpperCase(),
-            size,
-            estimate: estimateNum,
-            rank: rankNum,
-          },
-          { overrideKeys: ['priority', 'size', 'estimate', 'rank'] }
-        );
-        next = refreshed.body;
-      } catch (err) {
-        process.stderr.write(`[refine] WARN: aitm-fields cache refresh skipped: ${err.message}\n`);
-      }
-      if (completesRefinement && snapshotEnabled) {
-        next = stampRefinementSnapshot(next, { labels: currentLabels });
-      }
-      newBody = next;
-      return next;
-    },
+    writerId: 'refine',
+    key: { size, estimate: estimateNum, priority: priorityNorm, rank: rankNum, reason },
+    estimate: estimateNum,
+    size,
+    deps,
+    beforeEffects: prepare,
+    applyBody,
+    writeField: ({ field, value, context, effectId }) =>
+      tether({ cfg: cfgForTether, issueNumber, [field]: value, context, effectId, deps }),
   });
+  if (publication.status === 'unchanged') {
+    await prepare();
+    const fresh = await readEstimateWriterAuthority({ cfg, issueNumber, deps });
+    const actual = fresh.sourceObservations.readProject.value;
+    if (
+      fresh.publication?.status === 'pending' ||
+      actual?.estimate !== estimateNum ||
+      actual?.size !== size
+    )
+      throw new Error('refine:estimate-authority-changed');
+    await applyBody();
+  } else if (publication.status !== 'recorded') return { ...publication, issueNumber };
+  newBody ??= await fetchBody({ issueNumber, repo: cfg.repo });
 
   // 3. Round-trip validate.
   const parsed = parseRationaleMarker(newBody);
@@ -402,7 +453,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
 // CLI wrapper
 // ---------------------------------------------------------------------------
 
-export async function verbRefine(rest, cfg) {
+export async function verbRefine(rest, cfg, deps = {}) {
   let args;
   try {
     args = parseArgs(rest);
@@ -415,7 +466,9 @@ export async function verbRefine(rest, cfg) {
   }
 
   try {
-    const result = await runRefine({ args, cfg });
+    const result = await (deps.runRefine ?? runRefine)({ args, cfg });
+    if (result.status !== 'refined')
+      throw new Error(result.reason ?? `estimate publication ${result.status}`);
     const target = result.completed ? 'Ready for Planning' : 'Refine';
     const tail = result.promoted
       ? `; moved ${result.recordedState ?? 'backlog'} → ${target}`

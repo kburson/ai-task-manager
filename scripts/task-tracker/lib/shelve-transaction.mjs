@@ -1,3 +1,4 @@
+import { publishShelveRevision } from './decomposition-shelve-writer.mjs';
 // Recoverable Shelve transaction (#1215).
 
 import { execFile } from 'node:child_process';
@@ -91,7 +92,7 @@ function exactProjectItem(issue, cfg) {
   return matches[0];
 }
 
-async function defaultFetchSnapshot({ issueNumber, cfg, includeLegacyBlockedBy = false }) {
+export async function defaultFetchSnapshot({ issueNumber, cfg, includeLegacyBlockedBy = false }) {
   const { owner, repoName } = splitRepo(cfg.repo);
   const data = await gql(
     `query($owner:String!,$repo:String!,$issue:Int!){
@@ -535,7 +536,7 @@ function migrationJournalStateRefusal(snapshot, journal, record) {
   return null;
 }
 
-export async function runShelveTransaction({
+async function runShelveJournalTransaction({
   issueNumber,
   reason,
   removeOwner = false,
@@ -846,4 +847,63 @@ export async function runShelveTransaction({
   }
 
   return { status: 'shelved', from: journal.from, to: 'backlog', tx: journal.tx };
+}
+
+// Public owner boundary; read-only source gates precede publication intent.
+export async function runShelveTransaction(input = {}) {
+  const {
+    issueNumber,
+    cfg,
+    reason,
+    removeOwner = false,
+    refreshStaleBlockers = false,
+    cursorCommand = 'shelve',
+    deps = {},
+  } = input;
+  const runTransaction = (ownedDeps) =>
+    runShelveJournalTransaction({ ...input, deps: ownedDeps ?? deps });
+  if (deps.publishShelveRevision) return deps.publishShelveRevision({ runTransaction });
+  if (!Number.isInteger(issueNumber) || issueNumber <= 0)
+    throw new Error('shelve: issueNumber must be a positive integer');
+  if (!cfg?.repo || !cfg?.projectId) throw new Error('shelve: cfg is required');
+  if (!String(reason ?? '').trim()) return { status: 'reason-required' };
+  (deps.assertIssueLockHeld || defaultAssertIssueLockHeld)(issueNumber);
+  const fetchSnapshot = (args) =>
+    (deps.fetchSnapshot || defaultFetchSnapshot)({
+      ...args,
+      includeLegacyBlockedBy: refreshStaleBlockers,
+    });
+  const snapshot = await fetchSnapshot({ issueNumber, cfg });
+  const journal = parseShelveJournal(snapshot.body);
+  if (!journal || (journal.phase === 'verified' && actionPolicyFor('shelve', snapshot.state).ok)) {
+    const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
+    const currentUser = gateAssignee
+      ? await (deps.resolveLogin || defaultResolveLogin)('@me')
+      : null;
+    const refusal = sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlockers });
+    if (refusal) return refusal;
+  }
+  return publishShelveRevision({
+    cfg,
+    issueNumber,
+    reason: String(reason).trim(),
+    removeOwner,
+    refreshStaleBlockers,
+    snapshot,
+    fetchSnapshot,
+    mutateBody: deps.mutateBody || mutateIssueBody,
+    runTransaction,
+    invalidateBody: (base) =>
+      invalidateShelveBody(base, {
+        fieldDefs: (deps.loadProjectFieldDefs || loadProjectFieldDefs)(),
+      }),
+    parseJournal: parseShelveJournal,
+    deps: {
+      ...deps,
+      clearBoardFields: deps.clearBoardFields || defaultClearBoardFields,
+      runMoveState:
+        deps.runMoveState || ((args) => defaultRunMoveState({ ...args, cursorCommand })),
+      removeOwner: deps.removeOwner || defaultRemoveOwner,
+    },
+  });
 }

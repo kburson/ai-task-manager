@@ -168,422 +168,171 @@ test('unrelated children coexist but cannot satisfy a missing WBS task', async (
   assert.doesNotMatch(result.blockers.join('\n'), /#1500/);
 });
 
-function waiver() {
-  return `
-## Decomposition Waiver
-
-- **Rationale**: One coordinated change is safer.
-- **Expected-focused-duration**: 8h
-- **Milestone-checkpoint-plan**: Policy, guard, split, verification.
-- **Why-no-nested-children**: Shared command registration would conflict.
-- **Approved-by**: Automated executor; no human review claimed.
-- **Approved-at**: 2026-08-03T12:45:50.976Z
-`;
-}
-
-function context({ size = 'XL', estimate = 12, text = planText(), bodySuffix = '' } = {}) {
-  const { projectDir } = projectPlan(text);
-  return {
-    issueNumber: 1052,
-    cfg: { repo: 'owner/repo', projectId: 'project' },
-    body: `## Plan Metadata\n\n- **Plan**: docs/plan.md\n${bodySuffix}`,
-    deps: {
-      decomposition: {
-        projectDir,
-        loadProjectFieldDefs: () => [],
-        projectValuesForIssue: async () => ({ size, estimate }),
-      },
-    },
-  };
-}
-
-function sourceChildContext({
-  size = 'L',
-  estimate = 12.5,
+// @story #1991 — decisions use the real current collector, not legacy permission fixtures.
+import { governedFixture } from './decomposition-governed-fixtures.mjs';
+import { currentUnitAuthority } from './decomposition-unit-admission-fixture.mjs';
+import { formatDecomposeCheck } from '../../../../task-tracker/verbs/decompose-check.mjs';
+import { unavailable } from './decomposition-authority-fixtures.mjs';
+async function selectedContext({
   text = planText(6, 6),
-  sourceSection = '### Task 1: Part 1',
+  section = '### Task 1: Part 1',
+  hours = 13,
 } = {}) {
-  const ctx = context({ size, estimate, text });
-  ctx.body = [
-    '## Plan Metadata',
-    '- **Source-plan**: docs/plan.md',
-    '- **Source-plan-commit**: accepted-plan-commit',
-    `- **Source-plan-section**: ${sourceSection}`,
-  ].join('\n');
-  return ctx;
-}
-
-function epicMarker() {
-  return '\n## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="epic" -->\n';
-}
-
-function completeEpicContext(taskCount = 6) {
-  const text = planText(taskCount, taskCount);
-  const ctx = context({ size: 'L', estimate: 16, text, bodySuffix: epicMarker() });
-  const tasks = classifyDecomposition({ planText: text }).tasks;
-  ctx.deps.decomposition.fetchWbsChildren = async () =>
-    tasks.map((task, index) => wbsChild({ number: 1273 + index, task }));
-  ctx.deps.decomposition.readPlanAtCommit = async () => text;
-  return ctx;
-}
-
-test('evaluator preserves the underlying must-split classification and valid waiver', async () => {
-  const result = await evaluateIssueDecomposition(context({ bodySuffix: waiver() }));
-  assert.equal(result.classification.status, 'must-split');
-  assert.equal(result.waiver.ok, true);
-  assert.equal(result.effectiveStatus, 'waived');
-  assert.equal(result.planDiagnostic.diagnostic, null);
-});
-
-test('plan exit refuses must-split without a valid visible waiver', async () => {
-  const result = await decompositionPlanExitGuard.run(context());
-  assert.equal(result.ok, false);
-  assert.match(result.reason, /plan-exit-decomposition: must-split/);
-  assert.ok(result.blockers.some((blocker) => /Decomposition Waiver/.test(blocker)));
-});
-
-test('plan exit admits must-split with a complete waiver and preserves warning', async () => {
-  const result = await decompositionPlanExitGuard.run(context({ bodySuffix: waiver() }));
-  assert.equal(result.ok, true);
-  assert.match(result.warn, /waiver accepted/);
-});
-
-test('plan exit admits a must-split epic with complete linked WBS coverage', async () => {
-  const result = await decompositionPlanExitGuard.run(completeEpicContext());
-  assert.equal(result.ok, true);
-  assert.match(result.warn, /WBS instantiated \(6\/6\)/);
-  assert.match(result.warn, /delivery-ready/);
-});
-
-test('plan exit consumes live WBS planning evidence rather than coverage alone', async () => {
-  const ctx = completeEpicContext();
-  const children = await ctx.deps.decomposition.fetchWbsChildren();
-  children[0].rank = null;
-  children[1].hasCurrentRefinement = false;
-  ctx.deps.decomposition.fetchWbsChildren = async () => children;
-
-  const result = await decompositionPlanExitGuard.run(ctx);
-
-  assert.equal(result.ok, false);
-  assert.ok(result.blockers.some((item) => /planning-rank/.test(item)));
-  assert.ok(result.blockers.some((item) => /planning-evidence/.test(item)));
-});
-
-test('plan exit reconciles the exact accepted-plan snapshot used for classification', async () => {
-  const acceptedPlanText = planText(4, 4);
-  const changedPlanText = `${acceptedPlanText}\n\nChanged after classification.`;
-  const ctx = context({
-    size: 'L',
-    estimate: 16,
-    text: acceptedPlanText,
-    bodySuffix: epicMarker(),
-  });
-  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
-  let reads = 0;
-  ctx.deps.decomposition.readFile = () => {
-    reads += 1;
-    return reads === 1 ? acceptedPlanText : changedPlanText;
+  const f = await governedFixture(hours);
+  writeFileSync(join(f.projectDir, 'docs/plan.md'), text);
+  f.authority.deps.readPlanAtCommit = async () => text;
+  delete f.authority.deps.readSelectedPlan;
+  f.authority.body = f.authority.body.replace(
+    '- **Source-plan-commit**:',
+    '- **Source-plan-section**: ' + section + '\n- **Source-plan-commit**:'
+  );
+  await f.runtime.refresh(f.subject).catch(() => {});
+  const ctx = {
+    issueNumber: 1,
+    cfg: f.cfg,
+    body: f.authority.body,
+    deps: { decomposition: f.deps },
   };
-  ctx.deps.decomposition.fetchWbsChildren = async () =>
-    tasks.map((task, index) => wbsChild({ number: 1601 + index, task }));
-  ctx.deps.decomposition.readPlanAtCommit = async () => acceptedPlanText;
-
-  const result = await decompositionPlanExitGuard.run(ctx);
-
-  assert.equal(result.ok, true, result.reason);
-  assert.match(result.warn, /WBS instantiated \(4\/4\)/);
-  assert.equal(reads, 1, 'one guard run consumes one accepted-plan snapshot');
-});
-
-test('plan exit reports exact incomplete epic WBS blockers', async () => {
-  const ctx = completeEpicContext(4);
-  const children = await ctx.deps.decomposition.fetchWbsChildren();
-  ctx.deps.decomposition.fetchWbsChildren = async () => children.slice(0, 3);
-  const result = await decompositionPlanExitGuard.run(ctx);
-  assert.equal(result.ok, false);
-  assert.ok(result.blockers.some((item) => /wbs-missing-task: ### Task 4/.test(item)));
-});
-
-test('plan exit keeps a non-epic must-split issue blocked even if child-shaped data exists', async () => {
-  const ctx = context({ size: 'L', estimate: 16, text: planText(4, 4) });
-  ctx.deps.decomposition.fetchWbsChildren = async () => {
-    throw new Error('must not fetch children for code kind');
-  };
-  const result = await decompositionPlanExitGuard.run(ctx);
-  assert.equal(result.ok, false);
-  assert.match(result.reason, /must-split/);
-});
-
-test('evaluator and Plan exit classify a generated child from its bounded source section', async () => {
-  const ctx = sourceChildContext();
-  ctx.deps.decomposition.fetchWbsChildren = async () => {
-    throw new Error('bounded non-epic child must not fetch epic WBS children');
-  };
-
-  const evaluated = await evaluateIssueDecomposition(ctx);
-  assert.equal(evaluated.classification.status, 'story-ok');
+  return { ...f, ctx };
+}
+test('bounded selected child derives one task from exact pinned source bytes', async () => {
+  const f = await selectedContext();
+  const evaluated = await evaluateIssueDecomposition(f.ctx);
   assert.equal(evaluated.classification.taskCount, 1);
-  assert.deepEqual(evaluated.planSelection, {
-    ok: true,
-    applied: true,
-    heading: '### Task 1: Part 1',
-    diagnostic: null,
+  assert.equal(evaluated.assessment.status, 'story-ok');
+  assert.equal(evaluated.planSelection.heading, '### Task 1: Part 1');
+  assert.deepEqual(await decompositionPlanExitGuard.run(f.ctx), { ok: true });
+});
+for (const section of [
+  '### Task 99: Missing',
+  '### Task 1: Part 1\n- **Source-plan-section**: ### Task 2: Part 2',
+])
+  test('invalid selected source cannot grant permission: ' + section, async () => {
+    const f = await selectedContext({ section });
+    const evaluated = await evaluateIssueDecomposition(f.ctx);
+    assert.equal(evaluated.assessment.status, 'indeterminate');
+    assert.equal(evaluated.planSelection.ok, false);
+    const gate = await decompositionPlanExitGuard.run(f.ctx);
+    assert.equal(gate.ok, false);
+    assert.equal(gate.code, 'decomposition-authority-unavailable');
+    const check = await runDecomposeCheck({
+      issueNumber: 1,
+      cfg: f.cfg,
+      deps: { fetchIssueBody: async () => f.authority.body, decomposition: f.deps },
+    });
+    assert.equal(check.exitCode, 3);
   });
-
-  const admitted = await decompositionPlanExitGuard.run(ctx);
-  assert.deepEqual(admitted, { ok: true });
-});
-
-test('evaluator preserves whole-plan WBS classification for an epic with source-section metadata', async () => {
-  const ctx = completeEpicContext();
-  ctx.body = [
-    '## Plan Metadata',
-    '- **Source-plan**: docs/plan.md',
-    '- **Source-plan-commit**: accepted-plan-commit',
-    '- **Source-plan-section**: ### Task 1: Part 1',
-    epicMarker(),
-  ].join('\n');
-
-  const evaluated = await evaluateIssueDecomposition(ctx);
-  assert.equal(evaluated.classification.status, 'must-split');
-  assert.equal(evaluated.classification.taskCount, 6);
-  assert.equal(evaluated.planSelection.applied, false);
-
-  const admitted = await decompositionPlanExitGuard.run(ctx);
-  assert.equal(admitted.ok, true);
-  assert.match(admitted.warn, /WBS instantiated \(6\/6\)/);
-});
-
-test('nested epic checks its own decomposition plan while retaining the outer source claim', async () => {
-  const outer = planText(6, 6);
-  const nested = planText(2, 2);
-  const ctx = context({ size: 'XL', estimate: 30, text: outer });
-  mkdirSync(join(ctx.deps.decomposition.projectDir, 'docs'), { recursive: true });
-  writeFileSync(join(ctx.deps.decomposition.projectDir, 'docs', 'nested.md'), nested);
-  ctx.body = [
-    '## Plan Metadata',
-    '- **Source-plan**: docs/plan.md',
-    '- **Source-plan-section**: ### Task 1: Part 1',
-    '- **Decomposition-plan**: docs/nested.md',
-    epicMarker(),
-  ].join('\n');
-  const tasks = classifyDecomposition({ planText: nested }).tasks;
-  ctx.deps.decomposition.fetchWbsChildren = async () =>
-    tasks.map((task, index) =>
-      wbsChild({ number: 1769 + index, task, sourcePlan: 'docs/nested.md' })
-    );
-  ctx.deps.decomposition.readPlanAtCommit = async () => nested;
-
-  const checked = await evaluateIssueDecomposition(ctx);
-  assert.equal(checked.classification.taskCount, 2);
-  assert.equal(checked.planSelection.applied, false);
-  const admitted = await decompositionPlanExitGuard.run(ctx);
-  assert.equal(admitted.ok, true, admitted.reason);
-  assert.match(admitted.warn, /WBS instantiated \(2\/2\)/);
-});
-
-test('Plan exit and decompose-check fail closed for an invalid requested source section', async () => {
-  const ctx = sourceChildContext({
-    size: 'M',
-    estimate: 8,
-    text: planText(1, 1),
-    sourceSection: '### Task 99: Missing',
-  });
-
-  const blocked = await decompositionPlanExitGuard.run(ctx);
-  assert.equal(blocked.ok, false);
-  assert.match(blocked.reason, /invalid Source-plan-section/);
-  assert.match(blocked.reason, /not found/);
-
+test('a command plan override cannot replace the bound child authority', async () => {
+  const f = await selectedContext();
   const checked = await runDecomposeCheck({
-    issueNumber: ctx.issueNumber,
-    cfg: ctx.cfg,
-    deps: {
-      fetchIssueBody: async () => ctx.body,
-      decomposition: ctx.deps.decomposition,
-    },
+    issueNumber: 1,
+    cfg: f.cfg,
+    planOverride: 'docs/plan.md',
+    deps: { fetchIssueBody: async () => f.authority.body, decomposition: f.deps },
   });
-  assert.equal(checked.classification.status, 'story-ok');
-  assert.equal(checked.planSelection.ok, false);
-  assert.equal(checked.exitCode, 3);
-});
-
-test('Plan exit and decompose-check reject source-section fields split across metadata sections', async () => {
-  const ctx = sourceChildContext();
-  ctx.body = [
-    ctx.body,
-    '## Notes',
-    'Visible prose.',
-    '## Plan Metadata',
-    '- **Source-plan-section**: ### Task 2: Part 2',
-  ].join('\n');
-
-  const blocked = await decompositionPlanExitGuard.run(ctx);
-  assert.equal(blocked.ok, false);
-  assert.match(blocked.reason, /duplicate Source-plan-section/);
-
-  const checked = await runDecomposeCheck({
-    issueNumber: ctx.issueNumber,
-    cfg: ctx.cfg,
-    deps: {
-      fetchIssueBody: async () => ctx.body,
-      decomposition: ctx.deps.decomposition,
-    },
-  });
-  assert.equal(checked.planSelection.ok, false);
-  assert.equal(checked.exitCode, 3);
-});
-
-test('decompose-check reports one task for a valid bounded source child', async () => {
-  const ctx = sourceChildContext();
-  const checked = await runDecomposeCheck({
-    issueNumber: ctx.issueNumber,
-    cfg: ctx.cfg,
-    deps: {
-      fetchIssueBody: async () => ctx.body,
-      decomposition: ctx.deps.decomposition,
-    },
-  });
-
-  assert.equal(checked.classification.status, 'story-ok');
   assert.equal(checked.classification.taskCount, 1);
-  assert.equal(checked.planSelection.heading, '### Task 1: Part 1');
+  assert.equal(checked.planSelection.applied, true);
   assert.equal(checked.exitCode, 0);
 });
-
-// @story #1709
-test('decompose-check keeps whole-plan overrides and applies exact Plan metadata selectors', async () => {
-  const overrideContext = sourceChildContext();
-  const explicitOverride = await runDecomposeCheck({
-    issueNumber: overrideContext.issueNumber,
-    cfg: overrideContext.cfg,
-    planOverride: 'docs/plan.md',
-    deps: {
-      fetchIssueBody: async () => overrideContext.body,
-      decomposition: overrideContext.deps.decomposition,
-    },
+for (const hours of [8, 16, 24, 25])
+  test('Plan exit preserves current estimate boundary ' + hours, async () => {
+    const f = await selectedContext({ text: planText(1, 1), hours });
+    const r = await decompositionPlanExitGuard.run(f.ctx);
+    assert.equal(r.ok, hours < 24);
+    if (hours >= 24) {
+      assert.equal(r.code, 'decomposition-required');
+      assert.match(r.reason, /split-plan 1 --dry-run/);
+    }
   });
-  assert.equal(explicitOverride.classification.status, 'must-split');
-  assert.equal(explicitOverride.classification.taskCount, 6);
-  assert.equal(explicitOverride.planSelection.applied, false);
-
-  const planMetadataContext = context({ size: 'L', estimate: 12.5, text: planText(6, 6) });
-  planMetadataContext.body = [
-    '## Plan Metadata',
-    '- **Plan**: docs/plan.md',
-    '- **Source-plan-section**: ### Task 1: Part 1',
-  ].join('\n');
-  const planMetadata = await runDecomposeCheck({
-    issueNumber: planMetadataContext.issueNumber,
-    cfg: planMetadataContext.cfg,
-    deps: {
-      fetchIssueBody: async () => planMetadataContext.body,
-      decomposition: planMetadataContext.deps.decomposition,
-    },
-  });
-  assert.equal(planMetadata.classification.status, 'story-ok');
-  assert.equal(planMetadata.classification.taskCount, 1);
-  assert.equal(planMetadata.planSelection.applied, true);
-  assert.equal(planMetadata.planSelection.heading, '### Task 1: Part 1');
+test('an unavailable linked plan refuses while retaining known mandatory estimate signals', async () => {
+  const f = await selectedContext({ hours: 25 });
+  f.authority.body = f.authority.body.replace('docs/plan.md', 'docs/missing.md');
+  const r = await evaluateIssueDecomposition({ ...f.ctx, body: f.authority.body });
+  assert.equal(r.assessment.status, 'indeterminate');
+  assert.equal(r.input.estimate.hours, 25);
+  assert.ok(r.assessment.signals.some((s) => s.code === 'estimate-hours' && s.value === 25));
 });
-
-test('plan exit fails closed when epic WBS evidence cannot be read', async () => {
-  const ctx = completeEpicContext(4);
-  ctx.deps.decomposition.fetchWbsChildren = async () => {
-    throw new Error('GraphQL unavailable');
-  };
-  const result = await decompositionPlanExitGuard.run(ctx);
-  assert.equal(result.ok, false);
-  assert.match(result.reason, /wbs-evidence-unreadable: GraphQL unavailable/);
-});
-
-test('plan exit reports review-only signals without blocking', async () => {
-  const result = await decompositionPlanExitGuard.run(
-    context({ size: 'L', estimate: 16, text: planText(1, 1) })
-  );
-  assert.equal(result.ok, true);
-  assert.match(result.warn, /needs-decomposition-review/);
-  assert.match(result.warn, /estimate-hours/);
-});
-
-test('plan exit is a quiet no-op for an atomic story', async () => {
-  const result = await decompositionPlanExitGuard.run(
-    context({ size: 'M', estimate: 8, text: planText(1, 1) })
-  );
-  assert.deepEqual(result, { ok: true });
-});
-
-test('known board inputs still refuse when the linked plan is unavailable', async () => {
-  const ctx = context({ size: 'L', estimate: 24, text: '' });
-  ctx.body = '## Plan Metadata\n\n- **Plan**: docs/missing.md';
-  const result = await decompositionPlanExitGuard.run(ctx);
-  assert.equal(result.ok, false);
-  assert.match(result.reason, /must-split/);
-  assert.match(result.reason, /not a readable file/);
-});
-
-test('Plan exit still refuses known must-split board fields when the plan link is absent', async () => {
-  let boardReads = 0;
-  const result = await decompositionPlanExitGuard.run({
-    issueNumber: 1052,
-    cfg: { repo: 'owner/repo', projectId: 'project' },
-    body: '## just a legacy body',
-    deps: {
-      decomposition: {
-        projectValuesForIssue: async () => {
-          boardReads += 1;
-          return { size: 'XL', estimate: 24 };
+for (const terminal of [false, true])
+  test(
+    'materialized children permit only their affected epic boundary: terminal=' + terminal,
+    async () => {
+      const f = await currentUnitAuthority({
+        body: '## AITM Progress Markers\n<!-- aitm-issue-kind kind="epic" -->\n',
+        hours: 25,
+        childTerminal: terminal,
+      });
+      await f.runtime.refresh(f.subject);
+      const ctx = {
+        issueNumber: 1,
+        cfg: f.cfg,
+        body: f.authority.body,
+        deps: {
+          decomposition: { subject: f.subject, runtime: f.runtime, projectDir: f.projectDir },
         },
-      },
-    },
-  });
-  assert.equal(result.ok, false);
-  assert.match(result.reason, /must-split/);
-  assert.match(result.reason, /no linked plan path/);
-  assert.equal(boardReads, 1);
-});
-
-test('registers the decomposition guard before the epic children guard', () => {
-  const ids = planState.exitGuards.map((guard) => guard.id);
-  assert.ok(ids.includes('plan-exit-decomposition'));
-  assert.ok(
-    ids.indexOf('plan-exit-decomposition') < ids.indexOf('plan-exit-epic-children-r4p-or-beyond')
+      };
+      const r = await evaluateIssueDecomposition(ctx);
+      assert.equal(r.assessment.status, 'epic-readiness-required');
+      assert.equal(r.input.epicReadiness.planning, true);
+      assert.equal(r.input.epicReadiness.completion, terminal);
+      assert.equal(r.capabilities.includes('scoped-implementation'), false);
+      assert.equal(r.capabilities.includes('scoped-completion'), terminal);
+      assert.equal((await decompositionPlanExitGuard.run(ctx)).ok, true);
+      const checked = await runDecomposeCheck({
+        issueNumber: 1,
+        cfg: f.cfg,
+        deps: {
+          fetchIssueBody: async () => f.authority.body,
+          decomposition: ctx.deps.decomposition,
+        },
+      });
+      assert.equal(checked.exitCode, terminal ? 0 : 3);
+      assert.doesNotMatch(formatDecomposeCheck(checked), /waiver/i);
+    }
   );
+test('unreviewed converted epic cannot claim planning or completion from kind alone', async () => {
+  const f = await governedFixture();
+  f.ctx.rest = ['1', 'epic'];
+  const { verbKind } = await import('../../../../task-tracker/verbs/kind.mjs');
+  await verbKind(f.ctx);
+  const ctx = {
+    issueNumber: 1,
+    cfg: f.cfg,
+    body: f.authority.body,
+    deps: { decomposition: f.deps },
+  };
+  const r = await evaluateIssueDecomposition(ctx);
+  assert.equal(r.input.epicReadiness.planning, false);
+  assert.equal(r.input.epicReadiness.completion, false);
+  assert.equal((await decompositionPlanExitGuard.run(ctx)).ok, false);
 });
-
-test('read-only command returns structured classification without mutation', async () => {
-  const ctx = context({ size: 'M', estimate: 8, text: planText(1, 1) });
-  const result = await runDecomposeCheck({
-    issueNumber: 1052,
-    cfg: ctx.cfg,
-    deps: {
-      fetchIssueBody: async () => ctx.body,
-      decomposition: ctx.deps.decomposition,
-    },
+test('unreadable children remain unavailable rather than being treated as an empty ready graph', async () => {
+  const f = await currentUnitAuthority({
+    body: '## AITM Progress Markers\n<!-- aitm-issue-kind kind="epic" -->\n',
+    hours: 25,
   });
-  assert.equal(result.classification.status, 'story-ok');
-  assert.equal(result.issueNumber, 1052);
-  assert.equal(result.exitCode, 0);
-  assert.equal(result.readiness, null);
-});
-
-test('decompose-check reports must-split plans as decomposition-ready, not delivery-ready', async () => {
-  const ctx = context({ size: 'L', estimate: 16, text: planText(6, 6) });
-  const result = await runDecomposeCheck({
-    issueNumber: 1052,
-    cfg: ctx.cfg,
-    deps: {
-      fetchIssueBody: async () => ctx.body,
-      decomposition: ctx.deps.decomposition,
-    },
+  f.authority.deps.readProject = async () => unavailable();
+  const r = await decompositionPlanExitGuard.run({
+    issueNumber: 1,
+    cfg: f.cfg,
+    body: f.authority.body,
+    deps: { decomposition: { subject: f.subject, runtime: f.runtime, projectDir: f.projectDir } },
   });
-
-  assert.equal(result.readiness.status, 'decomposition-ready');
-  assert.equal(result.readiness.deliveryReady, false);
-  assert.equal(result.readiness.expectedWbs.length, 6);
-  assert.equal(result.exitCode, 3, 'live WBS admission has not been proven');
+  assert.equal(r.ok, false);
+  assert.equal(r.code, 'decomposition-authority-unavailable');
 });
-
+test('read-only command neither writes nor refreshes current authority', async () => {
+  const f = await selectedContext();
+  const before = f.authority.body,
+    count = f.authority.writes.length;
+  const r = await runDecomposeCheck({
+    issueNumber: 1,
+    cfg: f.cfg,
+    deps: { fetchIssueBody: async () => f.authority.body, decomposition: f.deps },
+  });
+  assert.equal(r.exitCode, 0);
+  assert.equal(f.authority.body, before);
+  assert.equal(f.authority.writes.length, count);
+});
 test('decompose-check rejects a missing --plan value instead of consuming another option', () => {
-  assert.throws(() => parseDecomposeCheckArgs(['1052', '--plan', '--json']), /requires a path/);
+  assert.throws(() => parseDecomposeCheckArgs(['1', '--plan', '--json']), /requires a path/);
 });

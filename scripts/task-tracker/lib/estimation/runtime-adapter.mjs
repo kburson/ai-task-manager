@@ -255,7 +255,7 @@ function createGraphqlIssueComment(graphql) {
   };
 }
 
-function plannedAppendix(nodes, issueNumber) {
+export function plannedAppendix(nodes, issueNumber) {
   const marker = new RegExp(`<!--\\s*aitm-refined-estimate:\\s*${issueNumber}\\s*-->`);
   const body = nodes.find((node) => marker.test(node.body))?.body ?? '';
   const appendixStart = body.search(/^###\s+Planned Estimate\s*$/m);
@@ -766,14 +766,21 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
         ...(adoptLegacyBaseline ? {} : { refine }),
         forecastEnvelope,
         deps: {
+          cfg,
+          projectDir: deps.projectDir,
+          decomposition: deps.decomposition,
+          projectItemForIssue: deps.projectItemForIssue,
           readProjection: () => readProjection(issueNumber),
-          writeRefineAppendix: ({ refine: previous, plan }) =>
+          writeRefineAppendix: ({ refine: previous, plan, context, effectId }) =>
             (deps.upsertPlannedEstimate ?? upsertPlannedEstimate)({
               cfg,
               issueNumber,
               refine: { size: previous.size, estimate: previous.humanHours },
               plan: { size: plan.size, estimate: plan.humanHours },
               rationale: plan.rationale,
+              context,
+              effectId,
+              deps: deps.plannedComment ?? {},
             }),
           writeBoardEstimate: ({ estimate }) =>
             writeBoard('estimate', { issueNumber, value: estimate }),

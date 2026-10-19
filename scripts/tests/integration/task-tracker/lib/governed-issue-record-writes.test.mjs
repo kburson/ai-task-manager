@@ -1,4 +1,6 @@
+// @story #1990
 // @story #1210
+import { currentUnitAuthority } from '../../../unit/task-tracker/lib/decomposition-unit-admission-fixture.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -39,28 +41,38 @@ test('CLI-facing runners require the same active issue and an open timing sessio
   );
 });
 
-test('CLI-facing body runner reads a declarative file and calls the canonical operation core', async () => {
-  const calls = [];
-  const result = await runIssueBodyVerb(ctx(['42', '--operation-file', 'op.json']), {
-    loadState: (_path, state) => state,
-    readFile: () =>
-      JSON.stringify({
-        schema: 'aitm.issue-body-operation/v1',
-        kind: 'replace-exact',
-        expected: 'old',
-        replacement: 'new',
-      }),
-    mutateIssueBody: async (input) => {
-      calls.push(input);
-      return {
-        status: 'ok',
-        version: 2,
-        body: `${input.mutate('old')}\n\n<!-- aitm-body-version version="2" -->\n`,
-      };
-    },
+test('CLI-facing body runner uses the real canonical protected write and reassessment', async () => {
+  const current = await currentUnitAuthority({
+    issue: 42,
+    repository: 'owner/repo',
+    body: '## Scope\nfixture scope before revision\n\n## AITM Progress Markers\n',
   });
-  assert.equal(result.body, 'new\n\n<!-- aitm-body-version version="2" -->\n');
-  assert.equal(calls.length, 1);
+  const files = [];
+  const result = await runIssueBodyVerb(
+    {
+      ...ctx(['42', '--operation-file', 'op.json']),
+      cfg: current.cfg,
+      projectDir: current.projectDir,
+    },
+    {
+      loadState: (_path, state) => state,
+      decomposition: { subject: current.subject, runtime: current.runtime },
+      writeDeps: current.authority.deps,
+      readFile: (file) => {
+        files.push(file);
+        return JSON.stringify({
+          schema: 'aitm.issue-body-operation/v1',
+          kind: 'replace-exact',
+          expected: 'fixture scope before revision',
+          replacement: 'fixture scope after revision',
+        });
+      },
+    }
+  );
+  assert.equal(result.status, 'ok');
+  assert.match(result.body, /## Scope\nfixture scope after revision/);
+  assert.deepEqual(files, ['op.json']);
+  assert.equal((await current.runtime.collect(current.subject)).projection.status, 'current');
 });
 
 test('CLI-facing comment runner is noninteractive but never bypasses verified upsert', async () => {

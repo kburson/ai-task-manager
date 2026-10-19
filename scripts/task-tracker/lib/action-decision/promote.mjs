@@ -235,5 +235,10 @@ export async function collectEarlyPromoteReadiness({
     runGuards: ports.runGuards ?? runGuards,
     loadPolicy,
   });
-  return verdict(guardResult.status, guardResult.refusals.map(blockerFromRefusal), target);
+  return {
+    ...verdict(guardResult.status, guardResult.refusals.map(blockerFromRefusal), target),
+    ...(guardResult.warns?.length
+      ? { warnings: guardResult.warns.map(({ code, args }) => ({ code, args })) }
+      : {}),
+  };
 }

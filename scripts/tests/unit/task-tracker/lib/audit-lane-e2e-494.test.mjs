@@ -1,3 +1,4 @@
+// @story #1990
 // @story #494
 // End-to-end of the audit/research lane through the live guard registry (#494).
 //
@@ -14,12 +15,18 @@
 // injected deps neutralizing the orthogonal ones (parent admission, epic
 // children, blockers).
 
+import { currentUnitAuthority } from './decomposition-unit-admission-fixture.mjs';
+import { isNoCommitKind } from '../../../../task-tracker/lib/issue-kind.mjs';
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 
 import '../../../fixtures/offline-gh-auto.mjs';
 
-import { GUARDS, registerGuard, runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
+import {
+  GUARDS,
+  registerGuard,
+  runGuards as productionRunGuards,
+} from '../../../../task-tracker/lib/guard-registry.mjs';
 import { blockedByGuard } from '../../../../task-tracker/lib/blocked-by-guard.mjs';
 import { developExitCodeCompleteGuard } from '../../../../task-tracker/lib/develop-exit-code-complete-guard.mjs';
 import { developExitSandboxProofGuard } from '../../../../task-tracker/lib/develop-exit-sandbox-proof-guard.mjs';
@@ -202,3 +209,29 @@ test('registry has the lane exit guards wired', () => {
   assert.ok(devIds.includes('develop-exit-code-complete'));
   assert.ok(devIds.includes('develop-exit-commit-trail-head'));
 });
+
+async function runGuards(from, to, options) {
+  if (from !== 'develop' || !isNoCommitKind(options.body))
+    return productionRunGuards(from, to, options);
+  const current = await currentUnitAuthority({
+    body: options.body,
+    issue: options.issueNumber,
+    repository: options.cfg.repo,
+  });
+  const authority = { subject: current.subject, runtime: current.runtime };
+  return productionRunGuards(from, to, {
+    ...options,
+    cfg: current.cfg,
+    body: current.body,
+    projectDir: current.projectDir,
+    deps: {
+      ...options.deps,
+      decomposition: authority,
+      codeComplete: {
+        ...options.deps?.codeComplete,
+        decomposition: authority,
+        projectDir: current.projectDir,
+      },
+    },
+  });
+}

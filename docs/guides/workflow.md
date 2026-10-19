@@ -942,15 +942,20 @@ Session-scoped overrides are additive and apply only to the current agent sessio
 
 Rank is the deterministic order among dependency-ready children. The
 `wave-admission` reader exhaustively loads the epic's sub-issues, but local
-execution is strictly sequential: sharing a rank never authorizes parallel
-work. Solo issues with no parent epic bypass the epic child gate.
+capacity is advisory: an active sibling produces a warning when another child
+enters Plan. Sharing a rank does not grant parallel execution authority. Solo
+issues with no parent epic bypass the epic child gate.
 
 Within a wave, child flow is further constrained:
 
-- **Sequential local WIP rule** — Ready for Planning is the durable child
-  queue. At most one child may occupy Plan, Develop, Test, or Review for an epic
-  at a time. A blocked active child still consumes that budget; local
-  dependencies create no parallel exception. No env override exists.
+- **Advisory WIP budget** — Ready for Planning is the durable child queue.
+  The ordinary epic budget is one active child in Plan, Develop, Test or Review.
+  Further admission warns with the active sibling IDs and continues through
+  all other guards. Blocked active children still count toward the warning.
+  The legacy `gatePlanRefineWip` boolean remains readable; either value uses
+  advisory capacity. Unfinished dependencies, ownership conflicts, unreadable
+  authority and explicit rank-wave admission or isolation rules still refuse.
+  A WIP warning does not authorize parallel agents or overlapping local suites.
 - **Dependency representation** — GitHub native dependencies are the sole live
   graph. AITM projects any unfinished or unreadable dependency to Disposition
   `BLOCKED`; it clears that Disposition when every dependency is Done.
@@ -1697,3 +1702,21 @@ actually Done. Plan, Promote, Explain and pull-next share the admission policy;
 execution revalidates under a physical common-directory parent lock.
 See [Authorized epic rank waves](epic-rank-waves.md) for the registered
 `epic-wave` schemas, human source provenance, recovery, handoff and refresh.
+
+### Reviewed historical actor recovery (#2026)
+
+`heal-timing-log` admits one closed recovery profile, `aivc-63-2026-10-17`, for the reviewed historical timing prefix on `kburson/AIVC#63`. It inserts one Unknown `session-end-recovery` marker before the recorded resume, preserving every original row. This records an unavailable prior endpoint; it does not infer a departure, activity or finite totals. Altered historical source, wrong repository/issue/comment, conflicting appended evidence and other ambiguities refuse. Normal validators remain unchanged.
+
+The owning operator uses the admitted source-qualified runtime from the bound AIVC worktree, first read-only:
+
+```sh
+node /path/to/admitted/ai-task-manager/scripts/task-tracker/heal-timing-log.mjs 63 --actor-evidence-recovery aivc-63-2026-10-17
+```
+
+Before apply, start the owning task normally. Supply both fresh `sourceSha` and `commentId` returned by that dry-run:
+
+```sh
+node /path/to/admitted/ai-task-manager/scripts/task-tracker/heal-timing-log.mjs 63 --actor-evidence-recovery aivc-63-2026-10-17 --apply --expected-source-sha SHA --expected-comment-id ID
+```
+
+The existing issue lock encloses observation, planning, write-once `before.md`/`candidate.md`/`manifest.json` archive, fresh source comparison, authenticated owner recheck and exact canonical read-back. The archive path is returned as `evidenceDir`. If legitimate rows append after dry-run, obtain new identities; never substitute a guessed hash. A repeated canonical recovery is a no-op. This operation does not stamp application verification, Review, approval, delivery or Done. The owning application chat must run its remaining normal gates.

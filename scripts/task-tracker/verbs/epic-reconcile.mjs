@@ -1,3 +1,4 @@
+// @story #1990
 // #887 — `/task epic-reconcile [<N>]` records that an epic's Acceptance Criteria
 // have been reconciled against what its children actually delivered.
 //
@@ -18,6 +19,7 @@
 
 import { pexec as pexecDefault } from '../../gh/lib/gh-client.mjs';
 
+import { assertScopedDecompositionEffect } from '../lib/decomposition-effect-admission.mjs';
 import { loadState } from '../state.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { setDeliverablePosted, setEpicAcReconciled, parseIssueKind } from '../lib/issue-kind.mjs';
@@ -151,7 +153,7 @@ export async function verbEpicReconcile(ctx) {
     issueNumber: target,
     repo: cfg.repo,
     deps: { pexec },
-    mutate: (base) => {
+    mutate: async (base) => {
       reconciledBody = base;
       const kind = parseIssueKind(base);
       if (kind !== 'epic') {
@@ -161,6 +163,13 @@ export async function verbEpicReconcile(ctx) {
         refused = kind;
         return base;
       }
+      await assertScopedDecompositionEffect({
+        issue: Number(target),
+        cfg,
+        projectDir: ctx.projectDir ?? process.cwd(),
+        activity: 'scoped-completion',
+        deps,
+      });
       let next = setEpicAcReconciled(base, stamp);
       if (deliverable) {
         next = setDeliverablePosted(next, { url: deliverable.url, ts: stamp });

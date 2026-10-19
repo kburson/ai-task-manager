@@ -168,8 +168,11 @@ export function reconcileRankWavePointer(body, { record, digest, commentNodeId }
       blockedBy: c.blockedBy,
     }));
     if (
+      record.action !== 'authorize' &&
       JSON.stringify(identities) !==
-      JSON.stringify(graph.map((c) => ({ number: c.number, rank: c.rank, blockedBy: c.blockedBy })))
+        JSON.stringify(
+          graph.map((c) => ({ number: c.number, rank: c.rank, blockedBy: c.blockedBy }))
+        )
     ) {
       throw new Error('rank-wave: parent contract graph changed');
     }

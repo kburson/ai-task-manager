@@ -127,6 +127,8 @@ const MARKER_PATTERNS = [
   { name: 'aitm-full-auto-approved', re: /<!--\s*aitm-full-auto-approved(?:\s*:|\s+ts=")/i },
   { name: 'aitm-full-auto-footnote:start', re: /<!--\s*aitm-full-auto-footnote:start\s*-->/i },
   { name: 'aitm-full-auto-footnote:end', re: /<!--\s*aitm-full-auto-footnote:end\s*-->/i },
+  { name: 'aitm-decomposition-assessment', re: /<!--\s*aitm-decomposition-assessment\b/i },
+  { name: 'aitm-decomposition-publication', re: /<!--\s*aitm-decomposition-publication\b/i },
   { name: 'aitm-fields', re: /<!--\s*aitm-fields:/i },
   { name: 'aitm-body-version', re: /<!--\s*aitm-body-version(?:\s*:|\s+version=")/i },
   { name: 'aitm-stage-rollup', re: /<!--\s*aitm-stage-rollup:/i },

@@ -482,3 +482,51 @@ test('runPullNext surfaces fetch failures', async () => {
   assert.equal(result.status, 'fetch-failed');
   assert.match(result.message, /graphql down/);
 });
+
+// @story #2031
+test('pull-next warns about active WIP and advances exactly one dependency-ready staged child', async () => {
+  const { deps, calls } = makeDeps({
+    children: [
+      ready(9, 1, {
+        blockedBy: [11],
+        dependencyStates: new Map([[11, 'develop']]),
+        dependencyReadiness: 'blocked',
+      }),
+      ready(11, 2, { state: 'develop' }),
+      ready(12, 3),
+      ready(13, 4),
+    ],
+  });
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+  assert.equal(result.status, 'pulled');
+  assert.equal(result.childNumber, 12);
+  assert.deepEqual(calls.promotes, [['12']]);
+  assert.deepEqual(result.warnings, [
+    { code: 'epic-wip-capacity-exceeded', args: { activeIssues: '#11', budget: 1 } },
+  ]);
+});
+
+// @story #2031
+test('advisory capacity does not bypass selected-child ownership preflight', async () => {
+  let promotions = 0;
+  await assert.rejects(
+    () =>
+      promoteSelectedChild({
+        issueNumber: 12,
+        cfg,
+        projectDir: '/repo/worktrees/epic-100',
+        acquireIssueLock: async (_options, run) => run(),
+        promoteDeps: {
+          preflightDeps: {
+            fetchSnapshot: async () => ({ state: 'ready-for-plan', assignees: ['other-owner'] }),
+            fetchCurrentUser: async () => 'alice',
+          },
+        },
+        promoteRunner: async () => {
+          promotions++;
+        },
+      }),
+    /ownership preflight refused/
+  );
+  assert.equal(promotions, 0);
+});

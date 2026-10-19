@@ -307,7 +307,7 @@ test('packaged seed validates offline with all core IDs, five digests and catalo
   });
   assert.deepEqual(result.errors, []);
   assert.equal(result.valid, true);
-  assert.equal(result.entries.length, 22);
+  assert.equal(result.entries.length, 23);
   assert.deepEqual(
     result.entries
       .filter(({ id }) => REQUIRED_PROTOCOL_GUIDANCE_IDS.includes(id))
@@ -316,7 +316,7 @@ test('packaged seed validates offline with all core IDs, five digests and catalo
   );
   assert.match(result.fingerprints.catalogSemanticDigest, /^sha256:[a-f0-9]{64}$/);
   assert.match(result.fingerprints.catalogFileDigest, /^sha256:[a-f0-9]{64}$/);
-  assert.equal(result.fingerprints.entryDigests.length, 22);
+  assert.equal(result.fingerprints.entryDigests.length, 23);
   assert.ok(result.budgets.catalogProxy <= 240000 * 0.8);
   assert.ok(result.budgets.agentProxy <= 64000 * 0.8);
   assert.ok(result.budgets.humanProxy <= 160000 * 0.8);

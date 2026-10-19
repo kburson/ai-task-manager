@@ -1,6 +1,8 @@
 // @story #939
 // Review-stage, re-entrant delivery-intent orchestration.
 
+// @story #1990
+import { assertScopedDecompositionEffect } from '../lib/decomposition-effect-admission.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -881,6 +883,13 @@ async function deliverNoCommit({ deps, issue, issueNumber, cfg, lineage, pullReq
   if (freshRecords.projection.record !== null) {
     throw new TypeError('delivery-preflight:delivery-record-drift');
   }
+  await assertScopedDecompositionEffect({
+    issue: issueNumber,
+    cfg,
+    projectDir: deps.projectDir ?? process.cwd(),
+    activity: 'scoped-completion',
+    deps,
+  });
   let createError = null;
   try {
     await requiredDependency(

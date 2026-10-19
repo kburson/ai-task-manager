@@ -49,12 +49,22 @@
 // Read-only verbs (`status`, `list`, `bind`) MUST NOT call this — that is
 // asserted by `tests/verb-locks.test.mjs`.
 
-import { mkdirSync, rmdirSync, writeFileSync, readFileSync, unlinkSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  rmdirSync,
+  writeFileSync,
+  readFileSync,
+  unlinkSync,
+  statSync,
+} from 'node:fs';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { issueLockPath } from './paths.mjs';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 // #656 — the mtime TTL is no longer the primary staleness signal. It is an
 // outer backstop, raised well above the longest expected guarded action (a
@@ -79,6 +89,11 @@ export function issueLockToken(issue) {
 // concurrent same-issue run in this process is a SIBLING context, not a
 // descendant, so it reads an empty set and contends normally.
 const heldContext = new AsyncLocalStorage();
+// Opaque in-process owner identity; inherited environment tokens cannot mint it.
+const ownerContext = new AsyncLocalStorage();
+export function currentIssueLockOwner(issue) {
+  return ownerContext.getStore()?.get(issueLockToken(issue)) ?? null;
+}
 
 // Tokens this process itself published into the env, refcounted. Their presence
 // in the env says nothing about the CURRENT call stack — only the async context
@@ -249,7 +264,7 @@ export async function withIssueLock(opts, fn) {
   const {
     issue,
     verb = 'unknown',
-    projDir,
+    projDir: invokingProjDir,
     sessionId = process.env.CLAUDE_SESSION_ID ||
       process.env.AI_TASK_MANAGER_SESSION_ID ||
       process.env.CODEX_SESSION_ID ||
@@ -258,7 +273,29 @@ export async function withIssueLock(opts, fn) {
     retries = ISSUE_LOCK_DEFAULT_RETRIES,
   } = opts || {};
   if (!issue) throw new Error('withIssueLock: issue is required');
-  if (!projDir) throw new Error('withIssueLock: projDir is required');
+  if (!invokingProjDir) throw new Error('withIssueLock: projDir is required');
+  // #2031: every checkout must acquire the same physical issue lock. Preserve
+  // standalone runtime roots; only actual Git checkout roots share a lock root.
+  let projDir = invokingProjDir;
+  if (existsSync(path.join(invokingProjDir, '.git'))) {
+    try {
+      const list = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+        cwd: invokingProjDir,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: GIT_TIMEOUT_MS,
+      });
+      const main = list
+        .split(/\n\n/)[0]
+        .match(/^worktree (.+)$/m)?.[1]
+        ?.trim();
+      if (!main || !path.isAbsolute(main) || !statSync(main).isDirectory())
+        throw new Error('invalid main checkout');
+      projDir = main;
+    } catch (cause) {
+      throw new Error('issue-lock:lock-root-unavailable', { cause });
+    }
+  }
 
   const token = issueLockToken(issue);
 
@@ -325,7 +362,12 @@ export async function withIssueLock(opts, fn) {
   nextHeld.add(token);
 
   try {
-    return await heldContext.run(nextHeld, fn);
+    const owners = new Map(ownerContext.getStore() ?? []);
+    owners.set(
+      token,
+      Object.freeze({ issue: token, projDir, token: randomBytes(16).toString('hex') })
+    );
+    return await ownerContext.run(owners, () => heldContext.run(nextHeld, fn));
   } finally {
     const depth = (selfPublished.get(token) || 1) - 1;
     if (depth <= 0) selfPublished.delete(token);

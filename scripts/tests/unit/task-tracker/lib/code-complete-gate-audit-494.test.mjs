@@ -7,7 +7,33 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+// @story #1990
+import { createDecompositionRuntime } from '../../../../task-tracker/lib/decomposition-authority.mjs';
+import {
+  fixture as decompositionFixture,
+  observed,
+  freshUnitDir,
+} from './decomposition-authority-fixtures.mjs';
+import { currentUnitAuthority } from './decomposition-unit-admission-fixture.mjs';
+import { developExitCodeCompleteGuard } from '../../../../task-tracker/lib/develop-exit-code-complete-guard.mjs';
 import { gateCodeComplete } from '../../../../task-tracker/lib/code-complete-gate.mjs';
+
+async function currentGate(input) {
+  if (!input.cfg.projectId && !input.deps?.decomposition && /kind="audit"/.test(input.body)) {
+    const f = await currentUnitAuthority({
+      body: input.body,
+      issue: Number(input.issueNumber),
+      repository: input.cfg.repo,
+    });
+    return gateCodeComplete({
+      ...input,
+      body: f.body,
+      cfg: f.cfg,
+      deps: { ...input.deps, decomposition: { subject: f.subject, runtime: f.runtime } },
+    });
+  }
+  return gateCodeComplete(input);
+}
 
 const cfg = { repo: 'o/r' };
 
@@ -44,7 +70,7 @@ test('audit + deliverable + waived ACs ⇒ ok, no trail fetch', async () => {
 - [x] Analysis recorded <!-- aitm-ac-waived by="audit" -->
 - [x] Recommendation posted <!-- aitm-ac-waived by="audit" -->
 `;
-  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  const r = await currentGate({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
   assert.equal(r.ok, true, `blockers: ${r.blockers.join(' | ')}`);
   assert.deepEqual(r.blockers, []);
   assert.deepEqual(r.shas, []);
@@ -57,7 +83,7 @@ test('audit + deliverable + a normally-verified AC ⇒ ok (verified-by still hon
 
 - [x] Verified AC <!-- aitm-verified cmd="\`gh issue view 1\`" exit="0" sha="abc1234" ts="2026-06-22T00:00:00Z" -->
 `;
-  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  const r = await currentGate({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
   assert.equal(r.ok, true, `blockers: ${r.blockers.join(' | ')}`);
 });
 
@@ -68,7 +94,7 @@ test('audit but MISSING deliverable ⇒ blocked on deliverable-missing', async (
 
 - [x] Analysis recorded <!-- aitm-ac-waived by="audit" -->
 `;
-  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  const r = await currentGate({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
   assert.equal(r.ok, false);
   assert.ok(
     r.blockers.some((b) => b.startsWith('code-complete-deliverable-missing')),
@@ -83,7 +109,7 @@ test('audit: a ticked AC that is neither verified nor waived is still blocked', 
 
 - [x] Bare ticked AC with no evidence
 `;
-  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  const r = await currentGate({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
   assert.equal(r.ok, false);
   assert.ok(
     r.blockers.some((b) => b.startsWith('code-complete-ac-unverified')),
@@ -98,7 +124,7 @@ test('audit: a waived-but-UNTICKED AC is still blocked (waive ≠ tick)', async 
 
 - [ ] Not done yet <!-- aitm-ac-waived by="audit" -->
 `;
-  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  const r = await currentGate({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
   assert.equal(r.ok, false);
   assert.ok(
     r.blockers.some((b) => b.startsWith('code-complete-ac-unticked')),
@@ -115,7 +141,7 @@ test('AC4 REGRESSION: code-kind body with NO commit trail is still refused', asy
 
 - [x] Some AC <!-- aitm-ac-waived by="audit" -->
 `;
-  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: NO_TRAIL_DEPS });
+  const r = await currentGate({ cfg, issueNumber: 1, body, deps: NO_TRAIL_DEPS });
   assert.equal(r.ok, false);
   // ac-waived is inert on the code lane → AC reads as unverified.
   assert.ok(
@@ -129,7 +155,7 @@ test('AC4 REGRESSION: code-kind body with NO commit trail is still refused', asy
   );
 });
 
-test('#500 epic-kind: deliverable + waived ACs + reconciled ⇒ ok, no trail fetch', async () => {
+test('#1990 epic-kind: reconciliation without current readiness authority cannot grant completion', async () => {
   // An epic is delivered by its children; it has no commits of its own. The
   // no-commit lane must accept it on posted-deliverable evidence alone.
   //
@@ -149,9 +175,9 @@ test('#500 epic-kind: deliverable + waived ACs + reconciled ⇒ ok, no trail fet
 - [x] All sub-issues Done <!-- aitm-ac-waived by="epic-rollup" -->
 - [x] Channel reachable end-to-end <!-- aitm-ac-waived by="epic-rollup" -->
 `;
-  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
-  assert.equal(r.ok, true, `blockers: ${r.blockers.join(' | ')}`);
-  assert.deepEqual(r.blockers, []);
+  const r = await currentGate({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  assert.equal(r.ok, false, `blockers: ${r.blockers.join(' | ')}`);
+  assert.ok(r.blockers.some((item) => item.startsWith('decomposition-authority-unavailable')));
   assert.deepEqual(r.shas, []);
 });
 
@@ -168,7 +194,7 @@ test('#887 epic-kind: deliverable present but NOT reconciled ⇒ blocked', async
 
 - [x] All sub-issues Done <!-- aitm-ac-waived by="epic-rollup" -->
 `;
-  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  const r = await currentGate({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
   assert.equal(r.ok, false);
   assert.ok(
     r.blockers.some((b) => b.startsWith('code-complete-epic-unreconciled')),
@@ -183,7 +209,7 @@ test('#500 epic-kind: MISSING deliverable ⇒ blocked on deliverable-missing', a
 
 - [x] All sub-issues Done <!-- aitm-ac-waived by="epic-rollup" -->
 `;
-  const r = await gateCodeComplete({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
+  const r = await currentGate({ cfg, issueNumber: 1, body, deps: THROW_DEPS });
   assert.equal(r.ok, false);
   assert.ok(
     r.blockers.some((b) => b.startsWith('code-complete-deliverable-missing')),
@@ -196,7 +222,7 @@ test('code-kind regression: properly verified AC + valid trail still passes', as
 
 - [x] Verified AC <!-- aitm-verified cmd="\`npm test\`" exit="0" sha="abc1234" ts="2026-06-22T00:00:00Z" -->
 `;
-  const r = await gateCodeComplete({
+  const r = await currentGate({
     cfg,
     issueNumber: 1,
     body,
@@ -207,4 +233,68 @@ test('code-kind regression: properly verified AC + valid trail still passes', as
     },
   });
   assert.equal(r.ok, true, `blockers: ${r.blockers.join(' | ')}`);
+});
+
+test('actual no-commit code-complete gate observes current oversized authority before accepting completion evidence', async () => {
+  const f = decompositionFixture(25);
+  f.body +=
+    '\n<!-- aitm-issue-kind kind="audit" -->\n<!-- aitm-deliverable-posted url="https://example/decision" -->\n';
+  const subject = { repository: 'o/r', issue: 1, projectId: 'PVT_a', projectItemId: 'PVTI_a' };
+  f.deps.readIssue = async () => observed({ number: 1, body: f.body });
+  f.deps.readBackIssue = f.deps.readIssue;
+  const config = { repo: 'o/r', projectId: 'PVT_a' };
+  const runtime = createDecompositionRuntime({
+    cfg: config,
+    projectDir: freshUnitDir('complete-current-'),
+    deps: f.deps,
+  });
+  await runtime.refresh(subject);
+  const result = await currentGate({
+    cfg: config,
+    issueNumber: 1,
+    body: f.body,
+    deps: { ...NO_TRAIL_DEPS, decomposition: { subject, runtime } },
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.some((item) => item.startsWith('decomposition-required')));
+});
+
+test('actual Test guard does not let an accepted old Test projection bypass current no-commit restriction', async () => {
+  const f = await currentUnitAuthority({
+    body: MARKERS(KIND('audit'), DELIVERABLE) + '\n## Acceptance Criteria\n- [ ] Current scope.\n',
+    issue: 1,
+    hours: 25,
+  });
+  const sha = 'a'.repeat(40);
+  const lifecycleEvidence = {
+    sourceKind: 'github-records/v1',
+    expectedSha: sha,
+    acceptedRecordIds: ['R1'],
+    authority: { contractEpoch: 'E1', coordinatorGrantId: 'G1', authorityEpoch: 1 },
+    evidence: [
+      {
+        recordId: 'R1',
+        evidenceKind: 'test',
+        result: 'passed',
+        provenance: 'agent',
+        commitSha: sha,
+        contractEpoch: 'E1',
+        authority: { grantId: 'G1', epoch: 1 },
+      },
+    ],
+  };
+  const result = await developExitCodeCompleteGuard.run({
+    toState: 'test',
+    cfg: f.cfg,
+    issueNumber: 1,
+    body: f.body,
+    lifecycleEvidence,
+    deps: { codeComplete: { decomposition: { subject: f.subject, runtime: f.runtime } } },
+  });
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.refusals.some(
+      (refusal) => refusal.code === 'decomposition-required' && refusal.args.issue === 1
+    )
+  );
 });

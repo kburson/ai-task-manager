@@ -13,6 +13,8 @@
 //
 // Pure-ish: all I/O (git, comment fetch) is injectable via deps.
 
+// @story #1990
+import { assertScopedDecompositionEffect } from './decomposition-effect-admission.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { parseAcceptanceCriteria } from './acceptance-criteria.mjs';
@@ -275,6 +277,19 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
   // to be waived. Code-kind issues (the default) are unaffected: the branch
   // below only diverges when `audit` is true.
   const audit = isNoCommitKind(body);
+  if (audit) {
+    try {
+      await assertScopedDecompositionEffect({
+        issue: Number(issueNumber),
+        cfg,
+        projectDir: deps.projectDir ?? process.cwd(),
+        activity: 'scoped-completion',
+        deps,
+      });
+    } catch (error) {
+      blockers.push((error.code ?? 'decomposition-authority-unavailable') + ': ' + error.message);
+    }
+  }
   const testStageDeferralEligible = !audit || parseIssueKind(body) === 'epic';
   const vcItems = parseVerificationCommands(body);
 
