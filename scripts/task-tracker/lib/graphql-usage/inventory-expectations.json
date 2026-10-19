@@ -606,7 +606,7 @@
     "scripts/task-tracker/lib/decomposition-projection.mjs|158|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-projection.mjs|299|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/deep-dive.mjs|572|out-of-scope|out-of-scope",
-    "scripts/task-tracker/lib/epic-children-gate.mjs|353|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/epic-children-gate.mjs|358|gh-api-graphql|planned",
     "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs|83|gh-api-graphql|planned",
     "scripts/task-tracker/lib/estimation/runtime-adapter.mjs|232|gh-api-graphql|planned",
     "scripts/task-tracker/lib/gh-edit-guard.mjs|419|out-of-scope|out-of-scope",

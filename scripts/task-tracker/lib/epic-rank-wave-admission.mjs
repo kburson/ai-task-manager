@@ -16,16 +16,34 @@ export async function observeRankWaveAdmission({
   const runtime =
     deps.rankWaveRuntime ?? createRankWaveRuntime({ cfg, projectDir, waveEpic: parentEpicNumber });
   const inspect = deps.inspectRankWavePublication ?? inspectRankWavePublication;
+  // @story #2037 — includeBindings:false is rank-independent. Reuse only the
+  // matching first inspection read; later verification and invocations stay fresh.
+  const initial =
+    deps.rank == null
+      ? await runtime.readSnapshot(parentEpicNumber, null, { includeBindings: false })
+      : null;
+  const rank = deps.rank ?? initial.children.find((c) => c.number === Number(issueNumber))?.rank;
+  let firstRead = true;
+  const inspectionRuntime = initial
+    ? {
+        ...runtime,
+        readSnapshot: async (epic, requestedRank, options) => {
+          const reuse =
+            firstRead &&
+            epic === parentEpicNumber &&
+            requestedRank === rank &&
+            options?.includeBindings === false;
+          firstRead = false;
+          return reuse ? initial : runtime.readSnapshot(epic, requestedRank, options);
+        },
+      }
+    : runtime;
   const publication = await inspect({
     repository: cfg.repo,
     epic: parentEpicNumber,
-    rank:
-      deps.rank ??
-      (
-        await runtime.readSnapshot(parentEpicNumber, null, { includeBindings: false })
-      ).children.find((c) => c.number === Number(issueNumber))?.rank,
+    rank,
     now: new Date().toISOString(),
-    runtime,
+    runtime: inspectionRuntime,
   });
   if (publication.status === 'legacy')
     return { legacy: true, children: publication.snapshot.children };

@@ -743,7 +743,8 @@ test('another issue occupying the target worktree blocks readiness and the real 
   }
 });
 
-test('a body changing between scope selection and observation is indeterminate', async () => {
+// @story #2037 — one coherent body replaces the redundant scope/observation race.
+test('scope selection and body observation use the same fresh invocation read', async () => {
   let reads = 0;
   const changedBody = body.replace('Read-only bind readiness', 'Changed bind readiness');
   const result = await evaluateSessionReadiness({
@@ -769,9 +770,9 @@ test('a body changing between scope selection and observation is indeterminate',
       loadMigrationJournal: () => null,
     },
   });
-  assert.equal(reads, 2);
-  assert.equal(result.status, 'indeterminate');
-  assert.ok(result.blockers.some((blocker) => blocker.args.source === 'issue-body'));
+  assert.equal(reads, 1);
+  assert.equal(result.status, 'ready');
+  assert.equal(result.observations.find((o) => o.resource === 'issue-body').value.body, body);
 });
 
 test('a readable stub body without scope sections is an issue-body authority failure', async () => {

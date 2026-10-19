@@ -1,0 +1,497 @@
+{
+  "schema": "aitm.graphql-read-dedup-measurement/v1",
+  "scope": "readiness-body",
+  "endpoint": "https://api.github.com/graphql",
+  "account": {
+    "login": "kburson",
+    "id": 1082467
+  },
+  "budgetScopeId": null,
+  "exclusions": "Other readiness ports are local and fixed; no lifecycle effects. One REST identity read is excluded from GraphQL point totals.",
+  "runs": [
+    {
+      "variant": "baseline",
+      "action": "bind",
+      "source": {
+        "commit": "a32e08245d2ae243e7922c4bfb287695edd0c251",
+        "sha256": "6a0a107ae41d2e8459632854e50c8f39f1a4dcba6c36186adb35c0b6d5048cc3",
+        "dirty": false
+      },
+      "observations": [
+        {
+          "logicalOperationId": "96432a1d-6248-413c-8466-0decc715838a",
+          "startedAt": "2026-10-19T17:19:54.178Z",
+          "endedAt": "2026-10-19T17:19:54.497Z",
+          "cost": 1,
+          "bodyHash": "b306069e71b66502d1b49472c3e7780d3e7b69d1b1afc140d200fb60cb55701d",
+          "queryHash": "d171b4fffc8e6e296d1f6408af4c9a7bfb85246a9ff95a0bd4b09c3e37ecd414",
+          "responseHash": "550c0e265e65077ea95fe659d99f3fbee345bae689a3c7db205e0c6997d97c1a",
+          "requestId": "DC72:11D9AF:21FA156:6E51B4F:6AD65139",
+          "httpStatus": 200,
+          "remaining": 1258,
+          "reset": "1792431218",
+          "telemetry": {
+            "schemaVersion": "aitm.graphql-usage.observation/v1",
+            "callId": "ee28fcdf-5139-4daf-b58a-1dc64c1f61e5",
+            "logicalOperationId": "96432a1d-6248-413c-8466-0decc715838a",
+            "startedAt": "2026-10-19T17:19:54.178Z",
+            "endedAt": "2026-10-19T17:19:54.461Z",
+            "durationMs": 283,
+            "worktreeId": "sha256:25b0f4cb50a122ad7d3b43e360dd0a2b1ae391f74009640b37a047fd347ec8c5",
+            "sessionId": "sha256:dff6312c6c4329f79d99753c686c957074ef7d94cf8ae90cd16a4d69dce21836",
+            "sessionSource": "runtime",
+            "enrollmentId": "81890927-3e7e-450d-baf6-415e3a024c83",
+            "commonRootId": "sha256:14ef820b3fd424855b3ebf2224b84216727acaa48812b0d2402d31e574cdd964",
+            "collectorLaunchRoute": "inherited-environment",
+            "originatingLaunchRoute": "measurement-launcher",
+            "processId": 1466,
+            "repository": "kburson/ai-peer-review",
+            "issueNumber": 226,
+            "draftId": null,
+            "lifecycleState": "unknown",
+            "stateSource": "unknown",
+            "contextScope": "single-issue",
+            "observationKind": "http-attempt",
+            "dispatchStatus": "sent",
+            "pageIndex": null,
+            "kind": "query",
+            "operation": "anonymous.9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "queryFingerprint": "sha256:9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "fingerprintVersion": "v1",
+            "outcome": "success",
+            "httpStatus": 200,
+            "processExitCode": null,
+            "errorClass": null,
+            "pointCost": 1,
+            "costSource": "same-response-rate-limit",
+            "costUnknownReason": null,
+            "costCoverage": "complete-observation",
+            "hiddenRequestCount": 0,
+            "costBasis": "instrumented-request",
+            "augmentationVersion": "v1",
+            "collectorVersion": "v1",
+            "endpointHost": "api.github.com",
+            "budgetScopeId": null,
+            "rateLimit": {
+              "limit": 5000,
+              "remaining": 1258,
+              "used": 3742,
+              "reset": 1792431218,
+              "resource": "graphql"
+            },
+            "rateLimitUnavailableReason": null
+          }
+        },
+        {
+          "logicalOperationId": "be70d68c-f2a4-4ba8-bdf9-c1e2605efa55",
+          "startedAt": "2026-10-19T17:19:54.851Z",
+          "endedAt": "2026-10-19T17:19:55.107Z",
+          "cost": 1,
+          "bodyHash": "b306069e71b66502d1b49472c3e7780d3e7b69d1b1afc140d200fb60cb55701d",
+          "queryHash": "d171b4fffc8e6e296d1f6408af4c9a7bfb85246a9ff95a0bd4b09c3e37ecd414",
+          "responseHash": "550c0e265e65077ea95fe659d99f3fbee345bae689a3c7db205e0c6997d97c1a",
+          "requestId": "DC72:11D9AF:21FA5D4:6E529B6:6AD6513A",
+          "httpStatus": 200,
+          "remaining": 4623,
+          "reset": "1792431242",
+          "telemetry": {
+            "schemaVersion": "aitm.graphql-usage.observation/v1",
+            "callId": "1fc21bca-a02a-4fc6-98e9-f3c784f2c6a9",
+            "logicalOperationId": "be70d68c-f2a4-4ba8-bdf9-c1e2605efa55",
+            "startedAt": "2026-10-19T17:19:54.850Z",
+            "endedAt": "2026-10-19T17:19:55.089Z",
+            "durationMs": 239,
+            "worktreeId": "sha256:25b0f4cb50a122ad7d3b43e360dd0a2b1ae391f74009640b37a047fd347ec8c5",
+            "sessionId": "sha256:dff6312c6c4329f79d99753c686c957074ef7d94cf8ae90cd16a4d69dce21836",
+            "sessionSource": "runtime",
+            "enrollmentId": "889ca9bf-f942-45ec-9eff-a1a013290107",
+            "commonRootId": "sha256:14ef820b3fd424855b3ebf2224b84216727acaa48812b0d2402d31e574cdd964",
+            "collectorLaunchRoute": "inherited-environment",
+            "originatingLaunchRoute": "measurement-launcher",
+            "processId": 1466,
+            "repository": "kburson/ai-peer-review",
+            "issueNumber": 226,
+            "draftId": null,
+            "lifecycleState": "unknown",
+            "stateSource": "unknown",
+            "contextScope": "single-issue",
+            "observationKind": "http-attempt",
+            "dispatchStatus": "sent",
+            "pageIndex": null,
+            "kind": "query",
+            "operation": "anonymous.9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "queryFingerprint": "sha256:9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "fingerprintVersion": "v1",
+            "outcome": "success",
+            "httpStatus": 200,
+            "processExitCode": null,
+            "errorClass": null,
+            "pointCost": 1,
+            "costSource": "same-response-rate-limit",
+            "costUnknownReason": null,
+            "costCoverage": "complete-observation",
+            "hiddenRequestCount": 0,
+            "costBasis": "instrumented-request",
+            "augmentationVersion": "v1",
+            "collectorVersion": "v1",
+            "endpointHost": "api.github.com",
+            "budgetScopeId": null,
+            "rateLimit": {
+              "limit": 5000,
+              "remaining": 4623,
+              "used": 377,
+              "reset": 1792431242,
+              "resource": "graphql"
+            },
+            "rateLimitUnavailableReason": null
+          }
+        }
+      ],
+      "result": {
+        "status": "ready",
+        "blockers": [],
+        "warnings": [
+          {
+            "code": "decomposition-bind-restricted",
+            "args": {
+              "issue": 226,
+              "operationId": null,
+              "reason": "decomposition-authority-unavailable"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "variant": "candidate",
+      "action": "bind",
+      "source": {
+        "commit": "a32e08245d2ae243e7922c4bfb287695edd0c251",
+        "sha256": "6bcd5a04df18dd1ce6c0e4338d33ac4c58ec979a379bdc8b57a7f2167e21d8a4",
+        "dirty": true
+      },
+      "observations": [
+        {
+          "logicalOperationId": "ddc61158-f6ca-4aaf-893f-b5ae03023010",
+          "startedAt": "2026-10-19T17:19:55.324Z",
+          "endedAt": "2026-10-19T17:19:55.563Z",
+          "cost": 1,
+          "bodyHash": "b306069e71b66502d1b49472c3e7780d3e7b69d1b1afc140d200fb60cb55701d",
+          "queryHash": "d171b4fffc8e6e296d1f6408af4c9a7bfb85246a9ff95a0bd4b09c3e37ecd414",
+          "responseHash": "550c0e265e65077ea95fe659d99f3fbee345bae689a3c7db205e0c6997d97c1a",
+          "requestId": "DC72:11D9AF:21FA8DD:6E53350:6AD6513B",
+          "httpStatus": 200,
+          "remaining": 1257,
+          "reset": "1792431218",
+          "telemetry": {
+            "schemaVersion": "aitm.graphql-usage.observation/v1",
+            "callId": "de3485ff-8946-4381-b292-cdd5fcfc8bb0",
+            "logicalOperationId": "ddc61158-f6ca-4aaf-893f-b5ae03023010",
+            "startedAt": "2026-10-19T17:19:55.324Z",
+            "endedAt": "2026-10-19T17:19:55.551Z",
+            "durationMs": 227,
+            "worktreeId": "sha256:25b0f4cb50a122ad7d3b43e360dd0a2b1ae391f74009640b37a047fd347ec8c5",
+            "sessionId": "sha256:dff6312c6c4329f79d99753c686c957074ef7d94cf8ae90cd16a4d69dce21836",
+            "sessionSource": "runtime",
+            "enrollmentId": "be2f0006-7ace-493e-8778-45515a95ee1d",
+            "commonRootId": "sha256:14ef820b3fd424855b3ebf2224b84216727acaa48812b0d2402d31e574cdd964",
+            "collectorLaunchRoute": "inherited-environment",
+            "originatingLaunchRoute": "measurement-launcher",
+            "processId": 1466,
+            "repository": "kburson/ai-peer-review",
+            "issueNumber": 226,
+            "draftId": null,
+            "lifecycleState": "unknown",
+            "stateSource": "unknown",
+            "contextScope": "single-issue",
+            "observationKind": "http-attempt",
+            "dispatchStatus": "sent",
+            "pageIndex": null,
+            "kind": "query",
+            "operation": "anonymous.9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "queryFingerprint": "sha256:9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "fingerprintVersion": "v1",
+            "outcome": "success",
+            "httpStatus": 200,
+            "processExitCode": null,
+            "errorClass": null,
+            "pointCost": 1,
+            "costSource": "same-response-rate-limit",
+            "costUnknownReason": null,
+            "costCoverage": "complete-observation",
+            "hiddenRequestCount": 0,
+            "costBasis": "instrumented-request",
+            "augmentationVersion": "v1",
+            "collectorVersion": "v1",
+            "endpointHost": "api.github.com",
+            "budgetScopeId": null,
+            "rateLimit": {
+              "limit": 5000,
+              "remaining": 1257,
+              "used": 3743,
+              "reset": 1792431218,
+              "resource": "graphql"
+            },
+            "rateLimitUnavailableReason": null
+          }
+        }
+      ],
+      "result": {
+        "status": "ready",
+        "blockers": [],
+        "warnings": [
+          {
+            "code": "decomposition-bind-restricted",
+            "args": {
+              "issue": 226,
+              "operationId": null,
+              "reason": "decomposition-authority-unavailable"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "variant": "candidate",
+      "action": "resume",
+      "source": {
+        "commit": "a32e08245d2ae243e7922c4bfb287695edd0c251",
+        "sha256": "6bcd5a04df18dd1ce6c0e4338d33ac4c58ec979a379bdc8b57a7f2167e21d8a4",
+        "dirty": true
+      },
+      "observations": [
+        {
+          "logicalOperationId": "9b21da08-96b0-4d22-801e-ecf38ea8193f",
+          "startedAt": "2026-10-19T17:19:55.722Z",
+          "endedAt": "2026-10-19T17:19:55.974Z",
+          "cost": 1,
+          "bodyHash": "b306069e71b66502d1b49472c3e7780d3e7b69d1b1afc140d200fb60cb55701d",
+          "queryHash": "d171b4fffc8e6e296d1f6408af4c9a7bfb85246a9ff95a0bd4b09c3e37ecd414",
+          "responseHash": "550c0e265e65077ea95fe659d99f3fbee345bae689a3c7db205e0c6997d97c1a",
+          "requestId": "DC72:11D9AF:21FAB53:6E53C07:6AD6513B",
+          "httpStatus": 200,
+          "remaining": 1256,
+          "reset": "1792431218",
+          "telemetry": {
+            "schemaVersion": "aitm.graphql-usage.observation/v1",
+            "callId": "94e09a0b-63fc-457d-bf34-c137b4659271",
+            "logicalOperationId": "9b21da08-96b0-4d22-801e-ecf38ea8193f",
+            "startedAt": "2026-10-19T17:19:55.722Z",
+            "endedAt": "2026-10-19T17:19:55.952Z",
+            "durationMs": 230,
+            "worktreeId": "sha256:25b0f4cb50a122ad7d3b43e360dd0a2b1ae391f74009640b37a047fd347ec8c5",
+            "sessionId": "sha256:dff6312c6c4329f79d99753c686c957074ef7d94cf8ae90cd16a4d69dce21836",
+            "sessionSource": "runtime",
+            "enrollmentId": "3a6398bd-a298-4cd3-b3ff-6aec966f3995",
+            "commonRootId": "sha256:14ef820b3fd424855b3ebf2224b84216727acaa48812b0d2402d31e574cdd964",
+            "collectorLaunchRoute": "inherited-environment",
+            "originatingLaunchRoute": "measurement-launcher",
+            "processId": 1466,
+            "repository": "kburson/ai-peer-review",
+            "issueNumber": 226,
+            "draftId": null,
+            "lifecycleState": "unknown",
+            "stateSource": "unknown",
+            "contextScope": "single-issue",
+            "observationKind": "http-attempt",
+            "dispatchStatus": "sent",
+            "pageIndex": null,
+            "kind": "query",
+            "operation": "anonymous.9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "queryFingerprint": "sha256:9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "fingerprintVersion": "v1",
+            "outcome": "success",
+            "httpStatus": 200,
+            "processExitCode": null,
+            "errorClass": null,
+            "pointCost": 1,
+            "costSource": "same-response-rate-limit",
+            "costUnknownReason": null,
+            "costCoverage": "complete-observation",
+            "hiddenRequestCount": 0,
+            "costBasis": "instrumented-request",
+            "augmentationVersion": "v1",
+            "collectorVersion": "v1",
+            "endpointHost": "api.github.com",
+            "budgetScopeId": null,
+            "rateLimit": {
+              "limit": 5000,
+              "remaining": 1256,
+              "used": 3744,
+              "reset": 1792431218,
+              "resource": "graphql"
+            },
+            "rateLimitUnavailableReason": null
+          }
+        }
+      ],
+      "result": {
+        "status": "ready",
+        "blockers": [],
+        "warnings": [
+          {
+            "code": "decomposition-bind-restricted",
+            "args": {
+              "issue": 226,
+              "operationId": null,
+              "reason": "decomposition-authority-unavailable"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "variant": "baseline",
+      "action": "resume",
+      "source": {
+        "commit": "a32e08245d2ae243e7922c4bfb287695edd0c251",
+        "sha256": "6a0a107ae41d2e8459632854e50c8f39f1a4dcba6c36186adb35c0b6d5048cc3",
+        "dirty": false
+      },
+      "observations": [
+        {
+          "logicalOperationId": "771ff6eb-a080-4d14-9377-4b161078df51",
+          "startedAt": "2026-10-19T17:19:56.116Z",
+          "endedAt": "2026-10-19T17:19:56.370Z",
+          "cost": 1,
+          "bodyHash": "b306069e71b66502d1b49472c3e7780d3e7b69d1b1afc140d200fb60cb55701d",
+          "queryHash": "d171b4fffc8e6e296d1f6408af4c9a7bfb85246a9ff95a0bd4b09c3e37ecd414",
+          "responseHash": "550c0e265e65077ea95fe659d99f3fbee345bae689a3c7db205e0c6997d97c1a",
+          "requestId": "DC72:11D9AF:21FADF0:6E54464:6AD6513B",
+          "httpStatus": 200,
+          "remaining": 1255,
+          "reset": "1792431218",
+          "telemetry": {
+            "schemaVersion": "aitm.graphql-usage.observation/v1",
+            "callId": "84e1a66d-2b3d-4129-b68a-3efb7e6bd007",
+            "logicalOperationId": "771ff6eb-a080-4d14-9377-4b161078df51",
+            "startedAt": "2026-10-19T17:19:56.116Z",
+            "endedAt": "2026-10-19T17:19:56.359Z",
+            "durationMs": 243,
+            "worktreeId": "sha256:25b0f4cb50a122ad7d3b43e360dd0a2b1ae391f74009640b37a047fd347ec8c5",
+            "sessionId": "sha256:dff6312c6c4329f79d99753c686c957074ef7d94cf8ae90cd16a4d69dce21836",
+            "sessionSource": "runtime",
+            "enrollmentId": "8141cb39-279a-478c-af53-6494a2480d06",
+            "commonRootId": "sha256:14ef820b3fd424855b3ebf2224b84216727acaa48812b0d2402d31e574cdd964",
+            "collectorLaunchRoute": "inherited-environment",
+            "originatingLaunchRoute": "measurement-launcher",
+            "processId": 1466,
+            "repository": "kburson/ai-peer-review",
+            "issueNumber": 226,
+            "draftId": null,
+            "lifecycleState": "unknown",
+            "stateSource": "unknown",
+            "contextScope": "single-issue",
+            "observationKind": "http-attempt",
+            "dispatchStatus": "sent",
+            "pageIndex": null,
+            "kind": "query",
+            "operation": "anonymous.9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "queryFingerprint": "sha256:9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "fingerprintVersion": "v1",
+            "outcome": "success",
+            "httpStatus": 200,
+            "processExitCode": null,
+            "errorClass": null,
+            "pointCost": 1,
+            "costSource": "same-response-rate-limit",
+            "costUnknownReason": null,
+            "costCoverage": "complete-observation",
+            "hiddenRequestCount": 0,
+            "costBasis": "instrumented-request",
+            "augmentationVersion": "v1",
+            "collectorVersion": "v1",
+            "endpointHost": "api.github.com",
+            "budgetScopeId": null,
+            "rateLimit": {
+              "limit": 5000,
+              "remaining": 1255,
+              "used": 3745,
+              "reset": 1792431218,
+              "resource": "graphql"
+            },
+            "rateLimitUnavailableReason": null
+          }
+        },
+        {
+          "logicalOperationId": "c51bb106-7d29-4e67-9db4-0bf67f7f84ac",
+          "startedAt": "2026-10-19T17:19:56.490Z",
+          "endedAt": "2026-10-19T17:19:56.738Z",
+          "cost": 1,
+          "bodyHash": "b306069e71b66502d1b49472c3e7780d3e7b69d1b1afc140d200fb60cb55701d",
+          "queryHash": "d171b4fffc8e6e296d1f6408af4c9a7bfb85246a9ff95a0bd4b09c3e37ecd414",
+          "responseHash": "550c0e265e65077ea95fe659d99f3fbee345bae689a3c7db205e0c6997d97c1a",
+          "requestId": "DC72:11D9AF:21FB075:6E54C48:6AD6513C",
+          "httpStatus": 200,
+          "remaining": 1254,
+          "reset": "1792431218",
+          "telemetry": {
+            "schemaVersion": "aitm.graphql-usage.observation/v1",
+            "callId": "2eac88ea-ec75-486a-97d0-d13e691d507c",
+            "logicalOperationId": "c51bb106-7d29-4e67-9db4-0bf67f7f84ac",
+            "startedAt": "2026-10-19T17:19:56.490Z",
+            "endedAt": "2026-10-19T17:19:56.728Z",
+            "durationMs": 238,
+            "worktreeId": "sha256:25b0f4cb50a122ad7d3b43e360dd0a2b1ae391f74009640b37a047fd347ec8c5",
+            "sessionId": "sha256:dff6312c6c4329f79d99753c686c957074ef7d94cf8ae90cd16a4d69dce21836",
+            "sessionSource": "runtime",
+            "enrollmentId": "4831042f-3d12-4807-bf23-7f225ebf8900",
+            "commonRootId": "sha256:14ef820b3fd424855b3ebf2224b84216727acaa48812b0d2402d31e574cdd964",
+            "collectorLaunchRoute": "inherited-environment",
+            "originatingLaunchRoute": "measurement-launcher",
+            "processId": 1466,
+            "repository": "kburson/ai-peer-review",
+            "issueNumber": 226,
+            "draftId": null,
+            "lifecycleState": "unknown",
+            "stateSource": "unknown",
+            "contextScope": "single-issue",
+            "observationKind": "http-attempt",
+            "dispatchStatus": "sent",
+            "pageIndex": null,
+            "kind": "query",
+            "operation": "anonymous.9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "queryFingerprint": "sha256:9d14d4100d580cbd6763373b0108c1f5e6af122b7717be7be8ea9dead813be5e",
+            "fingerprintVersion": "v1",
+            "outcome": "success",
+            "httpStatus": 200,
+            "processExitCode": null,
+            "errorClass": null,
+            "pointCost": 1,
+            "costSource": "same-response-rate-limit",
+            "costUnknownReason": null,
+            "costCoverage": "complete-observation",
+            "hiddenRequestCount": 0,
+            "costBasis": "instrumented-request",
+            "augmentationVersion": "v1",
+            "collectorVersion": "v1",
+            "endpointHost": "api.github.com",
+            "budgetScopeId": null,
+            "rateLimit": {
+              "limit": 5000,
+              "remaining": 1254,
+              "used": 3746,
+              "reset": 1792431218,
+              "resource": "graphql"
+            },
+            "rateLimitUnavailableReason": null
+          }
+        }
+      ],
+      "result": {
+        "status": "ready",
+        "blockers": [],
+        "warnings": [
+          {
+            "code": "decomposition-bind-restricted",
+            "args": {
+              "issue": 226,
+              "operationId": null,
+              "reason": "decomposition-authority-unavailable"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

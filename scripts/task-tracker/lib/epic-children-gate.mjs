@@ -289,6 +289,7 @@ export async function planRefineWipGate({
   }
   if (parentEpicNumber == null) return { ok: true }; // solo issue — bypass
 
+  let observedChildren;
   try {
     const { observeRankWaveAdmission } = await import('./epic-rank-wave-admission.mjs');
     const observed = await observeRankWaveAdmission({
@@ -301,13 +302,17 @@ export async function planRefineWipGate({
     });
     if (!observed.legacy) return observed.decision;
     if (toState === 'develop') return { ok: true };
+    // @story #2037 — retain this invocation's complete legacy child observation.
+    // If the target was absent, retain the established fresh-fetch fallback.
+    if (observed.children?.some((child) => Number(child.number) === me))
+      observedChildren = observed.children;
   } catch (error) {
     return { ok: false, code: 'rank-wave-observation-unavailable', reason: error.message };
   }
 
   let children;
   try {
-    children = await fetchEpicChildren({ cfg, parentEpicNumber, deps });
+    children = observedChildren ?? (await fetchEpicChildren({ cfg, parentEpicNumber, deps }));
     children = await enrichChildrenWithBlockedBy({ children, cfg, deps });
   } catch (error) {
     return { ok: false, blockers: [`wip-children-fetch-failed: ${error.message}`] };

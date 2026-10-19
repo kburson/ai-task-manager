@@ -99,6 +99,10 @@ export async function evaluateSessionReadiness({
       if (typeof body !== 'string') throw new Error('issue body is unavailable');
       return body;
     });
+  // @story #2037 — scope and observation share one read in this invocation.
+  // Keep rejection too: a new command, rather than a hidden retry, owns recovery.
+  let issueBodyPromise;
+  const observeIssueBody = () => (issueBodyPromise ??= Promise.resolve().then(readIssueBody));
   const skipNetwork = sessionNetworkSkipped();
   const read = async (request) => {
     let value;
@@ -160,7 +164,7 @@ export async function evaluateSessionReadiness({
         });
         break;
       case 'issue-body':
-        value = { number: issue, body: await readIssueBody() };
+        value = { number: issue, body: await observeIssueBody() };
         break;
       case 'github-user': {
         const login = deps.readCurrentUser
@@ -178,7 +182,7 @@ export async function evaluateSessionReadiness({
   let body;
   if (!skipNetwork) {
     try {
-      body = await readIssueBody();
+      body = await observeIssueBody();
     } catch {
       /* represented by the issue-body observation */
     }
