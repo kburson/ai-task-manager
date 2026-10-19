@@ -256,7 +256,7 @@ test('epic admission and terminal delivery fail closed on incomplete descriptors
   assert.equal(malformedRecoveryGate.ok, false);
 });
 
-test('strict local WIP cannot be disabled by project configuration', async () => {
+test('legacy configuration retains ordinary advisory WIP', async () => {
   const result = await refineExitWipBudgetGuard.run({
     toState: 'plan',
     issueNumber: 12,
@@ -273,7 +273,8 @@ test('strict local WIP cannot be disabled by project configuration', async () =>
       ]),
     },
   });
-  assert.equal(result.ok, false);
+  assert.equal(result.ok, true);
+  assert.equal(result.warnings[0].args.activeIssues, '#11');
 });
 
 test('epic Plan admission requires every executable child at R4P or later with refinement evidence', async () => {
@@ -347,17 +348,17 @@ test('next-child selection uses only dependency-ready R4P children and rank', ()
   assert.equal(next.number, 11);
 });
 
-test('next-child selection fails closed while any sibling is locally active', () => {
+test('next-child selection remains dependency-aware while a sibling is active', () => {
   for (const state of ['plan', 'develop', 'test', 'review']) {
     const next = findNextEligibleChild([
       currentChild(10, 'ready-for-plan', 1),
       currentChild(11, state, 2),
     ]);
-    assert.equal(next, null, state);
+    assert.equal(next.number, 10, state);
   }
 });
 
-test('local WIP policy has no blocker exception while another child is active', () => {
+test('local WIP warning includes blocked active children', () => {
   const decision = wipAdvanceDecision({
     promotingNumber: 12,
     children: [
@@ -366,7 +367,7 @@ test('local WIP policy has no blocker exception while another child is active', 
       currentChild(12, 'ready-for-plan', 3),
     ],
   });
-  assert.equal(decision.ok, false);
+  assert.equal(decision.ok, true);
   assert.deepEqual(decision.advancing, [10, 11]);
 });
 
@@ -447,7 +448,7 @@ test('pull-next advances one dependency-ready R4P child exactly one edge and the
   assert.match(result.message, /JIT/i);
 });
 
-test('pull-next refuses to start another local child while a sibling is active', async () => {
+test('pull-next warns while pulling one eligible child beside an active sibling', async () => {
   const result = await runPullNext({
     epicNumber: 1209,
     cfg,
@@ -463,12 +464,14 @@ test('pull-next refuses to start another local child while a sibling is active',
         currentChild(1217, 'ready-for-plan', 7),
       ]),
       enrich: { fetchBody: async () => '' },
-      promote: async () => assert.fail('must not promote while a sibling is active'),
+      promote: async () => ({ status: 'promoted' }),
+      getChildLiveState: async () => 'plan',
     },
   });
 
-  assert.equal(result.status, 'active-child');
-  assert.match(result.message, /#1216/);
+  assert.equal(result.status, 'pulled');
+  assert.equal(result.childNumber, 1217);
+  assert.equal(result.warnings[0].args.activeIssues, '#1216');
 });
 
 test('operator help, architecture, and pickup guidance describe R4P child staging', () => {

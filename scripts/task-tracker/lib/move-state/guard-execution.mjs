@@ -278,6 +278,12 @@ export async function runGuardExecution(ctx) {
     guardResult = refreshedContiguity.guardResult;
     if (refreshedContiguity.guardContext) guardCtx = refreshedContiguity.guardContext;
 
+    for (const warning of guardResult.warns ?? []) {
+      if (warning.code === 'epic-wip-capacity-exceeded')
+        console.warn(
+          `WARN: epic WIP budget=${warning.args.budget}; active siblings ${warning.args.activeIssues}.`
+        );
+    }
     if (!guardResult.ok) {
       // Contiguity refusal (story #355): preserve the legacy inline banner
       // byte-for-byte — different recovery prose and exit code from the

@@ -1,4 +1,4 @@
-// Epic R4P admission + sequential JIT child-pull authority (#1216).
+// Epic R4P admission + advisory-capacity JIT child-pull authority (#2031).
 
 import { evaluateRankWaveAdmission, selectRankWaveCandidate } from './epic-rank-wave-policy.mjs';
 import { defaultFetchSiblings } from '../../gh/lib/wave-admission.mjs';
@@ -196,8 +196,6 @@ export function findNextEligibleChild(children = [], { rankWave } = {}) {
   if (rankWave) return selectRankWaveCandidate(children, rankWave).child;
   const list = children || [];
 
-  if (list.some(isActiveChild)) return null;
-
   // Set of issue numbers that block at least one sibling — used for ordering.
   const blockingNumbers = new Set();
   for (const c of list) {
@@ -225,8 +223,8 @@ export function findNextEligibleChild(children = [], { rankWave } = {}) {
 /**
  * WIP-budget decision for a child leaving R4P (R4P→Plan).
  *
- * The local budget is exactly one active child. Until isolated cloud CI is an
- * explicit proven prerequisite, dependencies never create a parallel bypass.
+ * Ordinary capacity warns when another child is active. Dependencies and
+ * explicit rank-wave authority remain separate admission requirements.
  *
  * Pure: reads each child's `state` and optional `blockedBy` (number[]).
  *
@@ -248,9 +246,18 @@ export function wipAdvanceDecision({ promotingNumber, children = [], rankWave } 
   }
   const advancingNums = advancing.map((c) => Number(c.number));
   return {
-    ok: false,
+    ok: true,
     reason: `wip-budget: ${advancingNums.map((n) => `#${n}`).join(', ')} already active`,
     advancing: advancingNums,
+    warnings: [
+      {
+        code: 'epic-wip-capacity-exceeded',
+        args: {
+          activeIssues: advancingNums.map((n) => `#${n}`).join(', '),
+          budget: 1,
+        },
+      },
+    ],
   };
 }
 
@@ -307,7 +314,8 @@ export async function planRefineWipGate({
   }
 
   const decision = wipAdvanceDecision({ promotingNumber: me, children });
-  if (decision.ok) return { ok: true };
+  if (decision.ok)
+    return { ok: true, ...(decision.warnings ? { warnings: decision.warnings } : {}) };
   return {
     ok: false,
     blockers: [
