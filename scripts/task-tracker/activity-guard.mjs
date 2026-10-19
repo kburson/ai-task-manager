@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1990
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
 // Plumbing: invoked only by the Claude Code hook runner, never by a human or
 // the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
@@ -30,6 +31,11 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+  evaluateHookDecomposition,
+  decompositionActivityUnavailable,
+} from './lib/decomposition-activity.mjs';
+import { decompositionTargetActivity } from './lib/decomposition-local-targets.mjs';
 import { readWorktreeIdentity } from './lib/worktree-binding-guard.mjs';
 import {
   resolveInvocationDirectory,
@@ -46,6 +52,7 @@ import { checkAssigneeMatch } from './lib/assignee-guard.mjs';
 import {
   classifyEdit,
   classifyBash,
+  classifyDecompositionBash,
   isAllowed,
   loadPolicy,
   STATE_MATRIX,
@@ -54,7 +61,7 @@ import {
 } from './activity-policy.mjs';
 import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs';
 import { readBoundState } from './lib/bound-state.mjs';
-import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { readChoreMode, isChoreModeActive } from './lib/chore-mode.mjs';
 import { artifactPathPolicy, resolveArtifactShell } from './lib/artifact-write-policy.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 import { extractApplyPatchTargets, extractApplyPatchText } from './lib/apply-patch-targets.mjs';
@@ -104,6 +111,113 @@ if (toolName === 'apply_patch') {
     block(`[task-tracker] mutation target parsing failed: ${error.message}`);
   }
 }
+// Fresh decomposition is required before recognized scoped-effect allowances.
+let decompositionSignals = null;
+let decompositionIssue = null;
+let decompositionCheckpoint = false;
+try {
+  const bound = readBoundState(projectRoot, { sessionId: input.session_id });
+  const chore = readChoreMode(projectRoot);
+  const issue = Number(
+    String(bound.activeIssue ?? (chore.active ? chore.previousIssue : null) ?? '').replace(/^#/, '')
+  );
+  if (Number.isSafeInteger(issue) && issue > 0) decompositionIssue = issue;
+  let declared = [];
+  let activity = 'READ_*';
+  if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
+    declared =
+      toolName === 'apply_patch'
+        ? applyPatchTargets
+        : [toolInput.file_path ?? toolInput.notebook_path ?? toolInput.path ?? ''];
+    activity = 'WRITE_CODE';
+  } else if (toolName === 'Bash') {
+    const artifact = resolveArtifactShell(toolInput.command ?? '', invocationDir, projectRoot);
+    activity = classifyDecompositionBash(toolInput.command ?? '', policy, invocationDir);
+    declared =
+      artifact.status === 'allow' ? artifact.targets : extractWriteTargets(toolInput.command ?? '');
+    if (
+      artifact.status === 'allow' &&
+      artifact.targets.every((target) =>
+        /^\.(?:scratch|tmp)(?:\/|$)/.test(
+          path.relative(projectRoot, path.resolve(invocationDir, target))
+        )
+      )
+    )
+      activity = 'WRITE_SCRATCH';
+  }
+  const targets = declared
+    .filter(Boolean)
+    .map((target) => {
+      const resolved = resolveMutationTarget(
+        target.replace(/^(?:\.\/)+/, ''),
+        invocationDir,
+        projectRoot
+      );
+      return { relative: resolved.relative, activity: classifyEdit(resolved.relative, policy) };
+    })
+    .filter((target) => !/^\.(?:scratch|tmp)(?:\/|$)/.test(target.relative));
+  activity = decompositionTargetActivity({
+    activity,
+    targets,
+    issue,
+    exactBinding: bindingMatches(
+      observedIdentity,
+      readExactSessionBinding(projectRoot, { sessionId: input.session_id }),
+      issue
+    ),
+  });
+  const recognized =
+    targets.length > 0 ||
+    (declared.length === 0 &&
+      [
+        'WRITE_CODE',
+        'WRITE_DOCS',
+        'WRITE_ISSUE',
+        'COMMIT_CODE',
+        'COMMIT_DOCS',
+        'RUN_BUILD',
+      ].includes(activity));
+  if (Number.isSafeInteger(issue) && issue > 0 && recognized) {
+    decompositionCheckpoint =
+      activity === 'COMMIT_CODE' &&
+      bindingMatches(
+        observedIdentity,
+        readExactSessionBinding(projectRoot, { sessionId: input.session_id }),
+        issue
+      );
+    const cfg = JSON.parse(
+      readFileSync(path.join(projectRoot, '.ai-task-manager', 'task-tracker.json'), 'utf8')
+    );
+    const admission = await evaluateHookDecomposition({
+      issue,
+      cfg,
+      projectDir: projectRoot,
+      targets: targets.length ? targets : [{ relative: null, activity }],
+      activity,
+    });
+    if (
+      admission.decision === 'block' &&
+      !(decompositionCheckpoint && admission.code === 'decomposition-authority-unavailable')
+    ) {
+      const { signals: _signals, ...verdict } = admission;
+      process.stdout.write(JSON.stringify(verdict));
+      process.exit(0);
+    }
+    decompositionSignals = admission.signals ?? null;
+  }
+} catch (error) {
+  const recognized =
+    ['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName) ||
+    (toolName === 'Bash' && classifyBash(toolInput.command ?? '', policy) !== 'READ_*');
+  if (recognized && !decompositionCheckpoint && decompositionIssue) {
+    process.stdout.write(
+      JSON.stringify(decompositionActivityUnavailable(decompositionIssue, error.message))
+    );
+    process.exit(0);
+  }
+  if (recognized && !decompositionCheckpoint)
+    block('[task-tracker] scoped mutation authority unavailable: ' + error.message);
+}
 // Artifact authoring bypasses binding only after physical containment checks.
 if (['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(toolName)) {
   const paths =
@@ -148,9 +262,10 @@ if (
   (typeof input.session_id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(input.session_id))
 )
   block('[task-tracker] invalid native hook session identity.');
-const { activeIssue, state: recordedState } = readBoundState(projectRoot, {
-  sessionId: input.session_id,
-});
+const cachedBound = readBoundState(projectRoot, { sessionId: input.session_id });
+const activeIssue = cachedBound.activeIssue;
+const observedState = decompositionSignals ? decompositionSignals.state : cachedBound.state;
+const recordedState = Object.hasOwn(STATE_MATRIX, observedState ?? '') ? observedState : null;
 // When no task is bound (paused or never started), ignore the residual
 // `state` field from the last active task. Otherwise editing infra/meta
 // files between tasks would be permanently blocked: WRITE_OTHER is excluded
@@ -334,6 +449,17 @@ if (
       issueNumber: bound.issueNumber,
       cfg,
       state: 'develop',
+      ...(decompositionSignals
+        ? {
+            deps: {
+              fetchCurrentUser: async () => decompositionSignals.currentUser,
+              fetchSnapshot: async () => ({
+                state: 'develop',
+                assignees: decompositionSignals.assignees,
+              }),
+            },
+          }
+        : {}),
     });
     if (
       !verdict.ok ||

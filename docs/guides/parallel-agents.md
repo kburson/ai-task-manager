@@ -8,7 +8,12 @@ How to fan out parallel sub-agents in this repo without corrupting state, timing
 
 Parallel sub-agents are an **explicit, approved** operation — never the default.
 
-Local implementation and full-suite validation are strictly sequential while
+Ordinary epic WIP capacity is advisory; another active child does not block
+planning admission. Dependency, ownership and explicit rank-wave authority
+remain enforced. A capacity warning grants no permission to spawn agents or
+overlap local full-suite validation.
+
+Local implementation and full-suite validation remain sequential while
 the resource-isolated cloud CI prerequisite remains unproven. Sharing a Rank,
 using separate local worktrees, or disabling an approval gate does not waive
 that limit. A later parallel epic wave requires fresh dependency re-triage,

@@ -76,60 +76,35 @@ that already has a parent).
 
 ## Executable decomposition review
 
-Run `npx aitm decompose-check 1052` during Plan. `story-ok` proceeds normally,
-`needs-decomposition-review` records a warning, and `must-split` blocks Develop
-until children exist or a complete visible waiver is present.
+Run `npx aitm decompose-check 1052` to inspect the current assessment.
+`story-ok` permits ordinary work through normal gates;
+`needs-decomposition-review` is advisory. `must-decompose` restricts new
+scoped work while preserving inspection, checkpoints and governed decomposition.
+Pending or unavailable authority also restricts effects despite old low fields.
+Waiver prose and prior AI approval never clear these restrictions.
 
-The classifier asks for decomposition review when any of these signals exists:
+The shared policy considers Estimate, XL, numbered tasks and verifier groups
+independently. XL requests review. At least 16 hours, three tasks or two verifier groups requests
+review. At least 24 hours, four tasks, or XL with two verifier groups requires
+story decomposition. Epics retain materialized planning and terminal completion
+readiness rather than the story aggregate cap.
 
-- Size is XL;
-- Estimate is at least 16 hours;
-- the linked plan has at least three exact numbered `### Task N:` or
-  `### Milestone N:` sections; or
-- at least two numbered sections contain executable verifier groups.
+Preview with `npx aitm split-plan 1052 --dry-run`. Inspect each bounded task,
+story intent, verifier and provenance before `npx aitm split-plan 1052 --confirm`.
+The sanctioned creator validates every draft before the first live child.
+Already-created children remain recorded through partial results; inspect the
+existing graph before retrying.
 
-It returns `must-split` when the Estimate is at least 24 hours, the plan has at
-least four numbered sections, or Size is XL and at least two numbered sections
-have executable verifiers. `must-split` takes precedence over review-only
-signals.
+Source plans are pinned committed files with exact child sections and repository
+containment. Nested metadata retains the outer parent and source coordination
+epic. Conversion or child creation is preparation: current Ready for Planning
+children permit orchestration, while only accepted terminal children permit
+parent completion. Parent product implementation stays fenced.
 
-Preview child bodies with `npx aitm split-plan 1052 --dry-run`. After inspecting
-the complete proposal, create children with
-`npx aitm split-plan 1052 --confirm`. Confirm delegates every child to
-`npx aitm create-issue --shape sub-issue`; it never calls GitHub issue creation
-directly. Every draft must pass the sanctioned creator's dry-run before the
-first live child is created.
-
-The source issue becomes the coordination epic through its child relationships.
-If it already has a parent, generated metadata records that outer Parent epic
-and the source as the Nested epic. Otherwise the source is recorded as both.
-Task-specific acceptance criteria and verification commands remain on the
-generated children; the source owns relationship and roll-up evidence.
-Proposal text is read from the source plan at the pinned HEAD commit, not from
-uncommitted working-tree bytes. Plan paths must be repository-relative and may
-not escape the repository through traversal; symbolic plan paths are rejected.
-
-### Visible decomposition waiver
-
-A waiver is a root-level section with exactly this minimum schema:
-
-```markdown
-## Decomposition Waiver
-
-- **Rationale**: <why one story is safer>
-- **Expected-focused-duration**: <positive hours, e.g. 12h>
-- **Milestone-checkpoint-plan**: <reviewable checkpoint sequence>
-- **Why-no-nested-children**: <why child issues add more risk than clarity>
-- **Approved-by**: <reviewer identity>
-- **Approved-at**: <ISO-8601 timestamp>
-```
-
-Labels are case-insensitive, but every value must be substantive and stay on
-the same flat field line. The duration must be positive and use `h`, `hour`, or
-`hours`; `Approved-at` must parse as a date. Missing, duplicated, malformed, or
-nested fields invalidate the waiver. A hidden marker is not a waiver.
-Waivers and Plan Metadata shown only inside HTML comments or fenced examples
-are ignored; the required section must be visible root-level Markdown.
+See [operational recovery](decomposition-recovery.md) for refresh, exact retry,
+explicit supersession, partial creation and concurrency limits, and the
+[adapter census](decomposition-adapter-census.md) for executable proof.
+Historical waiver records remain evidence, not current permission.
 
 ### Partial-success recovery
 

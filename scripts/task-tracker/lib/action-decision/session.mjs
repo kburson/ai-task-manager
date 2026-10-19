@@ -1,3 +1,4 @@
+import { decompositionRuntimeFor, observeDecompositionForAction } from './decomposition.mjs';
 // @story #1750
 import { isDeepStrictEqual } from 'node:util';
 import { execFile } from 'node:child_process';
@@ -196,7 +197,20 @@ export async function evaluateSessionReadiness({
     stateBefore,
     config,
     attempt,
-    ports: { scope, explicitTarget, skipNetwork },
+    ports: {
+      scope,
+      explicitTarget,
+      skipNetwork,
+      decomposition:
+        deps.decomposition ??
+        (() =>
+          decompositionRuntimeFor({
+            issue,
+            cfg: config,
+            projectDir,
+            deps: deps.decompositionDeps ?? {},
+          })),
+    },
   });
   return { ...result, bundle: attempt.finish() };
 }
@@ -339,7 +353,40 @@ export async function collectSessionReadiness({
     }
   }
 
+  let warnings = [];
+  if (!blockers.length && ports.decomposition) {
+    let context;
+    try {
+      context =
+        typeof ports.decomposition === 'function'
+          ? await ports.decomposition()
+          : ports.decomposition;
+    } catch (error) {
+      context = {
+        subject: {
+          repository: config.repo,
+          issue,
+          projectId: config.projectId ?? null,
+          projectItemId: null,
+        },
+        runtime: {
+          collect: async () => {
+            throw error;
+          },
+        },
+      };
+    }
+    const decomposition = await observeDecompositionForAction({
+      actionId,
+      state: normalizeStateId(board?.state),
+      attempt,
+      ...context,
+    });
+    observations.push(...decomposition.observations);
+    warnings = decomposition.warnings;
+  }
   return {
+    warnings,
     status: blockers.some((blocker) => blocker.code.startsWith('authority-read-'))
       ? 'indeterminate'
       : blockers.length

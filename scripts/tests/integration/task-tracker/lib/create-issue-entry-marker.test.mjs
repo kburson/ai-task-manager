@@ -131,6 +131,7 @@ test('#221: default (no --status) stamps aitm-entered-backlog on the posted body
   const ctx = setup();
   const result = runCreate(ctx, []);
   assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.match(result.stderr, /delivery authority remains unconfirmed/);
   assert.ok(existsSync(ctx.capturedBodyPath), 'gh mock captured the body file');
   const posted = readFileSync(ctx.capturedBodyPath, 'utf8');
   assert.match(

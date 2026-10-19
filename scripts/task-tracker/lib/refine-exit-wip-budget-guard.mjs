@@ -1,12 +1,12 @@
-// R4P-exit guard: sequential local epic WIP budget (#1216).
+// R4P-exit guard: advisory ordinary epic WIP budget (#2031).
 //
 // Wraps `planRefineWipGate` (scripts/task-tracker/lib/epic-children-gate.mjs)
 // so the R4P→Plan WIP budget reaches the registry through the central guard
 // registry.
 //
-// Rule: at most one child per epic may occupy Plan/Develop/Test/Review. Blocked
-// active children still count and dependencies provide no local parallel
-// exception. Solo issues bypass; unreadable sibling state fails closed.
+// Ordinary capacity warns when a sibling occupies Plan/Develop/Test/Review.
+// Blocked active children still count. Explicit rank-wave admission and
+// unreadable authority still refuse; dependency and ownership guards remain.
 //
 // Context contract:
 //   { cfg: Config, issueNumber: number, deps?: { fetchParentIssue?, epicChildren? } }
@@ -35,7 +35,7 @@ export const refineExitWipBudgetGuard = {
         ...(ctx.deps?.epicChildren || {}),
       },
     });
-    if (result.ok) return { ok: true };
+    if (result.ok) return { ok: true, ...(result.warnings ? { warnings: result.warnings } : {}) };
     if (result.code?.startsWith('rank-wave-'))
       return {
         ok: false,

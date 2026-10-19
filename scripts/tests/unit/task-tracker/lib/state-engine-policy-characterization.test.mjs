@@ -23,7 +23,7 @@ import {
 import { PHASE_EVENTS } from '../../../../task-tracker/phase-events.mjs';
 import { STATE_MACHINE } from '../../../../task-tracker/states/index.mjs';
 import { ALIAS_VERB, runPromote } from '../../../../task-tracker/verbs/promote.mjs';
-import { runRefine } from '../../../../task-tracker/verbs/refine.mjs';
+import { runRefineOrchestration as runRefine } from '../../../fixtures/refinement-orchestration.mjs';
 import {
   LEGAL_FROM as DEMOTE_FROM,
   DEMOTE_TARGET,

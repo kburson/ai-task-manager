@@ -1012,6 +1012,8 @@
       "classification": "agent-callable-standalone",
       "command": "create-issue",
       "staticImports": [
+        "../task-tracker/lib/decomposition-plan-exit-guard.mjs",
+        "../task-tracker/paths.mjs",
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "node:fs",
         "node:child_process",
@@ -1136,14 +1138,14 @@
       "staticImports": [
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "node:child_process",
-        "node:fs",
-        "node:path",
         "../task-tracker/config.mjs",
         "../task-tracker/paths.mjs",
         "../task-tracker/issue-field-db.mjs",
         "../task-tracker/project-fields.mjs",
         "./lib/github-projects.mjs",
-        "./lib/project-tether.mjs",
+        "../task-tracker/lib/decomposition-migration-writer.mjs",
+        "../task-tracker/lib/issue-body-mutate.mjs",
+        "../task-tracker/lib/versioned-issue-write.mjs",
         "../lib/self-doc.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
@@ -1250,8 +1252,8 @@
       "staticImports": [
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "node:fs",
-        "node:fs",
         "node:path",
+        "node:url",
         "../task-tracker/config.mjs",
         "../task-tracker/paths.mjs",
         "../task-tracker/issue-field-db.mjs",
@@ -1259,7 +1261,10 @@
         "../task-tracker/gh-timing-comment.mjs",
         "./lib/github-projects.mjs",
         "../task-tracker/lib/move-state/policy.mjs",
-        "../lib/self-doc.mjs"
+        "../lib/self-doc.mjs",
+        "../task-tracker/lib/issue-body-mutate.mjs",
+        "../task-tracker/lib/decomposition-field-writer.mjs",
+        "../task-tracker/lib/decomposition-projection.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",
@@ -1518,6 +1523,8 @@
       "staticImports": [
         "node:fs",
         "node:path",
+        "./lib/decomposition-activity.mjs",
+        "./lib/decomposition-local-targets.mjs",
         "./lib/worktree-binding-guard.mjs",
         "./lib/mutation-context.mjs",
         "./lib/assignee-guard.mjs",
@@ -2053,6 +2060,8 @@
         "./lib/direct-guidance-admission.mjs",
         "./gh-timing-comment.mjs",
         "./lib/heal-timing-continuity.mjs",
+        "./lib/heal-actor-evidence-recovery.mjs",
+        "./lib/heal-timing-rebaseline.mjs",
         "./lib/heal-actor-opener-replays.mjs",
         "./locks.mjs",
         "./paths.mjs",
@@ -2406,6 +2415,8 @@
         "./lib/apply-patch-targets.mjs",
         "./lib/mutation-context.mjs",
         "./lib/worktree-binding-guard.mjs",
+        "./lib/decomposition-activity.mjs",
+        "./lib/decomposition-local-targets.mjs",
         "./lib/artifact-write-policy.mjs",
         "./lib/installed-guard-path.mjs",
         "./lib/workflow-policy/enforcement.mjs"
@@ -2717,6 +2728,7 @@
       "classification": "agent-callable-verb",
       "command": "refine",
       "staticImports": [
+        "../lib/decomposition-field-writer.mjs",
         "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
@@ -2726,6 +2738,7 @@
         "./promote.mjs",
         "../lib/apply-refinement-estimate.mjs",
         "../lib/process-timeouts.mjs",
+        "../lib/estimate-writer-publication.mjs",
         "../issue-field-db.mjs",
         "../project-fields.mjs",
         "../lib/issue-body-mutate.mjs",

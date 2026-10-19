@@ -95,3 +95,19 @@ npx aitm reconcile <accept-live|revert-to-recorded> <N>
 ```
 
 Choose `accept-live` when the board reflects an out-of-band human move; `revert-to-recorded` when an unintended board edit happened and the recorded state was correct.
+
+## Current decomposition at lifecycle boundaries
+
+Estimate publication and implementation admission are separate results. A
+recorded high revision stays recorded while current decomposition restricts new
+scoped work. Advisory warnings do not independently block; mandatory, pending
+or incomplete authority does. Old waiver prose or Plan approval cannot clear
+current assessment. Explain stays read-only; use returned native remediation
+and exact writer recovery. Refresh cannot erase unresolved intent.
+
+Converted epics with current reviewed children at Ready for Planning may
+prepare orchestration/Develop. New epic completion assertions additionally need
+accepted terminal children; parent product work remains unavailable. Ordinary
+ownership, stage, review, exact-SHA Test, delivery and Close authority stay
+conjunctive. See [operational recovery](../../../docs/guides/decomposition-recovery.md)
+and [adapter census](../../../docs/guides/decomposition-adapter-census.md).

@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import '../../../helpers/action-decision-contract-adversarial-cases.mjs';
+import { registerDecompositionVocabularyCases } from '../../../helpers/decomposition-action-contract.cases.mjs';
+registerDecompositionVocabularyCases();
 
 import {
   actionDescriptorFor,
@@ -100,38 +102,6 @@ test('the remediation registry is closed and rejects bypasses', () => {
     () => validateRemediation({ id: 'record-plan-approval', args: { issue: 0 } }),
     /args/
   );
-});
-
-test('the decision vocabulary exposes its version and reserved boundary producers', () => {
-  assert.equal(ACTION_DECISION_SCHEMA, 'aitm.action-decision/v2');
-  assert.equal(ACTION_DECISION_SCHEMA_V1, 'aitm.action-decision/v1');
-  assert.equal(ACTION_VOCABULARY_VERSION, 'aitm.action-vocabulary/v2');
-  assert.deepEqual(BOUNDARY_PRODUCER_IDS, [
-    'authority-collection',
-    'action-navigation',
-    'action-result-validation',
-  ]);
-  assert.equal(CODE_DEFINITIONS['unclassified-refusal'].domain, 'decision-blocker');
-  assert.equal(CODE_DEFINITIONS['guidance-source-diverged'].domain, 'operational-warning');
-  assert.equal(CODE_DEFINITIONS['guidance-annotation-failed'].domain, 'audit-warning');
-  assert.match(vocabularyDigest(), /^sha256:[a-f0-9]{64}$/);
-});
-
-test('authority resources include honest local session sources while remaining closed', () => {
-  assert.deepEqual(AUTHORITY_RESOURCE_IDS, [
-    'issue-body',
-    'issue-comment',
-    'project-board',
-    'delivery',
-    'timing-log',
-    'workflow-policy',
-    'local-config',
-    'session-state',
-    'worktree',
-    'github-user',
-    'occupancy',
-    'migration-journal',
-  ]);
 });
 
 test('observed session and worktree mismatches are valid closed v2 blockers', () => {

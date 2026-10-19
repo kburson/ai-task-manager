@@ -10,9 +10,15 @@ import { after, before, test } from 'node:test';
 import { installStubGh } from '../../../fixtures/stub-gh.mjs';
 import { stampEntryMarker } from '../../../../task-tracker/lib/stage-entry-markers.mjs';
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
-import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
+import { preparePromoteAuthority } from '../../../unit/task-tracker/lib/decomposition-governed-fixtures.mjs';
+import { runPromote as rawRunPromote } from '../../../../task-tracker/verbs/promote.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
+
+async function runPromote(options) {
+  await preparePromoteAuthority(options.deps, options.issueNumber, cfg);
+  return rawRunPromote(options);
+}
 
 // #1408 — the header above claims "no network, no spawn", and until now that was
 // aspiration rather than fact: a census counted 49 live `gh` invocations from

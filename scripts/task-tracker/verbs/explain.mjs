@@ -1,3 +1,4 @@
+import { decompositionRuntimeFor } from '../lib/action-decision/decomposition.mjs';
 // @story #1675
 // @story #1767
 // Fresh, read-only operational explanations. This module receives no mutation port.
@@ -346,6 +347,7 @@ export async function evaluateExplanation({
     attempt,
     deps: {
       effectAttempts: () => [],
+      decomposition: () => decompositionRuntimeFor({ issue, cfg, projectDir: projectRoot }),
       ...(readiness?.bundle
         ? {
             collectReadiness: async () => {

@@ -21,6 +21,8 @@ import { saveState } from '../../../../task-tracker/state.mjs';
 import path from 'node:path';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
+import { governedFixture } from '../lib/decomposition-governed-fixtures.mjs';
+import { loadState } from '../../../../task-tracker/state.mjs';
 import { verbKind } from '../../../../task-tracker/verbs/kind.mjs';
 import { reconcileEpicBody } from '../../../../gh/lib/epic-metadata.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -95,6 +97,22 @@ class ExitError extends Error {
 }
 
 async function runVerb(ctx) {
+  const args = ctx.rest ?? [];
+  const target =
+    args.length >= 2
+      ? Number(String(args[0]).replace('#', ''))
+      : ctx.statePath
+        ? Number(String(loadState(ctx.statePath).active).replace('#', ''))
+        : NaN;
+  const kind = args.at(-1);
+  if (
+    Number.isSafeInteger(target) &&
+    target > 0 &&
+    ['code', 'audit', 'epic', 'research', 'spike', 'docs-only'].includes(kind)
+  ) {
+    const f = await governedFixture(7, { issue: target });
+    ctx = { ...ctx, ...f.ctx, rest: args, reconcileEpicMetadata: ctx.reconcileEpicMetadata };
+  }
   const realExit = process.exit;
   const realErr = console.error;
   process.exit = (code) => {
