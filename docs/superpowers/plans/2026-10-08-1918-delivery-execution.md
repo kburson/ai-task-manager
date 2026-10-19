@@ -4,7 +4,17 @@
 
 **Goal:** Complete the retained Task 5 revision protections through the sixteen existing bounded repair stories, producing verified integrated behavior without losing historical evidence.
 
-**Architecture:** The native delivery hierarchy is #1847 → #1855 → #1918 → repair children. #1847 and #1855 remain active while #1918 orchestrates the repairs; #1919 is first. Reuse the implementation already preserved on feature/epic/1918/parent, qualify changes on each child's HEAD, and integrate each completed wave before pulling the next.
+**Architecture:** The native delivery hierarchy is #1847 → #1855 → #1918 → repair children. #1847 and #1855 remain active while #1918 orchestrates the repairs; #1919 is the first reviewed source input. The human-approved recovery order recorded below permits later source repairs before that child's merge, while preserving every verification and delivery gate.
+
+## Recovery scheduling decision — 2026-10-11
+
+The user selected "A — Revise the repair order; keep all verification gates (recommended)." after the #1928 review reproduced inherited failures on its exact parent. The first repair's scoped checks pass, but the configured aggregate Test provider requires later native-stage repairs. Requiring #1919 to merge before those repairs creates a cycle.
+
+Continue bounded source qualification under active #1918 in the existing dependency order. Retain each child’s source ownership, accepted plan, current-head evidence and explicit inherited failures. Reviewed source inputs can compose on `codex/1918-recovery-integration` before their PRs merge. This local composition is neither GitHub delivery nor Test/Review/Done evidence. #1928 stays open until its required checks pass; subsequent repairs do not require pretending that #1919 is Done.
+
+The retained parent already contains locally qualified #1909, #1910, #1911, #1912, #1920, #1916, #1913 and #1924 inputs, plus partial #1915 input recognition. Preserve them and refresh qualification at the actual composed HEAD. The next unfinished source slice is #1915 original-entry admission and remaining-effect resumption, followed by #1921, #1914, #1922, #1923, #1925 and #1917. The separate exact event-body authorization required by #1922 remains binding.
+
+Keep native dependencies and lifecycle records truthful. Reconcile each child through normal verification, review, delivery and close once the composed failures are resolved. No test, budget, provider, authority, review, merge or closure requirement is waived. This scheduling decision supersedes the old requirement to close each rank before preparing the next source repair.
 
 **Tech Stack:** Node.js scripts, node:test, GitHub-native issue relationships, Markdown, and the repository's configured verification provider.
 
@@ -92,7 +102,7 @@ The current branch contains checkpoint 14f6c5589724e9d2a33c2353c19f0c793bfe6033 
 - [ ] Inspect the current child's live scope, source, dependency status, and verification declarations; publish its exact Plan and deep dive before implementation.
 - [ ] Reproduce the owned failure, preserve existing coverage, apply the smallest scoped source repair, and prove the changed behavior with meaningful red-to-green evidence.
 - [ ] Run the child's required verification at its accepted HEAD, report inherited failures explicitly, and satisfy the configured provider's delivery checks.
-- [ ] Review and integrate the current wave through the supported delivery path; complete its lifecycle before pulling the next wave.
+- [ ] Review each bounded source input and compose it in dependency order under #1918; reconcile normal child delivery and lifecycle after the required composed checks pass, following the recovery scheduling decision above.
 - [ ] Before waves 3, 5, or 6, partition file/function ownership and establish real admission records. Equal ranks alone do not authorize concurrent edits.
 - [ ] At #1917, reconcile independent consumer discovery, all children’s coverage, package/quality commands, and exact-head Linux CI without weakening the contract.
 - [ ] Reconcile the historical Draft PR1907 and #1855 delivery disposition only after the complete integration is verified.

@@ -18,11 +18,11 @@ The user confirmed #1847 → #1855 → #1918 → repair children on October 8, 2
 
 ## Global constraints
 
-Preserve original algorithms/body invariants/authority/current-source and common-lock checks; no test deletion, fixture shrinkage, budget increase, exemption or authority cache. Per-file and semantic-section budget600000ms remains. Verifier20min and lifecycle sandbox45min remain. No child code work or Plan approval during R4P hydration. Any future story forecast>=24 must split again; no agent self-waiver. Existing13/15 policy grants do not authorize the new event-field body predicate. Each child owns its own actual entrypoints, five authority states and fault/effect/lock coverage; finalunion is not an implementation dumping ground.
+Preserve original algorithms/body invariants/authority/current-source and common-lock checks; no test deletion, fixture shrinkage, budget increase, exemption or authority cache. Per-file and semantic-section budget600000ms remains. Verifier20min and lifecycle sandbox45min remain. No child code work or Plan approval during R4P hydration. Any future story forecast>=24 must split again; no agent self-waiver. Existing13/15 policy grants do not authorize the new event-field body predicate. Each child owns its own actual entrypoints, five authority states and fault/effect/lock coverage; final union is not an implementation dumping ground.
 
 ## Estimates and credit
 
-Nonoverlapping remaining repair forecast144h; retains prior implementation and tests and includes incremental authoring/diagnosis/review, not passive CI time. Retained1855 accounting56h comprises52 historical human-equivalent implemented-work estimate plus4 future administration. These are forecasts, not reconstructed productive-time measurements. The prior80h whole-scope forecast is historical, not a current ceiling. The proposed24h tail/unknown recovery row was split into8+16 before hydration.
+Non-overlapping remaining repair forecast144h; retains prior implementation and tests and includes incremental authoring/diagnosis/review, not passive CI time. Retained1855 accounting56h comprises52 historical human-equivalent implemented-work estimate plus4 future administration. These are forecasts, not reconstructed productive-time measurements. The prior80h whole-scope forecast is historical, not a current ceiling. The proposed24h tail/unknown recovery row was split into8+16 before hydration.
 
 | Rank in #1918 | Child                                                           | Scope                                                                    | Remaining h | Native blockers     |
 | ------------: | --------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------: | ------------------- |
@@ -235,4 +235,4 @@ Exact source surfaces and targeted command declarations are in the child's gover
 
 ## Next-agent pickup
 
-Start with #1919 after normal parent/child Plan admission. Follow the twelve-wave table above and docs/superpowers/plans/2026-10-08-1918-delivery-handoff.md for baseline preservation, branch preparation, current gates and parallel-work ownership. The parent schedule comment is published and exact-readback verified: https://github.com/kburson/ai-task-manager/issues/1918#issuecomment-6069978884. Earlier schedules and rate-limit refusals remain historical records.
+Start with #1919 after normal parent/child Plan admission. Follow the twelve-wave table above and docs/superpowers/plans/2026-10-08-1918-delivery-handoff.md for baseline preservation, branch preparation, current gates and parallel-work ownership. The parent schedule comment is published and exact-readback verified: [published wave schedule](https://github.com/kburson/ai-task-manager/issues/1918#issuecomment-6069978884). Earlier schedules and rate-limit refusals remain historical records.

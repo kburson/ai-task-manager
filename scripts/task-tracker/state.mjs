@@ -455,22 +455,46 @@ function* stateSaveProgram(state, statePath, sid, identity) {
 // source branding, invocation registration or capability leaves this helper.
 import { canonicalRecordJson } from './lib/github-records/canonical-json.mjs';
 export function deriveRecordedStateSaveProgram(input) {
-  const invalid = () => { throw new TypeError('recorded-state-save-program'); };
+  const invalid = () => {
+    throw new TypeError('recorded-state-save-program');
+  };
   try {
     const source = JSON.parse(canonicalRecordJson(input));
-    recordedStateKeys(source, ['identity', 'stateBytes', 'statePath', 'actorBytes', 'activeBytes', 'sharedBytes', 'boundAt']);
+    recordedStateKeys(source, [
+      'identity',
+      'stateBytes',
+      'statePath',
+      'actorBytes',
+      'activeBytes',
+      'sharedBytes',
+      'boundAt',
+    ]);
     recordedStateIdentity(source.identity);
-    if (typeof source.statePath !== 'string' || !path.isAbsolute(source.statePath) || path.normalize(source.statePath) !== source.statePath || source.statePath.includes('\0')) invalid();
+    if (
+      typeof source.statePath !== 'string' ||
+      !path.isAbsolute(source.statePath) ||
+      path.normalize(source.statePath) !== source.statePath ||
+      source.statePath.includes('\0')
+    )
+      invalid();
     const state = recordedStateObject(source.stateBytes);
-    for (const bytes of [source.actorBytes, source.activeBytes, source.sharedBytes]) recordedStateObject(bytes, true);
-    if (source.boundAt !== null && (typeof source.boundAt !== 'string' || !Number.isFinite(Date.parse(source.boundAt)) || new Date(source.boundAt).toISOString() !== source.boundAt)) invalid();
+    for (const bytes of [source.actorBytes, source.activeBytes, source.sharedBytes])
+      recordedStateObject(bytes, true);
+    if (
+      source.boundAt !== null &&
+      (typeof source.boundAt !== 'string' ||
+        !Number.isFinite(Date.parse(source.boundAt)) ||
+        new Date(source.boundAt).toISOString() !== source.boundAt)
+    )
+      invalid();
     const resources = {
       actorTiming: source.actorBytes === null ? null : { bytes: source.actorBytes },
       activeTask: source.activeBytes === null ? null : { bytes: source.activeBytes },
       trackerState: source.sharedBytes === null ? null : { bytes: source.sharedBytes },
     };
     let usedClock = false;
-    const operations = [], prefixes = [];
+    const operations = [],
+      prefixes = [];
     // Original actor-record validation runs in program.next BEFORE mkdir.
     const program = stateSaveProgram(state, source.statePath, source.identity.sid, source.identity);
     let next = program.next();
@@ -479,9 +503,16 @@ export function deriveRecordedStateSaveProgram(input) {
       operations.push(structuredClone(operation));
       let result;
       switch (operation.kind) {
-        case 'mkdir': break; // The native driver must independently own/read back this directory.
+        case 'mkdir':
+          break; // The native driver must independently own/read back this directory.
         case 'read-actor':
-          result = resources.actorTiming === null ? null : validateActorTimingState(JSON.parse(resources.actorTiming.bytes), operation.identity).state;
+          result =
+            resources.actorTiming === null
+              ? null
+              : validateActorTimingState(
+                  JSON.parse(resources.actorTiming.bytes),
+                  operation.identity
+                ).state;
           break;
         case 'read-binding':
           result = deriveRecordedActiveTaskRead({ bytes: resources.activeTask?.bytes ?? null });
@@ -492,32 +523,49 @@ export function deriveRecordedStateSaveProgram(input) {
           if (clock === null) invalid();
           const derived = deriveRecordedActiveTask({
             recordBytes: JSON.stringify(operation.record),
-            existingBytes: operation.record.issue == null ? null : resources.activeTask?.bytes ?? null,
+            existingBytes:
+              operation.record.issue == null ? null : (resources.activeTask?.bytes ?? null),
             boundAt: clock,
           });
           resources.activeTask = { bytes: derived.bytes };
           result = derived.payload;
           break;
         }
-        case 'clear-binding': resources.activeTask = null; break;
-        case 'write-actor':
-          resources.actorTiming = { bytes: JSON.stringify(actorTimingStateRecord(operation.identity, operation.state), null, 2) + '\n' };
+        case 'clear-binding':
+          resources.activeTask = null;
           break;
-        case 'read-shared': result = resources.trackerState === null ? {} : JSON.parse(resources.trackerState.bytes); break;
-        case 'write-shared': resources.trackerState = { bytes: operation.bytes }; break;
-        default: invalid();
+        case 'write-actor':
+          resources.actorTiming = {
+            bytes:
+              JSON.stringify(actorTimingStateRecord(operation.identity, operation.state), null, 2) +
+              '\n',
+          };
+          break;
+        case 'read-shared':
+          result = resources.trackerState === null ? {} : JSON.parse(resources.trackerState.bytes);
+          break;
+        case 'write-shared':
+          resources.trackerState = { bytes: operation.bytes };
+          break;
+        default:
+          invalid();
       }
       prefixes.push(structuredClone(resources));
       next = program.next(result);
     }
     if (usedClock !== (source.boundAt !== null)) invalid();
     const value = JSON.parse(canonicalRecordJson({ operations, prefixes, resources }));
-    const freeze = object => {
-      if (object && typeof object === 'object') { Object.values(object).forEach(freeze); Object.freeze(object); }
+    const freeze = (object) => {
+      if (object && typeof object === 'object') {
+        Object.values(object).forEach(freeze);
+        Object.freeze(object);
+      }
       return object;
     };
     return freeze(value);
-  } catch { invalid(); }
+  } catch {
+    invalid();
+  }
 }
 
 function runHostStateSaveOperation(operation) {

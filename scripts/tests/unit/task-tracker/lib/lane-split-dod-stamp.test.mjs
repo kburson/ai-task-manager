@@ -2,7 +2,7 @@
 // @story #934
 // AC2 — a Functional-DoD `tests` line declaring the two lane commands resolves
 // to both commands, and `runVerifiers` runs each as a SEPARATE child under its
-// own (unchanged) TEST_RUNNER_TIMEOUT_MS budget. No real ~500s suite runs here:
+// own TEST_RUNNER_TIMEOUT_MS budget unless explicitly suspended. No real ~500s suite runs here:
 // `pexec` is stubbed to record its invocations.
 
 import { strict as assert } from 'node:assert';
@@ -28,28 +28,35 @@ test('two-lane tests DoD line resolves to both lane commands', () => {
   assert.deepEqual(tests.evidenceCommands, ['npm test', 'npm run test:slow']);
 });
 
-test('runVerifiers spawns each lane as its own child under TEST_RUNNER_TIMEOUT_MS', async () => {
-  const calls = [];
-  const pexec = async (bin, args, opts) => {
-    calls.push({ bin, args, timeout: opts.timeout });
-    return { stdout: '', stderr: '' };
-  };
-  const res = await runVerifiers({
-    commands: ['npm test', 'npm run test:slow'],
-    pexec,
-    cwd: '/tmp',
-  });
+for (const [setting, expectedTimeout] of [
+  [undefined, 1_200_000],
+  ['suspended', 0],
+  ['true', 1_200_000],
+]) {
+  test(`runVerifiers runs separate lanes with deadline setting ${setting ?? 'default'}`, async () => {
+    const calls = [];
+    const pexec = async (bin, args, opts) => {
+      calls.push({ bin, args, timeout: opts.timeout });
+      return { stdout: '', stderr: '' };
+    };
+    const res = await runVerifiers({
+      commands: ['npm test', 'npm run test:slow'],
+      pexec,
+      cwd: '/tmp',
+      env: setting === undefined ? {} : { AITM_TEST_EXECUTION_LIMITS: setting },
+    });
 
-  assert.equal(calls.length, 2, 'exactly two children spawned — one per lane');
-  assert.deepEqual(
-    calls.map((c) => [c.bin, ...c.args]),
-    [
-      ['npm', 'test'],
-      ['npm', 'run', 'test:slow'],
-    ]
-  );
-  // Each child gets the per-command budget, now a bounded 20-minute ceiling.
-  assert.equal(TEST_RUNNER_TIMEOUT_MS, 1_200_000);
-  for (const c of calls) assert.equal(c.timeout, TEST_RUNNER_TIMEOUT_MS);
-  assert.ok(res.allPassed, 'both lanes green');
-});
+    assert.equal(calls.length, 2, 'exactly two children spawned — one per lane');
+    assert.deepEqual(
+      calls.map((c) => [c.bin, ...c.args]),
+      [
+        ['npm', 'test'],
+        ['npm', 'run', 'test:slow'],
+      ]
+    );
+    // Each child gets the per-command budget, now a bounded 20-minute ceiling.
+    assert.equal(TEST_RUNNER_TIMEOUT_MS, 1_200_000);
+    for (const c of calls) assert.equal(c.timeout, expectedTimeout);
+    assert.ok(res.allPassed, 'both lanes green');
+  });
+}

@@ -21,6 +21,7 @@ function liveFlags() {
   for (const row of [
     ...loadJson(extensionPath).flags,
     ...loadJson(path.join(projectRoot, 'scripts/tests/fixtures/1837/behavioral-flags.json')).flags,
+    ...loadJson(path.join(projectRoot, 'scripts/tests/fixtures/1918/behavioral-flags.json')).flags,
   ]) {
     const previous = flags.get(row.flag);
     flags.set(row.flag, previous ? { ...previous, reads: [...previous.reads, ...row.reads] } : row);
@@ -266,6 +267,8 @@ test('inventory completeness rejects a removed action observation or behavioral 
 
 test('live inventory refuses removal of the post-baseline usage context', () => {
   const flags = liveFlags();
-  flags.flags = flags.flags.filter((row) => row.flag !== 'AITM_GRAPHQL_USAGE_CONTEXT');
-  assert.throws(() => validateFlags(flags), new RegExp('AITM_GRAPHQL_USAGE_CONTEXT'));
+  for (const flag of ['AITM_GRAPHQL_USAGE_CONTEXT', 'AITM_TEST_EXECUTION_LIMITS']) {
+    const changed = { ...flags, flags: flags.flags.filter((row) => row.flag !== flag) };
+    assert.throws(() => validateFlags(changed), new RegExp(flag));
+  }
 });

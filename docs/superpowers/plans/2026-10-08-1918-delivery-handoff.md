@@ -8,7 +8,7 @@ The user confirmed the current hierarchy on October 8, 2026: #1847 → #1855 →
 
 The next session should orchestrate #1918 and pick up **#1919 first**, then #1909. Follow current AITM guidance, bind with the correct role, query fresh Explain, and use the normal parent and child Plan/approval/state progression before code. Parent1918 has not been admitted to Develop; do not skip its gates just to start a child. Do not reopen completed #1851–#1854.
 
-Current authoritative schedule: https://github.com/kburson/ai-task-manager/issues/1918#issuecomment-6069978884
+Current authoritative schedule: [published wave schedule](https://github.com/kburson/ai-task-manager/issues/1918#issuecomment-6069978884)
 
 ## Pickup waves
 
@@ -27,7 +27,7 @@ Current authoritative schedule: https://github.com/kburson/ai-task-manager/issue
 |            11 | #1925               | Single story  |
 |            12 | #1917               | Single story  |
 
-Ranks are relative to immediate epic #1918. The current native hierarchy is #1847 → #1855 → #1918 → these children; #1918 is no longer a sibling of #1855. Its own scheduling rank is independent of these child ranks. Finish the current wave through the governed verification/review/integration/close workflow before pulling the next rank. Same-rank stories are permitted parallel candidates, with no implied dependency on one another.
+Ranks are relative to immediate epic #1918. The current native hierarchy is #1847 → #1855 → #1918 → these children; #1918 is no longer a sibling of #1855. Its own scheduling rank is independent of these child ranks. The human-approved 2026-10-11 recovery scheduling decision in `2026-10-08-1918-delivery-execution.md` supersedes the old close-before-next-rank source barrier: compose reviewed repairs under active #1918 in dependency order, leaving #1928 and the child lifecycle records open until their required checks pass. Same-rank stories are permitted parallel candidates, with no implied dependency on one another.
 
 Native blocker edges remain precise: #1916 and #1920 both require #1912; #1913, #1915 and #1924 require #1920; #1921 directly requires #1913; #1923 requires #1915 and #1922; #1917 requires #1916, #1924 and #1925. Rank-wave barriers are scheduling policy, not new native blocker edges.
 
@@ -47,13 +47,13 @@ Use the repository-owned setup instructions after checkout. For a local linked w
 
 Use Node.js scripts and Markdown only; no compiled binaries/addons. Governing spec: docs/superpowers/specs/2026-09-30-1847-governed-criteria-revisions-design.md. Original accepted scope: docs/superpowers/plans/2026-09-30-1847-governed-criteria-revisions.md, Task5. Hydration/WBS: docs/superpowers/plans/2026-10-08-1918-criteria-revision-repair-hydration.md. Each child still needs its own current accepted implementation Plan. Original13/15 grants remain bounded; #1922's event-body predicate needs its own exact authorization.
 
-Native delivery declarations remain binding. Current bodies retain full-suite commands as well as focused verifiers; a changed checkbox label does not waive those commands. Validate the first child's verification contract against inherited failures during Plan. Resolve genuine gating conflicts through registered actions and, where required, exact human-authorized criteria changes; never stamp a failed/inherited check as passing or skip rank completion gates. Final #1917 owns composed consumer-union/exact-head integration CI, not unfinished implementation from earlier children. Preserve original algorithms, current-source/lock checks and existing test budgets; no deleted tests, fixture shrinkage, timeout increase, authority cache or phantom proof.
+Native delivery declarations remain binding. Current bodies retain full-suite commands as well as focused verifiers; a changed checkbox label does not waive those commands. The user approved revising recovery source ordering while keeping every verification gate. Continue source repairs through the active parent and accepted bounded plans; normal child verification/review/delivery/close remains due after composed checks pass. Never stamp a failed/inherited check as passing. Final #1917 owns composed consumer-union/exact-head integration CI, not unfinished implementation from earlier children. Preserve original algorithms, current-source/lock checks and existing test budgets; no deleted tests, fixture shrinkage, timeout increase, authority cache or phantom proof.
 
 Any story re-estimated at or above24h must be flagged and decomposed again in any lifecycle state. Required boundary cases23/no flag,24/flag,25/flag. Separate guard defect1908 is filed but not implemented by this planning session.
 
 ## Retained history and estimates
 
-#1855 retains its historical work/timeline and original unchecked whole-contract obligations, with56h estimate (52 historical human-equivalent scope +4 future reconciliation); it is blocked by #1918. Draft PR1907 remains the historical published checkpoint with failing CI until aggregate repairs pass. #1856 waits for the complete capability. Remaining repairs1918 total144h; outer1847 rollup250.5h. These are estimates, not measured productive time; do not double-count existing work.
+Original #1855 retains its historical work/timeline and original unchecked whole-contract obligations, with56h estimate (52 historical human-equivalent scope +4 future reconciliation); it is blocked by #1918. Draft PR1907 remains the historical published checkpoint with failing CI until aggregate repairs pass. #1856 waits for the complete capability. Remaining repairs1918 total144h; outer1847 rollup250.5h. These are estimates, not measured productive time; do not double-count existing work.
 
 ## Authority and recovery
 

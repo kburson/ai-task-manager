@@ -1,4 +1,4 @@
-// cspell:words rechain
+// cspell:words rechain rechained
 import { STATUS_OPTION_QUERY } from '../../../../task-tracker/lib/move-state/github-mutation.mjs';
 // @story #1855
 import {
@@ -41,7 +41,38 @@ import {
 } from './native-continuation-fixtures.mjs';
 
 export function registerNativeStageCase(mode, entrypoint, fault = null) {
+  const completed16Resume = mode === 'completed16-resume';
+  const resumeVariant = completed16Resume ? fault : null;
+  if (completed16Resume) {
+    mode = 'known-prefix-inputs';
+    fault = null;
+  }
+  const knownPrefixEntry = mode === 'known-prefix-entry';
+  if (knownPrefixEntry) mode = 'known-prefix-inputs';
+  const knownPrefixLater = mode === 'known-prefix-later';
+  if (knownPrefixLater) mode = 'tail-cache';
   const faultMode = mode;
+  const knownPrefixCapture = mode === 'known-prefix-inputs';
+  const partialReporting = [
+    'partial-reporting-14',
+    'partial-reporting-15',
+    'partial-reporting-16',
+    'partial-reporting-unknown',
+    'partial-reporting-cancel',
+    'partial-reporting-late-source',
+    'partial-reporting-late-input',
+    'partial-reporting-late-authority',
+    'partial-reporting-final-source',
+    'partial-reporting-final-authority',
+  ].includes(mode);
+  const cacheMode = ['tail-cache', 'tail-cache-late-read', 'tail-cache-late-config'].includes(mode);
+  const compensationMode = [
+    'compensation',
+    'compensation-audit',
+    'compensation-late-read',
+    'compensation-late-config',
+    'compensation-return-custody',
+  ].includes(mode);
   const transitionCustody = {
     'transition-create-response': ['create', 'response'],
     'transition-read-response': ['read', 'response'],
@@ -52,6 +83,8 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
   }[mode];
   const transitionMode =
     transitionCustody ||
+    partialReporting ||
+    knownPrefixCapture ||
     [
       'transition-comment',
       'transition-comment-prefix',
@@ -60,6 +93,9 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       'recovery-from-comment',
       'tail-dispatch',
       'tail-dispatch-reentry',
+      'tail-cache',
+      'tail-cache-late-read',
+      'tail-cache-late-config',
     ].includes(mode);
   const consistencyCustody = {
     'consistency-response-accessor': 'response-accessor',
@@ -102,8 +138,9 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
     'status-source-custody-output',
     'status-source-custody-error',
   ];
-  const expectStage =
-    entryResultCustody || consistencyCustody || transitionMode
+  const expectStage = compensationMode
+    ? 'status-source-exhausted'
+    : entryResultCustody || consistencyCustody || transitionMode
       ? 'entry-body'
       : sentinelLate
         ? 'entry-body'
@@ -253,9 +290,19 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
         try {
           output = execFileSync(process.execPath, ['--test', fileURLToPath(entrypoint)], {
             cwd: isolation.context.sourceRoot,
-            env: { ...isolation.env, AITM_NATIVE_STAGE_CONTEXT: '1' },
+            env: {
+              ...isolation.env,
+              AITM_NATIVE_STAGE_CONTEXT: '1',
+              ...(process.env.AITM_TEST_EXECUTION_LIMITS === 'suspended'
+                ? { AITM_TEST_EXECUTION_LIMITS: 'suspended' }
+                : {}),
+              ...(process.env.TZ ? { TZ: process.env.TZ } : {}),
+              ...(process.env.AITM_NATIVE_STAGE_EXPECTED_TZ
+                ? { AITM_NATIVE_STAGE_EXPECTED_TZ: process.env.AITM_NATIVE_STAGE_EXPECTED_TZ }
+                : {}),
+            },
             encoding: 'utf8',
-            timeout: 590000,
+            timeout: process.env.AITM_TEST_EXECUTION_LIMITS === 'suspended' ? 0 : 590000,
           });
         } catch (error) {
           status = error.status;
@@ -267,6 +314,17 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       } finally {
         isolation.dispose();
       }
+    }
+    const expectedTimezone = process.env.AITM_NATIVE_STAGE_EXPECTED_TZ;
+    if (expectedTimezone) {
+      assert.equal(
+        process.env.TZ,
+        expectedTimezone,
+        'requested native timezone reaches executing case'
+      );
+      assert.equal(new Intl.DateTimeFormat().resolvedOptions().timeZone, expectedTimezone);
+      assert.equal(new Date().getTimezoneOffset() !== 0, expectedTimezone !== 'UTC');
+      t.diagnostic('executing native timezone: ' + expectedTimezone);
     }
     const f = await nativeFinalFixture({
       bodyStages: ['backlog', 'refine', 'plan', 'develop'],
@@ -1531,7 +1589,178 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       }
       if (statusModes.includes(expectStage) && expectStage !== 'status-source-unreleased') {
         const files = captureFiles();
-        const result = await moveState(ctx);
+        const originalDescriptors = Object.getOwnPropertyDescriptors;
+        let auditFaultInjected = false,
+          lateInjected = false,
+          lateGets = 0;
+        let heldCompensationInvocation = null,
+          returnProbeRan = false,
+          actualReturnProbeRan = false,
+          returnGets = 0;
+        const compensationCore = compensationMode
+          ? await import('../../../../task-tracker/lib/move-state/move-state-core.mjs')
+          : null;
+        const originalRepoDescriptor = Object.getOwnPropertyDescriptor(cfg, 'repo');
+        let lateSnapshot = null,
+          lateEffects = null;
+        if (compensationMode && mode !== 'compensation') {
+          Object.getOwnPropertyDescriptors = function (value) {
+            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
+            const keys = Reflect.ownKeys(descriptors);
+            const shape = keys.every((key) => typeof key === 'string') ? keys.sort().join(',') : '';
+            const authorityShape = shape === 'backend,capability,context,invocation,token';
+            const candidate =
+              (mode === 'compensation-audit' && authorityShape) ||
+              (mode === 'compensation-late-read' && shape === 'stdout') ||
+              (mode === 'compensation-late-config' && value === ctx) ||
+              (mode === 'compensation-return-custody' &&
+                (authorityShape || value === ctx || shape === 'priorState,rolledBack'));
+            if (!candidate) return descriptors;
+            const stack = new Error().stack;
+            if (
+              mode === 'compensation-return-custody' &&
+              stack.includes('at compensationInputContinuity') &&
+              Reflect.ownKeys(descriptors).sort().join(',') ===
+                'backend,capability,context,invocation,token'
+            )
+              heldCompensationInvocation = descriptors.invocation.value;
+            if (
+              mode === 'compensation-return-custody' &&
+              !returnProbeRan &&
+              heldCompensationInvocation &&
+              value === ctx &&
+              stack.includes('at assertOriginalNativeCompensationInvocation') &&
+              f.backend.snapshot.nativeStageRecords[0].compensation?.result
+            ) {
+              returnProbeRan = true;
+              const effects = f.backend.effects,
+                snapshot = f.backend.snapshot;
+              const result = { priorState: 'develop' };
+              Object.defineProperty(result, 'rolledBack', {
+                enumerable: true,
+                get() {
+                  returnGets++;
+                  throw new Error('forged return getter must not run');
+                },
+              });
+              let caught;
+              try {
+                compensationCore.assertNativeStageCompensationReturn(
+                  ctx,
+                  heldCompensationInvocation,
+                  result
+                );
+              } catch (error) {
+                caught = error;
+              }
+              assert.equal(returnGets, 0, 'public return comparison refuses before getter');
+              assert.ok(caught instanceof TypeError);
+              for (const copy of [
+                { rolledBack: true, priorState: 'develop' },
+                Object.assign(Object.create(null), { rolledBack: true, priorState: 'develop' }),
+                Object.create({ rolledBack: true, priorState: 'develop' }),
+              ])
+                assert.throws(
+                  () =>
+                    compensationCore.assertNativeStageCompensationReturn(
+                      ctx,
+                      heldCompensationInvocation,
+                      copy
+                    ),
+                  TypeError
+                );
+              assert.deepEqual(f.backend.effects, effects);
+              assert.deepEqual(f.backend.snapshot, snapshot);
+            }
+            if (
+              mode === 'compensation-return-custody' &&
+              !actualReturnProbeRan &&
+              stack.includes('at assertOriginalNativeCompensationReturn') &&
+              Reflect.ownKeys(descriptors).sort().join(',') === 'priorState,rolledBack'
+            ) {
+              actualReturnProbeRan = true;
+              const effects = f.backend.effects,
+                snapshot = f.backend.snapshot;
+              const compare = () =>
+                compensationCore.assertNativeStageCompensationReturn(
+                  ctx,
+                  heldCompensationInvocation,
+                  value
+                );
+              // Actual birth identity alone cannot admit a changed return.
+              Object.defineProperty(value, 'rolledBack', {
+                configurable: true,
+                enumerable: true,
+                get() {
+                  returnGets++;
+                  throw new Error('mutated original return getter must not run');
+                },
+              });
+              assert.throws(compare, TypeError);
+              assert.equal(returnGets, 0);
+              Object.defineProperty(value, 'rolledBack', descriptors.rolledBack);
+              Object.setPrototypeOf(value, null);
+              assert.throws(compare, TypeError);
+              Object.setPrototypeOf(value, Object.prototype);
+              value.extra = true;
+              assert.throws(compare, TypeError);
+              delete value.extra;
+              assert.equal(compare(), undefined, 'unchanged actual return remains admitted');
+              assert.deepEqual(f.backend.effects, effects);
+              assert.deepEqual(f.backend.snapshot, snapshot);
+            }
+            const lateRead =
+              mode === 'compensation-late-read' &&
+              stack.includes('at Module.readNativeStageCompensationBody') &&
+              Reflect.ownKeys(descriptors).join(',') === 'stdout';
+            const lateConfig =
+              mode === 'compensation-late-config' &&
+              value === ctx &&
+              stack.includes('at assertOriginalNativeCompensationInvocation');
+            if (!lateInjected && (lateRead || lateConfig)) {
+              lateInjected = true;
+              queueMicrotask(() => {
+                Object.defineProperty(lateRead ? value : cfg, lateRead ? 'stdout' : 'repo', {
+                  enumerable: true,
+                  configurable: true,
+                  get() {
+                    lateGets++;
+                    throw new Error('late compensation getter must not run');
+                  },
+                });
+                lateSnapshot = f.backend.snapshot;
+                lateEffects = f.backend.effects;
+              });
+            }
+            if (
+              mode === 'compensation-audit' &&
+              stack.includes('at compensationInputContinuity') &&
+              stack.includes('at Module.writeMemoryNativeStageCompensation (')
+            )
+              f.backend.failBefore = 'native-stage-compensation-body-effect-write';
+            if (
+              mode === 'compensation-audit' &&
+              fault &&
+              !auditFaultInjected &&
+              stack.includes('at Module.writeMemoryNativeStageCompensationAudit')
+            ) {
+              auditFaultInjected = true;
+              f.backend[fault.when] = 'native-stage-compensation-' + fault.suffix;
+            }
+            return descriptors;
+          };
+        }
+        if (compensationMode && mode !== 'compensation-audit' && fault) {
+          f.backend[fault.when] = 'native-stage-compensation-' + fault.suffix;
+        }
+        let result;
+        try {
+          result = await moveState(ctx);
+        } finally {
+          Object.getOwnPropertyDescriptors = originalDescriptors;
+          if (mode === 'compensation-late-config')
+            Object.defineProperty(cfg, 'repo', originalRepoDescriptor);
+        }
         t.diagnostic(
           JSON.stringify({
             result,
@@ -1608,6 +1837,289 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             .length,
           expectedCount
         );
+        if (compensationMode) {
+          if (mode.startsWith('compensation-late-')) {
+            assert.equal(lateInjected, true, 'actual late boundary selected');
+            assert.equal(lateGets, 0, 'late getter never executes');
+            assert.equal(result.exit, 7);
+            assert.equal(result.rolledBack, false);
+            assert.deepEqual(f.backend.snapshot, lateSnapshot);
+            assert.deepEqual(f.backend.effects, lateEffects);
+            assert.equal(journal.compensation, undefined, 'no intent/effect after late refusal');
+            return;
+          }
+          assert.equal(result.exit, 7, 'original unconfirmed board exit remains loud');
+          assert.equal(
+            result.rolledBack,
+            mode !== 'compensation-audit',
+            'actual original compensation outcome'
+          );
+          const { readLastKnownState } =
+            await import('../../../../task-tracker/gh-timing-comment.mjs');
+          const { parseBodyVersion } =
+            await import('../../../../task-tracker/lib/body-version.mjs');
+          assert.equal(
+            readLastKnownState(f.backend.observation.body.bytes).state,
+            mode === 'compensation-audit' ? 'test' : 'develop'
+          );
+          assert.equal(
+            parseBodyVersion(f.backend.observation.body.bytes),
+            parseBodyVersion(journal.header.original.observation.body.bytes) +
+              (mode === 'compensation-audit' ? 1 : 2),
+            'one entry delta and one rollback delta, not duplicate retry effects'
+          );
+          assert.equal(journal.compensation.schema, 'aitm.native-compensation/v1');
+          if (mode === 'compensation-return-custody') {
+            assert.equal(returnProbeRan, true);
+            assert.equal(actualReturnProbeRan, true);
+          }
+          if (mode === 'compensation-audit') {
+            const compensationCodec =
+              await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+            const boardPrefix = await compensationCodec.reconstructNativeStageBoard({
+              header: journal.header,
+              steps: journal.steps,
+            });
+            assert.equal(journal.compensation.attempts.length, 2);
+            assert.ok(journal.compensation.attempts.every((value) => value.write.kind === 'threw'));
+            assert.equal(journal.compensation.readback, null);
+            assert.equal(journal.compensation.result.status, 'failed');
+            assert.equal(journal.compensation.result.auditPosted, !fault);
+            const auditOperations = [
+              'audit-intent-write',
+              'audit-intent-readback',
+              'audit-effect-write',
+              'audit-effect-readback',
+            ];
+            const end = fault
+              ? auditOperations.indexOf(fault.suffix) + (fault.when === 'failAfter' ? 1 : 0)
+              : 4;
+            assert.ok(end >= 0, 'owned audit fault classified');
+            assert.equal(journal.compensation.audit !== null, end > 0);
+            if (end > 0) assert.equal(journal.compensation.audit.readback !== null, end === 4);
+            assert.deepEqual(
+              f.backend.effects.filter((op) => op.startsWith('native-stage-compensation-audit-')),
+              auditOperations.slice(0, end).map((suffix) => 'native-stage-compensation-' + suffix)
+            );
+            assert.equal(
+              f.backend.snapshot.nativeStageResources.comments.length,
+              boardPrefix.afterResources.comments.length + (end >= 3 ? 1 : 0)
+            );
+            if (fault) assert.equal(auditFaultInjected, true);
+          } else {
+            assert.ok(journal.compensation.readback, 'actual original rollback readback');
+            assert.deepEqual(journal.compensation.result, {
+              status: 'ok',
+              attempts: fault ? 2 : 1,
+            });
+            assert.equal(
+              f.backend.effects.filter((op) => op === 'native-stage-compensation-body-effect-write')
+                .length,
+              1,
+              'landed first write is freshly read, never duplicated'
+            );
+          }
+          const compensationCodec =
+            await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+          const beforeDataChecks = f.backend.snapshot;
+          for (const [label, change] of [
+            [
+              'foreign predecessor',
+              (value) => {
+                value.compensation.previous = 'sha256:' + '0'.repeat(64);
+              },
+            ],
+            [
+              'retired target',
+              (value) => {
+                value.compensation.intent.priorState = 'done';
+              },
+            ],
+            [
+              'invalid clock',
+              (value) => {
+                value.compensation.intent.stateTs = 'bad';
+              },
+            ],
+            [
+              'extra admission',
+              (value) => {
+                value.compensation.ready = true;
+              },
+            ],
+            [
+              'third callback',
+              (value) => {
+                value.compensation.attempts.push({
+                  ...structuredClone(value.compensation.attempts[0]),
+                  number: 3,
+                });
+              },
+            ],
+            [
+              'foreign subject',
+              (value) => {
+                value.compensation.attempts[0].request.input.issueNumber = '125';
+              },
+            ],
+            [
+              'substituted bytes',
+              (value) => {
+                value.compensation.attempts[0].request.input.body = 'forged';
+              },
+            ],
+            [
+              'false success',
+              (value) => {
+                value.compensation.result = { status: 'ok', attempts: 0 };
+              },
+            ],
+          ]) {
+            const input = structuredClone({
+              header: journal.header,
+              steps: journal.steps,
+              compensation: journal.compensation,
+            });
+            change(input);
+            await assert.rejects(
+              compensationCodec.reconstructNativeStageCompensation(input),
+              /criteria-revision:native-stage-compensation/,
+              label + ' DATA only'
+            );
+            assert.deepEqual(f.backend.snapshot, beforeDataChecks, label + ' no execution');
+          }
+          if (journal.compensation.readback) {
+            const input = structuredClone({
+              header: journal.header,
+              steps: journal.steps,
+              compensation: journal.compensation,
+            });
+            input.compensation.readback.response.stderr = 'partial';
+            await assert.rejects(
+              compensationCodec.reconstructNativeStageCompensation(input),
+              /criteria-revision:native-stage-compensation/
+            );
+            assert.deepEqual(f.backend.snapshot, beforeDataChecks);
+          }
+          if (mode === 'compensation' && fault === null) {
+            await t.test(
+              'landed compensation cannot move backward on its second attempt',
+              async () => {
+                const input = structuredClone({
+                  header: journal.header,
+                  steps: journal.steps,
+                  compensation: journal.compensation,
+                });
+                const first = input.compensation.attempts[0];
+                const originalBefore = structuredClone(first.before);
+                first.write = {
+                  kind: 'threw',
+                  name: 'Error',
+                  message: 'landed callback interrupted',
+                  code: null,
+                };
+                input.compensation.attempts.push({
+                  number: 2,
+                  request: structuredClone(first.request),
+                  before: structuredClone(first.after),
+                  write: {
+                    kind: 'threw',
+                    name: 'Error',
+                    message: 'second callback interrupted',
+                    code: null,
+                  },
+                  after: originalBefore,
+                });
+                input.compensation.readback = null;
+                input.compensation.result = null;
+                await assert.rejects(
+                  compensationCodec.reconstructNativeStageCompensation(input),
+                  /criteria-revision:native-stage-compensation/
+                );
+              }
+            );
+            await t.test(
+              'compensation DATA never reads a getter inserted during reconstruction',
+              async () => {
+                const input = structuredClone({
+                  header: journal.header,
+                  steps: journal.steps,
+                  compensation: journal.compensation,
+                });
+                const originalIntent = input.compensation.intent;
+                let gets = 0;
+                const pending = compensationCodec.reconstructNativeStageCompensation(input);
+                queueMicrotask(() => {
+                  Object.defineProperty(input.compensation, 'intent', {
+                    enumerable: true,
+                    configurable: true,
+                    get() {
+                      gets++;
+                      return originalIntent;
+                    },
+                  });
+                });
+                const result = await pending;
+                assert.equal(gets, 0, 'caller getter remains unread after the validation await');
+                assert.deepEqual(result.afterBody, f.backend.observation.body);
+              }
+            );
+            await t.test(
+              'compensation reconstruction retains its initial closed result across await',
+              async () => {
+                const input = structuredClone({
+                  header: journal.header,
+                  steps: journal.steps,
+                  compensation: journal.compensation,
+                });
+                const pending = compensationCodec.reconstructNativeStageCompensation(input);
+                queueMicrotask(() => {
+                  input.compensation.result.status = 'foreign';
+                });
+                const result = await pending;
+                assert.deepEqual(result.afterBody, f.backend.observation.body);
+              }
+            );
+          }
+          if (mode === 'compensation-audit' && journal.compensation.audit?.readback) {
+            await t.test(
+              'verified audit resource cannot disappear even when acknowledgment was interrupted',
+              async () => {
+                const snapshot = structuredClone(f.backend.snapshot);
+                const id = journal.compensation.audit.intent.id;
+                snapshot.nativeStageResources.comments =
+                  snapshot.nativeStageResources.comments.filter((comment) => comment.id !== id);
+                snapshot.comments = snapshot.comments.filter(
+                  (comment) => String(comment.id) !== id
+                );
+                const changed = await observeRevision({
+                  context: f.context,
+                  deps: createRevisionMemory(snapshot),
+                });
+                assert.equal(
+                  changed.status,
+                  'indeterminate',
+                  'lost verified audit is not an exact pending prefix'
+                );
+                assert.equal(changed.code, 'criteria-revision:native-stage-compensation-prefix');
+              }
+            );
+          }
+          assert.deepEqual(
+            f.backend.snapshot,
+            beforeDataChecks,
+            'all DATA probes leave actual execution unchanged'
+          );
+          const restarted = createRevisionMemory(JSON.parse(JSON.stringify(f.backend.snapshot)));
+          const observed = await observeRevision({ context: f.context, deps: restarted });
+          assert.equal(observed.status, 'pending-native-stage');
+          assert.equal(
+            observed.nativeHistoryApproved,
+            false,
+            'body compensation cannot authorize full transition completion'
+          );
+          return;
+        }
         const recovered = createRevisionMemory(JSON.parse(JSON.stringify(f.backend.snapshot)));
         assert.equal(
           (await observeRevision({ context: f.context, deps: recovered })).status,
@@ -1827,6 +2339,10 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       if (transitionCustody) {
         const [phase, kind] = transitionCustody;
         const store = await import('../../../../task-tracker/lib/criteria-revision/store.mjs');
+        const transition =
+          await import('../../../../task-tracker/lib/move-state/transition-commit.mjs');
+        const { withMemoryStageEffectQuarantine } =
+          await import('../../../../task-tracker/lib/criteria-revision/transport-quarantine.mjs');
         const originalDescriptors = Object.getOwnPropertyDescriptors;
         const configFile = path.join(f.projectDir, '.ai-task-manager/task-tracker.json');
         const configBytes = readFileSync(configFile, 'utf8'),
@@ -1922,6 +2438,21 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
                   );
                   copyProbes++;
                 }
+                if (authority) {
+                  assert.equal(
+                    transition.assertOriginalNativeTransitionCallCustody(authority.invocation),
+                    undefined,
+                    'actual original invocation has comparison custody before return mutation'
+                  );
+                  assert.throws(
+                    () =>
+                      transition.assertOriginalNativeTransitionCallCustody({
+                        ...authority.invocation,
+                      }),
+                    /native-transition-result-custody/,
+                    'copied invocation DATA has no comparison membership'
+                  );
+                }
                 if (kind === 'configuration')
                   writeFileSync(
                     configFile,
@@ -1991,6 +2522,14 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
               : 'native-source-unavailable'
         );
         assert.deepEqual(f.backend.effects.slice(effectStart), []);
+        if (authority)
+          withMemoryStageEffectQuarantine(() => {
+            assert.throws(
+              () => transition.assertOriginalNativeTransitionCallCustody(authority.invocation),
+              /native-transition-result-custody/,
+              'actual original comparison custody expires after frame reporting'
+            );
+          });
         assert.deepEqual(f.backend.snapshot, injectedSnapshot);
         assert.deepEqual(postFiles, injectedFiles);
         assert.deepEqual(captureFiles(), files);
@@ -1998,7 +2537,10 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
         return;
       }
       if (transitionMode) {
-        const originalRetryContext = faultMode === 'recovery-from-comment' ? { ...ctx } : null;
+        const originalRetryContext =
+          faultMode === 'recovery-from-comment' || knownPrefixEntry || completed16Resume
+            ? { ...ctx }
+            : null;
         assert.equal(Object.hasOwn(ctx, 'transitionCommit'), false);
         assert.equal(Object.hasOwn(ctx, 'deps'), false);
         const files = captureFiles();
@@ -2008,8 +2550,36 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           'effect-write',
           'effect-readback',
         ].map((x) => 'native-stage-transition-' + x);
-        if (fault) f.backend[fault.when] = 'native-stage-transition-' + fault.suffix;
-        else if (!['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode)) f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
+        if (fault)
+          f.backend[fault.when] =
+            (faultMode === 'tail-cache' ? 'native-stage-cache-' : 'native-stage-transition-') +
+            fault.suffix;
+        else if (
+          ![
+            'tail-dispatch',
+            'tail-dispatch-reentry',
+            'tail-cache',
+            'tail-cache-late-read',
+            'tail-cache-late-config',
+          ].includes(faultMode)
+        )
+          f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
+        if (['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode))
+          f.backend.failBefore = 'native-stage-cache-intent-write';
+        if (partialReporting) {
+          f.backend.failBefore = null;
+          if (faultMode === 'partial-reporting-14')
+            f.backend.failBefore = 'native-stage-sentinel-intent-write';
+          else if (faultMode === 'partial-reporting-15')
+            f.backend.failBefore = 'native-stage-transition-intent-write';
+          else if (faultMode === 'partial-reporting-16')
+            f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
+          else if (faultMode === 'partial-reporting-unknown')
+            f.backend.failAfter = 'native-stage-transition-effect-write';
+          else if (faultMode === 'partial-reporting-cancel')
+            f.backend.failAfter = 'native-stage-journal-readback';
+          else f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
+        }
         const filesystem = (await import('node:fs')).default;
         const { syncBuiltinESMExports } = await import('node:module');
         const originalRead = filesystem.readFileSync,
@@ -2025,8 +2595,15 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           ? await import('../../../../task-tracker/lib/move-state/transition-commit.mjs')
           : null;
         const reentryProbe = faultMode === 'tail-dispatch-reentry';
-        const originalDispatch = reentryProbe ? (await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs')).dispatchOnEnterActions : null;
-        let reentryCaptures = 0, reentryChecks = 0, reentryPromise = null, reentryError = null, reentryFixtureError = null;
+        const originalDispatch = reentryProbe
+          ? (await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs'))
+              .dispatchOnEnterActions
+          : null;
+        let reentryCaptures = 0,
+          reentryChecks = 0,
+          reentryPromise = null,
+          reentryError = null,
+          reentryFixtureError = null;
         const originalFreeze = Object.freeze;
         let originalInput,
           capturedResult,
@@ -2148,8 +2725,95 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             }
             return value;
           };
+        let partialInput = null,
+          partialCaptures = 0,
+          partialGets = 0,
+          partialCopyError = null,
+          partialCopyPromise = null,
+          partialInjectedSnapshot = null,
+          partialInjectedEffects = null;
+        const partialConfigFile = path.join(f.projectDir, '.ai-task-manager/task-tracker.json');
+        const partialConfigBytes = readFileSync(partialConfigFile, 'utf8');
+        const partialFinal = faultMode.startsWith('partial-reporting-final-');
+        let partialFinalCaptures = 0;
+        if (partialFinal)
+          Object.freeze = function (...args) {
+            const value = Reflect.apply(originalFreeze, this, args);
+            if (
+              !partialFinalCaptures &&
+              Object.hasOwn(value, 'progressVerified') &&
+              value.progressVerified === true &&
+              new Error().stack.includes('readMemoryNativeStagePartialFacts')
+            ) {
+              partialFinalCaptures++;
+              queueMicrotask(() => {
+                if (faultMode === 'partial-reporting-final-source')
+                  writeFileSync(
+                    partialConfigFile,
+                    JSON.stringify({ ...cfg, kanbanOptionTest: 'OPTION_foreign' })
+                  );
+                else f.backend.lifecycleTransition = true;
+                partialInjectedSnapshot = f.backend.snapshot;
+                partialInjectedEffects = f.backend.effects;
+              });
+            }
+            return value;
+          };
+        const knownSnapshots = new Map();
+        let readingKnownSnapshot = false;
         Object.getOwnPropertyDescriptors = function (...args) {
           const descriptors = Reflect.apply(originalDescriptors, this, args);
+          if ((knownPrefixCapture || knownPrefixLater) && !readingKnownSnapshot) {
+            readingKnownSnapshot = true;
+            try {
+              const snapshot = f.backend.snapshot,
+                journal = snapshot.nativeStageRecords?.at(-1);
+              if (
+                journal &&
+                journal.steps.length <= 18 &&
+                journal.steps.every((step) => step.readback !== null) &&
+                !knownSnapshots.has(journal.steps.length)
+              )
+                knownSnapshots.set(journal.steps.length, snapshot);
+            } finally {
+              readingKnownSnapshot = false;
+            }
+          }
+          if (
+            partialReporting &&
+            !partialCaptures &&
+            Reflect.ownKeys(descriptors).sort().join(',') === 'backend,capability,context,holder' &&
+            descriptors.backend?.value === f.backend &&
+            new Error().stack.includes('readMemoryNativeStagePartialFacts')
+          ) {
+            partialCaptures++;
+            partialInput = args[0];
+            queueMicrotask(() => {
+              partialCopyPromise = store
+                .readMemoryNativeStagePartialFacts({ ...partialInput })
+                .catch((error) => {
+                  partialCopyError = error;
+                });
+              if (faultMode === 'partial-reporting-late-source')
+                writeFileSync(
+                  partialConfigFile,
+                  JSON.stringify({ ...cfg, kanbanOptionTest: 'OPTION_foreign' })
+                );
+              if (faultMode === 'partial-reporting-late-input')
+                Object.defineProperty(partialInput, 'backend', {
+                  enumerable: true,
+                  configurable: true,
+                  get() {
+                    partialGets++;
+                    throw Error('late report backend');
+                  },
+                });
+              if (faultMode === 'partial-reporting-late-authority')
+                f.backend.lifecycleTransition = true;
+              partialInjectedSnapshot = f.backend.snapshot;
+              partialInjectedEffects = f.backend.effects;
+            });
+          }
           const candidate =
             !fault &&
             !lockCaptures &&
@@ -2201,24 +2865,45 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
               }
             });
           }
-          const leafCandidate = reentryProbe && !reentryCaptures && Reflect.ownKeys(descriptors).sort().join(',') === 'backend,capability,context,invocation,token';
+          const leafCandidate =
+            reentryProbe &&
+            !reentryCaptures &&
+            Reflect.ownKeys(descriptors).sort().join(',') ===
+              'backend,capability,context,invocation,token';
           const leafStack = leafCandidate ? new Error().stack : '';
           if (leafCandidate && leafStack.includes('stageTailDispatchAuthority')) {
             reentryCaptures++;
             const actualInput = descriptors.invocation.value;
             queueMicrotask(() => {
               try {
-                const snapshot = f.backend.snapshot, effects = [...f.backend.effects], host = captureFiles();
+                const snapshot = f.backend.snapshot,
+                  effects = [...f.backend.effects],
+                  host = captureFiles();
                 assert.equal(snapshot.nativeStageRecords[0].steps.length, 16);
-                assert.equal(snapshot.nativeStageRecords[0].steps.every(step => step.readback !== null), true);
-                assert.deepEqual(effects.filter(op => op.startsWith('native-stage-tail-')), []);
+                assert.equal(
+                  snapshot.nativeStageRecords[0].steps.every((step) => step.readback !== null),
+                  true
+                );
+                assert.deepEqual(
+                  effects.filter((op) => op.startsWith('native-stage-tail-')),
+                  []
+                );
                 const actual = originalDispatch(ctx, actualInput);
                 assert.deepEqual(f.backend.snapshot, snapshot);
                 assert.deepEqual(f.backend.effects, effects);
                 assert.deepEqual(captureFiles(), host);
                 reentryChecks++;
-                reentryPromise = actual.then(() => { reentryError = null; }, error => { reentryError = error; });
-              } catch (error) { reentryFixtureError = error; }
+                reentryPromise = actual.then(
+                  () => {
+                    reentryError = null;
+                  },
+                  (error) => {
+                    reentryError = error;
+                  }
+                );
+              } catch (error) {
+                reentryFixtureError = error;
+              }
             });
           }
           return descriptors;
@@ -2231,15 +2916,129 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           return value;
         };
         syncBuiltinESMExports();
+        const originalStderr = process.stderr.write;
+        const originalDescriptor = Object.getOwnPropertyDescriptor;
+        let cacheReentryProbe = false,
+          cacheReentryError = null,
+          cacheLockError = null;
+        let cacheReentryPromise = null,
+          cacheLockPromise = null;
+        let cacheWarnings = '',
+          cacheLateInjected = false,
+          cacheLateGets = 0;
+        let cacheLateEffects = null,
+          cacheLateSnapshot = null;
+        if (cacheMode) {
+          process.stderr.write = function (chunk, ...args) {
+            cacheWarnings += String(chunk);
+            return Reflect.apply(originalStderr, this, [chunk, ...args]);
+          };
+        }
+        if (faultMode === 'tail-cache' && fault === null) {
+          const originalCache = (
+            await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs')
+          ).refreshKanbanStateCache;
+          const cachePriorObserver = knownPrefixLater
+            ? Object.getOwnPropertyDescriptors
+            : originalDescriptors;
+          Object.getOwnPropertyDescriptors = function (value) {
+            const descriptors = Reflect.apply(cachePriorObserver, this, arguments);
+            if (
+              !cacheReentryProbe &&
+              Reflect.ownKeys(descriptors).sort().join(',') ===
+                'backend,capability,context,invocation,token' &&
+              new Error().stack.includes('readMemoryNativeStageCache')
+            ) {
+              cacheReentryProbe = true;
+              const authority = Object.fromEntries(
+                Object.entries(descriptors).map(([key, d]) => [key, d.value])
+              );
+              queueMicrotask(() => {
+                cacheReentryPromise = originalCache(ctx, authority.invocation).catch((error) => {
+                  cacheReentryError = error;
+                });
+                cacheLockPromise = store.acquireMemoryNativeStageCache(authority).catch((error) => {
+                  cacheLockError = error;
+                });
+              });
+            }
+            return descriptors;
+          };
+        }
+        const cacheOriginalRepo = Object.getOwnPropertyDescriptor(cfg, 'repo');
+        if (faultMode === 'tail-cache-late-config') {
+          Object.getOwnPropertyDescriptors = function (value) {
+            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
+            if (
+              !cacheLateInjected &&
+              Reflect.ownKeys(descriptors).sort().join(',') ===
+                'backend,capability,context,invocation,token' &&
+              new Error().stack.includes('readMemoryNativeStageCache')
+            ) {
+              cacheLateInjected = true;
+              queueMicrotask(() => {
+                Object.defineProperty(cfg, 'repo', {
+                  enumerable: true,
+                  configurable: true,
+                  get() {
+                    cacheLateGets++;
+                    throw Error('late cache cfg getter');
+                  },
+                });
+                cacheLateEffects = f.backend.effects;
+                cacheLateSnapshot = f.backend.snapshot;
+              });
+            }
+            return descriptors;
+          };
+        }
+        if (faultMode === 'tail-cache-late-read') {
+          Object.getOwnPropertyDescriptor = function (value, key) {
+            const descriptor = Reflect.apply(originalDescriptor, this, arguments);
+            if (
+              !cacheLateInjected &&
+              key === 'issue' &&
+              descriptor &&
+              Object.hasOwn(value, 'boundAt') &&
+              new Error().stack.includes('assertOriginalNativeCacheRead')
+            ) {
+              cacheLateInjected = true;
+              queueMicrotask(() => {
+                Object.defineProperty(value, 'issue', {
+                  enumerable: true,
+                  configurable: true,
+                  get() {
+                    cacheLateGets++;
+                    return '#124';
+                  },
+                });
+                cacheLateEffects = f.backend.effects;
+                cacheLateSnapshot = f.backend.snapshot;
+              });
+            }
+            return descriptor;
+          };
+        }
         let result;
         try {
           result = await moveState(ctx);
           if (lockPromise) await lockPromise;
           if (reentryPromise) await reentryPromise;
+          if (cacheReentryPromise) await cacheReentryPromise;
+          if (cacheLockPromise) await cacheLockPromise;
+          if (partialCopyPromise) await partialCopyPromise;
         } finally {
+          if (partialReporting) {
+            writeFileSync(partialConfigFile, partialConfigBytes);
+            f.backend.lifecycleTransition = false;
+          }
           filesystem.readFileSync = originalRead;
           Object.getOwnPropertyDescriptors = originalDescriptors;
-          if (frozenProbe) Object.freeze = originalFreeze;
+          if (cacheMode) process.stderr.write = originalStderr;
+          Object.getOwnPropertyDescriptor = originalDescriptor;
+          if (faultMode === 'tail-cache-late-config')
+            Object.defineProperty(cfg, 'repo', cacheOriginalRepo);
+          if (frozenProbe || partialFinal) Object.freeze = originalFreeze;
           syncBuiltinESMExports();
         }
         if (frozenProbe) {
@@ -2270,6 +3069,393 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
             },
           })
         );
+        if (partialReporting) {
+          const late = faultMode.startsWith('partial-reporting-late-') || partialFinal;
+          const cancelled = faultMode === 'partial-reporting-cancel';
+          const completed =
+            {
+              'partial-reporting-14': 14,
+              'partial-reporting-15': 15,
+              'partial-reporting-16': 16,
+              'partial-reporting-unknown': 15,
+              'partial-reporting-cancel': 0,
+            }[faultMode] ?? 16;
+          assert.equal(
+            journal.steps.length,
+            cancelled ? 1 : faultMode === 'partial-reporting-unknown' ? 16 : completed
+          );
+          assert.ok(journal.steps.slice(0, completed).every((step) => step.readback !== null));
+          if (!cancelled) assert.equal(journal.steps[13].outcome.kind, 'confirmed');
+          if (faultMode === 'partial-reporting-unknown')
+            assert.equal(journal.steps[15].readback, null);
+          if (cancelled) {
+            assert.equal(journal.steps[0].readback, null);
+            assert.deepEqual(snapshot.nativeStageResources, journal.header.original.resources);
+            assert.equal(f.backend.effects.includes('native-stage-actor-effect-write'), false);
+          }
+          assert.deepEqual(captureFiles(), files);
+          assert.equal(
+            (await observeRevision({ context: f.context, deps: createRevisionMemory(snapshot) }))
+              .status,
+            'pending-native-stage'
+          );
+          if (partialFinal) {
+            assert.equal(partialFinalCaptures, 1, 'actual Store final return was captured');
+            assert.ok(partialInjectedSnapshot, 'final return injected before Core continuation');
+            t.diagnostic(
+              JSON.stringify({
+                partialFinal: { mode: faultMode, captures: partialFinalCaptures, result },
+              })
+            );
+          }
+          assert.equal(result.exit, 4);
+          assert.equal(result.itemId, !late && !cancelled ? 'PVTI_subject' : '');
+          assert.equal(result.boardMoved, !late && !cancelled);
+          assert.equal(result.sentinelPresent, !late && completed >= 15);
+          assert.equal(result.transitionCommitPresent, !late && completed === 16);
+          assert.equal(
+            result.transitionCommitId,
+            !late && completed === 16 ? journal.steps[15].intent.commentId : null
+          );
+          assert.equal(result.progressVerified, !late);
+          assert.equal(partialCaptures, 1);
+          if (partialFinal) assert.equal(partialFinalCaptures, 1);
+          assert.equal(partialGets, 0);
+          assert.equal(partialCopyError?.preparationReason, 'original-partial-report-input');
+          if (late) {
+            assert.deepEqual(snapshot, partialInjectedSnapshot);
+            assert.deepEqual(
+              f.backend.effects.filter((op) => op.includes('effect-write')),
+              partialInjectedEffects.filter((op) => op.includes('effect-write'))
+            );
+          }
+          if (faultMode === 'partial-reporting-late-input') {
+            Object.defineProperty(partialInput, 'backend', {
+              enumerable: true,
+              configurable: true,
+              writable: true,
+              value: f.backend,
+            });
+          }
+          await assert.rejects(
+            store.readMemoryNativeStagePartialFacts(partialInput),
+            (error) => error.preparationReason === 'original-partial-report-input'
+          );
+          const effects = f.backend.effects;
+          await Promise.resolve();
+          assert.deepEqual(
+            f.backend.snapshot,
+            snapshot,
+            'joined original work cannot change returned facts'
+          );
+          assert.deepEqual(f.backend.effects, effects);
+          const calls = [];
+          await assert.rejects(
+            withRevisionConsumer(
+              {
+                repository: f.context.repository,
+                issue: f.context.issue,
+                activity: 'stage-write',
+                backend: createRevisionMemory(snapshot),
+                projectDir: f.projectDir,
+              },
+              () => calls.push('stage')
+            ),
+            (error) => error.code === 'revision-pending'
+          );
+          assert.deepEqual(calls, []);
+          if (!late && !cancelled) {
+            const partialCodec =
+              await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+            const input = { journal: structuredClone(journal) };
+            const projected = partialCodec.deriveRecordedNativeStagePartialFacts(input);
+            const selected = input.journal;
+            let gets = 0;
+            queueMicrotask(() =>
+              Object.defineProperty(input, 'journal', {
+                enumerable: true,
+                get() {
+                  gets++;
+                  return selected;
+                },
+              })
+            );
+            const facts = await projected;
+            assert.equal(gets, 0);
+            assert.equal(
+              Object.hasOwn(facts, 'progressVerified'),
+              false,
+              'DATA never asserts current verification'
+            );
+            assert.equal(facts.boardMoved, true);
+            assert.equal(facts.sentinelPresent, completed >= 15);
+            assert.equal(facts.transitionCommitPresent, completed === 16);
+            const lost = structuredClone(snapshot);
+            if (completed === 16) lost.nativeStageResources.comments.pop();
+            else if (completed === 15)
+              lost.observation.body = structuredClone(journal.header.original.observation.body);
+            else
+              lost.nativeStageResources.membership = structuredClone(
+                journal.header.original.resources.membership
+              );
+            const rejected = await observeRevision({
+              context: f.context,
+              deps: createRevisionMemory(lost),
+            });
+            assert.equal(
+              rejected.status,
+              'indeterminate',
+              'completed resource facts cannot disappear'
+            );
+          }
+          return;
+        }
+        if (knownPrefixCapture) {
+          assert.equal(journal.steps.length, 16);
+          assert.ok(journal.steps.every((step) => step.readback !== null));
+          assert.deepEqual(
+            [...knownSnapshots.keys()].sort((a, b) => a - b),
+            Array.from({ length: 16 }, (_, i) => i + 1),
+            'capture every actual original completed prefix'
+          );
+          assert.deepEqual(captureFiles(), files);
+          const codec =
+            await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+          const originalEffects = f.backend.effects;
+          for (const [ordinal, selected] of knownSnapshots) {
+            const input = {
+              journal: selected.nativeStageRecords.at(-1),
+              resources: selected.nativeStageResources,
+              body: selected.observation.body,
+              stage: selected.observation.stage,
+              executor: selected.observation.executor,
+            };
+            const known = await codec.deriveRecordedNativeStageKnownPrefix(input);
+            assert.equal(known.ordinal, ordinal);
+            assert.equal(known.nextOrdinal, ordinal + 1);
+            assert.equal(known.transitionId, input.journal.header.intent.transitionId);
+            assert.equal(known.actorClock, input.journal.header.original.actor.capture.ts);
+            for (const [label, change] of [
+              [
+                'completed resource',
+                (value) => {
+                  value.resources.local.activeTask.bytes += ' ';
+                },
+              ],
+              [
+                'body',
+                (value) => {
+                  value.body.bytes += '\n';
+                },
+              ],
+              [
+                'body version',
+                (value) => {
+                  value.body.version += 1;
+                },
+              ],
+              [
+                'stage',
+                (value) => {
+                  value.stage = 'review';
+                },
+              ],
+              [
+                'executor',
+                (value) => {
+                  value.executor.sessionId += '-foreign';
+                },
+              ],
+              [
+                'incomplete readback',
+                (value) => {
+                  value.journal.steps.at(-1).readback = null;
+                },
+              ],
+              [
+                'compensation',
+                (value) => {
+                  value.journal.compensation = {};
+                },
+              ],
+            ]) {
+              const changed = structuredClone(input);
+              change(changed);
+              await assert.rejects(
+                codec.deriveRecordedNativeStageKnownPrefix(changed),
+                (error) => error.message === 'criteria-revision:native-stage-known-prefix',
+                ordinal + ':' + label
+              );
+            }
+            const detached = structuredClone(input),
+              retained = detached.resources;
+            let gets = 0;
+            const pending = codec.deriveRecordedNativeStageKnownPrefix(detached);
+            queueMicrotask(() =>
+              Object.defineProperty(detached, 'resources', {
+                enumerable: true,
+                get() {
+                  gets++;
+                  return retained;
+                },
+              })
+            );
+            assert.deepEqual(await pending, known);
+            assert.equal(gets, 0, 'caller DATA detached across recognition await');
+            assert.deepEqual(
+              Object.keys(known).sort(),
+              ['ordinal', 'nextOrdinal', 'transitionId', 'actorClock'].sort()
+            );
+          }
+          const { canonicalRecordJson } =
+            await import('../../../../task-tracker/lib/github-records/canonical-json.mjs');
+          const first = knownSnapshots.get(1);
+          for (const key of ['transitionId', 'actorClock']) {
+            const changed = {
+              journal: structuredClone(first.nativeStageRecords.at(-1)),
+              resources: structuredClone(first.nativeStageResources),
+              body: structuredClone(first.observation.body),
+              stage: first.observation.stage,
+              executor: structuredClone(first.observation.executor),
+            };
+            if (key === 'transitionId') delete changed.journal.header.intent.transitionId;
+            else delete changed.journal.header.original.actor.capture.ts;
+            const { id, ...unsigned } = changed.journal.header;
+            changed.journal.header.id = hashBytes(canonicalRecordJson(unsigned));
+            changed.journal.steps[0].previous = changed.journal.header.id;
+            await assert.rejects(
+              codec.deriveRecordedNativeStageKnownPrefix(changed),
+              (error) => error.message === 'criteria-revision:native-stage-known-prefix',
+              'missing recognized scalar: ' + key
+            );
+          }
+          assert.deepEqual(
+            f.backend.effects,
+            originalEffects,
+            'recognition creates no effects or runtime membership'
+          );
+          assert.deepEqual(f.backend.snapshot, snapshot);
+          const calls = [];
+          const restarted = createRevisionMemory(snapshot);
+          await assert.rejects(
+            withRevisionConsumer(
+              {
+                repository: f.context.repository,
+                issue: f.context.issue,
+                activity: 'stage-write',
+                backend: restarted,
+                projectDir: f.projectDir,
+              },
+              () => calls.push('stage')
+            ),
+            (error) => error.code === 'revision-pending'
+          );
+          await assert.rejects(
+            mutateIssueBody({
+              issueNumber: f.context.issue,
+              repo: f.context.repository,
+              mutate: (body) => {
+                calls.push('body');
+                return body;
+              },
+              deps: { revisionBackend: restarted, pexec: async () => calls.push('transport') },
+            }),
+            (error) => error.code === 'revision-pending'
+          );
+          assert.deepEqual(calls, []);
+          if (completed16Resume) {
+            const { qualifyCompleted16Variant } =
+              await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
+            await qualifyCompleted16Variant({
+              t,
+              originalContext: originalRetryContext,
+              snapshots: knownSnapshots,
+              captureFiles,
+              variant: resumeVariant,
+            });
+            return;
+          }
+          if (knownPrefixEntry) {
+            assert.equal(Object.hasOwn(originalRetryContext, 'transitionId'), false);
+            const { qualifyOriginalEntryRefusals } =
+              await import('../../../helpers/native-stage-original-entry-controls.mjs');
+            await qualifyOriginalEntryRefusals({
+              t,
+              originalContext: originalRetryContext,
+              snapshots: knownSnapshots,
+              projectDir: f.projectDir,
+              captureFiles,
+            });
+            for (const [ordinal, selected] of knownSnapshots) {
+              const backend = createRevisionMemory(selected);
+              const result = await moveState({ ...originalRetryContext, revisionBackend: backend });
+              assert.equal(result.phase, 'native-stage-resume', 'real admission at ' + ordinal);
+              if (ordinal === 16) {
+                const { assertResumeResult, expectedCompleted16Tail, resumedStageOperations } =
+                  await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
+                const { verifiedCompleted16Partial, completed16ReportAuditTrace } =
+                  await import('../../../helpers/native-stage-completed16-report-controls.mjs');
+                assertResumeResult(result, verifiedCompleted16Partial(selected));
+                assert.equal(
+                  backend.effects.filter((name) => name === 'native-stage-existing-transition-read')
+                    .length,
+                  1,
+                  'completed16 must execute its actual existing-comment read'
+                );
+                assert.deepEqual(
+                  backend.effects.filter((name) => resumedStageOperations.includes(name)),
+                  resumedStageOperations,
+                  'exact genuine original17/18 operations execute once in order'
+                );
+                assert.deepEqual(
+                  backend.effects,
+                  completed16ReportAuditTrace,
+                  'complete resumed audit trace'
+                );
+                assert.deepEqual(backend.snapshot, await expectedCompleted16Tail(selected));
+                assert.equal(backend.snapshot.nativeStageRecords.at(-1).steps.length, 18);
+                assert.deepEqual(
+                  backend.snapshot.nativeStageRecords.at(-1).steps.slice(0, 16),
+                  selected.nativeStageRecords.at(-1).steps
+                );
+              } else {
+                assert.equal(result.preparationReason, 'known-prefix-continuation-unavailable');
+                assert.equal(result.exit, 4);
+                assert.deepEqual(backend.snapshot, selected);
+                assert.deepEqual(
+                  backend.effects.filter(
+                    (name) =>
+                      ![
+                        'authority-read',
+                        'page-read',
+                        'native-history-readback',
+                        'native-proof-record-readback',
+                      ].includes(name)
+                  ),
+                  [],
+                  'only fixed reads, never writes at admission'
+                );
+              }
+              assert.deepEqual(captureFiles(), files);
+            }
+            const { qualifyCompleted16ReadControls, qualifyCompleted16OriginalCall } =
+              await import('../../../helpers/native-stage-completed16-resume-controls.mjs');
+            const resumeControls = {
+              t,
+              originalContext: originalRetryContext,
+              snapshots: knownSnapshots,
+              captureFiles,
+            };
+            await qualifyCompleted16ReadControls(resumeControls);
+            await qualifyCompleted16OriginalCall(resumeControls);
+          }
+          assert.equal(
+            (await observeRevision({ context: f.context, deps: createRevisionMemory(snapshot) }))
+              .status,
+            'pending-native-stage'
+          );
+          return;
+        }
         assert.ok(beforeComment, 'capture after actual completed15');
         assert.equal(beforeComment.nativeStageRecords[0].steps.length, 15);
         assert.ok(
@@ -2277,30 +3463,211 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
         );
         assert.equal(beforeComment.nativeStageRecords[0].steps[13].outcome.kind, 'confirmed');
         if (reentryProbe) {
-          t.diagnostic(JSON.stringify({ tailPreIntentReentry: { captures: reentryCaptures, checks: reentryChecks, fixtureError: reentryFixtureError?.message ?? null, error: reentryError ? { name: reentryError.name, code: reentryError.code, preparationReason: reentryError.preparationReason ?? null } : null } }));
+          t.diagnostic(
+            JSON.stringify({
+              tailPreIntentReentry: {
+                captures: reentryCaptures,
+                checks: reentryChecks,
+                fixtureError: reentryFixtureError?.message ?? null,
+                error: reentryError
+                  ? {
+                      name: reentryError.name,
+                      code: reentryError.code,
+                      preparationReason: reentryError.preparationReason ?? null,
+                    }
+                  : null,
+              },
+            })
+          );
           assert.equal(reentryFixtureError, null);
           assert.equal(reentryCaptures, 1);
           assert.equal(reentryChecks, 1);
           assert.equal(reentryError?.code, 'revision-authority-unavailable');
           assert.equal(reentryError?.preparationReason, 'original-tail-dispatch-window');
         }
+        if (['tail-cache-late-read', 'tail-cache-late-config'].includes(faultMode)) {
+          assert.equal(
+            cacheLateInjected,
+            true,
+            'actual native active-task return reached late boundary'
+          );
+          assert.equal(cacheLateGets, 0, 'cache program never reads a post-await caller getter');
+          assert.deepEqual(
+            f.backend.effects,
+            cacheLateEffects,
+            'no effects after late return mutation'
+          );
+          assert.deepEqual(f.backend.snapshot, cacheLateSnapshot);
+          assert.equal(journal.steps.length, 17);
+          assert.equal(result.exit, 4);
+          return;
+        }
+        if (faultMode === 'tail-cache') {
+          if (fault === null) {
+            assert.equal(cacheReentryProbe, true, 'actual cache read selected under owned lock');
+            assert.equal(cacheReentryError?.preparationReason, 'original-cache-window');
+            assert.equal(
+              cacheLockError?.message,
+              'criteria-revision:native-stage-cache-lock-conflict'
+            );
+          }
+          const points = ['intent-write', 'intent-readback', 'effect-write', 'effect-readback'];
+          const end = fault
+            ? points.indexOf(fault.suffix) + (fault.when === 'failAfter' ? 1 : 0)
+            : 4;
+          assert.ok(end >= 0, 'cache fault descriptor belongs to original protocol');
+          if (fault)
+            assert.match(
+              cacheWarnings,
+              /kanbanState cache refresh failed:/,
+              'actual original cache warning branch runs'
+            );
+          assert.equal(
+            journal.steps.length,
+            end === 0 ? 17 : 18,
+            'actual original cache has exact durable prefix'
+          );
+          assert.ok(journal.steps.slice(0, 17).every((step) => step.readback !== null));
+          if (end > 0) {
+            assert.equal(journal.steps[17].kind, 'tail-cache');
+            assert.equal(journal.steps[17].readback !== null, end === 4);
+          }
+          assert.deepEqual(
+            f.backend.effects.filter((x) => x.startsWith('native-stage-cache-')),
+            points.slice(0, end).map((x) => 'native-stage-cache-' + x)
+          );
+          const beforeActive = JSON.parse(
+            beforeComment.nativeStageResources.local.activeTask.bytes
+          );
+          const expected = {
+            ...beforeActive,
+            kanbanState: end >= 3 ? 'test' : beforeActive.kanbanState,
+          };
+          assert.equal(
+            snapshot.nativeStageResources.local.activeTask.bytes,
+            end >= 3
+              ? JSON.stringify(expected, null, 2) + '\n'
+              : beforeComment.nativeStageResources.local.activeTask.bytes
+          );
+          for (const key of ['actorTiming', 'actorFlush', 'wordCursor', 'trackerState', 'queue'])
+            assert.deepEqual(
+              snapshot.nativeStageResources.local[key],
+              beforeComment.nativeStageResources.local[key]
+            );
+          assert.deepEqual(journal.steps.slice(0, 15), beforeComment.nativeStageRecords[0].steps);
+          assert.deepEqual(snapshot.observation, beforeComment.observation);
+          assert.equal(result.exit, 4, 'next original owner remains fenced');
+          assert.deepEqual(captureFiles(), files, 'actual cache effects never touch host state');
+          const observed = await observeRevision({
+            context: f.context,
+            deps: createRevisionMemory(snapshot),
+          });
+          assert.equal(observed.status, 'pending-native-stage');
+          assert.equal(observed.nativeHistoryApproved, false);
+          if (fault === null) {
+            const codec =
+              await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
+            if (knownPrefixLater) {
+              const effects = f.backend.effects;
+              for (const ordinal of [17, 18]) {
+                const captured = knownSnapshots.get(ordinal);
+                assert.ok(captured, 'actual later original prefix captured: ' + ordinal);
+                assert.equal(captured.nativeStageRecords.at(-1).steps.length, ordinal);
+                const selected = {
+                  journal: captured.nativeStageRecords.at(-1),
+                  resources: captured.nativeStageResources,
+                  body: captured.observation.body,
+                  stage: captured.observation.stage,
+                  executor: captured.observation.executor,
+                };
+                await assert.rejects(
+                  codec.deriveRecordedNativeStageKnownPrefix(selected),
+                  (error) => error.message === 'criteria-revision:native-stage-known-prefix'
+                );
+              }
+              assert.deepEqual(f.backend.effects, effects);
+              assert.deepEqual(f.backend.snapshot, snapshot);
+            }
+            const input = structuredClone({ header: journal.header, steps: journal.steps });
+            const bad = structuredClone(input);
+            bad.steps[17].intent.sid = 'foreign';
+            await assert.rejects(
+              codec.reconstructNativeStageTailCache(bad),
+              /criteria-revision:native-stage-tail-cache/
+            );
+            const lost = structuredClone(snapshot);
+            lost.nativeStageResources.local.activeTask = structuredClone(
+              beforeComment.nativeStageResources.local.activeTask
+            );
+            const rejected = await observeRevision({
+              context: f.context,
+              deps: createRevisionMemory(lost),
+            });
+            assert.equal(rejected.status, 'indeterminate', 'verified cache delta cannot disappear');
+            let getter = 0;
+            const pending = codec.reconstructNativeStageTailCache(input);
+            const intent = input.steps[17].intent;
+            queueMicrotask(() =>
+              Object.defineProperty(input.steps[17], 'intent', {
+                enumerable: true,
+                get() {
+                  getter++;
+                  return intent;
+                },
+              })
+            );
+            assert.equal((await pending).complete, true);
+            assert.equal(getter, 0, 'cache DATA stays detached across awaits');
+            assert.deepEqual(
+              f.backend.snapshot,
+              snapshot,
+              'DATA copies never mutate actual execution'
+            );
+          }
+          return;
+        }
         if (['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode)) {
-          assert.equal(journal.steps.slice(0, 16).every(step => step.readback !== null), true);
+          assert.equal(
+            journal.steps.slice(0, 16).every((step) => step.readback !== null),
+            true
+          );
           assert.equal(ctx.transitionCommit.verified, true);
-          assert.equal(journal.steps.length, 17, 'original first tail has durable intent and readback');
-          const predecessor = await (await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs')).reconstructNativeStageTransitionComment({ header: journal.header, steps: journal.steps.slice(0, 16) });
+          assert.equal(
+            journal.steps.length,
+            17,
+            'original first tail has durable intent and readback'
+          );
+          const predecessor = await (
+            await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs')
+          ).reconstructNativeStageTransitionComment({
+            header: journal.header,
+            steps: journal.steps.slice(0, 16),
+          });
           assert.equal(predecessor.complete, true);
           const step = journal.steps[16];
           assert.equal(step.ordinal, 17);
           assert.equal(step.kind, 'tail-dispatch');
           assert.deepEqual(step.intent, { target: 'test', actions: [] });
-          assert.deepEqual(step.readback, { actions: [], resources: predecessor.afterResources, body: predecessor.body, stage: predecessor.stage });
+          assert.deepEqual(step.readback, {
+            actions: [],
+            resources: predecessor.afterResources,
+            body: predecessor.body,
+            stage: predecessor.stage,
+          });
           assert.deepEqual(snapshot.nativeStageResources, predecessor.afterResources);
           assert.deepEqual(snapshot.observation.body, predecessor.body);
           assert.deepEqual(journal.header, beforeComment.nativeStageRecords[0].header);
           assert.deepEqual(journal.steps.slice(0, 15), beforeComment.nativeStageRecords[0].steps);
           assert.deepEqual(snapshot.comments, beforeComment.comments);
-          assert.deepEqual(f.backend.effects.filter(op => op.startsWith('native-stage-tail-dispatch-')), ['native-stage-tail-dispatch-intent-write', 'native-stage-tail-dispatch-intent-readback', 'native-stage-tail-dispatch-execution', 'native-stage-tail-dispatch-readback']);
+          assert.deepEqual(
+            f.backend.effects.filter((op) => op.startsWith('native-stage-tail-dispatch-')),
+            [
+              'native-stage-tail-dispatch-intent-write',
+              'native-stage-tail-dispatch-intent-readback',
+              'native-stage-tail-dispatch-execution',
+              'native-stage-tail-dispatch-readback',
+            ]
+          );
           assert.equal(result.exit, 4, 'next original leaf remains fenced');
           assert.equal(result.code, 'revision-authority-unavailable');
           assert.deepEqual(captureFiles(), files);
@@ -2309,7 +3676,21 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           assert.equal(observed.status, 'pending-native-stage', JSON.stringify(observed));
           assert.equal(observed.nativeHistoryApproved, false);
           let called = 0;
-          await assert.rejects(withRevisionConsumer({ repository: f.context.repository, issue: f.context.issue, activity: 'stage-write', backend: restarted, projectDir: f.projectDir }, () => { called++; }), error => error.code === 'revision-pending');
+          await assert.rejects(
+            withRevisionConsumer(
+              {
+                repository: f.context.repository,
+                issue: f.context.issue,
+                activity: 'stage-write',
+                backend: restarted,
+                projectDir: f.projectDir,
+              },
+              () => {
+                called++;
+              }
+            ),
+            (error) => error.code === 'revision-pending'
+          );
           assert.equal(called, 0);
           assert.deepEqual(restarted.snapshot, snapshot);
           return;
@@ -2497,32 +3878,59 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
           } catch (error) {
             retryError = error;
           }
-          t.diagnostic(JSON.stringify({
-            originalNativeRetry: {
-              result: retried ?? null,
-              error: retryError ? {
-                name: retryError.name,
-                code: retryError.code ?? null,
-                message: retryError.message,
-                preparationReason: retryError.preparationReason ?? null,
-              } : null,
-              operations: restarted.effects,
-            },
-          }));
-          assert.equal(retryError, undefined, 'actual fresh original move must resume its durable prefix');
+          t.diagnostic(
+            JSON.stringify({
+              originalNativeRetry: {
+                result: retried ?? null,
+                error: retryError
+                  ? {
+                      name: retryError.name,
+                      code: retryError.code ?? null,
+                      message: retryError.message,
+                      preparationReason: retryError.preparationReason ?? null,
+                    }
+                  : null,
+                operations: restarted.effects,
+              },
+            })
+          );
+          assert.equal(
+            retryError,
+            undefined,
+            'actual fresh original move must resume its durable prefix'
+          );
           assert.equal(retried.exit, null);
           assert.equal(retried.boardMoved, true);
           assert.equal(retried.sentinelPresent, true);
           assert.equal(retried.phase, 'complete');
           const final = restarted.snapshot;
           assert.deepEqual(final.nativeStageRecords.at(-1).header, retainedPrefix.header);
-          assert.deepEqual(final.nativeStageRecords.at(-1).steps.slice(0, 16), retainedPrefix.steps);
+          assert.deepEqual(
+            final.nativeStageRecords.at(-1).steps.slice(0, 16),
+            retainedPrefix.steps
+          );
           assert.deepEqual(final.comments, snapshot.comments);
-          assert.deepEqual(final.nativeStageResources.comments, snapshot.nativeStageResources.comments);
-          assert.deepEqual(final.nativeStageResources.membership, snapshot.nativeStageResources.membership);
-          assert.equal(restarted.effects.filter((name) => name === 'native-stage-transition-effect-write').length, 0);
-          assert.equal(restarted.effects.filter((name) => name === 'native-stage-board-effect-write').length, 0);
-          assert.equal(restarted.effects.filter((name) => name === 'native-stage-timing-effect-write').length, 0);
+          assert.deepEqual(
+            final.nativeStageResources.comments,
+            snapshot.nativeStageResources.comments
+          );
+          assert.deepEqual(
+            final.nativeStageResources.membership,
+            snapshot.nativeStageResources.membership
+          );
+          assert.equal(
+            restarted.effects.filter((name) => name === 'native-stage-transition-effect-write')
+              .length,
+            0
+          );
+          assert.equal(
+            restarted.effects.filter((name) => name === 'native-stage-board-effect-write').length,
+            0
+          );
+          assert.equal(
+            restarted.effects.filter((name) => name === 'native-stage-timing-effect-write').length,
+            0
+          );
           assert.deepEqual(captureFiles(), files);
         }
         if (faultMode === 'transition-history') {
@@ -4720,6 +6128,11 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
       ].includes(expectStage)
         ? captureFiles()
         : null;
+      // Phase-only profiles keep their requested original frontier once the
+      // next original entry route is implemented. This is an actual intent
+      // fault, not a skipped callback, reduced fixture or changed assertion.
+      if (['phase-pair', 'phase-adversarial'].includes(expectStage))
+        f.backend.failBefore = 'native-stage-body-intent-write';
       if (faultMode === 'entry-intent') f.backend.failBefore = 'native-stage-body-effect-write';
       if (['preparation', 'intent'].includes(expectStage))
         f.backend.failBefore = 'native-stage-actor-effect-write';

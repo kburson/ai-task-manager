@@ -1,3 +1,4 @@
+import { withRevisionConsumer } from '../criteria-revision/policy.mjs';
 import { isDeepStrictEqual } from 'node:util';
 
 import { parseAitmRecord } from './record-envelope.mjs';
@@ -251,7 +252,7 @@ export async function readBackComment({ commentNodeId, ...context } = {}) {
   return comment;
 }
 
-export async function createIssueComment(input = {}) {
+async function createIssueCommentAdmitted(input = {}) {
   const { repository, issue, body, rest, graphql } = input;
   assertContext(input);
   if (
@@ -279,7 +280,7 @@ export async function createIssueComment(input = {}) {
   });
 }
 
-export async function updateIssueComment(input = {}) {
+async function updateIssueCommentAdmitted(input = {}) {
   const { commentNodeId, repository, issue, body, graphql } = input;
   assertContext(input);
   if (!isOpaqueId(commentNodeId) || typeof body !== 'string' || body.length === 0) {
@@ -362,4 +363,32 @@ export async function listIssueCommentsSince(input = {}) {
     after = nextCursor;
   }
   return Object.freeze(comments.filter((comment) => comment.updatedAt > since));
+}
+
+export async function createIssueComment(input = {}) {
+  assertContext(input);
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'capsule-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => createIssueCommentAdmitted(input)
+  );
+}
+
+export async function updateIssueComment(input = {}) {
+  assertContext(input);
+  return withRevisionConsumer(
+    {
+      repository: input.repository,
+      issue: input.issue,
+      activity: 'capsule-write',
+      backend: input.deps?.revisionBackend,
+      projectDir: input.projectDir,
+    },
+    () => updateIssueCommentAdmitted(input)
+  );
 }

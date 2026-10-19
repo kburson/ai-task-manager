@@ -25,14 +25,20 @@ function normalizeCachedKanbanState(record) {
 function readJson(p) {
   if (!existsSync(p)) return null;
   try {
-    const raw = readFileSync(p, 'utf8');
-    if (!raw.trim()) return null;
-    return JSON.parse(raw);
+    return parseActiveTaskBytes(readFileSync(p, 'utf8'));
   } catch {
     return null;
   }
 }
 
+function parseActiveTaskBytes(raw) {
+  if (raw === null || !raw.trim()) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 function atomicWrite(p, payload) {
   mkdirSync(path.dirname(p), { recursive: true });
   const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
@@ -284,3 +290,51 @@ export function compareAndClearActiveTask(sid, projDir, predicate) {
 // Re-export the path helpers so callers that already import session-state
 // don't need a second import line for the directory layout.
 export { sessionDir, activeTaskPath };
+
+// #1913 — genuine original cache read/set leaves; no DATA grants membership.
+const nativeStageKanbanWrites = new WeakMap();
+const nativeStageCacheReads = new WeakMap();
+export function assertOriginalNativeCacheRead(input, result) {
+  const original = nativeStageCacheReads.get(input);
+  if (!original || original.result !== result || canonicalRecordJson(result) !== original.bytes)
+    throw new TypeError('native-cache-read-return');
+}
+export function assertOriginalNativeStageKanbanWrite(input, intent) {
+  const original = nativeStageKanbanWrites.get(input);
+  if (!original || original.intent !== intent || canonicalRecordJson(intent) !== original.bytes)
+    throw new TypeError('native-cache-set-intent');
+}
+export async function getNativeStageCachedTask(input, operation) {
+  const native = await import('./lib/move-state/move-state-core.mjs');
+  const source = await native.readNativeStageTailCacheSource(input, operation);
+  native.assertNativeStageTailCacheRead(input);
+  const result = normalizeCachedKanbanState(parseActiveTaskBytes(source.beforeBytes));
+  nativeStageCacheReads.set(input, { result, bytes: canonicalRecordJson(result) });
+  return result;
+}
+export async function setNativeStageKanbanState(input, operation) {
+  const native = await import('./lib/move-state/move-state-core.mjs');
+  const source = await native.readNativeStageTailCacheSource(input, operation);
+  native.assertNativeStageTailCacheSet(input, operation);
+  const rawExisting = parseActiveTaskBytes(source.beforeBytes);
+  const { payload, changed } = sessionKanbanPayload(rawExisting, operation.stateArg);
+  const intent = {
+    file: source.file,
+    beforeBytes: source.beforeBytes,
+    bytes: changed ? JSON.stringify(payload, null, 2) + '\n' : source.beforeBytes,
+  };
+  nativeStageKanbanWrites.set(input, { intent, bytes: canonicalRecordJson(intent) });
+  try {
+    await native.persistNativeStageTailCache(input, intent);
+    native.assertNativeStageTailCacheSet(input, operation);
+    if (changed) await native.writeNativeStageTailCache(input);
+    native.assertNativeStageTailCacheSet(input, operation);
+    await native.completeNativeStageTailCache(input);
+    native.assertNativeStageTailCacheSet(input, operation);
+    return payload;
+  } finally {
+    nativeStageKanbanWrites.delete(input);
+  }
+}
+
+import { canonicalRecordJson } from './lib/github-records/canonical-json.mjs';

@@ -395,6 +395,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'scripts/run-tests-native-sections.mjs',
     'scripts/task-tracker/lib/checklist-body.mjs',
     'scripts/task-tracker/lib/criteria-revision-admission-guard.mjs',
+    // #1919 qualifies these two retained Task 5 production entrypoints.
+    'scripts/task-tracker/lib/event-field-update.mjs',
+    'scripts/task-tracker/lib/move-state/native-command.mjs',
   ];
   for (const entry of task5SharedEntries) assert.ok(files.includes(entry), `missing ${entry}`);
   const effectiveCeiling =

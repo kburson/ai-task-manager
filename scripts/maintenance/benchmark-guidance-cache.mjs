@@ -30,7 +30,7 @@ function processLoad(projectRoot, need) {
   const child = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: projectRoot,
     encoding: 'utf8',
-    timeout: 30_000,
+    timeout: process.env.AITM_TEST_EXECUTION_LIMITS === 'suspended' ? 0 : 30_000,
   });
   const elapsedMs = performance.now() - start;
   assert.equal(child.error, undefined, child.error?.message);
@@ -129,5 +129,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const samples = sampleArg ? Number(sampleArg.split('=')[1]) : 7;
   const measured = benchmarkGuidanceCache({ samples });
   process.stdout.write(`${JSON.stringify(measured)}\n`);
-  if (check) checkCacheBudgets(measured);
+  if (check && process.env.AITM_TEST_EXECUTION_LIMITS === 'suspended')
+    process.stderr.write('Guidance timing enforcement suspended by explicit user instruction.\n');
+  else if (check) checkCacheBudgets(measured);
 }

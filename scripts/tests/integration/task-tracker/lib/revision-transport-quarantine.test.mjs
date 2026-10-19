@@ -616,6 +616,10 @@ test('transition16 new public roots refuse forged input before caller descriptor
       () => native.assertOriginalNativeTransitionResult({}, context, response),
       (error) => error instanceof TypeError && error.message === 'native-transition-result-custody'
     );
+    assert.throws(
+      () => native.assertOriginalNativeTransitionCallCustody(context),
+      (error) => error instanceof TypeError && error.message === 'native-transition-result-custody'
+    );
     for (const name of [
       'acquireMemoryNativeStageTransition',
       'persistMemoryNativeStageTransition',
@@ -654,6 +658,7 @@ test('transition16 new public roots refuse forged input before caller descriptor
     for (const name of [
       'assertMemoryNativeStageTransitionCreateResponse',
       'assertMemoryNativeStageTransitionReadResponse',
+      'assertMemoryNativeStageTransitionResponseCustody',
     ])
       assert.throws(
         () => store[name](context, response),
@@ -665,134 +670,49 @@ test('transition16 new public roots refuse forged input before caller descriptor
   assert.equal(gets, 0);
 });
 
-// Direct public root under a genuine held stage frame; no original checkpoint
-// operation is fabricated by this fixture.
-for (const shape of ['own', 'inherited', 'nested-identity', 'nested-state']) {
-  test(`native actor state root refuses ${shape} getters before record construction`, async () => {
-    const { writeNativeStageActorTiming } =
-      await import('../../../../task-tracker/lib/actor-timing-state.mjs');
-    const sandbox = createSandbox();
-    try {
-      const { backend, context } = await fixture('empty', { worktree: sandbox.context.sourceRoot });
-      await withMemoryInterlock(backend, context, (capability) =>
-        withRevisionConsumer(
-          { repository: context.repository, issue: context.issue, activity: 'stage-write', backend, capability },
-          async () => {
-            const gets = [], identity = { provider: 'claude', sid: 'fixture-actor-root' }, state = {};
-            let operation = { kind: 'write-actor', identity, state, projDir: context.executor.worktree };
-            if (shape === 'own' || shape === 'inherited') {
-              const target = shape === 'own' ? operation : {};
-              if (shape === 'inherited') operation = Object.create(target);
-              Object.defineProperties(target, {
-                identity: { enumerable: true, configurable: true, get() { gets.push('identity'); return identity; } },
-                state: { enumerable: true, configurable: true, get() { gets.push('state'); return state; } },
-              });
-            } else if (shape === 'nested-identity') {
-              Object.defineProperty(identity, 'provider', {
-                enumerable: true, configurable: true, get() { gets.push('provider'); return 'claude'; },
-              });
-            } else {
-              Object.defineProperty(state, 'active', {
-                enumerable: true, configurable: true, get() { gets.push('active'); return '#124'; },
-              });
-            }
-            const snapshot = backend.snapshot, effects = structuredClone(backend.effects);
-            let caught;
-            try { await writeNativeStageActorTiming(Object.freeze({}), operation); }
-            catch (error) { caught = error; }
-            assert.deepEqual(backend.snapshot, snapshot);
-            assert.deepEqual(backend.effects, effects);
-            assert.deepEqual(gets, []);
-            assert.ok(caught);
-            refused(caught);
-            assert.equal(caught.preparationReason, 'original-checkpoint-invocation');
-          }
-        )
-      );
-    } finally { sandbox.dispose(); }
+// @story #1915
+test('completed16 public roots cannot create original-call, read or result custody from caller DATA', async () => {
+  const core = await import('../../../../task-tracker/lib/move-state/move-state-core.mjs');
+  const store = await import('../../../../task-tracker/lib/criteria-revision/store.mjs');
+  const native = await import('../../../../task-tracker/lib/move-state/transition-commit.mjs');
+  let gets = 0;
+  const value = {};
+  for (const key of ['backend', 'capability', 'context', 'token', 'invocation', 'stdout'])
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      get() {
+        gets++;
+        throw new Error('forged getter');
+      },
+    });
+  await withMemoryStageEffectQuarantine(async () => {
+    for (const invoke of [
+      () => core.consumeOriginalNativeStageRestartCall(value, value),
+      () => core.assertCompleted16ResumeFrame(value, value),
+      () => core.beginExistingNativeTransitionRead(value, value),
+      () => core.assertExistingNativeTransitionInput(value, value),
+      () => core.readExistingNativeTransitionExpected(value, value),
+      () => core.readExistingNativeStageTransitionIntent(value, value, value, value),
+      () => core.assertExistingNativeTransitionComparison(value, value),
+    ])
+      assert.throws(invoke, refused);
+    await assert.rejects(core.readCompleted16NativeTransitionComment(value, value), refused);
+    await assert.rejects(native.readExistingTransitionCommit(value, value), refused);
+    assert.throws(
+      () => native.assertExistingNativeTransitionResult(value, value, value),
+      TypeError
+    );
+    for (const name of [
+      'acquireMemoryExistingNativeStageTransition',
+      'readMemoryExistingNativeStageTransition',
+    ])
+      await assert.rejects(store[name](value), TypeError);
+    assert.throws(() => store.releaseMemoryExistingNativeStageTransition(value), TypeError);
+    assert.throws(
+      () => store.assertMemoryExistingNativeStageTransitionResponse(value, value),
+      TypeError
+    );
   });
-}
-
-// Direct exports are independent roots: the sequencer's fence cannot protect
-// a caller that reaches an original leaf without the sequencer invocation.
-for (const name of [
-  'dispatchOnEnterActions',
-  'refreshKanbanStateCache',
-  'emitFullAutoReviewAudit',
-  'unparkDoneDependents',
-  'emitOutOfBandAudit',
-  'syncTrackerState',
-  'syncEventFields',
-  'endTaskTracking',
-]) {
-  test(`actual tail leaf ${name} refuses public getters before selecting any callback`, async () => {
-    const cache = await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs');
-    const audit = await import('../../../../task-tracker/lib/move-state/audit-timing.mjs');
-    const original = cache[name] ?? audit[name];
-    assert.equal(typeof original, 'function');
-    const sandbox = createSandbox();
-    try {
-      const { backend, context } = await fixture('empty', { worktree: sandbox.context.sourceRoot });
-      await withMemoryInterlock(backend, context, (capability) =>
-        withRevisionConsumer(
-          { repository: context.repository, issue: context.issue, activity: 'stage-write', backend, capability },
-          async () => {
-            const gets = [], ctx = {};
-            for (const key of [
-              'issueArg', 'stateArg', 'resolvedFromState', 'cfg', 'SKIP_NETWORK',
-              'deps', 'outOfBandReason', 'gh', 'pexec', '__dir', 'itemId', 'reviewAuthority',
-            ]) Object.defineProperty(ctx, key, {
-              enumerable: true,
-              get() { gets.push(key); throw new Error('public tail getter'); },
-            });
-            const snapshot = backend.snapshot, effects = structuredClone(backend.effects);
-            let caught, result;
-            try { result = await original(ctx); }
-            catch (error) { caught = error; }
-            assert.deepEqual(backend.snapshot, snapshot);
-            assert.deepEqual(backend.effects, effects);
-            assert.deepEqual(gets, []);
-            assert.equal(result, undefined);
-            assert.ok(caught);
-            refused(caught);
-          }
-        )
-      );
-    } finally { sandbox.dispose(); }
-  });
-}
-
-// #1855: the compensation writer is independently callable; its parameter
-// destructuring must not run before the governed stage root refuses the call.
-for (const shape of ['own', 'inherited', 'plain-callback']) {
-  test(`original state recording refuses ${shape} before getters or legacy writes`, async () => {
-    const { writeIssueBodyWithRetry } = await import('../../../../task-tracker/lib/state-recording.mjs');
-    const sandbox = createSandbox();
-    try {
-      const { backend, context } = await fixture('empty', { worktree: sandbox.context.sourceRoot });
-      await withMemoryInterlock(backend, context, capability => withRevisionConsumer(
-        { repository: context.repository, issue: context.issue, activity: 'stage-write', backend, capability },
-        async () => {
-          const gets = [], calls = [];
-          const values = { issueNumber: 124, repo: context.repository, body: 'BODY', target: 'develop', writeIssueBody: async () => calls.push('write'), postComment: async () => calls.push('post') };
-          let input = values;
-          if (shape !== 'plain-callback') {
-            const properties = {};
-            for (const key of Object.keys(values)) Object.defineProperty(properties, key, { enumerable: true, get() { gets.push(key); return values[key]; } });
-            input = shape === 'inherited' ? Object.create(properties) : properties;
-          }
-          const snapshot = backend.snapshot, effects = structuredClone(backend.effects);
-          let caught, result;
-          try { result = await writeIssueBodyWithRetry(input); } catch (error) { caught = error; }
-          assert.deepEqual(backend.snapshot, snapshot);
-          assert.deepEqual(backend.effects, effects);
-          assert.deepEqual(gets, []);
-          assert.deepEqual(calls, []);
-          assert.equal(result, undefined);
-          assert.ok(caught);
-          refused(caught);
-        }
-      ));
-    } finally { sandbox.dispose(); }
-  });
-}
+  await assert.rejects(native.readExistingTransitionCommit(value, value), TypeError);
+  assert.equal(gets, 0);
+});

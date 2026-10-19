@@ -1,0 +1,20 @@
+✔ explicit contention suspension records elapsed time without a duration failure (0.565208ms)
+✔ revoking or misspelling suspension restores the original ceiling (0.085125ms)
+✔ explicit suspension removes the lifecycle verifier execution deadline (0.081083ms)
+✔ test-file and aggregate deadlines suspend only for the exact setting (0.068708ms)
+✔ suspended duration enforcement still rejects a real failing verifier and stops the next command (51.695583ms)
+✔ legacy guidance inventory freezes all seven actions, authority resources, and behavioral reads (1307.380666ms)
+✔ inventory completeness rejects a removed action observation or behavioral flag row (1055.263625ms)
+✔ live inventory refuses removal of the post-baseline usage context (2085.894708ms)
+✔ two-lane tests DoD line resolves to both lane commands (1.27425ms)
+✔ runVerifiers runs separate lanes with deadline setting default (2.614542ms)
+✔ runVerifiers runs separate lanes with deadline setting suspended (0.164042ms)
+✔ runVerifiers runs separate lanes with deadline setting true (0.100833ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4552.152291

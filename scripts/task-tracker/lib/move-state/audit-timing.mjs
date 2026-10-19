@@ -25,7 +25,10 @@ import {
   buildRow as nativeBuildRow,
   postTimingEvent as nativePostTimingEvent,
 } from '../../gh-timing-comment.mjs';
-import { isMemoryStageEffectScope, assertRevisionStageHostEffect } from '../criteria-revision/transport-quarantine.mjs';
+import {
+  isMemoryStageEffectScope,
+  assertRevisionStageHostEffect,
+} from '../criteria-revision/transport-quarantine.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
@@ -72,6 +75,7 @@ export function readNativePhaseTimingInput(input, context) {
 // state and no entry event for the target). Best-effort — failures here
 // do not roll back the committed board move.
 export async function emitPhasePairRows(ctx) {
+  const nativeMemory = isMemoryStageEffectScope();
   const { issueArg, stateArg, resolvedFromState, demoteFlag, demoteReason, cfg, SKIP_NETWORK } =
     ctx;
   if (SKIP_NETWORK) return;
@@ -79,7 +83,6 @@ export async function emitPhasePairRows(ctx) {
     const { timing, events } = await resolveTimingDeps(ctx);
     const { buildRow, postTimingEvent } = timing;
     const { PHASE_EVENTS } = events;
-    const nativeMemory = isMemoryStageEffectScope();
     if (
       nativeMemory &&
       (buildRow !== nativeBuildRow ||
@@ -244,6 +247,7 @@ export async function emitPhasePairRows(ctx) {
     }
   } catch (err) {
     process.stderr.write(`[move-state] #${issueArg}: phase-pair emission failed: ${err.message}\n`);
+    if (nativeMemory) throw err;
   }
 }
 
