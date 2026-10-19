@@ -1,4 +1,4 @@
-// @story #1987 — current read-only authority; no effect ports reach collection.
+// @story #1987 #2034 — current read-only authority; no effect ports reach collection.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -527,7 +527,7 @@ async function readiness({ kind, project, plan, body, subject, projectDir, deps,
         sourcePlanSection: claim.sourcePlanSection ?? null,
         refinementDigest: refinement?.digest ?? null,
         rank: child.rank ?? child.sequence ?? null,
-        blockedBy: child.blockedBy ?? [],
+        blockedBy: (child.blockedBy ?? []).toSorted((left, right) => left - right),
         state: child.state,
         disposition: child.closeReason ?? null,
       };
