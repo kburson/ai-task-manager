@@ -410,17 +410,18 @@ export const VERB_REFERENCE = {
     summary:
       'Prepare, publish, inspect, revoke or recover immutable rank-wave admission authority.',
     usage:
-      '/task epic-wave <prepare|record|resume|refresh|show|revoke|lock-show|lock-release> <epic> [--input-file <path>] [--json]',
+      '/task epic-wave <prepare|record|resume|refresh|show|revoke|lock-show|lock-release|restore-worktree> <epic> [--input-file <path>] [--json]',
     flags: [
       {
         flag: '--input-file <path>',
-        desc: 'closed proposal, exact human source, resume identity, read selector or exact dead-lock observation; omitted for lock-show',
+        desc: 'closed proposal, source, resume identity, read selector, dead-lock observation, or restore selector; omitted for lock-show',
       },
       { flag: '--json', desc: 'structured output' },
     ],
     examples: [
       '/task epic-wave prepare 107 --input-file .scratch/gh/wave-selector.json --json',
       '/task epic-wave resume 107 --input-file .scratch/gh/wave-resume.json --json',
+      '/task epic-wave restore-worktree 107 --role orchestrator --input-file .scratch/gh/restore.json --json',
     ],
   },
   'decompose-check': {

@@ -1,5 +1,4 @@
-// @story #1986
-// @story #1926
+// @story #2014 #1986 #1926
 // @story #1904
 // @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
 // Package-boundary guard. The published tarball must ship only runtime material:
@@ -221,6 +220,12 @@ test('package-boundary: shipped README has no dead docs/introduction link', () =
 
 test('package-boundary: total entry count stays under the ceiling', () => {
   const files = packedFiles();
+  // #2014 ships exactly one recovery module and its operator guide, without headroom.
+  const retainedRecoveryEntries = [
+    'scripts/task-tracker/lib/epic-rank-wave-restore-worktree.mjs',
+    'docs/guides/retained-worktree-recovery.md',
+  ];
+  for (const entry of retainedRecoveryEntries) assert.ok(files.includes(entry));
   // #1986 inventory measured 919 entries versus the prior 917 ceiling:
   // exactly the strict runtime assessment and record codec, with tests excluded.
   for (const entry of [
@@ -399,6 +404,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   for (const entry of compositionProofEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
     ENTRY_CEILING +
+    retainedRecoveryEntries.length +
     estimatePublicationEntries.length +
     recoveryEntryAllowance +
     childIntegrationEntries.length +
