@@ -170,11 +170,12 @@ export function parseArgs(argv) {
 
 export function printUsage(out = process.stdout) {
   out.write(
-    'Usage: node scripts/task-tracker/heal-timing-departure.mjs <issue#> [--apply | --check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--recover-redundant-same-second-reengagement] [--yes]\n' +
+    'Usage: node scripts/task-tracker/heal-timing-departure.mjs <issue#> [--apply | --check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--recover-redundant-same-second-pair] [--recover-redundant-same-second-reengagement] [--allow-foreign-worktree] [--yes]\n' +
       '  row indexes are zero-based Timing Log data-row indexes; dry-run is the default\n' +
       '  --at places the departure at that timestamp; it must fall strictly between the preceding row and the reengagement\n' +
       '  --recover-redundant-same-second-pair removes one exact zero-duration malformed departure/reengagement pair and requires --row-index\n' +
-      '  --recover-redundant-same-second-reengagement removes one exact standalone resumed row between same-second demoted:develop and develop:started rows and requires --row-index\n'
+      '  --recover-redundant-same-second-reengagement removes one exact standalone resumed row between same-second demoted:develop/develop:started or authenticated zero-work develop:completed/test:started rows and requires --row-index\n' +
+      '  --allow-foreign-worktree is the existing routing-only scope exception; all recovery predicates remain unchanged\n'
   );
 }
 
@@ -192,6 +193,7 @@ export async function main(argv, deps = {}) {
       flags: [
         '--apply',
         '--check-only',
+        '--allow-foreign-worktree',
         '--yes',
         '--recover-redundant-same-second-pair',
         '--recover-redundant-same-second-reengagement',

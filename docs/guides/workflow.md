@@ -788,7 +788,13 @@ node scripts/task-tracker/heal-timing-departure.mjs N \
 
 The healer removes only a physically adjacent, same-second
 `demoted:develop` / `resumed` / `develop:started` triple whose redundant row has
-zero time, no delta, and unchanged cursors. Every near miss fails closed.
+zero time, no delta, and unchanged cursors. Every near miss fails closed. The same mode also accepts the shared
+`develop:completed` / `resumed` / `test:started` sibling only when all three
+rows have zero credited work, identical numeric word and full-word cursors,
+no actor identity, and exactly one matching canonical transition UUID. It
+removes only the redundant `resumed` row and preserves Unknown totals. The
+existing `--allow-foreign-worktree` flag is accepted for routing; recovery
+predicates and unknown-flag refusal remain unchanged.
 
 Close revalidates the receipt and approval provenance before any binding, body,
 timing, lifecycle, board, label, disposition, or issue-close mutation. Full-Auto
