@@ -7,17 +7,17 @@ import { reportingPartition } from '../../../helpers/criteria-revision-reporting
 const discovered = discoverOriginalCases();
 const expectedA = [
   'criteria-revision-partial-cancel.test.mjs',
-  'criteria-revision-partial-late-authority.test.mjs',
-  'criteria-revision-partial-late-input.test.mjs',
-  'criteria-revision-partial-late-source.test.mjs',
-  'criteria-revision-partial-final-authority.test.mjs',
-].sort();
-const expectedB = [
   'criteria-revision-partial-final-source.test.mjs',
-  'native-stage-phase-12-prefix-after-effect-readback.test.mjs',
-  'native-stage-board-effect-readback-failAfter.test.mjs',
+  'criteria-revision-partial-late-source.test.mjs',
   'native-stage-sentinel-effect-readback-failAfter.test.mjs',
   'native-stage-transition-comment.test.mjs',
+].sort();
+const expectedB = [
+  'criteria-revision-partial-final-authority.test.mjs',
+  'criteria-revision-partial-late-authority.test.mjs',
+  'criteria-revision-partial-late-input.test.mjs',
+  'native-stage-board-effect-readback-failAfter.test.mjs',
+  'native-stage-phase-12-prefix-after-effect-readback.test.mjs',
 ].sort();
 const names = (group) => group.map(({ filename }) => filename).sort();
 

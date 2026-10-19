@@ -2,17 +2,17 @@
 import assert from 'node:assert/strict';
 const groupA = [
   'criteria-revision-partial-cancel.test.mjs',
-  'criteria-revision-partial-late-authority.test.mjs',
-  'criteria-revision-partial-late-input.test.mjs',
-  'criteria-revision-partial-late-source.test.mjs',
-  'criteria-revision-partial-final-authority.test.mjs',
-];
-const groupB = [
   'criteria-revision-partial-final-source.test.mjs',
-  'native-stage-phase-12-prefix-after-effect-readback.test.mjs',
-  'native-stage-board-effect-readback-failAfter.test.mjs',
+  'criteria-revision-partial-late-source.test.mjs',
   'native-stage-sentinel-effect-readback-failAfter.test.mjs',
   'native-stage-transition-comment.test.mjs',
+];
+const groupB = [
+  'criteria-revision-partial-final-authority.test.mjs',
+  'criteria-revision-partial-late-authority.test.mjs',
+  'criteria-revision-partial-late-input.test.mjs',
+  'native-stage-board-effect-readback-failAfter.test.mjs',
+  'native-stage-phase-12-prefix-after-effect-readback.test.mjs',
 ];
 export function reportingPartition(discovered) {
   const baseModes = new Set([
@@ -21,7 +21,12 @@ export function reportingPartition(discovered) {
     'partial-reporting-16',
     'partial-reporting-unknown',
   ]);
-  const originalNames = groupB.slice(1);
+  const originalNames = [
+    'native-stage-phase-12-prefix-after-effect-readback.test.mjs',
+    'native-stage-board-effect-readback-failAfter.test.mjs',
+    'native-stage-sentinel-effect-readback-failAfter.test.mjs',
+    'native-stage-transition-comment.test.mjs',
+  ];
   const selected = discovered.filter(
     ({ filename, mode }) =>
       (mode.startsWith('partial-reporting-') && !baseModes.has(mode)) ||
