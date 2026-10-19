@@ -310,14 +310,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      324,
+      330,
       'event-call',
       "'gate-refused'",
       ['gate-refused']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      400,
+      406,
       'event-call',
       "'lifecycle-warn'",
       ['lifecycle-warn']
@@ -394,17 +394,17 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/reject.mjs', 71, 'event-call', "'rejected:develop'", [
       'rejected:develop',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 257, 'event-call', "'resumed'", [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 258, 'event-call', "'resumed'", [
       'resumed',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/resume.mjs',
-      504,
+      505,
       'event-call',
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 531, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 532, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),

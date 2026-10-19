@@ -13,6 +13,7 @@
 //   - Solo + epic + missing-marker fixtures produce the documented refusal
 //     mix.
 
+import { currentGuardContext } from './decomposition-governed-fixtures.mjs';
 import { describe, it } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
@@ -53,8 +54,8 @@ async function runStateObjectGuards(from, to, ctx) {
 // (needs deps.plannedEstimate.listComments) and planExitDeepDiveGuard
 // (body-only). APPROVED_BODY now carries the full deep-dive marker trio so
 // only the plan-approved / epic-children rules drive accept/refuse here.
-function makeCtx({ body = '', epicChildren = [] } = {}) {
-  return {
+async function makeCtx({ body = '', epicChildren = [] } = {}) {
+  return currentGuardContext({
     issueNumber: 277,
     repo: 'owner/name',
     fromState: 'plan',
@@ -102,7 +103,7 @@ function makeCtx({ body = '', epicChildren = [] } = {}) {
       },
     },
     fetchBlockerState: async () => null,
-  };
+  });
 }
 
 let APPROVED_BODY = [
@@ -167,7 +168,7 @@ const BARE_BODY = '## Scope\n\nno marker here\n';
 
 describe('guard-parity-plan-develop: registry == state-object walk', () => {
   it('present stale bindings cannot be waived in either registry walk', async () => {
-    const ctx = makeCtx({
+    const ctx = await makeCtx({
       body: APPROVED_BODY.replace('As a release operator', 'As a registry operator'),
     });
     ctx.workflowPolicy = { isWaived: () => true };
@@ -180,9 +181,9 @@ describe('guard-parity-plan-develop: registry == state-object walk', () => {
   });
   it('Test to Develop never runs story binding gate', async () => {
     const ctx = {
-      ...makeCtx({
+      ...(await makeCtx({
         body: APPROVED_BODY.replace('As a release operator', 'As a registry operator'),
-      }),
+      })),
       fromState: 'test',
     };
     ctx.deps.resolveStoryIntent = () => assert.fail('must not read intent');
@@ -190,7 +191,7 @@ describe('guard-parity-plan-develop: registry == state-object walk', () => {
     assert.ok(!result.refusals.some((r) => r.id === 'plan-exit-story-approval-binding'));
   });
   it('accept: solo issue with plan-approved marker passes both paths', async () => {
-    const ctx = makeCtx({ body: APPROVED_BODY, epicChildren: [] });
+    const ctx = await makeCtx({ body: APPROVED_BODY, epicChildren: [] });
     const reg = await runGuards('plan', 'develop', ctx);
     const obj = await runStateObjectGuards('plan', 'develop', ctx);
     assert.equal(reg.ok, true, JSON.stringify(reg.refusals));
@@ -198,7 +199,7 @@ describe('guard-parity-plan-develop: registry == state-object walk', () => {
   });
 
   it('refuse: missing marker — both paths refuse with plan-exit-plan-approved', async () => {
-    const ctx = makeCtx({ body: BARE_BODY });
+    const ctx = await makeCtx({ body: BARE_BODY });
     const reg = await runGuards('plan', 'develop', ctx);
     const obj = await runStateObjectGuards('plan', 'develop', ctx);
     assert.equal(reg.ok, false);
@@ -211,7 +212,7 @@ describe('guard-parity-plan-develop: registry == state-object walk', () => {
   });
 
   it('refuse: epic with backlog child — both paths refuse with epic-children id', async () => {
-    const ctx = makeCtx({
+    const ctx = await makeCtx({
       body: APPROVED_BODY,
       epicChildren: [
         {
@@ -236,7 +237,7 @@ describe('guard-parity-plan-develop: registry == state-object walk', () => {
   });
 
   it('refuse: missing marker + backlog child — both refusals surface together', async () => {
-    const ctx = makeCtx({
+    const ctx = await makeCtx({
       body: BARE_BODY,
       epicChildren: [{ number: 9, state: 'backlog' }],
     });
@@ -249,7 +250,7 @@ describe('guard-parity-plan-develop: registry == state-object walk', () => {
 
   it('rollback: plan → refine bypasses plan-exit-develop guards', async () => {
     const ctx = {
-      ...makeCtx({ body: BARE_BODY }),
+      ...(await makeCtx({ body: BARE_BODY })),
       toState: 'refine',
     };
     const reg = await runGuards('plan', 'refine', ctx);

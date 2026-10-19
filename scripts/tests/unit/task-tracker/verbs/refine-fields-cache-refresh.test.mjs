@@ -1,7 +1,8 @@
 // @story #223
+import { runRefineOrchestration as runRefine } from '../../../fixtures/refinement-orchestration.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { runRefine } from '../../../../task-tracker/verbs/refine.mjs';
+
 import { parseIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
 
 const FIELD_DEFS = [

@@ -1,3 +1,4 @@
+// @story #1990
 // @story #1857
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -46,10 +47,11 @@ function activity(tool_input, tool_name = 'Write', state = null, chore = false) 
     env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: root },
   });
   assert.equal(result.status, 0, result.stderr);
+  activity.lastVerdict = result.stdout;
   return result.stdout ? JSON.parse(result.stdout).decision : 'allow';
 }
 
-test('ordinary docs and every scratch format allow without ownership in every state', () => {
+test('scratch recovery stays available and bound documents require current authority', () => {
   for (const issueState of states)
     for (const filePath of artifacts) {
       const result = decideSourceEdit({
@@ -64,10 +66,10 @@ test('ordinary docs and every scratch format allow without ownership in every st
         hasCompleteMarker: false,
       });
       assert.equal(result.decision, 'allow', `${issueState}: ${filePath}`);
-      assert.notEqual(
+      assert.equal(
         activity({ file_path: filePath }, 'Write', issueState),
-        'block',
-        `${issueState}: ${filePath}`
+        issueState && filePath.startsWith('docs/') ? 'block' : 'allow',
+        issueState + ': ' + filePath
       );
     }
 });
@@ -175,7 +177,11 @@ const writers = [
 test('complete literal writers authorize artifacts without a matching binding', () => {
   for (const command of writers) {
     for (const state of states)
-      assert.notEqual(activity({ command }, 'Bash', state), 'block', command);
+      assert.equal(
+        activity({ command }, 'Bash', state),
+        state && command.includes('docs/') ? 'block' : 'allow',
+        command + ' ' + activity.lastVerdict
+      );
     assert.equal(
       evaluateBashWorktreeBinding({
         command,

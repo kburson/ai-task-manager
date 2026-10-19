@@ -1,3 +1,4 @@
+// @story #1990
 // @story #887
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,7 +14,9 @@ import {
   INVARIANT_MARKER_PATTERNS,
   findLostMarkers,
 } from '../../../../task-tracker/lib/body-invariants.mjs';
-import { gateCodeComplete } from '../../../../task-tracker/lib/code-complete-gate.mjs';
+import { currentUnitAuthority } from './decomposition-unit-admission-fixture.mjs';
+import { isNoCommitKind } from '../../../../task-tracker/lib/issue-kind.mjs';
+import { gateCodeComplete as currentProductionGate } from '../../../../task-tracker/lib/code-complete-gate.mjs';
 
 const CFG = { repo: 'kburson/ai-task-manager' };
 
@@ -205,3 +208,22 @@ test('guard-rail: reconciliation does not excuse an unticked AC', async () => {
   assert.equal(res.ok, false);
   assert.ok(res.blockers.some((b) => b.startsWith('code-complete-ac-unticked:')));
 });
+
+async function gateCodeComplete(options) {
+  if (!isNoCommitKind(options.body)) return currentProductionGate(options);
+  const current = await currentUnitAuthority({
+    body: options.body,
+    issue: options.issueNumber,
+    repository: options.cfg.repo,
+  });
+  return currentProductionGate({
+    ...options,
+    cfg: current.cfg,
+    body: current.body,
+    deps: {
+      ...options.deps,
+      decomposition: { subject: current.subject, runtime: current.runtime },
+      projectDir: current.projectDir,
+    },
+  });
+}

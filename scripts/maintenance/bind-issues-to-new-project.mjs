@@ -17,8 +17,13 @@
 //   node scripts/maintenance/bind-issues-to-new-project.mjs
 //   node scripts/maintenance/bind-issues-to-new-project.mjs --repo owner/name --project PVT_xxx
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import {
+  publishMigrationFields,
+  copyInitialMigrationFields,
+  withMigrationIssueOwner,
+  fetchMigrationIssueBody,
+} from '../task-tracker/lib/decomposition-migration-writer.mjs';
+import { assertDecompositionPublicationOwner } from '../task-tracker/lib/decomposition-projection.mjs';
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import { loadProjectFieldDefs, buildFieldSyncPlan } from '../task-tracker/project-fields.mjs';
@@ -26,14 +31,11 @@ import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { readLastKnownState } from '../task-tracker/gh-timing-comment.mjs';
 import { stateIds } from '../task-tracker/lib/lifecycle-policy/index.mjs';
 import {
-  addIssueToProject,
   fieldOptionMap,
   projectItemForIssue,
   writeProjectFieldValue,
 } from '../gh/lib/github-projects.mjs';
 import { listAllIssues } from '../gh/lib/list-issues.mjs';
-
-const pexec = promisify(execFile);
 
 const VALID_STATES = new Set(stateIds());
 
@@ -55,24 +57,90 @@ function parseArgs(argv) {
   return args;
 }
 
-async function fetchIssueBody(repo, issueNumber) {
-  const { stdout } = await pexec(
-    'gh',
-    ['api', `repos/${repo}/issues/${issueNumber}`, '--jq', '.body // ""'],
-    { timeout: 15000 }
-  );
-  return stdout;
-}
-
 export function statusForIssue(body, state) {
   if (String(state).toLowerCase() === 'closed') return 'Done';
   const { state: markerState } = readLastKnownState(body);
   return VALID_STATES.has(markerState) ? statusName(markerState) : null;
 }
 
+export async function bindProjectIssue({
+  cfg,
+  issue,
+  fieldDefs,
+  optionMap,
+  dryRun = false,
+  deps = {},
+}) {
+  const issueNumber = Number(issue.number);
+  const run = async () => {
+    const body = await fetchMigrationIssueBody({ cfg, issueNumber, deps }),
+      parsed = parseIssueFieldDb(body);
+    if (!parsed.ok) return { status: 'no-field-db', reason: parsed.reason };
+    const values = { ...parsed.values };
+    if (String(issue.state).toLowerCase() === 'closed') delete values.rank;
+    const membership = await (deps.projectItemForIssue ?? projectItemForIssue)({
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      issueNumber,
+    });
+    const status = statusForIssue(body, issue.state),
+      fieldCount = buildFieldSyncPlan({ cfg, fieldDefs, values }).length;
+    if (dryRun)
+      return {
+        status: 'dry-run',
+        initial: !membership.itemId,
+        fieldCount,
+        statusSet: Boolean(status),
+      };
+    const beforeEffects = async (context, createdItemId) => {
+      if (!status) return;
+      if (context)
+        await assertDecompositionPublicationOwner(context, {
+          subject: context.subject,
+          operationId: context.operationId,
+          effectId: 'estimate',
+          requireIntent: true,
+        });
+      const ok = await (deps.writeProjectFieldValue ?? writeProjectFieldValue)({
+        projectId: cfg.projectId,
+        itemId: createdItemId ?? membership.itemId,
+        fieldId: cfg.kanbanFieldId,
+        value: { singleSelectOptionName: status },
+        optionMap,
+      });
+      if (ok === false) throw new Error('bind-issues-to-new-project:status-unconfirmed');
+    };
+    const input = { cfg, issueNumber, values, fieldDefs, optionMap, beforeEffects, deps };
+    const result = membership.itemId
+      ? await publishMigrationFields({
+          ...input,
+          itemId: membership.itemId,
+          writerId: 'bind-issues-to-new-project',
+        })
+      : await copyInitialMigrationFields({
+          ...input,
+          issueId: membership.issueId ?? issue.id,
+          body,
+        });
+    return { ...result, initial: !membership.itemId, fieldCount, statusSet: Boolean(status) };
+  };
+  try {
+    return dryRun ? await run() : await withMigrationIssueOwner({ issueNumber, deps }, run);
+  } catch (error) {
+    return { status: 'partial', reason: error.message };
+  }
+}
+
 async function main() {
   const { dryRun, repo: repoArg, project: projectArg } = parseArgs(process.argv.slice(2));
-  const cfg = loadConfig();
+  const loadedCfg = loadConfig();
+  const cfg = {
+    ...loadedCfg,
+    repo: repoArg || loadedCfg.repo,
+    projectId: projectArg || loadedCfg.projectId,
+  };
+  if (projectArg && projectArg !== loadedCfg.projectId)
+    throw new Error('project override requires matching configured field ids; re-run init first');
   const repo = repoArg || cfg.repo;
   const projectId = projectArg || cfg.projectId;
   if (!repo || !projectId) {
@@ -102,90 +170,21 @@ async function main() {
   let errors = 0;
 
   for (const issue of issues) {
-    try {
-      const { issueId, itemId: existingItemId } = await projectItemForIssue({
-        repo,
-        projectId,
-        issueNumber: issue.number,
-      });
-
-      let itemId = existingItemId;
-      if (!itemId) {
-        if (dryRun) {
-          process.stdout.write(`  [dry-run] #${issue.number}: would add to project\n`);
-          added++;
-        } else {
-          itemId = await addIssueToProject(projectId, issueId);
-          added++;
-          process.stdout.write(`  + #${issue.number}: added (item ${itemId})\n`);
-        }
-      } else {
-        alreadyOn++;
-      }
-
-      const body = await fetchIssueBody(repo, issue.number);
-      const status = statusForIssue(body, issue.state);
-
-      if (status && (itemId || dryRun)) {
-        if (dryRun) {
-          process.stdout.write(`  [dry-run] #${issue.number}: Status → ${status}\n`);
-          statusSet++;
-        } else {
-          const ok = await writeProjectFieldValue({
-            projectId,
-            itemId,
-            fieldId: cfg.kanbanFieldId,
-            value: { singleSelectOptionName: status },
-            optionMap,
-          });
-          if (ok) {
-            statusSet++;
-            process.stdout.write(`  ✓ #${issue.number}: Status=${status}\n`);
-          } else {
-            errors++;
-            process.stderr.write(
-              `  ⚠ #${issue.number}: option '${status}' not found on new board\n`
-            );
-          }
-        }
-      } else if (!status) {
-        process.stdout.write(`  · #${issue.number}: no Status (no aitm-last-known-state marker)\n`);
-      }
-
-      const parsed = parseIssueFieldDb(body);
-      if (!parsed.ok) {
-        noFieldDb++;
-        continue;
-      }
-      const values = { ...parsed.values };
-      if (issue.state === 'closed') delete values.rank;
-      const plan = buildFieldSyncPlan({ cfg, fieldDefs, values });
-      for (const step of plan) {
-        if (dryRun) {
-          process.stdout.write(
-            `  [dry-run] #${issue.number}: ${step.key} → ${JSON.stringify(step.value)}\n`
-          );
-          fieldsSet++;
-          continue;
-        }
-        try {
-          await writeProjectFieldValue({
-            projectId,
-            itemId,
-            fieldId: step.fieldId,
-            value: step.value,
-            optionMap,
-          });
-          fieldsSet++;
-        } catch (err) {
-          errors++;
-          process.stderr.write(`  ⚠ #${issue.number}: write ${step.key} failed: ${err.message}\n`);
-        }
-      }
-    } catch (err) {
-      errors++;
-      process.stderr.write(`  ⚠ #${issue.number}: ${err.message}\n`);
+    const result = await bindProjectIssue({ cfg, issue, fieldDefs, optionMap, dryRun });
+    if (result.status === 'no-field-db') {
+      noFieldDb++;
+      continue;
     }
+    if (!['copied', 'recorded', 'unchanged', 'dry-run'].includes(result.status)) {
+      errors++;
+      process.stderr.write(`  #${issue.number}: ${result.status}: ${result.reason ?? ''}\n`);
+      continue;
+    }
+    if (result.initial) added++;
+    else alreadyOn++;
+    if (result.statusSet) statusSet++;
+    fieldsSet += result.fieldCount ?? 0;
+    process.stdout.write(`  #${issue.number}: ${result.status}\n`);
   }
 
   process.stdout.write(

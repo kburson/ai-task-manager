@@ -1,5 +1,11 @@
 // #1130 — one authority for Epic issue metadata convergence.
 
+import { loadConfig } from '../../task-tracker/config.mjs';
+import { getProjectDir } from '../../task-tracker/paths.mjs';
+import {
+  assertGovernedDecompositionRecovery,
+  refreshGovernedDecomposition,
+} from '../../task-tracker/lib/decomposition-plan-exit-guard.mjs';
 import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { promisify } from 'node:util';
@@ -90,6 +96,8 @@ export async function reconcileEpicMetadata({
   issueNumber,
   repo,
   forceEpic = false,
+  cfg,
+  projectDir = getProjectDir(),
   deps = {},
 } = {}) {
   if (!Number.isInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
@@ -108,16 +116,25 @@ export async function reconcileEpicMetadata({
   const plan = planEpicMetadata({ ...before, forceEpic });
   if (!plan.isEpic) return { status: 'not-epic', ...target };
 
+  const recovery = {
+    issueNumber: Number(issueNumber),
+    cfg: cfg ?? { ...loadConfig(), repo },
+    projectDir,
+    deps,
+  };
+  await assertGovernedDecompositionRecovery({ ...recovery, body: before.body });
   const desiredBody = reconcileEpicBody(before.body, templateDodText);
   const bodyChanged = desiredBody !== before.body;
   if (bodyChanged) {
     await mutateBody({
       ...target,
-      deps: { pexec: run },
+      deps: { ...deps, pexec: run },
+      validateFreshBaseAsync: (body) => assertGovernedDecompositionRecovery({ ...recovery, body }),
       mutate: (liveBody) => reconcileEpicBody(liveBody, templateDodText),
     });
   }
   if (plan.titleChanged || plan.labelsToAdd.length > 0) {
+    await assertGovernedDecompositionRecovery({ ...recovery, body: (await read(target)).body });
     await write({
       ...target,
       title: plan.titleChanged ? plan.desiredTitle : null,
@@ -133,7 +150,12 @@ export async function reconcileEpicMetadata({
   }
 
   const changed = bodyChanged || plan.titleChanged || plan.labelsToAdd.length > 0;
-  return { status: changed ? 'reconciled' : 'already-converged', ...target };
+  const decomposition = await refreshGovernedDecomposition(recovery);
+  console.log(
+    '[task-tracker] decomposition after epic metadata: ' +
+      (decomposition.current?.assessment.status ?? decomposition.status)
+  );
+  return { status: changed ? 'reconciled' : 'already-converged', ...target, decomposition };
 }
 
 export { EPIC_PREFIX };

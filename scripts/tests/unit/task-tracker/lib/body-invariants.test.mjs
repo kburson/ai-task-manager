@@ -397,3 +397,26 @@ test('reviewed Scope policy is protected as an invariant; pointer remains distin
     'aitm-scope-evidence-policy',
   ]);
 });
+
+// @story #1987 — raw marker names and caller flags grant no authority.
+for (const name of ['assessment', 'publication']) {
+  test(`generic decomposition ${name} insertion cannot mint authority`, () => {
+    const marker = `<!-- aitm-decomposition-${name} schema="1" payload="e30" -->`;
+    assert.throws(
+      () =>
+        validateMarkerAdvances('', marker, {
+          allowMarkerAdvance: [`aitm-decomposition-${name}`],
+          decompositionMutationCapability: { role: 'owner' },
+        }),
+      /marker-advance/
+    );
+  });
+  test(`decomposition ${name} removal is an unauthorized advance`, () => {
+    const marker = `<!-- aitm-decomposition-${name} schema="1" payload="e30" -->`;
+    assert.throws(
+      () =>
+        validateMarkerAdvances(marker, '', { allowMarkerAdvance: [`aitm-decomposition-${name}`] }),
+      /marker-advance/
+    );
+  });
+}

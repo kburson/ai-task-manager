@@ -1,4 +1,6 @@
+// @story #1990
 // @story #1628
+import { currentUnitAuthority } from '../../../unit/task-tracker/lib/decomposition-unit-admission-fixture.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -32,12 +34,18 @@ test('Develop source edit accepts only an explicit deep-dive waiver', () => {
 });
 
 test('runHook revalidates policy for every edit so revocation blocks the next boundary', async () => {
+  const current = await currentUnitAuthority({
+    issue: 1628,
+    repository: 'kburson/ai-task-manager',
+    body: '## AITM Progress Markers\n',
+  });
   let policyReads = 0;
   const deps = {
     projectDir,
     isChoreModeActive: () => false,
     loadBoundIssue: () => '#1628',
-    cfg: { repo: 'kburson/ai-task-manager' },
+    cfg: current.cfg,
+    decomposition: { subject: current.subject, runtime: current.runtime },
     gh: async () =>
       JSON.stringify({ body: '## User Story\nA\n## Scope\nS\n## Acceptance Criteria\n- [ ] A' }),
     resolveIssueSignals: async () => ({

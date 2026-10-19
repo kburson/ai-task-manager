@@ -10,6 +10,7 @@
 //   3. Both guards are wired into STATES.plan.exitGuards in the correct order.
 //   4. runGuards('plan','develop', ctx) surfaces refusals from both.
 
+import { currentGuardContext } from './decomposition-governed-fixtures.mjs';
 import { test } from 'node:test';
 import '../../../fixtures/offline-gh-auto.mjs';
 import assert from 'node:assert/strict';
@@ -758,22 +759,26 @@ test('runGuards(plan,refine): rollback bypasses plan-exit guards', async () => {
 });
 
 test('runGuards(plan,develop): marker present + solo issue → ok', async () => {
-  const r = await runGuards('plan', 'develop', {
-    issueNumber: 277,
-    repo: 'owner/name',
-    fromState: 'plan',
-    toState: 'develop',
-    body: APPROVED_BODY,
-    cfg: CFG,
-    deps: {
-      epicChildren: { fetchSiblings: async () => [] },
-      ownership: {
-        fetchCurrentUser: async () => 'kburson',
-        fetchSnapshot: async () => ({ state: 'plan', assignees: ['kburson'] }),
+  const r = await runGuards(
+    'plan',
+    'develop',
+    await currentGuardContext({
+      issueNumber: 277,
+      repo: 'owner/name',
+      fromState: 'plan',
+      toState: 'develop',
+      body: APPROVED_BODY,
+      cfg: CFG,
+      deps: {
+        epicChildren: { fetchSiblings: async () => [] },
+        ownership: {
+          fetchCurrentUser: async () => 'kburson',
+          fetchSnapshot: async () => ({ state: 'plan', assignees: ['kburson'] }),
+        },
+        ...PLANNED_ESTIMATE_OK_DEPS,
       },
-      ...PLANNED_ESTIMATE_OK_DEPS,
-    },
-    fetchBlockerState: async () => null,
-  });
+      fetchBlockerState: async () => null,
+    })
+  );
   assert.equal(r.ok, true, JSON.stringify(r.refusals));
 });

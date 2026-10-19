@@ -20,7 +20,7 @@ import {
   STUB_AC_PLACEHOLDER,
   GUARD_ID,
 } from '../../../../task-tracker/lib/refine-exit-stub-placeholder-guard.mjs';
-import { runRefine } from '../../../../task-tracker/verbs/refine.mjs';
+import { runRefineOrchestration as runRefine } from '../../../fixtures/refinement-orchestration.mjs';
 import { runPromote } from '../../../../task-tracker/verbs/promote.mjs';
 
 const baseCfg = { repo: 'owner/repo', projectId: 'PVT_FAKE' };

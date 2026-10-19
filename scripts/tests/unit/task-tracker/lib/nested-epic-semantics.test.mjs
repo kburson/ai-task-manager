@@ -142,7 +142,7 @@ test('wipAdvanceDecision: budget counts only immediate siblings under the sub-ep
   assert.equal(decision.advancing.length, 0);
 });
 
-test('wipAdvanceDecision: budget refuses when an immediate sub-epic sibling is already advancing', async () => {
+test('wipAdvanceDecision: budget warns when an immediate sub-epic sibling is already advancing', async () => {
   const decision = wipAdvanceDecision({
     promotingNumber: 210,
     children: [
@@ -150,8 +150,8 @@ test('wipAdvanceDecision: budget refuses when an immediate sub-epic sibling is a
       { number: 211, state: 'plan' },
     ],
   });
-  assert.equal(decision.ok, false);
-  assert.match(decision.reason, /#211/);
+  assert.equal(decision.ok, true);
+  assert.equal(decision.warnings[0].args.activeIssues, '#211');
 });
 
 test('planRefineWipGate: grandchild promotion fetches parent via fetchParentIssue and siblings under that immediate parent', async () => {

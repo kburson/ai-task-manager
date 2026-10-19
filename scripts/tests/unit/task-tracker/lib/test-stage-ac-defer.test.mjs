@@ -1,10 +1,13 @@
+// @story #1990
 // @story #1599
 // @story #1603
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { autoTickVerified } from '../../../../task-tracker/lib/auto-tick-verified.mjs';
-import { gateCodeComplete } from '../../../../task-tracker/lib/code-complete-gate.mjs';
+import { currentUnitAuthority } from './decomposition-unit-admission-fixture.mjs';
+import { isNoCommitKind } from '../../../../task-tracker/lib/issue-kind.mjs';
+import { gateCodeComplete as currentProductionGate } from '../../../../task-tracker/lib/code-complete-gate.mjs';
 
 const cfg = { repo: 'o/r' };
 
@@ -198,3 +201,22 @@ test('Test auto-tick still requires every command cited by the deferred AC to pa
   assert.match(complete.body, /- \[x\] Test-stage AC/);
   assert.deepEqual(complete.tickedAc, ['Test-stage AC']);
 });
+
+async function gateCodeComplete(options) {
+  if (!isNoCommitKind(options.body)) return currentProductionGate(options);
+  const current = await currentUnitAuthority({
+    body: options.body,
+    issue: options.issueNumber,
+    repository: options.cfg.repo,
+  });
+  return currentProductionGate({
+    ...options,
+    cfg: current.cfg,
+    body: current.body,
+    deps: {
+      ...options.deps,
+      decomposition: { subject: current.subject, runtime: current.runtime },
+      projectDir: current.projectDir,
+    },
+  });
+}

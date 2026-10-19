@@ -2,6 +2,11 @@
 // @story #1160
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {
+  estimationIssueBody,
+  estimationPublicationFixture,
+} from '../../../../fixtures/estimation-publication.mjs';
+import { createAdaptiveAuthorityHarness } from '../../../../fixtures/adaptive-estimation-authority.mjs';
 
 import { buildEstimationForecast } from '../../../../../task-tracker/lib/estimation/forecast-model.mjs';
 import { buildEstimationOutcome } from '../../../../../task-tracker/lib/estimation/outcome-builder.mjs';
@@ -79,54 +84,7 @@ function fake1070Transport() {
   return { rest, graphql, comments };
 }
 
-function authorityHarness({ issue, transport, recordLog }) {
-  const state = {
-    lifecycleState: 'plan',
-    refineAppendix: null,
-    board: { size: 'M', estimate: 8 },
-    bodyFields: { size: 'M', estimate: 8 },
-    forecasts: [],
-    readyForecastRecordId: null,
-    frozenForecastRecordId: null,
-  };
-  return {
-    state,
-    deps: {
-      readProjection: async () => structuredClone(state),
-      writeRefineAppendix: async ({ refine, plan }) => {
-        state.refineAppendix = { refine, plan };
-      },
-      writeBoardEstimate: async ({ estimate }) => {
-        state.board.estimate = estimate;
-      },
-      writeBoardSize: async ({ size }) => {
-        state.board.size = size;
-      },
-      writeBodyFields: async ({ estimate, size }) => {
-        state.bodyFields = { estimate, size };
-      },
-      writeForecast: async ({ envelope: recordEnvelope }) => {
-        const written = await writeEstimationRecord({
-          envelope: recordEnvelope,
-          repository,
-          issue,
-          ...transport,
-        });
-        recordLog.push(written);
-        state.forecasts.push({
-          recordId: written.envelope.recordId,
-          payloadHash: written.envelope.payloadHash,
-          commentNodeId: written.commentNodeId,
-          supersededBy: null,
-        });
-      },
-      writeForecastReadyMarker: async ({ recordId }) => {
-        state.readyForecastRecordId = recordId;
-        state.frozenForecastRecordId = recordId;
-      },
-    },
-  };
-}
+const authorityHarness = (args) => createAdaptiveAuthorityHarness({ repository, ...args });
 
 function planInput() {
   return {
@@ -500,8 +458,7 @@ test('production Plan runtime converges board, body, history, forecast, and read
     fieldIds: { size: 'FIELD_size', estimate: 'FIELD_estimate' },
   };
   const board = { size: 'M', estimate: 8 };
-  let issueBody =
-    '## Story\n\n<!-- aitm-fields: {"schema":1,"values":{"size":"M","estimate":8}} -->\n';
+  let issueBody = estimationIssueBody(board);
   let refineBody =
     '### 🛠 Refine estimate\n\n<!-- aitm-refined-estimate: 1091 -->\n\n| Field | Value | Rationale |\n|---|---|---|\n| Size | M | Provisional scope |\n| Estimate | 8h | Provisional scope |\n';
   const recordComments = [];
@@ -533,6 +490,8 @@ test('production Plan runtime converges board, body, history, forecast, and read
         data: {
           repository: {
             issue: {
+              number: firstIssue,
+              repository: { nameWithOwner: repository },
               body: issueBody,
               comments: {
                 nodes: [
@@ -547,6 +506,7 @@ test('production Plan runtime converges board, body, history, forecast, and read
                     id: 'ITEM_1091',
                     project: { id: cfg.projectId },
                     fieldValues: {
+                      pageInfo: { hasNextPage: false },
                       nodes: [
                         { name: 'Plan', field: { id: cfg.kanbanFieldId } },
                         { name: board.size, field: { id: cfg.fieldIds.size } },
@@ -594,6 +554,16 @@ test('production Plan runtime converges board, body, history, forecast, and read
   const runtime = createAdaptivePlanRuntime({
     cfg,
     deps: {
+      ...estimationPublicationFixture({
+        cfg,
+        issueNumber: firstIssue,
+        getBody: () => issueBody,
+        setBody: (next) => {
+          issueBody = next;
+        },
+        getProject: () => board,
+        graphql,
+      }),
       recordIo,
       graphql,
       loadProjectFieldDefs: () => [

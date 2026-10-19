@@ -1,3 +1,9 @@
+import {
+  readEstimateWriterAuthority,
+  resolveEstimateOperationId,
+} from './estimate-writer-publication.mjs';
+import { estimateEffectDigest } from './decomposition-publication.mjs';
+import { publishPlannedCommentRevision } from './decomposition-proposal-writer.mjs';
 // Refine/Planned-Estimate comment protocol (#134).
 //
 // The `### 🛠 Refine estimate` comment is posted by applyRefinementEstimate
@@ -21,6 +27,23 @@ const REFINE_COMMENT_MARKER_RE = /<!--\s*aitm-refined-estimate:\s*(\d+)\s*-->/;
 const PLANNED_HEADER_RE = /^###\s+Planned Estimate\s*$/m;
 const EMPTY_SIZE_ROW_RE = /^\|\s*Size\s*\|\s*—\s*\|\s*—\s*\|/m;
 const EMPTY_ESTIMATE_ROW_RE = /^\|\s*Estimate \(h\)\s*\|\s*—\s*\|\s*—\s*\|/m;
+
+function plannedAppendixRange(body) {
+  const match = String(body).match(PLANNED_HEADER_RE);
+  if (!match) return null;
+  const tail = String(body).slice(match.index + match[0].length),
+    next = tail.match(/^#{1,3}\s+/m);
+  return {
+    start: match.index,
+    end: next ? match.index + match[0].length + next.index : String(body).length,
+  };
+}
+function replacePlannedAppendix(body, appendix) {
+  const range = plannedAppendixRange(body);
+  const head = range ? body.slice(0, range.start).replace(/\s+$/, '') : body.replace(/\s+$/, '');
+  const tail = range ? body.slice(range.end) : '';
+  return `${head}${appendix}\n${tail}`;
+}
 
 export function hasPlannedAppendix(body = '') {
   return PLANNED_HEADER_RE.test(String(body));
@@ -139,6 +162,7 @@ export async function findRefineEstimateComment({ cfg, issueNumber, deps = {} } 
     if (m && Number(m[1]) === Number(issueNumber)) {
       return {
         id: c.id,
+        nodeId: c.node_id ?? String(c.id),
         body,
         hasPlannedAppendix: hasPlannedAppendix(body),
       };
@@ -150,6 +174,22 @@ export async function findRefineEstimateComment({ cfg, issueNumber, deps = {} } 
 // Wrapper for parity with the AC — locating without mutating.
 export async function ensureRefineEstimateComment({ cfg, issueNumber, deps = {} } = {}) {
   return findRefineEstimateComment({ cfg, issueNumber, deps });
+}
+
+async function hasPendingPlannedPublication({ cfg, issueNumber, comment, nextBody, deps }) {
+  if (!cfg.projectId || nextBody !== comment.body) return false;
+  const current = await readEstimateWriterAuthority({ cfg, issueNumber, deps });
+  const operationId = resolveEstimateOperationId(
+    'plan-estimate-compatibility',
+    {
+      comment: comment.nodeId ?? String(comment.id),
+      body: estimateEffectDigest(nextBody),
+    },
+    current.publication
+  );
+  return (
+    current.publication?.operationId === operationId && current.publication.status === 'pending'
+  );
 }
 
 export async function appendPlannedEstimate({
@@ -170,17 +210,29 @@ export async function appendPlannedEstimate({
   if (!comment) {
     return { status: 'no-refine-comment' };
   }
-  if (comment.hasPlannedAppendix) {
-    return { status: 'duplicate', commentId: comment.id };
-  }
   const appendix = buildPlannedAppendix({ planned, current, rationale });
-  const nextBody = `${comment.body.replace(/\s+$/, '')}${appendix}\n`;
-  try {
-    await patchComment({ cfg, commentId: comment.id, body: nextBody });
-  } catch (err) {
-    return { status: 'patch-failed', error: err.message, commentId: comment.id };
-  }
-  return { status: 'appended', commentId: comment.id };
+  const nextBody = replacePlannedAppendix(comment.body, appendix);
+  if (
+    comment.hasPlannedAppendix &&
+    !(await hasPendingPlannedPublication({ cfg, issueNumber, comment, nextBody, deps }))
+  )
+    return { status: 'duplicate', commentId: comment.id };
+  const result = await publishPlannedCommentRevision({
+    cfg,
+    issueNumber,
+    comment,
+    nextBody,
+    planned: { estimate: planned.estimate, size: planned.size ?? current.size },
+    patchComment,
+    findComment: () => findRefineEstimateComment({ cfg, issueNumber, deps }),
+    listComments: deps.listComments ?? defaultListComments,
+    deps,
+  });
+  return {
+    ...result,
+    status: result.status === 'recorded' ? 'appended' : result.status,
+    commentId: comment.id,
+  };
 }
 
 export async function upsertPlannedEstimate({
@@ -189,6 +241,8 @@ export async function upsertPlannedEstimate({
   refine,
   plan,
   rationale,
+  context,
+  effectId,
   deps = {},
 } = {}) {
   if (!cfg) throw new Error('upsertPlannedEstimate: cfg is required');
@@ -198,19 +252,32 @@ export async function upsertPlannedEstimate({
   const patchComment = deps.patchComment || defaultPatchComment;
   const comment = await findRefineEstimateComment({ cfg, issueNumber, deps });
   if (!comment) return { status: 'no-refine-comment' };
-  const match = comment.body.match(PLANNED_HEADER_RE);
-  const head = match
-    ? comment.body.slice(0, match.index).replace(/\s+$/, '')
-    : comment.body.replace(/\s+$/, '');
-  const appendix = buildPlannedAppendix({
-    current: refine,
-    planned: plan,
-    rationale,
+  const appendix = buildPlannedAppendix({ current: refine, planned: plan, rationale });
+  const nextBody = replacePlannedAppendix(comment.body, appendix);
+  if (
+    nextBody === comment.body &&
+    !context &&
+    !(await hasPendingPlannedPublication({ cfg, issueNumber, comment, nextBody, deps }))
+  )
+    return { status: 'current', commentId: comment.id };
+  const result = await publishPlannedCommentRevision({
+    cfg,
+    issueNumber,
+    comment,
+    nextBody,
+    planned: { estimate: plan.estimate, size: plan.size ?? refine.size },
+    patchComment,
+    findComment: () => findRefineEstimateComment({ cfg, issueNumber, deps }),
+    listComments: deps.listComments ?? defaultListComments,
+    context,
+    effectId,
+    deps,
   });
-  const nextBody = `${head}${appendix}\n`;
-  if (nextBody === comment.body) return { status: 'current', commentId: comment.id };
-  await patchComment({ cfg, commentId: comment.id, body: nextBody });
-  return { status: 'updated', commentId: comment.id };
+  return {
+    ...result,
+    status: result.status === 'recorded' ? 'updated' : result.status,
+    commentId: comment.id,
+  };
 }
 
 // Plan cancellation returns the story to durable Ready for Planning. The
@@ -218,64 +285,87 @@ export async function upsertPlannedEstimate({
 // removed so a later Plan visit cannot reuse an estimate made against an older
 // codebase. The returned original body is the rollback record for the caller's
 // cross-resource cancellation transaction.
-export async function clearPlannedEstimate({ cfg, issueNumber, deps = {} } = {}) {
+export { defaultListComments as listRefineEstimateComments };
+export function removePlannedEstimateAppendix(body) {
+  const range = plannedAppendixRange(body);
+  return range
+    ? body.slice(0, range.start).replace(/\s+$/, '') + '\n' + body.slice(range.end)
+    : body;
+}
+
+export async function clearPlannedEstimate({
+  cfg,
+  issueNumber,
+  context,
+  effectId,
+  deps = {},
+} = {}) {
   if (!cfg) throw new Error('clearPlannedEstimate: cfg is required');
   if (!issueNumber) throw new Error('clearPlannedEstimate: issueNumber is required');
   const patchComment = deps.patchComment || defaultPatchComment;
   const comment = await findRefineEstimateComment({ cfg, issueNumber, deps });
   if (!comment) return { status: 'no-refine-comment' };
   const match = comment.body.match(PLANNED_HEADER_RE);
-  if (!match) return { status: 'no-appendix', commentId: comment.id };
-  const nextBody = `${comment.body.slice(0, match.index).replace(/\s+$/, '')}\n`;
-  try {
-    await patchComment({ cfg, commentId: comment.id, body: nextBody });
-  } catch (error) {
-    return { status: 'patch-failed', commentId: comment.id, error: error.message };
-  }
-  try {
-    const readBack = await findRefineEstimateComment({ cfg, issueNumber, deps });
-    if (readBack?.id === comment.id && readBack.body === nextBody) {
-      return {
-        status: 'cleared',
-        commentId: comment.id,
-        originalBody: comment.body,
-      };
-    }
-  } catch {
-    // Fall through to the recovery write below. A failed read-back is not
-    // sufficient evidence that the Plan appendix was invalidated.
-  }
-  let restored = false;
-  try {
-    await patchComment({ cfg, commentId: comment.id, body: comment.body });
-    const readBack = await findRefineEstimateComment({ cfg, issueNumber, deps });
-    restored = readBack?.id === comment.id && readBack.body === comment.body;
-  } catch {
-    restored = false;
-  }
+  const nextBody = removePlannedEstimateAppendix(comment.body);
+  if (
+    !match &&
+    !(await hasPendingPlannedPublication({ cfg, issueNumber, comment, nextBody, deps }))
+  )
+    return { status: 'no-appendix', commentId: comment.id };
+  const result = await publishPlannedCommentRevision({
+    cfg,
+    issueNumber,
+    comment,
+    nextBody,
+    patchComment,
+    findComment: () => findRefineEstimateComment({ cfg, issueNumber, deps }),
+    listComments: deps.listComments ?? defaultListComments,
+    context,
+    effectId,
+    deps,
+  });
   return {
-    status: restored ? 'verification-failed-restored' : 'verification-failed-recovery-uncertain',
+    ...result,
+    status: result.status === 'recorded' ? 'cleared' : result.status,
     commentId: comment.id,
+    originalBody: match ? comment.body : undefined,
   };
 }
 
-export async function restorePlannedEstimate({ cfg, issueNumber, record, deps = {} } = {}) {
+export async function restorePlannedEstimate({
+  cfg,
+  issueNumber,
+  record,
+  context,
+  effectId,
+  deps = {},
+} = {}) {
   if (!cfg) throw new Error('restorePlannedEstimate: cfg is required');
   if (!issueNumber) throw new Error('restorePlannedEstimate: issueNumber is required');
   if (!record?.commentId || typeof record.originalBody !== 'string') {
     throw new Error('restorePlannedEstimate: clear record is required');
   }
   const patchComment = deps.patchComment || defaultPatchComment;
-  await patchComment({
+  const comment = await findRefineEstimateComment({ cfg, issueNumber, deps });
+  if (comment?.id !== record.commentId)
+    throw new Error('restorePlannedEstimate: comment identity mismatch');
+  const result = await publishPlannedCommentRevision({
     cfg,
-    commentId: record.commentId,
-    body: record.originalBody,
+    issueNumber,
+    comment,
+    nextBody: record.originalBody,
+    patchComment,
+    findComment: () => findRefineEstimateComment({ cfg, issueNumber, deps }),
+    listComments: deps.listComments ?? defaultListComments,
+    context,
+    effectId,
+    deps,
   });
-  const readBack = await findRefineEstimateComment({ cfg, issueNumber, deps });
-  if (readBack?.id !== record.commentId || readBack.body !== record.originalBody) {
-    throw new Error('restorePlannedEstimate: exact read-back mismatch');
-  }
-  return { status: 'restored', commentId: record.commentId };
+  return {
+    ...result,
+    status: result.status === 'recorded' ? 'restored' : result.status,
+    commentId: record.commentId,
+  };
 }
 
 // AC8 (#171) — re-populate an already-appended EMPTY Planned Estimate table.
@@ -292,6 +382,8 @@ export async function repopulateEmptyPlannedAppendix({
   planned,
   current,
   rationale,
+  context,
+  effectId,
   deps = {},
 } = {}) {
   if (!cfg) throw new Error('repopulateEmptyPlannedAppendix: cfg is required');
@@ -307,21 +399,31 @@ export async function repopulateEmptyPlannedAppendix({
   if (!comment.hasPlannedAppendix) {
     return { status: 'no-appendix', commentId: comment.id };
   }
-  if (!hasEmptyPlannedAppendix(comment.body)) {
-    return { status: 'not-empty', commentId: comment.id };
-  }
-  // Strip everything from the `### Planned Estimate` header onward, then
-  // re-append a freshly-built (non-empty) appendix.
-  const headerMatch = comment.body.match(PLANNED_HEADER_RE);
-  const head = comment.body.slice(0, headerMatch.index).replace(/\s+$/, '');
   const appendix = buildPlannedAppendix({ planned, current, rationale });
-  const nextBody = `${head}${appendix}\n`;
-  try {
-    await patchComment({ cfg, commentId: comment.id, body: nextBody });
-  } catch (err) {
-    return { status: 'patch-failed', error: err.message, commentId: comment.id };
-  }
-  return { status: 'repopulated', commentId: comment.id };
+  const nextBody = replacePlannedAppendix(comment.body, appendix);
+  if (
+    !hasEmptyPlannedAppendix(comment.body) &&
+    !(await hasPendingPlannedPublication({ cfg, issueNumber, comment, nextBody, deps }))
+  )
+    return { status: 'not-empty', commentId: comment.id };
+  const result = await publishPlannedCommentRevision({
+    cfg,
+    issueNumber,
+    comment,
+    nextBody,
+    planned: { estimate: planned.estimate, size: planned.size ?? current.size },
+    patchComment,
+    findComment: () => findRefineEstimateComment({ cfg, issueNumber, deps }),
+    listComments: deps.listComments ?? defaultListComments,
+    context,
+    effectId,
+    deps,
+  });
+  return {
+    ...result,
+    status: result.status === 'recorded' ? 'repopulated' : result.status,
+    commentId: comment.id,
+  };
 }
 
 // Pre-flight gate for plan → develop: refuse unless the refine-estimate
