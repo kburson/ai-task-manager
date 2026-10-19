@@ -346,7 +346,13 @@ The matching timing repair is also exact and dry-run-first. Inspect with
 repeat with `--apply --yes` only if the proposed deletion is correct. It accepts
 only a physically adjacent, same-second `demoted:develop` / `resumed` /
 `develop:started` triple with zero time, no delta, and unchanged cursors; all
-near misses fail closed and the applied log is read back and revalidated.
+near misses fail closed and the applied log is read back and revalidated. The same mode also accepts the shared
+`develop:completed` / `resumed` / `test:started` sibling only when all three
+rows have zero credited work, identical numeric word and full-word cursors,
+no actor identity, and exactly one matching canonical transition UUID. It
+removes only the redundant `resumed` row and preserves Unknown totals. The
+existing `--allow-foreign-worktree` flag is accepted for routing; recovery
+predicates and unknown-flag refusal remain unchanged.
 
 **Trunk re-sync.** `close` reads `origin/trunk` (never local `trunk`) when it runs
 inside a linked worktree, so the merged `[#N]` commit is seen without desyncing

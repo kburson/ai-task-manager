@@ -235,6 +235,36 @@ export function recoverRedundantSameSecondPair(body, { rowIndex } = {}) {
   return lines.join('\n');
 }
 
+// #2017 — authenticate the stored shared, zero-work transition projection.
+// Command text or description prose cannot supply an extra transition marker.
+const SHARED_TRANSITION_ROW =
+  /^(\|.*\|)\s+<!-- aitm-transition move="(move:[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})" -->\s+<!-- row-sec: a=0 i=0 -->$/;
+const ABSOLUTE_CURSOR = /^(?:\d+|[1-9]\d{0,2}(?:,\d{3})+)$/;
+function sharedZeroWorkTransition(row) {
+  if (
+    !row ||
+    row.actorKey ||
+    /<!--\s*aitm-actor\b/.test(row.raw) ||
+    [...row.raw.matchAll(/<!--\s*aitm-transition\b/g)].length !== 1
+  )
+    return null;
+  const match = row.raw.match(SHARED_TRANSITION_ROW);
+  if (!match) return null;
+  const cells = parseTimingRow(match[1])?.cells;
+  if (
+    cells?.length !== 10 ||
+    cells[0] !== '' ||
+    cells[9] !== '' ||
+    cells[3] !== '' ||
+    cells[4] !== '' ||
+    cells[5] !== '0' ||
+    !ABSOLUTE_CURSOR.test(cells[6]) ||
+    !ABSOLUTE_CURSOR.test(cells[8])
+  )
+    return null;
+  return { move: match[2], word: cells[6], full: cells[8] };
+}
+
 // #1619 — remove only the exact standalone reengagement emitted between a
 // same-second Review→Develop demotion audit and its Develop entry. This is not
 // a general row-deletion API: the neighboring event identities, physical
@@ -255,11 +285,31 @@ export function recoverRedundantSameSecondReengagement(body, { rowIndex } = {}) 
   }
   const previous = rows[rowIndex - 1];
   const next = rows[rowIndex + 1];
-  if (previous?.event !== 'demoted:develop') {
-    throw new Error('same-second reengagement recovery requires adjacent demoted:develop');
-  }
-  if (next?.event !== 'develop:started') {
-    throw new Error('same-second reengagement recovery requires adjacent develop:started');
+  const developToTest = previous?.event === 'develop:completed' && next?.event === 'test:started';
+  if (!developToTest) {
+    if (previous?.event !== 'demoted:develop') {
+      throw new Error('same-second reengagement recovery requires adjacent demoted:develop');
+    }
+    if (next?.event !== 'develop:started') {
+      throw new Error('same-second reengagement recovery requires adjacent develop:started');
+    }
+  } else {
+    const observations = [previous, selected, next].map(sharedZeroWorkTransition);
+    const milliseconds = [previous, selected, next].map((row) => timingTimestampToMs(row.ts));
+    if (
+      observations.some((row) => row === null) ||
+      observations.some(
+        (row) =>
+          row.move !== observations[0].move ||
+          row.word !== observations[0].word ||
+          row.full !== observations[0].full
+      ) ||
+      milliseconds.some((ms) => !Number.isFinite(ms) || ms % 1000 !== 0) ||
+      new Set(milliseconds).size !== 1
+    )
+      throw new Error(
+        'same-second reengagement recovery requires authenticated zero-work Develop to Test transition'
+      );
   }
   if (previous.lineIndex + 1 !== selected.lineIndex || selected.lineIndex + 1 !== next.lineIndex) {
     throw new Error('same-second reengagement recovery rows must be physically adjacent');
