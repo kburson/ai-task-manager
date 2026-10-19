@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1990
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
 // Plumbing: invoked only by the Claude Code hook runner, never by a human or
 // the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
@@ -29,7 +30,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
-import { isChoreModeActive } from './lib/chore-mode.mjs';
+import { readChoreMode, isChoreModeActive } from './lib/chore-mode.mjs';
 import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 import {
@@ -51,6 +52,11 @@ import {
   bindingMatches,
 } from './lib/mutation-context.mjs';
 import { readWorktreeIdentity } from './lib/worktree-binding-guard.mjs';
+import {
+  decompositionActivityUnavailable,
+  evaluateHookDecomposition,
+} from './lib/decomposition-activity.mjs';
+import { decompositionTargetActivity } from './lib/decomposition-local-targets.mjs';
 import { artifactPathPolicy } from './lib/artifact-write-policy.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
 import {
@@ -442,7 +448,7 @@ function readStdin() {
   }
 }
 
-export async function runHook(payload, deps = {}) {
+async function runHookUnchecked(payload, deps = {}) {
   if (
     payload &&
     Object.hasOwn(payload, 'session_id') &&
@@ -511,6 +517,70 @@ export async function runHook(payload, deps = {}) {
       };
     }
   }
+  if (
+    targets.length &&
+    validatedTargets.every((target, index) =>
+      isAllowlistedPath(target?.relative ?? normalizePath(targets[index], projectDir))
+    )
+  )
+    return { decision: 'allow', reason: 'allowlisted-path' };
+  // Current decomposition precedes artifact/chore/cache allowances; original gates still follow.
+  const decompositionBinding = (deps.readExactSessionBinding || readExactSessionBinding)(
+    projectDir,
+    { sessionId: payload?.session_id }
+  );
+  const decompositionIssue = Number(
+    String(
+      deps.loadBoundIssue
+        ? deps.loadBoundIssue(projectDir)
+        : (decompositionBinding?.issueNumber ??
+            ((deps.readChoreMode || readChoreMode)(projectDir).active
+              ? (deps.readChoreMode || readChoreMode)(projectDir).previousIssue
+              : '') ??
+            '')
+    ).replace(/^#/, '')
+  );
+  const decompositionTargets = targets.map((filePath, index) => ({
+    relative: validatedTargets[index]?.relative ?? normalizePath(filePath, projectDir),
+    activity: classifyEdit(
+      validatedTargets[index]?.relative ?? normalizePath(filePath, projectDir),
+      (deps.loadPolicy || loadPolicy)(projectDir)
+    ),
+  }));
+  let decompositionSignals = null;
+  const scopedTargets = decompositionTargets.filter((t) => !isAllowlistedPath(t.relative));
+  if (Number.isSafeInteger(decompositionIssue) && decompositionIssue > 0 && scopedTargets.length) {
+    const cfg =
+      deps.cfg ||
+      loadConfig({
+        projectPath: configPath(projectDir),
+        userPath: path.join(projectDir, '.ai-task-manager', '.cache', 'no-user-config.json'),
+      });
+    const admission = await evaluateHookDecomposition({
+      issue: decompositionIssue,
+      cfg,
+      projectDir,
+      targets: scopedTargets,
+      activity: decompositionTargetActivity({
+        activity: scopedTargets.some((t) => t.activity === 'WRITE_CODE')
+          ? 'WRITE_CODE'
+          : 'WRITE_DOCS',
+        targets: scopedTargets,
+        issue: decompositionIssue,
+        exactBinding: bindingMatches(
+          existsSync(projectDir) ? readWorktreeIdentity({ projectDir }) : null,
+          decompositionBinding,
+          decompositionIssue
+        ),
+      }),
+      deps,
+    });
+    if (admission.decision === 'block') {
+      const { signals: _signals, ...verdict } = admission;
+      return verdict;
+    }
+    decompositionSignals = admission.signals ?? null;
+  }
   // Resolve artifact-only mutations before consulting session or remote authority.
   const artifactDecisions = targets.map((filePath, index) =>
     decideSourceEdit({
@@ -540,7 +610,8 @@ export async function runHook(payload, deps = {}) {
         : loadBoundIssue(projectDir);
 
   let signals = { state: 'unknown', hasPostedMarker: false, hasCompleteMarker: false };
-  if (!choreModeActive && boundIssue) {
+  if (decompositionSignals) signals = decompositionSignals;
+  else if (!choreModeActive && boundIssue) {
     try {
       signals = await (deps.resolveIssueSignals || resolveIssueSignals)(
         boundIssue,
@@ -628,6 +699,33 @@ export async function runHook(payload, deps = {}) {
   return allowedResult;
 }
 
+export async function runHook(payload, deps = {}) {
+  try {
+    return await runHookUnchecked(payload, deps);
+  } catch (error) {
+    if (!GATED_TOOLS.has(payload?.tool_name))
+      return { decision: 'allow', reason: 'tool-not-gated' };
+    let issue = null;
+    try {
+      const projectDir =
+        deps.projectDir ??
+        readWorktreeIdentity({ projectDir: resolveInvocationDirectory(payload) }).worktreePath;
+      const target = (deps.loadBoundIssue ?? loadBoundIssue)(projectDir);
+      const number = Number(String(target ?? '').replace(/^#/, ''));
+      if (Number.isSafeInteger(number) && number > 0) issue = number;
+    } catch {
+      /* Unusable binding is a refusal, never an exemption. */
+    }
+    return issue
+      ? decompositionActivityUnavailable(issue, error.message)
+      : {
+          decision: 'block',
+          code: 'source-edit-context',
+          reason: '[task-tracker] recognized mutation context unavailable: ' + error.message,
+        };
+  }
+}
+
 async function main() {
   const raw = readStdin();
   let payload = null;
@@ -640,11 +738,24 @@ async function main() {
   try {
     result = await runHook(payload);
   } catch (err) {
-    process.stderr.write(`[source-edit-gate] ${err.message}\n`);
+    process.stdout.write(
+      JSON.stringify({
+        decision: 'block',
+        code: 'source-edit-context',
+        reason: '[task-tracker] recognized mutation context unavailable: ' + err.message,
+      })
+    );
     process.exit(0);
   }
   if (result.decision === 'block') {
-    process.stdout.write(JSON.stringify({ decision: 'block', reason: result.reason }));
+    process.stdout.write(
+      JSON.stringify({
+        decision: 'block',
+        reason: result.reason,
+        ...(result.code ? { code: result.code } : {}),
+        ...(result.args ? { args: result.args } : {}),
+      })
+    );
   }
   process.exit(0);
 }

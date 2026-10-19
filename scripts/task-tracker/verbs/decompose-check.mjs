@@ -30,38 +30,46 @@ export async function runDecomposeCheck({ issueNumber, cfg, planOverride = null,
     planOverride,
     deps: deps.decomposition || {},
   });
-  const blocked =
-    !evaluated.planSelection.ok ||
-    (evaluated.classification.status === 'must-split' && !evaluated.waiver.ok);
+  const status = evaluated.assessment.status;
+  const allowed =
+    evaluated.projection.status === 'current' &&
+    evaluated.capabilities.includes('scoped-completion');
   const readiness =
-    evaluated.classification.status === 'must-split'
-      ? describePreSplitReadiness({ classification: evaluated.classification })
-      : null;
-  return { issueNumber: Number(issueNumber), ...evaluated, readiness, exitCode: blocked ? 3 : 0 };
+    evaluated.input.kind === 'epic'
+      ? evaluated.input.epicReadiness
+      : status === 'must-decompose'
+        ? describePreSplitReadiness({ classification: evaluated.classification })
+        : null;
+  return { issueNumber: Number(issueNumber), ...evaluated, readiness, exitCode: allowed ? 0 : 3 };
 }
 
 export function formatDecomposeCheck(result) {
-  const lines = [`${result.classification.status} #${result.issueNumber}`];
-  for (const signal of result.classification.signals) {
-    lines.push(`- ${signal.level}: ${signal.code}=${signal.value} (threshold ${signal.threshold})`);
-  }
-  if (result.planDiagnostic?.diagnostic) {
-    lines.push(`- plan: ${result.planDiagnostic.diagnostic}`);
-  } else if (result.planDiagnostic?.path) {
-    lines.push(`- plan: ${result.planDiagnostic.path}`);
-  }
-  if (!result.planSelection.ok) {
-    lines.push(`- source-plan-section: ${result.planSelection.diagnostic}`);
-  } else if (result.planSelection.applied) {
-    lines.push(`- source-plan-section: ${result.planSelection.heading}`);
-  }
-  if (result.readiness) {
-    lines.push(`- readiness: ${result.readiness.status} (delivery-ready=false)`);
+  const lines = [result.assessment.status + ' #' + result.issueNumber];
+  for (const signal of result.assessment.signals)
     lines.push(
-      `- expected-wbs: ${result.readiness.expectedWbs.map((task) => task.heading).join('; ')}`
+      '- ' +
+        signal.level +
+        ': ' +
+        signal.code +
+        '=' +
+        signal.value +
+        ' (threshold ' +
+        signal.threshold +
+        ')'
     );
-  }
-  lines.push(`- waiver: ${result.waiver.ok ? 'valid' : result.waiver.reason}`);
+  lines.push('- projection: ' + result.projection.status);
+  if (result.planDiagnostic.path) lines.push('- plan: ' + result.planDiagnostic.path);
+  if (result.planDiagnostic.diagnostic) lines.push('- plan: ' + result.planDiagnostic.diagnostic);
+  if (result.planSelection.applied)
+    lines.push('- source-plan-section: ' + result.planSelection.heading);
+  if (result.readiness)
+    lines.push(
+      '- readiness: planning=' +
+        Boolean(result.readiness.planning) +
+        '; completion=' +
+        Boolean(result.readiness.completion)
+    );
+  lines.push('- allowed actions: ' + result.capabilities.join(', '));
   return lines.join('\n');
 }
 

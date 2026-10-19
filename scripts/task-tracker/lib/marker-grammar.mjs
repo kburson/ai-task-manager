@@ -39,8 +39,9 @@ export function serializeMarker(name, props = {}) {
 // marker (`<!-- aitm-verified-at: ... -->`) fails this match because `:` is
 // neither whitespace, a quoted pair, nor `-->`, so parseMarker returns null
 // rather than mis-parsing it.
-const MARKER_RE = /^<!--\s*aitm-([a-zA-Z0-9_-]+)((?:\s+[a-zA-Z0-9_-]+="(?:[^"]|&quot;)*")*)\s*-->$/;
-const ATTR_RE = /([a-zA-Z0-9_-]+)="((?:[^"]|&quot;)*)"/g;
+// Entity bytes contain no literal quote; a separate entity alternative would overlap and backtrack.
+const MARKER_RE = /^<!--\s*aitm-([a-zA-Z0-9_-]+)((?:\s+[a-zA-Z0-9_-]+="[^"]*")*)\s*-->$/;
+const ATTR_RE = /([a-zA-Z0-9_-]+)="([^"]*)"/g;
 
 // Parse a single marker comment. Returns { name, props } on a well-formed
 // match, or null for any non-marker / legacy-form line, without throwing.

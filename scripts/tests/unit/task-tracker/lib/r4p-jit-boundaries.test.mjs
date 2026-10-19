@@ -1,4 +1,15 @@
-// @story #1213 #1339
+// @story #1213 #1339 #1988
+import { runRefineOrchestration as runRefine } from '../../../fixtures/refinement-orchestration.mjs';
+import { registerCancellationPublicationCases } from './decomposition-cancellation-publication.cases.mjs';
+import { runCancelPlanWithPublication as runCancelPlan } from '../../../fixtures/cancellation-publication.mjs';
+import {
+  CFG,
+  TS,
+  refinedBody,
+  plannedBody,
+  fetchPlanBoardFields,
+  plannedEstimateFixture,
+} from './r4p-cancellation-fixtures.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -16,45 +27,6 @@ import {
 } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import { refinementSnapshotGuard } from '../../../../task-tracker/lib/refinement-snapshot-guard.mjs';
 import * as cancelPlanModule from '../../../../task-tracker/verbs/cancel-plan.mjs';
-import { runRefine } from '../../../../task-tracker/verbs/refine.mjs';
-
-const { runCancelPlan } = cancelPlanModule;
-
-const CFG = { repo: 'owner/repo', projectId: 'PVT_PROJECT' };
-const TS = '2026-08-12T12:00:00.000Z';
-
-function refinedBody({
-  state = 'refine',
-  scope = 'Implement the governed R4P boundary.',
-  rank = 4,
-  blocker = null,
-} = {}) {
-  return [
-    `<!-- aitm-last-known-state state="${state}" ts="2026-08-12T11:00:00.000Z" -->`,
-    `<!-- aitm-refinement-rationale: {"size":"M","estimate":"8","priority":"p1","rank":${rank},"rationale":"current architecture"} -->`,
-    '',
-    '## Scope',
-    '',
-    scope,
-    '',
-    '## Plan Metadata',
-    '',
-    '- **Depends On**: #1212',
-    '',
-    '## Acceptance Criteria',
-    '',
-    '- [ ] Snapshot is current.',
-    '- [ ] Plan cancellation is recoverable.',
-    '',
-    '## Definition of Done',
-    '',
-    '- [ ] Acceptance criteria met.',
-    '',
-    ...(blocker ? [`<!-- aitm-blocked-by refs="#${blocker}" -->`, ''] : []),
-    `<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"M","estimate":8,"rank":${rank},"blockedBy":null}} -->`,
-    '',
-  ].join('\n');
-}
 
 test('refinement snapshot records and validates current scope, AC, fields, dependencies, labels, and provenance', () => {
   const body = refinedBody();
@@ -126,7 +98,7 @@ test('the Refine success hook may remove transient rationale without invalidatin
     deps: {
       listCommentBodies: async () => [],
       postComment: async () => {},
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
         body = mutate(body);
         return { status: 'ok' };
       },
@@ -322,49 +294,6 @@ test('cancel-plan is the sole governed Plan to R4P one-edge action', () => {
   assert.equal(isTimingHistoryEdge('plan', 'ready-for-plan'), true);
 });
 
-function plannedBody({ rank = 4 } = {}) {
-  const refined = stampRefinementSnapshot(refinedBody({ state: 'plan', rank }), {
-    labels: ['enhancement'],
-    ts: TS,
-  });
-  return [
-    refined,
-    '<!-- aitm-deep-dive-posted ts="2026-08-12T12:05:00.000Z" -->',
-    '<!-- aitm-deep-dive-complete ts="2026-08-12T12:06:00.000Z" -->',
-    '<!-- aitm-estimation-forecast-ready record-id="forecast-record-1213" -->',
-    '<!-- aitm-plan-approved ts="2026-08-12T12:07:00.000Z" forecast-record-id="forecast-record-1213" mode="full-auto" -->',
-    `<!-- aitm-epic-orchestration-plan schema="1" digest="${'a'.repeat(64)}" payload="e30" -->`,
-    '<!-- aitm-test-started sha="abcdef1" ts="2026-08-12T12:08:00.000Z" -->',
-    '<!-- aitm-dod-verified sha="abcdef1" ts="2026-08-12T12:09:00.000Z" -->',
-  ].join('\n');
-}
-
-function fetchPlanBoardFields(overrides = {}) {
-  return async () => ({ priority: 'P1', size: 'M', estimate: 8, rank: 4, ...overrides });
-}
-
-function plannedEstimateFixture() {
-  const comments = [
-    {
-      id: 42,
-      body:
-        '<!-- aitm-refined-estimate: 1213 -->\n### Refine estimate\n\n' +
-        '### Planned Estimate\n\n| Field | Refine | Plan | Δ |\n|---|---|---|---|\n' +
-        '| Size | M | L | M→L |\n| Estimate (h) | 8 | 13 | +5 |\n',
-    },
-  ];
-  return {
-    comments,
-    deps: {
-      listComments: async () => comments,
-      patchComment: async ({ commentId, body }) => {
-        assert.equal(commentId, 42);
-        comments[0].body = body;
-      },
-    },
-  };
-}
-
 test('cancel-plan clears Plan-only artifacts while preserving refinement evidence and fields', async () => {
   let body = plannedBody();
   const plannedEstimate = plannedEstimateFixture();
@@ -379,7 +308,7 @@ test('cancel-plan clears Plan-only artifacts while preserving refinement evidenc
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
       fetchBoardFields: fetchPlanBoardFields(),
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
         body = mutate(body);
         return { status: 'ok' };
       },
@@ -445,7 +374,7 @@ test('cancel-plan restores Refine fields after legitimate Plan re-estimation dri
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
       fetchBoardFields: fetchPlanBoardFields({ size: 'L', estimate: 13 }),
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
         body = mutate(body);
         return { status: 'ok' };
       },
@@ -503,7 +432,7 @@ test('cancel-plan refuses concurrent configured-project field drift before any a
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
       fetchBoardFields: async () => ({ priority: 'P0', size: 'M', estimate: 8, rank: 4 }),
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
         bodyWrites += 1;
         body = mutate(body);
         return { status: 'ok' };
@@ -565,9 +494,10 @@ test('cancel-plan restores original Plan artifacts without clobbering concurrent
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
       fetchBoardFields: fetchPlanBoardFields(),
-      mutateIssueBody: async ({ mutate }) => {
-        bodyWrites += 1;
-        if (bodyWrites === 2) body += '\n## Concurrent Note\n\nPreserve this remote edit.\n';
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
+        if (!publicationProjection) bodyWrites += 1;
+        if (!publicationProjection && bodyWrites === 2)
+          body += '\n## Concurrent Note\n\nPreserve this remote edit.\n';
         body = mutate(body);
         return { status: 'ok' };
       },
@@ -613,7 +543,7 @@ test('cancel-plan reconciles a thrown mover and restores Plan artifacts when Sta
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
       fetchBoardFields: fetchPlanBoardFields(),
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
         body = mutate(body);
         return { status: 'ok' };
       },
@@ -651,7 +581,7 @@ test('successful cancellation removes the old Planned Estimate appendix', async 
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
       fetchBoardFields: fetchPlanBoardFields(),
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
         body = mutate(body);
         return { status: 'ok' };
       },
@@ -695,7 +625,7 @@ test('early Plan cancellation succeeds when no Planned Estimate appendix exists 
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
       fetchBoardFields: fetchPlanBoardFields(),
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
         body = mutate(body);
         return { status: 'ok' };
       },
@@ -731,7 +661,7 @@ test('Plan cancellation succeeds when best-effort Refine estimate comment postin
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
       fetchBoardFields: fetchPlanBoardFields(),
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
         body = mutate(body);
         return { status: 'ok' };
       },
@@ -754,7 +684,7 @@ test('Plan cancellation succeeds when best-effort Refine estimate comment postin
   assert.equal(moves, 1);
 });
 
-test('cancel-plan refuses before body mutation when Planned Estimate read-back is stale', async () => {
+test('cancel-plan retains pending intent and avoids Plan invalidation when appendix read-back is stale', async () => {
   let body = plannedBody();
   let bodyWrites = 0;
   const plannedEstimate = plannedEstimateFixture();
@@ -769,14 +699,16 @@ test('cancel-plan refuses before body mutation when Planned Estimate read-back i
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
       fetchBoardFields: fetchPlanBoardFields(),
-      mutateIssueBody: async () => {
-        bodyWrites += 1;
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
+        const next = mutate(body);
+        if (!publicationProjection && next.includes('aitm-plan-cancelled')) bodyWrites += 1;
+        body = next;
       },
       plannedEstimate: plannedEstimate.deps,
     },
   });
-  assert.equal(result.status, 'planned-estimate-refused');
-  assert.equal(result.detail, 'verification-failed-restored');
+  assert.equal(result.status, 'publication-failed-restored', result.reason);
+  assert.equal(result.publicationStatus, 'pending');
   assert.equal(bodyWrites, 0);
 });
 
@@ -794,7 +726,7 @@ test('cancel-plan accepts a nonzero delegate when live Status reached R4P', asyn
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => (stateReads++ === 0 ? 'plan' : 'ready-for-plan'),
       fetchBoardFields: fetchPlanBoardFields(),
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, publicationProjection }) => {
         body = mutate(body);
         return { status: 'ok' };
       },
@@ -832,3 +764,5 @@ test('cancel-plan refuses every source except Plan without writing', async () =>
   assert.equal(result.status, 'invalid-source-refused');
   assert.equal(writes, 0);
 });
+
+registerCancellationPublicationCases();

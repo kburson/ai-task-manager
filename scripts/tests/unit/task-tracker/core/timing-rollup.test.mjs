@@ -299,6 +299,7 @@ console.log('timing-rollup.test.mjs: all passed');
 
 import { test } from 'node:test';
 import { timingActorKey, timingActorMarker } from '../../../../task-tracker/lib/timing-actor.mjs';
+import { timingFieldProjection } from '../../../../gh/log-issue-time.mjs';
 test('attributed rollup uses actor intervals even without raw body and excludes inferred waits', () => {
   const key = timingActorKey({ provider: 'codex', sid: 'rollup-author' });
   const actorRows = [
@@ -324,4 +325,57 @@ test('attributed rollup uses actor intervals even without raw body and excludes 
   assert.equal(totals.totalActiveMin, null);
   assert.equal(totals.knownEngagedSec, 60);
   assert.equal(totals.telemetry.status, 'incomplete');
+});
+
+// @story #2024
+function recoveredActorLog({ active = 'Unknown', idle = 'Unknown', attributed = true } = {}) {
+  const actor = timingActorMarker(timingActorKey({ provider: 'codex', sid: 'recovered-rollup' }));
+  return [
+    '⏱ Timing Log',
+    '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |',
+    '|---|---|---|---|---|---|---|---|',
+    `| 2026-10-01 00:00:00 +00:00 | resumed | | | 0 | 100 | prior endpoint unobserved | 1000 | ${actor}`,
+    `| 2026-10-01 00:01:00 +00:00 | session-end-recovery | ${active} | ${idle} | 0 | 100 | recovery | 1000 | ${attributed ? actor : ''}`,
+    `| 2026-10-01 00:01:00 +00:00 | session-start | Unknown | Unknown | 0 | 100 | observed baseline | 1000 | ${actor} <!-- aitm-engagement:v1 start=1790812860000 end=1790812860000 active=unknown wstart=100 wend=100 fstart=1000 fend=1000 -->`,
+    `| 2026-10-01 00:02:00 +00:00 | pause:other | Unknown | Unknown | 12 | 112 | sealed work | 1020 | ${actor} <!-- aitm-engagement:v1 start=1790812860000 end=1790812920000 active=unknown wstart=100 wend=112 fstart=1000 fend=1020 -->`,
+  ].join('\n');
+}
+
+test('[#2024] parsed Unknown recovery projects incomplete fields without false actor conflicts', () => {
+  const log = recoveredActorLog();
+  for (const rawBody of [null, log]) {
+    const totals = rollupTotals(parseTimingRows(log), 5, rawBody);
+    assert.deepEqual(totals.telemetry.engagement.failures, []);
+    assert.deepEqual(totals.telemetry.engagement.incompleteActors, []);
+    const projection = timingFieldProjection(totals);
+    assert.equal(projection.status, 'incomplete');
+    assert.deepEqual(projection.reasons, ['legacy-attribution-unknown']);
+    assert.equal(projection.knownEngagedSec, 60);
+    assert.deepEqual(projection.values, {
+      engagedTime: null,
+      sessionTime: null,
+      reviewTime: null,
+      planTime: null,
+    });
+    assert.deepEqual(projection.unknownFields.sort(), [
+      'engagedTime',
+      'planTime',
+      'reviewTime',
+      'sessionTime',
+    ]);
+  }
+});
+
+test('[#2024] partly known or unattributed recovery cannot hide an actor baseline conflict', () => {
+  for (const options of [
+    { active: '0' },
+    { idle: '0' },
+    { active: 'unknown' },
+    { attributed: false },
+  ]) {
+    const log = recoveredActorLog(options);
+    const totals = rollupTotals(parseTimingRows(log), 5, log);
+    assert.ok(totals.telemetry.engagement.failures.includes('actor-evidence-start-conflict'));
+    assert.throws(() => timingFieldProjection(totals), /timing-field-projection:invalid-evidence/);
+  }
 });

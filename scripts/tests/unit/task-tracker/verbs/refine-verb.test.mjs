@@ -1,4 +1,5 @@
 // @story #145
+import { runRefineOrchestration as runRefine } from '../../../fixtures/refinement-orchestration.mjs';
 import assert from 'node:assert/strict';
 
 import {
@@ -6,7 +7,6 @@ import {
   validateArgs,
   buildRationaleMarker,
   applyRationaleMarker,
-  runRefine,
 } from '../../../../task-tracker/verbs/refine.mjs';
 import {
   parseRationaleMarker,

@@ -1,8 +1,16 @@
-// @story #309
+// @story #309 #1988
+import { registerTetherPublicationCases } from './project-tether-publication.cases.mjs';
 import assert from 'node:assert/strict';
+import {
+  estimationIssueBody,
+  estimationPublicationFixture,
+  estimationObservation,
+} from '../../../../fixtures/estimation-publication.mjs';
+import { parseIssueFieldDb } from '../../../../../task-tracker/issue-field-db.mjs';
+import { readDecompositionRecords } from '../../../../../task-tracker/lib/decomposition-records.mjs';
 import { test } from 'node:test';
 import {
-  tetherIssueToProject,
+  tetherIssueToProject as actualTether,
   backlogSizingWarning,
   backlogMoveWarning,
 } from '../../../../../gh/lib/project-tether.mjs';
@@ -124,6 +132,40 @@ function makeRunner({
     throw new Error(`unexpected query: ${query}`);
   };
   return { runGql, calls };
+}
+
+async function tetherIssueToProject(args) {
+  if (args.deps) return actualTether(args);
+  let body = estimationIssueBody({ estimate: 8, size: 'S' }),
+    board = { estimate: 8, size: 'S' };
+  const fixture = estimationPublicationFixture({
+    cfg: args.cfg,
+    issueNumber: args.issueNumber,
+    getBody: () => body,
+    setBody: (b) => (body = b),
+    getProject: () => board,
+    getForecast: () =>
+      estimationObservation({
+        estimate: null,
+        size: null,
+        recordId: null,
+        proposals: [],
+        observedProjections: [],
+      }),
+  });
+  const original = args.runGql;
+  const runGql = async (q, v) => {
+    const result = await original(q, v);
+    if (q.includes('updateProjectV2ItemFieldValue')) {
+      if (v.field === args.cfg.fieldEstimate) board.estimate = v.val;
+      if (v.field === args.cfg.sizeFieldId)
+        board.size =
+          Object.entries(args.cfg.sizeOptionMap ?? {}).find(([, id]) => id === v.option)?.[0] ??
+          board.size;
+    }
+    return result;
+  };
+  return actualTether({ ...args, runGql, deps: fixture });
 }
 
 async function testExistingProjectSideItemIsReused() {
@@ -610,3 +652,5 @@ test('tether permits readable non-Issue and archived redacted items', async () =
   assert.equal((await tether(runner)).itemId, 'EXACT');
   assert.deepEqual(runner.writes, ['EXACT']);
 });
+
+registerTetherPublicationCases({ cfg, makeRunner, actualTether });

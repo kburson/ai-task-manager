@@ -16,6 +16,12 @@ initializeFixtureActor(import.meta.url);
 //   3. Current state != plan (e.g. test) -> gate does NOT fire even
 //      without the approval line, so backwards transitions still work.
 
+import {
+  fixture,
+  observed,
+} from '../../../unit/task-tracker/lib/decomposition-authority-fixtures.mjs';
+import { createDecompositionRuntime } from '../../../../task-tracker/lib/decomposition-authority.mjs';
+import { formatIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
 import { strict as assert } from 'node:assert';
 // @story #1873
 import { execFile } from 'node:child_process';
@@ -89,8 +95,51 @@ function currentApprovedBody() {
   return `${body}\n${buildPlanApprovedMarker('2026-05-11T00:00:00.000Z', resolveStoryIntentSource({ body, projectDir: process.cwd() }).binding)}\n`;
 }
 
-function makeSandbox(body, { currentState = 'Analyze' } = {}) {
+async function makeSandbox(body, { currentState = 'Analyze' } = {}) {
+  body = body.replace(
+    /<!-- ai-task-manager:fields:start -->[^]*?<!-- ai-task-manager:fields:end -->/g,
+    ''
+  );
+  body += '\n\n## AITM Progress Markers\n' + formatIssueFieldDb({ estimate: 2, size: 'S' }) + '\n';
   const sandbox = mkdtempProjectIsolated('tt-approval-gate-');
+  const authority = fixture(2);
+  authority.body = body;
+  authority.values.project = {
+    ...authority.values.project,
+    projectId: PROJECT_ID,
+    projectItemId: 'ITEM_TEST',
+    size: 'S',
+  };
+  authority.values.forecast = {
+    estimate: null,
+    size: null,
+    recordId: null,
+    payloadHash: null,
+    proposals: [],
+    observedProjections: [
+      { size: 'S', estimate: 2 },
+      { size: 'S', estimate: 2 },
+    ],
+  };
+  authority.deps.readIssue = async () => observed({ number: 100, body: authority.body });
+  authority.deps.readBackIssue = authority.deps.readIssue;
+  const runtime = createDecompositionRuntime({
+    cfg: { repo: 'o/r', projectId: PROJECT_ID },
+    projectDir: sandbox,
+    deps: authority.deps,
+  });
+  try {
+    await runtime.refresh({
+      repository: 'o/r',
+      issue: 100,
+      projectId: PROJECT_ID,
+      projectItemId: 'ITEM_TEST',
+    });
+    body = authority.body;
+  } catch {
+    /* Intentionally incomplete refusal fixtures stay incomplete. */
+  }
+
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
@@ -98,6 +147,7 @@ function makeSandbox(body, { currentState = 'Analyze' } = {}) {
       {
         repo: 'o/r',
         projectId: PROJECT_ID,
+        fieldIds: { estimate: 'EST', size: 'SIZE' },
         fieldDisposition: 'PVTF_disposition',
         kanbanFieldId: 'PVTF_x',
         kanbanOptionBacklog: 'OP_b',
@@ -237,9 +287,13 @@ if (args[0] === 'api' && args[1] === 'user') {
   process.exit(0);
 }
 if (args[0] === 'api' && args[1] === 'graphql') {
-  // Query payload comes via stdin (--input -). Read it to decide the shape.
-  let stdin = '';
-  try { stdin = fs.readFileSync(0, 'utf8'); } catch {}
+  let stdin=(args.find(a=>a.startsWith('query='))||'').slice('query='.length);
+  if(args.includes('--input')) try { stdin=fs.readFileSync(0,'utf8'); } catch {}
+  if(stdin.includes('viewer{login}')) {
+    const connection={nodes:[],pageInfo:{hasNextPage:false,endCursor:null}};
+    fs.writeSync(1,JSON.stringify({data:{viewer:{login:'kburson'},repository:{issue:{id:'ISSUE_TEST',number:100,body:currentBody(),assignees:{nodes:[{login:'kburson'}]},projectItems:{nodes:[{id:'ITEM_TEST',project:{id:${JSON.stringify(PROJECT_ID)}},fieldValueByName:{name:${JSON.stringify(currentState)}},fieldValues:{nodes:[{number:2,field:{id:'EST',name:'Estimate'}},{name:'S',field:{id:'SIZE',name:'Size'}},{name:${JSON.stringify(currentState)},field:{id:'PVTF_x',name:'Status'}}],pageInfo:{hasNextPage:false,endCursor:null}}}],pageInfo:{hasNextPage:false,endCursor:null}},comments:connection,subIssues:connection}}}}));
+    process.exit(0);
+  }
   if (stdin.includes('parent { number }')) { fs.writeSync(1,JSON.stringify({data:{repository:{issue:{parent:null}}}}));process.exit(0); }
   if (stdin.includes('subIssues')) {
     const payload = {
@@ -309,7 +363,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 1. Body without approval line, current state = Analyze -> blocked
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /BLOCKED:.*plan -> develop requires/);
@@ -320,7 +374,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 2. Body WITH approval marker -> success
 {
   const body = currentApprovedBody();
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const r = await runMove(sandbox, binDir, ['100', 'develop']);
   assert.match(r.stdout, /moved to: develop/);
   rmSync(sandbox, { recursive: true });
@@ -329,7 +383,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 3. TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored — gate refuses regardless
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop'], {
     TASK_TRACKER_FORCE_DONE: '1',
   });
@@ -342,7 +396,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 //    so a transition back to develop from test succeeds without approval line.
 {
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Test' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Test' });
   const r = await runMove(sandbox, binDir, ['100', 'develop']);
   assert.match(r.stdout, /moved to: develop/);
   assert.doesNotMatch(r.stderr, /BLOCKED: plan -> develop/);
@@ -360,7 +414,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
     '<!-- aitm-entered-plan: 2026-05-09T09:45:00Z -->',
   ].join('\n');
   const bodyNoDeepDive = `## Acceptance Criteria\n- [ ] AC\n\n${entryMarkers}\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
-  const { sandbox, binDir } = makeSandbox(bodyNoDeepDive, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(bodyNoDeepDive, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /aitm-deep-dive-complete/);
@@ -394,7 +448,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
     '<!-- ai-task-manager:fields:end -->',
   ].join('\n');
   const body = `## Acceptance Criteria\n- [ ] AC\n\n${thinDeepDive}\n\n<!-- aitm-plan-approved: 2026-05-11T00:00:00.000Z -->\n`;
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'develop']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /deep-dive-complete/);
@@ -404,7 +458,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 7. Both markers present + adequate section -> success
 {
   const body = currentApprovedBody();
-  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Plan' });
+  const { sandbox, binDir } = await makeSandbox(body, { currentState: 'Plan' });
   const r = await runMove(sandbox, binDir, ['100', 'develop']);
   assert.match(r.stdout, /moved to: develop/);
   assert.doesNotMatch(r.stderr, /BLOCKED/);

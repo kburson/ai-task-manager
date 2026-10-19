@@ -6,7 +6,7 @@ provenance:
   based_on_catalog_digest: sha256:39e418bfad869c9a58b973bcf4ff9307a3057bcef7dfc7992df5a05761189ba1
 entries:
   - id: action.bind
-    revision: 1
+    revision: 2
     binds:
       action_ids:
         - bind
@@ -22,7 +22,7 @@ entries:
         - execution_revalidates: true
     human:
       summary: Bind an issue work session.
-      explanation: Inspect live bind readiness and let the sanctioned bind command revalidate before opening a timer.
+      explanation: Inspect live bind readiness and let the sanctioned bind command revalidate before opening a timer. Binding success permits inspection; scoped implementation still requires current confirmed decomposition authority.
       documentation:
         - path: docs/guides/workflow.md
           anchor: kanban-board-states
@@ -31,12 +31,13 @@ entries:
       execution:
         - >-
           Check issue, branch, worktree, assignment, and current board state; then use the sanctioned start
-          route.
+          route. Inspect decomposition warnings and available capabilities before implementation; recover
+          pending publication through its original writer and prepare governed decomposition when required.
       examples:
         - command: npx aitm start 1676 --role agent
           purpose: Inspect or execute the action.bind workflow through AITM.
   - id: action.resume
-    revision: 1
+    revision: 2
     binds:
       action_ids:
         - resume
@@ -646,3 +647,49 @@ entries:
       documentation:
         - path: docs/guides/reviewed-scope-evidence.md
           anchor: reviewed-scope-evidence
+
+  - id: protocol.decomposition-continuation
+    revision: 3
+    binds:
+      action_ids:
+        - resume
+      guard_ids:
+        - develop-exit-code-complete
+      remediation_ids:
+        - refresh-decomposition
+    agent:
+      instruction:
+        - query: resume
+        - require_status: ready
+        - if_blocked: use_returned_remediation_ids
+        - never: reuse_stale_decision
+        - never: bypass_guard
+        - execution_revalidates: true
+    human:
+      summary: Inspect current decomposition restrictions before continuing implementation.
+      explanation: >-
+        Bind readiness permits inspection and truthful checkpointing. It does not grant scoped implementation.
+        A missing or stale assessment requires sanctioned start or resume with confirmed read-back. Pending
+        estimate intent requires its original writer recovery; refresh never clears unknown effects. Mandatory
+        decomposition requires reviewed preparation and governed split or conversion. A prior agent waiver
+        cannot supply current permission. Fresh hooks also fence source, generator, document and remote
+        deliverable effects. Epic planning readiness cannot authorize completion; terminal materialized
+        children and existing lifecycle gates remain required. Plan exit and decompose-check consume this same
+        current assessment. Exact kind and split recovery require usable original scope, selected plan and
+        ownership; metadata reassessment preserves unresolved publication intent. Initial child values are
+        assessed after creation without inventing an estimate revision. Own governed scope revisions are preparation,
+        while mixed new deliverables require scoped capability. Identical recorded history and physically
+        contained scratch diagnostics remain available. Advisory review remains advisory.
+      triggered_when:
+        - Current decomposition is required, pending, or unavailable.
+      execution:
+        - Inspect the typed issue and operation identity and current authority.
+        - Use sanctioned start or resume to refresh an assessment and inspect its resulting restrictions.
+        - Recover pending publication through its original writer before claiming completion.
+        - Prepare reviewed decomposition and use the governed split or conversion route when required.
+      examples:
+        - command: npx aitm resume 1908 --role orchestrator
+          purpose: Refresh current assessment and retain restricted inspection when implementation is unavailable.
+      documentation:
+        - path: docs/guides/workflow.md
+          anchor: kanban-board-states

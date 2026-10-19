@@ -1,4 +1,4 @@
-// @story #1206
+// @story #1206 #1986
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -182,6 +182,16 @@ const ALLOWLIST = new Map(
       3,
       'historical timing descriptor fixture',
     ],
+    // #1986: preserve exactly one matching line in each pinned #1908 artifact.
+    // These explain the historical storage alias, never introduce another stage.
+    'docs/superpowers/specs/2026-10-11-1908-reestimate-decomposition-design.md': [
+      1,
+      'immutable accepted #1908 spec explains the historical storage alias',
+    ],
+    'docs/superpowers/reviews/1908/spec/XPR/spec/2026-10-11-2026-10-11-1908-reestimate-decomposition-design-review-2cf594a8a446f9552e00ecc0ef920a86/review-2cf594a8a446f9552e00ecc0ef920a86-author-response-1.md':
+      [1, 'immutable #1908 XPR author response records the accepted storage-alias clarification'],
+    'docs/superpowers/reviews/1908/spec/XPR/spec/2026-10-11-2026-10-11-1908-reestimate-decomposition-design-review-2cf594a8a446f9552e00ecc0ef920a86/review-2cf594a8a446f9552e00ecc0ef920a86-reviewer-response-1.md':
+      [1, 'immutable #1908 XPR reviewer response motivates the storage-alias clarification'],
     'skill/shared/references/state-walk-detail.md': [
       1,
       'historical raw-boundary compatibility detail retained outside routine context',

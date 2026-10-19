@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #1990
 // @story #309
 // #327 — PreToolUse source-edit gate.
 //
@@ -11,6 +12,7 @@
 // Plus: NotebookEdit gated, non-gated tools allowed, refusal message shape,
 // path normalisation, no-bound-issue refusal, and cache TTL behaviour.
 
+import { currentUnitAuthority } from '../../../unit/task-tracker/lib/decomposition-unit-admission-fixture.mjs';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
@@ -266,10 +268,13 @@ test('runHook returns allow when project-dir cannot be found', async () => {
 });
 
 test('runHook blocks in backlog state via injected signal resolver', async () => {
+  const current = await currentUnitAuthority({ body: '## AITM Progress Markers\n', issue: 42 });
   const r = await runHook(
     { tool_name: 'Edit', tool_input: { file_path: 'src/foo.mjs' } },
     {
       projectDir: PROJECT_DIR,
+      cfg: current.cfg,
+      decomposition: { subject: current.subject, runtime: current.runtime },
       isChoreModeActive: () => false,
       loadBoundIssue: () => '#42',
       resolveIssueSignals: async () => ({
@@ -302,7 +307,7 @@ test('runHook bypasses entire signal fetch when chore-mode is active', async () 
   assert.equal(fetched, false, 'must not fetch gh signals when chore-mode active');
 });
 
-test('runHook tolerates signal fetch failure (falls through to decide)', async () => {
+test('runHook refuses missing current authority before stale signal fallback', async () => {
   const r = await runHook(
     { tool_name: 'Edit', tool_input: { file_path: 'src/foo.mjs' } },
     {
@@ -316,7 +321,7 @@ test('runHook tolerates signal fetch failure (falls through to decide)', async (
   );
   assert.equal(r.decision, 'block');
   // No markers + unknown state → state-gate refusal.
-  assert.equal(r.code, 'source-edit-state-gate');
+  assert.equal(r.code, 'decomposition-authority-unavailable');
 });
 
 test('runHook allowlists scratch without needing a bound issue or signals', async () => {
@@ -500,6 +505,7 @@ test('target ancestry refuses an alias through an installed guard tree', () => {
 });
 
 test('Plan source-edit hook accepts owned Markdown from observed worktree', async () => {
+  const current = await currentUnitAuthority({ body: '## AITM Progress Markers\n', issue: 1830 });
   const { dir, cleanup } = makeProjectDir();
   const binary = 'g' + 'it';
   try {
@@ -510,6 +516,8 @@ test('Plan source-edit hook accepts owned Markdown from observed worktree', asyn
     mkdirSync(path.join(dir, 'docs'));
     const deps = {
       projectDir: dir,
+      cfg: current.cfg,
+      decomposition: { subject: current.subject, runtime: current.runtime },
       readExactSessionBinding: () => ({
         issueNumber: 1830,
         worktreePath: dir,

@@ -567,6 +567,7 @@ test('production session reads and execution refresh the same changed board auth
       'migration-journal',
       'project-board',
       'issue-body',
+      'decomposition',
     ]
   );
   liveState = 'develop';

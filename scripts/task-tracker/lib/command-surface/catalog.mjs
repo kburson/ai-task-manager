@@ -680,7 +680,7 @@ export const VERB_CONTRACTS = Object.freeze({
   'decompose-check': contract(
     ['The target issue and its board planning fields must be readable.'],
     ['Reads the issue, linked plan, and decomposition policy without mutating any state.'],
-    ['Prints the atomicity classification, signals, plan diagnostic, and waiver status.']
+    ['Prints the current assessment, signals, projection freshness, and epic boundary readiness.']
   ),
   'split-plan': contract(
     [

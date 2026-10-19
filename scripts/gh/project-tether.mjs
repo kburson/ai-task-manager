@@ -72,6 +72,7 @@ async function main() {
   const result = await tetherIssueToProject({
     cfg,
     issueNumber,
+    initialValues: args['initial-values'] === true,
     parentIssueNumber: numberFlag(args.parent, '--parent'),
     status: args.status,
     priority: args.priority,

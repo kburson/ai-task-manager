@@ -3,6 +3,7 @@
 import { execFileSync } from 'node:child_process';
 import { realpathSync, statSync, lstatSync, readlinkSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readWorktreeIdentity } from './worktree-binding-guard.mjs';
 import { isInstalledGuardPath } from './installed-guard-path.mjs';
 import { getActiveTask } from '../session-state.mjs';
@@ -461,4 +462,53 @@ export function discoverBashActivity(command, invocationDir, depth = 0) {
     else if (current === 'WRITE_DOCS' && result == null) result = current;
   }
   return result;
+}
+
+// @story #1990 — classify supported literal script execution without interpreting its source.
+export function discoversScopedScript(command, invocationDir = process.cwd()) {
+  return splitCommandSegments(inspectQuotedHeredocs(command).source).some((segment) => {
+    let words;
+    try {
+      words = shellTokens(segment);
+    } catch {
+      return false;
+    }
+    while (words[0]?.match(/^[A-Za-z_][A-Za-z0-9_]*=/)) words.shift();
+    if (words[0] === 'command') words.shift();
+    const executable = ['node', 'python', 'python3', 'bash', 'sh', 'zsh'].includes(
+      path.basename(words[0] ?? '')
+    );
+    const script = words[1];
+    if (!executable || !script || script.startsWith('-')) return false;
+    try {
+      if (
+        realpathSync(path.resolve(invocationDir, script)) ===
+        realpathSync(fileURLToPath(new URL('../task-tracker.mjs', import.meta.url)))
+      )
+        return false;
+    } catch {
+      /* A filename cannot mint package-owned authority. */
+    }
+    return (
+      ['node', 'python', 'python3', 'bash', 'sh', 'zsh'].includes(path.basename(words[0] ?? '')) &&
+      typeof script === 'string'
+    );
+  });
+}
+
+// @story #1990 — stage and preserve recorded history; branch/content rewrites are effects.
+export function isCheckpointOnlyBash(command, invocationDir) {
+  const segments = splitCommandSegments(inspectQuotedHeredocs(command).source).filter((segment) =>
+    segment.trim()
+  );
+  return (
+    segments.length > 0 &&
+    segments.every((segment) => {
+      const direct = parseDirectGit(segment, invocationDir);
+      return direct.kind === 'commit'
+        ? direct.docEligible === true
+        : direct.contextSafe === true &&
+            (['add', 'push'].includes(direct.kind) || readOnlyGitCommand(direct));
+    })
+  );
 }

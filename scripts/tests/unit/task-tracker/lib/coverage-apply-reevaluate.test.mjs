@@ -1,4 +1,4 @@
-// @story #604
+// @story #604 #1988
 // Coverage leaf for `scripts/task-tracker/lib/apply-reevaluate.mjs`.
 //
 // `applyReevaluate` is a pure-ish async orchestrator with every external
@@ -8,6 +8,14 @@
 // stub deps so no real `gh` call is made.
 
 import { test } from 'node:test';
+import {
+  estimationIssueBody,
+  estimationPublicationFixture,
+  estimationObservation,
+} from '../../../fixtures/estimation-publication.mjs';
+import { readDecompositionRecords } from '../../../../task-tracker/lib/decomposition-records.mjs';
+import { parseIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
+import { collectDecompositionCommentProposals } from '../../../../task-tracker/lib/decomposition-authority.mjs';
 import assert from 'node:assert/strict';
 
 import { applyReevaluate } from '../../../../task-tracker/lib/apply-reevaluate.mjs';
@@ -115,112 +123,160 @@ test('returns unchanged when size+estimate already match', async () => {
   assert.equal(r.status, 'unchanged');
 });
 
-test('falls back to project field values when field-DB lacks size/estimate', async () => {
-  const { deps } = recordingDeps({
-    projectValuesForIssue: async () => ({ size: 'XS', estimate: 1.5 }),
+for (const [files, wantSize, wantHours, wantStatus] of [
+  [10, 'L', 16, 'applied'],
+  [14, 'XL', 24, 'human-attention'],
+])
+  test(`actual deep-dive ${wantStatus} records its real effects and keeps proposals separate`, async () => {
+    const cfg = { repo: REPO, projectId: 'PID', fieldIds: { estimate: 'EST', size: 'SIZE' } };
+    let body = estimationIssueBody({ estimate: 10, size: 'M' }) + '\n' + deepDiveWithFiles(files),
+      board = { estimate: 10, size: 'M' },
+      comments = [],
+      posts = 0;
+    const subject = { repository: REPO, issue: 1987, projectId: 'PID', projectItemId: 'ITEM_1987' };
+    const fixture = estimationPublicationFixture({
+      cfg,
+      issueNumber: 1987,
+      getBody: () => body,
+      setBody: (b) => (body = b),
+      getProject: () => board,
+      getForecast: () => {
+        const parsed = collectDecompositionCommentProposals({
+          comments,
+          subject,
+          body,
+          published: null,
+          board,
+          bodyFields: parseIssueFieldDb(body).values,
+        });
+        return estimationObservation({
+          estimate: null,
+          size: null,
+          recordId: null,
+          proposals: parsed.proposals,
+          observedProjections: [],
+        });
+      },
+    });
+    const deps = {
+      ...fixture,
+      hasSubIssues: async () => ({ hasSubIssues: false, count: 0 }),
+      listComments: async () => comments,
+      loadProjectFieldDefs: () => [],
+      fieldOptionMap: async () => ({}),
+      postComment: async ({ body: next }) => {
+        assert.equal(
+          readDecompositionRecords(body).publication?.status,
+          'pending',
+          'intent before audit creation'
+        );
+        comments.push({ id: 'IC_new', body: next });
+        posts++;
+      },
+      writeProjectFieldValue: async ({ fieldId, value }) => {
+        assert.equal(readDecompositionRecords(body).publication.status, 'pending');
+        if (fieldId === 'EST') board.estimate = value.number;
+        if (fieldId === 'SIZE') board.size = value.singleSelectOptionName;
+      },
+    };
+    const args = { cfg, issueNumber: 1987, body, deps };
+    const result = await applyReevaluate(args);
+    assert.equal(result.status, wantStatus, result.reason ?? result.error);
+    const r = readDecompositionRecords(body);
+    assert.equal(r.publication.status, 'complete');
+    assert.equal(r.publication.writerId, 'apply-reevaluate');
+    assert.equal(r.assessment.estimate.hours, wantHours);
+    assert.equal(r.assessment.size, wantSize);
+    assert.equal(board.estimate, wantStatus === 'applied' ? 16 : 10);
+    assert.equal(board.size, wantStatus === 'applied' ? 'L' : 'M');
+    assert.equal(posts, 1);
   });
-  // no aitm-fields block, projectId set → fetchProjectValues path
-  const r = await applyReevaluate({
-    cfg: { repo: REPO, projectId: 'PID' },
-    issueNumber: 2,
-    body: 'no field db here',
-    deps,
-  });
-  assert.equal(r.status, 'unchanged');
-});
 
-test('tolerates a projectValuesForIssue failure', async () => {
-  const { deps } = recordingDeps({
-    projectValuesForIssue: async () => {
-      throw new Error('graphql down');
+test('a changed estimate with no configured project refuses before comment or body publication', async () => {
+  let writes = 0;
+  const result = await applyReevaluate({
+    cfg: { repo: REPO },
+    issueNumber: 1987,
+    body: fieldsBlock({ estimate: 10, size: 'M' }) + '\n' + deepDiveWithFiles(14),
+    deps: {
+      hasSubIssues: async () => ({ hasSubIssues: false, count: 0 }),
+      postComment: async () => {
+        writes++;
+      },
+      mutateIssueBody: async () => {
+        writes++;
+      },
     },
   });
-  const r = await applyReevaluate({
-    cfg: { repo: REPO, projectId: 'PID' },
-    issueNumber: 2,
-    body: 'no field db',
-    deps,
+  assert.equal(result.status, 'refused');
+  assert.match(result.reason, /configured-membership-required/);
+  assert.equal(writes, 0);
+});
+for (const failedEffect of ['audit', 'estimate', 'size', 'fields'])
+  test(`deep-dive reconciles unknown ${failedEffect} and preserves one keyed audit`, async () => {
+    const cfg = { repo: REPO, projectId: 'PID', fieldIds: { estimate: 'EST', size: 'SIZE' } };
+    let body = estimationIssueBody({ estimate: 10, size: 'M' }) + '\n' + deepDiveWithFiles(10),
+      board = { estimate: 10, size: 'M' },
+      comments = [],
+      failed = false;
+    const counts = { audit: 0, estimate: 0, size: 0, fields: 0 };
+    const fixture = estimationPublicationFixture({
+      cfg,
+      issueNumber: 1987,
+      getBody: () => body,
+      setBody: (b) => {
+        const changed =
+          parseIssueFieldDb(b).values.estimate !== parseIssueFieldDb(body).values.estimate;
+        body = b;
+        if (changed) {
+          counts.fields++;
+          if (failedEffect === 'fields' && !failed) {
+            failed = true;
+            throw new Error('body outcome unknown');
+          }
+        }
+      },
+      getProject: () => board,
+      getForecast: () =>
+        estimationObservation({
+          estimate: null,
+          size: null,
+          recordId: null,
+          proposals: [],
+          observedProjections: [],
+        }),
+    });
+    const deps = {
+      ...fixture,
+      hasSubIssues: async () => ({ hasSubIssues: false, count: 0 }),
+      listComments: async () => comments,
+      loadProjectFieldDefs: () => [],
+      fieldOptionMap: async () => ({}),
+      postComment: async ({ body: next }) => {
+        comments.push({ id: 'IC_audit', body: next });
+        counts.audit++;
+        if (failedEffect === 'audit' && !failed) {
+          failed = true;
+          throw new Error('comment outcome unknown');
+        }
+      },
+      writeProjectFieldValue: async ({ fieldId, value }) => {
+        const field = fieldId === 'EST' ? 'estimate' : 'size';
+        board[field] = field === 'estimate' ? value.number : value.singleSelectOptionName;
+        counts[field]++;
+        if (failedEffect === field && !failed) {
+          failed = true;
+          throw new Error('field outcome unknown');
+        }
+      },
+    };
+    const original = body;
+    const first = await applyReevaluate({ cfg, issueNumber: 1987, body: original, deps });
+    assert.equal(first.status, 'partial', first.reason);
+    assert.equal(readDecompositionRecords(body).publication.status, 'pending');
+    const retry = await applyReevaluate({ cfg, issueNumber: 1987, body, deps });
+    assert.equal(retry.status, 'applied', retry.reason ?? 'pending operation not reconciled');
+    assert.equal(readDecompositionRecords(body).publication.status, 'complete');
+    assert.equal(comments.length, 1);
+    assert.deepEqual(counts, { audit: 1, estimate: 1, size: 1, fields: 1 });
   });
-  // fetch threw → current size/estimate stay null → reevaluate treats null as a
-  // change, so this lands on the applied path (no field ids → warn, no writes).
-  assert.equal(r.status, 'applied');
-});
-
-test('≥2-tier jump requires human attention and is not auto-applied', async () => {
-  const { deps, calls } = recordingDeps();
-  const body = `${fieldsBlock({ size: 'XS', estimate: 1.5 })}\n${deepDiveWithFiles(14)}`; // → XL
-  const r = await applyReevaluate({ cfg: { repo: REPO }, issueNumber: 3, body, deps });
-  assert.equal(r.status, 'human-attention');
-  assert.equal(r.result.requiresHuman, true);
-  assert.equal(calls.writeField.length, 0);
-  assert.match(calls.postComment[0].body, /HUMAN ATTENTION/);
-});
-
-test('human-attention tolerates a postComment failure', async () => {
-  const { deps } = recordingDeps({
-    postComment: async () => {
-      throw new Error('nope');
-    },
-  });
-  const body = `${fieldsBlock({ size: 'XS', estimate: 1.5 })}\n${deepDiveWithFiles(14)}`;
-  const r = await applyReevaluate({ cfg: { repo: REPO }, issueNumber: 3, body, deps });
-  assert.equal(r.status, 'human-attention');
-});
-
-test('applied path writes both fields, patches body, and posts audit', async () => {
-  const { deps, calls } = recordingDeps();
-  const body = `${fieldsBlock({ size: 'S', estimate: 3.5 })}\n${deepDiveWithFiles(5)}`; // 7.5 → M
-  const cfg = { repo: REPO, projectId: 'PID', fieldIds: { size: 'F_SIZE', estimate: 'F_EST' } };
-  const r = await applyReevaluate({ cfg, issueNumber: 4, body, deps });
-  assert.equal(r.status, 'applied');
-  assert.equal(r.result.size, 'M');
-  assert.equal(calls.fetchItem, 1);
-  assert.equal(calls.writeField.length, 2);
-  assert.equal(calls.mutateBody.length, 1);
-  assert.equal(calls.postComment.length, 1);
-});
-
-test('applied path warns when field ids are missing (no writes)', async () => {
-  const { deps, calls } = recordingDeps();
-  const body = `${fieldsBlock({ size: 'S', estimate: 3.5 })}\n${deepDiveWithFiles(5)}`;
-  const cfg = { repo: REPO, projectId: 'PID' }; // no fieldIds → fieldIdFor('')
-  const r = await applyReevaluate({ cfg, issueNumber: 4, body, deps });
-  assert.equal(r.status, 'applied');
-  assert.equal(calls.writeField.length, 0);
-  assert.equal(calls.mutateBody.length, 1);
-});
-
-test('applied path tolerates a project-item write failure', async () => {
-  const { deps, calls } = recordingDeps({
-    projectItemForIssue: async () => {
-      throw new Error('item lookup failed');
-    },
-  });
-  const body = `${fieldsBlock({ size: 'S', estimate: 3.5 })}\n${deepDiveWithFiles(5)}`;
-  const cfg = { repo: REPO, projectId: 'PID', fieldIds: { size: 'F_SIZE', estimate: 'F_EST' } };
-  const r = await applyReevaluate({ cfg, issueNumber: 4, body, deps });
-  assert.equal(r.status, 'applied');
-  assert.equal(calls.writeField.length, 0); // threw before writing
-  assert.equal(calls.mutateBody.length, 1); // still patches body
-});
-
-test('applied path tolerates a body-patch failure', async () => {
-  const { deps } = recordingDeps({
-    mutateIssueBody: async () => {
-      throw new Error('patch conflict');
-    },
-  });
-  const body = `${fieldsBlock({ size: 'S', estimate: 3.5 })}\n${deepDiveWithFiles(5)}`;
-  const cfg = { repo: REPO, projectId: 'PID', fieldIds: { size: 'F_SIZE', estimate: 'F_EST' } };
-  const r = await applyReevaluate({ cfg, issueNumber: 4, body, deps });
-  assert.equal(r.status, 'applied');
-});
-
-test('applied path with no projectId skips field writes but patches body', async () => {
-  const { deps, calls } = recordingDeps();
-  const body = `${fieldsBlock({ size: 'S', estimate: 3.5 })}\n${deepDiveWithFiles(5)}`;
-  const r = await applyReevaluate({ cfg: { repo: REPO }, issueNumber: 4, body, deps });
-  assert.equal(r.status, 'applied');
-  assert.equal(calls.fetchItem, 0);
-  assert.equal(calls.mutateBody.length, 1);
-});

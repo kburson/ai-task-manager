@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { refreshGovernedDecomposition } from '../task-tracker/lib/decomposition-plan-exit-guard.mjs';
+import { getProjectDir } from '../task-tracker/paths.mjs';
 import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'create-issue');
 // Atomic issue creation: gh issue create + project tether + sub-issue link +
@@ -101,6 +103,16 @@ function extractIssueNumber(urlOrText) {
   const trimmed = String(urlOrText).trim();
   if (/^\d+$/.test(trimmed)) return Number(trimmed);
   return null;
+}
+
+// @story #1991 — initial values are assessed; they are not an existing estimate revision.
+export async function assessCreatedIssueContinuation({
+  issueNumber,
+  cfg,
+  projectDir = getProjectDir(),
+  deps = {},
+}) {
+  return refreshGovernedDecomposition({ issueNumber, cfg, projectDir, deps });
 }
 
 export function formatCreatedIssueToken(issueNumber) {
@@ -274,7 +286,14 @@ function ghCreate(args, assignee) {
 function buildTetherArgs(issueNumber, args, priority) {
   // #272 — Always create new issues in Backlog. The --status flag was removed
   // from this script's surface; the project tether call hard-codes `backlog`.
-  const tArgs = [TETHER_SCRIPT, '--issue', String(issueNumber), '--status', 'backlog'];
+  const tArgs = [
+    TETHER_SCRIPT,
+    '--issue',
+    String(issueNumber),
+    '--status',
+    'backlog',
+    '--initial-values',
+  ];
   if (priority) tArgs.push('--priority', priority);
   if (typeof args.size === 'string') tArgs.push('--size', args.size);
   if (typeof args.estimate === 'string') tArgs.push('--estimate', args.estimate);
@@ -540,7 +559,25 @@ async function main() {
       substitutePlaceholders(issueNumber, bodyContent, args, cfg.repo);
     }
 
-    console.log(`https://github.com/${cfg.repo}/issues/${issueNumber}`);
+    if (!skipTether) {
+      const assessment = await assessCreatedIssueContinuation({ issueNumber, cfg });
+      console.error(
+        'create-issue: current decomposition ' +
+          (assessment.current?.assessment.status ?? assessment.status) +
+          ' for #' +
+          issueNumber
+      );
+      if (assessment.status !== 'confirmed') {
+        console.error(
+          'create-issue: delivery authority remains unconfirmed for #' +
+            issueNumber +
+            '; run npx aitm resume ' +
+            issueNumber +
+            ' before scoped delivery; creation is confirmed, so do not create a duplicate.'
+        );
+      }
+    }
+    console.log('https://github.com/' + cfg.repo + '/issues/' + issueNumber);
   } finally {
     if (tmpDir) {
       try {

@@ -12,6 +12,9 @@
 // Scope: only fires for develop → test. Fail-open when ctx missing
 // cfg/issueNumber/body.
 
+// @story #1990
+import { assertScopedDecompositionEffect } from './decomposition-effect-admission.mjs';
+import { isNoCommitKind } from './issue-kind.mjs';
 import { gateCodeComplete } from './code-complete-gate.mjs';
 import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
 import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
@@ -48,6 +51,38 @@ export const developExitCodeCompleteGuard = {
     if (ctx?.toState && ctx.toState !== 'test') return { ok: true };
     if (!ctx || !ctx.cfg || ctx.issueNumber == null) return { ok: true };
     if (typeof ctx.body !== 'string') return { ok: true };
+    if (isNoCommitKind(ctx.body)) {
+      try {
+        await assertScopedDecompositionEffect({
+          issue: Number(ctx.issueNumber),
+          cfg: ctx.cfg,
+          projectDir: ctx.projectDir ?? process.cwd(),
+          activity: 'scoped-completion',
+          deps: ctx.deps?.codeComplete ?? {},
+        });
+      } catch (error) {
+        const code = error.code ?? 'decomposition-authority-unavailable';
+        const args = error.args ?? { issue: Number(ctx.issueNumber), operationId: null };
+        const refusal = {
+          code,
+          args,
+          ...(code === 'decomposition-authority-unavailable'
+            ? {
+                remediation: {
+                  id: 'refresh-decomposition',
+                  args: { issue: Number(ctx.issueNumber) },
+                },
+              }
+            : { noAutomaticRemediation: { reason: 'operator-reviewed-evidence-required' } }),
+        };
+        return {
+          ok: false,
+          reason: error.message,
+          blockers: [code + ': ' + error.message],
+          refusals: [refusal],
+        };
+      }
+    }
     if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
     if (typeof ctx.projectDir === 'string') {
       const auditFn = ctx.deps?.evidenceBranchReachability || auditEvidenceBranchReachability;
@@ -69,7 +104,10 @@ export const developExitCodeCompleteGuard = {
       cfg: ctx.cfg,
       issueNumber: ctx.issueNumber,
       body: ctx.body,
-      deps: ctx.deps?.codeComplete,
+      deps: {
+        ...ctx.deps?.codeComplete,
+        projectDir: ctx.projectDir ?? ctx.deps?.codeComplete?.projectDir,
+      },
     });
     if (result.ok) return { ok: true };
     return {

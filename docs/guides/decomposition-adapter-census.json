@@ -1,0 +1,151 @@
+{
+  "scope": "All production scripts/ references to writeProjectFieldValue, clearProjectFieldValue, tetherIssueToProject, ensureIssueFieldDb and formatIssueFieldDb; tests excluded",
+  "baseline": "6f353a595ec5add7049ca29a5501a64d9bcc28bd",
+  "callers": [
+    {
+      "path": "scripts/gh/lib/github-projects.mjs",
+      "disposition": "Generic transport or codec; enclosing semantic writer owns publication",
+      "proof": "guard, project-tether"
+    },
+    {
+      "path": "scripts/gh/lib/project-tether.mjs",
+      "disposition": "Existing-issue Estimate revision and rollback use project-tether owner; creator values are initial",
+      "proof": "project-tether-publication.cases"
+    },
+    {
+      "path": "scripts/gh/log-issue-time.mjs",
+      "disposition": "Excluded: only four timing actuals; explicit start override remains separately scoped; stale Estimate and Disposition cannot project (#2003)",
+      "proof": "decomposition-preservation.cases; log-issue-time-field-scope.test"
+    },
+    {
+      "path": "scripts/gh/migrate-project.mjs",
+      "disposition": "Membership/Estimate migration reconciles board and body; initial identical copy retains pending intent",
+      "proof": "decomposition-migration-publication.cases"
+    },
+    {
+      "path": "scripts/gh/project-tether.mjs",
+      "disposition": "Existing-issue Estimate revision and rollback use project-tether owner; creator values are initial",
+      "proof": "project-tether-publication.cases"
+    },
+    {
+      "path": "scripts/gh/set-rank.mjs",
+      "disposition": "Excluded: rank-only tether omits Estimate",
+      "proof": "project-tether-publication.cases; set-rank.test"
+    },
+    {
+      "path": "scripts/gh/update-event-fields.mjs",
+      "disposition": "Conditional event-field owner when numeric configuration targets Estimate; timestamp-only bindings unchanged",
+      "proof": "update-event-fields-states.test"
+    },
+    {
+      "path": "scripts/maintenance/bind-issues-to-new-project.mjs",
+      "disposition": "Membership/Estimate migration reconciles board and body; initial identical copy retains pending intent",
+      "proof": "decomposition-migration-publication.cases"
+    },
+    {
+      "path": "scripts/migrate/heal-options-co-pilot-bodies.mjs",
+      "disposition": "Unsupported historical one-off: fixed foreign options-co-pilot repository/project; never execute as local publication authority",
+      "proof": "accepted source census; foreign-source fixture"
+    },
+    {
+      "path": "scripts/migrate/start-time-field.mjs",
+      "disposition": "Excluded: startTime-only field migration, no Estimate target",
+      "proof": "accepted source census; start-time source fixture"
+    },
+    {
+      "path": "scripts/task-tracker/heal-backlog.mjs",
+      "disposition": "Excluded: STATIC_KEYS preserve Estimate; timing reconciliation cannot erase pending intent",
+      "proof": "decomposition-preservation.cases; heal-backlog-fields.test"
+    },
+    {
+      "path": "scripts/task-tracker/issue-field-db.mjs",
+      "disposition": "Generic transport or codec; enclosing semantic writer owns publication",
+      "proof": "guard, project-tether"
+    },
+    {
+      "path": "scripts/task-tracker/lib/apply-reevaluate.mjs",
+      "disposition": "Refinement and reevaluation publish applied values or explicit pending proposals",
+      "proof": "decomposition-proposal-publication.cases"
+    },
+    {
+      "path": "scripts/task-tracker/lib/apply-review-delta.mjs",
+      "disposition": "Excluded: review-delta comment publication does not publish body or board Estimate",
+      "proof": "apply-review-delta.test"
+    },
+    {
+      "path": "scripts/task-tracker/lib/decomposition-field-writer.mjs",
+      "disposition": "Internal field/migration owner seals enclosing intent before generic field effects",
+      "proof": "guard, project-tether and migration suites"
+    },
+    {
+      "path": "scripts/task-tracker/lib/decomposition-migration-writer.mjs",
+      "disposition": "Internal field/migration owner seals enclosing intent before generic field effects",
+      "proof": "guard, project-tether and migration suites"
+    },
+    {
+      "path": "scripts/task-tracker/lib/dependency-disposition.mjs",
+      "disposition": "Excluded: explicit dependency, disposition or start-time target keys preserve Estimate",
+      "proof": "dependency/disposition/start-time suites"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/runtime-adapter.mjs",
+      "disposition": "Adaptive Plan authority owns appendix, fields, forecast and ready projections",
+      "proof": "decomposition-adaptive-publication.cases"
+    },
+    {
+      "path": "scripts/task-tracker/lib/markers.mjs",
+      "disposition": "Excluded: marker-only body changes preserve existing fields and decomposition records",
+      "proof": "marker and authority suites"
+    },
+    {
+      "path": "scripts/task-tracker/lib/shelve-transaction.mjs",
+      "disposition": "Shelve retains journal phases and reconciles prior intent before explicit supersession",
+      "proof": "decomposition-shelve-publication.cases"
+    },
+    {
+      "path": "scripts/task-tracker/lib/stage-entry-markers.mjs",
+      "disposition": "Excluded: marker-only body changes preserve existing fields and decomposition records",
+      "proof": "marker and authority suites"
+    },
+    {
+      "path": "scripts/task-tracker/lib/stamp-start-time.mjs",
+      "disposition": "Excluded: explicit dependency, disposition or start-time target keys preserve Estimate",
+      "proof": "dependency/disposition/start-time suites"
+    },
+    {
+      "path": "scripts/task-tracker/lib/terminal-disposition.mjs",
+      "disposition": "Excluded: explicit dependency, disposition or start-time target keys preserve Estimate",
+      "proof": "dependency/disposition/start-time suites"
+    },
+    {
+      "path": "scripts/task-tracker/migrate-fields-encoding.mjs",
+      "disposition": "Excluded: identical parsed values re-encoded; no new revision or admission",
+      "proof": "decomposition-preservation.cases; migrate-fields-encoding.test"
+    },
+    {
+      "path": "scripts/task-tracker/preflight-issue.mjs",
+      "disposition": "New issue initial fields; assessed before later governed continuation, never a revision exemption",
+      "proof": "kind, split-plan and admission suites"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/cancel-plan.mjs",
+      "disposition": "Plan cancellation restores saved Refine and retires proposal under one resumable owner",
+      "proof": "decomposition-cancellation-publication.cases"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/inflate-estimate.mjs",
+      "disposition": "Inflation owns history, size, Estimate and fields before effects",
+      "proof": "decomposition-publication.cases; composition"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/migrate-dependencies.mjs",
+      "disposition": "Excluded: explicit dependency, disposition or start-time target keys preserve Estimate",
+      "proof": "dependency/disposition/start-time suites"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/refine.mjs",
+      "disposition": "Refinement and reevaluation publish applied values or explicit pending proposals",
+      "proof": "decomposition-proposal-publication.cases"
+    }
+  ]
+}

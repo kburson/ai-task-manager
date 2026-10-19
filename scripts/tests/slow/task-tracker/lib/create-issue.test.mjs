@@ -145,13 +145,15 @@ test('happy path: creates, tethers, substitutes placeholders', () => {
   assert.match(result.stdout, /issues\/9999/);
 
   const ghCalls = readLines(ctx.ghCallsLog);
-  // 1st call = issue create, 2nd call = api PATCH (placeholder substitution)
+  // Creation and placeholder mutation are followed by current authority inspection.
   assert.equal(
     ghCalls.length,
-    2,
-    `expected 2 gh calls, got ${ghCalls.length}: ${ghCalls.join(' | ')}`
+    3,
+    `expected 3 gh calls, got ${ghCalls.length}: ${ghCalls.join(' | ')}`
   );
   assert.match(ghCalls[0], /issue create/);
+  assert.match(ghCalls[2], /api graphql/);
+  assert.match(result.stderr, /delivery authority remains unconfirmed/);
   // The `bug` label triggers the bracketed kind prefix at creation (#507, #545).
   assert.match(ghCalls[0], /--title 🐞 \[BUG\] test/);
   assert.match(ghCalls[0], /--label bug/);

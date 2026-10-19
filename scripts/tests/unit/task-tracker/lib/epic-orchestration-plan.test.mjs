@@ -4,6 +4,8 @@ import test from 'node:test';
 
 import {
   buildEpicOrchestrationPlanMarker,
+  reconcileRankWavePointer,
+  parseEpicOrchestrationPlan,
   verifyEpicOrchestrationPlan,
 } from '../../../../task-tracker/lib/epic-orchestration-plan.mjs';
 import { buildPlanApprovedMarker } from '../../../../task-tracker/lib/markers.mjs';
@@ -231,4 +233,74 @@ test('legacy Plan epic without kind or R4P markers still freezes children and tr
   assert.equal(result.status, 'approved');
   assert.match(body, new RegExp(`trunk-sha="${SHA_A}"`));
   assert.equal(verifyEpicOrchestrationPlan(body, { children, trunkSha: SHA_A }).ok, true);
+});
+
+// @story #2008
+const legacyGraph = [
+  { number: 140, rank: 2, blockedBy: [], refinementDigest: 'a'.repeat(64) },
+  { number: 144, rank: 2, blockedBy: [140], refinementDigest: 'a'.repeat(64) },
+];
+const legacyApproval = buildPlanApprovedMarker('2026-10-04T01:00:00Z', {
+  mode: 'full-auto',
+  trunkSha: SHA_A,
+});
+const legacyBody =
+  legacyApproval +
+  '\n' +
+  buildEpicOrchestrationPlanMarker({
+    children: legacyGraph,
+    trunkSha: SHA_A,
+  });
+const graphChanges = [
+  [
+    'added child',
+    [...legacyGraph, { number: 148, rank: 3, blockedBy: [144], refinementDigest: 'b'.repeat(64) }],
+  ],
+  ['removed child', legacyGraph.slice(0, 1)],
+  ['changed rank', legacyGraph.map((c) => (c.number === 144 ? { ...c, rank: 3 } : c))],
+  [
+    'changed dependencies',
+    legacyGraph.map((c) => (c.number === 144 ? { ...c, blockedBy: [] } : c)),
+  ],
+];
+function legacyPointer(body, graph, action = 'authorize', rank = 2, id = 'legacy-adoption') {
+  return reconcileRankWavePointer(body, {
+    record: { graph, action, rank, id, previousDigest: null },
+    digest: 'b'.repeat(64),
+    commentNodeId: 'C-new',
+  });
+}
+for (const [change, graph] of graphChanges) {
+  test(
+    'fresh authorization directly adopts schema-1 ' + change + ' without changing Plan approval',
+    () => {
+      const result = legacyPointer(legacyBody, graph);
+      const adopted = parseEpicOrchestrationPlan(result);
+      assert.equal(adopted.schema, 2);
+      assert.equal(adopted.trunkSha, SHA_A);
+      assert.deepEqual(adopted.graph, graph);
+      assert.equal(result.slice(0, legacyApproval.length), legacyApproval);
+      assert.equal(adopted.waves.length, 1);
+      assert.equal(adopted.waves[0].operationId, 'legacy-adoption');
+    }
+  );
+  for (const action of ['refresh', 'revoke']) {
+    test(action + ' still refuses schema-1 ' + change, () => {
+      assert.throws(
+        () => legacyPointer(legacyBody, graph, action),
+        /parent contract graph changed/
+      );
+      assert.equal(parseEpicOrchestrationPlan(legacyBody).schema, 1);
+    });
+  }
+}
+test('schema-2 fresh adoption drops previous rank pointers and preserves trunk authority', () => {
+  const schema2 = legacyPointer(legacyBody, legacyGraph);
+  const result = legacyPointer(schema2, graphChanges[0][1], 'authorize', 3, 'new-rank');
+  const adopted = parseEpicOrchestrationPlan(result);
+  assert.equal(adopted.schema, 2);
+  assert.equal(adopted.trunkSha, SHA_A);
+  assert.equal(adopted.waves.length, 1);
+  assert.equal(adopted.waves[0].rank, 3);
+  assert.equal(adopted.waves[0].operationId, 'new-rank');
 });

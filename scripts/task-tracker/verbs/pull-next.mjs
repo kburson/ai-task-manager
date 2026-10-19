@@ -21,7 +21,7 @@ import {
   fetchEpicChildren,
   findNextEligibleChild,
   enrichChildrenWithBlockedBy,
-  isActiveChild,
+  wipAdvanceDecision,
   isPendingRecoveryPhase,
 } from '../lib/epic-children-gate.mjs';
 import { normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
@@ -326,17 +326,7 @@ async function runPullNextLocked({ epicNumber, cfg, deps, projectDir }) {
       sweep,
       message: waveRefusal.reason,
     };
-  const active = enriched.filter(isActiveChild);
-  if (!waveMode && active.length) {
-    return {
-      status: 'active-child',
-      activeChildren: active.map((child) => child.number),
-      sweep,
-      message: `Refusing to pull another local child while ${active
-        .map((child) => `#${child.number} (${child.state})`)
-        .join(', ')} is active. Finish the active child before continuing.`,
-    };
-  }
+  const warnings = waveMode ? [] : (wipAdvanceDecision({ children: enriched }).warnings ?? []);
 
   next ??= findNextEligibleChild(enriched);
   if (!next) {
@@ -350,6 +340,7 @@ async function runPullNextLocked({ epicNumber, cfg, deps, projectDir }) {
       message: `No dependency-ready R4P children eligible for JIT pull on #${epicNumber}. States: ${JSON.stringify(counts)}`,
       counts,
       sweep,
+      ...(warnings.length ? { warnings } : {}),
     };
   }
 
@@ -414,6 +405,7 @@ async function runPullNextLocked({ epicNumber, cfg, deps, projectDir }) {
     childRank: next.rank,
     promoteResult,
     sweep,
+    ...(warnings.length ? { warnings } : {}),
     message: `Pulled #${next.number} (rank=${next.rank}) ready-for-plan→plan. Refresh JIT planning against ${planningBase}, then run /task promote ${next.number}; Plan→Develop will verify exclusive ownership.`,
   };
 }
@@ -436,6 +428,11 @@ export async function verbPullNext(rest = [], cfgArg = null) {
   }
   const cfg = cfgArg || (await loadConfig());
   const result = await runPullNext({ epicNumber, cfg });
+  for (const warning of result.warnings ?? []) {
+    console.warn(
+      `WARN: epic WIP budget=${warning.args.budget}; active siblings ${warning.args.activeIssues}.`
+    );
+  }
   if (result.status === 'pulled') {
     console.log(`✓ ${result.message}`);
     return 0;

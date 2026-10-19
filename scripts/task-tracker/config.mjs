@@ -73,9 +73,8 @@ export const DEFAULTS = {
   gateReviewToDone: false,
   // Human requested for manual PR code review. `@me` resolves through GitHub.
   manualCodeReviewer: '@me',
-  // #1216 — R4P→Plan local WIP budget: at most one active child per epic.
-  // Default true preserves sequential execution. Keep enabled until isolated
-  // cloud verification is an explicit, proven parallel prerequisite.
+  // #2031 — Legacy compatibility key. Both boolean values retain advisory
+  // ordinary epic capacity; dependency, ownership and explicit wave gates apply.
   gatePlanRefineWip: true,
   // #179 — Hard Review→Done lifecycle-checkbox gate. When true (default), close
   // refuses to advance unless each Lifecycle DoD item is ticked, audit-marker

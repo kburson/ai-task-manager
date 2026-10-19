@@ -2,16 +2,30 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
+// @story #1990
+import { createDecompositionRuntime } from '../../../../task-tracker/lib/decomposition-authority.mjs';
+import {
+  fixture as decompositionFixture,
+  observed,
+  freshUnitDir,
+} from '../lib/decomposition-authority-fixtures.mjs';
+import { currentUnitAuthority } from '../lib/decomposition-unit-admission-fixture.mjs';
 import { runDeliver } from '../../../../task-tracker/verbs/deliver.mjs';
 
 const HEAD = 'a'.repeat(40);
 const ADVANCED_HEAD = 'b'.repeat(40);
 const DELIVERABLE_URL =
   'https://github.com/kburson/ai-task-manager/issues/1407#issuecomment-5469679817';
-const BODY = `## AITM Progress Markers
+const ORIGINAL_BODY = `## AITM Progress Markers
 
 <!-- aitm-issue-kind kind="audit" -->
 <!-- aitm-deliverable-posted url="${DELIVERABLE_URL}" ts="2026-08-30T15:49:04.000Z" -->`;
+const defaultAuthority = await currentUnitAuthority({
+  body: ORIGINAL_BODY,
+  issue: 1407,
+  repository: 'kburson/ai-task-manager',
+});
+const BODY = defaultAuthority.body;
 const WAIVER_RECORD_ID = '01M2H000000000000000000001';
 const WAIVED_TIMING_COMMENT = {
   id: 'timing-comment',
@@ -116,6 +130,7 @@ function makeHarness(overrides = {}) {
     createIntentId() {
       return '01ARZ3NDEKTSV4RRFFQ69G5FAV';
     },
+    decomposition: { subject: defaultAuthority.subject, runtime: defaultAuthority.runtime },
     ...overrides.deps,
   };
   return { calls, comments, deps, issue };
@@ -330,4 +345,45 @@ test('no-commit delivery fails closed without exact deliverable evidence', async
     assert.equal(harness.calls.commentsCreated, 0);
     assert.equal(harness.calls.pullRequestsListed, 1);
   }
+});
+
+test('real no-commit delivery refuses current oversized authority before publishing a new record', async () => {
+  const f = decompositionFixture(25);
+  f.body =
+    f.body.replace('state="develop"', 'state="review"') +
+    '\n<!-- aitm-issue-kind kind="audit" -->\n<!-- aitm-deliverable-posted url="' +
+    DELIVERABLE_URL +
+    '" ts="2026-08-30T15:49:04.000Z" -->\n';
+  const subject = {
+    repository: 'kburson/ai-task-manager',
+    issue: 1407,
+    projectId: 'PVT_a',
+    projectItemId: 'PVTI_a',
+  };
+  f.deps.readIssue = async () => observed({ number: 1407, body: f.body });
+  f.deps.readBackIssue = f.deps.readIssue;
+  const cfg = {
+    repo: subject.repository,
+    projectId: subject.projectId,
+    assignee: 'kburson',
+    trunkRef: 'origin/trunk',
+  };
+  const runtime = createDecompositionRuntime({
+    cfg,
+    projectDir: freshUnitDir('no-commit-current-'),
+    deps: f.deps,
+  });
+  await runtime.refresh(subject);
+  const h = makeHarness({ issue: { body: f.body }, deps: { decomposition: { subject, runtime } } });
+  await assert.rejects(
+    () =>
+      runDeliver({
+        issueNumber: 1407,
+        cfg,
+        state: { active: '#1407', entryStartTs: '2026-08-30T16:00:00Z' },
+        deps: h.deps,
+      }),
+    (error) => error.code === 'decomposition-required'
+  );
+  assert.equal(h.calls.commentsCreated, 0);
 });

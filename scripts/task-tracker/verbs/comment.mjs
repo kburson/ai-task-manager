@@ -1,6 +1,8 @@
+// @story #1990
 // @story #1210
 import { readFileSync } from 'node:fs';
 
+import { assertScopedDecompositionEffect } from '../lib/decomposition-effect-admission.mjs';
 import { upsertOwnedComment } from '../lib/owned-comment.mjs';
 import { loadState } from '../state.mjs';
 import { assertGovernedMutationSession } from './issue-body.mjs';
@@ -64,7 +66,16 @@ export async function runCommentVerb(ctx, deps = {}) {
     issue: args.issueNumber,
     key: args.key,
     body,
-    deps,
+    deps: {
+      ...deps,
+      beforeWrite: async () =>
+        assertScopedDecompositionEffect({
+          issue: args.issueNumber,
+          cfg: ctx.cfg,
+          projectDir: ctx.projectDir ?? process.cwd(),
+          deps,
+        }),
+    },
   });
 }
 
