@@ -36,11 +36,17 @@ export async function inspectBoundDecomposition(ctx, target) {
       (await decompositionRuntimeFor({ issue, cfg: ctx.cfg, projectDir: ctx.projectDir }));
     if (subject.issue !== issue) throw new Error('decomposition:mixed-subjects');
     try {
-      confirmed = (await runtime.refresh(subject)).status === 'confirmed';
+      const refreshed = await runtime.refresh(subject);
+      confirmed = refreshed.status === 'confirmed';
+      // @story #2037 — confirmed refresh already includes post-write authority.
+      if (confirmed) {
+        const { status: _status, ...authority } = refreshed;
+        current = authority;
+      }
     } catch {
       /* Inspection binding remains valid, implementation does not. */
     }
-    current = await runtime.collect(subject);
+    current ??= await runtime.collect(subject);
     const derived = deriveDecompositionCapabilities(current.assessment, current.publication);
     current = {
       ...current,
