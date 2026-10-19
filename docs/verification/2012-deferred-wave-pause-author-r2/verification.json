@@ -1,0 +1,108 @@
+{
+  "issue": 2012,
+  "authorSession": "01a138e5-7d07-7671-883d-e4ef5d43f917",
+  "authorModel": "gpt-6.1-sol",
+  "reasoningEffort": "high",
+  "reviewCommit": "e50b2c146327f20735c4071dc7675d37db566198",
+  "reviewReportSha256": "e6128111a7eb51f50cda4b27c676fb0d6a7b9a4d34913059d2c7637b94329b9c",
+  "rejectedSourceCommit": "b5528ee33b517202aa5091d5271404e1ae79c795",
+  "rejectedTarballSha256": "5d00afbead05bb23fc824f85709d4ee91a0a4e7cdf89397e82c3f4f3c7d46626",
+  "finalProductionSha256": "8781dbeade60f6f82057493a2efb1bd59b35462f60a1155e395500b5f398f1f5",
+  "finalRegressionSha256": "8f8effadf2e165d17c425f140fcd1558f5719af8c0a3e0c9e55c8dbd39d39b26",
+  "redProductionSha256": "b32af3e47146843155f1fc23b67112e8800831efb6affb149b4c26f97ac3b169",
+  "redRegressionSha256": "4cd183f7c0061df18586ece5c2e3c1cd55b7628a7ee6dbdbff3e7ab17dafacd3",
+  "checks": [
+    {
+      "name": "review-red",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs",
+      "exitCode": 1,
+      "rawLogPath": ".scratch/2012-author-r2/review-red.log",
+      "rawLogSha256": "4b53d7e68b5f29b77761d3baf85c19cc005cdf72b3fa1aeaf8d5edb9b2c4f463",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r2/review-red.log",
+      "committedLogSha256": "ca5257d9a4a0c24749c16987959584f04c812abbbcfebe84407597bbf2897376",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "p1-green-p2-red",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave-source.test.mjs scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs",
+      "exitCode": 1,
+      "rawLogPath": ".scratch/2012-author-r2/p1-green-p2-red.log",
+      "rawLogSha256": "b2ffbcc9b3ed8c87a1e0ec51e935e77152d175921ca5eb328613e23240edef45",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r2/p1-green-p2-red.log",
+      "committedLogSha256": "5ab11d039a1a689bade915990e8df3798e5e18aba8afe8874b9cc774310113fe",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "punctuation-red",
+      "command": "node --test --test-name-pattern='shared withdrawal' scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs",
+      "exitCode": 1,
+      "rawLogPath": ".scratch/2012-author-r2/punctuation-red.log",
+      "rawLogSha256": "e2c5e167adcc39d636f81eaf414c8c6f620192719f9cd2d403b3a9868478817c",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r2/punctuation-red.log",
+      "committedLogSha256": "c49b9975ab133ceaa4528c26e40c37208d50819648d67e91c8af65a6dc1dffb3",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "focused",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave-source.test.mjs scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r2/focused-final.log",
+      "rawLogSha256": "c49d2e18eac6260a437caab3ea6424d0d9a7e47d0b460b0b0a05b5b8ab5adf28",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r2/focused.log",
+      "committedLogSha256": "c49d2e18eac6260a437caab3ea6424d0d9a7e47d0b460b0b0a05b5b8ab5adf28",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "affected",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave*.test.mjs scripts/tests/unit/task-tracker/gh/lib/wave-admission.test.mjs scripts/tests/integration/task-tracker/lib/epic-rank-wave*.test.mjs",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r2/affected-final.log",
+      "rawLogSha256": "0b10f6d44d23d091ef5bd5be7e6a623e4927769279ed6df51afc779c542d88ab",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r2/affected.log",
+      "committedLogSha256": "0b10f6d44d23d091ef5bd5be7e6a623e4927769279ed6df51afc779c542d88ab",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "adjacent",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-orchestration-plan.test.mjs",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r2/adjacent-final.log",
+      "rawLogSha256": "6fd3f3a44dc3c5322b5a11036ccade52a1746850296316615438e888201976f5",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r2/adjacent.log",
+      "committedLogSha256": "6fd3f3a44dc3c5322b5a11036ccade52a1746850296316615438e888201976f5",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "fast",
+      "command": "npm test",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r2/fast-final.log",
+      "rawLogSha256": "ac1bee98920d68ea4340f4153fcf2c93f7df8ee0fad3877d8f21ef54f7cb7b71",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r2/fast.log",
+      "committedLogSha256": "ac1bee98920d68ea4340f4153fcf2c93f7df8ee0fad3877d8f21ef54f7cb7b71",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r2/lint-final.log",
+      "rawLogSha256": "d20a7d7fc517f697cd88976867c2e71b27e12d50f962ca96f635213f68fc236f",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r2/lint.log",
+      "committedLogSha256": "d20a7d7fc517f697cd88976867c2e71b27e12d50f962ca96f635213f68fc236f",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "format",
+      "command": "npm run format:check",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r2/format-final.log",
+      "rawLogSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r2/format.log",
+      "committedLogSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "normalization": "trailing whitespace only"
+    }
+  ],
+  "fullSlowAndCanonicalLifecycle": "pending",
+  "independentReview": "pending re-review"
+}

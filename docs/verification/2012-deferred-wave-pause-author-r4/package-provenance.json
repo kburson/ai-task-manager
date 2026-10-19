@@ -1,0 +1,85 @@
+{
+  "issue": 2012,
+  "fixRound": 3,
+  "sourceCommit": "fa1fe791153be656600f35c56c67051d7932684b",
+  "reviewInputCommit": "863fac79a535470c922d870b93609928cba45d12",
+  "acceptedSourceBase": "2fd90eb3f84f442e0329783943ed432b45d25473",
+  "authorSession": "01a138e5-7d07-7671-883d-e4ef5d43f917",
+  "model": "gpt-6.1-sol",
+  "reasoningEffort": "high",
+  "tarball": {
+    "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/runtime/2012-fa1fe7911/kburson-ai-task-manager-0.1.0.tgz",
+    "size": 3006321,
+    "sha256": "eb2921cf0e0ae4ae47c4178369bc5edfe9aec12671b72641a1f800ec2fd84315",
+    "sha512SRI": "sha512-Y+nA81cJiKfNgWofLWf1EH947KEUuPBfqpWrJxnc0gEpcG5Zrr5aMBaq/RFVyi5ij5V+d7YiJOCiKONrQJLkrA==",
+    "npmIntegrityMatched": true,
+    "packedFileCount": 917,
+    "allPackedFilesMatchCleanArchive": true,
+    "allPackedFilesMatchGitBlobs": true,
+    "rawInventoryPath": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/runtime/2012-fa1fe7911/package-inventory.json",
+    "rawInventorySha256": "bfcc8af76e7e5db6d69e62dc87e0ec2976139fc45c66d318fbb14165ee8d7dc1",
+    "committedInventoryPath": "docs/verification/2012-deferred-wave-pause-author-r4/package-inventory.json",
+    "committedInventorySha256": "c104f9672f5d183682cd13adc171c49f63a55d8214be617c1e7f1934bcec0e2c",
+    "committedInventoryFormat": "wrapper; files equals immutable raw array"
+  },
+  "moduleHashes": {
+    "scripts/task-tracker/lib/epic-rank-wave-source.mjs": {
+      "sha256": "2d51eb96c4840f01e38e6b3a79dde9cca1a0e30dbcdf97d59e86c197acd01efb",
+      "unchangedFromAcceptedBase": false
+    },
+    "scripts/task-tracker/lib/epic-orchestration-plan.mjs": {
+      "sha256": "470780dbb033bc6cd784e4323378d0006a0d43b6be2987ecaf3fa159fe139b92",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-refinement.mjs": {
+      "sha256": "88235288c4791d7ba474c20f220f82749efe9d48097844cb61a0f5ac47840e42",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/gh/lib/wave-admission.mjs": {
+      "sha256": "9ae090dc9777973939b48f3fa57fdd9026942171c49cf13a87d3de0b4cae1b21",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs": {
+      "sha256": "4191951b0608ec2fc238865ea9f65e2e4826da6f9e3cff4976dff29b33de74bf",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/epic-rank-wave-authority.mjs": {
+      "sha256": "36268489784a879c06399d67c3304e210a4615115621abb439ac070e038fd361",
+      "unchangedFromAcceptedBase": true
+    },
+    "scripts/task-tracker/lib/workflow-policy/authority-resolver.mjs": {
+      "sha256": "b3be4a1b6fc2a9840d223198e2ab740e780d5cd848841672b0f07f9c6036e768",
+      "unchangedFromAcceptedBase": true
+    },
+    "bin/aitm.mjs": {
+      "sha256": "decc8fa85508c2c6d5cf260315a7da4e58964d1c56c2c51b044e6a196fa6e05d",
+      "unchangedFromAcceptedBase": true
+    },
+    "bin/cli.mjs": {
+      "sha256": "998d676439ea8735bf7d7fc65d6d0c90936bf4585106dc5de32391a0c642891f",
+      "unchangedFromAcceptedBase": true
+    }
+  },
+  "regressionSha256": "bb46867f3ad3b79420ecb99054a6293d58a7067fb6ea03b0060c1b2910b6ad9a",
+  "report": {
+    "path": "docs/verification/2012-deferred-wave-pause-author-r4/report.md",
+    "sha256": "1bcca32bb6852af69a8faea26b6bb728edb5b1f9b2c2471c8788ac6efec376e2"
+  },
+  "verification": {
+    "focusedTests": 136,
+    "affectedTests": 208,
+    "adjacentTests": 19,
+    "fastFiles": 961,
+    "lint": "passed",
+    "format": "passed",
+    "exactReviewInputs": 72
+  },
+  "priorRecordsPreserved": true,
+  "pending": [
+    "Astra re-review",
+    "Root admission",
+    "consumer adoption/native readiness",
+    "full upstream slow/canonical Test/Review/Done"
+  ],
+  "installationReleaseOrMergePerformed": false
+}

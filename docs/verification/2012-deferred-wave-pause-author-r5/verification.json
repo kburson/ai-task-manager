@@ -1,0 +1,103 @@
+{
+  "issue": 2012,
+  "authorSession": "01a138e5-7d07-7671-883d-e4ef5d43f917",
+  "model": "gpt-6.1-sol",
+  "reasoningEffort": "high",
+  "approvedInputReviewCommit": "23bc32648a71920f20d3dd91da9aadadcf98a1cc",
+  "approvedInputSource": "fa1fe791153be656600f35c56c67051d7932684b",
+  "redProductionSha256": "2d51eb96c4840f01e38e6b3a79dde9cca1a0e30dbcdf97d59e86c197acd01efb",
+  "finalProductionSha256": "3498a702beb7c75694db8c6f846e7b5a331118fc569d8c74292f9dfce7054b64",
+  "preTitleCorrectionRegressionSha256": "1658270cc016de03712aecb5940f02174de24784294b5ca4a92f67ec4327f527",
+  "finalRegressionSha256": "99cd8dd50a05d7b61a084be36ac2a1fa8e989969c5758da290d441d8b921ddfc",
+  "titleCorrection": "rescans changed to source scans; assertions and production unchanged",
+  "checks": [
+    {
+      "name": "consumer-red",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs",
+      "exitCode": 1,
+      "rawLogPath": ".scratch/2012-author-r5/consumer-red.log",
+      "rawLogSha256": "14c34eb44dc368cc6a0f4ff3ddb237e3b0e73dfab03ca25f795f38d5529770de",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r5/consumer-red.log",
+      "committedLogSha256": "94fd95d42cc43778f26891aefaa2e8e93287995149de6afd9f848c92880309e6",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "focused",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave-source.test.mjs scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r5/focused-final.log",
+      "rawLogSha256": "032f920252c548c91715c9c9be28df197e304f1b6e7f1351a97f237bf4756c7c",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r5/focused.log",
+      "committedLogSha256": "032f920252c548c91715c9c9be28df197e304f1b6e7f1351a97f237bf4756c7c",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "affected",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-rank-wave*.test.mjs scripts/tests/unit/task-tracker/gh/lib/wave-admission.test.mjs scripts/tests/integration/task-tracker/lib/epic-rank-wave*.test.mjs",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r5/affected.log",
+      "rawLogSha256": "9e2309c83fcc03f638d5389381889bb5385992c84301ee1c1c9fec7049caf32c",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r5/affected.log",
+      "committedLogSha256": "9e2309c83fcc03f638d5389381889bb5385992c84301ee1c1c9fec7049caf32c",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "adjacent",
+      "command": "node --test scripts/tests/unit/task-tracker/lib/epic-orchestration-plan.test.mjs",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r5/adjacent.log",
+      "rawLogSha256": "691d37b4d0a227696133fc5c73deb35fbdec3e300ae6568f1d5551a89ec99143",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r5/adjacent.log",
+      "committedLogSha256": "691d37b4d0a227696133fc5c73deb35fbdec3e300ae6568f1d5551a89ec99143",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "fast",
+      "command": "npm test",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r5/fast.log",
+      "rawLogSha256": "3f65ff680c2a3dd87930ea69dd4d0173b9cfb63046c7b2cf20efeace557303f3",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r5/fast.log",
+      "committedLogSha256": "3f65ff680c2a3dd87930ea69dd4d0173b9cfb63046c7b2cf20efeace557303f3",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "lint-title-failure",
+      "command": "npm run lint",
+      "exitCode": 1,
+      "rawLogPath": ".scratch/2012-author-r5/lint.log",
+      "rawLogSha256": "72d5e444736ae5ffe14ff61942fcbeb5f8f6baaa8eeafef775673c3074c50cd2",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r5/lint-title-failure.log",
+      "committedLogSha256": "72d5e444736ae5ffe14ff61942fcbeb5f8f6baaa8eeafef775673c3074c50cd2",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r5/lint-final.log",
+      "rawLogSha256": "2d463027ccd12a15e2533cf75f136dedf78437ce5e83b718304c248afaadf80d",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r5/lint.log",
+      "committedLogSha256": "2d463027ccd12a15e2533cf75f136dedf78437ce5e83b718304c248afaadf80d",
+      "normalization": "trailing whitespace only"
+    },
+    {
+      "name": "format",
+      "command": "npm run format:check",
+      "exitCode": 0,
+      "rawLogPath": ".scratch/2012-author-r5/format.log",
+      "rawLogSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "committedLogPath": "docs/verification/2012-deferred-wave-pause-author-r5/format.log",
+      "committedLogSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "normalization": "trailing whitespace only"
+    }
+  ],
+  "previousReviewInputsPassed": 88,
+  "consumerControlInputsPassed": 15,
+  "pending": [
+    "Astra re-review",
+    "Root adoption and actual native admission",
+    "full upstream slow/canonical Test/Review/Done"
+  ],
+  "spellingNote": "cspell:ignore rescans identifiers"
+}

@@ -1,4 +1,4 @@
-// @story #1872
+// @story #1872 #2012
 import { readFile } from 'node:fs/promises';
 import { isInjection } from '../word-counter.mjs';
 import { exactRankWaveKeys } from './epic-rank-wave-authority.mjs';
@@ -348,6 +348,22 @@ function principalObject(text) {
     )[0]
     .trim();
 }
+function coordinatedObjects(text) {
+  // Commas delimit targets before a true condition/reason tail. Numeric lists
+  // belong to their scoped object, never to a separate target.
+  const principal = text
+    .split(
+      /\b(?:until|while|before|after|because|since|so|as(?!\s+many\b)|pending|till|unless|if|once|when)\b|—|:(?!\s*[#\[\d])/i
+    )[0]
+    .trim();
+  if (!principal) return [text];
+  const suffix = text.slice(text.indexOf(principal) + principal.length);
+  return principal
+    .split(/,(?!\s*#?\d+\b)\s*(?:(?:and|or)(?:\s+|$))?|\s+(?:and|or|&)(?!\s*#?\d+\b)\s+/i)
+    .filter((part, index) => part.trim() || index === 0)
+    .map((part) => part + suffix);
+}
+
 function admissionTarget(text) {
   // Only the head activity is neutral. A CI/test/review reason appended to
   // an admission object cannot conceal its withdrawal.
@@ -359,7 +375,7 @@ function admissionTarget(text) {
       ''
     )
     .trim();
-  return !/^(?:reviewing|testing|checking|building|scanning|closing|pushing|merging|CI|PRs?|pull requests?|timer|tests?|lint|checks?|builds?|reviews?|scans?|close|push|merges?)\b/i.test(
+  return !/^(?:reviewing|testing|checking|building|scanning|closing|pushing|merging|CI|PRs?|pull requests?|timer|tests?|lint|checks?|builds?|reviews?|scans?|deploying|deployments?|close|push|merges?)\b/i.test(
     object
   );
 }
@@ -367,7 +383,7 @@ function reversalScope(text, scope) {
   const epics = [...text.matchAll(/\b(?:epic|parent)\s*#?(\d+)\b/gi)].map((m) => Number(m[1]));
   const ranks = [
     ...text.matchAll(
-      /\branks?(?:[-\s]+(?:level|wave))?\s*[:=]?\s*(#?\d+(?:(?:\s*[,/]\s*|\s+and\s+)#?\d+)*)\b/gi
+      /\b(?:ranks?(?:[-\s]+(?:level|wave))?|waves?)\s*[:=]?\s*(#?\d+(?:(?:\s*[,/]\s*|\s+and\s+)#?\d+)*)\b/gi
     ),
   ].flatMap((match) => [...match[1].matchAll(/\d+/g)].map((m) => Number(m[0])));
   const members = [
@@ -401,12 +417,72 @@ function contextualReversalScope(text, scope) {
   }
   return reversalScope('', scope);
 }
-function contradictsWaveClause(text, scope, purpose, precedingClauses = '') {
+function completionSequence(prefix, scope) {
+  // Accept only the sequence itself or explicit resumption of current members.
+  // Arbitrary comma prefixes may carry an unknown outer condition.
+  const sequence = prefix
+    .trim()
+    .match(
+      /^(?:(?:please\s+)?resume\s+(#\d+(?:(?:\s*,\s*|\s+and\s+)#\d+)*)\s*,\s*)?(?:please\s+)?(?:finish|complete)\s+(?:the\s+)?(?:wave|rank(?:[-\s]+wave)?)\s*#?(\d+)\s*,?\s*then\s*(?:please\s*)?$/i
+    );
+  if (!sequence || Number(sequence[2]) !== scope.rank) return false;
+  return (
+    !sequence[1] ||
+    [...sequence[1].matchAll(/#(\d+)/g)].every((member) =>
+      scope.members.includes(Number(member[1]))
+    )
+  );
+}
+function futureStoryHandoff(object, scope) {
+  const boundary = object
+    .trim()
+    .match(/^before\s+(?:story\s+)?#(\d+)(?:\s+and\s+save\s+(?:the\s+)?handoff)?$/i);
+  return !!boundary && Number(boundary[1]) > 0 && !scope.members.includes(Number(boundary[1]));
+}
+function completionCondition(prefix, scope) {
+  const completion = prefix
+    .trim()
+    .match(
+      /^(?:when|once|after)\s+(?:the\s+)?(?:wave|rank(?:[-\s]+wave)?)\s*#?(\d+)\s+(?:is\s+(?:complete|completed|done)|has\s+(?:finished|completed)|finished|completed)\b\s*,?\s*(?:(?:(?:I|we)\s+(?:need|want)\s+you\s+to|please|you\s+(?:must|should))\s*)?$/i
+    );
+  return (
+    (completion !== null && Number(completion[1]) === scope.rank) ||
+    completionSequence(prefix, scope)
+  );
+}
+function deferredCompletionStop(prefix, object, verb, scope) {
+  if (
+    !/^(?:pause|stop)$/.test(verb) ||
+    !admissionTarget(object) ||
+    /\b(?:now|immediately|at once|until)\b/i.test(object) ||
+    (/\bbefore\b/i.test(object) && !futureStoryHandoff(object, scope))
+  )
+    return false;
+  const target = reversalScope(principalObject(object), scope);
+  if (
+    completionSequence(prefix, scope) &&
+    object.trim() &&
+    !futureStoryHandoff(object, scope) &&
+    !target.specified
+  )
+    return false;
+  return (!target.specified || target.matches) && completionCondition(prefix, scope);
+}
+function contradictsWaveClause(
+  text,
+  scope,
+  purpose,
+  precedingClauses = '',
+  completionContext = '',
+  deferredBoundaries = []
+) {
   const verbs = [
     ...text.matchAll(
       /\b(revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)(?![\w'’-])/gi
     ),
   ];
+  let preference = null;
+  let previousObject = null;
   for (const [index, match] of verbs.entries()) {
     const verb = match[1].toLowerCase();
     // A command-shaped noun belongs to the current object. Keep evaluating
@@ -425,31 +501,58 @@ function contradictsWaveClause(text, scope, purpose, precedingClauses = '') {
           ) &&
             !/^["”`)/]/.test(text.slice(next.index + next[1].length)))
       );
-    const object = text.slice(match.index + match[1].length, nextCommand?.index ?? text.length);
-    const negated =
-      /(?:do not|don['’]?t|n['’]t|never|no longer|not|cannot)\s+(?:(?:actually|really|ever|please)\s+)*$/i.test(
+    const fullObject = text.slice(match.index + match[1].length, nextCommand?.index ?? text.length);
+    // An infinitival preference belongs to its actual operation. Preserve its
+    // negation there, rather than classifying the truncated "to" as admission.
+    const directlyNegated =
+      /(?:do not|don['’]?t|n['’]t|never|no longer|not|cannot)\s+(?:(?:actually|really|ever|please)\s+)*(?:want\s+(?:(?:you|us|them)\s+)?to\s+)?$/i.test(
         text.slice(0, match.index)
       );
-    const target = principalObject(object);
-    const objectScope = reversalScope(target, scope);
-    const relevant = objectScope.specified
-      ? objectScope.matches
-      : contextualReversalScope(precedingClauses + ', ' + text.slice(0, match.index), scope)
-          .matches;
-    if (!relevant || !admissionTarget(object)) continue;
-    if (purpose === 'revoke') {
-      if (negated && /^(?:revoke|withdraw)$/.test(verb)) return true;
+    if (verb === 'want' && nextCommand && /^\s*(?:(?:you|us|them)\s+)?to\s*$/i.test(fullObject)) {
+      preference = directlyNegated;
+      previousObject = null;
       continue;
     }
-    if (/^(?:revoke|withdraw|cancel|stop|hold off|wait on|pause)$/.test(verb)) {
-      if (!negated) return true;
-    } else if (negated) return true;
-    if (
-      !negated &&
-      /^(?:run|execute|switch(?: to)?|use|keep|go)$/.test(verb) &&
-      /\b(?:sequential(?:ly)?|serial(?:ly)?|one at a time|one by one)\b/i.test(object)
-    )
-      return true;
+    // A preference covers its coordinated operations, not a new subject,
+    // polite independent command, sentence, or adversative clause.
+    if (previousObject !== null && !/(?:\s+(?:and|or|&)|,)\s*$/i.test(previousObject))
+      preference = null;
+    const negated = directlyNegated || preference === true;
+    previousObject = fullObject;
+    for (const object of coordinatedObjects(fullObject)) {
+      const target = principalObject(object);
+      const objectScope = reversalScope(target, scope);
+      const relevant = objectScope.specified
+        ? objectScope.matches
+        : contextualReversalScope(
+            [completionContext, precedingClauses, text.slice(0, match.index)]
+              .filter((part) => part.trim())
+              .join(', '),
+            scope
+          ).matches;
+      if (!relevant || !admissionTarget(object)) continue;
+      if (purpose === 'revoke') {
+        if (negated && /^(?:revoke|withdraw)$/.test(verb)) return true;
+        continue;
+      }
+      if (/^(?:revoke|withdraw|cancel|stop|hold off|wait on|pause)$/.test(verb)) {
+        if (!negated) {
+          const prefix = [precedingClauses, text.slice(0, match.index)]
+            .filter((part) => part.trim())
+            .join(', ');
+          if (!deferredCompletionStop(prefix, object, verb, scope)) return true;
+          // Emit the same matching target that was classified above. Consumers
+          // may inherit its scope, never its completion condition.
+          deferredBoundaries.push([prefix, verb, object].join(' '));
+        }
+      } else if (negated) return true;
+      if (
+        !negated &&
+        /^(?:run|execute|switch(?: to)?|use|keep|go)$/.test(verb) &&
+        /\b(?:sequential(?:ly)?|serial(?:ly)?|one at a time|one by one)\b/i.test(object)
+      )
+        return true;
+    }
   }
   if (purpose === 'revoke') return false;
   for (const unapproved of text.matchAll(/(.*?)\s+(?:is|are)\s+not approved?\b/gi)) {
@@ -463,20 +566,48 @@ function contradictsWave(statement, scope, purpose, immediateReply) {
   const text = humanText(statement);
   // Negation and operational objects belong to their own clause. A neutral
   // clause must never cancel a genuine reversal elsewhere in the message.
-  for (const sentence of text.split(/[.;!?\n]+/)) {
-    const clauses = sentence
-      .split(
-        /,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)|\s+and\s+(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause|run|go)\b)/i
-      )
-      .map((part) => part.trim())
-      .filter(Boolean);
-    for (const [index, clause] of clauses.entries()) {
-      if (contradictsWaveClause(clause, scope, purpose, clauses.slice(0, index).join(', ')))
-        return true;
+  const sentences = text.split(/[.;!?\n]+/);
+  const completionContexts = [];
+  // Revisit only this same human statement with its matching completion
+  // scopes, so an earlier independent stop cannot hide behind a later future
+  // boundary. This context may refuse authority, never supply it or a delay.
+  for (const revisit of [false, true]) {
+    for (const sentence of sentences) {
+      const deferredBoundaries = [];
+      const clauses = sentence
+        .split(
+          /,?\s+but\s+|,\s*(?=(?:I\s+)?(?:do not|don['’]?t|never|revoke|withdraw|cancel|stop|hold off|wait on|pause)\b|please\s+(?:(?:do not|don['’]?t|never)\s+)?(?:revoke|withdraw|enable|authorize|allow|approve|run|execute|proceed|start|cancel|stop|hold off|wait on|pause|let|want|switch(?: to)?|use|keep|go)\b|(?:I|we|you|they|he|she)\s+(?:will|would|can|could|should|must|do|did|want|run|execute|start|stop|pause|revoke|withdraw)\b)|\s+(?:and|or)\s+(?=(?:I|we|you|they|he|she)\b)/i
+        )
+        .map((part) => part.trim())
+        .filter(Boolean);
+      for (const [index, clause] of clauses.entries()) {
+        if (
+          contradictsWaveClause(
+            clause,
+            scope,
+            purpose,
+            clauses.slice(0, index).join(', '),
+            completionContexts.join('. '),
+            deferredBoundaries
+          )
+        )
+          return true;
+      }
+      // Scope comes only from a recognized completion boundary. Classification
+      // and retention share the same coordinated admission targets.
+      if (!revisit) {
+        if (completionCondition(sentence, scope)) completionContexts.push(sentence);
+        completionContexts.push(...deferredBoundaries);
+      }
     }
   }
-  if (!immediateReply) return false;
   const reply = text.trim();
+  if (
+    purpose === 'authorize' &&
+    /^(?:please\s+)?(?:pause|stop)(?:\s+(?:now|immediately|at once))?[.!]?$/i.test(reply)
+  )
+    return true;
+  if (!immediateReply) return false;
   if (
     /^(?:actually[, ]+)?(?:don['’]?t|hold off|wait|cancel(?: it)?|no(?:,? not yet)?)[.!]?$/i.test(
       reply

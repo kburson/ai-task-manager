@@ -1,4 +1,4 @@
-// @story #1206 #1986
+// @story #1206 #1986 #2012
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -192,6 +192,27 @@ const ALLOWLIST = new Map(
       [1, 'immutable #1908 XPR author response records the accepted storage-alias clarification'],
     'docs/superpowers/reviews/1908/spec/XPR/spec/2026-10-11-2026-10-11-1908-reestimate-decomposition-design-review-2cf594a8a446f9552e00ecc0ef920a86/review-2cf594a8a446f9552e00ecc0ef920a86-reviewer-response-1.md':
       [1, 'immutable #1908 XPR reviewer response motivates the storage-alias clarification'],
+    // #2012: each immutable package inventory names the existing migration once.
+    'docs/verification/2012-deferred-wave-pause-author-r2/package-inventory.json': [
+      1,
+      'immutable #2012 package inventory records the historical migration filename',
+    ],
+    'docs/verification/2012-deferred-wave-pause-author-r3/package-inventory.json': [
+      1,
+      'immutable #2012 package inventory records the historical migration filename',
+    ],
+    'docs/verification/2012-deferred-wave-pause-author-r4/package-inventory.json': [
+      1,
+      'immutable #2012 package inventory records the historical migration filename',
+    ],
+    'docs/verification/2012-deferred-wave-pause-author-r5/package-inventory.json': [
+      1,
+      'immutable #2012 package inventory records the historical migration filename',
+    ],
+    'docs/verification/2012-deferred-wave-pause-author-r6/package-inventory.json': [
+      1,
+      'immutable #2012 package inventory records the historical migration filename',
+    ],
     'skill/shared/references/state-walk-detail.md': [
       1,
       'historical raw-boundary compatibility detail retained outside routine context',

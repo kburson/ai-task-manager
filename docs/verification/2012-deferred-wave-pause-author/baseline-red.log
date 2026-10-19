@@ -1,0 +1,153 @@
+✖ exact completion pause preserves original authority during the native later-human rescan (9.386083ms)
+✖ explicit current-wave completion conditions defer only their attached pause or stop (3.260791ms)
+✖ immediate unconditional matching pause stop and revocation still refuse (6.227416ms)
+✔ a deferred pause never conceals another matching withdrawal in the same message (5.275208ms)
+✖ ambiguous and unrelated conditions do not waive a current-wave withdrawal (5.51125ms)
+✖ explicit other-wave and other-epic instructions retain their independent scope (2.653542ms)
+✔ a scheduled completion pause grants neither standalone nor later-wave permission (1.943167ms)
+✖ live scans retain later revocation beyond deferred pause and unrelated conversation (1.47675ms)
+✖ deferred pause does not alter exact source hashes or historical observation cutoffs (1.798125ms)
+✔ completion-related operational chatter does not redirect independent commands to admission (2.000709ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 3
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 110.389917
+
+✖ failing tests:
+
+test at .scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:70:1
+✖ exact completion pause preserves original authority during the native later-human rescan (9.386083ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'blocked'
+  - 'verified'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:76:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'verified',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at .scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:82:1
+✖ explicit current-wave completion conditions defer only their attached pause or stop (3.260791ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete, pause.
+  + actual - expected
+
+  + 'blocked'
+  - 'verified'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:91:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'verified',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at .scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:95:1
+✖ immediate unconditional matching pause stop and revocation still refuse (6.227416ms)
+  AssertionError [ERR_ASSERTION]: Pause now.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:109:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at .scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:129:1
+✖ ambiguous and unrelated conditions do not waive a current-wave withdrawal (5.51125ms)
+  AssertionError [ERR_ASSERTION]: When wave 4 is complete. Pause now.
+  + actual - expected
+
+  + 'verified'
+  - 'blocked'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:141:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'verified',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at .scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:145:1
+✖ explicit other-wave and other-epic instructions retain their independent scope (2.653542ms)
+  AssertionError [ERR_ASSERTION]: Pause wave 5.
+  + actual - expected
+
+  + 'blocked'
+  - 'verified'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:153:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'verified',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at .scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:166:1
+✖ live scans retain later revocation beyond deferred pause and unrelated conversation (1.47675ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'when wave 4 is complete I need you to pause.  I will start a fresh chat session to continue #2'
+  - 'Revoke parallel execution for epic #2 rank 4.'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:171:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'when wave 4 is complete I need you to pause.  I will start a fresh chat session to continue #2',
+    expected: 'Revoke parallel execution for epic #2 rank 4.',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at .scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:178:1
+✖ deferred pause does not alter exact source hashes or historical observation cutoffs (1.798125ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'blocked'
+  - 'verified'
+
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/2012-deferred-wave-pause/.scratch/2012-author/baseline/scripts/tests/unit/task-tracker/lib/epic-rank-wave-source-deferred-pause.test.mjs:181:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'verified',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
