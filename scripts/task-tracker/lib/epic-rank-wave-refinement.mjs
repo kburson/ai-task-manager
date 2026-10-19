@@ -1,11 +1,27 @@
-// @story #1872
+// @story #1872 #2009
 import { parseRefinementSnapshot } from './refinement-snapshot.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { parseProofMarker, serializeProofMarker } from './proof-marker.mjs';
-import { rankWaveDigest } from './epic-rank-wave-policy.mjs';
+import {
+  freezeRankGraph,
+  isStrictCompletedDone,
+  rankWaveDigest,
+} from './epic-rank-wave-policy.mjs';
+import { parsePointer, refuse, stripReviewedPointer } from './reviewed-scope/model.mjs';
+
+import { isEligibleNarrativeScopeTarget, liveLines } from './reviewed-scope/targets.mjs';
 
 // Retain historical snapshot identity and semantic inputs across lifecycle ticks.
 export function rankWaveRefinementIdentity(body, { labels } = {}) {
+  return refinementIdentity(body, labels, false);
+}
+
+// Compare original reviewed pointers only against retained completed history.
+export function rankWaveLegacyRefinementIdentity(body, { labels } = {}) {
+  return refinementIdentity(body, labels, true);
+}
+
+function refinementIdentity(body, labels, retainReviewedPointers) {
   const snapshot = parseRefinementSnapshot(body),
     fields = parseIssueFieldDb(body);
   if (
@@ -22,7 +38,27 @@ export function rankWaveRefinementIdentity(body, { labels } = {}) {
       new RegExp(`^##\\s+${name}\\s*$([\\s\\S]*?)(?=^##\\s+|$(?![\\s\\S]))`, 'im')
     );
     if (!match) throw new Error('rank-wave: refinement section missing');
-    return match[1]
+    let semanticText = match[1];
+    if (name === 'Scope') {
+      const normalizedLines = new Map();
+      const comments = new Set(),
+        lineages = new Set();
+      for (const { lineIndex, raw } of liveLines(match[1])) {
+        const pointer = parsePointer(raw);
+        if (!pointer || !isEligibleNarrativeScopeTarget(raw)) continue;
+        if (comments.has(pointer.commentId) || lineages.has(pointer.lineage))
+          refuse('reviewed-scope-pointer-duplicate');
+        comments.add(pointer.commentId);
+        lineages.add(pointer.lineage);
+        normalizedLines.set(lineIndex, stripReviewedPointer(raw));
+      }
+      if (!retainReviewedPointers)
+        semanticText = match[1]
+          .split('\n')
+          .map((line, index) => normalizedLines.get(index) ?? line)
+          .join('\n');
+    }
+    return semanticText
       .trim()
       .replace(/^- \[[x ]\]/gm, '- [ ]')
       .replace(/<!--\s*aitm-ac-evidence(?::[^\s]+)?\s[\s\S]*?-->/g, '')
@@ -62,8 +98,34 @@ export function rankWaveRefinementIdentity(body, { labels } = {}) {
   });
 }
 
+function matchesCompleteMember(child, member, refinementDigest) {
+  try {
+    return (
+      rankWaveDigest(freezeRankGraph([{ ...child, refinementDigest }])) ===
+      rankWaveDigest(freezeRankGraph([member]))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function reconcileRankWaveRefinement(children, records) {
   return children.map((child) => {
+    if (
+      isStrictCompletedDone(child) &&
+      matchesCompleteMember(child, child, child.refinementDigest) &&
+      child.legacyRefinementDigest
+    ) {
+      const members = records.flatMap((record) =>
+        Array.isArray(record.graph) ? record.graph : []
+      );
+      // A normalized retained identity always wins over an older legacy record.
+      if (
+        !members.some((member) => matchesCompleteMember(child, member, child.refinementDigest)) &&
+        members.some((member) => matchesCompleteMember(child, member, child.legacyRefinementDigest))
+      )
+        return { ...child, refinementDigest: child.legacyRefinementDigest };
+    }
     if (
       child.childEvidenceError !== 'stale refinement snapshot' ||
       !['plan', 'develop', 'test', 'review'].includes(child.boardState) ||
