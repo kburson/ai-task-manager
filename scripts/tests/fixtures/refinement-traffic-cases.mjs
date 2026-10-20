@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { createTrafficProvider } from '../helpers/refinement-traffic-provider.mjs';
 import {
   retainedShapes,
+  retainedHookContinuations,
   routeShapes,
   retainedHookQuery,
   optimizedHookRoot,
@@ -63,7 +64,7 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
   try {
     process.chdir(projectDir);
     process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
-    process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-2073-traffic';
+    process.env.AI_TASK_MANAGER_SESSION_ID = 'fixture-2073-' + path.basename(projectDir);
     globalThis.Date = class extends NativeDate {
       constructor(...args) {
         super(...(args.length ? args : ['2026-10-20T00:00:00.000Z']));
@@ -161,6 +162,7 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
       });
     const shapes = [
       ...retainedShapes,
+      ...retainedHookContinuations,
       ...routeShapes,
       ...targetShapes,
       ...optimizedHookContinuations,
@@ -320,14 +322,17 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
       invoke,
       snapshot,
       close() {
-        provider.assertNoEscapes();
-        Object.assign(client, previousPorts);
-        shim.restore();
-        process.chdir(originalCwd);
-        globalThis.Date = NativeDate;
-        for (const key of Object.keys(process.env))
-          if (!(key in previousEnv)) delete process.env[key];
-        Object.assign(process.env, previousEnv);
+        try {
+          provider.assertNoEscapes();
+        } finally {
+          Object.assign(client, previousPorts);
+          shim.restore();
+          process.chdir(originalCwd);
+          globalThis.Date = NativeDate;
+          for (const key of Object.keys(process.env))
+            if (!(key in previousEnv)) delete process.env[key];
+          Object.assign(process.env, previousEnv);
+        }
       },
     };
   } catch (error) {
@@ -340,3 +345,56 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
     throw error;
   }
 }
+
+// Reviewed ceilings are independent of observed output. See the baseline amendment.
+export const trafficBudgets = {
+  changedPublication: {
+    baseline: retainedBaselineBudget,
+    optimized: fixtureBudgets['changed-publication'],
+  },
+  unchanged: fixtureBudgets['unchanged-publication'],
+  emptyLeaf: { total: 1, families: { 'hook-root': 1 } },
+  parent: { total: 3, families: { 'hook-root': 1, 'hook-graph': 1, 'hook-fence': 1 } },
+  comments: {
+    total: 3,
+    families: { 'hook-root': 1, 'hook-root-continuation': 1, 'hook-fence': 1 },
+  },
+  parent51: { total: 5, families: { 'hook-root': 1, 'hook-graph': 2, 'hook-fence': 2 } },
+  hookMaximum: {
+    total: 1217,
+    families: {
+      'hook-root': 1,
+      'hook-root-continuation': 6,
+      'hook-graph': 3,
+      'hook-child-continuation': 1200,
+      'hook-fence': 7,
+    },
+  },
+  target: { total: 7, families: { 'target-binding': 1, 'target-project': 5, 'target-body': 1 } },
+  recovery: {
+    total: 768,
+    families: Object.fromEntries(
+      Object.entries(fixtureBudgets['changed-publication'].families).map(([family, limit]) => [
+        family,
+        limit * 2,
+      ])
+    ),
+  },
+  publicRoute: {
+    total: 2048,
+    families: {
+      membership: 384,
+      projection: 384,
+      'issue-body-read': 640,
+      'body-write': 128,
+      'project-field-write': 32,
+      'repository-link': 16,
+      'target-binding': 4,
+      'target-project': 320,
+      'target-body': 160,
+      'field-options': 16,
+      'route-read': 128,
+      'route-write': 64,
+    },
+  },
+};

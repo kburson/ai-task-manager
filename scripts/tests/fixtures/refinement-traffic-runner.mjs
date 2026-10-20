@@ -1,5 +1,5 @@
 // @story #2073 — external driver shared by retained and optimized source roots.
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +44,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const outcome = await fixture.invoke(arg('--boundary'));
     const files = [
       'scripts/task-tracker/lib/decomposition-field-writer.mjs',
+      'scripts/task-tracker/lib/decomposition-kind.mjs',
+      'scripts/task-tracker/lib/decomposition-target-observation.mjs',
       'scripts/task-tracker/lib/decomposition-hook-authority.mjs',
       'scripts/task-tracker/lib/estimate-writer-publication.mjs',
       'scripts/task-tracker/lib/decomposition-publication.mjs',
@@ -51,10 +53,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       'scripts/task-tracker/lib/decomposition-authority.mjs',
     ];
     const sourceManifest = Object.fromEntries(
-      files.map((file) => [file, hash(readFileSync(path.join(sourceRoot, file)))])
+      files.map((file) => [
+        file,
+        existsSync(path.join(sourceRoot, file))
+          ? hash(readFileSync(path.join(sourceRoot, file)))
+          : null,
+      ])
     );
     const fixtureFiles = [
       'refinement-traffic-cases.mjs',
+      'refinement-hook-population.mjs',
+      'refinement-target-shapes.mjs',
+      'refinement-target-fixture.mjs',
+      'estimation-publication.mjs',
       'refinement-traffic-shapes.mjs',
       'refinement-traffic-runner.mjs',
       '../helpers/refinement-traffic-provider.mjs',
@@ -81,7 +92,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     fixture.provider.assertNoEscapes();
     process.stdout.write(JSON.stringify(result));
   } finally {
-    fixture?.close();
-    rmSync(root, { recursive: true, force: true });
+    try {
+      fixture?.close();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   }
 }

@@ -80,8 +80,21 @@ export function createTrafficProvider({ population, shapes, failureSchedule = []
   }
   async function dispatch(entry, action) {
     const record = {
-      phase: state.phase ?? 'publication',
+      index: ledger.length + 1,
+      phase:
+        state.phase ??
+        (entry.family?.startsWith('hook-')
+          ? entry.family
+          : entry.family?.startsWith('target-')
+            ? 'target-observation'
+            : entry.family?.includes('write')
+              ? 'publication-write'
+              : 'authority-observation'),
       target: state.repository?.issue?.id ?? null,
+      byteLayer:
+        entry.transport === 'graphql'
+          ? 'serialized-graphql-response-envelope'
+          : 'serialized-cli-result-envelope',
       cost: null,
       costStatus: 'unknown-offline',
       outcome: 'pending',
@@ -123,6 +136,12 @@ export function createTrafficProvider({ population, shapes, failureSchedule = []
         family: shape.family,
         ...identity,
         transport: 'graphql',
+        target:
+          variables.item ??
+          variables.project ??
+          variables.issue ??
+          state.repository?.issue?.id ??
+          null,
         ...(variables.field
           ? {
               field:
@@ -173,20 +192,26 @@ export function createTrafficProvider({ population, shapes, failureSchedule = []
         throw new Error('unclassified command');
       });
     if (args[1] === 'view')
-      return dispatch({ family: 'issue-body-read', transport: 'opaque-cli' }, () => {
-        const keys = args[args.indexOf('--json') + 1]?.split(',');
-        if (!keys?.every((key) => ['number', 'body', 'labels'].includes(key)))
-          throw new Error('unclassified issue selection');
-        const output =
-          args.includes('-q') || args.includes('--jq')
-            ? keys[0] === 'labels'
-              ? state.repository.issue.labels.nodes.map((label) => label.name).join('\n')
-              : state.repository.issue.body
-            : JSON.stringify(
-                Object.fromEntries(keys.map((key) => [key, state.repository.issue[key]]))
-              );
-        return { stdout: output, stderr: '' };
-      });
+      return dispatch(
+        {
+          family: args[args.indexOf('--json') + 1] === 'labels' ? 'route-read' : 'issue-body-read',
+          transport: 'opaque-cli',
+        },
+        () => {
+          const keys = args[args.indexOf('--json') + 1]?.split(',');
+          if (!keys?.every((key) => ['number', 'body', 'labels'].includes(key)))
+            throw new Error('unclassified issue selection');
+          const output =
+            args.includes('-q') || args.includes('--jq')
+              ? keys[0] === 'labels'
+                ? state.repository.issue.labels.nodes.map((label) => label.name).join('\n')
+                : state.repository.issue.body
+              : JSON.stringify(
+                  Object.fromEntries(keys.map((key) => [key, state.repository.issue[key]]))
+                );
+          return { stdout: output, stderr: '' };
+        }
+      );
     if (args[1] === 'edit' && args.includes('--body-file') && typeof options.input === 'string')
       return dispatch({ family: 'body-write', transport: 'opaque-cli' }, () => {
         state.repository.issue.body = options.input;

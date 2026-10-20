@@ -86,7 +86,8 @@ test('provider applies a lost-ack mutation and subsequent observation sees the n
 
 test('retained source reproduces equal complete publications under independent ceilings', async (t) => {
   const { runSourceBoundary } = await import('../../../fixtures/refinement-traffic-runner.mjs');
-  const { retainedBaselineBudget } = await import('../../../fixtures/refinement-traffic-cases.mjs');
+  const { retainedBaselineBudget, fixtureBudgets, trafficBudgets } =
+    await import('../../../fixtures/refinement-traffic-cases.mjs');
   const { assertTrafficBudget } = await import(helper);
   const { mkdtempSync, rmSync } = await import('node:fs');
   const { execFileSync } = await import('node:child_process');
@@ -111,4 +112,79 @@ test('retained source reproduces equal complete publications under independent c
   assert.deepEqual(a.sourceManifest, b.sourceManifest);
   assertTrafficBudget(a.ledger, retainedBaselineBudget);
   assert.ok(a.ledger.every((entry) => entry.cost === null));
+  const optimized = runSourceBoundary({ ...options, sourceRoot: process.cwd() });
+  assert.equal(optimized.outcome.status, 'recorded');
+  assert.deepEqual(optimized.outcome, a.outcome);
+  assert.deepEqual(optimized.snapshot, a.snapshot);
+  assert.equal(optimized.fixtureHash, a.fixtureHash);
+  assert.equal(optimized.configurationHash, a.configurationHash);
+  assertTrafficBudget(optimized.ledger, fixtureBudgets['changed-publication']);
+  assert.ok(optimized.ledger.length < a.ledger.length);
+  for (const [fixtureId, boundary, budget, baselineTotal] of [
+    ['unchanged-publication', 'publication', trafficBudgets.unchanged, 16],
+    ['empty-leaf', 'hook', trafficBudgets.emptyLeaf, 1],
+    ['empty-unmarked-leaf', 'hook', trafficBudgets.emptyLeaf, 1],
+    ['two-child-ready-epic', 'hook', trafficBudgets.parent, 1],
+    ['two-page-comments-leaf', 'hook', trafficBudgets.comments, 2],
+    ['51-child-ready-epic', 'hook', trafficBudgets.parent51, 2],
+  ]) {
+    const old = runSourceBoundary({ sourceRoot, fixtureId, boundary }),
+      current = runSourceBoundary({ sourceRoot: process.cwd(), fixtureId, boundary });
+    assert.deepEqual(current.outcome, old.outcome, fixtureId);
+    assert.deepEqual(current.snapshot, old.snapshot, fixtureId);
+    assert.equal(current.fixtureHash, old.fixtureHash);
+    assert.equal(current.configurationHash, old.configurationHash);
+    assert.ok(old.ledger.length <= baselineTotal);
+    assertTrafficBudget(current.ledger, budget);
+    if (fixtureId === 'unchanged-publication') assert.equal(current.outcome.status, 'unchanged');
+    else if (!fixtureId.startsWith('51-')) assert.equal(current.outcome.decision, 'allow');
+  }
+});
+
+// The story's declared verifier includes real admission, target and recovery checks.
+import { registerHookTrafficCases } from './decomposition-hook-traffic.integration.cases.mjs';
+import { registerTargetRecoveryCases } from './refinement-target-recovery.integration.cases.mjs';
+import { registerTargetObservationCases } from '../../../unit/task-tracker/lib/decomposition-target-observation.cases.mjs';
+registerHookTrafficCases();
+registerTargetRecoveryCases();
+registerTargetObservationCases();
+
+test('every fixed budget rejects extra family and total requests plus unknown operations', async () => {
+  const { trafficBudgets } = await import('../../../fixtures/refinement-traffic-cases.mjs');
+  const { assertTrafficBudget } = await import(helper);
+  for (const budget of [
+    trafficBudgets.changedPublication.baseline,
+    trafficBudgets.changedPublication.optimized,
+    ...Object.entries(trafficBudgets)
+      .filter(([key]) => key !== 'changedPublication')
+      .map(([, value]) => value),
+  ]) {
+    const family = Object.keys(budget.families)[0];
+    assert.throws(
+      () =>
+        assertTrafficBudget(
+          Array.from({ length: budget.total + 1 }, () => ({ family })),
+          budget
+        ),
+      /total budget/
+    );
+    assert.throws(() => assertTrafficBudget([{ family: 'unknown' }], budget), /unclassified/);
+    for (const [name, limit] of Object.entries(budget.families)) {
+      const isolated = { ...budget, total: limit + 1 };
+      assert.doesNotThrow(() =>
+        assertTrafficBudget(
+          Array.from({ length: limit }, () => ({ family: name })),
+          isolated
+        )
+      );
+      assert.throws(
+        () =>
+          assertTrafficBudget(
+            Array.from({ length: limit + 1 }, () => ({ family: name })),
+            isolated
+          ),
+        new RegExp(name + ' budget')
+      );
+    }
+  }
 });

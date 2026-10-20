@@ -79,7 +79,7 @@ export const optimizedHookContinuations = [
       'query {repository(owner:"o",name:"r"){issue(number:2073){id number repository{nameWithOwner} body ' +
       hookComments.replace('first:100', 'first:100,after:"page:100"') +
       '}}}',
-    family: 'hook-comments',
+    family: 'hook-root-continuation',
   },
   {
     query: optimizedHookGraph.replace('subIssues(first:50)', 'subIssues(first:50,after:"page:50")'),
@@ -98,5 +98,21 @@ export const routeShapes = [
     family: 'repository-link',
     query:
       'mutation($project: ID!, $repo: ID!) { linkProjectV2ToRepository(input: { projectId: $project, repositoryId: $repo }) { repository { nameWithOwner } } }',
+  },
+];
+export const retainedHookContinuations = [
+  {
+    query:
+      'query {repository(owner:"o",name:"r"){issue(number:2073){number ' +
+      hookComments.replace('first:100', 'first:100,after:"page:100"') +
+      '}}}',
+    family: 'hook-root-continuation',
+  },
+  {
+    query:
+      'query {repository(owner:"o",name:"r"){issue(number:2073){number ' +
+      hookChildren.replace('subIssues(first:50)', 'subIssues(first:50,after:"page:50")') +
+      '}}}',
+    family: 'hook-root-continuation',
   },
 ];

@@ -17,6 +17,21 @@
   },
   "overrides": [
     {
+      "filter": [
+        "docs/superpowers/reviews/2073/spec/SAR/spec.r0.md",
+        "docs/superpowers/reviews/2073/spec/SAR/spec.r1.md",
+        "docs/superpowers/reviews/2073/spec/SAR/spec.r2.md",
+        "docs/superpowers/reviews/2073/spec/SAR/spec.r3.md"
+      ],
+      "config": { "MD034": false },
+      "combine": "merge"
+    },
+    {
+      "filter": ["docs/superpowers/reviews/2073/plan/SAR/plan.r1.md"],
+      "config": { "MD024": false },
+      "combine": "merge"
+    },
+    {
       "filter": ["docs/superpowers/reviews/1859/story/1859-body-v7.md"],
       "config": {
         "MD034": false

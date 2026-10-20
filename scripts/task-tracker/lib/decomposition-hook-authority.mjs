@@ -157,6 +157,13 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     throw new Error('child presence incomplete');
   const initialChildren = node.subIssues.nodes.map((child) => child?.id);
   if (
+    node.subIssues.pageInfo.hasNextPage &&
+    (!initialChildren.length ||
+      typeof node.subIssues.pageInfo.endCursor !== 'string' ||
+      !node.subIssues.pageInfo.endCursor.trim())
+  )
+    throw new Error('child presence continuation incomplete');
+  if (
     initialChildren.some((id) => typeof id !== 'string' || !id) ||
     new Set(initialChildren).size !== initialChildren.length
   )

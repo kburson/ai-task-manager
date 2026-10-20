@@ -33,3 +33,13 @@ The new reader API first failed its required-API assertion; project/body validat
 The compatibility fixture now provides current typed target responses from fresh raw board/body state. One legacy tether test config needed explicit canonical Estimate/Size IDs; production refuses absent definitions instead of substituting a fake null. Shared-writer/recovery tests passed 134/134, and the real public route plus pre-change manifest recovery passed six integrated checks. The bounded route deliberately throws at promotion after completed publication and runs native rollback; it does not claim whole-refine success or savings.
 
 GraphQL capture checkpoint: 591 native workflow observations, 657 known returned points, 165 unknown costs and one non-success observation from implementation authorization through 13:56:40.049Z. Full records are retained in graphql-usage-checkpoint.md. This capture does not expose live response bytes; offline response bytes are reported separately.
+
+## Integrated verification checkpoint
+
+The declared story verifier passed 69 tests, including paired retained/optimized source, fixed-budget failure oracles, actual native source/activity executables, real Plan-exit collection, scalar validation and pre-change recovery. The native executable ledger reports are retained as native-activity-guard-leaf/drift.md and native-source-edit-gate-leaf/drift.md. Native allow is silent exit-zero; each test also requires the expected nonempty successful selected-response ledger.
+
+The complete npm run quality command succeeded: formatting, all repository lint/audit gates and all 975 fast-lane files (123.1 seconds aggregate). Earlier redirected quality/format command forms were refused by the activity classifier before execution; ordinary unredirected npm run quality was supported. The earlier assumption that the alias itself was unsupported was corrected by this successful run.
+
+Spell checking surfaced pre-existing technical terminology and opaque IDs in retained #2039/#2073 documents. Valid project terminology was added to the project dictionary. Exact ID patterns are scoped to the old probe/traffic files, the actual native forecast ID is explicitly ignored, and the immutable historical spelling in plan.r0 plus its configuration entry is scoped to those exact files. Prior accepted artifacts were not rewritten. Full spell checking then passed with zero issues.
+
+Implementation review and exact-head native Test/Review are still pending at this checkpoint. No Review completion or live savings is claimed here.
