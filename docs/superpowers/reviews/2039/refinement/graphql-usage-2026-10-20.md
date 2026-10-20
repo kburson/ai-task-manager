@@ -1,5 +1,7 @@
 # #2039 GraphQL usage checkpoint
 
+This is a chronological investigation log; later checkpoints supersede earlier status descriptions. Latest checkpoint: fourteen children at R4P; parent Plan; 12,043 CLI observations and 7,518 known points across multiple quota windows. General HTTP count/byte coverage remains incomplete.
+
 Native offline telemetry snapshot. No GitHub requests were made to generate this report.
 
 ## Capture and limits
@@ -838,3 +840,111 @@ Tasks 1–10 reached native R4P; parent remains Plan. This cumulative capture sp
 | #2043 | 2026-10-20T09:11:30.848Z | 86 | 65 | 30 | 35 |
 
 The repeated `AitmEstimationProjection` query is defined in `scripts/task-tracker/lib/estimation/runtime-adapter.mjs:154`; it selects the full body, up to 100 comments, and project fields. `estimate-writer-publication.mjs:454–466` loops all business-effect readers at each checkpoint. `decomposition-publication.mjs:116–118` invokes the checkpoint before each adapter. These are source-supported amplification paths; exact call stacks and general payload sizes are still unmeasured. The live task process was verified to delegate to this worktree's `scripts/task-tracker/task-tracker.mjs`.
+
+## Fourteen-child R4P checkpoint
+
+Tasks 1–14 completed native R4P transitions. Parent remains Plan. Three tasks remain uncreated behind the readiness capacity defect; its separate prerequisite implementation still awaits approval. These cumulative totals span multiple provider windows.
+
+```json
+{
+  "snapshotAt": "2026-10-20T10:16:13.456Z",
+  "totals": {
+    "observations": 12043,
+    "knownPointSubtotal": 7518,
+    "unknownCostObservations": 5391,
+    "failures": 11
+  },
+  "integrity": {
+    "partialLines": 0,
+    "malformedLines": 0,
+    "unreadableFiles": 0
+  },
+  "topOperations": [
+    {
+      "operation": "gh.issue.view",
+      "observations": 4088,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 4088,
+      "failures": 4
+    },
+    {
+      "operation": "AitmEstimationProjection",
+      "observations": 1881,
+      "knownPointSubtotal": 1881,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.eb74807a6a65f2b6bd97223fe7b3dde004d1f6b6c2b5baa8d00570dc8acd446a",
+      "observations": 1881,
+      "knownPointSubtotal": 1880,
+      "unknownCostObservations": 1,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.2e9aad4db59390fe2f25c72aaa36d8e8e6ed8581fe8d2b70d99485749761286f",
+      "observations": 1501,
+      "knownPointSubtotal": 1501,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "gh.issue.edit",
+      "observations": 393,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 393,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.cf1d97f59243f1991a8ca4b9b4c343c88023dc66f9b7701a65eaae7b2a8d1dc4",
+      "observations": 257,
+      "knownPointSubtotal": 257,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.cc1b2bb952a095c716c4ca1e75acbf1fecc2fcb04d41b6c96ea80078af476f96",
+      "observations": 249,
+      "knownPointSubtotal": 248,
+      "unknownCostObservations": 1,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.e613994d2fa7cba1d9e5a6598c647317c8c623a6d6783e097b5a6fb81d9c748a",
+      "observations": 248,
+      "knownPointSubtotal": 248,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.ff0fe7b2e4472490bcf64ede1f2294284949c8f594bc90380291abfe561b6250",
+      "observations": 207,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 207,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.2a108f03695f1a3a168dc11c6d75923edcd55dcc5ea3f7599049b62759094c83",
+      "observations": 155,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 155,
+      "failures": 0
+    }
+  ]
+}
+```
+
+| Issue | Command start UTC | Duration seconds | CLI observations | Known points | Unknown costs |
+| --- | --- | ---: | ---: | ---: | ---: |
+| #2058 | 2026-10-20T09:19:47.657Z | 563 | 507 | 336 | 171 |
+| #2058 | 2026-10-20T09:29:10.746Z | 94 | 65 | 30 | 35 |
+| #2059 | 2026-10-20T09:33:29.560Z | 578 | 507 | 336 | 171 |
+| #2059 | 2026-10-20T09:44:54.910Z | 105 | 65 | 30 | 35 |
+| #2044 | 2026-10-20T09:48:31.473Z | 584 | 507 | 336 | 171 |
+| #2044 | 2026-10-20T09:58:15.199Z | 101 | 65 | 30 | 35 |
+| #2060 | 2026-10-20T10:02:32.739Z | 577 | 507 | 336 | 171 |
+| #2060 | 2026-10-20T10:12:10.187Z | 97 | 65 | 30 | 35 |
+
+Issue #2059's first Refine entry completed normally. The activity hook refused the second invocation as COMMIT_CODE before the requested command executed. A source-inspected shell-segmentation problem involves the escaped apostrophe in the rationale; an offline classifier probe was also refused as WRITE_CODE and did not execute. A fresh Explain showed the expected missing Refine-exit markers. The same native command and exact rationale then succeeded using expansion-free double quotes, producing genuine R4P markers and 8/8 native tail checks. No source/guard configuration changed. Hook-side activity is not asserted to have zero requests or complete capture.
+
+Additional source finding: decomposition-field-writer.mjs:43–86 defines separate estimate, size and body-field effect readers; each calls readEstimateWriterAuthority even when consuming one scalar. estimate-writer-publication.mjs checkpoints loop these readers before each adapter. Preserve freshness and drift checks, but evaluate a single scoped snapshot per legitimate checkpoint and narrow marker/field reads in a governed implementation. Refine second invocation hits the unchanged-estimate path (verbs/refine.mjs:392), explaining its much smaller measured traffic. This is an implementation investigation direction, not an applied optimization or new approval.
