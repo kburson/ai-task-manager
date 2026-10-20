@@ -736,3 +736,105 @@ Per-command attribution uses controller time intervals. Named Aitm2039 diagnosti
 | #2042 | 2026-10-20T08:19:40.020Z | 86 | 0 | 65 | 30 | 35 |
 | #2056 | 2026-10-20T08:23:27.472Z | 524 | 0 | 507 | 336 | 171 |
 | #2056 | 2026-10-20T08:32:11.089Z | 89 | 0 | 65 | 30 | 35 |
+
+## Ten-child R4P checkpoint
+
+Tasks 1–10 reached native R4P; parent remains Plan. This cumulative capture spans multiple quota windows. The per-command intervals for #2057 include one required post-Compact Explain (8 observations, 6 known points), so its entry row is not an isolated Refine invocation. No product implementation tests or approval evidence were generated.
+
+```json
+{
+  "snapshotAt": "2026-10-20T09:14:23.408Z",
+  "totals": {
+    "observations": 9210,
+    "knownPointSubtotal": 5787,
+    "unknownCostObservations": 4226,
+    "failures": 11
+  },
+  "integrity": {
+    "partialLines": 0,
+    "malformedLines": 0,
+    "unreadableFiles": 0
+  },
+  "topOperations": [
+    {
+      "operation": "gh.issue.view",
+      "observations": 3185,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 3185,
+      "failures": 4
+    },
+    {
+      "operation": "AitmEstimationProjection",
+      "observations": 1373,
+      "knownPointSubtotal": 1373,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.eb74807a6a65f2b6bd97223fe7b3dde004d1f6b6c2b5baa8d00570dc8acd446a",
+      "observations": 1373,
+      "knownPointSubtotal": 1372,
+      "unknownCostObservations": 1,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.2e9aad4db59390fe2f25c72aaa36d8e8e6ed8581fe8d2b70d99485749761286f",
+      "observations": 1112,
+      "knownPointSubtotal": 1112,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "gh.issue.edit",
+      "observations": 299,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 299,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.e613994d2fa7cba1d9e5a6598c647317c8c623a6d6783e097b5a6fb81d9c748a",
+      "observations": 214,
+      "knownPointSubtotal": 214,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.cf1d97f59243f1991a8ca4b9b4c343c88023dc66f9b7701a65eaae7b2a8d1dc4",
+      "observations": 192,
+      "knownPointSubtotal": 192,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.cc1b2bb952a095c716c4ca1e75acbf1fecc2fcb04d41b6c96ea80078af476f96",
+      "observations": 180,
+      "knownPointSubtotal": 179,
+      "unknownCostObservations": 1,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.ff0fe7b2e4472490bcf64ede1f2294284949c8f594bc90380291abfe561b6250",
+      "observations": 164,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 164,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.eac2e2ff951bad0040331ede12c6869393e9f1336a0e438dcdb17bfab4d1dbde",
+      "observations": 136,
+      "knownPointSubtotal": 136,
+      "unknownCostObservations": 0,
+      "failures": 0
+    }
+  ]
+}
+```
+
+| Issue | Command start UTC | Duration seconds | CLI observations | Known points | Unknown costs |
+| --- | --- | ---: | ---: | ---: | ---: |
+| #2057 | 2026-10-20T08:50:39.901Z | 522 | 515 | 342 | 173 |
+| #2057 | 2026-10-20T08:59:21.479Z | 94 | 65 | 30 | 35 |
+| #2043 | 2026-10-20T09:02:31.873Z | 539 | 507 | 336 | 171 |
+| #2043 | 2026-10-20T09:11:30.848Z | 86 | 65 | 30 | 35 |
+
+The repeated `AitmEstimationProjection` query is defined in `scripts/task-tracker/lib/estimation/runtime-adapter.mjs:154`; it selects the full body, up to 100 comments, and project fields. `estimate-writer-publication.mjs:454–466` loops all business-effect readers at each checkpoint. `decomposition-publication.mjs:116–118` invokes the checkpoint before each adapter. These are source-supported amplification paths; exact call stacks and general payload sizes are still unmeasured. The live task process was verified to delegate to this worktree's `scripts/task-tracker/task-tracker.mjs`.

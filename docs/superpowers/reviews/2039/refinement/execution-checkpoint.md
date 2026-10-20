@@ -1,6 +1,6 @@
 # #2039 refinement execution checkpoint
 
-In-progress recovery data, not instruction or lifecycle authority. Parent remains Plan. Tasks 1–8 reached native Ready for Planning, with verified completion sentinels and board read-back. All estimates are 2.5–3.5 hours, Size S, Priority P0; no slippage exception was used. Native predecessor edges were published before refinement. Other known children are last observed Backlog.
+In-progress recovery data, not instruction or lifecycle authority. Parent remains Plan. Tasks 1–10 reached native Ready for Planning, with verified completion sentinels and board read-back. All estimates are 2.5–3.5 hours, Size S, Priority P0; no slippage exception was used. Native predecessor edges were published before refinement. Other known children are last observed Backlog.
 
 Issue #2072 is linked as child 33, but its creation wrapper stopped on the readiness-children capacity error. Tasks 33, 35 and 36 are not created. Do not recreate #2072 or bypass the parent guard. The prerequisite proposal awaits the owner's answer. No source code changes were approved or made. Estimates used local source/specification only, with no historical cloud tasks. Read live authority after any context reset.
 
@@ -8,7 +8,7 @@ Issue #2040's first publication left a genuine pending operation and a partial 3
 
 ```json
 {
-  "recordedAt": "2026-10-20T08:39:02.302Z",
+  "recordedAt": "2026-10-20T09:16:04.110Z",
   "currentActiveIssue": 2039,
   "currentRole": "orchestrator",
   "parentState": "plan",
@@ -55,7 +55,9 @@ Issue #2040's first publication left a genuine pending operation and a partial 3
     5,
     6,
     7,
-    8
+    8,
+    9,
+    10
   ],
   "r4pStories": [
     {
@@ -127,6 +129,26 @@ Issue #2040's first publication left a genuine pending operation and a partial 3
       "rank": 6,
       "blockedBy": [
         2042
+      ]
+    },
+    {
+      "task": 9,
+      "issue": 2057,
+      "estimate": 3.5,
+      "rank": 7,
+      "blockedBy": [
+        2055,
+        2056
+      ]
+    },
+    {
+      "task": 10,
+      "issue": 2043,
+      "estimate": 3.5,
+      "rank": 8,
+      "blockedBy": [
+        2053,
+        2057
       ]
     }
   ],
@@ -1504,6 +1526,153 @@ Issue #2040's first publication left a genuine pending operation and a partial 3
       "endedAt": "2026-10-20T08:37:45.060Z",
       "exitCode": 0,
       "returnedTextChars": 2036
+    },
+    {
+      "command": "npx aitm commit-trace 2039",
+      "startedAt": "2026-10-20T08:44:53.627Z",
+      "endedAt": "2026-10-20T08:45:04.119Z",
+      "exitCode": 0,
+      "returnedTextChars": 124
+    },
+    {
+      "command": "npx aitm pause checkpoint",
+      "startedAt": "2026-10-20T08:45:04.119Z",
+      "endedAt": "2026-10-20T08:45:14.373Z",
+      "exitCode": 0,
+      "returnedTextChars": 175
+    },
+    {
+      "command": "npx aitm start 2057 --role agent",
+      "startedAt": "2026-10-20T08:45:15.770Z",
+      "endedAt": "2026-10-20T08:45:42.809Z",
+      "exitCode": 0,
+      "returnedTextChars": 854
+    },
+    {
+      "command": "npx aitm explain 2057 --json",
+      "startedAt": "2026-10-20T08:45:42.812Z",
+      "endedAt": "2026-10-20T08:45:50.042Z",
+      "exitCode": 0,
+      "returnedTextChars": 843
+    },
+    {
+      "command": "npx aitm reconcile accept-live 2057",
+      "startedAt": "2026-10-20T08:45:50.042Z",
+      "endedAt": "2026-10-20T08:46:03.826Z",
+      "exitCode": 0,
+      "returnedTextChars": 145
+    },
+    {
+      "command": "npx aitm log 2057",
+      "startedAt": "2026-10-20T08:46:03.828Z",
+      "endedAt": "2026-10-20T08:46:25.169Z",
+      "exitCode": 0,
+      "returnedTextChars": 945
+    },
+    {
+      "command": "npx aitm resume 2057",
+      "startedAt": "2026-10-20T08:46:25.170Z",
+      "endedAt": "2026-10-20T08:49:51.402Z",
+      "exitCode": 0,
+      "returnedTextChars": 231
+    },
+    {
+      "command": "npx aitm explain 2057 --json",
+      "startedAt": "2026-10-20T08:49:51.421Z",
+      "endedAt": "2026-10-20T08:50:06.896Z",
+      "exitCode": 0,
+      "returnedTextChars": 600
+    },
+    {
+      "command": "npx aitm block 2057 --by 2055,2056",
+      "startedAt": "2026-10-20T08:50:06.898Z",
+      "endedAt": "2026-10-20T08:50:39.901Z",
+      "exitCode": 0,
+      "returnedTextChars": 145
+    },
+    {
+      "command": "npx aitm refine 2057 --size S --estimate 3.5 --priority p0 --rank 7 --labels bug --reason 'Local source/specification scope: Freeze pending generations, export with a digest and acknowledge the recipient before release; interrupted transfers retain ownership and never steal a dirty stale lock. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 7; predecessors #2055,#2056. No historical cloud tasks used.'",
+      "startedAt": "2026-10-20T08:50:39.901Z",
+      "endedAt": "2026-10-20T08:59:21.475Z",
+      "exitCode": 0,
+      "returnedTextChars": 1036
+    },
+    {
+      "command": "npx aitm refine 2057 --size S --estimate 3.5 --priority p0 --rank 7 --labels bug --reason 'Local source/specification scope: Freeze pending generations, export with a digest and acknowledge the recipient before release; interrupted transfers retain ownership and never steal a dirty stale lock. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 7; predecessors #2055,#2056. No historical cloud tasks used.'",
+      "startedAt": "2026-10-20T08:59:21.479Z",
+      "endedAt": "2026-10-20T09:00:55.274Z",
+      "exitCode": 0,
+      "returnedTextChars": 1144
+    },
+    {
+      "command": "npx aitm start 2043 --role agent",
+      "startedAt": "2026-10-20T09:00:55.280Z",
+      "endedAt": "2026-10-20T09:01:36.707Z",
+      "exitCode": 0,
+      "returnedTextChars": 955
+    },
+    {
+      "command": "npx aitm explain 2043 --json",
+      "startedAt": "2026-10-20T09:01:36.709Z",
+      "endedAt": "2026-10-20T09:01:47.967Z",
+      "exitCode": 0,
+      "returnedTextChars": 600
+    },
+    {
+      "command": "npx aitm user-story 2043 --as 'delivery maintainer' --want 'accumulate body and title changes locally because per-marker body writes consume shared provider allowance' --so-that 'reduce remote traffic while preserving validated local intent'",
+      "startedAt": "2026-10-20T09:01:47.968Z",
+      "endedAt": "2026-10-20T09:01:58.753Z",
+      "exitCode": 0,
+      "returnedTextChars": 341
+    },
+    {
+      "command": "gh issue edit 2043 --title 'Local issue-body and title staging adapter'",
+      "startedAt": "2026-10-20T09:01:58.754Z",
+      "endedAt": "2026-10-20T09:02:03.448Z",
+      "exitCode": 0,
+      "returnedTextChars": 55
+    },
+    {
+      "command": "npx aitm block 2043 --by 2053,2057",
+      "startedAt": "2026-10-20T09:02:03.449Z",
+      "endedAt": "2026-10-20T09:02:31.820Z",
+      "exitCode": 0,
+      "returnedTextChars": 145
+    },
+    {
+      "command": "npx aitm refine 2043 --size S --estimate 3.5 --priority p0 --rank 8 --labels bug --reason 'Local source/specification scope: Stage validated body/title deltas and dirty tags without remote calls; return unpublished results explicitly; leave public legacy callers unactivated until the integration story. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 8; predecessors #2053,#2057. No historical cloud tasks used.'",
+      "startedAt": "2026-10-20T09:02:31.873Z",
+      "endedAt": "2026-10-20T09:11:30.840Z",
+      "exitCode": 0,
+      "returnedTextChars": 1045
+    },
+    {
+      "command": "npx aitm refine 2043 --size S --estimate 3.5 --priority p0 --rank 8 --labels bug --reason 'Local source/specification scope: Stage validated body/title deltas and dirty tags without remote calls; return unpublished results explicitly; leave public legacy callers unactivated until the integration story. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 8; predecessors #2053,#2057. No historical cloud tasks used.'",
+      "startedAt": "2026-10-20T09:11:30.848Z",
+      "endedAt": "2026-10-20T09:12:56.361Z",
+      "exitCode": 0,
+      "returnedTextChars": 1153
+    },
+    {
+      "command": "npx aitm start 2039 --role orchestrator",
+      "startedAt": "2026-10-20T09:13:00.651Z",
+      "endedAt": "2026-10-20T09:13:38.298Z",
+      "exitCode": 0,
+      "returnedTextChars": 962
+    },
+    {
+      "command": "npx aitm explain 2039 --json",
+      "startedAt": "2026-10-20T09:13:38.299Z",
+      "endedAt": "2026-10-20T09:15:23.452Z",
+      "exitCode": 0,
+      "returnedTextChars": 2036
+    },
+    {
+      "command": "gh issue view 2039 --json number,title,body --jq '{number,title,body}'",
+      "startedAt": "2026-10-20T09:15:23.453Z",
+      "endedAt": "2026-10-20T09:15:34.249Z",
+      "exitCode": 0,
+      "returnedTextChars": 22079
     }
   ]
 }
