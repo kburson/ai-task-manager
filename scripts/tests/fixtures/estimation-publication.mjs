@@ -1,4 +1,5 @@
 // @story #1988 — complete current provider observations for estimation integration.
+import { createTargetFixtureGraphql } from './refinement-target-fixture.mjs';
 import { after } from 'node:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { randomUUID, createHash } from 'node:crypto';
@@ -48,6 +49,13 @@ export function estimationPublicationFixture({
   if (getForecast) decomposition.readForecast = async () => getForecast();
   return {
     projectDir: dir,
+    targetGraphql: createTargetFixtureGraphql({
+      cfg,
+      issueNumber,
+      itemId: `ITEM_${issueNumber}`,
+      getBody,
+      getProject,
+    }).graphql,
     decomposition,
     projectItemForIssue: async () => ({ itemId: `ITEM_${issueNumber}` }),
   };

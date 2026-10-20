@@ -1,0 +1,124 @@
+✖ selected item pagination: root valid (672.736917ms)
+✔ selected item pagination: root wrong-item (284.314334ms)
+✔ selected item pagination: root wrong-project (304.716292ms)
+✔ selected item pagination: root wrong-content (246.509833ms)
+✖ selected item pagination: child valid (252.621ms)
+✔ selected item pagination: child wrong-item (357.719291ms)
+✔ selected item pagination: child wrong-project (248.746958ms)
+✔ selected item pagination: child wrong-content (217.360542ms)
+✖ complete initial inventory refuses observed addition (285.623125ms)
+✖ complete initial inventory refuses observed removal (287.18675ms)
+✖ complete initial inventory refuses observed replacement (262.435625ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 6
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3533.407291
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:65:7
+✖ selected item pagination: root valid (672.736917ms)
+  AssertionError [ERR_ASSERTION]: {"decision":"block","code":"decomposition-authority-unavailable","args":{"issue":2073,"operationId":null},"reason":"[task-tracker] Decomposition authority unavailable for #2073: mixed item page"}
+  
+  'block' !== 'allow'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:69:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'block',
+    expected: 'allow',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:65:7
+✖ selected item pagination: child valid (252.621ms)
+  AssertionError [ERR_ASSERTION]: {"decision":"block","code":"decomposition-authority-unavailable","args":{"issue":2073,"operationId":null},"reason":"[task-tracker] Decomposition authority unavailable for #2073: mixed item page"}
+  
+  'block' !== 'allow'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:69:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'block',
+    expected: 'allow',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:74:5
+✖ complete initial inventory refuses observed addition (285.623125ms)
+  AssertionError [ERR_ASSERTION]: {"decision":"allow","reason":"current-decomposition-capability","signals":{"state":null,"body":"## User Story\nAs a delivery owner\nI want truthful estimates because partial publication can hide growth\nSo that incomplete revisions cannot permit continued delivery\n\n## Scope\nPublish and confirm revised estimates.\n\n## Acceptance Criteria\n- [ ] Current estimates agree. <!-- aitm-verified vc-list=\"vc:1\" -->\n\n## Verification Commands\n- [ ] `node verify.mjs` <!-- id=1 -->\n\n## Plan Metadata\n- **Source-plan**: docs/plan.md\n- **Source-plan-commit**: 1111111111111111111111111111111111111111\n\n## AITM Progress Markers\n<!-- aitm-issue-kind kind=\"epic\" -->\n<!-- aitm-fields: {\"schema\":1,\"values\":{\"estimate\":2,\"size\":\"S\"}} -->\n","hasPostedMarker":false,"hasCompleteMarker":false,"assignees":["operator"],"currentUser":"operator","source":"fresh-combined-snapshot"}}
+  
+  'allow' !== 'block'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:76:14)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'allow',
+    expected: 'block',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:74:5
+✖ complete initial inventory refuses observed removal (287.18675ms)
+  AssertionError [ERR_ASSERTION]: {"decision":"allow","reason":"current-decomposition-capability","signals":{"state":null,"body":"## User Story\nAs a delivery owner\nI want truthful estimates because partial publication can hide growth\nSo that incomplete revisions cannot permit continued delivery\n\n## Scope\nPublish and confirm revised estimates.\n\n## Acceptance Criteria\n- [ ] Current estimates agree. <!-- aitm-verified vc-list=\"vc:1\" -->\n\n## Verification Commands\n- [ ] `node verify.mjs` <!-- id=1 -->\n\n## Plan Metadata\n- **Source-plan**: docs/plan.md\n- **Source-plan-commit**: 1111111111111111111111111111111111111111\n\n## AITM Progress Markers\n<!-- aitm-issue-kind kind=\"epic\" -->\n<!-- aitm-fields: {\"schema\":1,\"values\":{\"estimate\":2,\"size\":\"S\"}} -->\n","hasPostedMarker":false,"hasCompleteMarker":false,"assignees":["operator"],"currentUser":"operator","source":"fresh-combined-snapshot"}}
+  
+  'allow' !== 'block'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:76:14)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'allow',
+    expected: 'block',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:74:5
+✖ complete initial inventory refuses observed replacement (262.435625ms)
+  AssertionError [ERR_ASSERTION]: {"decision":"allow","reason":"current-decomposition-capability","signals":{"state":null,"body":"## User Story\nAs a delivery owner\nI want truthful estimates because partial publication can hide growth\nSo that incomplete revisions cannot permit continued delivery\n\n## Scope\nPublish and confirm revised estimates.\n\n## Acceptance Criteria\n- [ ] Current estimates agree. <!-- aitm-verified vc-list=\"vc:1\" -->\n\n## Verification Commands\n- [ ] `node verify.mjs` <!-- id=1 -->\n\n## Plan Metadata\n- **Source-plan**: docs/plan.md\n- **Source-plan-commit**: 1111111111111111111111111111111111111111\n\n## AITM Progress Markers\n<!-- aitm-issue-kind kind=\"epic\" -->\n<!-- aitm-fields: {\"schema\":1,\"values\":{\"estimate\":2,\"size\":\"S\"}} -->\n","hasPostedMarker":false,"hasCompleteMarker":false,"assignees":["operator"],"currentUser":"operator","source":"fresh-combined-snapshot"}}
+  
+  'allow' !== 'block'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/scripts/tests/integration/task-tracker/lib/decomposition-hook-traffic.integration.cases.mjs:76:14)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'allow',
+    expected: 'block',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,4 +1,5 @@
 // @story #1987 #2034 — current read-only authority; no effect ports reach collection.
+import { classifyDecompositionKind } from './decomposition-kind.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -37,7 +38,6 @@ import {
   assessDecomposition,
   decompositionInputDigest,
   canonicalDecompositionJson,
-  DECOMPOSITION_KINDS,
 } from './decomposition-assessment.mjs';
 import { parsePreloadedIssueComments } from './github-records/github-comment-store.mjs';
 import {
@@ -445,28 +445,9 @@ async function read(port, args) {
   }
 }
 function genuineKind(body, reasons) {
-  const source = maskFencedCodeBlocksPreservingOffsets(body);
-  const matches = [...source.matchAll(/<!--\s*aitm-issue-kind\b[\s\S]*?(?:-->|$)/gi)];
-  if (!matches.length) return 'code';
-  if (matches.length !== 1) {
-    reasons.add('kind-duplicate');
-    return 'code';
-  }
-  const m = matches[0];
-  const marker = m[0].match(/^<!--\s*aitm-issue-kind\s+kind="([a-z-]+)"\s*-->$/i);
-  const progress = source.match(/^##\s+(?:AITM\s+)?Progress Markers\s*$/im);
-  const tail = progress ? source.slice(progress.index + progress[0].length) : '';
-  if (
-    !marker ||
-    !DECOMPOSITION_KINDS.includes(marker[1].toLowerCase()) ||
-    !progress ||
-    m.index < progress.index ||
-    /^##\s+/m.test(tail.slice(0, m.index - progress.index - progress[0].length))
-  ) {
-    reasons.add('kind-invalid');
-    return 'code';
-  }
-  return marker[1].toLowerCase();
+  const result = classifyDecompositionKind(body);
+  for (const reason of result.reasons) reasons.add(reason);
+  return result.kind;
 }
 function semanticProof(marker) {
   const props = parseProofMarker(marker) ?? {};

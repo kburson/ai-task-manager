@@ -1,0 +1,61 @@
+# #2073 plan SAR local source manifest
+
+Current local files inspected in full or through relevant excerpts/search during inventory and review. SHA256 values were obtained with shasum, not Git. This is the evidence inventory, not a dependency closure, implementation result or attestation that current bytes equal a Git tree. Parent separately verified retained baseline commit `52ff0fe734cf682c604695ab0c7b005f512c2844`. Dynamic parent workflow and usage records are excluded because the parent continues updating them. Paths below are relative to the worktree except the four explicitly absolute skill paths.
+
+```json
+{
+  "schema": "2073-plan-sar-source/v1",
+  "sha256": {
+    "scripts/gh/lib/gh-client.mjs": "657c794a051b0a8bb849365fd6d7972c7c156df22cee505cba2608565b9eda24",
+    "scripts/gh/lib/github-projects.mjs": "f3c8f60a4d20107e8dfc68f2195a7a951a978aff56bcba7b05629d2cb0057027",
+    "scripts/gh/lib/project-tether.mjs": "dfdbf11acd654ac31445049e29d7c5c65dd2654b616a41602b8d775741b36f92",
+    "scripts/gh/update-event-fields.mjs": "44539836f5284880c0bd44f862f56f0fc2b6ee2c495366b29adfd45bab6a11c6",
+    "scripts/task-tracker/lib/decomposition-authority.mjs": "ae38df2877233e89a73a23464371245f2b766bf18f68c6f454680b736774c968",
+    "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "ba9721201c7f7819b160a7e35ba1b5501c3202eaa31bacb087d5bda9867c4822",
+    "scripts/task-tracker/lib/decomposition-activity.mjs": "23805301dfb234e043f7f19abd2e7d0520d972810092f2eeb287533ca0eb6afc",
+    "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs": "e3f2b9e2f8817996208e023241855e0c2b1e7c9687f8b92bfefcee2d46c362f9",
+    "scripts/task-tracker/lib/decomposition-field-writer.mjs": "5215a5efcfd3571bfd902579a637217ed57f67739c0e1e10c2432c6864adc283",
+    "scripts/task-tracker/lib/estimate-writer-publication.mjs": "d599f890598046df62d5aec66fecd2dc9315ca5dc536e939382cf852420dc163",
+    "scripts/task-tracker/lib/decomposition-publication.mjs": "b0b2e63180319dee11f0777a1d82c329048582725a39f81de6ada59f0ff614e6",
+    "scripts/task-tracker/lib/decomposition-projection.mjs": "dd53bf522d89e414d2ee191e597069a8512828f83c5129a8cb72ed0195c7dac5",
+    "scripts/task-tracker/lib/decomposition-assessment.mjs": "56ac595e0b082299c3cd4ac68ec4bca0dcca424e5b35e87a9533fb2d4a4ba221",
+    "scripts/task-tracker/lib/decomposition-policy.mjs": "85f5a415d60aabcb7999f7a31e124377849bebec6c7423d981e7eb8c955316cf",
+    "scripts/task-tracker/lib/decomposition-migration-writer.mjs": "dfb661716058590ea8a42b7a590d6bc4be9631ba9607af401a115c3823ecf109",
+    "scripts/task-tracker/lib/apply-reevaluate.mjs": "3dfcf34e3613b91123e23edd8913c203350209562f15e348d7143f04deb74e81",
+    "scripts/task-tracker/lib/versioned-issue-write.mjs": "76ea2d5b47691108f1aab137bbc98b1d1eb7abb7772259182514dafd6c4e98c8",
+    "scripts/task-tracker/lib/issue-body-mutate.mjs": "45daacee3d4e1360ca10f68ea5ef50b4c635285319c7556fdacf1c84eb0ec066",
+    "scripts/task-tracker/lib/verb-preflight.mjs": "4a7376c373068065abaec846e1c32908b5b6fe21bed5da1110fbcc1334a1979d",
+    "scripts/task-tracker/lib/scratch-dir.mjs": "0e5fd4100438617dc2f1550e266a14b92083b7d04d2dd74fae03d2563e0802f2",
+    "scripts/task-tracker/lib/graphql-usage/identity.mjs": "ff81898cfc02afc7496bf5b173ec0b15ae3648554381ee7efef126b1e523f377",
+    "scripts/task-tracker/lib/estimation/runtime-adapter.mjs": "0642ecdd298340238b352b2ed5c08604d8203f2aa6f9ae4f87e9b9778624ea91",
+    "scripts/task-tracker/lib/process-timeouts.mjs": "52fd194ecf73685140b952e8c44f81472265a96b6a983f5608b7a9b527ea1267",
+    "scripts/task-tracker/verbs/refine.mjs": "c5240c157d30a6ef3f8880d7d319ce3f38053eac3401cd19735314aa73e1110b",
+    "scripts/task-tracker/project-fields.mjs": "2ca3dd4fb950077a40303ef6d6afdc7b9a9eee90cde2ab4ab6103099d1c5fcb3",
+    "scripts/task-tracker/issue-field-db.mjs": "f5ebe31a93e215c6702d0f02c7e9d29e970f7b7b1c4847511d6f9cd038c5d3b6",
+    "scripts/task-tracker/activity-guard.mjs": "aa7ab7d71155811f52b493f23c7720852cfc1822ee49eb33859840cd2b3fb231",
+    "scripts/task-tracker/source-edit-gate.mjs": "d8575070817d719fb938786de0f23dae3d8aa95b882b14b2bc80e66771bf7047",
+    "scripts/tests/fixtures/estimation-publication.mjs": "433b76d14445dcb5c013f3d8a8a38c3f3b77ae6f03b38ca579d32970b6b72557",
+    "scripts/tests/fixtures/publication-subprocess.fixture.mjs": "c61e359f5034aba4a4b81aa5c0bf79fc6d7084a2e9b0dec36fbe7afc212d6110",
+    "scripts/tests/fixtures/refinement-orchestration.mjs": "eff871500e87c6b9935edae88244b53c369bbdbc035597793b6c77b018571934",
+    "scripts/tests/fixtures/stub-gh.mjs": "f3b9c9965001fb2655514a71b467168651f2d6df81e960b7fd45c11040741b50",
+    "scripts/tests/helpers/native-decomposition-hook-fixture.mjs": "b8d7092005f82ae97086ac8a47fd0a36c0e5bc23987cbe50a1ab3cd913f00f8c",
+    "scripts/tests/helpers/binding-generation-fixture.mjs": "5a30e6ca3d82eeeebde8b714914af25ac582f7d710d461ada7acbf852e4a2992",
+    "scripts/tests/integration/task-tracker/lib/decomposition-hook.cases.mjs": "0d0305cf8b9c5654c846c953d96f63f0260e1df1c8f3350769cc50e3e75c987b",
+    "scripts/tests/unit/task-tracker/gh/lib/project-tether-publication.cases.mjs": "db7c852d5c569aebde9f21afb8493c0b4c7f9b77a77010b0b6cc4c4ea0cf0028",
+    "scripts/tests/unit/task-tracker/lib/decomposition-authority-fixtures.mjs": "0f578368676a4e01af8b885c84f4fecdc44042826dc822432f29e2255a1818dd",
+    "scripts/tests/tools/audit-test-layout.mjs": "78a36432c7b2a59676d71b9361447800b1eba11f7f1ff6d1222621b28afdc41b",
+    "scripts/task-tracker/lib/plan-exit-plan-metadata-guard.mjs": "6e4622e6d329ef14355c8eb117b9d9ccc8be74700f886c8fdc919f85a9ff9923",
+    "templates/plan-file.md": "eed3dc0ccbd73842ed7859dc3b7838228aee8ad0aff493a5bade4f20a80688be",
+    ".codex/skills/peer-review/SKILL.md": "2fde526ed55a718b17cc6fcefaf2e700af01b42448f41e4aa20fe414cc9f1875",
+    "package.json": "c9ef4764441db3272c63ae3e61eb59d468b328090b39d44d72b2381056873ccc",
+    ".markdownlint-cli2.jsonc": "7b04d08db8b1d5d8428adf6aeec4e23847b743b1e06ebb46833e692b131a2adf",
+    "docs/superpowers/specs/2026-10-20-2073-refinement-graphql-traffic-design.md": "04682ad4c797d328b4675d866af6908e061b256cb15ad82fe523fb9363cc7d68",
+    "docs/superpowers/reviews/2073/plan/SAR/local-inventory-estimate.md": "b3245071d5ce182b66303ceb55c7d5c7870ac50dca08f851f575a0d254f2ad72",
+    "docs/superpowers/reviews/2073/plan/SAR/owner-budget-decision.md": "1847719c0fb3b48c140e52ff4123af11a7d1391227d3479fbd902fa5f6675cc3",
+    "/Users/kpburson/.codex/skills/writing-plans/SKILL.md": "0bc3d36590f7b2c323ed3ec18ff77e9f8ed57af42f5680a02b11a2d20de265cf",
+    "/Users/kpburson/.codex/skills/brainstorming/SKILL.md": "a32d2255354775aa124855aa7100cf276bea096fff4ebb3a0edf57be216e6c72",
+    "/Users/kpburson/.codex/skills/using-superpowers/SKILL.md": "82c5c8866ad7f5dd4440ce66bd7806ba48a2f13771beae5cf112e53f08fe36ba",
+    "/Users/kpburson/.codex/skills/verification-before-completion/SKILL.md": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3"
+  }
+}
+```

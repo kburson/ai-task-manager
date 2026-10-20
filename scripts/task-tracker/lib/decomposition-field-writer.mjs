@@ -4,6 +4,7 @@ import {
   readEstimateWriterAuthority,
   observedEstimateEffect,
 } from './estimate-writer-publication.mjs';
+import { createFieldEffectReaders } from './decomposition-target-observation.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import { parseIssueFieldDb, formatIssueFieldDb, stripIssueFieldDb } from '../issue-field-db.mjs';
 export async function publishFieldEstimateRevision({
@@ -33,7 +34,6 @@ export async function publishFieldEstimateRevision({
     current.publication?.status !== 'pending'
   )
     return { status: 'unchanged' };
-  const readAuthority = () => readEstimateWriterAuthority({ cfg, issueNumber, deps });
   return executeEstimateWriter({
     cfg,
     issueNumber,
@@ -49,55 +49,47 @@ export async function publishFieldEstimateRevision({
     },
     deriveIntendedInput,
     deps: { ...deps, beforePublicationEffects: beforeEffects },
-    effects: async ({ subject }) => [
-      ...extraEffects,
-      ...[
-        ['estimate', estimate, 'project-estimate'],
-        ['size', size, 'project-size'],
-      ].map(([field, value, resource]) => ({
-        id: field,
-        resource,
-        targetIdentity: subject.projectItemId,
-        value,
-        read: async () =>
-          observedEstimateEffect(
-            (await readAuthority()).sourceObservations.readProject.value[field] ?? null
-          ),
-        apply: (context) => writeField({ field, value, context, effectId: field }),
-      })),
-      {
-        id: 'fields',
-        resource: 'body-fields',
-        targetIdentity: `${cfg.repo}#${issueNumber}:fields`,
-        value: { estimate, size },
-        read: async () => {
-          const values = parseIssueFieldDb(
-            (await readAuthority()).sourceObservations.readIssue.value.body
-          ).values;
-          return observedEstimateEffect({
-            estimate: values.estimate ?? null,
-            size: values.size ?? null,
-          });
+    effects: async ({ subject }) => {
+      const readers = await createFieldEffectReaders({ subject, cfg, graphql: deps.targetGraphql });
+      return [
+        ...extraEffects,
+        ...[
+          ['estimate', estimate, 'project-estimate'],
+          ['size', size, 'project-size'],
+        ].map(([field, value, resource]) => ({
+          id: field,
+          resource,
+          targetIdentity: subject.projectItemId,
+          value,
+          read: async () => observedEstimateEffect((await readers.readProjectValues())[field]),
+          apply: (context) => writeField({ field, value, context, effectId: field }),
+        })),
+        {
+          id: 'fields',
+          resource: 'body-fields',
+          targetIdentity: `${cfg.repo}#${issueNumber}:fields`,
+          value: { estimate, size },
+          read: async () => observedEstimateEffect(await readers.readBodyFields()),
+          apply: async (context) =>
+            applyBody
+              ? applyBody(context)
+              : (deps.mutateIssueBody ?? mutateIssueBody)({
+                  issueNumber,
+                  repo: cfg.repo,
+                  mutate: (base) => {
+                    const parsed = parseIssueFieldDb(base);
+                    if (!parsed.ok) throw new Error('estimate-publication:body-fields');
+                    return (
+                      stripIssueFieldDb(base) +
+                      '\n' +
+                      formatIssueFieldDb({ ...parsed.values, estimate, size }) +
+                      '\n'
+                    );
+                  },
+                  deps: deps.decomposition,
+                }),
         },
-        apply: async (context) =>
-          applyBody
-            ? applyBody(context)
-            : (deps.mutateIssueBody ?? mutateIssueBody)({
-                issueNumber,
-                repo: cfg.repo,
-                mutate: (base) => {
-                  const parsed = parseIssueFieldDb(base);
-                  if (!parsed.ok) throw new Error('estimate-publication:body-fields');
-                  return (
-                    stripIssueFieldDb(base) +
-                    '\n' +
-                    formatIssueFieldDb({ ...parsed.values, estimate, size }) +
-                    '\n'
-                  );
-                },
-                deps: deps.decomposition,
-              }),
-      },
-    ],
+      ];
+    },
   });
 }

@@ -1,0 +1,432 @@
+✔ a legitimate complete empty leaf admits in one shallow request (391.909167ms)
+✔ complete leaf admits: empty-unmarked-leaf (367.511542ms)
+✔ complete leaf admits: two-page-comments-leaf (272.13525ms)
+✔ unsafe hook snapshot refuses: unknown-kind (293.838041ms)
+✔ unsafe hook snapshot refuses: duplicate-kind (260.24175ms)
+✔ unsafe hook snapshot refuses: misplaced-kind (235.992625ms)
+✔ unsafe hook snapshot refuses: non-epic-child (285.174167ms)
+✔ unsafe hook snapshot refuses: four-page-comments (297.669208ms)
+✔ unsafe hook snapshot refuses: drift-body (270.216959ms)
+✔ unsafe hook snapshot refuses: drift-owner (394.846042ms)
+✔ unsafe hook snapshot refuses: drift-item (223.109625ms)
+✔ unsafe hook snapshot refuses: drift-field (237.131709ms)
+✔ unsafe hook snapshot refuses: drift-children (298.763459ms)
+✔ unsafe hook snapshot refuses: empty-epic (250.46025ms)
+✔ unsafe hook snapshot refuses: unready-epic (260.197834ms)
+✔ ready parent observes graph and complete fence: two-child-ready-epic (241.20625ms)
+✔ ready parent observes graph and complete fence: 51-child-ready-epic (602.427417ms)
+✔ shared kind grammar preserves absent and fenced markers while rejecting malformed declarations (45.276417ms)
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+already active: #107
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+already active: #107
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: story-ok; available: inspect, checkpoint, decomposition-prepare
+Started #107.
+Decomposition restriction for #107: indeterminate; available: inspect, checkpoint, decomposition-prepare, authority-recover
+Started #107.
+Decomposition restriction for #107: pending; available: inspect, checkpoint, decomposition-prepare, governed-decomposition, publication-reconcile
+Started #107.
+Decomposition restriction for #107: indeterminate; available: inspect, checkpoint, decomposition-prepare, authority-recover
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Started #107.
+✔ actual start binds an oversized story for inspection with refreshed restricted authority (374.913125ms)
+✔ already-bound resume rechecks current restriction without duplicating the live timer (272.598917ms)
+✔ real read-only Explain reports implementation restrictions separately from bind readiness (208.465708ms)
+✔ production session adapter includes current decomposition with read-only provider ports (73.153958ms)
+✔ real lifecycle evaluator surfaces current mandatory decomposition alongside ordinary guards (54.83025ms)
+✔ real bind respects current 7-hour boundary without changing lifecycle or estimate (185.549292ms)
+✔ real bind respects current 23-hour boundary without changing lifecycle or estimate (163.47525ms)
+✔ real bind respects current 24-hour boundary without changing lifecycle or estimate (154.826625ms)
+✔ already-bound external estimate revision replaces stale permission with current restriction (257.399833ms)
+✔ independent XL and multiple verification groups restrict an advisory 23-hour story (178.94725ms)
+✔ failed refresh retains inspection binding but cannot reuse old clear permission (202.665708ms)
+✔ configured membership loss retains restricted inspection rather than exemption (214.238167ms)
+✔ pending-before-first-effect survives bind refresh despite matching old low fields (162.927875ms)
+✔ restricted decomposition never bypasses a real foreign occupancy claim (181.476125ms)
+✔ no-network bind remains restricted and does not call decomposition refresh or collect (160.457375ms)
+✔ lifecycle Explain honors skipped network before reading current decomposition (32.288292ms)
+✔ four independent plan tasks restrict a 23-hour M story through actual bind composition (155.097375ms)
+✔ read-only session observation refuses stale projection without repairing it (55.295083ms)
+✔ actual source hook refuses oversized source edits after ordinary binding and markers pass (148.738666ms)
+✔ actual source hook fences chore and artifact early-allow paths for oversized scoped effects (149.406333ms)
+✔ actual source hook requires one combined fresh snapshot for an ordinary admitted story edit (214.008583ms)
+✔ actual activity hook executable refuses an oversized native source mutation (491.569042ms)
+✔ actual source hook fences bounded forecast continuation with a fresh root snapshot (142.703542ms)
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+chore-mode: on (detached #107) — fixture recovery
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+already active: #107
+Decomposition restriction for #107: pending; available: inspect, checkpoint, decomposition-prepare, governed-decomposition, publication-reconcile
+✔ actual source hook has a hard deadline when provider transport never resolves (5134.2085ms)
+✔ actual chore-mode detach cannot discard an oversized story restriction (143.316083ms)
+✔ actual source-hook wrapper fails closed on an unexpected local admission exception (138.355834ms)
+✔ actual governed comment refuses a new oversized deliverable even with a caller checkpoint key (149.527292ms)
+✔ actual governed body publication fences an oversized new deliverable before its first write (149.188375ms)
+✔ actual governed scope narrowing is preparation and reassesses an oversized story without lowering its estimate (157.845333ms)
+✔ actual combined epic snapshot permits completion only after terminal materialized children (175.786833ms)
+✔ actual epic reconciliation refuses planning-ready nonterminal children before a marker write (230.932709ms)
+✔ actual combined epic completion follows a bounded child labels continuation (154.74475ms)
+✔ actual governed comment preserves identical existing history without a new effect (150.698084ms)
+✔ actual governed scope revision refuses authority from a different fresh source body (146.153084ms)
+✔ actual audit comment at 23h uses current remote effect admission (156.962583ms)
+✔ actual audit comment at 24h uses current remote effect admission (153.378042ms)
+✔ actual audit comment at 25h uses current remote effect admission (203.584667ms)
+✔ actual research comment at 23h uses current remote effect admission (155.623292ms)
+✔ actual research comment at 24h uses current remote effect admission (139.049042ms)
+✔ actual research comment at 25h uses current remote effect admission (133.487917ms)
+✔ actual spike comment at 23h uses current remote effect admission (162.075416ms)
+✔ actual spike comment at 24h uses current remote effect admission (173.112458ms)
+✔ actual spike comment at 25h uses current remote effect admission (161.509625ms)
+✔ actual own scope preparation remains usable under pending (170.640459ms)
+✔ actual own scope preparation remains usable under indeterminate (156.5ms)
+✔ actual own scope preparation remains usable under epic-planning-false (185.219334ms)
+✔ actual own scope revision cannot smuggle a new nested research deliverable as preparation (143.755ms)
+✔ actual identical body history is a canonical no-op without fresh scoped admission (143.673625ms)
+✔ actual capability evaluation does not let read or preparation labels exempt a sibling source target (141.776125ms)
+✔ actual executable hook fences recognized script generators and a commit with a sibling generator (1149.201208ms)
+✔ actual native edit and patch cover every source, product config and mixed document target (166.422625ms)
+✔ actual fresh hook ignores a cached low estimate after provider authority changes (135.491708ms)
+✔ actual hook reads lifecycle status by configured field identity (130.54575ms)
+✔ actual hook refuses 429 without retry or admitted mutation (139.766042ms)
+✔ actual hook refuses parser without retry or admitted mutation (148.988042ms)
+✔ actual hook refuses continuation-overflow without retry or admitted mutation (136.252583ms)
+✔ actual executable wrapper returns typed unavailable for a recognized edit with malformed local authority (249.224667ms)
+✔ actual capability evaluation refuses a newly scoped document beside a preparation label (138.513958ms)
+✔ actual checkpoint-only commit preserves recorded work when provider authority is unavailable (484.448167ms)
+✔ actual hook refuses explicit skipped network authority despite a warm injected reader (144.228167ms)
+✔ actual fresh unavailable lifecycle cannot fall back to a cached Develop state (482.8635ms)
+✔ actual drafting checkpoint reuses fresh singleton ownership from one combined snapshot (555.103917ms)
+✔ current completion-ready epic never permits a targetless parent implementation activity (205.217166ms)
+✔ composed real inflation code/plan/23 records truth without lifecycle conversion (263.692083ms)
+✔ composed real inflation code/plan/24 records truth without lifecycle conversion (263.627667ms)
+✔ composed real inflation code/plan/25 records truth without lifecycle conversion (298.03875ms)
+✔ composed real inflation code/develop/23 records truth without lifecycle conversion (246.628125ms)
+✔ composed real inflation code/develop/24 records truth without lifecycle conversion (258.849042ms)
+✔ composed real inflation code/develop/25 records truth without lifecycle conversion (289.23875ms)
+✔ composed real inflation code/review/23 records truth without lifecycle conversion (267.961625ms)
+✔ composed real inflation code/review/24 records truth without lifecycle conversion (257.664125ms)
+✔ composed real inflation code/review/25 records truth without lifecycle conversion (253.239459ms)
+✔ composed real inflation audit/plan/23 records truth without lifecycle conversion (257.604292ms)
+✔ composed real inflation audit/plan/24 records truth without lifecycle conversion (251.278791ms)
+✔ composed real inflation audit/plan/25 records truth without lifecycle conversion (251.904166ms)
+✔ composed real inflation audit/develop/23 records truth without lifecycle conversion (245.604042ms)
+✔ composed real inflation audit/develop/24 records truth without lifecycle conversion (274.968125ms)
+✔ composed real inflation audit/develop/25 records truth without lifecycle conversion (255.729333ms)
+✔ composed real inflation audit/review/23 records truth without lifecycle conversion (246.039042ms)
+✔ composed real inflation audit/review/24 records truth without lifecycle conversion (244.503375ms)
+✔ composed real inflation audit/review/25 records truth without lifecycle conversion (275.202292ms)
+✔ composed real inflation research/plan/23 records truth without lifecycle conversion (269.283334ms)
+✔ composed real inflation research/plan/24 records truth without lifecycle conversion (262.426708ms)
+✔ composed real inflation research/plan/25 records truth without lifecycle conversion (234.866542ms)
+✔ composed real inflation research/develop/23 records truth without lifecycle conversion (248.6095ms)
+✔ composed real inflation research/develop/24 records truth without lifecycle conversion (250.330333ms)
+✔ composed real inflation research/develop/25 records truth without lifecycle conversion (277.087ms)
+✔ composed real inflation research/review/23 records truth without lifecycle conversion (246.574041ms)
+✔ composed real inflation research/review/24 records truth without lifecycle conversion (259.066875ms)
+✔ composed real inflation research/review/25 records truth without lifecycle conversion (261.95675ms)
+✔ composed real inflation spike/plan/23 records truth without lifecycle conversion (255.835375ms)
+✔ composed real inflation spike/plan/24 records truth without lifecycle conversion (307.551584ms)
+✔ composed real inflation spike/plan/25 records truth without lifecycle conversion (282.227875ms)
+✔ composed real inflation spike/develop/23 records truth without lifecycle conversion (267.25975ms)
+✔ composed real inflation spike/develop/24 records truth without lifecycle conversion (262.100375ms)
+✔ composed real inflation spike/develop/25 records truth without lifecycle conversion (287.124459ms)
+✔ composed real inflation spike/review/23 records truth without lifecycle conversion (250.297875ms)
+✔ composed real inflation spike/review/24 records truth without lifecycle conversion (265.779875ms)
+✔ composed real inflation spike/review/25 records truth without lifecycle conversion (293.984541ms)
+Started #107.
+already active: #107
+Decomposition restriction for #107: pending; available: inspect, checkpoint, decomposition-prepare, governed-decomposition, publication-reconcile
+✔ publication before/audit remains fenced through resume, Explain, hook and split before exact retry (742.473459ms)
+Started #107.
+already active: #107
+Decomposition restriction for #107: pending; available: inspect, checkpoint, decomposition-prepare, governed-decomposition, publication-reconcile
+✔ publication after/audit remains fenced through resume, Explain, hook and split before exact retry (1853.470375ms)
+Started #107.
+already active: #107
+Decomposition restriction for #107: pending; available: inspect, checkpoint, decomposition-prepare
+✔ publication before/size remains fenced through resume, Explain, hook and split before exact retry (785.289083ms)
+Started #107.
+already active: #107
+Decomposition restriction for #107: pending; available: inspect, checkpoint, decomposition-prepare
+✔ publication after/size remains fenced through resume, Explain, hook and split before exact retry (629.296458ms)
+Started #107.
+already active: #107
+Decomposition restriction for #107: pending; available: inspect, checkpoint, decomposition-prepare
+✔ publication before/estimate remains fenced through resume, Explain, hook and split before exact retry (698.492792ms)
+Started #107.
+already active: #107
+Decomposition restriction for #107: pending; available: inspect, checkpoint, decomposition-prepare
+✔ publication after/estimate remains fenced through resume, Explain, hook and split before exact retry (688.085417ms)
+Started #107.
+already active: #107
+Decomposition restriction for #107: pending; available: inspect, checkpoint, decomposition-prepare, governed-decomposition, publication-reconcile
+✔ publication before/fields remains fenced through resume, Explain, hook and split before exact retry (604.414333ms)
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+[task-tracker] ✓ #107 AC-reconciled: epic goals re-read against delivered children.
+[task-tracker] ✓ #107 deliverable recorded: https://github.com/o/r/issues/107#issuecomment-700
+AC↔child bijection — epic #107: no `**Cn · #NNN**` mapping declared on any AC. 1 AC(s) and 7 child(ren) are related only by convention, so neither drift direction can be detected here. Declaring the mapping is optional — knowing it is absent is not.
+✔ publication after/fields remains fenced through resume, Explain, hook and split before exact retry (589.63025ms)
+✔ seven reviewed children make converted 52h epic planning-ready only (257.635208ms)
+✔ seven reviewed children make converted 52h epic completion-ready (256.998ms)
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+✔ actual build hook fences npm run build under mandatory authority (917.088417ms)
+✔ actual build hook fences tsc under mandatory authority (585.078542ms)
+✔ actual build hook fences cargo build under mandatory authority (636.6335ms)
+✔ actual build hook fences go build under mandatory authority (655.156625ms)
+✔ actual build hook fences npm run build under pending authority (478.020416ms)
+✔ actual build hook fences tsc under pending authority (562.262334ms)
+✔ actual build hook fences cargo build under pending authority (481.220917ms)
+✔ actual build hook fences go build under pending authority (462.814917ms)
+✔ actual build hook fences npm run build under unavailable authority (474.556458ms)
+✔ actual build hook fences tsc under unavailable authority (450.880458ms)
+✔ actual build hook fences cargo build under unavailable authority (413.64175ms)
+✔ actual build hook fences go build under unavailable authority (478.66725ms)
+✔ actual hooks admit only bound preparation: Edit docs/superpowers/plans/2026-10-12-107-recovery.md (1167.804875ms)
+✔ actual hooks admit only bound preparation: Write docs/superpowers/plans/2026-10-12-107-recovery.md (1199.095583ms)
+✔ actual hooks admit only bound preparation: apply_patch docs/superpowers/plans/2026-10-12-107-recovery.md (1164.074542ms)
+✔ actual hooks admit only bound preparation: Edit docs/superpowers/specs/2026-10-12-107-recovery.md (1274.611875ms)
+✔ actual hooks admit only bound preparation: Write docs/superpowers/specs/2026-10-12-107-recovery.md (1166.77975ms)
+✔ actual hooks admit only bound preparation: apply_patch docs/superpowers/specs/2026-10-12-107-recovery.md (1152.1675ms)
+✔ actual preparation refuses a mismatched recorded branch binding (473.14025ms)
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+✔ actual completed epic hooks admit its document deliverable but fence product implementation (1012.473ms)
+✔ actual restricted build hook preserves separately classified read-only verification (252.148875ms)
+✔ real Plan epic observer admits materialized planning readiness before child completion (168.58025ms)
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+✔ actual Plan Explain passes effective state without inventing ordinary approval readiness (509.255ms)
+✔ epic Plan promotion retains pending authority fence (163.094334ms)
+✔ epic Plan promotion retains unavailable authority fence (177.818584ms)
+✔ epic terminal completion remains fenced (159.976709ms)
+✔ epic terminal completion remains admitted (150.9695ms)
+✔ effect-free collection computes current input but absent projection denies scoped admission (14.21875ms)
+✔ display ticks proof timing and body revision do not stale semantic identity (2.243ms)
+✔ semantic scope change invalidates old assessment (5.54225ms)
+✔ semantic verifier change invalidates old assessment (4.344833ms)
+✔ semantic criterion change invalidates old assessment (10.257666ms)
+✔ unavailable readIssue preserves mandatory estimate signal and denies admission (1.231083ms)
+✔ unavailable readProject preserves mandatory estimate signal and denies admission (0.987583ms)
+✔ unavailable readSelectedPlan preserves mandatory estimate signal and denies admission (1.167667ms)
+✔ unavailable readForecast preserves mandatory estimate signal and denies admission (1.170583ms)
+✔ unavailable readPolicy preserves mandatory estimate signal and denies admission (0.709542ms)
+✔ disagreeing body project and forecast retain higher observed estimate (0.747375ms)
+✔ missing configured membership is unavailable rather than exemption (0.471875ms)
+✔ malformed or duplicate explicit kind cannot fall back to code: <!-- aitm-issue-kind kind="unknown" --> (0.770833ms)
+✔ malformed or duplicate explicit kind cannot fall back to code: <!-- aitm-issue-kind kind="epic" -->
+<!-- aitm-issue-kind kind="code" --> (0.472375ms)
+✔ malformed or duplicate explicit kind cannot fall back to code: <!-- aitm-issue-kind kind=code --> (0.504292ms)
+✔ pending intent fences matching old low authority before any effect (6.299958ms)
+✔ selected exact plan content and named root references bind digest (3.002792ms)
+✔ dishonest observed digest is unavailable authority (1.343917ms)
+✔ ordinary verified proof changes retain declarations and semantic identity (1.470125ms)
+✔ malformed observed policy becomes typed unavailable rather than throwing (0.633875ms)
+✔ production plan adapter classifies exact pinned selected bytes over dirty working copy (4.301125ms)
+✔ duplicate records remain distinct from missing authority (4.080208ms)
+✔ stale displayed status and capabilities are not treated as current projection (2.990333ms)
+✔ real materialized WBS permits planning while R4P children deny completion (3.228792ms)
+✔ only accepted terminal provider child evidence permits epic completion (3.497875ms)
+✔ epic dependency permutations preserve identity and provider arrays (5.116917ms)
+✔ epic dependency membership changes invalidate stored authority (5.369ms)
+✔ epic terminal board drift still invalidates stored authority (3.518958ms)
+✔ child readiness cannot be supplied as an admission boolean (1.340167ms)
+✔ proof reference IDs and legacy display proof cannot alter semantic admission identity (1.234541ms)
+✔ dangling VC citation is unavailable scope authority (0.582541ms)
+✔ declared named root reference cannot become empty valid authority (2.267083ms)
+✔ selected pinned bytes remain exact with crlf (2.1ms)
+✔ selected pinned bytes remain exact with quoted-heading (7.499333ms)
+✔ observed missing board estimate conflicts with published body fields (0.621541ms)
+✔ observed missing board size conflicts with published body fields (0.8385ms)
+✔ review regression: missing ready identity cannot hide an active oversized forecast (13.384958ms)
+✔ review regression: dangling ready identity cannot hide an active oversized forecast (3.440875ms)
+✔ review regression: real compatibility appendix identifies active proposed hours (3.057ms)
+✔ review regression: actual human-attention reestimate remains proposed and unapplied (1.062167ms)
+✔ compatibility proposal retirement requires exact reconciled history: confirmed (4.588417ms)
+✔ compatibility proposal retirement requires exact reconciled history: failed (4.755375ms)
+✔ compatibility proposal retirement requires exact reconciled history: pending (5.054459ms)
+✔ compatibility proposal retirement requires exact reconciled history: changed-comment (3.678709ms)
+✔ duplicate compatibility headings are unavailable rather than absent proposal (0.733667ms)
+✔ production forecast snapshot disagreement retains observed mandatory high estimate (0.652584ms)
+✔ production forecast snapshot disagreement retains observed mandatory size (0.703125ms)
+✔ unready unique forecast exposes reconciliation data but remains unavailable authority (2.925125ms)
+ℹ tests 202
+ℹ suites 0
+ℹ pass 202
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34644.329583

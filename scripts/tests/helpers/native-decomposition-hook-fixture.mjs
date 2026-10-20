@@ -43,6 +43,8 @@ export function hookProviderResponse(current, state = 'develop', user = 'tester'
     id: 'ISSUE_' + current.subject.issue,
     number: current.subject.issue,
     body: current.body,
+    repository: { nameWithOwner: current.subject.repository },
+    subIssues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
     assignees: { nodes: [{ login: user }] },
     comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
     projectItems: { nodes: [item], pageInfo: { hasNextPage: false, endCursor: null } },

@@ -112,6 +112,8 @@ export function snapshotFor(f, hours = 7) {
           id: 'ISSUE_107',
           number: 107,
           body: f.authority.body,
+          repository: { nameWithOwner: 'o/r' },
+          subIssues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
           assignees: { nodes: [{ login: 'operator' }] },
           comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
           projectItems: { nodes: [item], pageInfo: { hasNextPage: false, endCursor: null } },
@@ -155,6 +157,8 @@ export function registerDecompositionHookCases() {
         id: 'ISSUE_107',
         number: 107,
         body: f.authority.body,
+        repository: { nameWithOwner: 'o/r' },
+        subIssues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
         assignees: { nodes: [{ login: 'operator' }] },
         comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
         projectItems: {
@@ -202,6 +206,8 @@ export function registerDecompositionHookCases() {
         number: 107,
         id: 'ISSUE_107',
         body: f.authority.body,
+        repository: { nameWithOwner: 'o/r' },
+        subIssues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
         assignees: { nodes: [{ login: 'operator' }] },
         comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
         projectItems: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
@@ -250,7 +256,7 @@ export function registerDecompositionHookCases() {
     }
   });
 
-  test('actual source hook consumes bounded forecast continuation without a second base snapshot', async () => {
+  test('actual source hook fences bounded forecast continuation with a fresh root snapshot', async () => {
     const f = await hookFixture(7);
     try {
       let calls = 0;
@@ -265,22 +271,27 @@ export function registerDecompositionHookCases() {
           calls++;
           return calls === 1
             ? first
-            : {
-                data: {
-                  repository: {
-                    issue: {
-                      number: 107,
-                      comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+            : calls === 3
+              ? snapshotFor(f)
+              : {
+                  data: {
+                    repository: {
+                      issue: {
+                        id: 'ISSUE_107',
+                        number: 107,
+                        repository: { nameWithOwner: 'o/r' },
+                        body: f.authority.body,
+                        comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+                      },
                     },
                   },
-                },
-              };
+                };
         },
       };
       delete deps.decomposition;
       const result = await runHook(f.payload('src/product.mjs'), deps);
       assert.equal(result.decision, 'allow');
-      assert.equal(calls, 2);
+      assert.equal(calls, 3);
     } finally {
       f.native.close();
     }

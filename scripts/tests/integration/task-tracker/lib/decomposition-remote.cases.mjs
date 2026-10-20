@@ -108,6 +108,7 @@ export async function readyEpic(terminal) {
           id: 'ISSUE_107',
           number: 107,
           body: f.authority.body,
+          repository: { nameWithOwner: 'o/r' },
           assignees: { nodes: [{ login: 'operator' }] },
           projectItems: { nodes: [item], pageInfo: { hasNextPage: false, endCursor: null } },
           comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
@@ -225,7 +226,7 @@ export function registerDecompositionRemoteCases() {
         },
       });
       assert.equal(result.decision, 'allow');
-      assert.equal(calls, 1);
+      assert.equal(calls, 3);
     } finally {
       f.native.close();
     }
@@ -275,7 +276,8 @@ export function registerDecompositionRemoteCases() {
           readPlanAtCommit: async () => f.content,
           graphql: async ({ query }) => {
             calls++;
-            if (calls === 1) return first;
+            if (calls === 1 || calls === 2) return first;
+            if (calls === 4) return f.response;
             assert.match(query, /LABEL_NEXT/);
             return {
               data: {
@@ -292,7 +294,7 @@ export function registerDecompositionRemoteCases() {
         },
       });
       assert.equal(result.decision, 'allow');
-      assert.equal(calls, 2);
+      assert.equal(calls, 4);
     } finally {
       f.native.close();
     }

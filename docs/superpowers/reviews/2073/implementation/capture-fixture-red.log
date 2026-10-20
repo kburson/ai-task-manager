@@ -1,0 +1,33 @@
+✖ current recertification captures complete simulated authority without executing actions (34844.557833ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35075.061084
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs:78:1
+✖ current recertification captures complete simulated authority without executing actions (34844.557833ms)
+  AssertionError [ERR_ASSERTION]: lifecycle-promote must have complete simulated authority: {"schema":"aitm.action-explanation/v2","result":{"issue":2100,"actionId":"promote","status":"indeterminate","blockers":[{"guardId":"plan-exit-decomposition","code":"decomposition-authority-unavailable","args":{"issue":2100,"operationId":null},"remediation":{"id":"refresh-decomposition","args":{"issue":2100}}}],"normalizations":[],"warnings":[{"code":"guidance-source-diverged","args":{"source":".ai-task-manager/aitm-guidance.yml","digest":"sha256:ebfb536a1bc1ed800f62e3c6d31bcefc5310ea28bb0113a626793cec851b3767"}}],"humanDecision":null},"guidance":[{"id":"action.promote","digest":"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc","status":"expanded","agent":{"instruction":[{"query":"promote"},{"require_status":"ready"},{"if_blocked":"use_returned_remediation_ids"},{"execute":"promote"},{"never":"bypass_guard"},{"execution_revalidates":true}]}}],"sourceReceipt":"aitm-guidance-source:project-owned-diverged:sha256:ebfb536a1bc1ed800f62e3c6d31bcefc5310ea28bb0113a626793cec851b3767"}
+  
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'ready'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs:89:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'ready',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

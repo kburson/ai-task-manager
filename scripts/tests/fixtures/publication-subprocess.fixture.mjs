@@ -1,4 +1,5 @@
 // @story #1988 — actual process boundary over persistent injected provider state.
+import { createTargetFixtureGraphql } from './refinement-target-fixture.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { runInflateEstimate } from '../../task-tracker/verbs/inflate-estimate.mjs';
@@ -110,6 +111,13 @@ export function processPublicationHarness({ file, dir, mode }) {
     return true;
   };
   const deps = {
+    targetGraphql: createTargetFixtureGraphql({
+      cfg,
+      issueNumber: 1987,
+      itemId: subject.projectItemId,
+      getBody: () => load().body,
+      getProject: () => load().board,
+    }).graphql,
     decomposition,
     projectDir: dir,
     loadProjectFieldDefs: () => defs,

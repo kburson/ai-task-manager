@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import { mapSubIssueNodes } from '../../gh/lib/wave-admission.mjs';
-import { parseIssueKind } from './issue-kind.mjs';
+import { classifyDecompositionKind } from './decomposition-kind.mjs';
 import { fieldIdFor } from '../project-fields.mjs';
 import { readDeepDiveSignals } from './deep-dive.mjs';
 import { normalizeStateId } from './lifecycle-policy/index.mjs';
@@ -33,6 +33,7 @@ const subIssues =
   'subIssues(first:50){nodes{id number title body state stateReason labels(first:100){nodes{id name} pageInfo{hasNextPage endCursor}} blockedBy(first:100){nodes{id number} pageInfo{hasNextPage endCursor}} ' +
   projectItems +
   '} pageInfo{hasNextPage endCursor}}';
+const presence = 'subIssues(first:50){nodes{id} pageInfo{hasNextPage endCursor}}';
 const hash = (value) =>
   createHash('sha256')
     .update(typeof value === 'string' ? value : canonicalDecompositionJson(value))
@@ -47,6 +48,7 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
   const remoteDeadline = started + 5000;
   const totalDeadline = started + 6000;
   const [owner, name] = cfg.repo.split('/');
+  let dispatches = 0;
   const query =
     'query {viewer{login} repository(owner:' +
     JSON.stringify(owner) +
@@ -54,12 +56,12 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     JSON.stringify(name) +
     '){issue(number:' +
     issue +
-    '){id number body assignees(first:100){nodes{login}} ' +
+    '){id number repository{nameWithOwner} body assignees(first:100){nodes{login}} ' +
     projectItems +
     ' ' +
     comments +
     ' ' +
-    subIssues +
+    presence +
     '}}}';
   const remote = async (request) => {
     const remaining = Math.floor(remoteDeadline - performance.now());
@@ -75,6 +77,7 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
             })
           ).stdout
         ));
+    dispatches++;
     let timer;
     let result;
     try {
@@ -89,6 +92,8 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     }
     if (performance.now() > remoteDeadline) throw new Error('remote-deadline');
     if (!result || result.errors?.length) throw new Error('provider-response');
+    if (Buffer.byteLength(JSON.stringify(result)) > 4 * 1024 * 1024)
+      throw new Error('response-limit');
     return result;
   };
   const response = structuredClone(await remote({ query }));
@@ -121,13 +126,54 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     JSON.stringify(name) +
     '){issue(number:' +
     issue +
-    '){number ';
+    '){id number repository{nameWithOwner} body ';
   const issuePage = async (selection) => {
     const result = await remote({ query: 'query {' + repoPrefix + selection + '}}}' });
-    if (result.data?.repository?.issue?.number !== issue) throw new Error('mixed issue page');
+    assertRoot(result.data?.repository?.issue);
     return result.data.repository.issue;
   };
   const node = response.data?.repository?.issue;
+  const assertRoot = (candidate) => {
+    if (
+      candidate?.id !== node?.id ||
+      candidate?.number !== issue ||
+      candidate?.repository?.nameWithOwner?.toLowerCase() !== cfg.repo.toLowerCase() ||
+      candidate?.body !== node?.body
+    )
+      throw new Error('mixed issue page');
+  };
+  if (
+    typeof node?.id !== 'string' ||
+    !node.id ||
+    node.repository?.nameWithOwner?.toLowerCase() !== cfg.repo.toLowerCase()
+  )
+    throw new Error('issue identity');
+  const classification = classifyDecompositionKind(node.body);
+  if (classification.reasons.length) throw new Error(classification.reasons.join(';'));
+  if (
+    !Array.isArray(node.subIssues?.nodes) ||
+    typeof node.subIssues.pageInfo?.hasNextPage !== 'boolean'
+  )
+    throw new Error('child presence incomplete');
+  const initialInventoryComplete = !node.subIssues.pageInfo.hasNextPage;
+  const initialChildren = node.subIssues.nodes.map((child) => child?.id);
+  if (
+    node.subIssues.pageInfo.hasNextPage &&
+    (!initialChildren.length ||
+      typeof node.subIssues.pageInfo.endCursor !== 'string' ||
+      !node.subIssues.pageInfo.endCursor.trim())
+  )
+    throw new Error('child presence continuation incomplete');
+  if (
+    initialChildren.some((id) => typeof id !== 'string' || !id) ||
+    new Set(initialChildren).size !== initialChildren.length
+  )
+    throw new Error('child identity');
+  if (
+    classification.kind !== 'epic' &&
+    (initialChildren.length || node.subIssues.pageInfo.hasNextPage)
+  )
+    throw new Error('non-epic child presence');
   if (node?.number !== issue || typeof node.body !== 'string')
     throw new Error('issue snapshot incomplete');
   node.projectItems = await complete(
@@ -159,11 +205,12 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
         query:
           'query {node(id:' +
           JSON.stringify(item.id) +
-          '){... on ProjectV2Item{' +
+          '){... on ProjectV2Item{id project{id} content{... on Issue{id number repository{nameWithOwner}}} ' +
           fields.replace('first:100', 'first:100,after:' + JSON.stringify(cursor)) +
           '}}}',
       });
-      return result.data?.node?.fieldValues;
+      assertItem(result.data?.node, item.id, issue, node.id);
+      return result.data.node.fieldValues;
     },
     'project-fields'
   );
@@ -175,7 +222,8 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     'forecast-comments'
   );
   let children = [];
-  if (parseIssueKind(node.body) === 'epic') {
+  if (classification.kind === 'epic') {
+    node.subIssues = (await issuePage(subIssues)).subIssues;
     node.subIssues = await complete(
       node.subIssues,
       async (cursor) =>
@@ -189,6 +237,12 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
         ).subIssues,
       'children'
     );
+    if (
+      initialInventoryComplete &&
+      canonicalDecompositionJson([...initialChildren].sort()) !==
+        canonicalDecompositionJson(node.subIssues.nodes.map((child) => child.id).sort())
+    )
+      throw new Error('initial child inventory drift');
     for (const child of node.subIssues.nodes) {
       const childPage = async (selection) => {
         const result = await remote({
@@ -220,11 +274,12 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
             query:
               'query {node(id:' +
               JSON.stringify(selected.id) +
-              '){... on ProjectV2Item{' +
+              '){... on ProjectV2Item{id project{id} content{... on Issue{id number repository{nameWithOwner}}} ' +
               fields.replace('first:100', 'first:100,after:' + JSON.stringify(cursor)) +
               '}}}',
           });
-          return result.data?.node?.fieldValues;
+          assertItem(result.data?.node, selected.id, child.number, child.id);
+          return result.data.node.fieldValues;
         },
         'child-fields'
       );
@@ -255,6 +310,92 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
       ...child,
       blockedBy: node.subIssues.nodes[index].blockedBy.nodes.map((dependency) => dependency.number),
     }));
+  }
+  function assertItem(candidate, id, number, issueId) {
+    if (
+      candidate?.id !== id ||
+      candidate?.project?.id !== cfg.projectId ||
+      candidate?.content?.id !== issueId ||
+      candidate?.content?.number !== number ||
+      candidate?.content?.repository?.nameWithOwner?.toLowerCase() !== cfg.repo.toLowerCase()
+    )
+      throw new Error('mixed item page');
+  }
+  // Final root fence observes continuity, not an atomic child/comment snapshot.
+  if (dispatches > 1) {
+    const originalInventory = node.subIssues.nodes.map((child) => child.id).sort();
+    const fenceResponse = await remote({
+      query:
+        'query {viewer{login} ' +
+        repoPrefix +
+        'assignees(first:100){nodes{login}} ' +
+        projectItems +
+        ' ' +
+        presence +
+        '}}}',
+    });
+    const fence = fenceResponse.data?.repository?.issue;
+    assertRoot(fence);
+    if (
+      fenceResponse.data?.viewer?.login !== response.data?.viewer?.login ||
+      canonicalDecompositionJson(fence.assignees) !== canonicalDecompositionJson(node.assignees)
+    )
+      throw new Error('root ownership drift');
+    fence.projectItems = await complete(
+      fence.projectItems,
+      async (cursor) =>
+        (
+          await issuePage(
+            projectItems.replace('first:50', 'first:50,after:' + JSON.stringify(cursor))
+          )
+        ).projectItems,
+      'fence-membership'
+    );
+    const matched = fence.projectItems.nodes.filter((entry) => entry.project?.id === cfg.projectId);
+    if (matched.length !== 1 || matched[0].id !== item.id) throw new Error('root membership drift');
+    const selected = matched[0];
+    selected.fieldValues = await complete(
+      selected.fieldValues,
+      async (cursor) => {
+        const result = await remote({
+          query:
+            'query {node(id:' +
+            JSON.stringify(item.id) +
+            '){... on ProjectV2Item{id project{id} content{... on Issue{id number repository{nameWithOwner}}} ' +
+            fields.replace('first:100', 'first:100,after:' + JSON.stringify(cursor)) +
+            '}}}',
+        });
+        assertItem(result.data?.node, item.id, issue, node.id);
+        return result.data.node.fieldValues;
+      },
+      'fence-fields'
+    );
+    const relevant = (entry) => ({
+      status: entry.fieldValueByName,
+      fields: entry.fieldValues.nodes
+        .filter((value) =>
+          [cfg.kanbanFieldId, fieldIdFor(cfg, 'estimate'), fieldIdFor(cfg, 'size')].includes(
+            value.field?.id
+          )
+        )
+        .sort((a, b) => a.field.id.localeCompare(b.field.id)),
+    });
+    if (
+      canonicalDecompositionJson(relevant(selected)) !== canonicalDecompositionJson(relevant(item))
+    )
+      throw new Error('root field drift');
+    const inventory = await complete(
+      fence.subIssues,
+      async (cursor) =>
+        (await issuePage(presence.replace('first:50', 'first:50,after:' + JSON.stringify(cursor))))
+          .subIssues,
+      'fence-children'
+    );
+    if (
+      canonicalDecompositionJson(inventory.nodes.map((child) => child.id).sort()) !==
+      canonicalDecompositionJson(originalInventory)
+    )
+      throw new Error('root child drift');
   }
   const value = (key) => {
     const matches = item.fieldValues.nodes.filter(
