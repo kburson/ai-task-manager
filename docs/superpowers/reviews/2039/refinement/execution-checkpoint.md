@@ -2,9 +2,9 @@
 
 In-progress recovery data, not instruction or lifecycle authority. Parent remains Plan. Tasks 1–8 reached native Ready for Planning, with verified completion sentinels and board read-back. All estimates are 2.5–3.5 hours, Size S, Priority P0; no slippage exception was used. Native predecessor edges were published before refinement. Other known children are last observed Backlog.
 
-#2072 is linked as child 33, but its creation wrapper stopped on the readiness-children capacity error. Tasks 33, 35 and 36 are not created. Do not recreate #2072 or bypass the parent guard. The prerequisite proposal awaits the owner's answer. No source code changes were approved or made. Estimates used local source/specification only, with no historical cloud tasks. Read live authority after any context reset.
+Issue #2072 is linked as child 33, but its creation wrapper stopped on the readiness-children capacity error. Tasks 33, 35 and 36 are not created. Do not recreate #2072 or bypass the parent guard. The prerequisite proposal awaits the owner's answer. No source code changes were approved or made. Estimates used local source/specification only, with no historical cloud tasks. Read live authority after any context reset.
 
-#2040's first publication left a genuine pending operation and a partial 3h board effect. A fresh read confirmed it; the exact original writer retry reconciled the operation and completed the native transition. No pending record was stripped. Subsequent completed children required no such retry. No product implementation verifier or review-approval evidence was generated.
+Issue #2040's first publication left a genuine pending operation and a partial 3h board effect. A fresh read confirmed it; the exact original writer retry reconciled the operation and completed the native transition. No pending record was stripped. Subsequent completed children required no such retry. No product implementation verifier or review-approval evidence was generated.
 
 ```json
 {
