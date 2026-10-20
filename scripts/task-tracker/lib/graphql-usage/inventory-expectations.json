@@ -601,7 +601,7 @@
     "scripts/task-tracker/lib/close-gates-lineage.mjs|461|gh-api-graphql|planned",
     "scripts/task-tracker/lib/decomposition-audit-writer.mjs|11|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-authority.mjs|172|opaque-gh-cli|opaque",
-    "scripts/task-tracker/lib/decomposition-hook-authority.mjs|72|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/decomposition-hook-authority.mjs|74|gh-api-graphql|planned",
     "scripts/task-tracker/lib/decomposition-migration-writer.mjs|189|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-projection.mjs|158|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-projection.mjs|299|opaque-gh-cli|opaque",

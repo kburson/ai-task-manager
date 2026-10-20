@@ -21,3 +21,7 @@ Native plan-estimate converged with forecast record 01M5CRHF99AKZRD6E33GD7P5KW. 
 ## Native approval
 
 Native plan-approve succeeded at 2026-10-20T13:54:21Z with human provenance, freezing forecast 01M5CRHF99AKZRD6E33GD7P5KW. The calibrated board/body projection is 9 hours and Size L, distinct from the retained local 6.5-hour estimate. Fresh Explain then reported promote ready with no blockers. Governed one-step promotion was invoked; its completion is pending.
+
+## Admission verification
+
+After conditional admission changes, the fast lane ran all 974 files and reported two bookkeeping failures: package-boundary expected 944 packed entries but the intentional classifier makes 945; GraphQL inventory expected the previous collector call-site line 72 instead of 74. The exact one-module package allowance and relocated call-site expectation were updated. Both affected files then passed all 15 tests. The full fast lane must run again after the remaining implementation; this checkpoint does not claim a green final suite. Layout, story-tag and hard line-cap audits passed.

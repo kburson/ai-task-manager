@@ -3,8 +3,16 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createTrafficProvider } from '../helpers/refinement-traffic-provider.mjs';
-import { retainedShapes } from './refinement-traffic-shapes.mjs';
+import {
+  retainedShapes,
+  retainedHookQuery,
+  optimizedHookRoot,
+  optimizedHookGraph,
+  optimizedHookFence,
+  optimizedHookContinuations,
+} from './refinement-traffic-shapes.mjs';
 import { installStubGh } from './stub-gh.mjs';
+import { configureHookPopulation } from './refinement-hook-population.mjs';
 import { estimationIssueBody } from './estimation-publication.mjs';
 
 export const fixtureBudgets = {
@@ -136,7 +144,15 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
       repository: { id: 'R', nameWithOwner: 'o/r', issue },
       viewer: { login: 'operator' },
     };
-    const shapes = retainedShapes.map((shape) => ({
+    const failureSchedule = configureHookPopulation({ population, cfg, projectDir, fixtureId });
+    const shapes = [
+      ...retainedShapes,
+      ...optimizedHookContinuations,
+      { query: retainedHookQuery, family: 'hook-root' },
+      { query: optimizedHookRoot, family: 'hook-root' },
+      { query: optimizedHookGraph, family: 'hook-graph' },
+      { query: optimizedHookFence, family: 'hook-fence' },
+    ].map((shape) => ({
       ...shape,
       ...(shape.family === 'project-field-write'
         ? {
@@ -162,7 +178,7 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
           }
         : {}),
     }));
-    const provider = createTrafficProvider({ population, shapes });
+    const provider = createTrafficProvider({ population, shapes, failureSchedule });
     Object.assign(client, {
       pexec: provider.pexec,
       execFile: provider.execFile,
@@ -181,6 +197,24 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
     };
     const subject = { repository: 'o/r', issue: 2073, projectId: 'P', projectItemId: 'ITEM' };
     const invoke = async (boundary) => {
+      if (boundary === 'hook') {
+        const { evaluateHookDecomposition } = await load(
+          'scripts/task-tracker/lib/decomposition-activity.mjs'
+        );
+        return evaluateHookDecomposition({
+          cfg,
+          issue: 2073,
+          projectDir,
+          activity: ['empty-epic', 'unready-epic'].includes(fixtureId)
+            ? 'scoped-completion'
+            : 'checkpoint',
+          targets: [],
+          deps: {
+            graphql: provider.graphql,
+            readPlanAtCommit: deps.decomposition.readPlanAtCommit,
+          },
+        });
+      }
       if (boundary !== 'publication') throw new Error('unsupported boundary: ' + boundary);
       const { publishFieldEstimateRevision } = await load(
         'scripts/task-tracker/lib/decomposition-field-writer.mjs'

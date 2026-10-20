@@ -26,3 +26,70 @@ export const retainedShapes = [
     family: 'project-field-write',
   },
 ];
+
+// Hook document inventory copied from the retained collector before production edits.
+const fieldIdentity = 'field{... on ProjectV2FieldCommon{id name}}';
+const computed = ['Label', 'Milestone', 'PullRequest', 'Repository', 'Reviewer', 'User']
+  .map((type) => '... on ProjectV2ItemField' + type + 'Value{' + fieldIdentity + '}')
+  .join(' ');
+export const hookFields =
+  'fieldValues(first:100){nodes{__typename ... on ProjectV2ItemFieldValueCommon{id ' +
+  fieldIdentity +
+  '} ... on ProjectV2ItemFieldNumberValue{number} ... on ProjectV2ItemFieldSingleSelectValue{name} ' +
+  computed +
+  ' ... on ProjectV2ItemIssueFieldValue{' +
+  fieldIdentity +
+  '}} pageInfo{hasNextPage endCursor}}';
+export const hookItems =
+  'projectItems(first:50){nodes{id project{id} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}} ' +
+  hookFields +
+  '} pageInfo{hasNextPage endCursor}}';
+export const hookComments =
+  'comments(first:100){nodes{__typename id databaseId body createdAt updatedAt url author{login} issue{number repository{nameWithOwner}}} pageInfo{hasNextPage endCursor}}';
+export const hookChildren =
+  'subIssues(first:50){nodes{id number title body state stateReason labels(first:100){nodes{id name} pageInfo{hasNextPage endCursor}} blockedBy(first:100){nodes{id number} pageInfo{hasNextPage endCursor}} ' +
+  hookItems +
+  '} pageInfo{hasNextPage endCursor}}';
+export const retainedHookQuery =
+  'query {viewer{login} repository(owner:"o",name:"r"){issue(number:2073){id number body assignees(first:100){nodes{login}} ' +
+  hookItems +
+  ' ' +
+  hookComments +
+  ' ' +
+  hookChildren +
+  '}}}';
+export const hookPresence = 'subIssues(first:50){nodes{id} pageInfo{hasNextPage endCursor}}';
+export const optimizedHookRoot = retainedHookQuery
+  .replace('id number body assignees', 'id number repository{nameWithOwner} body assignees')
+  .replace(hookChildren, hookPresence);
+export const optimizedHookGraph =
+  'query {repository(owner:"o",name:"r"){issue(number:2073){id number repository{nameWithOwner} body ' +
+  hookChildren +
+  '}}}';
+export const optimizedHookFence =
+  'query {viewer{login} repository(owner:"o",name:"r"){issue(number:2073){id number repository{nameWithOwner} body assignees(first:100){nodes{login}} ' +
+  hookItems +
+  ' ' +
+  hookPresence +
+  '}}}';
+
+export const optimizedHookContinuations = [
+  {
+    query:
+      'query {repository(owner:"o",name:"r"){issue(number:2073){id number repository{nameWithOwner} body ' +
+      hookComments.replace('first:100', 'first:100,after:"page:100"') +
+      '}}}',
+    family: 'hook-comments',
+  },
+  {
+    query: optimizedHookGraph.replace('subIssues(first:50)', 'subIssues(first:50,after:"page:50")'),
+    family: 'hook-graph',
+  },
+  {
+    query:
+      'query {repository(owner:"o",name:"r"){issue(number:2073){id number repository{nameWithOwner} body ' +
+      hookPresence.replace('first:50', 'first:50,after:"page:50"') +
+      '}}}',
+    family: 'hook-fence',
+  },
+];

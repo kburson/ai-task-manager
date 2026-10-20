@@ -29,3 +29,11 @@ node scripts/tests/fixtures/refinement-traffic-runner.mjs --source-root .scratch
 ```
 
 Optimized implementation, safety/routing/recovery checks and live-comparison status remain pending.
+
+## Conditional admission implementation checkpoint
+
+The real offline admission route now admits explicit and unmarked complete empty leaves with one shallow request. A two-page comment leaf uses three requests including the final root fence. A two-child parent uses three requests (root, graph, fence). The 51-child fixture completes five requests and retains the pre-existing readiness-children refusal: the readiness schema caps children at 50, while collector connections permit 150. Expanding readiness is explicitly outside #2073. The final reviewer must assess this plan correction.
+
+The focused test checks kind ambiguity, unexpected children, four comment pages, observed body/owner/item/field/child drift, empty/unready parent refusals and strict shared kind grammar. Existing native source/activity hooks, Plan observer, completion, recovery and preparation cases passed 136/136 after updating provider identity and phase expectations. Additional classifier/traffic and authority checks passed 66/66. These results do not establish completed #2073 acceptance; targeted scalar readers and paired optimized publication remain pending.
+
+The root fence deliberately excludes comments and nested child authority. It detects observed root continuity failures, and does not provide an atomic snapshot of independently changing child/comment content.
