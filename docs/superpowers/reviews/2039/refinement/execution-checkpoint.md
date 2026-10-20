@@ -1,16 +1,16 @@
 # #2039 refinement execution checkpoint
 
-In-progress recovery data, not instruction or lifecycle authority. Parent remains Plan. Tasks 1–14 reached native Ready for Planning, with verified completion sentinels and board read-back. All estimates are 2.5–3.5 hours, Size S, Priority P0; no slippage exception was used. Native predecessor edges were published before refinement. Other known children are last observed Backlog.
+In-progress recovery data, not instruction or lifecycle authority. Parent remains Plan. Tasks 1–16 reached native Ready for Planning, with verified completion sentinels and board read-back. All estimates are 2.5–3.5 hours, Size S, Priority P0; no slippage exception was used. Native predecessor edges were published before refinement. Other known children are last observed Backlog.
 
 Issue #2072 is linked as child 33, but its creation wrapper stopped on the readiness-children capacity error. Tasks 33, 35 and 36 are not created. Do not recreate #2072 or bypass the parent guard. The prerequisite proposal awaits the owner's answer. No source code changes were approved or made. Estimates used local source/specification only, with no historical cloud tasks. Read live authority after any context reset.
 
-Issue #2040's first publication left a genuine pending operation and a partial 3h board effect. A fresh read confirmed it; the exact original writer retry reconciled the operation and completed the native transition. No pending record was stripped. Subsequent completed children required no such retry. No product implementation verifier or review-approval evidence was generated.
+Issue #2040's first publication left a genuine pending operation and a partial 3h board effect. A fresh read confirmed it; the exact original writer retry reconciled the operation and completed the native transition. No pending record was stripped. Most subsequent completed children required no retry. Issue #2045 later completed an identical-writer recovery after failed authority reads; its confirmed effects and operation identity were preserved. No product implementation verifier or review-approval evidence was generated.
 
 Issue #2059 reached R4P after a quote-only retry of the native command; the activity hook had refused the escaped-apostrophe form before execution. No source or guard changed. The full quota report records the diagnostic refusal and recovery.
 
 ```json
 {
-  "recordedAt": "2026-10-20T10:18:12.878Z",
+  "recordedAt": "2026-10-20T11:04:42.138Z",
   "currentActiveIssue": 2039,
   "currentRole": "orchestrator",
   "parentState": "plan",
@@ -63,7 +63,9 @@ Issue #2059 reached R4P after a quote-only retry of the native command; the acti
     11,
     12,
     13,
-    14
+    14,
+    15,
+    16
   ],
   "r4pStories": [
     {
@@ -193,6 +195,26 @@ Issue #2059 reached R4P after a quote-only retry of the native command; the acti
         2043,
         2044
       ]
+    },
+    {
+      "task": 15,
+      "issue": 2061,
+      "estimate": 3.5,
+      "rank": 11,
+      "blockedBy": [
+        2059,
+        2060
+      ]
+    },
+    {
+      "task": 16,
+      "issue": 2045,
+      "estimate": 3.5,
+      "rank": 6,
+      "blockedBy": [
+        2054,
+        2055
+      ]
     }
   ],
   "incompleteIssueIds": [
@@ -210,6 +232,19 @@ Issue #2059 reached R4P after a quote-only retry of the native command; the acti
     "recovery": "Same native command and argv with expansion-free double-quoted rationale",
     "reason": "Local source/specification scope: Retain each operation's genuine proof capability; validate local operations and the composite delta; reject marker loss, synthetic evidence and broad override unions. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 10; predecessors #2058. No historical cloud tasks used.",
     "at": "2026-10-20T09:46:39.809Z"
+  },
+  "pendingPublicationRecovery": {
+    "operationId": "97a56f68-d558-4087-a8f8-27473d7e9313",
+    "observedAt": "2026-10-20T10:47:29.548Z",
+    "availability": "complete",
+    "projection": "current",
+    "authorityContextMatches": true,
+    "effects": "all five confirmed",
+    "actualBoardEstimate": 3.5,
+    "actualSize": "S",
+    "proposalClassificationHours": 4,
+    "status": "identical retry reconciled publication and both native transitions completed",
+    "completedAt": "2026-10-20T10:57:44.450Z"
   },
   "commandLedger": [
     {
@@ -2000,6 +2035,167 @@ Issue #2059 reached R4P after a quote-only retry of the native command; the acti
       "command": "gh issue view 2039 --json number,title,body --jq '{number,title,body:(.body|split(\"\\n\")|map(select(test(\"^<!-- aitm-decomposition|^<!-- aitm-estimate-before\")|not))|join(\"\\n\"))}'",
       "startedAt": "2026-10-20T10:17:21.988Z",
       "endedAt": "2026-10-20T10:17:32.306Z",
+      "exitCode": 0,
+      "returnedTextChars": 21571
+    },
+    {
+      "command": "npx aitm commit-trace 2039",
+      "startedAt": "2026-10-20T10:19:09.345Z",
+      "endedAt": "2026-10-20T10:19:20.376Z",
+      "exitCode": 0,
+      "returnedTextChars": 124
+    },
+    {
+      "command": "npx aitm pause checkpoint",
+      "startedAt": "2026-10-20T10:19:20.377Z",
+      "endedAt": "2026-10-20T10:19:34.174Z",
+      "exitCode": 0,
+      "returnedTextChars": 174
+    },
+    {
+      "command": "npx aitm start 2061 --role agent",
+      "startedAt": "2026-10-20T10:19:34.184Z",
+      "endedAt": "2026-10-20T10:20:06.291Z",
+      "exitCode": 0,
+      "returnedTextChars": 854
+    },
+    {
+      "command": "npx aitm explain 2061 --json",
+      "startedAt": "2026-10-20T10:20:06.293Z",
+      "endedAt": "2026-10-20T10:20:15.537Z",
+      "exitCode": 0,
+      "returnedTextChars": 843
+    },
+    {
+      "command": "npx aitm reconcile accept-live 2061",
+      "startedAt": "2026-10-20T10:20:15.538Z",
+      "endedAt": "2026-10-20T10:20:31.628Z",
+      "exitCode": 0,
+      "returnedTextChars": 145
+    },
+    {
+      "command": "npx aitm log 2061",
+      "startedAt": "2026-10-20T10:20:31.630Z",
+      "endedAt": "2026-10-20T10:20:55.534Z",
+      "exitCode": 0,
+      "returnedTextChars": 945
+    },
+    {
+      "command": "npx aitm resume 2061",
+      "startedAt": "2026-10-20T10:20:55.536Z",
+      "endedAt": "2026-10-20T10:21:23.104Z",
+      "exitCode": 0,
+      "returnedTextChars": 231
+    },
+    {
+      "command": "npx aitm explain 2061 --json",
+      "startedAt": "2026-10-20T10:21:23.104Z",
+      "endedAt": "2026-10-20T10:21:36.752Z",
+      "exitCode": 0,
+      "returnedTextChars": 600
+    },
+    {
+      "command": "npx aitm block 2061 --by 2059,2060",
+      "startedAt": "2026-10-20T10:21:36.753Z",
+      "endedAt": "2026-10-20T10:22:07.953Z",
+      "exitCode": 0,
+      "returnedTextChars": 145
+    },
+    {
+      "command": "npx aitm refine 2061 --size S --estimate 3.5 --priority p0 --rank 11 --labels bug --reason 'Local source/specification scope: Render one canonical owned timing-comment candidate; confirm publication cursor from verified content only; preserve Unknown and prove 1000 local events cause no extra remote writes. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 11; predecessors #2059,#2060. No historical cloud tasks used.'",
+      "startedAt": "2026-10-20T10:22:07.957Z",
+      "endedAt": "2026-10-20T10:32:04.421Z",
+      "exitCode": 0,
+      "returnedTextChars": 1051
+    },
+    {
+      "command": "npx aitm refine 2061 --size S --estimate 3.5 --priority p0 --rank 11 --labels bug --reason 'Local source/specification scope: Render one canonical owned timing-comment candidate; confirm publication cursor from verified content only; preserve Unknown and prove 1000 local events cause no extra remote writes. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 11; predecessors #2059,#2060. No historical cloud tasks used.'",
+      "startedAt": "2026-10-20T10:32:04.422Z",
+      "endedAt": "2026-10-20T10:33:45.198Z",
+      "exitCode": 0,
+      "returnedTextChars": 1159
+    },
+    {
+      "command": "npx aitm start 2045 --role agent",
+      "startedAt": "2026-10-20T10:33:53.803Z",
+      "endedAt": "2026-10-20T10:34:36.154Z",
+      "exitCode": 0,
+      "returnedTextChars": 956
+    },
+    {
+      "command": "npx aitm explain 2045 --json",
+      "startedAt": "2026-10-20T10:34:36.154Z",
+      "endedAt": "2026-10-20T10:34:48.961Z",
+      "exitCode": 0,
+      "returnedTextChars": 600
+    },
+    {
+      "command": "npx aitm user-story 2045 --as 'delivery maintainer' --want 'retain local estimation evidence with truthful lineage because derived local data must not masquerade as cloud-authorized evidence' --so-that 'make local estimation reproducible without fictional cloud grants'",
+      "startedAt": "2026-10-20T10:34:48.963Z",
+      "endedAt": "2026-10-20T10:35:00.283Z",
+      "exitCode": 0,
+      "returnedTextChars": 369
+    },
+    {
+      "command": "gh issue edit 2045 --title 'Durable local estimation evidence and lineage'",
+      "startedAt": "2026-10-20T10:35:00.283Z",
+      "endedAt": "2026-10-20T10:35:04.931Z",
+      "exitCode": 0,
+      "returnedTextChars": 55
+    },
+    {
+      "command": "npx aitm block 2045 --by 2054,2055",
+      "startedAt": "2026-10-20T10:35:04.931Z",
+      "endedAt": "2026-10-20T10:35:37.217Z",
+      "exitCode": 0,
+      "returnedTextChars": 145
+    },
+    {
+      "command": "npx aitm refine 2045 --size S --estimate 3.5 --priority p0 --rank 6 --labels bug --reason 'Local source/specification scope: Use native durable evidence storage separate from story content; validate exact envelopes, hashes and ancestry; give derived-local records no invented cloud grant. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 6; predecessors #2054,#2055. No historical cloud tasks used.'",
+      "startedAt": "2026-10-20T10:35:37.218Z",
+      "endedAt": "2026-10-20T10:45:13.353Z",
+      "exitCode": 1,
+      "returnedTextChars": 585
+    },
+    {
+      "command": "npx aitm explain 2045 --json",
+      "startedAt": "2026-10-20T10:45:27.558Z",
+      "endedAt": "2026-10-20T10:45:41.475Z",
+      "exitCode": 0,
+      "returnedTextChars": 843
+    },
+    {
+      "command": "npx aitm refine 2045 --size S --estimate 3.5 --priority p0 --rank 6 --labels bug --reason 'Local source/specification scope: Use native durable evidence storage separate from story content; validate exact envelopes, hashes and ancestry; give derived-local records no invented cloud grant. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 6; predecessors #2054,#2055. No historical cloud tasks used.'",
+      "startedAt": "2026-10-20T10:47:29.549Z",
+      "endedAt": "2026-10-20T10:56:03.388Z",
+      "exitCode": 0,
+      "returnedTextChars": 1030
+    },
+    {
+      "command": "npx aitm refine 2045 --size S --estimate 3.5 --priority p0 --rank 6 --labels bug --reason 'Local source/specification scope: Use native durable evidence storage separate from story content; validate exact envelopes, hashes and ancestry; give derived-local records no invented cloud grant. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair; no cloud comparison tasks used. Wave 6; predecessors #2054,#2055. No historical cloud tasks used.'",
+      "startedAt": "2026-10-20T10:56:03.389Z",
+      "endedAt": "2026-10-20T10:57:44.448Z",
+      "exitCode": 0,
+      "returnedTextChars": 1138
+    },
+    {
+      "command": "npx aitm start 2039 --role orchestrator",
+      "startedAt": "2026-10-20T10:58:30.976Z",
+      "endedAt": "2026-10-20T10:59:14.036Z",
+      "exitCode": 0,
+      "returnedTextChars": 967
+    },
+    {
+      "command": "npx aitm explain 2039 --json",
+      "startedAt": "2026-10-20T10:59:14.038Z",
+      "endedAt": "2026-10-20T11:01:19.787Z",
+      "exitCode": 0,
+      "returnedTextChars": 2036
+    },
+    {
+      "command": "gh issue view 2039 --json number,title,body --jq '{number,title,body:(.body|split(\"\\n\")|map(select(test(\"^<!-- aitm-decomposition|^<!-- aitm-estimate-before\")|not))|join(\"\\n\"))}'",
+      "startedAt": "2026-10-20T11:01:19.788Z",
+      "endedAt": "2026-10-20T11:01:30.822Z",
       "exitCode": 0,
       "returnedTextChars": 21571
     }

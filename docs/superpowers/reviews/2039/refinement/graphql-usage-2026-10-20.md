@@ -1,6 +1,6 @@
 # #2039 GraphQL usage checkpoint
 
-This is a chronological investigation log; later checkpoints supersede earlier status descriptions. Latest checkpoint: fourteen children at R4P; parent Plan; 12,043 CLI observations and 7,518 known points across multiple quota windows. General HTTP count/byte coverage remains incomplete.
+This is a chronological investigation log; later checkpoints supersede earlier status descriptions. Latest checkpoint: sixteen children at R4P; parent Plan; 13,944 CLI observations and 8,728 known points across multiple quota windows. General HTTP count/byte coverage remains incomplete.
 
 Native offline telemetry snapshot. No GitHub requests were made to generate this report.
 
@@ -948,3 +948,38 @@ Tasks 1–14 completed native R4P transitions. Parent remains Plan. Three tasks 
 Issue #2059's first Refine entry completed normally. The activity hook refused the second invocation as COMMIT_CODE before the requested command executed. A source-inspected shell-segmentation problem involves the escaped apostrophe in the rationale; an offline classifier probe was also refused as WRITE_CODE and did not execute. A fresh Explain showed the expected missing Refine-exit markers. The same native command and exact rationale then succeeded using expansion-free double quotes, producing genuine R4P markers and 8/8 native tail checks. No source/guard configuration changed. Hook-side activity is not asserted to have zero requests or complete capture.
 
 Additional source finding: decomposition-field-writer.mjs:43–86 defines separate estimate, size and body-field effect readers; each calls readEstimateWriterAuthority even when consuming one scalar. estimate-writer-publication.mjs checkpoints loop these readers before each adapter. Preserve freshness and drift checks, but evaluate a single scoped snapshot per legitimate checkpoint and narrow marker/field reads in a governed implementation. Refine second invocation hits the unchanged-estimate path (verbs/refine.mjs:392), explaining its much smaller measured traffic. This is an implementation investigation direction, not an applied optimization or new approval.
+
+## Sixteen-child R4P checkpoint
+
+Tasks 1–16 completed native R4P transitions. Parent remains Plan. The readiness-cap prerequisite is still unapproved; tasks 33, 35 and 36 remain uncreated. Cumulative telemetry spans multiple provider windows.
+
+```json
+{
+  "snapshotAt": "2026-10-20T11:00:12.193Z",
+  "totals": {
+    "observations": 13944,
+    "knownPointSubtotal": 8728,
+    "unknownCostObservations": 6145,
+    "failures": 15
+  },
+  "integrity": {
+    "partialLines": 0,
+    "malformedLines": 0,
+    "unreadableFiles": 0
+  }
+}
+```
+
+| Issue | Command start UTC | Duration seconds | Exit | CLI observations | Known points | Unknown costs |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| #2061 | 2026-10-20T10:22:07.957Z | 596 | 0 | 507 | 336 | 171 |
+| #2061 | 2026-10-20T10:32:04.422Z | 101 | 0 | 65 | 30 | 35 |
+| #2045 | 2026-10-20T10:35:37.218Z | 576 | 1 | 454 | 306 | 148 |
+| #2045 | 2026-10-20T10:47:29.549Z | 514 | 0 | 416 | 275 | 141 |
+| #2045 | 2026-10-20T10:56:03.389Z | 101 | 0 | 65 | 30 | 35 |
+
+Issue #2045 stopped on decomposition:semantic-drift after business effects were confirmed. Fresh Explain reported state-unavailable. A read-only native authority probe then found complete availability, a current projection, matching authority-context digest and all five effects confirmed under operation 97a56f68-d558-4087-a8f8-27473d7e9313. The exact original writer retry reconciled that operation and completed Backlog to Refine; the next identical invocation completed R4P. Native tails were 8/8. The board and cache estimate remained 3.5h; the publication's whole-hour classification is 4 and was not manually changed.
+
+Retained records show failed issue, projection and membership reads around 10:45 UTC, followed by successful reads during recovery. Their error classes are unknown. They do not prove an external edit or a quota cause. No marker was stripped, no cache value was manually repaired and no source guard changed.
+
+The [source attribution analysis](2026-10-20-2039-authority-query-attribution.md) identifies the three query shapes consuming 324 of 336 known points in one clean Refine entry. It retains exact original/augmented fingerprints and the source-supported checkpoint call path. All matching was offline; no additional live performance reproduction was run.
