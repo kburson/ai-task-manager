@@ -6,7 +6,6 @@ The test's CLI GitHub double returns an explicit Issue ID and number but omits r
 
 This continues the final correction/verification pass; no additional managed reviewer was dispatched. Native criterion evidence from the earlier head must be refreshed after committing this fixture and collateral. Full CI and native Test must use the new exact head; no previous green job or stale receipt will substitute.
 
-
 ## Remaining CI failures and final fixture verification
 
 The completed initial run also failed guidance-recertification-capture.test.mjs and guidance-release.test.mjs in integration group 2. Both returned indeterminate for lifecycle-promote because the current simulated GitHub response omitted the newly required repository identity. The exact failed group log is retained as ci-integration2-failed.log. The production maintenance capture and test capture helper each embed this fake provider; each now supplies example/project identity in that response. Historical archived capture bytes and expected lifecycle outcomes remain unchanged.
@@ -16,3 +15,5 @@ The recertification test also reproduced the failure locally before correction (
 The prior full quality rerun passed all audits and all 975 fast files (107.2s aggregate). After these additional fixture-only corrections, targeted format/lint/spell checks and the full fast suite run again before commit. New-head cloud CI must still pass every lane.
 
 Final local checks passed: the full fast suite reports all 975 files green (105.9s), all three affected suites report 17/17, and targeted formatting, ESLint and spelling checks exit zero. Full fast output is retained as final-fast.log.
+
+Second CI run 39447057795 stopped during Markdown lint on an extra blank line in this note (MD012); no product failure is inferred from that pre-test refusal. The raw failed unit-job log is retained as ci-attempt2-unit.log. The whitespace was corrected, and full lint/format checks run before the next commit. Further native evidence refresh waits until the final exact-head CI is green.
