@@ -1,0 +1,16 @@
+✔ confirmed short active phase tail suppresses a duplicate bind event (1.232959ms)
+✔ fresh, unreadable, paused, and long-gap tails retain their existing bind behavior (0.207083ms)
+✔ malformed and future-dated tails are not treated as confirmed recent (0.13275ms)
+✔ pause, switch-out, and stop are recorded departures that still need resumed (1.07075ms)
+Bound #1018 (live timing span already active; no duplicate reengagement row).
+✔ fresh worktree binds locally but posts no row over an already-active live span (8587.131958ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8620.942458
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[dependency-disposition] #1018: binding remains active; retry dependency projection (dependency-disposition:config)

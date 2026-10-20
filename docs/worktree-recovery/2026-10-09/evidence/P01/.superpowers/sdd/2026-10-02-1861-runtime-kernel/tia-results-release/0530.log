@@ -1,0 +1,14 @@
+✔ #902 baseline: DoD-cited commands absent from VC are #231 orphans (4.748708ms)
+✔ #902 AC1: stamping a single-command key reconciles it into Verification Commands (27.399291ms)
+✔ #902 AC2: a multi-command key reconciles every cited command (0.689667ms)
+✔ #902 AC3: after stamping lint + commits, review-preflight finds no orphan (1.872167ms)
+✔ #902 AC4: reconciliation is idempotent — re-stamping does not duplicate the VC entry (5.74825ms)
+✔ #902 AC5: a body with no Verification Commands section gets one created, not a throw (1.024083ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 63.807708

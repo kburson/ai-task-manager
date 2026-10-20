@@ -1,0 +1,18 @@
+✔ hasStrictDiscussMarker: bare line true; prose/backtick/null false (0.721541ms)
+✔ buildSweepReport: {discuss} skipped, broken body fails (0.637583ms)
+✔ buildSweepReport: missing title defaults to empty string (0.067209ms)
+✔ formatSweepReport: fail branch lists issue + missing + skip note (0.181959ms)
+✔ formatSweepReport: all-canonical branch (all skipped → 0 scored) (0.072834ms)
+✔ listOpenIssues: pages until a short/empty batch ends the loop (0.246875ms)
+✔ listOpenIssues: empty first batch ends immediately (0.067542ms)
+✔ main: no repo configured → err + exit 1 (0.45975ms)
+✔ main: text output, all canonical → exit 0 (0.155417ms)
+✔ main: --json output, a failing body → exit 5 (0.195167ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.184875

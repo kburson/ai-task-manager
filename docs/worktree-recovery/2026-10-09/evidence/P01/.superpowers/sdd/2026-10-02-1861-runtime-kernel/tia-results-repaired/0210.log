@@ -1,0 +1,31 @@
+✔ ordinary open-PR mixed history refuses without a recorded waiver (203.317208ms)
+✔ already-merged external recovery never consumes an open-PR waiver (65.174875ms)
+✔ Codex-authorized scoped waiver emits v2 intent after late source revalidation (51.356083ms)
+✔ a prior PR waiver does not change ordinary delivery for a later PR (92.208417ms)
+✔ delivery refuses a server-edited grant before writing an intent (43.130166ms)
+✔ waived open PR uses mixed GitHub subjects when the trunk range appears fully attributed (48.398416ms)
+✔ waived open PR does not require an available origin trunk range (63.458667ms)
+✔ late changed source order refuses action after the pending intent (98.080875ms)
+✔ unchanged pending waived intent resumes the same operation without a new comment (99.902625ms)
+✔ late changed head refuses provider action (94.790291ms)
+✔ late changed subject refuses provider action (97.709125ms)
+✔ late changed local object refuses provider action (130.288667ms)
+✔ late changed removed record refuses provider action (93.799916ms)
+✔ malformed exception record blocks delivery before intent (114.847541ms)
+✔ competing active records and expired authority refuse before intent (187.895917ms)
+✔ authorized revocation posted after intent blocks the provider action (146.026833ms)
+✔ a revised active record cannot launder an unverified earlier chain link (72.127417ms)
+✔ waiver preserves dirty tree refusal (71.731125ms)
+✔ waiver preserves issue owner refusal (61.552375ms)
+✔ waiver preserves Review lifecycle refusal (66.464166ms)
+✔ waiver preserves hosted CI refusal (55.527042ms)
+✔ waiver preserves mergeability refusal (43.814084ms)
+✔ waiver preserves active binding, accepted Test head, and provider mechanism gates (144.683042ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2153.481167

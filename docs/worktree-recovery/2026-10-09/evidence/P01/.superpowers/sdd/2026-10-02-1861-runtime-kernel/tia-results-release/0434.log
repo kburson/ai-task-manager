@@ -1,0 +1,15 @@
+✔ explicit dependency projectDir remains the highest-priority test seam (0.523041ms)
+✔ all environment aliases use validated identity and emit diagnostics (0.326333ms)
+✔ recorded active-task worktree is the default execution authority (0.108542ms)
+✔ missing, mismatched, and deleted binding evidence fail closed and name the issue (0.654458ms)
+✔ Develop guard invoked from a foreign directory executes against the bound worktree (0.764583ms)
+✔ all governed projectDir call sites delegate and retain no bare cwd fallback (0.986791ms)
+✔ scratch follows its genuine physical root and refuses a stale override (87.352917ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.271708

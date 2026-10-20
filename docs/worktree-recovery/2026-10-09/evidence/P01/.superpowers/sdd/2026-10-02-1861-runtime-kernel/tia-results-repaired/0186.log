@@ -1,0 +1,22 @@
+✔ runtime persists incomplete outcome with canonical Test proof then reuses it after valid close tail (28.015875ms)
+✔ incomplete runtime refuses missing or wrong-head Test proof and wrong forecast (0.935042ms)
+✔ closed actor engagement before Develop is not dropped from completion totals (3.728458ms)
+✔ Close accepts unknown totals only through real canonical runtime verification (5.035916ms)
+✔ Close refuses caller unavailable flags, wrong linkage and failed verification (2.424ms)
+✔ Close rechecks explicit incomplete projection despite stale numeric fields and preserves marker failures (2.069667ms)
+✔ Close rejects changed canonical source and ambiguous outcome records on retry (9.617625ms)
+✔ forecast-free mixed actor history produces durable legacy-none evidence without inventing a forecast (3.402875ms)
+✔ forecast-free eligibility refuses malformed or partial adaptive claims and absent Test proof (0.42075ms)
+✔ legacy Plan approval without any forecast claim remains eligible for legacy-none (1.597416ms)
+✔ genuine forecast-free issue-resident delivery carries no invented Test command (3.383959ms)
+✔ legacy-none refuses a concurrent forecast after immutable outcome publication (1.565834ms)
+✔ resident delivery refuses wrong receipt identity or missing accepted heads (0.966833ms)
+✔ real Git issue-resident lanes prove zero issue commits without an invented sandbox (170.686375ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 236.863458

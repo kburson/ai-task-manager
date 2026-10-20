@@ -1,0 +1,10 @@
+✔ runPromote: TT_FULL_AUTO=1 cannot bypass an unresolved {discuss} directive (4.141958ms)
+✔ runPromote: promotes once the discussion is resolved (token stripped) (2.374333ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.160958

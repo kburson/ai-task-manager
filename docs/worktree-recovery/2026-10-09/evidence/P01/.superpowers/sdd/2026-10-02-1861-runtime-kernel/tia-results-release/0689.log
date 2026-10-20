@@ -1,0 +1,17 @@
+✔ pending question catalog requires exact private actor provenance and preserves paused evidence (1.160292ms)
+✔ catalog preserves terminal binding, verifier, draft and orchestration records with typed entries (0.582959ms)
+✔ hook stamps are exact empty bytes and unknown locks remain explicit blockers (0.162459ms)
+✔ JSON catalog rejects invalid UTF-8 rather than silently replacing bytes (0.096833ms)
+✔ catalog preserves supported nullable chore audit and stopped legacy fleet observations (0.263209ms)
+✔ catalog supports legacy and actor queue generations without changing their bytes (0.6535ms)
+✔ catalog binds versioned actor records to the exact session and opaque actor filename (0.303917ms)
+✔ catalog validates gate and occupancy entries rather than accepting arbitrary objects (0.228334ms)
+✔ unknown files and explicit unsupported schemas remain unclassified or invalid (0.195708ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.133125

@@ -1,0 +1,14 @@
+✔ blocks when cwd === main worktree and no orchestrator lock (1165.671917ms)
+✔ blocks when lock has expired (startedAt + ttlMs < now) (2894.86275ms)
+✔ blocks when lock is held but isolation !== "worktree" (1594.77775ms)
+✔ passes when lock is fresh and isolation === "worktree" (2083.148667ms)
+✔ passes when cwd is a linked worktree (cwd !== main) (935.127583ms)
+✔ safe-passes on malformed stdin (does not block) (1076.839667ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9755.125875

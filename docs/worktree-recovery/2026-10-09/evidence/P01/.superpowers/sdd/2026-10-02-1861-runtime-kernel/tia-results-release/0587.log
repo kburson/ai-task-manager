@@ -1,0 +1,13 @@
+✔ each migrating obligation has source, authority, catalog binding, and shipped human guidance (38.076666ms)
+✔ coverage rejects a deleted row rather than trusting the remaining map (12.0645ms)
+✔ coverage rejects a removed catalog entry and an erased action binding (21.322125ms)
+✔ coverage rejects a broken shipped-document anchor (11.671ms)
+✔ shipped guidance documents adoption, trust, recovery, receipts, and historical scope (1.923458ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 91.356292

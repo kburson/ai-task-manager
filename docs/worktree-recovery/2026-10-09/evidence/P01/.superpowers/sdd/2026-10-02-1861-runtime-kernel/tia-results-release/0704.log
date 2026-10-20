@@ -1,0 +1,13 @@
+stage-entry-markers.test.mjs: all passed
+✔ same-second transition IDs produce distinct visits and idempotent exact replay (0.458458ms)
+✔ transition commit codec and deterministic backfill identity are stable (0.719084ms)
+✔ transition commit write verifies read-back and replay repair stays idempotent (0.408792ms)
+✔ mixed visit ordering uses occurrence and ordinal, never timestamps (0.135ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.414709

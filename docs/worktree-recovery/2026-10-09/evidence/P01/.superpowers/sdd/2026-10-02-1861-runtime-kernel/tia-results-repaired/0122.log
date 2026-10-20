@@ -1,0 +1,15 @@
+✔ queries every workflow page before project linking and local configuration writes (1967.911875ms)
+✔ enabled incompatible workflows refuse with exact remediation before mutation (588.327792ms)
+✔ disabled incompatible workflows do not block initialization (1726.765333ms)
+✔ workflow query failure refuses because compatibility could not be verified (403.44475ms)
+✔ an incomplete pagination cursor refuses before mutation (433.61575ms)
+✔ a malformed pagination cursor refuses before mutation (504.763583ms)
+✔ a newly created project is inspected before link or template mutation (541.774666ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6171.254167

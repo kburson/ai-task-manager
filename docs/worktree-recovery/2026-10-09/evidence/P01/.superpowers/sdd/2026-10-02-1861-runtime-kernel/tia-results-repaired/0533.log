@@ -1,0 +1,12 @@
+✔ Develop exit identifies the unticked AC and its supported evidence repair (0.990292ms)
+✔ Develop exit identifies a checked AC whose verification is missing (0.179708ms)
+✔ Develop exit directs non-demonstrable ACs to the audited checkbox route (0.0945ms)
+✔ Develop exit recognizes the gate-accepted mixed-case non-demonstrable marker (0.080625ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.506833

@@ -1,0 +1,25 @@
+✔ every catalog record satisfies the normalized public help schema (3.027292ms)
+✔ Story Origin creation contract is consistent across help and sanctioned rules (#892) (1.274375ms)
+✔ normalization never fabricates required command semantics (0.183791ms)
+✔ normalization preserves malformed nested values for validation to reject (0.167ms)
+✔ schema rejects misspelled command-surface taxonomy values (0.135125ms)
+✔ duplicate canonical source records fail before catalog construction (0.371083ms)
+✔ catalog names and aliases are globally unique and resolve canonically (0.180375ms)
+✔ every help-required shipped entry point resolves to a catalog record (0.48325ms)
+✔ every routed standalone record maps back to a shipped standalone entry point (0.141958ms)
+✔ every package bin identity resolves to its classified target (0.390083ms)
+✔ representative maintenance metadata matches real parser contracts (0.3075ms)
+✔ high-risk routed metadata enumerates parser arguments and special exits (0.176708ms)
+✔ retired review commands and wrappers are absent from the AITM catalog (0.047708ms)
+✔ every task verb has an explicit positional contract (0.205708ms)
+✔ every task verb has explicit parser-accurate semantics and exit metadata (0.66625ms)
+✔ every routed verb is represented in the aggregate agent catalog (0.100833ms)
+✔ every agent-callable task record has a real router identity (0.106083ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.30825

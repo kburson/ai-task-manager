@@ -1,0 +1,27 @@
+✔ runMoveStateHost is an importable function (module load has no host side effect) (0.84ms)
+✔ runMoveStateHost returns 1 on an unknown state without exiting the process (1.200541ms)
+✔ runMoveStateHost returns 1 on missing args (usage) without exiting the process (0.467791ms)
+✔ unauthenticated direct movement is refused before guard selection (0.889375ms)
+✔ the complete guard pipeline runs while the issue boundary lock is held (80.847958ms)
+▶ host boundary authorizes Shelve guard selection only for the exact exported capability
+  ✔ environment-only Shelve context is unauthorized (62.563125ms)
+  ✔ a freshly forged Symbol is unauthorized (69.67425ms)
+  ✔ the exact exported capability is authorized (67.243125ms)
+✔ host boundary authorizes Shelve guard selection only for the exact exported capability (200.17775ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 294.038834
+Unknown state: bogus-state
+States: backlog | refine | ready-for-plan | plan | develop | test | review | done
+Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>] [--supersede] [--force]
+States: backlog | refine | ready-for-plan | plan | develop | test | review | done
+--supersede: bypass the matrix + guard pipeline (reserved for the `supersede` verb — "abandoned")
+--force: bypass the matrix + guard pipeline for a delivered operator override (reserved for `close --force`)
+move-state.mjs is internal; agents must reach it through the verb pipeline.
+Use /task shelve for backlog, or pass --out-of-band <reason> to record an emergency move.
+For one-off manual recovery from a non-TTY shell, set AITM_VERB_CONTEXT=<verb> (or AITM_INTERNAL=1) to confirm.

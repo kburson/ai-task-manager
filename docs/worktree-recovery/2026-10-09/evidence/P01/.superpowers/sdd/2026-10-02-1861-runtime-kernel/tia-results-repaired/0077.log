@@ -1,0 +1,11 @@
+✔ two production close runtimes with the same pre-claim snapshot append one outcome (20.917166ms)
+✔ two production Plan runtimes sharing a stale rubric generation append one successor (4.28225ms)
+✔ two production Plan authority runtimes with the same initial projection append one forecast (22.552708ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 62.534125

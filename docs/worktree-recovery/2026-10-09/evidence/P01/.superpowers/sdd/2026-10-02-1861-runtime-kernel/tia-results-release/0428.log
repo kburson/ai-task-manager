@@ -1,0 +1,33 @@
+▶ bodyGatesEntryGuardTest
+  ✔ exports stable id (0.583292ms)
+  ✔ fails open when toState does not match (0.970875ms)
+  ✔ fails open when body is missing or empty (0.105417ms)
+  ✔ passes on quiet body and on body that only trips verification-commands (1.206625ms)
+  ✔ refuses with blockers array when body trips dependency-map (0.715625ms)
+  ✔ accepts an explicit deep-dive waiver but retains the dependency gate (1.166ms)
+✔ bodyGatesEntryGuardTest (5.965833ms)
+▶ bodyGatesEntryGuardReview
+  ✔ exports stable id (0.209542ms)
+  ✔ fails open on toState mismatch and missing body (0.121ms)
+  ✔ passes on quiet body (0.992417ms)
+  ✔ refuses when verification-commands are unchecked (review enforces full gates) (1.467833ms)
+  ✔ filters waived deep-dive rules without filtering Review verification (0.535916ms)
+✔ bodyGatesEntryGuardReview (3.691042ms)
+▶ bodyGatesEntryGuardDone
+  ✔ exports stable id (0.32325ms)
+  ✔ fails open on toState mismatch and missing body (0.175125ms)
+  ✔ refuses when unchecked checkboxes remain in body (1.331959ms)
+  ✔ surfaces lifecycle warn payload when lifecycleCheckboxesRequired=false (0.612958ms)
+  ✔ refuses with lifecycle-incomplete when lifecycleCheckboxesRequired=true (default) (0.150875ms)
+✔ bodyGatesEntryGuardDone (2.764125ms)
+▶ BODY_GATES_ENTRY_GUARD_IDS
+  ✔ exposes the three ids in stable order (0.074334ms)
+✔ BODY_GATES_ENTRY_GUARD_IDS (0.110833ms)
+ℹ tests 17
+ℹ suites 4
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 33.047083

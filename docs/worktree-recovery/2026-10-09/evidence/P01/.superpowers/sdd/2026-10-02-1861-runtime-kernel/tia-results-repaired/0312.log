@@ -1,0 +1,19 @@
+coverage-backfill-vc-sections.test.mjs: ok
+✔ buildVcBackfill: no section + no markers → healed-default (3.734458ms)
+✔ buildVcBackfill: AC evidence command → healed-derived, placed before Pickup (1.162709ms)
+✔ buildVcBackfill: healed body is idempotent → skip on re-run (0.284917ms)
+✔ buildVcBackfill: default empty arg → healed-default (0.076209ms)
+✔ listOpenIssues: parses gh json via injected pexec (0.13575ms)
+✔ main: --dry-run logs healed lines + skips clean, no writes (0.443959ms)
+✔ main: default (no flags) audits only, no writes (0.113458ms)
+✔ main: --help prints usage and never lists or writes (0.100042ms)
+✔ main: live run writes healed issues through mutateIssueBody (0.49225ms)
+✔ main: mutate throw is tallied as failed on err channel (0.209458ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.582208

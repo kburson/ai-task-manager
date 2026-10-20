@@ -1,0 +1,12 @@
+✔ applyResync: accepted new/changed files are copied, declined items untouched (54.304958ms)
+✔ applyResync: accepted deprecated files are removed, declined ones kept (53.66675ms)
+✔ applyResync: MEMORY.md is rewritten from upstream bullets to the resulting accepted set (57.73775ms)
+✔ applyResync: baseline manifest is refreshed to match post-apply on-disk content (69.89425ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 241.583125

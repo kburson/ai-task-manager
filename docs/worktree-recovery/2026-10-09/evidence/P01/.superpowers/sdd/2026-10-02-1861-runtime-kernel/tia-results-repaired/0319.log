@@ -1,0 +1,22 @@
+coverage-migrate-plan-approved.test.mjs: ok
+✔ migrate: no legacy line + no marker → noop-no-trace (0.652875ms)
+✔ migrate: no legacy line but marker already present → noop-marker-present (0.131583ms)
+✔ migrate: unchecked legacy line → stripped-unchecked, no marker added (0.184458ms)
+✔ migrate: checked legacy line + no marker → stripped-and-marker-added (0.403791ms)
+✔ migrate: checked legacy line but marker already present → stripped-marker-already-present (0.081584ms)
+✔ migrate: checked legacy line as the only content → marker-only body (0.114292ms)
+✔ runMigrate: changed body → writeIssueBody invoked with new body (1.361917ms)
+✔ runMigrate: unchanged body → no write (0.093542ms)
+✔ runMigrate: missing issueNumber → throws (0.378792ms)
+✔ runMigrate: missing cfg → throws (0.133416ms)
+✔ fetchBody: normalizes CRLF from gh stdout (0.104958ms)
+✔ writeBody: stages temp file, calls gh edit, cleans up (0.541ms)
+✔ writeBody: unlink failure is swallowed (best-effort cleanup) (0.091042ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.382
