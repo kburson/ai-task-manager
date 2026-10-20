@@ -1,0 +1,100 @@
+✔ traffic budgets reject extra dispatches, unknown and ambiguous shapes (3.247125ms)
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/.ai-task-manager/runtime/test-fixtures/test/2073-recovery-u3Iezo for the active issue
+✔ all CLI ports preserve selected reads and failure signals (5.015458ms)
+✔ provider applies a lost-ack mutation and subsequent observation sees the new value (0.544166ms)
+✔ retained source reproduces equal complete publications under independent ceilings (6005.598625ms)
+✔ a legitimate complete empty leaf admits in one shallow request (200.810083ms)
+✔ complete leaf admits: empty-unmarked-leaf (230.347167ms)
+✔ complete leaf admits: two-page-comments-leaf (278.662166ms)
+✔ unsafe hook snapshot refuses: unknown-kind (260.010125ms)
+✔ unsafe hook snapshot refuses: duplicate-kind (313.195583ms)
+✔ unsafe hook snapshot refuses: misplaced-kind (269.36775ms)
+✔ unsafe hook snapshot refuses: non-epic-child (240.056917ms)
+✔ unsafe hook snapshot refuses: four-page-comments (230.699667ms)
+✔ unsafe hook snapshot refuses: drift-body (206.41025ms)
+✔ unsafe hook snapshot refuses: drift-owner (199.1905ms)
+✔ unsafe hook snapshot refuses: drift-item (198.352958ms)
+✔ unsafe hook snapshot refuses: drift-field (213.798708ms)
+✔ unsafe hook snapshot refuses: drift-children (247.791291ms)
+✔ unsafe hook snapshot refuses: empty-epic (340.504958ms)
+✔ unsafe hook snapshot refuses: unready-epic (284.619958ms)
+✔ ready parent observes graph and complete fence: two-child-ready-epic (267.332042ms)
+✔ ready parent observes graph and complete fence: 51-child-ready-epic (660.17725ms)
+✔ selected item pagination: root valid (204.704958ms)
+✔ selected item pagination: root wrong-item (206.443167ms)
+✔ selected item pagination: root wrong-project (224.06975ms)
+✔ selected item pagination: root wrong-content (216.706583ms)
+✔ selected item pagination: child valid (263.379625ms)
+✔ selected item pagination: child wrong-item (217.202ms)
+✔ selected item pagination: child wrong-project (206.972167ms)
+✔ selected item pagination: child wrong-content (213.893167ms)
+✔ complete initial inventory refuses observed addition (222.244208ms)
+✔ complete initial inventory refuses observed removal (203.476625ms)
+✔ complete initial inventory refuses observed replacement (222.366333ms)
+✔ shared kind grammar preserves absent and fenced markers while rejecting malformed declarations (41.588166ms)
+✔ native activity-guard uses selected transport with leaf admission (737.776166ms)
+✔ native activity-guard uses selected transport with root drift refusal (587.954709ms)
+✔ native source-edit-gate uses selected transport with leaf admission (578.9775ms)
+✔ native source-edit-gate uses selected transport with root drift refusal (632.792417ms)
+✔ Plan exit reaches selected collector and allows current leaf (391.56675ms)
+✔ Plan exit reaches selected collector and refuses drift (494.299083ms)
+✔ incomplete initial epic presence refuses before a replacement graph can hide it (158.993166ms)
+✔ real changed publication uses exact-target readers and completes unchanged durable protocol (353.005ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/.ai-task-manager/runtime/test-fixtures/test/2073-recovery-mh2DSp for the active issue
+✔ exact retry reconciles apply-then-throw without replaying an applied Estimate (258.768334ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/.ai-task-manager/runtime/test-fixtures/test/2073-recovery-Q71cqk for the active issue
+✔ exact retry reconciles fail-before-apply without replaying an applied Estimate (264.255959ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/.ai-task-manager/runtime/test-fixtures/test/2073-recovery-qrIASX for the active issue
+✔ confirmed-effect drift refuses recovery before any additional business write (182.959166ms)
+✔ public runRefine reaches real target publication and the declared promotion boundary (551.249708ms)
+✔ pre-change pending manifest recovers without migrating its subject or before digests (1457.673041ms)
+✔ fresh reads preserve zero, explicit null and complete absent values (0.983833ms)
+✔ project observation refuses removed definition (0.237792ms)
+✔ project observation refuses wrong definition type (0.153125ms)
+✔ project observation refuses foreign definition (0.134333ms)
+✔ project observation refuses duplicate definition (0.136292ms)
+✔ project observation refuses duplicate value (0.126209ms)
+✔ project observation refuses unknown size option (0.12375ms)
+✔ project observation refuses missing number (0.119ms)
+✔ project observation refuses string number (0.123542ms)
+✔ project observation refuses negative number (0.129375ms)
+✔ project observation refuses foreign item (0.108625ms)
+✔ project observation refuses foreign project (0.091834ms)
+✔ project observation refuses foreign content (0.09275ms)
+✔ project observation refuses draft content (0.091375ms)
+✔ project observation refuses missing page info (0.107625ms)
+✔ project observation refuses missing option name (0.102959ms)
+✔ project observation refuses duplicate option (0.120459ms)
+✔ body observation refuses malformed or ambiguous block  (0.103ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: broken --> (0.09825ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":nu (0.073208ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":[] (0.070208ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":{" (0.079459ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":{} (0.066125ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":{} (0.067458ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":{} (0.065709ms)
+✔ valid legacy block retains missing-key null and changing body is read afresh (0.221083ms)
+✔ injected transport obeys deadline and response-byte bound (12.055916ms)
+✔ two three-page connections complete in five dispatches after one binding (3.180917ms)
+✔ bounded pagination refuses fourth-page (2.484208ms)
+✔ bounded pagination refuses repeated-cursor (1.366084ms)
+✔ bounded pagination refuses mixed-project-page (2.163583ms)
+✔ bounded pagination refuses mixed-item-page (1.493208ms)
+✔ dangling legacy block prefix cannot hide beside a valid current block (0.160084ms)
+✔ every fixed budget rejects extra family and total requests plus unknown operations (2.820541ms)
+ℹ tests 80
+ℹ suites 0
+ℹ pass 80
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19869.950417

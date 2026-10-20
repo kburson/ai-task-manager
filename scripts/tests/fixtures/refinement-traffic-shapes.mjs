@@ -116,3 +116,22 @@ export const retainedHookContinuations = [
     family: 'hook-root-continuation',
   },
 ];
+
+// Literal selected envelopes cover both the pre-fix regression and repaired documents.
+// Fingerprints normalize literal IDs; one shape covers root and child item bindings.
+const id = 'ITEM',
+  family = 'hook-root-continuation';
+for (const identity of [
+  '',
+  'id project{id} content{... on Issue{id number repository{nameWithOwner}}} ',
+])
+  optimizedHookContinuations.push({
+    query:
+      'query {node(id:' +
+      JSON.stringify(id) +
+      '){... on ProjectV2Item{' +
+      identity +
+      hookFields.replace('first:100', 'first:100,after:"page:100"') +
+      '}}}',
+    family,
+  });

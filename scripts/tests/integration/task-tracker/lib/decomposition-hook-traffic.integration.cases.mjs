@@ -1,6 +1,8 @@
 // @story #2073 — genuine leaf admission must not select nested child authority.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { assertTrafficBudget } from '../../../helpers/refinement-traffic-provider.mjs';
+import { trafficBudgets } from '../../../fixtures/refinement-traffic-cases.mjs';
 import { runSourceBoundary } from '../../../fixtures/refinement-traffic-runner.mjs';
 
 export function registerHookTrafficCases() {
@@ -55,6 +57,38 @@ export function registerHookTrafficCases() {
       assert.equal(result.ledger.length, count);
       assert.ok(result.ledger.some((entry) => entry.selectedChildProjectFields));
       assert.equal(result.ledger[0].selectedChildProjectFields, false);
+    });
+
+  // These fail if valid selected continuations are rejected or observed inventory drift is forgotten.
+  for (const side of ['root', 'child'])
+    for (const variant of ['valid', 'wrong-item', 'wrong-project', 'wrong-content'])
+      test('selected item pagination: ' + side + ' ' + variant, () => {
+        const fixtureId = side + '-fields-' + variant + (side === 'child' ? '-epic' : '-leaf');
+        const result = runSourceBoundary({
+          sourceRoot: process.cwd(),
+          fixtureId,
+          boundary: 'hook',
+        });
+        assertTrafficBudget(result.ledger, trafficBudgets.hookMaximum);
+        assert.equal(
+          result.outcome.decision,
+          variant === 'valid' ? 'allow' : 'block',
+          JSON.stringify(result.outcome)
+        );
+        if (variant === 'valid') assert.equal(result.ledger.length, 4);
+        else assert.ok(!result.ledger.some((row) => row.family.includes('write')));
+      });
+  for (const change of ['addition', 'removal', 'replacement'])
+    test('complete initial inventory refuses observed ' + change, () => {
+      const result = runSourceBoundary({
+        sourceRoot: process.cwd(),
+        fixtureId: 'inventory-' + change + '-epic',
+        boundary: 'hook',
+      });
+      assert.equal(result.outcome.decision, 'block', JSON.stringify(result.outcome));
+      assertTrafficBudget(result.ledger, trafficBudgets.hookMaximum);
+      assert.match(result.outcome.reason, /child.*drift/);
+      assert.equal(result.ledger.length, 2);
     });
 
   test('shared kind grammar preserves absent and fenced markers while rejecting malformed declarations', async () => {

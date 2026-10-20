@@ -5017,16 +5017,16 @@
   "sourceHash": "9819b9d4342d255be601f5a706b9def7bf0ebc44ebe8476d30c935744c67837c",
   "fixtureManifest": {
     "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-    "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+    "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
     "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
     "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
     "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-    "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+    "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
     "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
     "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
     "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
   },
-  "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+  "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
   "configurationHash": "d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd"
 }
 ```

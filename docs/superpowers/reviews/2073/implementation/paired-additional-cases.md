@@ -70,16 +70,16 @@ The 51-child case preserves the existing readiness-children refusal. All other h
       "sourceHash": "9819b9d4342d255be601f5a706b9def7bf0ebc44ebe8476d30c935744c67837c",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd"
     },
     "optimized": {
@@ -136,25 +136,25 @@ The 51-child case preserves the existing readiness-children refusal. All other h
         "scripts/task-tracker/lib/decomposition-field-writer.mjs": "b0cf5f02885af38384ca8dff834cff84ab13bcd94c3759cd990015026230f05e",
         "scripts/task-tracker/lib/decomposition-kind.mjs": "0e8c15639efba720e548ccb2b9cec39e7471c521f94c6c1ad19b981542a029af",
         "scripts/task-tracker/lib/decomposition-target-observation.mjs": "c5c5caa7c4045adb63c51296fa1f9cb7a56c6df80cb4743e719177b7b0e9d7e3",
-        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "ae7b3a15cc508d6c3de4790fe0f844dda49b912cc5315d3f8aae62c07ea266c1",
+        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "370c53850107d37b3001f3f751d50be7b2e6ada24a46d29677faa8565dea8fcf",
         "scripts/task-tracker/lib/estimate-writer-publication.mjs": "d599f890598046df62d5aec66fecd2dc9315ca5dc536e939382cf852420dc163",
         "scripts/task-tracker/lib/decomposition-publication.mjs": "b0b2e63180319dee11f0777a1d82c329048582725a39f81de6ada59f0ff614e6",
         "scripts/task-tracker/lib/decomposition-projection.mjs": "dd53bf522d89e414d2ee191e597069a8512828f83c5129a8cb72ed0195c7dac5",
         "scripts/task-tracker/lib/decomposition-authority.mjs": "cc01521652dd0bd3dccad801eae1edea8ce39242df94e8f55dfa65baabada4f6"
       },
-      "sourceHash": "8a97a9cca584032cae6e25a8364558d789ba153408b6a440e02a327c6958527e",
+      "sourceHash": "8b8060368c9ccaa00815b716957ebad8cb554f5ece2dcb7e99361888cbabd5ac",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd"
     }
   },
@@ -224,16 +224,16 @@ The 51-child case preserves the existing readiness-children refusal. All other h
       "sourceHash": "9819b9d4342d255be601f5a706b9def7bf0ebc44ebe8476d30c935744c67837c",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd"
     },
     "optimized": {
@@ -290,25 +290,25 @@ The 51-child case preserves the existing readiness-children refusal. All other h
         "scripts/task-tracker/lib/decomposition-field-writer.mjs": "b0cf5f02885af38384ca8dff834cff84ab13bcd94c3759cd990015026230f05e",
         "scripts/task-tracker/lib/decomposition-kind.mjs": "0e8c15639efba720e548ccb2b9cec39e7471c521f94c6c1ad19b981542a029af",
         "scripts/task-tracker/lib/decomposition-target-observation.mjs": "c5c5caa7c4045adb63c51296fa1f9cb7a56c6df80cb4743e719177b7b0e9d7e3",
-        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "ae7b3a15cc508d6c3de4790fe0f844dda49b912cc5315d3f8aae62c07ea266c1",
+        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "370c53850107d37b3001f3f751d50be7b2e6ada24a46d29677faa8565dea8fcf",
         "scripts/task-tracker/lib/estimate-writer-publication.mjs": "d599f890598046df62d5aec66fecd2dc9315ca5dc536e939382cf852420dc163",
         "scripts/task-tracker/lib/decomposition-publication.mjs": "b0b2e63180319dee11f0777a1d82c329048582725a39f81de6ada59f0ff614e6",
         "scripts/task-tracker/lib/decomposition-projection.mjs": "dd53bf522d89e414d2ee191e597069a8512828f83c5129a8cb72ed0195c7dac5",
         "scripts/task-tracker/lib/decomposition-authority.mjs": "cc01521652dd0bd3dccad801eae1edea8ce39242df94e8f55dfa65baabada4f6"
       },
-      "sourceHash": "8a97a9cca584032cae6e25a8364558d789ba153408b6a440e02a327c6958527e",
+      "sourceHash": "8b8060368c9ccaa00815b716957ebad8cb554f5ece2dcb7e99361888cbabd5ac",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd"
     }
   },
@@ -378,16 +378,16 @@ The 51-child case preserves the existing readiness-children refusal. All other h
       "sourceHash": "9819b9d4342d255be601f5a706b9def7bf0ebc44ebe8476d30c935744c67837c",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "c4fb1acab5261f66cd1ea310b3b6b087127a0e91b5af6fd6ac5a8ad49fe48d11"
     },
     "optimized": {
@@ -478,25 +478,25 @@ The 51-child case preserves the existing readiness-children refusal. All other h
         "scripts/task-tracker/lib/decomposition-field-writer.mjs": "b0cf5f02885af38384ca8dff834cff84ab13bcd94c3759cd990015026230f05e",
         "scripts/task-tracker/lib/decomposition-kind.mjs": "0e8c15639efba720e548ccb2b9cec39e7471c521f94c6c1ad19b981542a029af",
         "scripts/task-tracker/lib/decomposition-target-observation.mjs": "c5c5caa7c4045adb63c51296fa1f9cb7a56c6df80cb4743e719177b7b0e9d7e3",
-        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "ae7b3a15cc508d6c3de4790fe0f844dda49b912cc5315d3f8aae62c07ea266c1",
+        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "370c53850107d37b3001f3f751d50be7b2e6ada24a46d29677faa8565dea8fcf",
         "scripts/task-tracker/lib/estimate-writer-publication.mjs": "d599f890598046df62d5aec66fecd2dc9315ca5dc536e939382cf852420dc163",
         "scripts/task-tracker/lib/decomposition-publication.mjs": "b0b2e63180319dee11f0777a1d82c329048582725a39f81de6ada59f0ff614e6",
         "scripts/task-tracker/lib/decomposition-projection.mjs": "dd53bf522d89e414d2ee191e597069a8512828f83c5129a8cb72ed0195c7dac5",
         "scripts/task-tracker/lib/decomposition-authority.mjs": "cc01521652dd0bd3dccad801eae1edea8ce39242df94e8f55dfa65baabada4f6"
       },
-      "sourceHash": "8a97a9cca584032cae6e25a8364558d789ba153408b6a440e02a327c6958527e",
+      "sourceHash": "8b8060368c9ccaa00815b716957ebad8cb554f5ece2dcb7e99361888cbabd5ac",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "c4fb1acab5261f66cd1ea310b3b6b087127a0e91b5af6fd6ac5a8ad49fe48d11"
     }
   },
@@ -583,16 +583,16 @@ The 51-child case preserves the existing readiness-children refusal. All other h
       "sourceHash": "9819b9d4342d255be601f5a706b9def7bf0ebc44ebe8476d30c935744c67837c",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd"
     },
     "optimized": {
@@ -683,25 +683,25 @@ The 51-child case preserves the existing readiness-children refusal. All other h
         "scripts/task-tracker/lib/decomposition-field-writer.mjs": "b0cf5f02885af38384ca8dff834cff84ab13bcd94c3759cd990015026230f05e",
         "scripts/task-tracker/lib/decomposition-kind.mjs": "0e8c15639efba720e548ccb2b9cec39e7471c521f94c6c1ad19b981542a029af",
         "scripts/task-tracker/lib/decomposition-target-observation.mjs": "c5c5caa7c4045adb63c51296fa1f9cb7a56c6df80cb4743e719177b7b0e9d7e3",
-        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "ae7b3a15cc508d6c3de4790fe0f844dda49b912cc5315d3f8aae62c07ea266c1",
+        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "370c53850107d37b3001f3f751d50be7b2e6ada24a46d29677faa8565dea8fcf",
         "scripts/task-tracker/lib/estimate-writer-publication.mjs": "d599f890598046df62d5aec66fecd2dc9315ca5dc536e939382cf852420dc163",
         "scripts/task-tracker/lib/decomposition-publication.mjs": "b0b2e63180319dee11f0777a1d82c329048582725a39f81de6ada59f0ff614e6",
         "scripts/task-tracker/lib/decomposition-projection.mjs": "dd53bf522d89e414d2ee191e597069a8512828f83c5129a8cb72ed0195c7dac5",
         "scripts/task-tracker/lib/decomposition-authority.mjs": "cc01521652dd0bd3dccad801eae1edea8ce39242df94e8f55dfa65baabada4f6"
       },
-      "sourceHash": "8a97a9cca584032cae6e25a8364558d789ba153408b6a440e02a327c6958527e",
+      "sourceHash": "8b8060368c9ccaa00815b716957ebad8cb554f5ece2dcb7e99361888cbabd5ac",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd"
     }
   },
@@ -782,16 +782,16 @@ The 51-child case preserves the existing readiness-children refusal. All other h
       "sourceHash": "9819b9d4342d255be601f5a706b9def7bf0ebc44ebe8476d30c935744c67837c",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "c4fb1acab5261f66cd1ea310b3b6b087127a0e91b5af6fd6ac5a8ad49fe48d11"
     },
     "optimized": {
@@ -910,25 +910,25 @@ The 51-child case preserves the existing readiness-children refusal. All other h
         "scripts/task-tracker/lib/decomposition-field-writer.mjs": "b0cf5f02885af38384ca8dff834cff84ab13bcd94c3759cd990015026230f05e",
         "scripts/task-tracker/lib/decomposition-kind.mjs": "0e8c15639efba720e548ccb2b9cec39e7471c521f94c6c1ad19b981542a029af",
         "scripts/task-tracker/lib/decomposition-target-observation.mjs": "c5c5caa7c4045adb63c51296fa1f9cb7a56c6df80cb4743e719177b7b0e9d7e3",
-        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "ae7b3a15cc508d6c3de4790fe0f844dda49b912cc5315d3f8aae62c07ea266c1",
+        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "370c53850107d37b3001f3f751d50be7b2e6ada24a46d29677faa8565dea8fcf",
         "scripts/task-tracker/lib/estimate-writer-publication.mjs": "d599f890598046df62d5aec66fecd2dc9315ca5dc536e939382cf852420dc163",
         "scripts/task-tracker/lib/decomposition-publication.mjs": "b0b2e63180319dee11f0777a1d82c329048582725a39f81de6ada59f0ff614e6",
         "scripts/task-tracker/lib/decomposition-projection.mjs": "dd53bf522d89e414d2ee191e597069a8512828f83c5129a8cb72ed0195c7dac5",
         "scripts/task-tracker/lib/decomposition-authority.mjs": "cc01521652dd0bd3dccad801eae1edea8ce39242df94e8f55dfa65baabada4f6"
       },
-      "sourceHash": "8a97a9cca584032cae6e25a8364558d789ba153408b6a440e02a327c6958527e",
+      "sourceHash": "8b8060368c9ccaa00815b716957ebad8cb554f5ece2dcb7e99361888cbabd5ac",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "c4fb1acab5261f66cd1ea310b3b6b087127a0e91b5af6fd6ac5a8ad49fe48d11"
     }
   },
@@ -1032,16 +1032,16 @@ The 51-child case preserves the existing readiness-children refusal. All other h
       "sourceHash": "9819b9d4342d255be601f5a706b9def7bf0ebc44ebe8476d30c935744c67837c",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd"
     },
     "optimized": {
@@ -1132,25 +1132,25 @@ The 51-child case preserves the existing readiness-children refusal. All other h
         "scripts/task-tracker/lib/decomposition-field-writer.mjs": "b0cf5f02885af38384ca8dff834cff84ab13bcd94c3759cd990015026230f05e",
         "scripts/task-tracker/lib/decomposition-kind.mjs": "0e8c15639efba720e548ccb2b9cec39e7471c521f94c6c1ad19b981542a029af",
         "scripts/task-tracker/lib/decomposition-target-observation.mjs": "c5c5caa7c4045adb63c51296fa1f9cb7a56c6df80cb4743e719177b7b0e9d7e3",
-        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "ae7b3a15cc508d6c3de4790fe0f844dda49b912cc5315d3f8aae62c07ea266c1",
+        "scripts/task-tracker/lib/decomposition-hook-authority.mjs": "370c53850107d37b3001f3f751d50be7b2e6ada24a46d29677faa8565dea8fcf",
         "scripts/task-tracker/lib/estimate-writer-publication.mjs": "d599f890598046df62d5aec66fecd2dc9315ca5dc536e939382cf852420dc163",
         "scripts/task-tracker/lib/decomposition-publication.mjs": "b0b2e63180319dee11f0777a1d82c329048582725a39f81de6ada59f0ff614e6",
         "scripts/task-tracker/lib/decomposition-projection.mjs": "dd53bf522d89e414d2ee191e597069a8512828f83c5129a8cb72ed0195c7dac5",
         "scripts/task-tracker/lib/decomposition-authority.mjs": "cc01521652dd0bd3dccad801eae1edea8ce39242df94e8f55dfa65baabada4f6"
       },
-      "sourceHash": "8a97a9cca584032cae6e25a8364558d789ba153408b6a440e02a327c6958527e",
+      "sourceHash": "8b8060368c9ccaa00815b716957ebad8cb554f5ece2dcb7e99361888cbabd5ac",
       "fixtureManifest": {
         "refinement-traffic-cases.mjs": "7be708b33d0c4adb52f977d5c00504a69ca7cf6c18a5a600814a5ffdd0a09a19",
-        "refinement-hook-population.mjs": "8e22289507fff1efc620386f21d69c673a576655c9c0044a2e8640d46da6a4da",
+        "refinement-hook-population.mjs": "8cb744bdcfb5e8e0109b4bbbbf7170bf73eb5ea433f9dc67c8e72ab7fe6a6273",
         "refinement-target-shapes.mjs": "e1c7e684ed2a51ebad6a2dd8ff1d8209d6311e870028bf920d091e59dbdee765",
         "refinement-target-fixture.mjs": "2b2a1ff2a7dfa0b24d3a61c92d326c33d74679eed6fd2973b4833a6e4fa49e5e",
         "estimation-publication.mjs": "0b44de93ce487a62d324b064a1bd70170277304bdcc769906aa7679944146133",
-        "refinement-traffic-shapes.mjs": "6ae2123d702311adec3b513e2153b38d1e369a7044092bc9eb4b071ff81315a1",
+        "refinement-traffic-shapes.mjs": "29a582df46be0e0788f3167a29f6f74f1413d4d9f64acdb0bf0913747acebda2",
         "refinement-traffic-runner.mjs": "ac4774a84401ca89f3fbacfeb33c4bca66af90ce60251ed8779563f41cf5c46e",
         "../helpers/refinement-traffic-provider.mjs": "4f97f47fef563b2c4bf6f659d79b9007edbb9c6f80b1b014a52f52a5cb7e0fa6",
         "../helpers/refinement-query-selection.mjs": "a822c832d68306f50b26e2f7cf3530cfa4ee8d4c117bb939b5903a956622a730"
       },
-      "fixtureHash": "4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081",
+      "fixtureHash": "7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8",
       "configurationHash": "d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd"
     }
   }

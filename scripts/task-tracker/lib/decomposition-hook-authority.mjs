@@ -155,6 +155,7 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     typeof node.subIssues.pageInfo?.hasNextPage !== 'boolean'
   )
     throw new Error('child presence incomplete');
+  const initialInventoryComplete = !node.subIssues.pageInfo.hasNextPage;
   const initialChildren = node.subIssues.nodes.map((child) => child?.id);
   if (
     node.subIssues.pageInfo.hasNextPage &&
@@ -204,7 +205,7 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
         query:
           'query {node(id:' +
           JSON.stringify(item.id) +
-          '){... on ProjectV2Item{' +
+          '){... on ProjectV2Item{id project{id} content{... on Issue{id number repository{nameWithOwner}}} ' +
           fields.replace('first:100', 'first:100,after:' + JSON.stringify(cursor)) +
           '}}}',
       });
@@ -236,6 +237,12 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
         ).subIssues,
       'children'
     );
+    if (
+      initialInventoryComplete &&
+      canonicalDecompositionJson([...initialChildren].sort()) !==
+        canonicalDecompositionJson(node.subIssues.nodes.map((child) => child.id).sort())
+    )
+      throw new Error('initial child inventory drift');
     for (const child of node.subIssues.nodes) {
       const childPage = async (selection) => {
         const result = await remote({
@@ -267,7 +274,7 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
             query:
               'query {node(id:' +
               JSON.stringify(selected.id) +
-              '){... on ProjectV2Item{' +
+              '){... on ProjectV2Item{id project{id} content{... on Issue{id number repository{nameWithOwner}}} ' +
               fields.replace('first:100', 'first:100,after:' + JSON.stringify(cursor)) +
               '}}}',
           });

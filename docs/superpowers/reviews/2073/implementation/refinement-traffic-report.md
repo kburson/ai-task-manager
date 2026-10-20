@@ -40,7 +40,7 @@ The root fence deliberately excludes comments and nested child authority. It det
 
 ## Final paired comparison
 
-Same external driver/population/configuration hash: `4d28c651081f56615f99ea62e35e19b0faca6cbcab08a2dd10e1ca089b7b6081` / `d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd`. Fixed-budget content hash: `1c309dd0062f1be6f3cfaef2d5c9d818e6ca70c426dad37b82cd812670cae49a`. [Baseline one](paired-baseline-1.md), [baseline two](paired-baseline-2.md), [optimized](paired-optimized.md) retain every dispatch and all durable bytes. The two baseline results are identical in full; optimized result and snapshot are identical to baseline without excluding business timestamps, operation/subject identity or any digest. Earlier baseline-run1/run2 files retain the pre-production foundation checkpoint; final savings use these paired files and their shared driver.
+Same external driver/population/configuration hash: `7e89738665f4646d24dcd4dbb75640c956bed42289ceb45ede566f6583d893c8` / `d4d585eea6e0455180a23ded613312603ace5e7f6514bb07c87cc1ea835341bd`. Fixed-budget content hash: `1c309dd0062f1be6f3cfaef2d5c9d818e6ca70c426dad37b82cd812670cae49a`. [Baseline one](paired-baseline-1.md), [baseline two](paired-baseline-2.md), [optimized](paired-optimized.md) retain every dispatch and all durable bytes. The two baseline results are identical in full; optimized result and snapshot are identical to baseline without excluding business timestamps, operation/subject identity or any digest. Earlier baseline-run1/run2 files retain the pre-production foundation checkpoint; final savings use these paired files and their shared driver.
 
 | Family | Baseline | Optimized |
 | --- | ---: | ---: |
@@ -70,9 +70,3 @@ The publication protocol modules estimate-writer-publication, decomposition-publ
 ## Live comparison
 
 Live point savings remain unverified. No safe comparable story transition was selected for an A/B run, and #2039 bulk refinement remains paused. Native #2073 lifecycle calls continue to be captured separately; those observations are not represented as a comparable before/after experiment. Opaque CLI expansion and uninstrumented transport activity remain unknown.
-
-## Verification before implementation review
-
-The declared focused verifier passed 69 tests. Native selected-byte route proofs are retained for [activity allow](native-activity-guard-leaf.md), [activity drift](native-activity-guard-drift.md), [source allow](native-source-edit-gate-leaf.md) and [source drift](native-source-edit-gate-drift.md). Real Plan-exit tests allow a current leaf and refuse observed drift through the same collector. Actual runRefine route proof reaches completed publication and the explicit promotion sentinel; whole-command success remains unclaimed.
-
-`npm run quality` passed all formatting/lint/audit gates and all 975 fast-lane files. The standalone required recovery set and the task-completion verifiers also passed. Exact-head cloud/Test evidence and implementation review remain separate governed steps.

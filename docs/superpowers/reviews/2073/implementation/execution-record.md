@@ -38,8 +38,14 @@ GraphQL capture checkpoint: 591 native workflow observations, 657 known returned
 
 The declared story verifier passed 69 tests, including paired retained/optimized source, fixed-budget failure oracles, actual native source/activity executables, real Plan-exit collection, scalar validation and pre-change recovery. The native executable ledger reports are retained as native-activity-guard-leaf/drift.md and native-source-edit-gate-leaf/drift.md. Native allow is silent exit-zero; each test also requires the expected nonempty successful selected-response ledger.
 
-The complete npm run quality command succeeded: formatting, all repository lint/audit gates and all 975 fast-lane files (123.1 seconds aggregate). Earlier redirected quality/format command forms were refused by the activity classifier before execution; ordinary unredirected npm run quality was supported. The earlier assumption that the alias itself was unsupported was corrected by this successful run.
+The complete npm run quality command succeeded: formatting, all repository lint/audit gates and all 975 fast-lane files (123.1 seconds aggregate). Earlier redirected quality/format command forms were refused by the activity classifier before execution; ordinary npm run quality was supported. The earlier assumption that the alias itself was unsupported was corrected by this successful run.
 
 Spell checking surfaced pre-existing technical terminology and opaque IDs in retained #2039/#2073 documents. Valid project terminology was added to the project dictionary. Exact ID patterns are scoped to the old probe/traffic files, the actual native forecast ID is explicitly ignored, and the immutable historical spelling in plan.r0 plus its configuration entry is scoped to those exact files. Prior accepted artifacts were not rewritten. Full spell checking then passed with zero issues.
 
 Implementation review and exact-head native Test/Review are still pending at this checkpoint. No Review completion or live savings is claimed here.
+
+## Final correction pass
+
+Astra/high whole-implementation review identified two Important admission defects. Both are corrected with observed red-to-green regressions, preserved report and author dispositions. The declared focused verifier now passes 80/80. Paired source evidence was regenerated after the correction and remains 313 versus 179 dispatches with identical durable state. Full quality and exact-head CI still follow; Review is not claimed at this checkpoint.
+
+Final correction verification: npm run quality passed all format/lint/audit gates and all 975 fast files (97.0 seconds aggregate). Two earlier collateral-only attempts reported trailing blank lines in extracted task briefs and spell checks in raw logs; task-brief trailing whitespace was normalized, raw output retained verbatim as .log, and prose simplified. The final full command exited zero. Native exact-head CI remains required for Test coverage, including integration and slow lanes.

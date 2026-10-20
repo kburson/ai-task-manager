@@ -118,5 +118,41 @@ export function configureHookPopulation({ population, cfg, projectDir, fixtureId
         { id: issue.subIssues.nodes[1].id, number: issue.subIssues.nodes[1].number },
       ];
   }
+  if (fixtureId.startsWith('root-fields-') || fixtureId.startsWith('child-fields-')) {
+    const child = fixtureId.startsWith('child-fields-');
+    const owner = child ? issue.subIssues.nodes[0] : issue;
+    const item = owner.projectItems.nodes[0];
+    item.__typename = 'ProjectV2Item';
+    item.content = {
+      __typename: 'Issue',
+      id: owner.id,
+      number: owner.number,
+      repository: { nameWithOwner: 'o/r' },
+    };
+    item.fieldValues.nodes.push(
+      ...Array.from({ length: 99 }, (_, i) => ({
+        __typename: 'ProjectV2ItemFieldNumberValue',
+        id: 'EXTRA_' + i,
+        number: i,
+        field: { id: 'UNRELATED_' + i, name: 'Other ' + i },
+      }))
+    );
+    if (!fixtureId.includes('-valid-')) {
+      const changed = structuredClone(population.repository);
+      const target = (child ? changed.issue.subIssues.nodes[0] : changed.issue).projectItems
+        .nodes[0];
+      if (fixtureId.includes('-item-')) target.id = 'FOREIGN_ITEM';
+      if (fixtureId.includes('-project-')) target.project.id = 'FOREIGN_PROJECT';
+      if (fixtureId.includes('-content-')) target.content.id = 'FOREIGN_ISSUE';
+      failureSchedule.push({ afterDispatch: child ? 2 : 1, change: { repository: changed } });
+    }
+  }
+  if (fixtureId.startsWith('inventory-')) {
+    const changed = structuredClone(population.repository);
+    if (fixtureId.includes('-addition-')) issue.subIssues.nodes = [];
+    if (fixtureId.includes('-removal-')) changed.issue.subIssues.nodes = [];
+    if (fixtureId.includes('-replacement-')) issue.subIssues.nodes[0].id = 'REPLACED';
+    failureSchedule.push({ afterDispatch: 1, change: { repository: changed } });
+  }
   return failureSchedule;
 }
