@@ -250,6 +250,10 @@
       "count": 2
     },
     {
+      "key": "scripts/task-tracker/lib/decomposition-target-observation.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
       "key": "scripts/task-tracker/lib/deep-dive.mjs|out-of-scope|out-of-scope",
       "count": 1
     },
@@ -605,6 +609,7 @@
     "scripts/task-tracker/lib/decomposition-migration-writer.mjs|189|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-projection.mjs|158|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-projection.mjs|299|opaque-gh-cli|opaque",
+    "scripts/task-tracker/lib/decomposition-target-observation.mjs|107|gh-api-graphql|planned",
     "scripts/task-tracker/lib/deep-dive.mjs|572|out-of-scope|out-of-scope",
     "scripts/task-tracker/lib/epic-children-gate.mjs|358|gh-api-graphql|planned",
     "scripts/task-tracker/lib/epic-rank-wave-runtime.mjs|83|gh-api-graphql|planned",

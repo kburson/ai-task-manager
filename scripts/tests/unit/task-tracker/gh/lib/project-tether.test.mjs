@@ -18,6 +18,7 @@ import {
 const cfg = {
   repo: 'kburson/ai-task-manager',
   projectId: 'PROJECT_1',
+  fieldIds: { estimate: 'ESTIMATE_FIELD', size: 'SIZE_FIELD' },
   kanbanFieldId: 'STATUS_FIELD',
   kanbanOptionBacklog: 'STATUS_BACKLOG',
   kanbanOptionRefine: 'STATUS_GROOM',

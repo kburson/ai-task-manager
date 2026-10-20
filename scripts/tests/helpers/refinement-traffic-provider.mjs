@@ -89,9 +89,14 @@ export function createTrafficProvider({ population, shapes, failureSchedule = []
       ...entry,
     };
     ledger.push(record);
-    const failures = failureSchedule.filter((failure) => failure.afterDispatch === ledger.length);
+    const failures = failureSchedule.filter(
+      (failure) =>
+        failure.afterDispatch === ledger.length ||
+        (failure.family === entry.family &&
+          failure.occurrence === ledger.filter((row) => row.family === entry.family).length)
+    );
     try {
-      if (failures.some((failure) => failure.failBefore))
+      if (failures.some((failure) => failure.failBefore || failure.mode === 'fail-before-apply'))
         throw new Error('injected failure before apply');
       const result = await action();
       for (const failure of failures)
@@ -99,7 +104,7 @@ export function createTrafficProvider({ population, shapes, failureSchedule = []
       record.serializedResponseBytes = Buffer.byteLength(
         typeof result === 'string' ? result : JSON.stringify(result)
       );
-      if (failures.some((failure) => failure.loseAck))
+      if (failures.some((failure) => failure.loseAck || failure.mode === 'apply-then-throw'))
         throw new Error('injected lost acknowledgement');
       record.outcome = 'success';
       return result;
@@ -118,6 +123,17 @@ export function createTrafficProvider({ population, shapes, failureSchedule = []
         family: shape.family,
         ...identity,
         transport: 'graphql',
+        ...(variables.field
+          ? {
+              field:
+                variables.field ===
+                state.repository.issue.projectItems?.nodes[0]?.fieldValues?.nodes.find(
+                  (value) => value.__typename === 'ProjectV2ItemFieldNumberValue'
+                )?.field?.id
+                  ? 'estimate'
+                  : 'size',
+            }
+          : {}),
         selectedChildProjectFields: /subIssues[\s\S]*projectItems/.test(query),
       },
       () => {
@@ -136,6 +152,15 @@ export function createTrafficProvider({ population, shapes, failureSchedule = []
       else {
         const at = args.findIndex((arg) => arg.startsWith('query='));
         query = args[at]?.slice(6);
+        for (let i = 0; i < args.length; i++)
+          if (['-f', '-F'].includes(args[i]) && i + 1 !== at) {
+            const text = args[i + 1];
+            const eq = text.indexOf('=');
+            if (eq < 0) throw new Error('unclassified argument');
+            const key = text.slice(0, eq),
+              value = text.slice(eq + 1);
+            variables[key] = args[i] === '-F' ? JSON.parse(value) : value;
+          }
       }
       return { stdout: JSON.stringify(await graphql({ query, variables })), stderr: '' };
     }
@@ -150,13 +175,16 @@ export function createTrafficProvider({ population, shapes, failureSchedule = []
     if (args[1] === 'view')
       return dispatch({ family: 'issue-body-read', transport: 'opaque-cli' }, () => {
         const keys = args[args.indexOf('--json') + 1]?.split(',');
-        if (!keys?.every((key) => ['number', 'body'].includes(key)))
+        if (!keys?.every((key) => ['number', 'body', 'labels'].includes(key)))
           throw new Error('unclassified issue selection');
-        const output = args.includes('-q')
-          ? state.repository.issue.body
-          : JSON.stringify(
-              Object.fromEntries(keys.map((key) => [key, state.repository.issue[key]]))
-            );
+        const output =
+          args.includes('-q') || args.includes('--jq')
+            ? keys[0] === 'labels'
+              ? state.repository.issue.labels.nodes.map((label) => label.name).join('\n')
+              : state.repository.issue.body
+            : JSON.stringify(
+                Object.fromEntries(keys.map((key) => [key, state.repository.issue[key]]))
+              );
         return { stdout: output, stderr: '' };
       });
     if (args[1] === 'edit' && args.includes('--body-file') && typeof options.input === 'string')

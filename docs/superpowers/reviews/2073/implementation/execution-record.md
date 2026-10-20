@@ -25,3 +25,11 @@ Native plan-approve succeeded at 2026-10-20T13:54:21Z with human provenance, fre
 ## Admission verification
 
 After conditional admission changes, the fast lane ran all 974 files and reported two bookkeeping failures: package-boundary expected 944 packed entries but the intentional classifier makes 945; GraphQL inventory expected the previous collector call-site line 72 instead of 74. The exact one-module package allowance and relocated call-site expectation were updated. Both affected files then passed all 15 tests. The full fast lane must run again after the remaining implementation; this checkpoint does not claim a green final suite. Layout, story-tag and hard line-cap audits passed.
+
+## Target-reader checkpoint
+
+The new reader API first failed its required-API assertion; project/body validation then passed 27 focused cases, expanded with bounded pagination and legacy-prefix checks. The actual writer integration first failed because it emitted zero TargetBinding calls. After wiring the three concrete adapters, real changed publication completed in 179 dispatches. The retained baseline is 313; outcome equality remains mandatory in the final paired verifier. Old broad authorization/ownership collectors and publication protocol modules remain unchanged.
+
+The compatibility fixture now provides current typed target responses from fresh raw board/body state. One legacy tether test config needed explicit canonical Estimate/Size IDs; production refuses absent definitions instead of substituting a fake null. Shared-writer/recovery tests passed 134/134, and the real public route plus pre-change manifest recovery passed six integrated checks. The bounded route deliberately throws at promotion after completed publication and runs native rollback; it does not claim whole-refine success or savings.
+
+GraphQL capture checkpoint: 591 native workflow observations, 657 known returned points, 165 unknown costs and one non-success observation from implementation authorization through 13:56:40.049Z. Full records are retained in graphql-usage-checkpoint.md. This capture does not expose live response bytes; offline response bytes are reported separately.

@@ -93,3 +93,10 @@ export const optimizedHookContinuations = [
     family: 'hook-fence',
   },
 ];
+export const routeShapes = [
+  {
+    family: 'repository-link',
+    query:
+      'mutation($project: ID!, $repo: ID!) { linkProjectV2ToRepository(input: { projectId: $project, repositoryId: $repo }) { repository { nameWithOwner } } }',
+  },
+];

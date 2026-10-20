@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { createTrafficProvider } from '../helpers/refinement-traffic-provider.mjs';
 import {
   retainedShapes,
+  routeShapes,
   retainedHookQuery,
   optimizedHookRoot,
   optimizedHookGraph,
@@ -12,6 +13,7 @@ import {
   optimizedHookContinuations,
 } from './refinement-traffic-shapes.mjs';
 import { installStubGh } from './stub-gh.mjs';
+import { targetShapes } from './refinement-target-shapes.mjs';
 import { configureHookPopulation } from './refinement-hook-population.mjs';
 import { estimationIssueBody } from './estimation-publication.mjs';
 
@@ -78,6 +80,9 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
       repo: 'o/r',
       projectId: 'P',
       fieldIds: { estimate: 'E', size: 'S' },
+      sizeFieldId: 'S',
+      fieldEstimate: 'E',
+      sizeOptionMap: { S: 'OPT_S', M: 'OPT_M' },
       kanbanFieldId: 'STATUS',
     };
     const initial =
@@ -98,6 +103,7 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
       };
     const issue = {
       id: 'I',
+      __typename: 'Issue',
       number: 2073,
       title: 'Traffic fixture',
       url: 'https://example.invalid/issues/2073',
@@ -115,6 +121,7 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
       __typename: 'ProjectV2Item',
       project: {
         id: 'P',
+        __typename: 'ProjectV2',
         title: 'Fixture',
         url: 'https://example.invalid/project',
         fields: { nodes: [estimateField, sizeField] },
@@ -144,9 +151,18 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
       repository: { id: 'R', nameWithOwner: 'o/r', issue },
       viewer: { login: 'operator' },
     };
+    issue.labels = { nodes: [] };
     const failureSchedule = configureHookPopulation({ population, cfg, projectDir, fixtureId });
+    if (fixtureId === 'legacy-pending')
+      failureSchedule.push({
+        family: 'project-field-write',
+        occurrence: 1,
+        mode: 'apply-then-throw',
+      });
     const shapes = [
       ...retainedShapes,
+      ...routeShapes,
+      ...targetShapes,
       ...optimizedHookContinuations,
       { query: retainedHookQuery, family: 'hook-root' },
       { query: optimizedHookRoot, family: 'hook-root' },
@@ -154,6 +170,15 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
       { query: optimizedHookFence, family: 'hook-fence' },
     ].map((shape) => ({
       ...shape,
+      ...(shape.family === 'repository-link'
+        ? {
+            apply: ({ state, variables }) => {
+              if (variables.project !== 'P' || variables.repo !== 'R')
+                throw new Error('foreign link');
+              state.linkProjectV2ToRepository = { repository: { nameWithOwner: 'o/r' } };
+            },
+          }
+        : {}),
       ...(shape.family === 'project-field-write'
         ? {
             apply: ({ state, variables }) => {
@@ -214,6 +239,38 @@ export async function makeTrafficFixture({ sourceRoot, fixtureId, projectDir }) 
             readPlanAtCommit: deps.decomposition.readPlanAtCommit,
           },
         });
+      }
+      if (boundary === 'refine-entry-route') {
+        const { runRefine } = await load('scripts/task-tracker/verbs/refine.mjs');
+        try {
+          await runRefine({
+            cfg,
+            args: {
+              issueNumber: 2073,
+              size: 'M',
+              estimate: '3',
+              priority: 'p1',
+              reason: 'current bounded fixture',
+            },
+            deps: {
+              ...deps,
+              assertBound: (number) => {
+                if (number !== 2073) throw new Error('foreign fixture binding');
+              },
+              verbPromote: async () => {
+                throw new Error('2073-promotion-boundary');
+              },
+            },
+          });
+        } catch (error) {
+          if (error.message !== '2073-promotion-boundary') throw error;
+          return {
+            status: 'route-boundary',
+            reason: 'promotion-sentinel',
+            wholeCommandSuccess: false,
+          };
+        }
+        throw new Error('missing promotion boundary');
       }
       if (boundary !== 'publication') throw new Error('unsupported boundary: ' + boundary);
       const { publishFieldEstimateRevision } = await load(
