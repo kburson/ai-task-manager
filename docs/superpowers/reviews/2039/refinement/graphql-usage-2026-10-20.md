@@ -534,3 +534,205 @@ The exact hook query identity matches `collectHookDecompositionSnapshot` in `scr
 The modeled subtotal multiplies matching observed CLI invocations by the dry-run query cost. It is NOT a measured sum of charged points; do not add it to the native known-point subtotal as a confirmed total. Opaque CLI calls and unenrolled host-side calls can remain missing. This is a concrete drain candidate, not proof that all 5000 points came from one caller.
 
 Creation stopped at child 33 (#2072) on the native readiness array cap of 32. The separate forecast-proposal bound is not a WBS task-count bound. The proposed prerequisite repair is `docs/superpowers/specs/2026-10-20-2039-readiness-cap-blocker-design.md`. No source guard was changed or bypassed.
+
+## Bounded post-reset quota comparison
+
+One sequential REST overview and one GraphQL quota-only query, during ongoing refinement. Other in-flight requests may increment counters between responses. Input size is serialized JSON and response size is decoded CLI JSON, not compressed wire bytes.
+
+```json
+{
+  "rest": {
+    "startedAt": "2026-10-20T08:00:08.746Z",
+    "exitCode": 0,
+    "headers": {
+      "date": "Tue, 20 Oct 2026 08:00:09 GMT",
+      "x-github-request-id": "DAD7:D8648:C19B7F:276B8A2:6AD71F89",
+      "x-oauth-client-id": "178c6fc778ccc68e1d6a",
+      "x-ratelimit-limit": "5000",
+      "x-ratelimit-remaining": "4993",
+      "x-ratelimit-reset": "1792486491",
+      "x-ratelimit-resource": "core",
+      "x-ratelimit-used": "7"
+    },
+    "data": {
+      "graphql": {
+        "limit": 5000,
+        "used": 44,
+        "remaining": 4956,
+        "reset": 1792486324
+      }
+    },
+    "requestJsonBytes": 0,
+    "decodedCliJsonBytes": 1233
+  },
+  "graphql": {
+    "startedAt": "2026-10-20T08:00:09.219Z",
+    "exitCode": 0,
+    "headers": {
+      "date": "Tue, 20 Oct 2026 08:00:10 GMT",
+      "x-github-request-id": "DADA:570E6:E3D408:2E0EAC2:6AD71F8A",
+      "x-oauth-client-id": "178c6fc778ccc68e1d6a",
+      "x-ratelimit-limit": "5000",
+      "x-ratelimit-remaining": "4956",
+      "x-ratelimit-reset": "1792486324",
+      "x-ratelimit-resource": "graphql",
+      "x-ratelimit-used": "44"
+    },
+    "data": {
+      "data": {
+        "rateLimit": {
+          "limit": 5000,
+          "remaining": 4956,
+          "used": 44,
+          "resetAt": "2026-10-20T08:52:04Z",
+          "cost": 1
+        }
+      }
+    },
+    "requestJsonBytes": 102,
+    "decodedCliJsonBytes": 106
+  }
+}
+```
+
+## Actual hook query byte/cost sample
+
+One bounded read-only request using the exact constructed hook query shape on current leaf #2055, augmented only with quota fields. It used the normal native gql transport and collector. The local observer delegated to the unchanged native spawn and counted returned bytes; no source file, guard or cloud content was changed. Actual payload contents are not retained here. Bytes are serialized request JSON and decoded gh response JSON, not compressed wire traffic.
+
+```json
+{
+  "sampleAt": "2026-10-20T08:05:03.288Z",
+  "issue": 2055,
+  "source": "scripts/task-tracker/lib/decomposition-hook-authority.mjs",
+  "originalIdentity": {
+    "kind": "query",
+    "operation": null,
+    "queryFingerprint": "sha256:d4b2726f69bd13920fe64631b1b0ee3471373a4728e44a448ffd4382b392f9f3",
+    "fingerprintVersion": "v1"
+  },
+  "dryRun": false,
+  "requestJsonBytes": 2699,
+  "decodedGhResponseBytes": 21288,
+  "rateLimit": {
+    "cost": 27,
+    "nodeCount": 267800,
+    "limit": 5000,
+    "remaining": 4898,
+    "used": 102,
+    "resetAt": "2026-10-20T08:52:04Z"
+  },
+  "observedChildCount": 0,
+  "observedProjectMembershipCount": 1,
+  "observedConfiguredFieldCount": 14
+}
+```
+
+## Eight-child R4P checkpoint
+
+Parent remains Plan. Tasks 1–8 completed both native Refine transitions. This cumulative capture spans multiple provider quota windows; do not compare its totals directly with one 5000-point allowance.
+
+Per-command attribution uses controller time intervals. Named Aitm2039 diagnostic probes are excluded from refinement intervals; no exact request stack/HTTP coverage is claimed. Costs are same-response reported subtotals; opaque costs remain unknown.
+
+```json
+{
+  "snapshotAt": "2026-10-20T08:40:13.491Z",
+  "totals": {
+    "observations": 7815,
+    "knownPointSubtotal": 4938,
+    "unknownCostObservations": 3659,
+    "failures": 11
+  },
+  "topOperations": [
+    {
+      "operation": "gh.issue.view",
+      "observations": 2751,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 2751,
+      "failures": 4
+    },
+    {
+      "operation": "AitmEstimationProjection",
+      "observations": 1120,
+      "knownPointSubtotal": 1120,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.eb74807a6a65f2b6bd97223fe7b3dde004d1f6b6c2b5baa8d00570dc8acd446a",
+      "observations": 1120,
+      "knownPointSubtotal": 1119,
+      "unknownCostObservations": 1,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.2e9aad4db59390fe2f25c72aaa36d8e8e6ed8581fe8d2b70d99485749761286f",
+      "observations": 918,
+      "knownPointSubtotal": 918,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "gh.issue.edit",
+      "observations": 252,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 252,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.e613994d2fa7cba1d9e5a6598c647317c8c623a6d6783e097b5a6fb81d9c748a",
+      "observations": 198,
+      "knownPointSubtotal": 198,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.cf1d97f59243f1991a8ca4b9b4c343c88023dc66f9b7701a65eaae7b2a8d1dc4",
+      "observations": 158,
+      "knownPointSubtotal": 158,
+      "unknownCostObservations": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.cc1b2bb952a095c716c4ca1e75acbf1fecc2fcb04d41b6c96ea80078af476f96",
+      "observations": 147,
+      "knownPointSubtotal": 146,
+      "unknownCostObservations": 1,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.ff0fe7b2e4472490bcf64ede1f2294284949c8f594bc90380291abfe561b6250",
+      "observations": 141,
+      "knownPointSubtotal": 0,
+      "unknownCostObservations": 141,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.eac2e2ff951bad0040331ede12c6869393e9f1336a0e438dcdb17bfab4d1dbde",
+      "observations": 136,
+      "knownPointSubtotal": 136,
+      "unknownCostObservations": 0,
+      "failures": 0
+    }
+  ]
+}
+```
+
+| Issue | Start UTC | Duration seconds | Exit | CLI observations | Known points | Unknown costs |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| #2040 | 2026-10-20T06:52:12.836Z | 204 | 1 | 258 | 175 | 83 |
+| #2040 | 2026-10-20T06:58:09.082Z | 369 | 0 | 438 | 288 | 150 |
+| #2040 | 2026-10-20T07:05:40.878Z | 71 | 0 | 65 | 30 | 35 |
+| #2052 | 2026-10-20T07:11:29.770Z | 426 | 0 | 507 | 336 | 171 |
+| #2052 | 2026-10-20T07:18:35.304Z | 79 | 0 | 65 | 30 | 35 |
+| #2053 | 2026-10-20T07:24:31.017Z | 458 | 0 | 507 | 336 | 171 |
+| #2053 | 2026-10-20T07:32:09.305Z | 84 | 0 | 65 | 30 | 35 |
+| #2041 | 2026-10-20T07:34:45.284Z | 454 | 0 | 507 | 336 | 171 |
+| #2041 | 2026-10-20T07:42:18.858Z | 82 | 0 | 65 | 30 | 35 |
+| #2054 | 2026-10-20T07:46:58.708Z | 466 | 0 | 509 | 336 | 173 |
+| #2054 | 2026-10-20T07:54:45.140Z | 76 | 0 | 65 | 30 | 35 |
+| #2055 | 2026-10-20T07:58:20.211Z | 489 | 0 | 507 | 336 | 171 |
+| #2055 | 2026-10-20T08:06:29.522Z | 83 | 0 | 65 | 30 | 35 |
+| #2042 | 2026-10-20T08:11:25.936Z | 494 | 0 | 507 | 336 | 171 |
+| #2042 | 2026-10-20T08:19:40.020Z | 86 | 0 | 65 | 30 | 35 |
+| #2056 | 2026-10-20T08:23:27.472Z | 524 | 0 | 507 | 336 | 171 |
+| #2056 | 2026-10-20T08:32:11.089Z | 89 | 0 | 65 | 30 | 35 |
