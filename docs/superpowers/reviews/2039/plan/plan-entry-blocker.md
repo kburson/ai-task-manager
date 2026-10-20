@@ -19,3 +19,7 @@ A human operator must investigate and populate the missing Start time on #2039's
 After the operator resolves the field, query Explain again. Only a current ready decision permits the next registered step; continue Refine → Ready for Planning, then `npx aitm plan 2039`. Hydrate only the accepted committed plan, after enumerating existing children, with the exact specification and source-plan commit metadata. Do not create duplicate children after a partial split.
 
 The parent has not bypassed this gate by raw board mutation, relabeling, demotion/reentry, changing configuration or forging lifecycle evidence. Plan drafting and document review may proceed in Refine; those documents must not claim Plan entry, approval, hydration or implementation occurred.
+
+## Subsequent resolution
+
+The owner authorized the native-helper backfill. It restored Start time from the actual recorded Refine-entry instant, after which fresh native admission and both registered transitions reached Plan. The reviewed plan was then hydrated as twelve Backlog children. See `hydration.md` for exact source identities, verification, task-to-child mapping and remaining execution boundaries. The original refusal above is retained as historical evidence.
