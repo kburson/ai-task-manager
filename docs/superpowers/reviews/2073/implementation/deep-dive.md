@@ -1,0 +1,25 @@
+### Approved scope and source authority
+
+The owner approved the full #2073 implementation plan and delivery through Review on 2026-10-20. Technical authority is docs/superpowers/specs/2026-10-20-2073-refinement-graphql-traffic-design.md at commit 52ff0fe734cf682c604695ab0c7b005f512c2844. Execute docs/superpowers/plans/2026-10-20-2073-refinement-graphql-traffic.md at commit 69b5b18b377d7fe886390b4d98d2fa0d6d41e85f. The historical planning-only boundary is superseded by the new implementation request. The local 6.5h forecast and 6-9h risk remain distinct from native calibrated forecast evidence. At 2026-10-20T13:30:35.507Z the owner allowed required native adaptive-forecast historical reads for #2073 only.
+
+### Source findings and implementation
+
+The hook constructs nested sub-issue membership and field selections before checking kind. Factor strict genuineKind grammar into scripts/task-tracker/lib/decomposition-kind.mjs, preserving absent markers as code and rejecting invalid, duplicate or misplaced markers. Change scripts/task-tracker/lib/decomposition-hook-authority.mjs to read shallow presence first, graph only for epics, and a root continuity fence after multi-request collection. Validate root identity, body, assignment, configured membership, relevant fields and complete child inventory. Retain three-page limits, five-second remote and six-second total deadlines, response bounds and readiness refusals. No atomic snapshot is promised.
+
+Concrete Estimate, Size and body-field adapters in scripts/task-tracker/lib/decomposition-field-writer.mjs repeatedly recollect full authority. Add scripts/task-tracker/lib/decomposition-target-observation.mjs with fresh identity-bound item and issue reads, typed definitions, complete null evidence and a private strict body-block parser. Extra node IDs remain invocation-local. Preserve executeEstimateWriter, ownership checkpoints, operation IDs, durable schemas, genuine before records and predecessor recovery.
+
+Build query-aware offline transports in scripts/tests/helpers/refinement-traffic-provider.mjs plus scripts/tests/fixtures/refinement-traffic-cases.mjs and refinement-traffic-runner.mjs. Cover all ghClient ports and versioned-body-writer transport. Use refusing PATH shims and isolated fixture sessions/roots. Replay retained source commit 52ff0fe734cf682c604695ab0c7b005f512c2844 twice with the same external driver before production changes; retain hashes, selected-response ledgers and equivalent successful outcomes. Publication must dispatch fewer requests; leaf proof removes nested shape, while parent fence overhead is bounded. Costs unknown to offline transports remain unknown.
+
+### Test cycle and compatibility
+
+Write failing tests before every production behavior change. New focused tests are scripts/tests/integration/task-tracker/lib/refinement-traffic-budget.integration.test.mjs, decomposition-hook-traffic.integration.test.mjs, refinement-target-recovery.integration.test.mjs and scripts/tests/unit/task-tracker/lib/decomposition-target-observation.test.mjs. Root vc:1 must exercise the integrated behavior, including required refusals, rather than import a successful mock. Preserve native activity/source-hook and plan-exit routing.
+
+Adapt scripts/tests/helpers/native-decomposition-hook-fixture.mjs and decomposition-hook.cases.mjs for selected phases. Adapt scripts/tests/fixtures/estimation-publication.mjs and publication-subprocess.fixture.mjs for fresh target transport, keeping compatibility doubles distinct from measured evidence. Test shared refine, project-tether, update-event-fields, reevaluation and migration consumers. Pin null/zero, missing definitions, malformed blocks, incomplete pages, late results, old manifests and lost acknowledgements with exact non-replay counts.
+
+Run focused and relevant recovery tests, layout/story-tag/line-cap audits, format/lint and declared fast/slow lanes through native verification. Retain complete implementation-review findings and dispositions. Native Test receipts bind exact committed code. Do not tick a product criterion from this analysis. Keep GraphQL capture active and disclose unavailable live comparison.
+
+### Semantic intent and dependency map
+
+All seven intent questions were assessed against live issue, spec and pinned root plan. The delivery operator is a real stakeholder, bounded safe refinement is the capability, repeated broad observations explain the need, and preserved quota without lost authority is the value. Source paths and retained traffic support the claims. This standalone prerequisite is distinct from durable cache work and has no sibling-child ownership. Its three-line story stands alone.
+
+Depends on: none. Blocks: #2039 bulk refinement until the optimization is available in the executing checkout. Do not resume that paused child run or create children during #2073. Risks are transport fidelity, provider type changes, shared-caller compatibility and continuity gaps. Preserve authority and refuse rather than removing checks to obtain savings. Preserve immutable historical review snapshots and disclose their existing lint exceptions.
