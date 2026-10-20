@@ -1,0 +1,89 @@
+✔ traffic budgets reject extra dispatches, unknown and ambiguous shapes (6.812625ms)
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Started #107.
+Decomposition restriction for #107: must-decompose; available: inspect, checkpoint, decomposition-prepare, governed-decomposition
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/.ai-task-manager/runtime/test-fixtures/test/2073-recovery-HtyBI6 for the active issue
+✔ all CLI ports preserve selected reads and failure signals (8.763375ms)
+✔ provider applies a lost-ack mutation and subsequent observation sees the new value (0.825209ms)
+✔ retained source reproduces equal complete publications under independent ceilings (6404.877584ms)
+✔ a legitimate complete empty leaf admits in one shallow request (253.530208ms)
+✔ complete leaf admits: empty-unmarked-leaf (254.178209ms)
+✔ complete leaf admits: two-page-comments-leaf (681.802333ms)
+✔ unsafe hook snapshot refuses: unknown-kind (236.808417ms)
+✔ unsafe hook snapshot refuses: duplicate-kind (203.978ms)
+✔ unsafe hook snapshot refuses: misplaced-kind (217.405209ms)
+✔ unsafe hook snapshot refuses: non-epic-child (201.850292ms)
+✔ unsafe hook snapshot refuses: four-page-comments (280.587667ms)
+✔ unsafe hook snapshot refuses: drift-body (420.284958ms)
+✔ unsafe hook snapshot refuses: drift-owner (299.125208ms)
+✔ unsafe hook snapshot refuses: drift-item (294.66475ms)
+✔ unsafe hook snapshot refuses: drift-field (283.327833ms)
+✔ unsafe hook snapshot refuses: drift-children (214.868917ms)
+✔ unsafe hook snapshot refuses: empty-epic (238.04125ms)
+✔ unsafe hook snapshot refuses: unready-epic (231.94ms)
+✔ ready parent observes graph and complete fence: two-child-ready-epic (243.438292ms)
+✔ ready parent observes graph and complete fence: 51-child-ready-epic (599.6245ms)
+✔ shared kind grammar preserves absent and fenced markers while rejecting malformed declarations (41.941959ms)
+✔ native activity-guard uses selected transport with leaf admission (698.634208ms)
+✔ native activity-guard uses selected transport with root drift refusal (699.281333ms)
+✔ native source-edit-gate uses selected transport with leaf admission (1551.797667ms)
+✔ native source-edit-gate uses selected transport with root drift refusal (1551.576708ms)
+✔ Plan exit reaches selected collector and allows current leaf (366.122208ms)
+✔ Plan exit reaches selected collector and refuses drift (500.71975ms)
+✔ incomplete initial epic presence refuses before a replacement graph can hide it (173.415541ms)
+✔ real changed publication uses exact-target readers and completes unchanged durable protocol (341.729209ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/.ai-task-manager/runtime/test-fixtures/test/2073-recovery-vNZ5iV for the active issue
+✔ exact retry reconciles apply-then-throw without replaying an applied Estimate (282.863583ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/.ai-task-manager/runtime/test-fixtures/test/2073-recovery-PeUmso for the active issue
+✔ exact retry reconciles fail-before-apply without replaying an applied Estimate (259.497375ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/bc8d/ai-task-manager/.ai-task-manager/runtime/test-fixtures/test/2073-recovery-t8mPYZ for the active issue
+✔ confirmed-effect drift refuses recovery before any additional business write (166.214084ms)
+✔ public runRefine reaches real target publication and the declared promotion boundary (590.464458ms)
+✔ pre-change pending manifest recovers without migrating its subject or before digests (1618.180209ms)
+✔ fresh reads preserve zero, explicit null and complete absent values (0.835833ms)
+✔ project observation refuses removed definition (0.447583ms)
+✔ project observation refuses wrong definition type (0.163792ms)
+✔ project observation refuses foreign definition (0.143333ms)
+✔ project observation refuses duplicate definition (0.139458ms)
+✔ project observation refuses duplicate value (0.14025ms)
+✔ project observation refuses unknown size option (0.132416ms)
+✔ project observation refuses missing number (0.134958ms)
+✔ project observation refuses string number (0.167166ms)
+✔ project observation refuses negative number (0.138125ms)
+✔ project observation refuses foreign item (0.120208ms)
+✔ project observation refuses foreign project (0.124417ms)
+✔ project observation refuses foreign content (0.112667ms)
+✔ project observation refuses draft content (0.106583ms)
+✔ project observation refuses missing page info (0.124541ms)
+✔ project observation refuses missing option name (0.129125ms)
+✔ project observation refuses duplicate option (0.114542ms)
+✔ body observation refuses malformed or ambiguous block  (0.103041ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: broken --> (0.102208ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":nu (0.11725ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":[] (0.10775ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":{" (0.091ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":{} (0.07675ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":{} (0.07475ms)
+✔ body observation refuses malformed or ambiguous block <!-- aitm-fields: {"values":{} (0.111416ms)
+✔ valid legacy block retains missing-key null and changing body is read afresh (0.253333ms)
+✔ injected transport obeys deadline and response-byte bound (10.79375ms)
+✔ two three-page connections complete in five dispatches after one binding (3.299416ms)
+✔ bounded pagination refuses fourth-page (2.608833ms)
+✔ bounded pagination refuses repeated-cursor (1.432541ms)
+✔ bounded pagination refuses mixed-project-page (2.201708ms)
+✔ bounded pagination refuses mixed-item-page (1.404583ms)
+✔ dangling legacy block prefix cannot hide beside a valid current block (0.131666ms)
+✔ every fixed budget rejects extra family and total requests plus unknown operations (2.887417ms)
+ℹ tests 69
+ℹ suites 0
+ℹ pass 69
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20595.5635
