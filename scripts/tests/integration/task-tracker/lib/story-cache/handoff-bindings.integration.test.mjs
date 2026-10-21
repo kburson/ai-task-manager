@@ -251,3 +251,40 @@ test('a legacy Git worktree with no native cache authority can release without a
   );
   assert.equal(fs.existsSync(path.join(root, '.tmp', 'gh')), false);
 });
+
+test('a surviving native presence record protects lost registry and cache authority', async (t) => {
+  const f = await fixture(t);
+  let marked = 0;
+  fs.renameSync(f.registry.identityPath, f.registry.identityPath + '.preserved');
+  fs.renameSync(f.registry.path, f.registry.path + '-preserved');
+  fs.renameSync(path.join(f.root, '.tmp'), path.join(f.root, 'preserved-cache'));
+  await assert.rejects(release(f, f.root, 'author-A', () => marked++));
+  assert.equal(marked, 0);
+  const names = fs.readdirSync(path.dirname(f.registry.path));
+  assert.equal(
+    names.some((name) => name.startsWith('story-writer-') && name.endsWith('.presence.json')),
+    true
+  );
+});
+
+test('lost cache and registry remain protected by presence when project config is also missing', async (t) => {
+  const f = await fixture(t);
+  let marked = 0;
+  fs.renameSync(f.registry.identityPath, f.registry.identityPath + '.preserved');
+  fs.renameSync(f.registry.path, f.registry.path + '-preserved');
+  fs.renameSync(path.join(f.root, '.tmp'), path.join(f.root, 'preserved-cache'));
+  fs.unlinkSync(path.join(f.root, '.ai-task-manager', 'task-tracker.json'));
+  await assert.rejects(release(f, f.root, 'author-A', () => marked++));
+  assert.equal(marked, 0);
+});
+
+test('a linked worktree observes surviving shared presence when both local caches are unavailable', async (t) => {
+  const f = await fixture(t);
+  let marked = 0;
+  fs.renameSync(f.registry.identityPath, f.registry.identityPath + '.preserved');
+  fs.renameSync(f.registry.path, f.registry.path + '-preserved');
+  fs.renameSync(path.join(f.root, '.tmp'), path.join(f.root, 'preserved-cache'));
+  fs.renameSync(path.join(f.recipient, '.tmp'), path.join(f.recipient, 'preserved-cache'));
+  await assert.rejects(release(f, f.recipient, 'author-B', () => marked++));
+  assert.equal(marked, 0);
+});

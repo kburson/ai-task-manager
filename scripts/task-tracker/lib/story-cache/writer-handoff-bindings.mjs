@@ -110,20 +110,14 @@ export function assertStoryBindingSettled({ projectRoot, issue, sessionId, repos
   const hasEvidence =
     exists(path.join(projectRoot, '.tmp', 'gh')) ||
     exists(path.join(shared, 'story-writers.identity.json')) ||
-    exists(path.join(shared, 'story-writers'));
+    exists(path.join(shared, 'story-writers')) ||
+    (exists(shared) &&
+      fs
+        .readdirSync(shared)
+        .some((name) => name.startsWith('story-writer-') && name.endsWith('.presence.json')));
   if (!hasEvidence) return;
   const config = configPath(projectRoot);
-  if (!exists(config)) {
-    // Without a repository scope, any retained writer registry or cache is uncertain.
-    const root = resolveRuntimeRoot({ cwd: projectRoot, env: {} });
-    if (
-      exists(path.join(projectRoot, '.tmp', 'gh')) ||
-      exists(path.join(root.worktreeIdentity.commonDir, 'aitm', 'story-writers.identity.json')) ||
-      exists(path.join(root.worktreeIdentity.commonDir, 'aitm', 'story-writers'))
-    )
-      handoffFail('binding-config-unavailable');
-    return;
-  }
+  if (!exists(config)) handoffFail('binding-config-unavailable');
   const repo = JSON.parse(fs.readFileSync(config, 'utf8')).repo;
   if (
     typeof repo !== 'string' ||
