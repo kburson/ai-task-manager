@@ -18,3 +18,11 @@ Observed verification:
 - Focused ESLint passed. CSpell found one test-label spelling issue, corrected from non-finite wording to infinite. Formatting and final spelling/diff checks precede the final collateral commit.
 
 Supporting local logs are .tmp/2044-red.log, .tmp/2044-green.log, .tmp/2044-combined.log and .tmp/2044-package.log. These are actual observed tests, not native lifecycle receipts. Independent review and exact-head CI/native acceptance remain required after the implementation is committed.
+
+## Precision repair after independent review
+
+The reviewer reproduced one actionable Important finding with two consequences: subtracting tiny positive spans from epoch timestamps hid real overlap, and binary floating-point addition of 0.1 plus 0.2 created a false overlap at an adjacent boundary. Two added regression tests failed against the original implementation (45 passed, 2 failed). The first also covers Number.MIN_VALUE after repair.
+
+The repair interprets each supplied finite Number through its canonical decimal string, sums known components with bounded BigInt coefficients, and compares that exact minimum span against relative integer endpoint differences. Events are ordered by endpoint; each positive interval is checked against the preceding positive interval for its actor. No stored value is rounded or changed, and null remains Unknown. An explicitly supplied 0.30000000000000004 remains distinct from separate supplied components 0.1 and 0.2. The representable interval-range refusal is retained with exact arithmetic.
+
+The focused verifier then passed 47 tests, zero failed. Logs: .tmp/2044-precision-red.log and .tmp/2044-precision-green.log. Full independent follow-up results are retained in the review rounds rather than inferred from these local logs.
