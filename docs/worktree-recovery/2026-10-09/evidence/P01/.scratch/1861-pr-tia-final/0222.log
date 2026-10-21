@@ -1,0 +1,27 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: stderr:
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/test/tt-ac-gate-1-5WDpkf for the active issue
+[task-tracker] Board features unavailable: project not configured (projectId missing).
+  Run: npx ai-task-manager init   or   /task config init
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+no active task
+
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs:142:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.\n' +
+    '[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/test/tt-ac-gate-1-5WDpkf for the active issue\n' +
+    '[task-tracker] Board features unavailable: project not configured (projectId missing).\n' +
+    '  Run: npx ai-task-manager init   or   /task config init\n' +
+    '[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.\n' +
+    'no active task\n',
+  expected: /EVIDENCE_REQUIRED:/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.1

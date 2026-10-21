@@ -1,0 +1,21 @@
+✔ claim is idempotent for the same issue and session (71.869125ms)
+✔ claim refuses a missing worktree path instead of resolving the process cwd (79.451333ms)
+✔ one session switching issues atomically releases its prior issue (101.543208ms)
+✔ another session cannot claim the held issue and diagnostics name the holder (75.431875ms)
+✔ another session cannot share a physical worktree (72.291416ms)
+✔ corrupt authority data fails closed (76.763292ms)
+✔ heartbeat updates only an exact session claim (73.443417ms)
+✔ SessionStart touch atomically adopts an absent row and heartbeats an exact row (75.014875ms)
+✔ SessionStart touch cannot adopt over an existing issue holder (79.879583ms)
+✔ release is exact-session scoped while force release is issue scoped (94.863166ms)
+✔ terminal release is locked to the original close timestamp (76.822042ms)
+✔ rollback restores the exact prior rows after a downstream bind failure (72.239792ms)
+✔ rollback cannot erase a later valid claim (60.160458ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1014.350042

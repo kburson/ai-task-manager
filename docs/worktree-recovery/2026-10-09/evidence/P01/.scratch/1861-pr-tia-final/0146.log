@@ -1,0 +1,15 @@
+✔ a live same-host holder aged past the OLD 30s TTL is NOT reclaimed (338.205ms)
+✔ a dead same-host holder is reclaimed immediately, no TTL wait (2722.629208ms)
+✔ PID reuse: a live PID whose start-token mismatches is reclaimed via the PID path (264.233459ms)
+✔ a cross-host holder falls back to the mtime TTL backstop (126.462375ms)
+✔ TOCTOU recheck: a matching holder still reclaims (no false bail) (182.914625ms)
+✔ isProcessAlive: true for self, false for a reaped child (78.695708ms)
+✔ the raised TTL backstop sits well above the legacy 30s threshold (0.22275ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3723.6485

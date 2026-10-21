@@ -1,0 +1,24 @@
+✔ markerPresentGate: absent → refuses (0.725084ms)
+✔ markerPresentGate: present → passes (0.487291ms)
+✔ shaFreshGate: matching prefix → passes (0.185ms)
+✔ shaFreshGate: marker stale → refuses with new-commit list (0.146209ms)
+✔ chainIntegrityGate: full chain → passes (0.736834ms)
+✔ chainIntegrityGate: missing test entry → chain-hole-at-test (0.186209ms)
+✔ chainIntegrityGate: illegal arc → refuses (0.121ms)
+✔ chainIntegrityGate: new ts="..." grammar full chain → passes (#374) (0.358625ms)
+✔ chainIntegrityGate: mixed grammar (legacy + new) full chain → passes (#374) (0.110542ms)
+✔ issueDirtyGate: no trail comment → graceful skip (0.353667ms)
+✔ issueDirtyGate: trail with empty marker → graceful skip (0.32875ms)
+✔ issueDirtyGate: touched file dirty → refuse (0.283208ms)
+✔ issueDirtyGate: dirty file not in touch-set → passes (0.145ms)
+✔ runCloseGates: full green → ok (0.467084ms)
+✔ runCloseGates: stale marker SHA does NOT block close (Review→Done is HEAD-independent) (0.174709ms)
+✔ runCloseGates: marker missing → marker-missing in blockers, sha-fresh skipped (0.261125ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.229375

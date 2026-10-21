@@ -1,0 +1,32 @@
+coverage-check.test.mjs: defined
+✔ toggleChecklistLine: not-found (0.919791ms)
+✔ toggleChecklistLine: ambiguous (0.091417ms)
+✔ toggleChecklistLine: toggles unchecked → checked, preserving markers (0.128084ms)
+✔ toggleChecklistLine: toggles checked → unchecked (full-line label arg) (0.076666ms)
+✔ toggleChecklistLines: folds mixed results (0.23ms)
+✔ parseCheckArgs: labels, labels-file, positional, hatch flag (0.466583ms)
+✔ parseCheckArgs: trailing --label with no value is ignored (0.068292ms)
+✔ classifyUnverifiedTick: eligible for a proofless AC tagged non-demonstrable (2.592459ms)
+✔ classifyUnverifiedTick: refuses an undeclared AC (no verifier, no marker) (0.209334ms)
+✔ classifyUnverifiedTick: refuses a Functional DoD item (0.178833ms)
+✔ classifyUnverifiedTick: refuses a verifier-bearing AC (0.297875ms)
+✔ formatUnverifiedHatchRefusal: names label and verifier (0.186ms)
+✔ formatUnverifiedHatchRefusal: falls back when no commands (0.0545ms)
+✔ appendUnverifiedTickAudit: appends marker then is idempotent (0.106958ms)
+✔ gateFunctionalDodTick: pass when no Functional section (0.049542ms)
+✔ gateFunctionalDodTick: pass when label is not a DoD key (0.081416ms)
+✔ gateFunctionalDodTick: pass when DoD item already checked (0.052166ms)
+✔ gateFunctionalDodTick: refuse-derived for acs key (0.056333ms)
+✔ gateFunctionalDodTick: refuse-missing-evidence for unstamped stampable key (0.050709ms)
+✔ gateEvidenceTick: DoD non-pass propagates through (0.091084ms)
+✔ gateEvidenceTick: pass for a non-verifier AC (0.075167ms)
+✔ gateEvidenceTick: pass when verifier AC already checked (0.084125ms)
+✔ gateEvidenceTick: refuse-ac-evidence for unstamped verifier AC (0.068916ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.356916

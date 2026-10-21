@@ -1,0 +1,19 @@
+✔ AC1: refuses a direct exposed-script path, names npx aitm <name> (0.781791ms)
+✔ AC1: refuses a direct verb-hub path, names the concrete verb (0.195584ms)
+✔ AC1: refuses an absolute-path-prefixed direct invocation (0.069542ms)
+✔ AC6: allows the npx aitm form (0.057167ms)
+✔ AC2: allows hook-runner wiring direct path (hook-handler.mjs) (0.062834ms)
+✔ AC3: allows a non-aitm / unregistered script path (0.051917ms)
+✔ AC3: ignores a wholly unrelated command (0.052375ms)
+✔ findOffendingDocLines flags direct paths but not hook wiring (0.140209ms)
+✔ AC4: skill docs (router.md + rules/*.md) carry no residual direct paths (4.160125ms)
+✔ AC1 (#572): no raw runtime-path literal survives outside paths.mjs + allowlist (120.64775ms)
+✔ AC1 (#572): allowlist is tight — every entry still carries a real occurrence (3.162791ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 136.155458

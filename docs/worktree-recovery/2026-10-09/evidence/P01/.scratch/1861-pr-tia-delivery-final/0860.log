@@ -1,0 +1,17 @@
+✔ issue-body parses one target and one operation file strictly (1.210542ms)
+✔ issue-body accepts only the versioned declarative schemas (0.153292ms)
+✔ exact replacement is evaluated against the fresh body and requires one match (0.388625ms)
+✔ exact replacement treats JavaScript replacement tokens as literal text (0.073125ms)
+✔ named section replacement obeys heading boundaries and explicit preconditions (0.382792ms)
+✔ expectedVersion is checked inside the fresh-base transformation (0.167625ms)
+✔ declarative operations preserve every AITM marker byte-for-byte (0.096166ms)
+✔ runIssueBodyOperation uses canonical mutate and verifies returned live body (0.368459ms)
+✔ canonical write enforces expected version and protected-marker invariants (0.42475ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.719042

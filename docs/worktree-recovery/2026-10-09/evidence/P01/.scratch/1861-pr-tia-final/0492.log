@@ -1,0 +1,27 @@
+✔ parseArgs: positional dead + --by (1.021917ms)
+✔ parseArgs: dead falls back to active when no positional (0.082083ms)
+✔ parseArgs: byProvided false when --by absent (0.062292ms)
+✔ parseArgs: strips leading # on both args (0.061583ms)
+✔ runSupersede: missing deadIssue throws (0.345208ms)
+✔ runSupersede: missing byIssue throws (0.09775ms)
+✔ runSupersede: self-supersede throws (0.074208ms)
+✔ runSupersede: missing cfg.repo throws (0.090625ms)
+✔ runSupersede: superseder-missing — no writes (0.161541ms)
+✔ runSupersede: transition-failed — marker stamped, no audit/close (0.527459ms)
+✔ runSupersede: superseded happy path — stamp + audit + close + back-ref (0.235958ms)
+✔ runSupersede: back-reference comment failure is tolerated (0.626625ms)
+✔ verbSupersede: no dead issue → usage, exit 2 (1.349417ms)
+✔ verbSupersede: --by missing → usage, exit 2 (0.408583ms)
+✔ verbSupersede: success → no exit (0.630958ms)
+✔ verbSupersede: non-superseded result → exit 1 (0.3545ms)
+✔ verbSupersede: thrown error → exit 1 (0.3ms)
+✔ runSupersede: default I/O helpers drive a fake gh end-to-end (522.725541ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 577.801208
+[task-tracker] warn: back-reference comment on #88 failed: comment boom

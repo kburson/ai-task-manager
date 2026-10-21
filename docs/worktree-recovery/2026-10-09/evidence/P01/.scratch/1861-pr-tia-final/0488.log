@@ -1,0 +1,24 @@
+✔ throws when cfg is missing (0.801208ms)
+✔ throws when issueNumber is missing (0.111375ms)
+✔ board-fetch failure returns refine-exit-board-fetch-failed (0.152167ms)
+✔ labels-fetch failure returns refine-exit-labels-fetch-failed (0.10625ms)
+✔ missing Rank is a blocker (1.119833ms)
+✔ empty labels is a blocker (0.217834ms)
+✔ missing Start Time is a blocker (0.102292ms)
+✔ missing Pickup Directive heading is a blocker (0.192375ms)
+✔ a Pickup Directive inside a <details> block does not satisfy the gate (0.129292ms)
+✔ inline-code details tag examples do not hide a top-level Pickup Directive (0.159417ms)
+✔ an unclosed line-level details container keeps Pickup hidden fail-closed (0.661125ms)
+✔ a forbidden compound command in Verification Commands is a blocker (0.51625ms)
+✔ a non-demonstrable AC (no verifier) is a blocker (0.7365ms)
+✔ body-fetch failure appends refine-exit-body-fetch-failed (0.08075ms)
+✔ happy path — all signals present — returns ok:true (0.379709ms)
+✔ default fetchers run when deps.gql is injected (no fetchBody/fetchLabels) (0.167542ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.402583

@@ -1,0 +1,123 @@
+## Definition of Done
+<!--
+Each item below MUST be individually verified by running the declared
+verifier. Do not bulk-check. Do not preemptively check. The visible checkbox
+is the sign-off; the hidden `aitm-dod-evidence:<key>` marker is the evidence
+trail. `/task check` refuses to tick a stampable Functional DoD item without
+its marker; run `/task dod-stamp <key>` to produce one. The two derived keys
+(`acs`, `checkboxes`) are auto-stamped by `/task close` from the body itself.
+See `skill/shared/rules/functional-dod.md` for the full contract.
+
+Lifecycle items are verified during Review. Housekeeping items are finalized
+during Close; their separate headings make the owning workflow phase explicit.
+
+Kind-aware items (#681): append a `dod:kinds` HTML-comment annotation to scope
+an item to a set of issue kinds. `exclude="spike,research"` renders the item for
+every kind EXCEPT those listed; `include="code"` renders it only for the listed
+kinds; an item with no annotation applies to every kind (the default). The
+`tests` item is excluded for the no-code kinds `spike` and `research`, which ship
+findings rather than code and would otherwise carry a test-suite DoD item and a
+`npm run test:all` verification command they can never satisfy. Filtering happens
+at render time in `preflight-issue.mjs`; a filtered-out item is simply absent, so
+no phantom evidence marker is ever required for it.
+
+Diff-decides for `docs-only` (#865): the `tests` item deliberately does NOT
+static-exclude `docs-only`. A `docs-only` issue can quietly touch code, so the
+kind alone must not launder it out of the suite. Instead the `tests` item is
+dropped only when the render is `--kind docs-only` AND a supplied
+`--changed-paths-file` proves the `trunk...HEAD` diff is documentation-only
+(default-deny: any unclassified/empty/mixed diff keeps the item). "The kind
+declares, the diff decides."
+-->
+
+### Functional (verified at Test)
+
+- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" -->
+- [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->
+- [ ] All changes committed; commit messages follow project convention <!-- aitm-verified cmd="`git log --oneline -1`" --> <!-- dod:functional:commits --> <!-- dod:kinds exclude="epic" -->
+- [ ] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->
+- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->
+
+### Lifecycle (verified at Review)
+
+- [ ] Agent Review Passed
+- [ ] Final Review Passed
+
+### Housekeeping (verified at Close)
+
+- [ ] Story closed and moved to Done
+- [ ] Timing data flushed to issue
+
+---
+
+## Pickup Directive — MANDATORY, DO NOT SKIP
+> Follow: `.ai-task-manager/templates/pickup-directive.md`
+<!-- aitm-body-version version="1" -->
+✔ epic preflight handles omitted story intake (249.879709ms)
+✔ epic preflight handles blank story intake (244.9435ms)
+✔ epic preflight handles template story intake (255.650875ms)
+✔ epic preflight handles valid story intake (272.585875ms)
+✔ epic preflight handles malformed story intake (262.4575ms)
+✔ epic preflight handles administrative story intake (233.81575ms)
+✔ solo preflight handles omitted story intake (246.124875ms)
+✔ solo preflight handles blank story intake (296.379167ms)
+✔ solo preflight handles template story intake (250.128375ms)
+✔ solo preflight handles valid story intake (255.95625ms)
+✔ solo preflight handles malformed story intake (209.405375ms)
+✔ solo preflight handles administrative story intake (224.028916ms)
+✔ sub-issue preflight handles omitted story intake (275.752708ms)
+✔ sub-issue preflight handles blank story intake (252.256833ms)
+✔ sub-issue preflight handles template story intake (359.677917ms)
+✔ sub-issue preflight handles valid story intake (243.638958ms)
+✔ sub-issue preflight handles malformed story intake (222.743958ms)
+✔ sub-issue preflight handles administrative story intake (233.214875ms)
+✔ defect preflight handles omitted story intake (242.769167ms)
+✔ defect preflight handles blank story intake (253.051084ms)
+✔ defect preflight handles template story intake (306.861041ms)
+✔ defect preflight handles valid story intake (351.524459ms)
+✔ defect preflight handles malformed story intake (232.10525ms)
+✔ defect preflight handles administrative story intake (263.599125ms)
+▶ preflight-issue --shape lint wiring
+  ✔ rejects && in an AC aitm-verified cmd marker with exit 12 (293.193375ms)
+  ✔ accepts a clean AC with a current vc-list citation (244.868541ms)
+✔ preflight-issue --shape lint wiring (538.455625ms)
+▶ preflight-issue --shape Story Origin flat-section validation (#892)
+  ✔ rejects a Story Origin fragment containing an embedded heading (223.395584ms)
+  ✔ still accepts a single leading Story Origin heading for compatibility (225.1015ms)
+  ✔ rejects a stale project template override that drops Story Origin (363.337375ms)
+✔ preflight-issue --shape Story Origin flat-section validation (#892) (812.316ms)
+▶ preflight-issue --shape Plan Metadata flat-section validation (#892)
+  ✔ rejects a Plan Metadata fragment containing an embedded heading (227.572083ms)
+  ✔ accepts one compatible leading Plan Metadata heading (246.609375ms)
+✔ preflight-issue --shape Plan Metadata flat-section validation (#892) (474.443042ms)
+▶ preflight-issue --shape stub (#426)
+  ✔ renders without scope/ac/plan-metadata files, using placeholders (284.604167ms)
+  ✔ seeds the Scope section from --idea-file (285.3415ms)
+✔ preflight-issue --shape stub (#426) (570.267917ms)
+▶ preflight-issue --shape Verification Commands seeding (#410)
+  ✔ seeds a ## Verification Commands section that makes the body a fixed point of the evidence audit (240.825375ms)
+✔ preflight-issue --shape Verification Commands seeding (#410) (240.993125ms)
+▶ preflight-issue --kind docs-only render (#865 diff-decides / #923)
+  ✔ default-deny: docs-only with NO --changed-paths-file KEEPS the tests DoD item (231.408042ms)
+  ✔ docs-only + provably documentation-only diff DROPS the tests item + its VC seeds (222.843292ms)
+  ✔ docs-only + a diff that touches code KEEPS the tests item (default-deny) (216.365375ms)
+✔ preflight-issue --kind docs-only render (#865 diff-decides / #923) (670.953416ms)
+▶ normalizePlanMetadata (#416)
+  ✔ bolds a simple word label (0.330333ms)
+  ✔ bolds a hyphenated label (0.08925ms)
+  ✔ is idempotent on already-bold labels (0.033833ms)
+  ✔ leaves non-label lines unchanged (0.029ms)
+  ✔ handles multi-line input, bolding only label lines (0.039416ms)
+  ✔ bolds a bulleted word label, preserving the bullet (#488) (0.026625ms)
+  ✔ bolds a bulleted hyphenated label, colon outside the span (#488) (0.035791ms)
+  ✔ is idempotent on an already-bold bulleted label (#488) (0.051125ms)
+  ✔ bolds a realistic bulleted metadata block, leaving prose untouched (#488) (0.037958ms)
+✔ normalizePlanMetadata (#416) (1.017583ms)
+ℹ tests 46
+ℹ suites 7
+ℹ pass 46
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9554.2725

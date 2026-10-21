@@ -1,0 +1,13 @@
+✔ delivery verifier IDs are disclosure-only or hard per exact catalog row (1.300917ms)
+✔ delivery validator requires one known matching disclosure ID and exact kind (0.240375ms)
+✔ every literal verifier category has a frozen, strict requirement mapping (1.2065ms)
+✔ error exposes immutable mapped ID and outcome, rejecting caller override (0.139083ms)
+✔ structural verifier inputs refuse under hard input-contract (0.783708ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.078042

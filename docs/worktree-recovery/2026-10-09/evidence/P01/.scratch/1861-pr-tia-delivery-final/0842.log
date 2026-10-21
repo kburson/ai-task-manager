@@ -1,0 +1,16 @@
+✔ returns null when the lane is not requested (0.482083ms)
+✔ parses the declared method and reason (0.422917ms)
+✔ accepts the equals form (0.087625ms)
+✔ refuses a method outside the known set (0.251167ms)
+✔ refuses a missing reason — the ledger must record why (0.082875ms)
+✔ refuses an empty or placeholder reason (0.083292ms)
+✔ refuses a reason without the lane flag, so it cannot be silently ignored (0.05975ms)
+✔ refuses a repeated flag rather than picking one (0.057959ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.297208

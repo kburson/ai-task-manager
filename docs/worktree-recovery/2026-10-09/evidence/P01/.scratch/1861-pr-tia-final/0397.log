@@ -1,0 +1,34 @@
+▶ AC1: dod:kinds annotation grammar + default
+  ✔ parses exclude / include and returns null for unannotated lines (0.825375ms)
+  ✔ unannotated item applies to every kind (documented default) (0.088417ms)
+  ✔ exclude renders for all-but-listed; include renders only-if-listed (0.073875ms)
+✔ AC1: dod:kinds annotation grammar + default (1.543083ms)
+▶ AC3: template annotation is scoped to the tests + split commits items
+  ✔ tests + kind-split commits lines carry annotations; lint/acs/checkboxes stay kind-agnostic (0.878792ms)
+  ✔ packaged and runtime DoD templates are byte-identical (0.153334ms)
+✔ AC3: template annotation is scoped to the tests + split commits items (1.146833ms)
+▶ AC2/AC7: preflight filters DoD + derived VC by kind
+  ✔ code (default) renders the tests item AND its two-lane verification commands (258.758416ms)
+  ✔ spike omits the tests item AND drops its derived test commands (238.071875ms)
+  ✔ research omits the tests item AND drops its derived test commands (247.709959ms)
+✔ AC2/AC7: preflight filters DoD + derived VC by kind (745.020166ms)
+▶ AC4: check/close enumeration is body-derived; no phantom key
+  ✔ filtered spike DoD has no `tests` key from parseFunctionalDodKeys (1.489208ms)
+  ✔ code DoD still enumerates the `tests` key (0.211958ms)
+✔ AC4: check/close enumeration is body-derived; no phantom key (1.868458ms)
+▶ AC6: code-kind back-compat
+  ✔ filterDodForKind drops only the epic-only derived-trail line for the code kind (0.139625ms)
+  ✔ default output === explicit --kind code output, for each shape (1421.145458ms)
+✔ AC6: code-kind back-compat (1421.463541ms)
+▶ AC5: documentation ships
+  ✔ both DoD templates carry an inline comment explaining the annotation (0.245166ms)
+  ✔ functional-dod.md documents syntax, precedence, and rationale (0.465375ms)
+✔ AC5: documentation ships (0.860666ms)
+ℹ tests 14
+ℹ suites 6
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2174.992041

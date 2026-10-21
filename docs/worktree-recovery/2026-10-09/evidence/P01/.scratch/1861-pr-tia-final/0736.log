@@ -1,0 +1,12 @@
+test-verb-retry.test.mjs: all tests registered
+✔ retry-then-succeed: transient npm ci failure is retried, run reaches Test (81.316292ms)
+✔ real-red first occurrence: a genuine verification red rolls back without retry (69.599458ms)
+✔ durable diagnostics: exhausted setup retries record step + exit + stderr tail and re-throw (67.3065ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 226.401583

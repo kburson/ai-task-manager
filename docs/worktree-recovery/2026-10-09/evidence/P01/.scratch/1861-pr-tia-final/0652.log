@@ -1,0 +1,15 @@
+✔ planEpicDevelopChildrenGate: root epic with sole sub-epic at R4P passes (does not walk into grandchildren) (0.7375ms)
+✔ planEpicDevelopChildrenGate: sub-epic with all grandchildren at R4P passes (per-level recursion) (0.104417ms)
+✔ checkParentAdmission: grandchild target=plan passes when immediate parent (sub-epic) is at develop (0.801625ms)
+✔ checkParentAdmission: grandchild refuses when immediate parent (sub-epic) is at refine, regardless of root (0.2225ms)
+✔ wipAdvanceDecision: budget counts only immediate siblings under the sub-epic (0.169791ms)
+✔ wipAdvanceDecision: budget refuses when an immediate sub-epic sibling is already advancing (0.087917ms)
+✔ planRefineWipGate: grandchild promotion fetches parent via fetchParentIssue and siblings under that immediate parent (127.59625ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 132.148917

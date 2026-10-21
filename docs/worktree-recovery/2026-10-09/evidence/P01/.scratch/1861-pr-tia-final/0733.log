@@ -1,0 +1,16 @@
+✔ retires stale claimed Test evidence before finalization or worktree creation (36.112292ms)
+✔ retires stale claimed Test evidence from Develop before replacement verification (14.640917ms)
+✔ stops all execution when receipt retirement fails (2.777542ms)
+✔ refuses malformed claimed Test evidence before execution (0.554542ms)
+✔ refuses malformed generic receipt claims before execution (0.380167ms)
+✔ refuses live command drift introduced by the fresh evidence mutation (13.795792ms)
+✔ reports invalid fresh-base command authority without throwing (12.641791ms)
+✔ refuses command drift reported by the persisted write response (14.333125ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104.907167

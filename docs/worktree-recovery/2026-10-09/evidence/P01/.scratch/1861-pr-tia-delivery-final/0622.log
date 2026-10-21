@@ -1,0 +1,17 @@
+✔ @me resolves to the authenticated user and an explicit reviewer is preserved (1.508417ms)
+✔ disabled gate authorizes delivery without PR review evidence (0.526334ms)
+✔ missing approval requests the eligible human reviewer (0.129375ms)
+✔ an existing review request waits without requesting the same reviewer again (0.107458ms)
+✔ only the latest applicable exact-head review can authorize delivery (0.184416ms)
+✔ review assignment and stale-head approval are not approval evidence (0.067208ms)
+✔ the PR author, bots, and unreadable evidence fail closed (0.094292ms)
+✔ delivery checks CI before requesting a reviewer and emits no delivery intent (3.550291ms)
+✔ exact-head human PR approval authorizes normal provider delivery (5.546917ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.386

@@ -1,0 +1,10 @@
+✔ characterization detects direct, injected, destructured and computed alias reads (0.925542ms)
+✔ all production project-root aliases are consumed by the central validator (73.310792ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 77.760583

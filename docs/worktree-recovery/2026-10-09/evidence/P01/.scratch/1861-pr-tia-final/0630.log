@@ -1,0 +1,15 @@
+✔ classifySeed: file only upstream is new (113.162584ms)
+✔ classifySeed: file only local is deprecated (89.426208ms)
+✔ classifySeed: identical content on both sides is unchanged (98.658833ms)
+✔ classifySeed: local matches baseline, upstream diverges → changed (133.103666ms)
+✔ classifySeed: local diverges from baseline → locally-modified, even when upstream also changed (117.329ms)
+✔ classifySeed: diff with no recorded baseline conservatively falls back to locally-modified (91.209625ms)
+✔ classifySeed: results are sorted by file name (100.410541ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 746.894666
