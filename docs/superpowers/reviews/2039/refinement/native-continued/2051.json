@@ -1,0 +1,64 @@
+{
+  "issue": 2051,
+  "source": "Actual native command results",
+  "commands": [
+    {
+      "command": "npx aitm start 2051 --role agent",
+      "startedAt": "2026-10-20T21:14:29.920Z",
+      "endedAt": "2026-10-20T21:15:11.948Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 2051 --role agent\n\n🚧 PICKUP DIRECTIVE DEFERRED — #2051 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #2051`.\n⚠ #2051 move-invariants indeterminate\n  board       : backlog\n  recorded    : backlog\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"backlog\"). Cannot auto-reconcile without fabricating provenance — reporting only.\nResumed #2051.\nDecomposition restriction for #2051: story-ok; available: inspect, checkpoint, decomposition-prepare, governed-decomposition\n"
+    },
+    {
+      "command": "npx aitm explain 2051 --json",
+      "startedAt": "2026-10-20T21:15:14.068Z",
+      "endedAt": "2026-10-20T21:15:27.146Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2051 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2051,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\",\"args\":{\"reason\":\"unknown\"},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2051,\"actionId\":null},\"args\":{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\"}}]}},\"guidance\":[{\"id\":\"navigation.unresolved\",\"digest\":\"sha256:bca397f2045984fddb1e619fb13b3a23df645591855b983739617aaa2a860437\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"navigation\":\"unresolved\"},{\"recommendation\":null},{\"never\":\"bypass_guard\"}]}}]}\n"
+    },
+    {
+      "command": "npx aitm explain 2051 --json",
+      "startedAt": "2026-10-20T21:15:51.893Z",
+      "endedAt": "2026-10-20T21:16:05.881Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2051 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2051,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm user-story 2051 --as 'delivery maintainer' --want 'adopt legacy writers without losing pending work because repair and cleanup entrypoints can retain unsafe immediate-write behavior' --so-that 'preserve pending data during safe adoption and migration'",
+      "startedAt": "2026-10-20T21:16:09.241Z",
+      "endedAt": "2026-10-20T21:16:22.037Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' user-story 2051 --as delivery maintainer --want adopt legacy writers without losing pending work because repair and cleanup entrypoints can retain unsafe immediate-write behavior --so-that preserve pending data during safe adoption and migration\n[task-tracker] ✓ #2051 User Story written\n"
+    },
+    {
+      "command": "npx aitm block 2051 --by 2055,2071",
+      "startedAt": "2026-10-20T21:16:31.428Z",
+      "endedAt": "2026-10-20T21:17:10.543Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' block 2051 --by 2055,2071\n[task-tracker] ✓ #2051 blocked by #2055, #2071\n"
+    },
+    {
+      "command": "npx aitm refine 2051 --size S --estimate 3.5 --priority p0 --rank 19 --labels bug --reason 'Local source/specification scope: Inventory every accepted legacy writer/repair path; stage existing-issue changes by default; refuse one-off migration with pending cache/claim; protect dirty exports and no automatic history hydration. Effort: 1.5h implementation, 1h focused verification, 1h review/integration repair. Wave 19; predecessors #2055,#2071. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T21:17:16.661Z",
+      "endedAt": "2026-10-20T21:24:30.642Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2051 --size S --estimate 3.5 --priority p0 --rank 19 --labels bug --reason Local source/specification scope: Inventory every accepted legacy writer/repair path; stage existing-issue changes by default; refuse one-off migration with pending cache/claim; protect dirty exports and no automatic history hydration. Effort: 1.5h implementation, 1h focused verification, 1h review/integration repair. Wave 19; predecessors #2055,#2071. No historical cloud estimation tasks used.\n✓ Issue #2051 moved to: refine\n✓ move #2051 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2051 promoted: backlog → refine (direct)\n✓ #2051 refined: size=S, estimate=3.5h, priority=P0; moved backlog → Refine\n"
+    },
+    {
+      "command": "npx aitm refine 2051 --size S --estimate 3.5 --priority p0 --rank 19 --labels bug --reason 'Local source/specification scope: Inventory every accepted legacy writer/repair path; stage existing-issue changes by default; refuse one-off migration with pending cache/claim; protect dirty exports and no automatic history hydration. Effort: 1.5h implementation, 1h focused verification, 1h review/integration repair. Wave 19; predecessors #2055,#2071. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T21:24:32.446Z",
+      "endedAt": "2026-10-20T21:26:31.710Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2051 --size S --estimate 3.5 --priority p0 --rank 19 --labels bug --reason Local source/specification scope: Inventory every accepted legacy writer/repair path; stage existing-issue changes by default; refuse one-off migration with pending cache/claim; protect dirty exports and no automatic history hydration. Effort: 1.5h implementation, 1h focused verification, 1h review/integration repair. Wave 19; predecessors #2055,#2071. No historical cloud estimation tasks used.\n✓ Issue #2051 moved to: ready-for-plan\n✓ move #2051 refine→ready-for-plan complete\n  exit flush  : refine row closed (verified)\n  entry stamp : aitm-entered-ready-for-plan present (verified)\n  entry row   : ready-for-plan row opened (verified)\n  status      : Status == Ready-for-plan (verified)\n  sentinel    : aitm-move-complete state=ready-for-plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2051 promoted: refine → ready-for-plan (direct)\n  ↳ posted \"### 🛠 Refine estimate\" comment\n✓ #2051 refined: size=S, estimate=3.5h, priority=P0; moved refine → Ready for Planning\n"
+    }
+  ],
+  "otherCommands": [
+    {
+      "command": "node scripts/task-tracker/graphql-usage-launch.mjs gh issue edit 2051 --title 'Legacy writer adoption and safe administrative migration'",
+      "startedAt": "2026-10-20T21:16:25.722Z",
+      "endedAt": "2026-10-20T21:16:29.191Z",
+      "exitCode": 0,
+      "output": "https://github.com/kburson/ai-task-manager/issues/2051\n"
+    }
+  ]
+}

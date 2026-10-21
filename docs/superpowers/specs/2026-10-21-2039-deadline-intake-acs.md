@@ -1,0 +1,4 @@
+- [ ] A complete multi-read snapshot whose individual reads stay within the per-request bound can finish within the documented aggregate bound; regression is demonstrated offline. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Hung transport, aggregate exhaustion, malformed pagination, mixed identities and ownership/body/child drift still refuse without publication or retries. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Leaf snapshot traffic and current-epic request counts remain bounded with no historical-cloud lookup or authority cache. <!-- aitm-verified vc-list="vc:2" -->
+- [ ] Repository diff checks pass. <!-- aitm-verified vc-list="vc:3" -->

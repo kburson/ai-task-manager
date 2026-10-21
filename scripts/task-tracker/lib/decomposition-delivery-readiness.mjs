@@ -2,7 +2,7 @@
 // Read-only orchestration boundary between static decomposition readiness and
 // live, materialized WBS delivery readiness.
 
-import { linkedPlanReference, selectDecompositionPlanSection } from './decomposition-policy.mjs';
+import { linkedPlanReference, createDecompositionPlanSelector } from './decomposition-policy.mjs';
 import { parseWbsChildClaim, reconcileWbsCoverage } from './decomposition-wbs-coverage.mjs';
 import { isAcceptedTerminalChild } from './epic-children-gate.mjs';
 import { buildGraphNodeAuthority } from './graph-node-authority.mjs';
@@ -51,12 +51,13 @@ function relevantChildren(children, tasks, acceptedPlanPath) {
 function evaluateSections({ children, tasks, acceptedPlanPath, acceptedPlanText }) {
   const blockers = [];
   const expected = new Set(tasks.map((task) => task.heading));
+  let selectSection;
   for (const child of relevantChildren(children, tasks, acceptedPlanPath)) {
     if (parseIssueKind(child.body || '') === 'epic') continue;
     const claim = parseWbsChildClaim(child);
-    const selected = selectDecompositionPlanSection({
+    selectSection ??= createDecompositionPlanSelector(acceptedPlanText);
+    const selected = selectSection({
       body: child.body || '',
-      planText: acceptedPlanText,
       activePlanKey: linkedPlanReference(child.body || '')?.key || null,
     });
     if (!selected.ok) {

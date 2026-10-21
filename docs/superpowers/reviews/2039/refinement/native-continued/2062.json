@@ -1,0 +1,55 @@
+{
+  "issue": 2062,
+  "source": "Actual native command results",
+  "commands": [
+    {
+      "command": "npx aitm start 2062 --role agent",
+      "startedAt": "2026-10-20T18:29:41.066Z",
+      "endedAt": "2026-10-20T18:30:06.903Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 2062 --role agent\n\n🚧 PICKUP DIRECTIVE DEFERRED — #2062 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #2062`.\n⚠ #2062 move-invariants indeterminate\n  board       : backlog\n  recorded    : (none)\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"none\"). Cannot auto-reconcile without fabricating provenance — reporting only.\nResumed #2062.\nDecomposition restriction for #2062: indeterminate; available: inspect, checkpoint, decomposition-prepare, authority-recover\n"
+    },
+    {
+      "command": "npx aitm explain 2062 --json",
+      "startedAt": "2026-10-20T18:30:18.537Z",
+      "endedAt": "2026-10-20T18:30:25.821Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2062 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2062,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\",\"args\":{\"reason\":\"unknown\"},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2062,\"actionId\":null},\"args\":{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\"}}]}},\"guidance\":[{\"id\":\"navigation.unresolved\",\"digest\":\"sha256:bca397f2045984fddb1e619fb13b3a23df645591855b983739617aaa2a860437\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"navigation\":\"unresolved\"},{\"recommendation\":null},{\"never\":\"bypass_guard\"}]}}]}\n"
+    },
+    {
+      "command": "npx aitm log 2062",
+      "startedAt": "2026-10-20T18:31:05.867Z",
+      "endedAt": "2026-10-20T18:31:28.229Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' log 2062\nIssue #2062: 3 timing rows\n  Engaged: Unknown\n  Session: Unknown\n  Review: Unknown\n  Plan: Unknown\n  Known engagement lower bound: 40.919 seconds\n  Unavailable: open-actor-interval\n  Stage Time (per visit):\n    backlog#1: 12h 04m 55s\n    backlog#2: open\n  Stage Time (totals):\n    backlog: 12h 04m 55s\nAITM_TIMING_RESULT {\"schema\":\"aitm.timing-field-result/v1\",\"status\":\"incomplete\",\"reasons\":[\"open-actor-interval\"],\"knownEngagedSec\":40.919,\"values\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"secondsByKey\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"unknownFields\":[\"engagedTime\",\"sessionTime\",\"reviewTime\",\"planTime\"],\"issue\":2062,\"repository\":\"kburson/ai-task-manager\",\"sourceCommentId\":\"IC_kwDOSU6LgM8AAAABduHy-w\"}\n  Start Time (repaired): 2026-10-20 06:08:01 -05:00\nFields updated on GitHub Projects board.\n"
+    },
+    {
+      "command": "npx aitm explain 2062 --json",
+      "startedAt": "2026-10-20T18:31:34.984Z",
+      "endedAt": "2026-10-20T18:31:46.569Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2062 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2062,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm block 2062 --by 2045",
+      "startedAt": "2026-10-20T18:31:49.746Z",
+      "endedAt": "2026-10-20T18:32:12.636Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' block 2062 --by 2045\n[task-tracker] ✓ #2062 blocked by #2045\n"
+    },
+    {
+      "command": "npx aitm refine 2062 --size S --estimate 3.5 --priority p0 --rank 7 --labels bug --reason 'Local source/specification scope: Calculate reproducibly from retained local inputs; missing evidence is unavailable; derive and persist local rubric records with valid lineage and explicit provenance. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 7; predecessor #2045. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T18:32:24.459Z",
+      "endedAt": "2026-10-20T18:38:48.226Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2062 --size S --estimate 3.5 --priority p0 --rank 7 --labels bug --reason Local source/specification scope: Calculate reproducibly from retained local inputs; missing evidence is unavailable; derive and persist local rubric records with valid lineage and explicit provenance. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 7; predecessor #2045. No historical cloud estimation tasks used.\n✓ Issue #2062 moved to: refine\n✓ move #2062 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2062 promoted: backlog → refine (direct)\n✓ #2062 refined: size=S, estimate=3.5h, priority=P0; moved backlog → Refine\n"
+    },
+    {
+      "command": "npx aitm refine 2062 --size S --estimate 3.5 --priority p0 --rank 7 --labels bug --reason 'Local source/specification scope: Calculate reproducibly from retained local inputs; missing evidence is unavailable; derive and persist local rubric records with valid lineage and explicit provenance. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 7; predecessor #2045. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T18:39:02.863Z",
+      "endedAt": "2026-10-20T18:40:51.040Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2062 --size S --estimate 3.5 --priority p0 --rank 7 --labels bug --reason Local source/specification scope: Calculate reproducibly from retained local inputs; missing evidence is unavailable; derive and persist local rubric records with valid lineage and explicit provenance. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 7; predecessor #2045. No historical cloud estimation tasks used.\n✓ Issue #2062 moved to: ready-for-plan\n✓ move #2062 refine→ready-for-plan complete\n  exit flush  : refine row closed (verified)\n  entry stamp : aitm-entered-ready-for-plan present (verified)\n  entry row   : ready-for-plan row opened (verified)\n  status      : Status == Ready-for-plan (verified)\n  sentinel    : aitm-move-complete state=ready-for-plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2062 promoted: refine → ready-for-plan (direct)\n  ↳ posted \"### 🛠 Refine estimate\" comment\n✓ #2062 refined: size=S, estimate=3.5h, priority=P0; moved refine → Ready for Planning\n"
+    }
+  ]
+}

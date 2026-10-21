@@ -1,0 +1,57 @@
+{
+  "issue": 2048,
+  "source": "Actual native command results",
+  "commands": [
+    {
+      "command": "npx aitm start 2048 --role agent",
+      "startedAt": "2026-10-20T19:53:57.143Z",
+      "endedAt": "2026-10-20T19:54:35.781Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 2048 --role agent\n\n🚧 PICKUP DIRECTIVE DEFERRED — #2048 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #2048`.\n⚠ #2048 move-invariants indeterminate\n  board       : backlog\n  recorded    : backlog\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"backlog\"). Cannot auto-reconcile without fabricating provenance — reporting only.\nResumed #2048.\nDecomposition restriction for #2048: story-ok; available: inspect, checkpoint, decomposition-prepare, governed-decomposition\n"
+    },
+    {
+      "command": "npx aitm explain 2048 --json",
+      "startedAt": "2026-10-20T19:54:43.129Z",
+      "endedAt": "2026-10-20T19:54:56.101Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2048 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2048,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm user-story 2048 --as 'delivery maintainer' --want 'retain trustworthy completion evidence across log appends because later timing appends change a full-comment hash without changing older completed events' --so-that 'preserve older completed visits while exposing altered history'",
+      "startedAt": "2026-10-20T19:55:13.594Z",
+      "endedAt": "2026-10-20T19:55:26.403Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' user-story 2048 --as delivery maintainer --want retain trustworthy completion evidence across log appends because later timing appends change a full-comment hash without changing older completed events --so-that preserve older completed visits while exposing altered history\n[task-tracker] ✓ #2048 User Story written\n"
+    },
+    {
+      "command": "npx aitm block 2048 --by 2061",
+      "startedAt": "2026-10-20T19:55:37.656Z",
+      "endedAt": "2026-10-20T19:56:07.106Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' block 2048 --by 2061\n[task-tracker] ✓ #2048 blocked by #2061\n"
+    },
+    {
+      "command": "npx aitm refine 2048 --size S --estimate 3 --priority p0 --rank 12 --labels bug --reason 'Local source/specification scope: Bind native transition/actor/visit and confirmed effects; retain timing event IDs and subset digest independently of changing full-comment hashes; reject altered prior rows and synthetic legacy proof. Effort: 1.5h implementation, 0.75h focused verification, 0.75h review/integration repair. Wave 12; predecessor #2061. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T19:56:13.715Z",
+      "endedAt": "2026-10-20T20:03:10.239Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2048 --size S --estimate 3 --priority p0 --rank 12 --labels bug --reason Local source/specification scope: Bind native transition/actor/visit and confirmed effects; retain timing event IDs and subset digest independently of changing full-comment hashes; reject altered prior rows and synthetic legacy proof. Effort: 1.5h implementation, 0.75h focused verification, 0.75h review/integration repair. Wave 12; predecessor #2061. No historical cloud estimation tasks used.\n✓ Issue #2048 moved to: refine\n✓ move #2048 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2048 promoted: backlog → refine (direct)\n✓ #2048 refined: size=S, estimate=3h, priority=P0; moved backlog → Refine\n"
+    },
+    {
+      "command": "npx aitm refine 2048 --size S --estimate 3 --priority p0 --rank 12 --labels bug --reason 'Local source/specification scope: Bind native transition/actor/visit and confirmed effects; retain timing event IDs and subset digest independently of changing full-comment hashes; reject altered prior rows and synthetic legacy proof. Effort: 1.5h implementation, 0.75h focused verification, 0.75h review/integration repair. Wave 12; predecessor #2061. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T20:03:12.947Z",
+      "endedAt": "2026-10-20T20:05:07.913Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2048 --size S --estimate 3 --priority p0 --rank 12 --labels bug --reason Local source/specification scope: Bind native transition/actor/visit and confirmed effects; retain timing event IDs and subset digest independently of changing full-comment hashes; reject altered prior rows and synthetic legacy proof. Effort: 1.5h implementation, 0.75h focused verification, 0.75h review/integration repair. Wave 12; predecessor #2061. No historical cloud estimation tasks used.\n✓ Issue #2048 moved to: ready-for-plan\n✓ move #2048 refine→ready-for-plan complete\n  exit flush  : refine row closed (verified)\n  entry stamp : aitm-entered-ready-for-plan present (verified)\n  entry row   : ready-for-plan row opened (verified)\n  status      : Status == Ready-for-plan (verified)\n  sentinel    : aitm-move-complete state=ready-for-plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2048 promoted: refine → ready-for-plan (direct)\n  ↳ posted \"### 🛠 Refine estimate\" comment\n✓ #2048 refined: size=S, estimate=3h, priority=P0; moved refine → Ready for Planning\n"
+    }
+  ],
+  "otherCommands": [
+    {
+      "command": "node scripts/task-tracker/graphql-usage-launch.mjs gh issue edit 2048 --title 'Immutable transition receipts and historical event subsets'",
+      "startedAt": "2026-10-20T19:55:30.325Z",
+      "endedAt": "2026-10-20T19:55:34.105Z",
+      "exitCode": 0,
+      "output": "https://github.com/kburson/ai-task-manager/issues/2048\n"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "issue": 2066,
+  "source": "Actual native command results",
+  "commands": [
+    {
+      "command": "npx aitm block 2066 --by 2047,2073",
+      "startedAt": "2026-10-20T18:02:07.550Z",
+      "endedAt": "2026-10-20T18:02:41.749Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' block 2066 --by 2047,2073\n[task-tracker] ✓ #2066 blocked by #2047, #2073\n"
+    },
+    {
+      "command": "npx aitm start 2066 --role agent",
+      "startedAt": "2026-10-20T18:15:47.431Z",
+      "endedAt": "2026-10-20T18:16:19.097Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 2066 --role agent\n\n🚧 PICKUP DIRECTIVE DEFERRED — #2066 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #2066`.\n⚠ #2066 move-invariants indeterminate\n  board       : backlog\n  recorded    : backlog\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"backlog\"). Cannot auto-reconcile without fabricating provenance — reporting only.\nResumed #2066.\nDecomposition restriction for #2066: indeterminate; available: inspect, checkpoint, decomposition-prepare, authority-recover\n"
+    },
+    {
+      "command": "npx aitm explain 2066 --json",
+      "startedAt": "2026-10-20T18:16:24.855Z",
+      "endedAt": "2026-10-20T18:16:36.634Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2066 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2066,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm refine 2066 --size S --estimate 3.5 --priority p0 --rank 13 --labels bug --reason 'Local remaining scope after merged #2073: publish a frozen cache resource batch, revalidate full target equality, attempt each dirty resource once and verify exact outcomes/new IDs while preserving ownership, authorization and pending recovery. Reuse merged target-specific readers. Effort: 1.5h implementation, 1h refusal/read-back tests, 1h review/integration repair. Wave 13; predecessors #2047 and completed #2073. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T18:16:45.354Z",
+      "endedAt": "2026-10-20T18:17:02.530Z",
+      "exitCode": 1,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2066 --size S --estimate 3.5 --priority p0 --rank 13 --labels bug --reason Local remaining scope after merged #2073: publish a frozen cache resource batch, revalidate full target equality, attempt each dirty resource once and verify exact outcomes/new IDs while preserving ownership, authorization and pending recovery. Reuse merged target-specific readers. Effort: 1.5h implementation, 1h refusal/read-back tests, 1h review/integration repair. Wave 13; predecessors #2047 and completed #2073. No historical cloud estimation tasks used.\nrefine: estimate-publication:authority-unavailable:authority-conflict\n"
+    },
+    {
+      "command": "npx aitm log 2066",
+      "startedAt": "2026-10-20T18:19:16.770Z",
+      "endedAt": "2026-10-20T18:19:42.643Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' log 2066\nIssue #2066: 5 timing rows\n  Engaged: Unknown\n  Session: Unknown\n  Review: Unknown\n  Plan: Unknown\n  Known engagement lower bound: 363.882 seconds\n  Unavailable: open-actor-interval\n  Stage Time (per visit):\n    backlog#1: 11h 27m 04s\n    backlog#2: open\n  Stage Time (totals):\n    backlog: 11h 27m 04s\nAITM_TIMING_RESULT {\"schema\":\"aitm.timing-field-result/v1\",\"status\":\"incomplete\",\"reasons\":[\"open-actor-interval\"],\"knownEngagedSec\":363.882,\"values\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"secondsByKey\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"unknownFields\":[\"engagedTime\",\"sessionTime\",\"reviewTime\",\"planTime\"],\"issue\":2066,\"repository\":\"kburson/ai-task-manager\",\"sourceCommentId\":\"IC_kwDOSU6LgM8AAAABd1yH8g\"}\n  Start Time (repaired): 2026-10-20 12:55:29 -05:00\nFields updated on GitHub Projects board.\n"
+    },
+    {
+      "command": "npx aitm refine 2066 --size S --estimate 3.5 --priority p0 --rank 13 --labels bug --reason 'Local remaining scope after merged #2073: publish a frozen cache resource batch, revalidate full target equality, attempt each dirty resource once and verify exact outcomes/new IDs while preserving ownership, authorization and pending recovery. Reuse merged target-specific readers. Effort: 1.5h implementation, 1h refusal/read-back tests, 1h review/integration repair. Wave 13; predecessors #2047 and completed #2073. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T18:20:43.577Z",
+      "endedAt": "2026-10-20T18:27:15.288Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2066 --size S --estimate 3.5 --priority p0 --rank 13 --labels bug --reason Local remaining scope after merged #2073: publish a frozen cache resource batch, revalidate full target equality, attempt each dirty resource once and verify exact outcomes/new IDs while preserving ownership, authorization and pending recovery. Reuse merged target-specific readers. Effort: 1.5h implementation, 1h refusal/read-back tests, 1h review/integration repair. Wave 13; predecessors #2047 and completed #2073. No historical cloud estimation tasks used.\n✓ Issue #2066 moved to: refine\n✓ move #2066 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2066 promoted: backlog → refine (direct)\n✓ #2066 refined: size=S, estimate=3.5h, priority=P0; moved backlog → Refine\n"
+    },
+    {
+      "command": "npx aitm refine 2066 --size S --estimate 3.5 --priority p0 --rank 13 --labels bug --reason 'Local remaining scope after merged #2073: publish a frozen cache resource batch, revalidate full target equality, attempt each dirty resource once and verify exact outcomes/new IDs while preserving ownership, authorization and pending recovery. Reuse merged target-specific readers. Effort: 1.5h implementation, 1h refusal/read-back tests, 1h review/integration repair. Wave 13; predecessors #2047 and completed #2073. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T18:27:17.492Z",
+      "endedAt": "2026-10-20T18:28:57.883Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2066 --size S --estimate 3.5 --priority p0 --rank 13 --labels bug --reason Local remaining scope after merged #2073: publish a frozen cache resource batch, revalidate full target equality, attempt each dirty resource once and verify exact outcomes/new IDs while preserving ownership, authorization and pending recovery. Reuse merged target-specific readers. Effort: 1.5h implementation, 1h refusal/read-back tests, 1h review/integration repair. Wave 13; predecessors #2047 and completed #2073. No historical cloud estimation tasks used.\n✓ Issue #2066 moved to: ready-for-plan\n✓ move #2066 refine→ready-for-plan complete\n  exit flush  : refine row closed (verified)\n  entry stamp : aitm-entered-ready-for-plan present (verified)\n  entry row   : ready-for-plan row opened (verified)\n  status      : Status == Ready-for-plan (verified)\n  sentinel    : aitm-move-complete state=ready-for-plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2066 promoted: refine → ready-for-plan (direct)\n  ↳ posted \"### 🛠 Refine estimate\" comment\n✓ #2066 refined: size=S, estimate=3.5h, priority=P0; moved refine → Ready for Planning\n"
+    }
+  ],
+  "diagnosis": {
+    "availability": {
+      "status": "incomplete",
+      "reasons": [
+        "authority-conflict"
+      ]
+    },
+    "bodyFields": {
+      "ok": false,
+      "reason": "missing"
+    },
+    "project": {
+      "projectId": "PVT_kwHOABCEY84BXill",
+      "projectItemId": "PVTI_lAHOABCEY84BXillzhCCKQo",
+      "estimate": null,
+      "size": null,
+      "children": []
+    },
+    "publication": null
+  },
+  "recovery": "Missing cache initialized through native log 2066; no invariant override, estimate change, test proof or approval fabrication. Subsequent native Refine entry and exit succeeded.",
+  "interruptedExtractionWrite": {
+    "originalStdout": "Unavailable after requested pause; operation was not replayed",
+    "cloudReadBack": {
+      "bodyVersion": 5,
+      "extractionPresent": true,
+      "recordedState": "backlog"
+    }
+  }
+}
