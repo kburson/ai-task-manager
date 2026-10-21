@@ -68,7 +68,8 @@
       "filename": [
         "docs/superpowers/reviews/2039/2026-10-21-2057-reviewer-r1-review.md",
         "docs/superpowers/reviews/2039/2026-10-21-2057-r1-author-disposition.md",
-        "cspell.json"
+        "cspell.json",
+        "docs/superpowers/reviews/2039/2026-10-21-2057-reviewer-r2-review.md"
       ],
       "ignoreWords": ["dafb", "nlink", "nonmatching", "hardlinks", "unacquired"]
     }
