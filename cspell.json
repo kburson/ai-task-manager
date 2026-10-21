@@ -48,6 +48,13 @@
         "cspell.json"
       ],
       "ignoreWords": ["reauthentication", "reacceptance"]
+    },
+    {
+      "filename": [
+        "docs/superpowers/reviews/2039/2026-10-21-2042-reviewer-r3-review.md",
+        "cspell.json"
+      ],
+      "ignoreWords": ["tamperproof"]
     }
   ],
   "ignorePaths": [

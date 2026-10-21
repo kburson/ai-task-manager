@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Acceptance Criteria\n\n- [ ] Deliver \"### Task 7: Singleton writer claim validation and native locks\" exactly as specified in the pinned source plan. <!-- aitm-verified vc-list=\"vc:1\" -->\n\n## Verification Commands\n\n- [ ] `node --test scripts/tests/unit/task-tracker/lib/story-cache/writer-claim.test.mjs` <!-- id=1 -->\n- [ ] `npm test` <!-- id=2 -->\n- [ ] `npm run test:slow` <!-- id=3 -->\n- [ ] `npm run lint` <!-- id=4 -->\n- [ ] `npm run format:check` <!-- id=5 -->\n- [ ] `git log --oneline -1` <!-- id=6 -->\n\n",
+  "replacement": "## Acceptance Criteria\n\n- [ ] Deliver \"### Task 7: Singleton writer claim validation and native locks\" exactly as specified in the pinned source plan. <!-- aitm-verified vc-list=\"vc:1,vc:7\" -->\n\n## Verification Commands\n\n- [ ] `node --test scripts/tests/unit/task-tracker/lib/story-cache/writer-claim.test.mjs` <!-- id=1 -->\n- [ ] `npm test` <!-- id=2 -->\n- [ ] `npm run test:slow` <!-- id=3 -->\n- [ ] `npm run lint` <!-- id=4 -->\n- [ ] `npm run format:check` <!-- id=5 -->\n- [ ] `git log --oneline -1` <!-- id=6 -->\n- [ ] `node --test scripts/tests/integration/task-tracker/lib/story-cache/writer-claim.integration.test.mjs` <!-- id=7 -->\n\n",
+  "expectedVersion": 38
+}
