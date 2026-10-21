@@ -10,7 +10,7 @@ import {
   assertRuntimeStoragePath,
 } from '../runtime-storage.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
-import { validateLocalEvidence } from './local-evidence.mjs';
+import { validateLocalEvidence, LOCAL_EVIDENCE_FILE_MAX_BYTES } from './local-evidence.mjs';
 const stores = new WeakMap();
 const uid = process.getuid?.();
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -87,7 +87,11 @@ function context(store) {
   walk(record);
   return record;
 }
-function privateRead(io, file, { sync = false, max = 4 * 1024 * 1024, links = 1 } = {}) {
+function privateRead(
+  io,
+  file,
+  { sync = false, max = LOCAL_EVIDENCE_FILE_MAX_BYTES, links = 1 } = {}
+) {
   const safe = (stat) =>
     stat.isFile() &&
     stat.nlink === links &&
@@ -305,11 +309,22 @@ export function openLocalEvidenceStore({ projectRoot, host, repository, fs: io =
     }
     directory(io, base, { create: true, privateMode: true });
     syncDirectory(io, localRoot);
-    const existing = io.existsSync(location);
-    directory(io, location, { create: !existing, privateMode: true });
+    directory(io, location, { create: true, privateMode: true });
     syncDirectory(io, base);
-    for (const name of ['payloads', 'plans', 'records', 'manifests']) {
-      directory(io, path.join(location, name), { create: !existing, privateMode: true });
+    const children = ['payloads', 'plans', 'records', 'manifests'];
+    const present = io.readdirSync(location);
+    if (children.some((name) => !present.includes(name))) {
+      // Only an empty, private partial initialization is recoverable. Retained
+      // bytes, unknown entries and unsafe directories require reconciliation.
+      for (const name of present) {
+        if (!children.includes(name)) fail('initialization');
+        const child = path.join(location, name);
+        directory(io, child, { privateMode: true });
+        if (io.readdirSync(child).length) fail('initialization');
+      }
+    }
+    for (const name of children) {
+      directory(io, path.join(location, name), { create: true, privateMode: true });
       syncDirectory(io, location);
     }
     const record = {

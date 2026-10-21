@@ -55,6 +55,13 @@
         "cspell.json"
       ],
       "ignoreWords": ["tamperproof"]
+    },
+    {
+      "filename": [
+        "docs/superpowers/reviews/2039/2026-10-21-2045-reviewer-r1-review.md",
+        "cspell.json"
+      ],
+      "ignoreWords": ["multiprocess"]
     }
   ],
   "ignorePaths": [

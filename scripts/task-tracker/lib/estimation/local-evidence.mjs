@@ -14,6 +14,7 @@ import { assertNoCredentialValues } from '../github-records/record-secret-policy
 import { validateEstimationRubric } from './rubric-record.mjs';
 import { validateEstimationOutcome, isIncompleteOutcome } from './outcome-record.mjs';
 export { importLocalEvidence } from './local-evidence-store.mjs';
+export const LOCAL_EVIDENCE_FILE_MAX_BYTES = 4 * 1024 * 1024;
 const id = (v) => typeof v === 'string' && /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(v);
 const digest = (v) => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
 const token = (v) =>
@@ -332,8 +333,11 @@ export function validateLocalEvidence(bundle) {
   try {
     exact(bundle, ['manifest', 'payloads', 'planBytes']);
     if (!(bundle.payloads instanceof Map)) fail('payload-map');
-    const manifest = JSON.parse(canonicalRecordJson(bundle.manifest));
+    const manifestBytes = Buffer.from(canonicalRecordJson(bundle.manifest));
+    if (manifestBytes.length > LOCAL_EVIDENCE_FILE_MAX_BYTES) fail('manifest-size');
+    const manifest = JSON.parse(manifestBytes.toString('utf8'));
     const planBytes = copyBytes(bundle.planBytes);
+    if (planBytes.length > LOCAL_EVIDENCE_FILE_MAX_BYTES) fail('plan-size');
     validateManifest(manifest, planBytes);
     const payloads = new Map();
     const records = [];
@@ -362,7 +366,7 @@ export function validateLocalEvidence(bundle) {
     }
     return {
       manifest: freeze(manifest),
-      manifestDigest: hash(Buffer.from(canonicalRecordJson(manifest))),
+      manifestDigest: hash(manifestBytes),
       planBytes,
       payloads,
       records,
