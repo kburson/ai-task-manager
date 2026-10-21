@@ -489,10 +489,12 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     4 + // #2096: immutable subject, native source execution and stamp declaration validation.
     1 + // #2040: exactly one native content-observation runtime module.
     1 + // #2052: exactly one bounded current-story snapshot reader.
-    1; // #2041: exactly one cache manifest/generation validator.
+    1 + // #2041: exactly one cache manifest/generation validator.
+    1; // #2053: exactly one complete snapshot vector comparator.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-compare.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',
