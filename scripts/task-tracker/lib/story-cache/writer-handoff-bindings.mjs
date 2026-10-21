@@ -104,6 +104,14 @@ export function assertStoryBindingSettled({ projectRoot, issue, sessionId, repos
     if (exists(path.join(projectRoot, '.tmp', 'gh'))) handoffFail('binding-git-unavailable');
     return;
   }
+  const runtime = resolveRuntimeRoot({ cwd: projectRoot, env: {} });
+  if (runtime.projectRoot !== projectRoot) handoffFail('binding-project-root');
+  const shared = path.join(runtime.worktreeIdentity.commonDir, 'aitm');
+  const hasEvidence =
+    exists(path.join(projectRoot, '.tmp', 'gh')) ||
+    exists(path.join(shared, 'story-writers.identity.json')) ||
+    exists(path.join(shared, 'story-writers'));
+  if (!hasEvidence) return;
   const config = configPath(projectRoot);
   if (!exists(config)) {
     // Without a repository scope, any retained writer registry or cache is uncertain.
