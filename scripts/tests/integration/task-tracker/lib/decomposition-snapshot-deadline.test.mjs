@@ -246,3 +246,49 @@ test('hung transport still refuses once without retries or publication', async (
   );
   assert.equal(dispatches, 1);
 });
+
+// Break caught: resetting the remote allowance for each individually bounded read.
+// This characterizes the unchanged aggregate limit; it does not introduce a new timeout policy.
+test('sequential reads exhaust one shared remote allowance before another dispatch', async (t) => {
+  const { performance } = await import('node:perf_hooks');
+  const { cwd } = await repository(t);
+  const sourceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
+  const fixture = await makeTrafficFixture({
+    sourceRoot,
+    fixtureId: 'two-page-comments-leaf',
+    projectDir: cwd,
+  });
+  let elapsed = 0;
+  const dispatched = [];
+  t.mock.method(performance, 'now', () => elapsed);
+  try {
+    await assert.rejects(
+      collectHookDecompositionSnapshot({
+        issue: 2073,
+        cfg: fixture.cfg,
+        projectDir: cwd,
+        deps: {
+          graphql: async (request) => {
+            dispatched.push(request.timeout);
+            const response = await fixture.provider.graphql(request);
+            // Each response consumes three seconds, less than the original five-second allowance.
+            // Two sequential reads consume six seconds, exceeding the shared allowance.
+            elapsed += 3000;
+            return response;
+          },
+        },
+      }),
+      /remote-deadline/
+    );
+    assert.equal(
+      dispatched.length,
+      2,
+      'the expired observation must not retry or dispatch a fence'
+    );
+    assert.ok(dispatched[1] < dispatched[0], 'later reads receive only the remaining allowance');
+    assert.equal(fixture.provider.ledger.length, 2);
+    assert.ok(fixture.provider.ledger.every((entry) => !entry.family.includes('write')));
+  } finally {
+    fixture.close();
+  }
+});

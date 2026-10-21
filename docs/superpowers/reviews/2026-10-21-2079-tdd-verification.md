@@ -23,3 +23,13 @@ Targeted ESLint for both production files and the new test passed. Prettier left
 ## Limits and pending work
 
 These are observed focused results, not full-suite completion, code-review acceptance, native delivery, or proof that the live #2039 operation now fits its deadline. Independent exact-commit code review, ordinary repository delivery checks and a single captured native #2039 confirmation remain required. No historical-cloud estimation lookup, capture suppression, raw-record cleanup, timeout increase or admission waiver was used.
+
+## Final acceptance characterization after orchestration collateral commit
+
+The separate #2039 governance/refinement/quota collateral was committed as 9dc824cc9, restoring a clean verification boundary. Native #2079 Plan Metadata was then updated at body version 45 to reference the committed follow-up plan and both code reviews, while explicitly preserving the original approval history rather than claiming a new native approval.
+
+Added one offline sequential-read characterization to the integration deadline file. It exercises the real collector with the complete existing two-page-comments fixture and a monotonic fake clock: each response consumes 3 seconds, two sequential responses consume 6 seconds against the unchanged shared 5-second remote allowance, and the collector refuses remote-deadline after exactly two requests without a fence, retry or write. Later requests receive a smaller remaining timeout. Resetting the allowance per request would break the refusal assertion. The existing real hung-transport test separately exercises the real finite five-second timer.
+
+This characterizes a pre-existing unchanged safeguard and passed on its first run; it is not represented as a newly observed production RED/GREEN fix. The production fixes' actual red/green evidence remains above and in the retained follow-up report. No production deadline, permission, transport fallback or authority cache changed for this test.
+
+The exact three-file acceptance verifier passed 46/46, including malformed pagination, mixed identities, body/owner/child drift, captured offline epic authority, unedited leaf traffic, hung transport, aggregate exhaustion and 32-child local parsing/isolation. Targeted ESLint, Prettier and git diff checks passed. Full native exact-head Test/Review/delivery remain pending; the earlier complete suites are not substituted for that receipt.
