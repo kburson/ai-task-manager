@@ -495,7 +495,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2044: exactly one pure timing-event merge module.
     1 + // #2055: exactly one pure unpublished-cache retention policy.
     1 + // #2042: exactly one persistent singleton story-writer claim module.
-    1; // #2056: exactly one shared writer-registry implementation, existing claim exports retained.
+    1 + // #2056: exactly one shared writer-registry implementation, existing claim exports retained.
+    2; // #2045: exactly two durable local estimation evidence modules.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
@@ -505,6 +506,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/retention.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/writer-claim.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/writer-registry.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence-store.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',
