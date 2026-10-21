@@ -1,0 +1,12 @@
+✔ doctor accepts only the empty and single JSON argument forms (1.030542ms)
+✔ JSON mode emits one document and maps unhealthy to exit 1 (0.20375ms)
+✔ healthy report exits 0 and renderers preserve row identity and status (0.176625ms)
+✔ usage failures exit 2 without a health document and help exits 0 (0.191083ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.712666

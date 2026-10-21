@@ -1,0 +1,20 @@
+✔ pins all eight immutable #1558 context limits (0.78225ms)
+✔ projects the same complete ordered lifecycle for both adapters without replacing frozen evidence (18.178916ms)
+✔ classifies expanded known responses as operational output (2.300375ms)
+✔ committed paired lifecycle report regenerates from exact captured and frozen bytes (692.558083ms)
+✔ v2 heavy presentation retains typed operational dependency values (885.40975ms)
+✔ accounts for every raw event byte with disjoint categories and scoped rounding (0.1565ms)
+✔ calibrates named lifecycle boundaries from the preserved public CLI capture (327.496875ms)
+✔ committed tokenizer calibration regenerates from the exact source capture (272.599375ms)
+✔ calibrates raw streams with a named real encoding and keeps proxy separate (324.047584ms)
+✔ refuses missing or double counted event traffic (0.335166ms)
+✔ requires identical scenario and authority identities on both sides (0.330916ms)
+✔ does not pass the frozen 14-scenario baseline against the 24-event recertification (2.134792ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2537.757458

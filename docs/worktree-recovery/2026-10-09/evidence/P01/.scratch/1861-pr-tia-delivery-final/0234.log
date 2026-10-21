@@ -1,0 +1,17 @@
+✔ status reports held:false when no lock exists (72.834084ms)
+✔ acquire writes a lock; second acquire refuses while held (190.427667ms)
+✔ release removes the lock and is idempotent (202.786ms)
+✔ acquire replaces an expired lock (134.920166ms)
+✔ status treats a corrupt lock file as no lock (67.327ms)
+✔ status reports expired:true for a stale lock (66.075541ms)
+✔ acquire without an epic fails with usage (65.947166ms)
+✔ invalid --ttl-hours fails (62.326708ms)
+✔ unknown verb prints usage and fails (63.780625ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 930.434209

@@ -1,0 +1,14 @@
+  ok  SKILL_DETAIL_FILES includes codex-adapter entry
+  ok  SKILL_DETAIL_FILES includes grok-adapter entry
+  ok  SKILL_DETAIL_FILES has 5 entries
+  ok  #939: deliver JIT rule carries its exact load sentinel
+  ok  #1381: incident-ledger JIT rule carries its exact load sentinel
+  ok  SKILL_DETAIL_FILES entry ids are unique
+  ok  SKILL_DETAIL_FILES includes adapter entry for claude
+  ok  stampSkillVersion inserts marker into file without one
+  ok  stampSkillVersion replaces existing marker
+  ok  stampSkillVersion is no-op when version unchanged
+  ok  stampSkillVersion returns missing when file absent
+  ok  stampAllSkillVersions stamps the installed Grok adapter
+
+All 12 skill-version-stamp tests passed.

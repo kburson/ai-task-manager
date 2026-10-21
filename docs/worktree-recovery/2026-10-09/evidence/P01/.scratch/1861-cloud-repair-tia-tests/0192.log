@@ -1,0 +1,15 @@
+✔ completed waived transition auto-converges after prospective exception revocation (66.333583ms)
+✔ modern transition authority does not auto-converge in human mode (14.877042ms)
+✔ modern transition authority remains durable across authenticated operators (45.1ms)
+✔ modern transition authority retains all legacy planning evidence gates (34.083917ms)
+✔ modern transition authority refuses stale scope and orphan records (45.631792ms)
+✔ modern transition authority requires authenticated immutable pre-transition provenance (64.032709ms)
+✔ malformed authority wrapper colliding with a completed transition fails closed (31.822583ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 332.078458

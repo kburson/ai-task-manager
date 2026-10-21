@@ -1,0 +1,20 @@
+✔ spawn timeout reports command arguments and both captured streams (2005.810417ms)
+✔ spawn buffer overflow reports command arguments and both captured streams (45.104291ms)
+✔ blocked script detection rejects npm 12 multiline postinstall (0.574833ms)
+✔ blocked script detection rejects multiline without npm log prefixes (0.144375ms)
+✔ blocked script detection rejects same-line warning (0.095042ms)
+✔ blocked script detection permits unrelated package (0.06725ms)
+✔ blocked script detection permits similar package name (0.050708ms)
+✔ blocked script detection permits AITM mentioned by another script (0.042666ms)
+✔ blocked script detection permits blocked text inside another script (0.0585ms)
+✔ blocked script detection permits AITM outside warning block (0.101ms)
+✔ blocked script detection permits no blocked scripts (0.051583ms)
+✔ restrictive downstream tarball install runs CLI and generated provider hooks without an alias (12337.523834ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14394.145333

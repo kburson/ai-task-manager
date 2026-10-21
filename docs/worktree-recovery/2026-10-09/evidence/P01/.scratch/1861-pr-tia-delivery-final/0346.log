@@ -1,0 +1,11 @@
+✔ published metadata requires Node.js 24 or newer (2.712125ms)
+✔ active CI proves the Node 24 floor and a later supported runtime (1.211583ms)
+✔ hosted compatibility runs every pack consumer under npm 11 and npm 12 (0.304334ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.600333

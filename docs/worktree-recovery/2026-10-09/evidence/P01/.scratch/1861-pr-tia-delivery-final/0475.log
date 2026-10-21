@@ -1,0 +1,20 @@
+✔ commitsOnTrunkGate: attributed commit exists on trunk → ok (86.055583ms)
+✔ commitsOnTrunkGate: no attributed commit on trunk → refuse with message-based code (47.154458ms)
+✔ commitsOnTrunkGate: recorded SHA unreachable but token on trunk → ok (no deadlock) (47.546708ms)
+✔ commitsOnTrunkGate: no trail comment → graceful skip (0.151125ms)
+✔ commitsOnTrunkGate: empty marker → graceful skip (0.111917ms)
+✔ commitsOnTrunkGate: trunk ref unresolved → refuse with helpful message (46.768834ms)
+✔ commitsOnTrunkGate: attribution lookup failure → surfaced blocker (47.564917ms)
+✔ commitsOnTrunkGate: cfg.trunkRef takes precedence, attribution scoped to it (50.202875ms)
+✔ commitsOnTrunkGate (#927): fetches before it resolves, then attributes against origin/trunk (0.228667ms)
+✔ commitsOnTrunkGate (#927): a fetch failure is non-fatal — still resolves and closes (0.188916ms)
+✔ runCloseGates: no attributed commit on trunk composes into blockers (5.195458ms)
+✔ runCloseGates: attributed commit on trunk → trunk gate passes, full gate passes (3.511292ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 339.1375

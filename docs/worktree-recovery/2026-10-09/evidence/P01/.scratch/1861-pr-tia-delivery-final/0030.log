@@ -1,0 +1,18 @@
+✔ layout audit rejects a discovered test outside the canonical lane tree (220.778708ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (171.700875ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (132.068709ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (223.677584ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (3.314625ms)
+✔ current test-tree baseline is well formed (1.679542ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.3525ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.348208ms)
+✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (4.624292ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (9.393917ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 773.212375

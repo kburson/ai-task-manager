@@ -1,0 +1,4 @@
+PASS: dry-run shows repaired startTime from earliest timing row
+PASS: live run repairs startTime and routes body write through mutateIssueBody
+PASS: no repair when startTime already present in issue body DB
+All log-issue-time tests passed.

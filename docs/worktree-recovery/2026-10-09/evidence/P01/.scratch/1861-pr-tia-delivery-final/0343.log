@@ -1,0 +1,12 @@
+✔ legacy on-deck target and --from tokens canonicalize with a deterministic warning (0.953084ms)
+✔ historical last-known-state values read as R4P and writers stay canonical (1.634792ms)
+✔ R4P enter descriptor resolves to the ready-for-plan:started event (0.137375ms)
+✔ move-state R4P enter renders a ready-for-plan:started timing row (13.018ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19.530708

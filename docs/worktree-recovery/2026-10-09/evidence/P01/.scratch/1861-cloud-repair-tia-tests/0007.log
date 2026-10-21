@@ -1,0 +1,20 @@
+✔ action capture exposes one stable schema identifier (0.51825ms)
+✔ classifies governed issue mutation families (0.506833ms)
+✔ classifies project, GraphQL, and REST mutations (0.202167ms)
+✔ classifies GitHub reads without inventing a mutation kind (0.114875ms)
+✔ enablement and issue storage are anchored in the main worktree (26.238959ms)
+✔ writes an ordered intent before a separate outcome without changing exact safe bytes (17.273167ms)
+✔ stores exact request files alongside argv and stdin metadata (26.725167ms)
+✔ keeps hashes and sizes but omits credential-bearing request and response bytes (87.599ms)
+✔ isolates issues and repositories while allocating stable unique sequences (21.774417ms)
+✔ prepares a shim environment only for an enabled active issue (61.654959ms)
+✔ operator control enables, reports, summarizes, and disables the active issue corpus (51.850209ms)
+✔ summarizes complete and incomplete actions, serialized bytes, payload bytes, and largest action (29.449459ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 331.685959

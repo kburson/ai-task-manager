@@ -1,0 +1,11 @@
+✔ gateCodeComplete: a ticked non-demonstrable AC raises no code-complete-ac-unverified (2.413416ms)
+✔ gateCodeComplete: an UNticked non-demonstrable AC still raises code-complete-ac-unticked (0.447125ms)
+✔ gateCodeComplete: a ticked demonstrable AC with no verifier still raises code-complete-ac-unverified (0.505125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.989834

@@ -1,0 +1,20 @@
+✔ throws when target is missing (0.741292ms)
+✔ StateRecordingFailedError carries issueNumber/target/cause and message (0.138916ms)
+✔ legacy path: noop when body === bodyBefore (no write attempted) (0.396375ms)
+✔ legacy path: success on first attempt (no warn, no audit) (0.115125ms)
+✔ legacy path: first attempt throws, retry succeeds (+warn, no audit) (0.225167ms)
+✔ legacy path: both attempts throw → warn + audit comment posted (auditPosted:true) (0.118292ms)
+✔ legacy path: both attempts throw AND audit-post throws → auditPosted:false (0.126625ms)
+✔ findRecordingFailureFromComments: non-array input returns null (0.089791ms)
+✔ findRecordingFailureFromComments: no marker → null; skips missing/invalid dates (0.151958ms)
+✔ findRecordingFailureFromComments: returns most-recent match with parsed target (0.328917ms)
+✔ findRecordingFailureFromComments: sinceMs filters out older matches (0.061458ms)
+✔ findRecordingFailureFromComments: match with no parseable target yields target:null (0.08575ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.632833

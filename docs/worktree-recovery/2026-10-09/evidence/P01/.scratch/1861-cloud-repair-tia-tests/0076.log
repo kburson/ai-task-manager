@@ -1,0 +1,14 @@
+▶ buildPlanMetadataBackfill (#488)
+  ✔ skips a body with no Plan Metadata section (0.974875ms)
+  ✔ skips a body whose section is already fully bold (0.418541ms)
+  ✔ heals an unbold section and reports the changed labels (0.329333ms)
+  ✔ is idempotent — healing the healed body is a skip (0.179625ms)
+✔ buildPlanMetadataBackfill (#488) (2.623917ms)
+ℹ tests 4
+ℹ suites 1
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.171916
