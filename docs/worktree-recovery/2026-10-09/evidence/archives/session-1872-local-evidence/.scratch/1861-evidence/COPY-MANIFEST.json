@@ -1,0 +1,311 @@
+{
+  "schema": "manual-evidence-copy/v1",
+  "copiedAt": "2026-10-04T06:58:45.460Z",
+  "sourceWorkspace": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager",
+  "sourceHead": "bdb21d38f038583686bb1589d39f406bf11e2745",
+  "destination": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/1861-evidence",
+  "sourceFiles": 49,
+  "verifiedMarkdownLinks": 52,
+  "verifiedIndexedSubsets": 39,
+  "privateRawOutputsCopied": false,
+  "files": [
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/01-task2-recovery/other-failures-01.json",
+      "bytes": 38440,
+      "sha256": "91a2aa1306260706760254be8e38c1d968479b0ff3fae52cf84e98297c39ff68"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-01.json",
+      "destination": "1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-01.json",
+      "bytes": 81077,
+      "sha256": "191c64c9a1e71509ea56adcad73e5f21b0761745d662bf8724bbd9d20883a1e1"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-02.json",
+      "destination": "1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-02.json",
+      "bytes": 80830,
+      "sha256": "e9aeaf12c030eafc90e961703990557abe7a5a70ce2fd9c573332d78b98dcf27"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-03.json",
+      "destination": "1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-03.json",
+      "bytes": 80867,
+      "sha256": "e60dbc1f24b79af2086b63433a872751b0ccd14cb57bdc92bdaa25facc319f37"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-04.json",
+      "destination": "1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-04.json",
+      "bytes": 11175,
+      "sha256": "a8abb5db43989cac0bb14df33f173e42ceb182f7cefda48296dc2be7955ef857"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/02-linked-first/other-failures-01.json",
+      "bytes": 40739,
+      "sha256": "4a58db6d291be4d2cb2893ee17bed62597ad4f214c32a7f8db903346b1b7e878"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-01.json",
+      "destination": "1861-empty-runtime-evidence/02-linked-first/recorded-eperm-01.json",
+      "bytes": 81083,
+      "sha256": "dbbb8e88a001132ab4f4a8ce5237fd656495528d07eb85d8d32f41d547c00766"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-02.json",
+      "destination": "1861-empty-runtime-evidence/02-linked-first/recorded-eperm-02.json",
+      "bytes": 80851,
+      "sha256": "1a9af80b73c1adc958b0d632732b4194ae9bfa54fe7d78e5aa7d1f3654236cbc"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-03.json",
+      "destination": "1861-empty-runtime-evidence/02-linked-first/recorded-eperm-03.json",
+      "bytes": 80854,
+      "sha256": "b945d8d2291ffeec79d10b6c14854e0461999caff0f714a01777a782a1673c05"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-04.json",
+      "destination": "1861-empty-runtime-evidence/02-linked-first/recorded-eperm-04.json",
+      "bytes": 11188,
+      "sha256": "0aee7d94cd61b472aeb605ab82f9d7ba13afd6ac3eb4c0d3161a59a7546df3c1"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/03-linked-status-first/other-failures-01.json",
+      "bytes": 40756,
+      "sha256": "3e971a8085228fe8bd33f0ea1f906106d24eff71b1900872729ceb9c6dd77308"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-01.json",
+      "destination": "1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-01.json",
+      "bytes": 81065,
+      "sha256": "5dec5334419759e685c105dc5f464f5ab8b28d2efdfee4e30d8d39c5304d7f72"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-02.json",
+      "destination": "1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-02.json",
+      "bytes": 80865,
+      "sha256": "91b112e2b08760c4b1498b2da5841694f62af3eaa53e857874b001b206029b11"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-03.json",
+      "destination": "1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-03.json",
+      "bytes": 80879,
+      "sha256": "f7ff49a5e60e47131b1564512026d1655c8f26806e95d7644f37a0c97f0cdd6f"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-04.json",
+      "destination": "1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-04.json",
+      "bytes": 11186,
+      "sha256": "0c383b55b41953defaa20b6e637f602d21b0dd9430e8fc1f828e099f18dd214d"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/04-bootstrap-first/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/04-bootstrap-first/other-failures-01.json",
+      "bytes": 13682,
+      "sha256": "c28d83cad0686a5f4e95f0c6100f6202b384ca2aad1f0ff55a7e03026718194b"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-01.json",
+      "destination": "1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-01.json",
+      "bytes": 81004,
+      "sha256": "4c14f495c0fe99812060dd8ee1e9a36b8442dfdc522299a073bb4b210519ccec"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-02.json",
+      "destination": "1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-02.json",
+      "bytes": 62749,
+      "sha256": "bd5789817c2638f480f10431e447db46b986ee43a8d220b843b9e91eeed3b10b"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/05-bootstrap-next/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/05-bootstrap-next/other-failures-01.json",
+      "bytes": 13243,
+      "sha256": "316a2bd2797ecb89687d8d3213928e77bf73cb633a64d7310582448c59519940"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-01.json",
+      "destination": "1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-01.json",
+      "bytes": 80713,
+      "sha256": "51fea1a01f1ddbb045ae61eb9be8c6846da64960b0b8dd5918e032db0a62fec0"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-02.json",
+      "destination": "1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-02.json",
+      "bytes": 63068,
+      "sha256": "4fe32c98de25a33e1c28b0089c2812ff4bdfa6c8f5448cf14bc5d172554f4cf8"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/06-compatibility-red/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/06-compatibility-red/other-failures-01.json",
+      "bytes": 3045,
+      "sha256": "2aaf5891424bb1fb97b92fff29f8f614852f2035435aea82b5034e054348bd8f"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/07-compatibility-retry-red/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/07-compatibility-retry-red/other-failures-01.json",
+      "bytes": 618,
+      "sha256": "10ac35c9cf1f1f8ace63605504938b68d17e068c11edbf14dbc58745d28f5a37"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/09-compatibility-successor-red/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/09-compatibility-successor-red/other-failures-01.json",
+      "bytes": 543,
+      "sha256": "018d36a9c770eb6a418faee4f705b60b8b4397419a20a49e892ce6f301f1aa33"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/12-null-control-red/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/12-null-control-red/other-failures-01.json",
+      "bytes": 626,
+      "sha256": "93dfcd89aa3e0228ecb503eb2b2ae30082b7065e50e6af6c9b00bcc252133633"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/13-task5-first/other-failures-01.json",
+      "bytes": 40835,
+      "sha256": "92d868045760d389c835c6a49b9e21a33224b742cf7f7eb6599a3df028710789"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-01.json",
+      "destination": "1861-empty-runtime-evidence/13-task5-first/recorded-eperm-01.json",
+      "bytes": 81099,
+      "sha256": "9cc7cf9c5673048e6ffa2df92b0822c4f132a601a24eeea59d298384436f2a78"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-02.json",
+      "destination": "1861-empty-runtime-evidence/13-task5-first/recorded-eperm-02.json",
+      "bytes": 80887,
+      "sha256": "3427fbc07b8cf9d6d98dfcf6825b5e81a18ffbb286632eeb78abb2002838aec1"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-03.json",
+      "destination": "1861-empty-runtime-evidence/13-task5-first/recorded-eperm-03.json",
+      "bytes": 80868,
+      "sha256": "6b2a71a4ed5ed0e622f1746cd8c8aed411c8f84b1b8015a74eddcfeaeaa5a7cb"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-04.json",
+      "destination": "1861-empty-runtime-evidence/13-task5-first/recorded-eperm-04.json",
+      "bytes": 11184,
+      "sha256": "03bd2abb08c6d931e9acca65ed9ba45b4a2b0acc5f9eb3281adb0d900832dd4d"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/14-final-cases/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/14-final-cases/other-failures-01.json",
+      "bytes": 637,
+      "sha256": "a42705efdd8c3bf1fcd5f1c72ba4c9932b5b9390d0a84ba86d4d9b4fee1cf8c5"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/15-final-cases-observed/other-failures-01.json",
+      "destination": "1861-empty-runtime-evidence/15-final-cases-observed/other-failures-01.json",
+      "bytes": 668,
+      "sha256": "55475dd40a716b218c96223b26b13cd21a45ca2b4a3076738b316d222964d190"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+      "destination": "1861-empty-runtime-evidence/README.md",
+      "bytes": 12199,
+      "sha256": "497a667b00e0c7334d40bb2ce526fac8ea9638e037c33d2e3ed1971ea40a849f"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/final-review-fix.json",
+      "destination": "1861-empty-runtime-evidence/current-runs/final-review-fix.json",
+      "bytes": 63484,
+      "sha256": "f2df5a33e697b7a7424eec4d26c466ad006403f233170f5bc784a63f93bdf31e"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/node-label-census.json",
+      "destination": "1861-empty-runtime-evidence/current-runs/node-label-census.json",
+      "bytes": 4590,
+      "sha256": "f96ac8724e7aeed89bc15067128ab12c1b384bdb3f8c5e6c822462cc0beecb72"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/node24-mainthread-census.json",
+      "destination": "1861-empty-runtime-evidence/current-runs/node24-mainthread-census.json",
+      "bytes": 5175,
+      "sha256": "13b48c8545f207c988f49525a88243dd6da77554552feaac4b5fec22a3265c07"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/replacement-fixture.json",
+      "destination": "1861-empty-runtime-evidence/current-runs/replacement-fixture.json",
+      "bytes": 35820,
+      "sha256": "41d8ae5268683a44d5846bfb62fd7273862d1ee73657f3f2ee71fe3b86eed0fa"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/current-runs/review-report-links.json",
+      "destination": "1861-empty-runtime-evidence/current-runs/review-report-links.json",
+      "bytes": 7014,
+      "sha256": "2363aab0e95edd8ec7d43a9704ce73470635ea8501206e8b635777e98f398dbb"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/01-linked-history-first.json",
+      "destination": "1861-empty-runtime-evidence/supplemental/01-linked-history-first.json",
+      "bytes": 470,
+      "sha256": "d7cf1855dc5e07aa735774dc01eaf253b0733d0607b74ea870b807802750ea83"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/02-linked-status-red.json",
+      "destination": "1861-empty-runtime-evidence/supplemental/02-linked-status-red.json",
+      "bytes": 499,
+      "sha256": "9ba724ea3b93e91fb0c1ccc0b7bb88dbc2306c4e85a5af44a8e7464c9fd82201"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/03-admission-table.json",
+      "destination": "1861-empty-runtime-evidence/supplemental/03-admission-table.json",
+      "bytes": 411,
+      "sha256": "f0d5e5c3691e5c2b8ed4f146823b4d39eed6d191b2fe28264cd5fd3be27eb3fb"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/04-admission-table-fixed.json",
+      "destination": "1861-empty-runtime-evidence/supplemental/04-admission-table-fixed.json",
+      "bytes": 448,
+      "sha256": "b3b6b84b7ad18e1a67053212182ec4886287338575102955160c3f40948aa9b0"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/05-concurrency-incomplete.json",
+      "destination": "1861-empty-runtime-evidence/supplemental/05-concurrency-incomplete.json",
+      "bytes": 753,
+      "sha256": "539d4fa20768b3586cb39efc2c2b6ced93b1192689dd67d2c0e92242ab7b2960"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/06-genuine-host-refusal.json",
+      "destination": "1861-empty-runtime-evidence/supplemental/06-genuine-host-refusal.json",
+      "bytes": 610,
+      "sha256": "a38b19af47e8664d073e0dcc60681dc1fd467a2e1dbfbb31beafa6539de30604"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/07-cloud-ad03-red.json",
+      "destination": "1861-empty-runtime-evidence/supplemental/07-cloud-ad03-red.json",
+      "bytes": 934,
+      "sha256": "13d90c0050c496c63f03afa4874c54a52d5995454c0f9d35e1953c5c8f9d0ef9"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-final-code-review/README.md",
+      "destination": "1861-final-code-review/README.md",
+      "bytes": 477,
+      "sha256": "e0cbc171356807e41699046468e7fb0c5cb1fbfe88d7085509df13f11d76a12f"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-final-code-review/author-response-r1.md",
+      "destination": "1861-final-code-review/author-response-r1.md",
+      "bytes": 20142,
+      "sha256": "bbe78db3985a9125ecdd4a18704b9fb68361ff609dd86fb785b5c83261fd876c"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/1861-final-code-review/reviewer-response-r1.md",
+      "destination": "1861-final-code-review/reviewer-response-r1.md",
+      "bytes": 15415,
+      "sha256": "8ca4a07493e7aeb5cb63a6f97a2ae6c390fc65ab4a4f4a0879cfd5102ad63653"
+    },
+    {
+      "source": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-task2-local-tia-findings.json",
+      "destination": "2026-10-03-1861-empty-runtime-task2-local-tia-findings.json",
+      "bytes": 22542,
+      "sha256": "d5d910b1aa297b918c8c1daa1a1907300101521e710032b6633ffb82c3b41ff6"
+    }
+  ],
+  "bundleAdditions": [
+    "README.md",
+    "COPY-MANIFEST.json"
+  ]
+}

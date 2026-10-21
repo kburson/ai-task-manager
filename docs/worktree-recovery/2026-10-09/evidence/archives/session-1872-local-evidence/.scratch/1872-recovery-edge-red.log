@@ -1,0 +1,60 @@
+✔ partial comment publication refuses admission and same-record resume completes exactly one comment (10.118959ms)
+✔ body succeeds but read-back fails; retry repairs the same pointer without posting again (2.340667ms)
+✔ unknown comment write stays indeterminate under its original operation ID and never posts twice (1.114708ms)
+✔ graph drift, source refusal, record tamper and mismatched operation identity refuse repair (4.903333ms)
+✔ newer revocation and expiry cannot be repaired as partial publication (3.357459ms)
+✔ a registered exact generation refresh requires positive discharge, preserves source scope and remains resumable (2.923458ms)
+✔ fresh observation after comment write prevents publishing a graph that changed in flight (0.636709ms)
+✔ strict policy at another rank requires authentic matching pointers for all adopted waves (0.802792ms)
+✔ a prepared proposal cannot be recorded by a replacement parent identity (0.210292ms)
+✔ duplicate and fenced orchestration examples cannot supply publication authority (0.301708ms)
+✖ scoped revocation can be completed after graph or worker drift without reviving the grant (1.378084ms)
+✖ new graph adoption requires fresh authorization and replaces stale body scope through the registered action (1.692875ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 10
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 193.417292
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/epic-rank-wave-recovery.test.mjs:369:1
+✖ scoped revocation can be completed after graph or worker drift without reviving the grant (1.378084ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'blocked'
+  - 'publication-incomplete'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/integration/task-tracker/lib/epic-rank-wave-recovery.test.mjs:383:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'publication-incomplete',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/epic-rank-wave-recovery.test.mjs:395:1
+✖ new graph adoption requires fresh authorization and replaces stale body scope through the registered action (1.692875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'publication-incomplete'
+  - 'recorded'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/integration/task-tracker/lib/epic-rank-wave-recovery.test.mjs:411:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'publication-incomplete',
+    expected: 'recorded',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

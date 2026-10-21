@@ -1,0 +1,8 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-section",
+  "heading": "## Plan Metadata",
+  "expected": "\n\n",
+  "replacement": "\n\n- **Governing-spec**: docs/superpowers/specs/2026-09-11-1579-governed-plan-policy-design.md\n- **Implementation-plan**: docs/superpowers/plans/2026-09-11-1579-governed-plan-policy.md\n- **Plan-commit**: 4cde0a514b4de2de25f9b2855b7f51d98f25246f\n\n",
+  "expectedVersion": 16
+}

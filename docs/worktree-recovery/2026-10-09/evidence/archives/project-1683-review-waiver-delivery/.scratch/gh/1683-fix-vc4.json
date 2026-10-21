@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `npm run precommit` <!-- id=4 -->",
+  "replacement": "- [ ] `node scripts/dev-env/verify-local-worktree.mjs && git diff --check` <!-- id=4 -->"
+}

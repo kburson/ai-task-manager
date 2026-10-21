@@ -1,0 +1,64 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import zlib from 'node:zlib';
+import {execFileSync} from 'node:child_process';
+const git=(args,opts={})=>execFileSync('git',args,{encoding:'utf8',maxBuffer:128*1024*1024,...opts});
+const gh=args=>execFileSync('gh',args,{encoding:'utf8',maxBuffer:8*1024*1024});
+const inspection=JSON.parse(fs.readFileSync('.scratch/recovery-inspection.json'));
+const archives=JSON.parse(fs.readFileSync('.scratch/archive-reconciliation.json'));
+const sources=JSON.parse(fs.readFileSync('.scratch/published-recovery-prs.json'));
+const history=JSON.parse(fs.readFileSync('.scratch/published-historical-prs.json'));
+const originals=JSON.parse(fs.readFileSync('.scratch/published-delivered-originals.json'));
+const archiveHeads=JSON.parse(fs.readFileSync('.scratch/published-archive-heads.json'));
+const tips=git(['ls-remote','--heads','origin']).trim().split('\n').map(l=>l.split('\t')[0]);
+const reachable=new Set(git(['rev-list','--objects',...new Set(tips)]).split('\n').map(l=>l.split(' ')[0]));
+const prefix='docs/worktree-recovery/2026-10-09',staged=[],objects=new Map(),manifest=[],held=[];
+const blob=b=>crypto.createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');
+const strongSecrets=[/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,/\b(?:ghp_|github_pat_|sk-proj-)[A-Za-z0-9_-]{20,}/,/\bAKIA[A-Z0-9]{16}\b/];
+function put(target,bytes){const id=git(['hash-object','-w','--stdin'],{input:bytes}).trim();staged.push({mode:'100644',id,target});return id;}
+function evidence(group,original,bytes,meta={}){
+ const oid=blob(bytes),record={group,original,...meta,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),gitBlob:oid,bytes:bytes.length};
+ if(reachable.has(oid)){record.disposition='already-reachable-on-origin';manifest.push(record);return;}
+ if(objects.has(oid)){record.disposition='same-published-evidence-blob';record.storedPath=objects.get(oid);manifest.push(record);return;}
+ const scan=bytes.toString().replaceAll('github_pat_abcdefghijklmnopqrstuvwxyz','TEST_TOKEN').replaceAll('ghp_abcdefghijklmnop','TEST_TOKEN');
+ if(strongSecrets.some(re=>re.test(scan))){record.disposition='credential-review-required';held.push(record);manifest.push(record);return;}
+ const safe=original.replace(/^\.?\//,'').split('/').filter(p=>p&&p!=='.'&&p!=='..').join('/');
+ let target=`${prefix}/evidence/${group}/${safe}`;if(/\.(?:mjs|cjs|js|ts|sh|py|rb|exe)$/.test(target))target+='.snapshot';
+ let stored=bytes;if(bytes.length>500000){stored=zlib.gzipSync(bytes);target+='.gz';record.encoding='gzip';if(!zlib.gunzipSync(stored).equals(bytes))throw Error('Compression mismatch');}
+ record.storedPath=target;record.storedBlob=put(target,stored);record.disposition='published-evidence';objects.set(oid,target);manifest.push(record);
+}
+for(const g of inspection.groups){
+ for(const e of g.entries){
+  const generated=e.kind==='generated-cache-or-fixture'||/\.scratch\/peer-review\/runtimes\//.test(e.path)||/\.scratch\/npm-pack-[^/]+\//.test(e.path);
+  if(generated||e.kind==='prior-worktree-archive'||/\.scratch\/session-archives\/.+\.tar\.gz$/.test(e.path)||e.path.endsWith('.tar')){manifest.push({group:g.id,original:e.path,disposition:generated?'reproducible-cache-or-test-fixture':'inspected-archive-content-see-catalog',gitBlob:e.gitBlob,size:e.size});continue;}
+  if(e.kind==='deleted'){manifest.push({group:g.id,original:e.path,disposition:'deleted-path-in-source-recovery-commit'});continue;}
+  if(e.kind==='nested-directory'){manifest.push({group:g.id,original:e.path,disposition:'nested-directory-listed-separately'});continue;}
+  if(!e.source||!fs.existsSync(e.source)){manifest.push({group:g.id,original:e.path,disposition:'source-now-absent',gitBlob:e.gitBlob});continue;}
+  const bytes=e.symlink?Buffer.from(fs.readlinkSync(e.source)):fs.readFileSync(e.source);
+  evidence(g.id,e.path,bytes,{sourceHead:g.head,changedSinceInspection:blob(bytes)!==e.gitBlob});
+ }
+}
+for(const e of archives.exports){evidence('archives/'+e.group,e.path,fs.readFileSync(e.source),{repository:e.repository,originalHead:e.originalHead??null,archive:e.archive});}
+for(const file of ['.claude/settings.local.json','.ai-task-manager/templates/definition-of-done.md.bak']){
+ const full=path.join('/Users/kpburson/projects/Vibe-Coding/ai-task-manager',file);if(fs.existsSync(full))evidence('D01',file,fs.readFileSync(full),{purpose:'Local operator configuration or template backup; not intended as runtime activation.'});
+}
+const owners={P01:1861,P02:1918,D08:1725,D09:1953,P04:1859,P05:1859,P06:1725,P07:1953,P08:1954,P09:1953,P10:1953,P11:1926,P12:1889,P13:1897,P14:1897,P15:1899,P16:1902,P17:1955,P18:1904,D01:1953};
+const queue=[];
+for(const g of inspection.groups){const src=sources.find(r=>r.id===g.id)??history.find(r=>r.ids.includes(g.id));const original=originals.find(r=>r.id===g.id);const delivered=(g.prs??[]).filter(p=>p.state==='MERGED');for(const p of delivered){git(['merge-base','--is-ancestor',p.mergeCommit.oid,'origin/trunk']);}
+ queue.push({id:g.id,owner:'kburson',story:owners[g.id],sourcePath:g.path,originalHead:g.head,sourcePR:src?.url??null,recoveryBranch:src?.branch??original?.branch??g.branch?.replace(/^refs\/heads\//,''),verifiedPublishedHead:src?.commit??original?.sha??g.head,priorDeliveryPRs:delivered,localEvidencePaths:manifest.filter(r=>r.group===g.id&&r.disposition==='published-evidence').length,originalSourceRetained:true,decision:src?'Review recovery PR and select applicable changes':delivered.length?'Already delivered; review evidence and reconcile provenance, no duplicate implementation PR':'Review evidence and classification under #1953'});
+}
+const summary={owner:'kburson',story:1953,queue,sourcePRs:sources,historicalSourcePRs:history,deliveredOriginalBranches:originals,archiveOriginalBranches:archiveHeads,archiveRecords:archives.records.map(r=>({...r,exports:r.exports.map(e=>({path:e.path,sha256:e.sha256,size:e.size})),secretPaths:r.secretPaths})),evidenceStats:{uniquePublishedFiles:objects.size,dispositions:manifest.reduce((o,r)=>(o[r.disposition]=(o[r.disposition]??0)+1,o),{})},heldCredentials:held,validation:'Blob preservation and remote commit identity verified; functional tests and implementation readiness are unverified.'};
+put(`${prefix}/index.json`,Buffer.from(JSON.stringify(summary,null,2)+'\n'));
+put(`${prefix}/file-dispositions.json.gz`,zlib.gzipSync(Buffer.from(JSON.stringify(manifest,null,2)+'\n')));
+let readme=`# Protected work recovery and review queue\n\nOwner: @kburson. Coordination story: [#1953](https://github.com/kburson/ai-task-manager/issues/1953). This is a reviewable recovery record, not implementation acceptance. Original working directories and indexes were preserved.\n\n## Review order and dependencies\n\n1. Review this index and provenance first; it does not change product behavior.\n2. Review #1958 / story #1954 to decide which assignment/tether changes remain applicable to current trunk.\n3. Review #1956 before updating #1871; runtime kernel work belongs to #1861 and the #1857 integration/release gates.\n4. Review #1957 with #1907 and #1928; the criteria-revision repair branch targets the #1855 integration branch. Do not merge it directly to trunk out of stack order.\n5. Review #1962 for the three retained #1859 CI replay changes, then #1963/#1964 for historical planning/evaluator reconciliation. Compare against shipped behavior before choosing any code.\n6. Review #1965 / story #1955 as historical proposals against current GitHub-native authority; no approval of a local authority database is implied.\n7. #1959 and #1960 are collateral/observations. #1961 is temporary cleanup configuration and must not become a permanent hook-disable default.\n\nThese are review sequencing suggestions, not a claim that any source PR is ready to merge. Tests, lint and current independent review must be established on each chosen final branch.\n\n## Protected groups\n\n| Group | Owning story | Visible source PR | Original branch stored on origin | Evidence files | Decision |\n|---|---|---|---|---:|---|\n`;
+for(const r of queue)readme+=`| ${r.id} | [#${r.story}](https://github.com/kburson/ai-task-manager/issues/${r.story}) | ${r.sourcePR?`[PR](${r.sourcePR})`:r.priorDeliveryPRs.length?r.priorDeliveryPRs.map(p=>`[#${p.number}](${p.url})`).join(', '):'Evidence in this PR'} | \`${r.recoveryBranch}\` | ${r.localEvidencePaths} | ${r.decision} |\n`;
+readme+=`\n## Evidence and archives\n\nEach unique meaningful local file is stored under evidence/ with a manifest mapping its original path, owning group, original content hash and stored Git blob. Files already reachable from current origin were not duplicated. Large logs and metadata are individually gzip-compressed; their original SHA-256 and encoding are recorded. Source snippets ending .snapshot are inert copies for review, not runnable replacements.\n\n${archives.records.length} archive/control snapshots were inspected. ${archiveHeads.length} original archived source HEADs are published as named origin branches in their owning repositories. Unique archive evidence was unpacked into individual files under evidence/archives/; recovery does not depend on retaining an opaque tarball. Generated dependency caches, Node compile caches, active runtime fixtures and generated test copies are explicitly classified as reconstructible instead of being presented as unfinished source.\n\nSee index.json for story/PR/branch ownership and archive details. file-dispositions.json.gz records every inspected disposition. Historical test logs remain historical evidence only; they do not certify the captured source HEADs.\n`;
+if(held.length)readme+=`\n${held.length} files require credential review and remain local; paths and hashes are listed in index.json. No secret bytes were published.\n`;
+put(`${prefix}/README.md`,Buffer.from(readme));
+const temp=path.resolve('.scratch/evidence-index');if(fs.existsSync(temp))fs.unlinkSync(temp);const env={...process.env,GIT_INDEX_FILE:temp};const parent=git(['rev-parse','origin/trunk']).trim();git(['read-tree',parent],{env});git(['update-index','-z','--index-info'],{env,input:staged.map(r=>`${r.mode} ${r.id}\t${r.target}\0`).join('')});const tree=git(['write-tree'],{env}).trim();const commit=git(['commit-tree',tree,'-p',parent],{input:'[#1953] Expose protected WIP ownership, origin branches and recovered evidence\n\nRefs #1953\n'}).trim();
+for(const r of staged){if(git(['rev-parse',`${commit}:${r.target}`]).trim()!==r.id)throw Error('Evidence read-back failed');}
+const branch='codex/1953-protected-wip-review-index';git(['update-ref',`refs/heads/${branch}`,commit,'0000000000000000000000000000000000000000']);
+fs.writeFileSync('.scratch/recovery-evidence-receipt.json',JSON.stringify({branch,commit,parent,stagedFiles:staged.length,summary,readme},null,2)+'\n');console.log(JSON.stringify({branch,commit,stagedFiles:staged.length,stats:summary.evidenceStats,held:held.length}));
+git(['push','origin',`${commit}:refs/heads/${branch}`]);const remote=git(['ls-remote','origin',`refs/heads/${branch}`]).trim().split('\t')[0];if(remote!==commit)throw Error('Evidence remote SHA mismatch');
+const body='.scratch/recovery-pr-bodies/index.md';fs.writeFileSync(body,`Protected local work is now connected to owning stories, published source branches, draft recovery PRs and individually recoverable evidence. Owner: @kburson. Refs #1953.\n\nStart at docs/worktree-recovery/2026-10-09/README.md for the review queue, purpose of every protected group, proposed dependency order and explicit validation limits. This PR stores ${objects.size} unique meaningful evidence files and the ${archives.records.length}-archive reconciliation catalog; original committed source is preserved on named origin branches rather than hidden in local worktrees or tarballs.\n\nSource WIP is in draft PRs #1956–#1965. Already-delivered code is linked to its prior merge PR and exact original branch, avoiding a duplicate application of those changes. Functional tests, lint and new peer reviews have not been claimed. Local working directories, branch tips and original indexes were not rewritten.\n`);const url=gh(['pr','create','--draft','--base','trunk','--head',branch,'--title','[#1953] Protected WIP review queue, origin ownership and recovered evidence','--body-file',body]).trim();fs.writeFileSync('.scratch/published-recovery-index.json',JSON.stringify({branch,commit,url,verifiedOriginSha:remote,stagedFiles:staged.length,uniqueEvidenceFiles:objects.size,held:held.length},null,2)+'\n');console.log(JSON.stringify({url,commit,held:held.length}));

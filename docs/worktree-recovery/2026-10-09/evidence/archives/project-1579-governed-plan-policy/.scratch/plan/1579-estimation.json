@@ -1,0 +1,46 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "policy-boundary",
+      "description": "Implement linked-plan policy validation and Plan-approval refusal",
+      "baseHumanHours": 4,
+      "signals": {
+        "modules": ["task-tracker", "plan-approval"],
+        "dependencies": ["plan-metadata", "issue-body-authority"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "guidance-contract",
+      "description": "Reconcile scratch guidance and add deterministic regression coverage",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": ["skills", "documentation", "tests"],
+        "dependencies": ["scratch-contract", "command-help"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "verification-delivery",
+      "description": "Run isolated verification and governed exact-head delivery",
+      "baseHumanHours": 1,
+      "signals": {
+        "modules": ["test-sandbox", "delivery"],
+        "dependencies": ["hosted-ci", "delivery-receipt"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "test-sandbox",
+    "expectedMinutes": 20
+  },
+  "risks": [
+    "False-positive plan policy diagnostics",
+    "Plan-approval side effects before refusal",
+    "Package-boundary entry accounting"
+  ],
+  "comparableIssueIds": [1181, 1210]
+}

@@ -1,0 +1,28 @@
+
+> @kburson/ai-task-manager@0.1.0 test:slow
+> node scripts/run-tests.mjs --lane slow --shard 2/3
+
+▶ lane=slow (18 files)
+
+▶ scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs ... ok (111ms)
+▶ scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs ... ok (1.4s)
+▶ scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs ... ok (524ms)
+▶ scripts/tests/slow/task-tracker/lib/body-write-roundtrip.test.mjs ... ok (54ms)
+▶ scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs ... ok (1.4s)
+▶ scripts/tests/slow/task-tracker/lib/demonstrable-ac-gate.test.mjs ... ok (85ms)
+▶ scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs ... ok (4.8s)
+▶ scripts/tests/slow/task-tracker/lib/gates.test.mjs ... ok (8.3s)
+▶ scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs ... ok (3.7s)
+▶ scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs ... ok (7.7s)
+▶ scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs ... ok (5.3s)
+▶ scripts/tests/slow/task-tracker/lib/move-state.test.mjs ... ok (3.9s)
+▶ scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs ... ok (659ms)
+▶ scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs ... ok (3.4s)
+▶ scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs ... ok (3.3s)
+▶ scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs ... ok (903ms)
+▶ scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs ... ok (266ms)
+▶ scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs ... ok (339ms)
+
+run-tests: lane 'slow' bounded sections: serial=46.1s/600s (18 files); aggregate=46.1s
+
+All 18 test files passed.

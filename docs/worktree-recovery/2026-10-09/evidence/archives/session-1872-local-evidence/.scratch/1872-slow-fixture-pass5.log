@@ -1,0 +1,274 @@
+✔ normalized timing identity deduplicates exact events but admits later timestamps (1497.821916ms)
+✔ timestamp-less lifecycle events remain runnable instead of becoming session-global duplicates (806.766459ms)
+✔ stamp write failure skips the timing flush and fails closed (177.163625ms)
+✔ SessionStart: no active and no paused → "No active task." (364.425084ms)
+✔ SessionStart: no active, lastActive present but no fleet entry → "No active task." (400.200708ms)
+✔ SessionStart: discover bucket active → "Discovery bucket active." (411.630167ms)
+✖ SessionStart: active task with stale entryStartTs → recovery banner (937.763791ms)
+✖ SessionStart: active task with no entryStartTs → active banner, no recovery time (540.678333ms)
+✖ SessionStart banks an existing session cursor tail exactly once (949.668625ms)
+✖ SessionStart orphan recovery rows use the freshly banked marker pair (750.175458ms)
+✔ PreCompact: active with entryStartTs → flush path runs (exit 0) (478.408166ms)
+✔ PreCompact: bound-but-paused (no entryStartTs) → early return (#407) (344.501584ms)
+✔ PreCompact: nothing active → early return (289.330958ms)
+✔ PostCompact: active → resume row path (exit 0) (361.2755ms)
+✖ PreCompact/PostCompact rows advance durable primary and full markers from the prior cursor (1242.015583ms)
+✖ PostCompact banks a tail preserved by an unavailable PreCompact exactly once (1526.200583ms)
+✔ PostCompact: nothing active → early return (329.068166ms)
+✔ malformed stdin → JSON.parse catch, no handler dispatched, exit 0 (533.485667ms)
+✔ unknown event → no handler dispatched, exit 0 (154.93175ms)
+/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/discover-autosave-OLpvAN/docs/plans/.drafts/autosave-story.md
+✔ AC1: saveDraftFile writes the draft under docs/plans/.drafts/<slug>.md (149.816916ms)
+✔ AC1: autosave is incremental — repeated flushes overwrite the SAME file (129.066708ms)
+✔ AC2: docs/plans/.drafts/<slug>.md is NOT git-ignored (survives commit/push → pull) (22.964042ms)
+✔ AC3: savePlanFile still writes the date-stamped docs/plans/YYYYMMDD-<slug>.md (untouched) (65.851791ms)
+✔ AC4: clearDraftFile removes the matching draft and is a no-op when absent (53.445792ms)
+✔ AC4: resolveDraftSlug agrees across save-draft and save-plan so the right draft is cleared (0.31325ms)
+✖ AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears the draft (48.153208ms)
+test 1 passed: solo-wave creates parent + 3 addSubIssue calls
+test 2 passed: all-parented passthrough emits existing parent, no creation
+test 3 passed: mixed-fanout rejection
+test 4 passed: multi-parent rejection
+test 5 passed: single-issue passthrough
+test 6 passed: idempotent retry reuses parent #777
+test 7 passed: search query does not contain HTML comment syntax
+ensure-wave-parent: all tests passed
+✔ scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs (7925.531333ms)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Foreign project root requires registered admission/. Input:
+
+'[task-tracker] WARN: configuration is missing 10 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.\n' +
+  '[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/tt-gate-1-sAXXI9 for #201\n' +
+  '[task-tracker] ⛔ Refusing to close #201: review-authorization-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.\n'
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/gates.test.mjs:204:12 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '[task-tracker] WARN: configuration is missing 10 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.\n' +
+    '[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/tt-gate-1-sAXXI9 for #201\n' +
+    '[task-tracker] ⛔ Refusing to close #201: review-authorization-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.\n',
+  expected: /Foreign project root requires registered admission/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/gates.test.mjs (3783.405042ms)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: dry-run failed
+log-issue-time: log-issue-time: canonical timing source unavailable
+
+
+1 !== 0
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs:133:10
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs (10554.125708ms)
+node:internal/errors:999
+  const err = new Error(message);
+              ^
+
+Error: Command failed: node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs 100 develop --item-id PVTI_test
+
+⛔ Refusing to move #100 to develop:
+   BLOCKED: #100 is in plan; wip-parent-fetch-failed: parent authority unreadable
+
+Use `/task unblock` (or close the blockers) before retrying this move.
+
+
+    at genericNodeError (node:internal/errors:999:15)
+    at wrappedFn (node:internal/errors:544:14)
+    at ChildProcess.exithandler (node:child_process:417:12)
+    at ChildProcess.emit (node:events:514:20)
+    at maybeClose (node:internal/child_process:1125:16)
+    at Socket.<anonymous> (node:internal/child_process:497:11)
+    at Socket.emit (node:events:514:20)
+    at Pipe.<anonymous> (node:net:362:12) {
+  code: 4,
+  killed: false,
+  signal: null,
+  cmd: 'node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs 100 develop --item-id PVTI_test',
+  stdout: '',
+  stderr: '\n' +
+    '⛔ Refusing to move #100 to develop:\n' +
+    '   BLOCKED: #100 is in plan; wip-parent-fetch-failed: parent authority unreadable\n' +
+    '\n' +
+    'Use `/task unblock` (or close the blockers) before retrying this move.\n' +
+    '\n'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs (3580.604875ms)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 0; stderr:
+[task-tracker] WARN: configuration is missing 10 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/tt-rap-1-syTVu9 for #101
+task-tracker error: runLogIssueTime: failed to update board fields for #101: Command failed: /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/gh/log-issue-time.mjs #101
+log-issue-time: log-issue-time: canonical timing source unavailable
+
+
+
+1 !== 0
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs:363:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs (11975.009667ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 20
+ℹ fail 11
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12209.721416
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:209:1
+✖ SessionStart: active task with stale entryStartTs → recovery banner (937.763791ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /#7 is active/. Input:
+  
+  '[task-tracker] WORKSPACE: MAIN — Agent tool spawns will be BLOCKED. Create a worktree first.\n' +
+    '[task-tracker] #7: recovered-unknown. Prior unobserved session time remains Unknown.\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:214:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[task-tracker] WORKSPACE: MAIN — Agent tool spawns will be BLOCKED. Create a worktree first.\n[task-tracker] #7: recovered-unknown. Prior unobserved session time remains Unknown.\n',
+    expected: /#7 is active/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:217:1
+✖ SessionStart: active task with no entryStartTs → active banner, no recovery time (540.678333ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /#7 is active/. Input:
+  
+  '[task-tracker] WORKSPACE: MAIN — Agent tool spawns will be BLOCKED. Create a worktree first.\n' +
+    '[task-tracker] #7: paused. Prior unobserved session time remains Unknown.\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:222:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[task-tracker] WORKSPACE: MAIN — Agent tool spawns will be BLOCKED. Create a worktree first.\n[task-tracker] #7: paused. Prior unobserved session time remains Unknown.\n',
+    expected: /#7 is active/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:225:1
+✖ SessionStart banks an existing session cursor tail exactly once (949.668625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  100 !== 103
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:249:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 100,
+    expected: 103,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:256:1
+✖ SessionStart orphan recovery rows use the freshly banked marker pair (750.175458ms)
+  Error: ENOENT: no such file or directory, open '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-RoCa8V/.tmp/aitm/state/task-tracker-queue.json'
+      at readFileSync (node:fs:621:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:273:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-RoCa8V/.tmp/aitm/state/task-tracker-queue.json'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:317:1
+✖ PreCompact/PostCompact rows advance durable primary and full markers from the prior cursor (1242.015583ms)
+  Error: ENOENT: no such file or directory, open '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-GiprWC/.tmp/aitm/state/task-tracker-queue.json'
+      at readFileSync (node:fs:621:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:331:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-GiprWC/.tmp/aitm/state/task-tracker-queue.json'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:348:1
+✖ PostCompact banks a tail preserved by an unavailable PreCompact exactly once (1526.200583ms)
+  Error: ENOENT: no such file or directory, open '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-nsnmq5/.tmp/aitm/state/task-tracker-queue.json'
+      at readFileSync (node:fs:621:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:396:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-nsnmq5/.tmp/aitm/state/task-tracker-queue.json'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs:151:1
+✖ AC1+AC4 integration: save-draft autosaves; save-plan finalizes and clears the draft (48.153208ms)
+  TypeError: Cannot read properties of undefined (reading 'draftSlug')
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs:176:44)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/slow/task-tracker/lib/gates.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/gates.test.mjs (3783.405042ms)
+  'test failed'
+
+test at scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs (10554.125708ms)
+  'test failed'
+
+test at scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs (3580.604875ms)
+  'test failed'
+
+test at scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs (11975.009667ms)
+  'test failed'

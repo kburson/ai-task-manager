@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Plan Metadata\n\n## Pickup Directive — MANDATORY, DO NOT SKIP",
+  "replacement": "## Plan Metadata\n\n- **Governing-issue**: #1683\n- **Implementation-plan**: docs/superpowers/plans/2026-09-17-1683-review-waiver-delivery.md\n- **Plan-commit**: 15ac7f1f280a6786e902c0935975711108f8b280\n- **Execution-mode**: Full-Auto inline execution with test-driven development\n\n## Pickup Directive — MANDATORY, DO NOT SKIP"
+}
