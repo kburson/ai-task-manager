@@ -1,0 +1,36 @@
+coverage-source-edit-gate.test.mjs: ok
+✔ normalizePath: empty → empty, relative → posix, outside → abs (1.9535ms)
+✔ isAllowlistedPath: empty false, .tmp/ true, scratch true, src false (0.140291ms)
+✔ decide: non-gated tool → allow (0.60775ms)
+✔ decide: chore-mode → allow bypass (0.379458ms)
+✔ decide: allowlisted path → allow (0.141166ms)
+✔ decide: no bound issue → block (0.095833ms)
+✔ decide: pre-develop state → block state-gate (0.279ms)
+✔ decide: historical On Deck state remains a pre-develop block (0.142792ms)
+✔ decide: develop but markers missing → block marker-gate (0.2445ms)
+✔ decide: develop + both markers → allow (0.347792ms)
+✔ loadBoundIssue: no state file → null (2.062208ms)
+✔ loadBoundIssue: numeric active → #N (4.101042ms)
+✔ loadBoundIssue: discover/plan sentinels → null (5.731292ms)
+✔ cacheFilePath: lands under .ai-task-manager/.cache (0.290917ms)
+✔ readCache: missing file → null; write then read → hit (2.518584ms)
+✔ readCache: wrong issue → null (1.950291ms)
+✔ readCache: stale entry → null (2.489625ms)
+✔ fetchIssueSignals: shared exact-project snapshot supplies state and ownership (3.218458ms)
+✔ fetchIssueSignals: name shape → canonical state (1.843417ms)
+✔ fetchIssueSignals: historical display name and legacy config key map to Ready for Planning (1.848875ms)
+✔ resolveIssueSignals: cache miss fetches then warms cache (3.574292ms)
+✔ runHook: non-gated tool → allow (0.487584ms)
+✔ runHook: no project dir → allow (0.181416ms)
+✔ runHook: chore-mode bypass (15.878834ms)
+✔ runHook: bound + develop + markers via injected resolve → allow (19.925542ms)
+✔ runHook: resolve throws → falls through to refuse pre-develop default (25.8255ms)
+✔ runHook: findProjectDir honours env override (5.115208ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 377.278083

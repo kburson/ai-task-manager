@@ -1,0 +1,122 @@
+✖ shim preserves exact request, stdout, stderr, and exit while recording body-file bytes (5012.5915ms)
+✖ shim preserves piped stdin and fails open when capture metadata is invalid (3877.871667ms)
+✖ shim preserves a terminating signal while recording the outcome (4129.082583ms)
+✖ shim does not wait for EOF on an unused execFile stdin pipe (4214.133625ms)
+✖ concurrent shim processes allocate unique ordered action directories (5550.174792ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 0
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22876.629042
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:80:1
+✖ shim preserves exact request, stdout, stderr, and exit while recording body-file bytes (5012.5915ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 23
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:96:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 23,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:115:1
+✖ shim preserves piped stdin and fails open when capture metadata is invalid (3877.871667ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:124:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:129:1
+✖ shim preserves a terminating signal while recording the outcome (4129.082583ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== null
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:137:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:146:1
+✖ shim does not wait for EOF on an unused execFile stdin pipe (4214.133625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + Error: Command failed: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/action-capture-bin/gh issue view 42
+  + 
+  +     at genericNodeError (node:internal/errors:999:15)
+  +     at wrappedFn (node:internal/errors:544:14)
+  +     at ChildProcess.exithandler (node:child_process:417:12)
+  +     at ChildProcess.emit (node:events:514:20)
+  +     at maybeClose (node:internal/child_process:1125:16)
+  +     at ChildProcess._handle.onexit (node:internal/child_process:305:5) {
+  +   cmd: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/action-capture-bin/gh issue view 42',
+  +   code: null,
+  +   killed: true,
+  +   signal: 'SIGTERM'
+  + }
+  - null
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:163:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: Command failed: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/action-capture-bin/gh issue view 42
+    
+        at genericNodeError (node:internal/errors:999:15)
+        at wrappedFn (node:internal/errors:544:14)
+        at ChildProcess.exithandler (node:child_process:417:12)
+        at ChildProcess.emit (node:events:514:20)
+        at maybeClose (node:internal/child_process:1125:16)
+        at ChildProcess._handle.onexit (node:internal/child_process:305:5),
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:179:1
+✖ concurrent shim processes allocate unique ordered action directories (5550.174792ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(results.every(({ code, signal }) => code === 0 && signal === null))
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:192:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

@@ -1,0 +1,34 @@
+npm notice run @kburson/ai-task-manager@0.1.0 lint
+npm notice run npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals && npm run lint:guidance-release
+npm notice run @kburson/ai-task-manager@0.1.0 lint:js
+npm notice run eslint .
+npm notice run @kburson/ai-task-manager@0.1.0 lint:md
+npm notice run markdownlint-cli2 "**/*.md"
+markdownlint-cli2 v0.23.2 (markdownlint v0.41.1)
+Finding: **/*.md **/*.md !.tmp/** !.scratch/** !node_modules/** !.git/** !.worktrees/** !.claude/worktrees/** !reports/** !coverage/** !output/** !docs/postmortems/** !docs/ai-memory/** !docs/peer-reviews/** !docs/reviews/1857-expanded/**/review-*-author-response-*.md !docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-author-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-reviewer-*-review.md !docs/superpowers/reviews/**/*-review-*-author-response-*.md !docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md !docs/superpowers/reviews/**/review-*-author-response-*.md !docs/superpowers/reviews/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md !docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md !docs/superpowers/reviews/1219/**/protocol-runs/** !.ai-task-manager/memory/** !.superpowers/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/** !.ai-task-manager/runtime/test-fixtures/**
+Linting: 815 files
+Summary: 0 issues in 0 files
+npm notice run @kburson/ai-task-manager@0.1.0 lint:spell
+npm notice run cspell --no-progress "**/*.{md,mjs,js,json}"
+CSpell: Files checked: 3039, Issues found: 0 in 0 files.
+npm notice run @kburson/ai-task-manager@0.1.0 lint:tmp
+npm notice run node scripts/maintenance/lint-no-system-tmp.mjs
+lint:tmp — 2053 file(s) clean
+npm notice run @kburson/ai-task-manager@0.1.0 lint:fleet-sandbox
+npm notice run node scripts/maintenance/lint-fleet-sandbox-isolation.mjs
+lint:fleet-sandbox — 1341 test file(s) clean
+npm notice run @kburson/ai-task-manager@0.1.0 lint:test-layout
+npm notice run node scripts/tests/tools/audit-test-layout.mjs
+audit-test-layout: all 1252 test files declare a canonical scripts/tests/<unit|integration|slow>/ lane.
+npm notice run @kburson/ai-task-manager@0.1.0 lint:test-entrypoint-imports
+npm notice run node scripts/tests/tools/audit-test-entrypoint-imports.mjs
+audit-test-entrypoint-imports: no discovered test entrypoint imports among 1252 files.
+npm notice run @kburson/ai-task-manager@0.1.0 lint:story-tags
+npm notice run node scripts/tests/tools/audit-story-tags.mjs
+audit-story-tags: all 1252 test files carry a @story tag.
+npm notice run @kburson/ai-task-manager@0.1.0 lint:line-cap
+npm notice run node scripts/tests/tools/audit-line-cap.mjs
+audit-line-cap: 3 file(s) exceed 800-line code-LOC limit:
+  810 code lines  scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs
+  803 code lines  scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs
+  820 code lines  scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs

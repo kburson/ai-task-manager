@@ -1,0 +1,27 @@
+✖ a real clean Git HEAD publishes reusable full-SHA durable verifier evidence (1832.369334ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1923.987542
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/verifier-cache-durable-head.test.mjs:15:1
+✖ a real clean Git HEAD publishes reusable full-SHA durable verifier evidence (1832.369334ms)
+  Error [RuntimeRootError]: Refusing malformed, unknown or incorrectly scoped runtime publication
+      at validateRuntimeJsonPublication (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:123:11)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:134:22
+      at withRuntimeStoreLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:667:12)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:45
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:147:12
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:604:32)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)
+      at writeRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:131:10) {
+    code: 'RUNTIME_STATE_CORRUPT'
+  }

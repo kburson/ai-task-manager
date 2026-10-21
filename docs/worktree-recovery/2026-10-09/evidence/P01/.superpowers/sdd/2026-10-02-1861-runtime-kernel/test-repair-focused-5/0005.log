@@ -1,0 +1,30 @@
+✔ aggregate parity matrix covers every lifecycle action and required scenario (1.893833ms)
+✔ aggregate parity executes the seven action suites, not only their metadata (15206.129584ms)
+✖ authority cost evidence matches fresh physical reads before A2 certification (115.647125ms)
+✔ legacy refusal and warning fallbacks remain inventoried and fail closed (2.299625ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15559.190541
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/action-parity.test.mjs:111:1
+✖ authority cost evidence matches fresh physical reads before A2 certification (115.647125ms)
+  Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async measure (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-authority-cost.mjs:86:18)
+      at async Promise.all (index 2)
+      at async measureFixedActionAuthorityReads (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-authority-cost.mjs:103:14)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/action-parity.test.mjs:113:20) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }

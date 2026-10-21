@@ -1,0 +1,26 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/word-counter.test.mjs",
+    "status": 0,
+    "durationMs": 256,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-30/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs",
+    "status": 0,
+    "durationMs": 115,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-30/0001.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/word-counter-full-expansion.test.mjs",
+    "status": 0,
+    "durationMs": 204,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-30/0002.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/word-marker-compaction.test.mjs",
+    "status": 0,
+    "durationMs": 286,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-30/0003.log"
+  }
+]

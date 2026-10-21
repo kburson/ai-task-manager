@@ -1,0 +1,11 @@
+✔ a caller supplied inherited flag cannot grant issue mutation authority (0.550166ms)
+✔ real async timing and issue critical sections retain writer leases through awaited work (1618.548667ms)
+✔ timing locks preserve unknown old ownership rather than treating age as recovery authority (792.122209ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2414.064917

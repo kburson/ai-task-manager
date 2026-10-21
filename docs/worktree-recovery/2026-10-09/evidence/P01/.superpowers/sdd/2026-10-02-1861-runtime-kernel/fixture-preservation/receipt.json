@@ -1,0 +1,23 @@
+[
+  {
+    "path": ".ai-task-manager/runtime/store/locks/issue-1261.lock/holder.json",
+    "snapshot": "bec7e45429838dcc7123283dddb69001720dc2c1",
+    "originalSha256": "c92511089dadd3cba9e75fc5295481b46bcaf602fd1823e6241aba695cd107e8",
+    "testOutputSha256": "6ca809d413f9e9be1ddfaf877487a7f9de45ce29ae4c3cd0a3dd10ee2f95569e",
+    "testOutputBackup": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/fixture-preservation/0-test-output.json"
+  },
+  {
+    "path": ".ai-task-manager/runtime/store/sessions/fresh/pending-pause.json",
+    "snapshot": "bec7e45429838dcc7123283dddb69001720dc2c1",
+    "originalSha256": "91fec2019e7460ea46fe466656e78d78f8818dc8b5aa07e9926ca845c9518a64",
+    "testOutputSha256": "85f6d5a7221586c0a61844293a993735dafa41d2558af18e6fdc6e2cecb2ab1b",
+    "testOutputBackup": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/fixture-preservation/1-test-output.json"
+  },
+  {
+    "path": ".ai-task-manager/runtime/store/sessions/mine/pending-pause.json",
+    "snapshot": "bec7e45429838dcc7123283dddb69001720dc2c1",
+    "originalSha256": "36372e2a0350b880f324566ad00b3c206e4908ffc3e292c799e3e7a3f5bf1743",
+    "testOutputSha256": "ee414778c1cdd2cc8e3dbe39980df70d292a534fc36e82c10184d46b66ea926d",
+    "testOutputBackup": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/fixture-preservation/2-test-output.json"
+  }
+]

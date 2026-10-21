@@ -1,0 +1,15 @@
+✔ pure proof admits only an exact, complete no-PR trunk case (2.20125ms)
+✔ complete paginated PR inventory rejects malformed pages (0.533125ms)
+✔ disposable Git graph observes accepted SHA on both independently named refs (416.284125ms)
+✔ fresh remote tip and complete inventory are required by the shared collector (507.158333ms)
+✔ locked Close consumes proof and refuses Done until the burn receipt exists (0.714792ms)
+✔ close read port gathers exact Review evidence and fresh PR and trunk observations (13.6395ms)
+✔ Explain consumes local proof and stays blocked before a burn receipt (1.94575ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 945.331541

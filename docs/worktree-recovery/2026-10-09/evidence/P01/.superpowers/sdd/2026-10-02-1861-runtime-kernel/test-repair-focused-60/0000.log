@@ -1,0 +1,11 @@
+fleet-registry-concurrent.test.mjs: control proved race exists — 1/8 survived without lock
+fleet-registry-concurrent.test.mjs: all passed
+✔ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs (12844.959875ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12850.094833

@@ -1,0 +1,32 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Partial runtime loss requires registered recovery
+    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+    at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+    at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+    at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+    at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+    at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+    at runPreflight (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/verb-preflight.mjs:136:7)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs:212:21 {
+  code: 'RUNTIME_CONTROL_INVALID'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs (265.981375ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 271.350208
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs:1:1
+✖ scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs (265.981375ms)
+  'test failed'

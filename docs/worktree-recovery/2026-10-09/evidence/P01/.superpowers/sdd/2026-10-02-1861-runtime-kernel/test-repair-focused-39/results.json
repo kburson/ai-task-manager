@@ -1,0 +1,20 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs",
+    "status": 0,
+    "durationMs": 1642,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-39/0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs",
+    "status": 0,
+    "durationMs": 1736,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-39/0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+    "status": 0,
+    "durationMs": 344,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-39/0002.log"
+  }
+]

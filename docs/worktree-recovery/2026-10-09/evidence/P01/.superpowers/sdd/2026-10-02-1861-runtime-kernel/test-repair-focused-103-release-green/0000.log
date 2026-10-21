@@ -1,0 +1,35 @@
+✖ writer release waits for transient coordinator contention without replaying its operation (1581.085542ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2276.158041
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs:14:1
+✖ writer release waits for transient coordinator contention without replaying its operation (1581.085542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'coordinator-held',
+  +   undefined
+    ]
+  
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs:48:14
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async withRuntimeWriterLease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:610:12)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs:33:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'coordinator-held', undefined ],
+    expected: [ 'coordinator-held' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

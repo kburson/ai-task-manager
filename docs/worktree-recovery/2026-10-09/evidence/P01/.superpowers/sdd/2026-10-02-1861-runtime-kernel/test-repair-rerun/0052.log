@@ -1,0 +1,27 @@
+✖ same-issue resume refreshes a stale fleet workspace without timing side effects (171.8855ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 181.954083
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs:23:1
+✖ same-issue resume refreshes a stale fleet workspace without timing side effects (171.8855ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:99:3)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:116:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)
+      at setActiveTask (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/session-state.mjs:55:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs:38:3)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }

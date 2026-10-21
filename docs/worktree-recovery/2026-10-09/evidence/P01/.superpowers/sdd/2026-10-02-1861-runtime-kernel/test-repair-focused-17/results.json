@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs",
+    "status": 1,
+    "durationMs": 784,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-17/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/state-project-dir.test.mjs",
+    "status": 0,
+    "durationMs": 187,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-17/0001.log"
+  }
+]

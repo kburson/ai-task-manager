@@ -1,0 +1,8 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs",
+    "status": 1,
+    "durationMs": 17667,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-77/0000.log"
+  }
+]

@@ -1,0 +1,20 @@
+✔ #927 — stale local trunk + main on a feature branch: close gate passes off origin/trunk, no desync (468.170208ms)
+✔ #927 — no-remote fallback: resolveTrunkRef resolves the local branch, fetch is a no-op (171.365666ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 642.25125
+Cloning into '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-927-tEDhqk/work'...
+warning: You appear to have cloned an empty repository.
+done.
+To /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-927-tEDhqk/origin.git
+ * [new branch]      trunk -> trunk
+Cloning into '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-927-tEDhqk/other'...
+done.
+To /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-927-tEDhqk/origin.git
+   7b6676a..d37cba4  trunk -> trunk
+Switched to a new branch 'discovery/feature-B'

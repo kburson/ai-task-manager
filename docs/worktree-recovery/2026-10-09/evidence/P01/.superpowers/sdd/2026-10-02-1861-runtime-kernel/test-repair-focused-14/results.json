@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/close-drain.test.mjs",
+    "status": 0,
+    "durationMs": 1759,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-14/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/bound-state-session-authoritative.test.mjs",
+    "status": 0,
+    "durationMs": 154,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-14/0001.log"
+  }
+]

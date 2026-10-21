@@ -1,0 +1,11 @@
+✔ registered discovery state roundtrips as a supported non-issue binding without invented issue authority (4118.584458ms)
+✔ unsupported publication refuses before changing any global, binding or actor bytes (3577.95275ms)
+✔ a promise returned through the synchronous record wrapper retains real lease and coordinator evidence (1114.871375ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8814.877

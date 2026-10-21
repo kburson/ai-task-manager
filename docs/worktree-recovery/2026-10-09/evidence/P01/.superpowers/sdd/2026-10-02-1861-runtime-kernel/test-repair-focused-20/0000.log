@@ -1,0 +1,13 @@
+coverage-update.test.mjs: defined
+✔ no active task → "nothing to update", no flush (139.395458ms)
+✔ active === discover → "nothing to update" (141.034041ms)
+✔ happy path: default "checkpoint" description, wall == active → no wall note (269.445375ms)
+✔ happy path: rest joins to description, wall != active → wall note shown (433.624834ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1286.286292

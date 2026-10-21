@@ -1,0 +1,49 @@
+node:internal/errors:999
+  const err = new Error(message);
+              ^
+
+Error: Command failed: node /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/unit-runtime-entrypoint.mjs /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/task-tracker.mjs close #321
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/tt-lifecycle-90VqYg for #321
+[task-tracker] Board features unavailable: project not configured (projectId missing).
+  Run: npx ai-task-manager init   or   /task config init
+⚠ Workspace is dirty (2 path(s)) for #321:
+?? .ai-task-manager/
+?? .tmp/
+
+    at genericNodeError (node:internal/errors:999:15)
+    at wrappedFn (node:internal/errors:544:14)
+    at ChildProcess.exithandler (node:child_process:417:12)
+    at ChildProcess.emit (node:events:514:20)
+    at maybeClose (node:internal/child_process:1125:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:305:5) {
+  code: 5,
+  killed: false,
+  signal: null,
+  cmd: 'node /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/unit-runtime-entrypoint.mjs /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/task-tracker.mjs close #321',
+  stdout: 'PROMPT_REQUIRED: dirty-close-confirm #321\n',
+  stderr: '[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.\n' +
+    '[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/tt-lifecycle-90VqYg for #321\n' +
+    '[task-tracker] Board features unavailable: project not configured (projectId missing).\n' +
+    '  Run: npx ai-task-manager init   or   /task config init\n' +
+    '⚠ Workspace is dirty (2 path(s)) for #321:\n' +
+    '?? .ai-task-manager/\n' +
+    '?? .tmp/\n'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs (2760.315209ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2766.074709
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs (2760.315209ms)
+  'test failed'

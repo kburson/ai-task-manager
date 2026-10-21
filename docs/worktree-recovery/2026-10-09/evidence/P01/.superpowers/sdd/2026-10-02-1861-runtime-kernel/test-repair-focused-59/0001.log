@@ -1,0 +1,44 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: verb "#42" should fail-closed with config-not-found or not initialized
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/cli.test.mjs:209:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/tt-norepo-jJCFaJ\n' +
+    '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)\n' +
+    '    at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:50:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:200:5)\n' +
+    '    at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/paths.mjs:124:10)\n' +
+    '    at buildContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/runtime.mjs:314:22)\n' +
+    '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/task-tracker.mjs:488:17 {\n' +
+    "  code: 'ROOT_OVERRIDE_UNSAFE'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n',
+  expected: /config-not-found|not initialized/i,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/cli.test.mjs (114184.37575ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114189.059958
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/cli.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/cli.test.mjs (114184.37575ms)
+  'test failed'

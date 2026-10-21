@@ -1,0 +1,17 @@
+test 1 passed: solo-wave creates parent + 3 addSubIssue calls
+test 2 passed: all-parented passthrough emits existing parent, no creation
+test 3 passed: mixed-fanout rejection
+test 4 passed: multi-parent rejection
+test 5 passed: single-issue passthrough
+test 6 passed: idempotent retry reuses parent #777
+test 7 passed: search query does not contain HTML comment syntax
+ensure-wave-parent: all tests passed
+✔ scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs (12918.470917ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12924.423334

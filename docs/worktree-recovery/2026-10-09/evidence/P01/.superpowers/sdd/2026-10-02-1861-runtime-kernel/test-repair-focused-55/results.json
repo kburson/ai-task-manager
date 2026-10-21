@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+    "status": 0,
+    "durationMs": 9486,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-55/0000.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs",
+    "status": 0,
+    "durationMs": 761,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-55/0001.log"
+  }
+]

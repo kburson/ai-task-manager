@@ -1,0 +1,10 @@
+✔ actor state and cursor readers reject volatile aliases and unavailable control without resetting evidence (2657.510542ms)
+✔ actor projection is evaluated under its whole RMW lease and fence refuses reads and writes (1685.836083ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4346.734125

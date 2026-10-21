@@ -1,0 +1,26 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs:65
+test.after(() => {
+     ^
+
+TypeError: test.after is not a function
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs:65:6
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v26.8.1
+✖ scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs (98.971209ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 105.712042
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs:1:1
+✖ scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs (98.971209ms)
+  'test failed'
