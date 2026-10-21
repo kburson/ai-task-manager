@@ -468,10 +468,12 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
     1 + // #2040: exactly one native content-observation runtime module.
     1 + // #2052: exactly one bounded current-story snapshot reader.
-    1; // #2041: exactly one cache manifest/generation validator.
+    1 + // #2041: exactly one cache manifest/generation validator.
+    1; // #2053: exactly one complete snapshot vector comparator.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-compare.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-kind.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-target-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-evidence-recovery.mjs'));

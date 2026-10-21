@@ -133,3 +133,6 @@ export function observeContent({ identity, node, body } = {}) {
     }),
   });
 }
+
+// @story #2053 — share the unchanged strict parser with snapshot comparison.
+export { timestamp as parseNativeContentTimestamp };
