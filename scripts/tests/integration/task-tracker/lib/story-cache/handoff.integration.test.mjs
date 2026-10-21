@@ -253,3 +253,19 @@ test('an unknown recipient alias is retained and never treated as an owned trans
   assert.equal(fs.existsSync(alias), true);
   assert.equal(fs.statSync(file).nlink, 2);
 });
+
+test('the awaited final assignment cannot replace the captured recipient human', async (t) => {
+  const f = await fixture(t);
+  let reads = 0;
+  f.target.assignment = async () => {
+    if (++reads === 2) {
+      f.target.human = 'replacement';
+      return ['replacement'];
+    }
+    return ['tester'];
+  };
+  await assert.rejects(transfer(f));
+  assert.equal(reads, 2);
+  assert.deepEqual(owner(f), f.claim);
+  assert.deepEqual(await f.targetStore.readGeneration(), f.before);
+});

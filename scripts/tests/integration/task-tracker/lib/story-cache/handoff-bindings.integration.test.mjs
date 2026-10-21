@@ -2,6 +2,7 @@
 // Native boundary algorithms, with external mutation adapters confined to fixtures.
 import fs from 'node:fs';
 import path from 'node:path';
+import { acknowledgeStoryWriterTransfer } from '../../../../../task-tracker/lib/story-cache/writer-handoff.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fixture, transfer, context } from '../../../../helpers/story-handoff-runtime-fixture.mjs';
@@ -213,4 +214,24 @@ test('unrelated linked worktree without this session binding does not block clea
     })
   );
   assert.equal(marked, 1);
+});
+
+test('same-cache handoff settles the former session while keeping current recipient work protected', async (t) => {
+  const f = await fixture(t);
+  f.target = {
+    ...f.target,
+    worktree: f.root,
+    cachePath: f.claim.cachePath,
+    acknowledge: (request) =>
+      context('author-B', f.root, () =>
+        acknowledgeStoryWriterTransfer({ ...request, store: f.store, registry: f.registry })
+      ),
+  };
+  await transfer(f);
+  let old = 0,
+    current = 0;
+  await release(f, f.root, 'author-A', () => old++);
+  assert.equal(old, 1);
+  await assert.rejects(release(f, f.root, 'author-B', () => current++));
+  assert.equal(current, 0);
 });

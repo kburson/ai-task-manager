@@ -309,10 +309,13 @@ export function readExport(io, sourceRoot, transferId, bundleDigest) {
   exactTree(io, exportedRoot, manifest, { excludeProtocol: false });
   return validated;
 }
-export function acknowledgment(io, manifest, bundleDigest, { checkWorking = true } = {}) {
+export function acknowledgment(
+  io,
+  manifest,
+  bundleDigest,
+  { checkWorking = true, recoverStage = false, deferStaged = false } = {}
+) {
   const relative = PROTOCOL + '/received/' + manifest.transferId + '.json';
-  const record = readMetadata(io, manifest.target.cachePath, relative, { optional: true });
-  if (record === null) return null;
   const expected = {
     schema: 'aitm.story-writer-handoff-ack/v1',
     transferId: manifest.transferId,
@@ -320,7 +323,24 @@ export function acknowledgment(io, manifest, bundleDigest, { checkWorking = true
     recipient: manifest.target,
     sourceClaimDigest: handoffHash(canonicalRecordJson(manifest.sourceClaim)),
   };
-  if (!same(record, expected)) handoffFail('acknowledgment');
+  let record;
+  const validate = (value) => {
+    if (!same(value, expected)) handoffFail('acknowledgment');
+  };
+  if (recoverStage) record = recoverMetadata(io, manifest.target.cachePath, relative, validate);
+  else
+    try {
+      record = readMetadata(io, manifest.target.cachePath, relative, { optional: true });
+    } catch (cause) {
+      // Only defer a complete, exact two-link record to the actual recipient.
+      // No proof or cleanup is produced by this read; its stage must still be verified.
+      if (!deferStaged) throw cause;
+      const staged = readMetadata(io, manifest.target.cachePath, relative, { links: 2 });
+      validate(staged);
+      return null;
+    }
+  if (record === null) return null;
+  validate(record);
   const retained = readMetadata(
     io,
     manifest.target.cachePath,

@@ -91,7 +91,7 @@ function completedSource(root, sessionId, observed) {
     )
       handoffFail('binding-transfer-owner');
     readExport(fs, root, name, validated.bundleDigest);
-    exactTree(fs, root, manifest);
+    if (manifest.target.cachePath !== root) exactTree(fs, root, manifest);
     if (!acknowledgment(fs, manifest, validated.bundleDigest, { checkWorking: false }))
       handoffFail('binding-unacknowledged');
     matches++;
@@ -141,7 +141,7 @@ export function assertStoryBindingSettled({ projectRoot, issue, sessionId, repos
     if (exists(local)) handoffFail('binding-unclaimed-cache');
     return;
   }
-  if (observed.claim.worktree === projectRoot) {
+  if (observed.claim.worktree === projectRoot && observed.claim.sessionId === sessionId) {
     cleanGeneration(observed.claim, observed.identity);
     return;
   }

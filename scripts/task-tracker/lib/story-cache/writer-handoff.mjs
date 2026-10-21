@@ -61,11 +61,12 @@ function scopedRecord(record, { schema, claimDigest, target }) {
       : 'claimDigest,schema,target,transferId';
   if (Object.keys(record).sort().join(',') !== fields) handoffFail('retained-intent');
 }
-async function assigned(target, check) {
+async function assigned(target, check, destination) {
   const assignment =
     typeof target.assignment === 'function' ? await target.assignment() : target.assignment;
   check();
-  if (!cacheWriterOwnershipDecision({ assignees: assignment, currentUser: target.human }).ok)
+  if (!same(tuple(target), destination)) handoffFail('target-changed');
+  if (!cacheWriterOwnershipDecision({ assignees: assignment, currentUser: destination.human }).ok)
     handoffFail('assignment');
 }
 function sourceLock(io, root, record) {
@@ -138,7 +139,7 @@ export async function transferStoryWriter({ claim, target, store, registry } = {
       const io = ctx.io;
       const destination = tuple(target);
       const claimDigest = handoffHash(canonicalRecordJson(claim));
-      await assigned(target, ctx.check);
+      await assigned(target, ctx.check, destination);
       const root = resolveRuntimeRoot({ cwd: destination.worktree, env: {} });
       ctx.check();
       const sourceRoot = resolveRuntimeRoot({ cwd: claim.worktree, env: {} });
@@ -238,7 +239,7 @@ export async function transferStoryWriter({ claim, target, store, registry } = {
       }
       const manifest = validated.manifest;
       const request = expectedRequest(manifest, validated.bundleDigest);
-      let proof = existingAck(io, manifest, validated.bundleDigest);
+      let proof = existingAck(io, manifest, validated.bundleDigest, { deferStaged: true });
       if (!proof) {
         await target.acknowledge(request);
         ctx.check();
@@ -246,7 +247,7 @@ export async function transferStoryWriter({ claim, target, store, registry } = {
       }
       if (!proof) handoffFail('missing-acknowledgment');
       if (!same(tuple(target), destination)) handoffFail('target-changed');
-      await assigned(target, ctx.check);
+      await assigned(target, ctx.check, destination);
       exactTree(io, claim.cachePath, manifest);
       ctx.check();
       proof = existingAck(io, manifest, validated.bundleDigest);
@@ -313,6 +314,7 @@ export async function acknowledgeStoryWriterTransfer({
     protocol(io, store.cachePath);
     const already = existingAck(io, manifest, bundleDigest, {
       checkWorking: !same(observed.claim, next),
+      recoverStage: true,
     });
     if (already) return already;
     if (!same(observed.claim, manifest.sourceClaim)) handoffFail('unacknowledged-owner');
