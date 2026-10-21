@@ -469,11 +469,13 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2040: exactly one native content-observation runtime module.
     1 + // #2052: exactly one bounded current-story snapshot reader.
     1 + // #2041: exactly one cache manifest/generation validator.
-    1; // #2053: exactly one complete snapshot vector comparator.
+    1 + // #2053: exactly one complete snapshot vector comparator.
+    1; // #2054: exactly one crash-safe immutable generation store.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-compare.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/store.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-kind.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-target-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-evidence-recovery.mjs'));
