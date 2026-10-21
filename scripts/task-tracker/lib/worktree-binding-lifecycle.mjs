@@ -1,9 +1,10 @@
-// @story #1297
+// @story #1297 #2057
 // Synchronous, machine-local lifecycle authority for worktree bindings. The
 // Bash hook cannot query GitHub on every command, so successful close paths
 // publish a main-anchored terminal timestamp before sweeping matching session
 // records from every discoverable linked worktree.
 
+import { assertStoryBindingSettled } from './story-cache/writer-handoff-bindings.mjs';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -231,6 +232,13 @@ export function releaseIssueBindings({
   const candidates = Array.isArray(collected.candidates)
     ? collected.candidates
     : [...collected.candidates];
+  const readActive = deps.getActiveTask || getActiveTask;
+  for (const candidate of new Set([projectDir, ...candidates]))
+    if (
+      candidate === projectDir ||
+      normalizeBindingIssue(readActive(sessionId, candidate)?.issue) === issueRef
+    )
+      assertStoryBindingSettled({ projectRoot: candidate, issue: issueRef, sessionId });
   const occupancyFile = (deps.occupancyPath || occupancyPath)(mainWorktreePath);
   // Capture before publishing/sweeping. A subsequent same-SID rebind cannot
   // replace the identity this terminal attempt is authorized to release.
