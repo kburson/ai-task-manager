@@ -1,3 +1,4 @@
+// cspell:ignore EISSUELOCKED
 // @story #2039 #2042
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -433,3 +434,25 @@ test('acquired local assertion refuses a cache symlink replacement', async (t) =
   assert.deepEqual(fs.readdirSync(outside), []);
   assert.equal(fs.existsSync(kept), true);
 });
+for (const existing of [false, true])
+  test(`borrowed native ownership must remain live across awaits (existing=${existing})`, async (t) => {
+    const f = fixture(t);
+    if (existing) await writer.acquireStoryWriter(f);
+    const before = fs
+      .readdirSync(f.registry.path)
+      .map((p) => fs.readFileSync(path.join(f.registry.path, p), 'utf8'));
+    let detached;
+    await withIssueLock({ issue: 2042, projDir: f.worktree, sessionId: f.sessionId }, async () => {
+      detached = writer.acquireStoryWriter(f);
+    });
+    await withIssueLock({ issue: 2042, projDir: f.worktree, sessionId: 'author-B' }, async () => {
+      await rejects(detached);
+    });
+    assert.deepEqual(
+      fs
+        .readdirSync(f.registry.path)
+        .map((p) => fs.readFileSync(path.join(f.registry.path, p), 'utf8')),
+      before
+    );
+    if (!existing) await rejects(writer.acquireStoryWriter(f));
+  });

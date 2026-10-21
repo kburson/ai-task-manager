@@ -1,3 +1,4 @@
+// cspell:ignore EISSUELOCKED
 // @story #2042
 // Local validation is separate from current assignment and registry authority.
 import path from 'node:path';
@@ -330,9 +331,17 @@ export async function acquireStoryWriter({
       { issue: identity.issueNumber, projDir: worktree, sessionId, retries: 0 },
       async () => {
         const owner = currentIssueLockOwner(identity.issueNumber);
-        if (!owner || owner.projDir !== root.mainRoot || owner.sessionId !== sessionId)
-          fail('STORY_WRITER_UNAVAILABLE', 'native-lock-owner');
-        registryContext(registry, worktree);
+        const revalidate = () => {
+          if (
+            !owner ||
+            currentIssueLockOwner(identity.issueNumber) !== owner ||
+            owner.projDir !== root.mainRoot ||
+            owner.sessionId !== sessionId
+          )
+            fail('STORY_WRITER_UNAVAILABLE', 'native-lock-owner');
+          registryContext(registry, worktree);
+        };
+        revalidate();
         const file = claimFile(registry, identity);
         const existing = readClaim(io, file, registryId);
         if (existing) {
@@ -347,7 +356,9 @@ export async function acquireStoryWriter({
             fail('STORY_WRITER_OWNED', 'persistent-owner');
           if (!io.existsSync(cachePath)) fail('STORY_WRITER_UNAVAILABLE', 'missing-owned-cache');
           const store = await openStoryStore({ projectRoot: worktree, identity });
+          revalidate();
           const current = await store.readGeneration();
+          revalidate();
           if (current && current.manifest.claimId !== existing.claim.claimId)
             fail('STORY_WRITER_UNAVAILABLE', 'cache-claim');
           return Object.freeze({ ...existing.claim });
@@ -371,6 +382,9 @@ export async function acquireStoryWriter({
         // partial registry loss cannot make another worktree look like a first owner.
         persistClaim(io, presenceFile(file), presenceOf(claim, registryId));
         await openStoryStore({ projectRoot: worktree, identity });
+        revalidate();
+        if (!same(readPrivateJson(io, presenceFile(file)), presenceOf(claim, registryId)))
+          fail('STORY_WRITER_UNAVAILABLE', 'claim-presence-drift');
         persistClaim(io, file, {
           schema: 'aitm.story-writer-registry/v1',
           host: THIS_HOST,

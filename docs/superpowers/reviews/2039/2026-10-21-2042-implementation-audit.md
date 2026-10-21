@@ -43,3 +43,7 @@ After the cleanup refactor, targeted ESLint passed and all 61 writer unit/integr
 ## Independent round 1 and repairs
 
 Fresh Sol / medium review found three Important gaps: expired detached async lock capability, missing owned cache accepted by local assertion, and individual claim-file loss permitting another worktree's first-acquisition path. All were reproduced with failing tests and repaired; the complete verbatim review and explicit author rulings on all findings and declined boundaries are retained separately. The repair selection passed 81 writer/native-lock tests. Per-issue presence now persists before cache creation/final claim publication, and unresolved presence refuses automatic retry. Native acceptance and final CI remain pending a repair review and final verification.
+
+## Independent round 2 and continuation repair
+
+Round 2 independently passed 84 focused tests and confirmed the prior three repairs, then reproduced an acquisition that began under valid borrowed ownership but continued after its outer frame expired during an await. Added failing new/existing-owner continuation cases (32 passed / 2 failed), then required the same live native capability and current registry identity after each awaited store operation. The resulting focused writer/native-lock/environment/publication selection passed 86 tests. Raw round 2, every author boundary ruling and the narrow spelling-token correction are retained. Final native acceptance still awaits a clean repair review and final-head verification.

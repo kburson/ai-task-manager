@@ -27,3 +27,22 @@ Before these review repairs, the standard fast suite passed all 984 files; full 
 ## Pending follow-up
 
 A repair review must inspect these changes and reproduce the new boundaries before native acceptance. All findings, additional rounds and author dispositions will be committed; no finding is waived or silently deferred.
+
+## Round 2
+
+The same independent Sol / medium reviewer inspected `cf297b5466e35ae8d09b7b55b917b3ad4470c97b..57eeb00d5f2a3db7a5918254d043b14fe7bdef7b` and independently passed 84 focused tests. The full report is retained verbatim in `2026-10-21-2042-reviewer-r2-review.md`. It confirmed all first-round repairs and identified one remaining Important P1: an acquisition can start under a live borrowed frame, yield, then continue after the enclosing owner expires.
+
+Accepted and reproduced in both new-acquisition and existing-owner paths: integration 32 passed / 2 failed. Acquisition now retains the original owner object and revalidates that exact live capability and registry identity after every awaited store operation, before final publication or successful return. It cannot adopt a later frame's capability. Initial presence written under genuine ownership remains retained if private initialization becomes incomplete; an expired operation returns unavailable rather than an owning claim, and a later implicit acquisition refuses that unresolved presence. The repaired writer/native-lock/environment/publication selection passed 86 tests, zero failures.
+
+Explicit author rulings on every round-2 declined behavior:
+
+- Task 8 registry APIs: next slice consumes this single pointer authority; this task does not claim register/resolve APIs complete. No duplicated pending-content store is authorized.
+- Task 9 handoff/export/reassignment/recipient verification: remains its accepted later slice; no automatic release, replacement or receipt is manufactured here.
+- Public staging/publication/local-hook routing: remains in its later accepted slices; the stronger local assertion is available as a foundation.
+- Independent machines/arbitrary GitHub editors: the local registry is not a server-side lock. Foreign host identity refuses automatic ownership.
+- Assignment observation freshness/authenticity: native consumers own obtaining a current bounded observation; the local gate never turns an old or supplied snapshot into independent live authority.
+- Original plain assertion seed: remains a structural check as pinned. Acquired claims retain their stronger persistent/cache validation.
+- Payload integrity/destruction survival: accepted store and explicit recovery own complete payload validation; this writer refuses known missing or unsafe evidence and makes no backup-survival claim.
+- Native lifecycle/full CI/merge/delivery: remains governed and unperformed for this child; a clean artifact review cannot satisfy those gates.
+
+The second local fast-suite run passed all 984 files and format check passed before this final continuation repair; they are not final-head evidence. Full lint reached spelling and found only the existing native error token EISSUELOCKED in the new module/test. Narrow per-file spelling directives retain that exact error code; no check or runtime behavior is waived. Final verification and repair review remain required.
