@@ -1,0 +1,48 @@
+{
+  "issue": 2050,
+  "source": "Actual native command results retained by the orchestration tool",
+  "commands": [
+    {
+      "command": "npx aitm start 2050 --role agent",
+      "startedAt": "2026-10-20T18:03:24.343Z",
+      "endedAt": "2026-10-20T18:04:00.530Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 2050 --role agent\n\n🚧 PICKUP DIRECTIVE DEFERRED — #2050 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #2050`.\n⚠ #2050 move-invariants indeterminate\n  board       : backlog\n  recorded    : backlog\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"backlog\"). Cannot auto-reconcile without fabricating provenance — reporting only.\nResumed #2050.\nDecomposition restriction for #2050: story-ok; available: inspect, checkpoint, decomposition-prepare, governed-decomposition\n"
+    },
+    {
+      "command": "npx aitm explain 2050 --json",
+      "startedAt": "2026-10-20T18:04:15.289Z",
+      "endedAt": "2026-10-20T18:04:28.908Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2050 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2050,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm issue-body 2050 --operation-file .scratch/gh/2050-extraction-operation.json",
+      "startedAt": "2026-10-20T18:04:31.328Z",
+      "endedAt": "2026-10-20T18:05:04.315Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' issue-body 2050 --operation-file .scratch/gh/2050-extraction-operation.json\nissue-body: ok version=9\n"
+    },
+    {
+      "command": "npx aitm block 2050 --by 2071,2073",
+      "startedAt": "2026-10-20T18:05:39.934Z",
+      "endedAt": "2026-10-20T18:06:11.574Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' block 2050 --by 2071,2073\n[task-tracker] ✓ #2050 blocked by #2071, #2073\n"
+    },
+    {
+      "command": "npx aitm refine 2050 --size S --estimate 3.5 --priority p0 --rank 19 --labels bug --reason 'Local remaining scope after merged #2073: reuse refinement/admission fixtures and add accepted S/G/D/V whole-cache transition coverage with fixed 8/13/10-call ceilings, amplification failures, unclassified dispatches and explicit unknown costs. Effort: 1.5h implementation, 1h focused ledger/budget tests, 1h review/integration repair. Wave 19; predecessors #2071 and completed #2073. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T18:06:41.666Z",
+      "endedAt": "2026-10-20T18:13:02.520Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2050 --size S --estimate 3.5 --priority p0 --rank 19 --labels bug --reason Local remaining scope after merged #2073: reuse refinement/admission fixtures and add accepted S/G/D/V whole-cache transition coverage with fixed 8/13/10-call ceilings, amplification failures, unclassified dispatches and explicit unknown costs. Effort: 1.5h implementation, 1h focused ledger/budget tests, 1h review/integration repair. Wave 19; predecessors #2071 and completed #2073. No historical cloud estimation tasks used.\n✓ Issue #2050 moved to: refine\n✓ move #2050 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2050 promoted: backlog → refine (direct)\n✓ #2050 refined: size=S, estimate=3.5h, priority=P0; moved backlog → Refine\n"
+    },
+    {
+      "command": "npx aitm refine 2050 --size S --estimate 3.5 --priority p0 --rank 19 --labels bug --reason 'Local remaining scope after merged #2073: reuse refinement/admission fixtures and add accepted S/G/D/V whole-cache transition coverage with fixed 8/13/10-call ceilings, amplification failures, unclassified dispatches and explicit unknown costs. Effort: 1.5h implementation, 1h focused ledger/budget tests, 1h review/integration repair. Wave 19; predecessors #2071 and completed #2073. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T18:13:04.928Z",
+      "endedAt": "2026-10-20T18:14:48.365Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2050 --size S --estimate 3.5 --priority p0 --rank 19 --labels bug --reason Local remaining scope after merged #2073: reuse refinement/admission fixtures and add accepted S/G/D/V whole-cache transition coverage with fixed 8/13/10-call ceilings, amplification failures, unclassified dispatches and explicit unknown costs. Effort: 1.5h implementation, 1h focused ledger/budget tests, 1h review/integration repair. Wave 19; predecessors #2071 and completed #2073. No historical cloud estimation tasks used.\n✓ Issue #2050 moved to: ready-for-plan\n✓ move #2050 refine→ready-for-plan complete\n  exit flush  : refine row closed (verified)\n  entry stamp : aitm-entered-ready-for-plan present (verified)\n  entry row   : ready-for-plan row opened (verified)\n  status      : Status == Ready-for-plan (verified)\n  sentinel    : aitm-move-complete state=ready-for-plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2050 promoted: refine → ready-for-plan (direct)\n  ↳ posted \"### 🛠 Refine estimate\" comment\n✓ #2050 refined: size=S, estimate=3.5h, priority=P0; moved refine → Ready for Planning\n"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "issue": 2071,
+  "source": "Actual native command results",
+  "commands": [
+    {
+      "command": "npx aitm start 2071 --role agent",
+      "startedAt": "2026-10-20T20:44:27.985Z",
+      "endedAt": "2026-10-20T20:45:03.491Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 2071 --role agent\n\n🚧 PICKUP DIRECTIVE DEFERRED — #2071 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #2071`.\n[resume] #2071: re-engagement \"resumed\" has no open interruption and no prior start row to pair against; downgrading to start\n⚠ #2071 move-invariants indeterminate\n  board       : backlog\n  recorded    : (none)\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"none\"). Cannot auto-reconcile without fabricating provenance — reporting only.\nStarted #2071.\nDecomposition restriction for #2071: indeterminate; available: inspect, checkpoint, decomposition-prepare, authority-recover\n"
+    },
+    {
+      "command": "npx aitm explain 2071 --json",
+      "startedAt": "2026-10-20T20:45:08.432Z",
+      "endedAt": "2026-10-20T20:45:16.316Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2071 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2071,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\",\"args\":{\"reason\":\"unknown\"},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2071,\"actionId\":null},\"args\":{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\"}}]}},\"guidance\":[{\"id\":\"navigation.unresolved\",\"digest\":\"sha256:bca397f2045984fddb1e619fb13b3a23df645591855b983739617aaa2a860437\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"navigation\":\"unresolved\"},{\"recommendation\":null},{\"never\":\"bypass_guard\"}]}}]}\n"
+    },
+    {
+      "command": "npx aitm log 2071",
+      "startedAt": "2026-10-20T20:45:50.185Z",
+      "endedAt": "2026-10-20T20:46:17.832Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' log 2071\nIssue #2071: 1 timing rows\n  Engaged: Unknown\n  Session: Unknown\n  Review: Unknown\n  Plan: Unknown\n  Known engagement lower bound: 0 seconds\n  Unavailable: open-actor-interval\n  Stage Time (per visit):\n    backlog#1: 14h 09m 52s\n    backlog#2: open\n  Stage Time (totals):\n    backlog: 14h 09m 52s\nAITM_TIMING_RESULT {\"schema\":\"aitm.timing-field-result/v1\",\"status\":\"incomplete\",\"reasons\":[\"open-actor-interval\"],\"knownEngagedSec\":0,\"values\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"secondsByKey\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"unknownFields\":[\"engagedTime\",\"sessionTime\",\"reviewTime\",\"planTime\"],\"issue\":2071,\"repository\":\"kburson/ai-task-manager\",\"sourceCommentId\":\"IC_kwDOSU6LgM8AAAABd5LWeQ\"}\n  Start Time (repaired): 2026-10-20 15:44:40 -05:00\nFields updated on GitHub Projects board.\n"
+    },
+    {
+      "command": "npx aitm explain 2071 --json",
+      "startedAt": "2026-10-20T20:46:20.558Z",
+      "endedAt": "2026-10-20T20:46:33.167Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2071 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2071,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm block 2071 --by 2049,2070",
+      "startedAt": "2026-10-20T20:46:36.535Z",
+      "endedAt": "2026-10-20T20:47:11.894Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' block 2071 --by 2049,2070\n[task-tracker] ✓ #2071 blocked by #2049, #2070\n"
+    },
+    {
+      "command": "npx aitm refine 2071 --size S --estimate 3.5 --priority p0 --rank 18 --labels bug --reason 'Local source/specification scope: Switch public writer results and every caller family together using the accepted caller census; prevent legacy immediate-write fallback; keep creation and explicit administrative migration separately classified. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 18; predecessors #2049,#2070. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T20:47:20.169Z",
+      "endedAt": "2026-10-20T20:55:25.911Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2071 --size S --estimate 3.5 --priority p0 --rank 18 --labels bug --reason Local source/specification scope: Switch public writer results and every caller family together using the accepted caller census; prevent legacy immediate-write fallback; keep creation and explicit administrative migration separately classified. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 18; predecessors #2049,#2070. No historical cloud estimation tasks used.\n✓ Issue #2071 moved to: refine\n✓ move #2071 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2071 promoted: backlog → refine (direct)\n✓ #2071 refined: size=S, estimate=3.5h, priority=P0; moved backlog → Refine\n"
+    },
+    {
+      "command": "npx aitm explain 2071 --json",
+      "startedAt": "2026-10-20T20:55:31.532Z",
+      "endedAt": "2026-10-20T20:55:54.813Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2071 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2071,\"actionId\":\"promote\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"refine-exit-complete-marker\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}},{\"guardId\":\"refine-exit-current-snapshot\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2071,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"refine-exit-complete-marker\",\"code\":\"unclassified-refusal\"}},{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2071,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"refine-exit-current-snapshot\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm refine 2071 --size S --estimate 3.5 --priority p0 --rank 18 --labels bug --reason 'Local source/specification scope: Switch public writer results and every caller family together using the accepted caller census; prevent legacy immediate-write fallback; keep creation and explicit administrative migration separately classified. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 18; predecessors #2049,#2070. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T20:55:57.802Z",
+      "endedAt": "2026-10-20T20:57:54.386Z",
+      "exitCode": 1,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2071 --size S --estimate 3.5 --priority p0 --rank 18 --labels bug --reason Local source/specification scope: Switch public writer results and every caller family together using the accepted caller census; prevent legacy immediate-write fallback; keep creation and explicit administrative migration separately classified. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 18; predecessors #2049,#2070. No historical cloud estimation tasks used.\n[move-state] #2071: marker stamp failed: gh fetch failed (1): Post \"https://api.github.com/graphql\": dial tcp 140.82.112.6:443: connect: operation timed out\n\npromote: gh fetch failed (1): Post \"https://api.github.com/graphql\": dial tcp 140.82.112.6:443: connect: operation timed out\n\n"
+    },
+    {
+      "command": "npx aitm explain 2071 --json",
+      "startedAt": "2026-10-20T20:57:56.670Z",
+      "endedAt": "2026-10-20T20:58:07.692Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2071 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2071,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\",\"args\":{\"reason\":\"conflicting\"},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2071,\"actionId\":null},\"args\":{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\"}}]}},\"guidance\":[{\"id\":\"navigation.unresolved\",\"digest\":\"sha256:bca397f2045984fddb1e619fb13b3a23df645591855b983739617aaa2a860437\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"navigation\":\"unresolved\"},{\"recommendation\":null},{\"never\":\"bypass_guard\"}]}}]}\n"
+    },
+    {
+      "command": "npx aitm reconcile 2071",
+      "startedAt": "2026-10-20T20:58:10.698Z",
+      "endedAt": "2026-10-20T20:58:14.751Z",
+      "exitCode": 1,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' reconcile 2071\nUsage: /task reconcile <accept-live|revert-to-recorded|revert-to-sentinel|backfill> #N\n"
+    },
+    {
+      "command": "npx aitm explain 2071 --json",
+      "startedAt": "2026-10-20T20:58:50.777Z",
+      "endedAt": "2026-10-20T20:59:12.498Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2071 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2071,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm promote 2071",
+      "startedAt": "2026-10-20T20:59:16.033Z",
+      "endedAt": "2026-10-20T21:00:53.595Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' promote 2071\n✓ Issue #2071 moved to: ready-for-plan\n✓ move #2071 refine→ready-for-plan complete\n  exit flush  : refine row closed (verified)\n  entry stamp : aitm-entered-ready-for-plan present (verified)\n  entry row   : ready-for-plan row opened (verified)\n  status      : Status == Ready-for-plan (verified)\n  sentinel    : aitm-move-complete state=ready-for-plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2071 promoted: refine → ready-for-plan (direct)\n  ↳ posted \"### 🛠 Refine estimate\" comment\n"
+    }
+  ],
+  "otherCommands": []
+}

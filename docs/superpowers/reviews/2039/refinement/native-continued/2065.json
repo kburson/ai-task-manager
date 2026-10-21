@@ -1,0 +1,56 @@
+{
+  "issue": 2065,
+  "source": "Actual native command results",
+  "commands": [
+    {
+      "command": "npx aitm start 2065 --role agent",
+      "startedAt": "2026-10-20T19:17:28.403Z",
+      "endedAt": "2026-10-20T19:18:04.711Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 2065 --role agent\n\n🚧 PICKUP DIRECTIVE DEFERRED — #2065 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #2065`.\n[resume] #2065: re-engagement \"resumed\" has no open interruption and no prior start row to pair against; downgrading to start\n⚠ #2065 move-invariants indeterminate\n  board       : backlog\n  recorded    : (none)\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"none\"). Cannot auto-reconcile without fabricating provenance — reporting only.\nStarted #2065.\nDecomposition restriction for #2065: indeterminate; available: inspect, checkpoint, decomposition-prepare, authority-recover\n"
+    },
+    {
+      "command": "npx aitm explain 2065 --json",
+      "startedAt": "2026-10-20T19:18:13.398Z",
+      "endedAt": "2026-10-20T19:18:21.826Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2065 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2065,\"actionId\":null,\"status\":\"indeterminate\",\"blockers\":[{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\",\"args\":{\"reason\":\"unknown\"},\"noAutomaticRemediation\":{\"reason\":\"state-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":2065,\"actionId\":null},\"args\":{\"guardId\":\"action-navigation\",\"code\":\"state-unavailable\"}}]}},\"guidance\":[{\"id\":\"navigation.unresolved\",\"digest\":\"sha256:bca397f2045984fddb1e619fb13b3a23df645591855b983739617aaa2a860437\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"navigation\":\"unresolved\"},{\"recommendation\":null},{\"never\":\"bypass_guard\"}]}}]}\n"
+    },
+    {
+      "command": "npx aitm log 2065",
+      "startedAt": "2026-10-20T19:18:52.999Z",
+      "endedAt": "2026-10-20T19:19:17.363Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' log 2065\nIssue #2065: 1 timing rows\n  Engaged: Unknown\n  Session: Unknown\n  Review: Unknown\n  Plan: Unknown\n  Known engagement lower bound: 0 seconds\n  Unavailable: open-actor-interval\n  Stage Time (per visit):\n    backlog#1: 12h 49m 50s\n    backlog#2: open\n  Stage Time (totals):\n    backlog: 12h 49m 50s\nAITM_TIMING_RESULT {\"schema\":\"aitm.timing-field-result/v1\",\"status\":\"incomplete\",\"reasons\":[\"open-actor-interval\"],\"knownEngagedSec\":0,\"values\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"secondsByKey\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"unknownFields\":[\"engagedTime\",\"sessionTime\",\"reviewTime\",\"planTime\"],\"issue\":2065,\"repository\":\"kburson/ai-task-manager\",\"sourceCommentId\":\"IC_kwDOSU6LgM8AAAABd3ZTCw\"}\n  Start Time (repaired): 2026-10-20 14:17:40 -05:00\nFields updated on GitHub Projects board.\n"
+    },
+    {
+      "command": "npx aitm explain 2065 --json",
+      "startedAt": "2026-10-20T19:19:20.009Z",
+      "endedAt": "2026-10-20T19:19:32.996Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2065 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2065,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm block 2065 --by 2064",
+      "startedAt": "2026-10-20T19:19:36.953Z",
+      "endedAt": "2026-10-20T19:20:02.598Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' block 2065 --by 2064\n[task-tracker] ✓ #2065 blocked by #2064\n"
+    },
+    {
+      "command": "npx aitm refine 2065 --size S --estimate 3 --priority p0 --rank 10 --labels bug --reason 'Local source/specification scope: Preserve exact v1/v2 read behavior and the v2 half-hour grid while v3 becomes current; reject stale/missing current provenance without weakening legacy validators. Effort: 1.5h implementation, 0.75h focused verification, 0.75h review/integration repair. Wave 10; predecessor #2064. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T19:20:06.873Z",
+      "endedAt": "2026-10-20T19:26:37.862Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2065 --size S --estimate 3 --priority p0 --rank 10 --labels bug --reason Local source/specification scope: Preserve exact v1/v2 read behavior and the v2 half-hour grid while v3 becomes current; reject stale/missing current provenance without weakening legacy validators. Effort: 1.5h implementation, 0.75h focused verification, 0.75h review/integration repair. Wave 10; predecessor #2064. No historical cloud estimation tasks used.\n✓ Issue #2065 moved to: refine\n✓ move #2065 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2065 promoted: backlog → refine (direct)\n✓ #2065 refined: size=S, estimate=3h, priority=P0; moved backlog → Refine\n"
+    },
+    {
+      "command": "npx aitm refine 2065 --size S --estimate 3 --priority p0 --rank 10 --labels bug --reason 'Local source/specification scope: Preserve exact v1/v2 read behavior and the v2 half-hour grid while v3 becomes current; reject stale/missing current provenance without weakening legacy validators. Effort: 1.5h implementation, 0.75h focused verification, 0.75h review/integration repair. Wave 10; predecessor #2064. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T19:26:42.290Z",
+      "endedAt": "2026-10-20T19:28:22.858Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2065 --size S --estimate 3 --priority p0 --rank 10 --labels bug --reason Local source/specification scope: Preserve exact v1/v2 read behavior and the v2 half-hour grid while v3 becomes current; reject stale/missing current provenance without weakening legacy validators. Effort: 1.5h implementation, 0.75h focused verification, 0.75h review/integration repair. Wave 10; predecessor #2064. No historical cloud estimation tasks used.\n✓ Issue #2065 moved to: ready-for-plan\n✓ move #2065 refine→ready-for-plan complete\n  exit flush  : refine row closed (verified)\n  entry stamp : aitm-entered-ready-for-plan present (verified)\n  entry row   : ready-for-plan row opened (verified)\n  status      : Status == Ready-for-plan (verified)\n  sentinel    : aitm-move-complete state=ready-for-plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2065 promoted: refine → ready-for-plan (direct)\n  ↳ posted \"### 🛠 Refine estimate\" comment\n✓ #2065 refined: size=S, estimate=3h, priority=P0; moved refine → Ready for Planning\n"
+    }
+  ],
+  "otherCommands": []
+}

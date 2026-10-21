@@ -28,7 +28,6 @@ Root Rank is 1. Child Rank equals the wave number below, starts at 2 and is iden
 
 Every child retains its real identity and bounded component. Native source bindings must reference this exact committed active plan and selected section; the original technical plan remains referenced explicitly.
 
-
 The administrative counts and earlier implementation-prohibition session notes in the source overlay are superseded by the owner's current 32-child scope and implementation authorization. This document retains the technical requirements and replaces the administrative execution boundary.
 
 Owner-authorized bootstrap also supersedes the source overlay's instruction not to alter estimation configuration: `estimationRubricIssue` is now `0` in this worktree. The agent supplies accepted local engineering hours through the native supplied-hours compatibility route; the owner does not estimate. No completed cloud story, backlog history, comparable, or cloud rubric may be retrieved to generate/calibrate hours. Automatic estimation remains disabled until the local-only engine is implemented. No fabricated forecast, waived review or skipped delivery gate is permitted.
@@ -42,7 +41,6 @@ The epic owns orchestration and governance evidence. Product implementation and 
 - **Need:** estimation scans and repeated small writes exhaust shared GitHub quota and permit stale publications
 - **Value or failure prevented:** keep delivery usable while preserving external edits and recoverable workflow evidence
 
-
 ## Review Focus
 
 1. Exact native titles, selected headings and pinned complete plan bytes agree for all 32 children.
@@ -53,46 +51,46 @@ The epic owns orchestration and governance evidence. Product implementation and 
 
 ## Completed external prerequisite
 
-#2073 is the delivered refinement-traffic prerequisite, merged through PR #2074 at `6ab81324c36b2ca35230634c675bb6a942b8e371`. #2049, #2050 and #2066 retain the merged-source provenance and their existing remaining integration scope. It is not an estimation comparable.
+Issue #2073 is the delivered refinement-traffic prerequisite, merged through PR #2074 at `6ab81324c36b2ca35230634c675bb6a942b8e371`. #2049, #2050 and #2066 retain the merged-source provenance and their existing remaining integration scope. It is not an estimation comparable.
 
 Native materialized-WBS planning accepts dependencies within this WBS. Verify actual native Done delivery before using `unblock --by 2073` to retire only the fulfilled external blocking edge on those three consumers; preserve its native removal audit and merged-source reference. Do not remove an unfinished external prerequisite, an internal dependency, or #2072's dependency. This describes planned reconciliation, not a claim that any edge has already changed.
 
 ## Schedule
 
-| Source task | Child | Hours | Wave | Retained prerequisites |
-| ---: | --- | ---: | ---: | --- |
-| 1 | #2040 | 3 | 2 | None |
-| 2 | #2052 | 3.5 | 3 | #2040 |
-| 3 | #2053 | 2.5 | 4 | #2052 |
-| 4 | #2041 | 3 | 3 | #2040 |
-| 5 | #2054 | 3.5 | 4 | #2052, #2041 |
-| 6 | #2055 | 3 | 5 | #2054 |
-| 7 | #2042 | 3 | 5 | #2054 |
-| 8 | #2056 | 3 | 6 | #2042 |
-| 9 | #2057 | 3.5 | 7 | #2055, #2056 |
-| 10 | #2043 | 3.5 | 8 | #2053, #2057 |
-| 11 | #2058 | 3 | 9 | #2043 |
-| 12 | #2059 | 3.5 | 10 | #2058 |
-| 13 | #2044 | 3.5 | 4 | #2041 |
-| 14 | #2060 | 3 | 9 | #2043, #2044 |
-| 15 | #2061 | 3.5 | 11 | #2059, #2060 |
-| 16 | #2045 | 3.5 | 6 | #2054, #2055 |
-| 17 | #2062 | 3.5 | 7 | #2045 |
-| 18 | #2063 | 3.5 | 8 | #2062 |
-| 19 | #2046 | 3.5 | 8 | #2062 |
-| 20 | #2064 | 3.5 | 9 | #2063, #2046 |
-| 21 | #2065 | 3 | 10 | #2064 |
-| 22 | #2047 | 3.5 | 12 | #2059, #2061, #2065 |
-| 23 | #2066 | 3.5 | 13 | #2047, #2073 (Done) |
-| 24 | #2067 | 3.5 | 14 | #2066 |
-| 25 | #2048 | 3 | 12 | #2061 |
-| 26 | #2068 | 3.5 | 15 | #2067, #2048 |
-| 27 | #2069 | 3.5 | 16 | #2065, #2068 |
-| 28 | #2049 | 3.5 | 17 | #2059, #2063, #2069, #2073 (Done) |
-| 29 | #2070 | 3 | 16 | #2061, #2048, #2068 |
-| 30 | #2071 | 3.5 | 18 | #2049, #2070 |
-| 31 | #2050 | 3.5 | 19 | #2071, #2073 (Done) |
-| 34 | #2051 | 3.5 | 19 | #2055, #2071 |
+| Source task | Child | Hours | Wave | Retained prerequisites            |
+| ----------: | ----- | ----: | ---: | --------------------------------- |
+|           1 | #2040 |     3 |    2 | None                              |
+|           2 | #2052 |   3.5 |    3 | #2040                             |
+|           3 | #2053 |   2.5 |    4 | #2052                             |
+|           4 | #2041 |     3 |    3 | #2040                             |
+|           5 | #2054 |   3.5 |    4 | #2052, #2041                      |
+|           6 | #2055 |     3 |    5 | #2054                             |
+|           7 | #2042 |     3 |    5 | #2054                             |
+|           8 | #2056 |     3 |    6 | #2042                             |
+|           9 | #2057 |   3.5 |    7 | #2055, #2056                      |
+|          10 | #2043 |   3.5 |    8 | #2053, #2057                      |
+|          11 | #2058 |     3 |    9 | #2043                             |
+|          12 | #2059 |   3.5 |   10 | #2058                             |
+|          13 | #2044 |   3.5 |    4 | #2041                             |
+|          14 | #2060 |     3 |    9 | #2043, #2044                      |
+|          15 | #2061 |   3.5 |   11 | #2059, #2060                      |
+|          16 | #2045 |   3.5 |    6 | #2054, #2055                      |
+|          17 | #2062 |   3.5 |    7 | #2045                             |
+|          18 | #2063 |   3.5 |    8 | #2062                             |
+|          19 | #2046 |   3.5 |    8 | #2062                             |
+|          20 | #2064 |   3.5 |    9 | #2063, #2046                      |
+|          21 | #2065 |     3 |   10 | #2064                             |
+|          22 | #2047 |   3.5 |   12 | #2059, #2061, #2065               |
+|          23 | #2066 |   3.5 |   13 | #2047, #2073 (Done)               |
+|          24 | #2067 |   3.5 |   14 | #2066                             |
+|          25 | #2048 |     3 |   12 | #2061                             |
+|          26 | #2068 |   3.5 |   15 | #2067, #2048                      |
+|          27 | #2069 |   3.5 |   16 | #2065, #2068                      |
+|          28 | #2049 |   3.5 |   17 | #2059, #2063, #2069, #2073 (Done) |
+|          29 | #2070 |     3 |   16 | #2061, #2048, #2068               |
+|          30 | #2071 |   3.5 |   18 | #2049, #2070                      |
+|          31 | #2050 |   3.5 |   19 | #2071, #2073 (Done)               |
+|          34 | #2051 |   3.5 |   19 | #2055, #2071                      |
 
 ## Execution protocol
 
@@ -101,6 +99,7 @@ For every admitted child, read its exact committed selected section and the acce
 ## Active child slices
 
 ### Task 1: 🐞 [BUG] Native body and comment revision observations
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -129,6 +128,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/native-observation.t
 ```
 
 ### Task 2: 🐞 [BUG] Bounded current-story snapshot reader
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -157,6 +157,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/snapshot-reader.test
 ```
 
 ### Task 3: 🐞 [BUG] Full snapshot comparison and comment inventory drift
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -185,6 +186,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/snapshot-compare.tes
 ```
 
 ### Task 4: 🐞 [BUG] Cache manifest and generation validation
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -213,6 +215,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/manifest.test.mjs
 ```
 
 ### Task 5: 🐞 [BUG] Crash-safe immutable cache generation storage
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -241,6 +244,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/store.test.mjs
 ```
 
 ### Task 6: 🐞 [BUG] Protect unpublished cache during cleanup and migration
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -269,6 +273,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/retention.test.mjs
 ```
 
 ### Task 7: 🐞 [BUG] Singleton writer claim validation and native locks
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -297,6 +302,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/writer-claim.test.mj
 ```
 
 ### Task 8: 🐞 [BUG] Shared writer registry with cache references only
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -325,6 +331,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/writer-registry.test
 ```
 
 ### Task 9: 🐞 [BUG] Explicit cache handoff and acknowledged export
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -353,6 +360,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/handoff.test.mjs
 ```
 
 ### Task 10: 🐞 [BUG] Local issue-body and title staging adapter
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -381,6 +389,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/stage-body.test.mjs
 ```
 
 ### Task 11: 🐞 [BUG] Local owned-comment intents and adoption
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -409,6 +418,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/stage-comment.test.m
 ```
 
 ### Task 12: 🐞 [BUG] Operation-specific proof capabilities and composite invariants
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -437,6 +447,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.t
 ```
 
 ### Task 13: 🐞 [BUG] Canonical timing event normalization and interval deltas
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -465,6 +476,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/timing-events.test.m
 ```
 
 ### Task 14: 🐞 [BUG] Durable timing ingestion and independent cursors
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -493,6 +505,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/timing-stage.test.mj
 ```
 
 ### Task 15: 🐞 [BUG] Freeze and confirm one timing candidate per transition
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -521,6 +534,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/timing-candidate.tes
 ```
 
 ### Task 16: 🐞 [BUG] Durable local estimation evidence and lineage
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -549,6 +563,7 @@ node --test scripts/tests/unit/task-tracker/lib/estimation/local-evidence.test.m
 ```
 
 ### Task 17: 🐞 [BUG] Pure local estimate calculation and rubric derivation
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -577,6 +592,7 @@ node --test scripts/tests/unit/task-tracker/lib/estimation/local-runtime.test.mj
 ```
 
 ### Task 18: 🐞 [BUG] Disable cloud estimation before CLI and hook dispatch
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -605,6 +621,7 @@ node --test scripts/tests/unit/task-tracker/lib/estimation/local-dispatch.test.m
 ```
 
 ### Task 19: 🐞 [BUG] Strict forecast v3 schema and local provenance
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -633,6 +650,7 @@ node --test scripts/tests/unit/task-tracker/lib/estimation/forecast-v3.test.mjs
 ```
 
 ### Task 20: 🐞 [BUG] Forecast lineage resolution and local read projections
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -661,6 +679,7 @@ node --test scripts/tests/unit/task-tracker/lib/estimation/forecast-lineage.test
 ```
 
 ### Task 21: 🐞 [BUG] Legacy forecast readers and v2 half-hour compatibility
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -689,6 +708,7 @@ node --test scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibilit
 ```
 
 ### Task 22: 🐞 [BUG] Freeze publication effects and final-body substitution slots
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -717,6 +737,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/batch.test.mjs
 ```
 
 ### Task 23: 🐞 [BUG] Single-attempt resource publisher and exact read-back
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -746,14 +767,14 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs
 
 **Retained merged-prerequisite extraction boundary:**
 
-#2073 is Done and PR #2074 merged as `6ab81324c36b2ca35230634c675bb6a942b8e371`. It delivered fresh exact-target Estimate, Size and body-effect observations in the existing refinement writer, with typed definitions, complete null evidence, read-back and recovery refusals. Consume the existing observation module and preserved writer boundaries; do not reimplement that optimization or mark the frozen cache publisher complete.
+Issue #2073 is Done and PR #2074 merged as `6ab81324c36b2ca35230634c675bb6a942b8e371`. It delivered fresh exact-target Estimate, Size and body-effect observations in the existing refinement writer, with typed definitions, complete null evidence, read-back and recovery refusals. Consume the existing observation module and preserved writer boundaries; do not reimplement that optimization or mark the frozen cache publisher complete.
 
-#2066 still owns publication of declared resources from a frozen cache batch: full current-target equality, one mutation attempt per dirty resource, exact outcome/new-ID verification and truthful non-atomic race handling. Cache-specific provider adapters must reuse or extend the merged target reader where suitable while retaining ownership, authorization and pending-operation reconciliation. Partial/uncertain saga recovery remains #2067. The original Task 23 contract is interpreted with this extraction boundary.
+Issue #2066 still owns publication of declared resources from a frozen cache batch: full current-target equality, one mutation attempt per dirty resource, exact outcome/new-ID verification and truthful non-atomic race handling. Cache-specific provider adapters must reuse or extend the merged target reader where suitable while retaining ownership, authorization and pending-operation reconciliation. Partial/uncertain saga recovery remains #2067. The original Task 23 contract is interpreted with this extraction boundary.
 
 Remaining local estimate: 3.5h (1.5h cache publisher/adapters, 1h targeted refusal/read-back tests, 1h review/integration repair). Size S, P0, execution wave/rank 13; predecessor #2047 plus completed prerequisite #2073. Same-wave file ownership is unchanged. No historical cloud estimation tasks were consulted; #2073 is delivery provenance, not a comparable.
 
-
 ### Task 24: 🐞 [BUG] Partial and uncertain publication recovery
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -782,6 +803,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/recovery.test.mjs
 ```
 
 ### Task 25: 🐞 [BUG] Immutable transition receipts and historical event subsets
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -810,6 +832,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/completion-receipt.t
 ```
 
 ### Task 26: 🐞 [BUG] Transition coordinator with one final issue-body write
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -838,6 +861,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/transition-batch.tes
 ```
 
 ### Task 27: 🐞 [BUG] Plan approval and forecast candidate/published authority
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -866,6 +890,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/plan-transition-cand
 ```
 
 ### Task 28: 🐞 [BUG] Integrate cached views with guards and timing reports
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -895,14 +920,14 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/views.test.mjs
 
 **Retained merged-prerequisite extraction boundary:**
 
-#2073 is Done and PR #2074 merged as `6ab81324c36b2ca35230634c675bb6a942b8e371`. It delivered fresh shallow leaf admission, epic-only nested enumeration and continuity checks in the existing hook path. Consume that implementation; do not recreate it or claim that this cache story is complete.
+Issue #2073 is Done and PR #2074 merged as `6ab81324c36b2ca35230634c675bb6a942b8e371`. It delivered fresh shallow leaf admission, epic-only nested enumeration and continuity checks in the existing hook path. Consume that implementation; do not recreate it or claim that this cache story is complete.
 
-#2049 still owns explicit working/published cache views, identity-bound guard and Explain integration, dirty/conflict/uncertain projections and supported recovery routing. Preserve the merged fresh-authority/refusal behavior while integrating those views. Source/edit/commit/proof guards and the accepted cache contract remain required. The original Task 28 scope is interpreted with this extraction boundary.
+Issue #2049 still owns explicit working/published cache views, identity-bound guard and Explain integration, dirty/conflict/uncertain projections and supported recovery routing. Preserve the merged fresh-authority/refusal behavior while integrating those views. Source/edit/commit/proof guards and the accepted cache contract remain required. The original Task 28 scope is interpreted with this extraction boundary.
 
 Remaining local estimate: 3.5h (1.5h implementation, 1h focused view/guard compatibility tests, 1h review and integration repair). Size S, P0, execution wave/rank 17; predecessors #2059, #2063, #2069, plus completed prerequisite #2073. Same-wave file ownership is unchanged. No historical cloud estimation tasks were consulted; #2073 is delivery provenance, not a comparable.
 
-
 ### Task 29: 🐞 [BUG] Timing reports and field projections preserve real work
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -931,6 +956,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/timing-authority.tes
 ```
 
 ### Task 30: 🐞 [BUG] Coordinated public writer and reader activation
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -959,6 +985,7 @@ node --test scripts/tests/unit/task-tracker/lib/story-cache/public-activation.te
 ```
 
 ### Task 31: 🐞 [BUG] Enforce offline whole-transition budgets and adversarial recovery
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -988,14 +1015,14 @@ node --test scripts/tests/integration/task-tracker/lib/story-cache-transition-bu
 
 **Retained merged-prerequisite extraction boundary:**
 
-#2073 is Done and PR #2074 merged as `6ab81324c36b2ca35230634c675bb6a942b8e371`. It delivered the offline refinement/admission fixture driving actual orchestration and public entrypoints, independent dispatch ceilings, extra-request failure checks and retained baseline/optimized ledgers. The measured publication dispatch count is 313 to 179; live point savings are unverified. Consume these fixtures and do not recreate them or treat their narrower success as completion of whole-transition cache coverage.
+Issue #2073 is Done and PR #2074 merged as `6ab81324c36b2ca35230634c675bb6a942b8e371`. It delivered the offline refinement/admission fixture driving actual orchestration and public entrypoints, independent dispatch ceilings, extra-request failure checks and retained baseline/optimized ledgers. The measured publication dispatch count is 313 to 179; live point savings are unverified. Consume these fixtures and do not recreate them or treat their narrower success as completion of whole-transition cache coverage.
 
-#2050 still owns the accepted S/G/D/V whole-transition/cache fixtures and independent 8/13/10-call ceilings, including the native guards, coordinator and saga, unclassified dispatches and explicit unknown cost coverage. Reuse the merged refinement provider/runner at its transport seams as appropriate; preserve fixed budgets rather than deriving them from observed output. Recovery and installed zero-network staging remain their separate child slices #2072 and Task 33. The original Task 31 contract is interpreted with this extraction boundary.
+Issue #2050 still owns the accepted S/G/D/V whole-transition/cache fixtures and independent 8/13/10-call ceilings, including the native guards, coordinator and saga, unclassified dispatches and explicit unknown cost coverage. Reuse the merged refinement provider/runner at its transport seams as appropriate; preserve fixed budgets rather than deriving them from observed output. Recovery and installed zero-network staging remain their separate child slices #2072 and Task 33. The original Task 31 contract is interpreted with this extraction boundary.
 
 Remaining local estimate: 3.5h (1.5h integrated cache budget fixture, 1h adversarial amplification and ledger checks, 1h review/integration repair). Size S, P0, execution wave/rank 19; predecessor #2071 plus completed prerequisite #2073. Same-wave file ownership is unchanged. No historical cloud estimation tasks were consulted; #2073 is delivery provenance, not a comparable.
 
-
 ### Task 34: 🐞 [BUG] Legacy writer adoption and safe administrative migration
+
 #### Story Intent
 
 - **Beneficiary:** delivery maintainer
@@ -1022,4 +1049,3 @@ Inventory every accepted legacy writer/repair path; stage existing-issue changes
 ```sh
 node --test scripts/tests/unit/task-tracker/lib/story-cache/migration.test.mjs
 ```
-

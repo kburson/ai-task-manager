@@ -1,0 +1,538 @@
+{
+  "source": "Fresh paginated REST current-child bodies; recorded state and aitm-fields, corroborating native transition board read-backs. This is not a direct final ProjectV2 field query.",
+  "startedAt": "2026-10-20T21:30:21.781Z",
+  "endedAt": "2026-10-20T21:30:54.635Z",
+  "parent": 2039,
+  "createdChildren": 33,
+  "errors": [],
+  "children": [
+    {
+      "issue": 2040,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": 29,
+        "sessionTime": 29,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 2,
+        "startTime": "2026-10-20 00:21:07 -05:00"
+      }
+    },
+    {
+      "issue": 2041,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": 15,
+        "sessionTime": 15,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 3,
+        "startTime": "2026-10-20 00:29:47 -05:00"
+      }
+    },
+    {
+      "issue": 2042,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": 13,
+        "sessionTime": 13,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 5,
+        "startTime": "2026-10-20 00:37:47 -05:00"
+      }
+    },
+    {
+      "issue": 2043,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 13,
+        "sessionTime": 13,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 8,
+        "startTime": "2026-10-20 00:52:08 -05:00"
+      }
+    },
+    {
+      "issue": 2044,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 14,
+        "sessionTime": 14,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 4,
+        "startTime": "2026-10-20 00:53:20 -05:00"
+      }
+    },
+    {
+      "issue": 2045,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 25,
+        "sessionTime": 25,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 6,
+        "startTime": "2026-10-20 00:54:36 -05:00"
+      }
+    },
+    {
+      "issue": 2046,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 1,
+        "sessionTime": 1,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 8,
+        "startTime": "2026-10-20 00:56:04 -05:00"
+      }
+    },
+    {
+      "issue": 2047,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 1,
+        "sessionTime": 1,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 12,
+        "startTime": "2026-10-20 00:57:17 -05:00"
+      }
+    },
+    {
+      "issue": 2048,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": 1,
+        "sessionTime": 1,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 12,
+        "startTime": "2026-10-20 00:58:34 -05:00"
+      }
+    },
+    {
+      "issue": 2049,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 1,
+        "sessionTime": 1,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 17,
+        "startTime": "2026-10-20 01:00:00 -05:00"
+      }
+    },
+    {
+      "issue": 2050,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 1,
+        "sessionTime": 1,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 19,
+        "startTime": "2026-10-20 01:01:22 -05:00"
+      }
+    },
+    {
+      "issue": 2051,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 1,
+        "sessionTime": 1,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 19,
+        "startTime": "2026-10-20 01:02:38 -05:00"
+      }
+    },
+    {
+      "issue": 2052,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 13,
+        "sessionTime": 13,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 3,
+        "startTime": "2026-10-20 02:09:40 -05:00"
+      }
+    },
+    {
+      "issue": 2053,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 2.5,
+        "engagedTime": 11,
+        "sessionTime": 11,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 4,
+        "startTime": "2026-10-20 02:22:48 -05:00"
+      }
+    },
+    {
+      "issue": 2054,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 11,
+        "sessionTime": 11,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 4,
+        "startTime": "2026-10-20 02:45:09 -05:00"
+      }
+    },
+    {
+      "issue": 2055,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": 14,
+        "sessionTime": 14,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 5,
+        "startTime": "2026-10-20 02:56:32 -05:00"
+      }
+    },
+    {
+      "issue": 2056,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": 14,
+        "sessionTime": 14,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 6,
+        "startTime": "2026-10-20 03:21:36 -05:00"
+      }
+    },
+    {
+      "issue": 2057,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 16,
+        "sessionTime": 16,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 7,
+        "startTime": "2026-10-20 03:45:26 -05:00"
+      }
+    },
+    {
+      "issue": 2058,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": 13,
+        "sessionTime": 13,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 9,
+        "startTime": "2026-10-20 04:17:42 -05:00"
+      }
+    },
+    {
+      "issue": 2059,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 16,
+        "sessionTime": 16,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 10,
+        "startTime": "2026-10-20 04:31:15 -05:00"
+      }
+    },
+    {
+      "issue": 2060,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": 14,
+        "sessionTime": 14,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 9,
+        "startTime": "2026-10-20 05:00:30 -05:00"
+      }
+    },
+    {
+      "issue": 2061,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": 14,
+        "sessionTime": 14,
+        "reviewTime": null,
+        "planTime": 0,
+        "rank": 11,
+        "startTime": "2026-10-20 05:19:46 -05:00"
+      }
+    },
+    {
+      "issue": 2062,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 7,
+        "startTime": "2026-10-20 06:08:01 -05:00"
+      }
+    },
+    {
+      "issue": 2063,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 8,
+        "startTime": "2026-10-20 13:41:50 -05:00"
+      }
+    },
+    {
+      "issue": 2064,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 9,
+        "startTime": "2026-10-20 14:06:14 -05:00"
+      }
+    },
+    {
+      "issue": 2065,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 10,
+        "startTime": "2026-10-20 14:17:40 -05:00"
+      }
+    },
+    {
+      "issue": 2066,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 13,
+        "startTime": "2026-10-20 12:55:29 -05:00"
+      }
+    },
+    {
+      "issue": 2067,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 14,
+        "startTime": "2026-10-20 14:42:07 -05:00"
+      }
+    },
+    {
+      "issue": 2068,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 15,
+        "startTime": "2026-10-20 15:05:46 -05:00"
+      }
+    },
+    {
+      "issue": 2069,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 16,
+        "startTime": "2026-10-20 15:18:21 -05:00"
+      }
+    },
+    {
+      "issue": 2070,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 16,
+        "startTime": "2026-10-20 15:30:51 -05:00"
+      }
+    },
+    {
+      "issue": 2071,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 18,
+        "startTime": "2026-10-20 15:44:40 -05:00"
+      }
+    },
+    {
+      "issue": 2072,
+      "recordedState": "ready-for-plan",
+      "values": {
+        "priority": "P0",
+        "size": "S",
+        "disposition": null,
+        "estimate": 3.5,
+        "engagedTime": null,
+        "sessionTime": null,
+        "reviewTime": null,
+        "planTime": null,
+        "rank": 20,
+        "startTime": "2026-10-20 16:01:28 -05:00"
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "issue": 2046,
+  "source": "Actual native command results",
+  "commands": [
+    {
+      "command": "npx aitm start 2046 --role agent",
+      "startedAt": "2026-10-20T18:54:27.364Z",
+      "endedAt": "2026-10-20T18:55:00.806Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 2046 --role agent\n\n🚧 PICKUP DIRECTIVE DEFERRED — #2046 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #2046`.\n⚠ #2046 move-invariants indeterminate\n  board       : backlog\n  recorded    : backlog\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"backlog\"). Cannot auto-reconcile without fabricating provenance — reporting only.\nResumed #2046.\nDecomposition restriction for #2046: story-ok; available: inspect, checkpoint, decomposition-prepare, governed-decomposition\n"
+    },
+    {
+      "command": "npx aitm explain 2046 --json",
+      "startedAt": "2026-10-20T18:55:19.885Z",
+      "endedAt": "2026-10-20T18:55:31.342Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2046 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2046,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm user-story 2046 --as 'delivery maintainer' --want 'validate forecasts with explicit local provenance because legacy forecast references do not describe retained local calculation inputs' --so-that 'make current forecast inputs auditable without cloud discovery'",
+      "startedAt": "2026-10-20T18:55:50.891Z",
+      "endedAt": "2026-10-20T18:56:01.921Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' user-story 2046 --as delivery maintainer --want validate forecasts with explicit local provenance because legacy forecast references do not describe retained local calculation inputs --so-that make current forecast inputs auditable without cloud discovery\n[task-tracker] ✓ #2046 User Story written\n"
+    },
+    {
+      "command": "npx aitm block 2046 --by 2062",
+      "startedAt": "2026-10-20T18:56:11.867Z",
+      "endedAt": "2026-10-20T18:56:37.492Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' block 2046 --by 2062\n[task-tracker] ✓ #2046 blocked by #2062\n"
+    },
+    {
+      "command": "npx aitm refine 2046 --size S --estimate 3.5 --priority p0 --rank 8 --labels bug --reason 'Local source/specification scope: Define strict successor schema and local-evidence manifest references; correlate plan/refine/rubric/outcome identities and exact hashes without fictional comment IDs. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 8; predecessor #2062. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T18:56:43.661Z",
+      "endedAt": "2026-10-20T19:02:56.298Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2046 --size S --estimate 3.5 --priority p0 --rank 8 --labels bug --reason Local source/specification scope: Define strict successor schema and local-evidence manifest references; correlate plan/refine/rubric/outcome identities and exact hashes without fictional comment IDs. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 8; predecessor #2062. No historical cloud estimation tasks used.\n✓ Issue #2046 moved to: refine\n✓ move #2046 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2046 promoted: backlog → refine (direct)\n✓ #2046 refined: size=S, estimate=3.5h, priority=P0; moved backlog → Refine\n"
+    },
+    {
+      "command": "npx aitm refine 2046 --size S --estimate 3.5 --priority p0 --rank 8 --labels bug --reason 'Local source/specification scope: Define strict successor schema and local-evidence manifest references; correlate plan/refine/rubric/outcome identities and exact hashes without fictional comment IDs. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 8; predecessor #2062. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T19:03:01.845Z",
+      "endedAt": "2026-10-20T19:04:44.012Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2046 --size S --estimate 3.5 --priority p0 --rank 8 --labels bug --reason Local source/specification scope: Define strict successor schema and local-evidence manifest references; correlate plan/refine/rubric/outcome identities and exact hashes without fictional comment IDs. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 8; predecessor #2062. No historical cloud estimation tasks used.\n✓ Issue #2046 moved to: ready-for-plan\n✓ move #2046 refine→ready-for-plan complete\n  exit flush  : refine row closed (verified)\n  entry stamp : aitm-entered-ready-for-plan present (verified)\n  entry row   : ready-for-plan row opened (verified)\n  status      : Status == Ready-for-plan (verified)\n  sentinel    : aitm-move-complete state=ready-for-plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2046 promoted: refine → ready-for-plan (direct)\n  ↳ posted \"### 🛠 Refine estimate\" comment\n✓ #2046 refined: size=S, estimate=3.5h, priority=P0; moved refine → Ready for Planning\n"
+    }
+  ],
+  "otherCommands": [
+    {
+      "command": "node scripts/task-tracker/graphql-usage-launch.mjs gh issue edit 2046 --title 'Strict forecast v3 schema and local provenance'",
+      "startedAt": "2026-10-20T18:56:05.804Z",
+      "endedAt": "2026-10-20T18:56:09.466Z",
+      "exitCode": 0,
+      "output": "https://github.com/kburson/ai-task-manager/issues/2046\n"
+    }
+  ]
+}

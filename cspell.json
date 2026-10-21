@@ -23,6 +23,10 @@
       ]
     },
     {
+      "filename": "docs/superpowers/reviews/2039/refinement/native-continued/2066.json",
+      "ignoreRegExpList": ["PVTI_[A-Za-z0-9_-]+"]
+    },
+    {
       "filename": "docs/superpowers/reviews/2039/native-revisions/2026-10-19-native-revision-probe.md",
       "ignoreRegExpList": ["(?:IC|UCE)_[A-Za-z0-9_-]+"]
     },

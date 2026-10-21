@@ -1,0 +1,57 @@
+{
+  "issue": 2047,
+  "source": "Actual native command results",
+  "commands": [
+    {
+      "command": "npx aitm start 2047 --role agent",
+      "startedAt": "2026-10-20T19:30:06.364Z",
+      "endedAt": "2026-10-20T19:30:43.186Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 2047 --role agent\n\n🚧 PICKUP DIRECTIVE DEFERRED — #2047 (state: backlog)\n   This issue hasn't reached Plan yet — deep-dive/implementation\n   instructions do not apply. Continue the state walk: `/task refine #2047`.\n⚠ #2047 move-invariants indeterminate\n  board       : backlog\n  recorded    : backlog\n  sentinel    : (none)\n  #move-invariants indeterminate: Status \"backlog\" has no move-complete sentinel to vouch for it (recorded \"backlog\"). Cannot auto-reconcile without fabricating provenance — reporting only.\nResumed #2047.\nDecomposition restriction for #2047: story-ok; available: inspect, checkpoint, decomposition-prepare, governed-decomposition\n"
+    },
+    {
+      "command": "npx aitm explain 2047 --json",
+      "startedAt": "2026-10-20T19:30:47.613Z",
+      "endedAt": "2026-10-20T19:31:00.315Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 2047 --json\n{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":2047,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n"
+    },
+    {
+      "command": "npx aitm user-story 2047 --as 'delivery maintainer' --want 'freeze declared publication effects and body slots because late body edits and unknown creation IDs can invalidate a frozen batch' --so-that 'prevent discretionary edits or circular proof from entering publication'",
+      "startedAt": "2026-10-20T19:31:19.315Z",
+      "endedAt": "2026-10-20T19:31:30.727Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' user-story 2047 --as delivery maintainer --want freeze declared publication effects and body slots because late body edits and unknown creation IDs can invalidate a frozen batch --so-that prevent discretionary edits or circular proof from entering publication\n[task-tracker] ✓ #2047 User Story written\n"
+    },
+    {
+      "command": "npx aitm block 2047 --by 2059,2061,2065",
+      "startedAt": "2026-10-20T19:31:43.143Z",
+      "endedAt": "2026-10-20T19:32:23.316Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' block 2047 --by 2059,2061,2065\n[task-tracker] ✓ #2047 blocked by #2059, #2061, #2065\n"
+    },
+    {
+      "command": "npx aitm refine 2047 --size S --estimate 3.5 --priority p0 --rank 12 --labels bug --reason 'Local source/specification scope: Freeze exact inputs, resource identities, dependencies and permitted verified-ID slots; allocate one publication generation; exclude circular final-body hashing and late discretionary edits. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 12; predecessors #2059,#2061,#2065. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T19:32:34.315Z",
+      "endedAt": "2026-10-20T19:39:03.564Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2047 --size S --estimate 3.5 --priority p0 --rank 12 --labels bug --reason Local source/specification scope: Freeze exact inputs, resource identities, dependencies and permitted verified-ID slots; allocate one publication generation; exclude circular final-body hashing and late discretionary edits. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 12; predecessors #2059,#2061,#2065. No historical cloud estimation tasks used.\n✓ Issue #2047 moved to: refine\n✓ move #2047 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2047 promoted: backlog → refine (direct)\n✓ #2047 refined: size=S, estimate=3.5h, priority=P0; moved backlog → Refine\n"
+    },
+    {
+      "command": "npx aitm refine 2047 --size S --estimate 3.5 --priority p0 --rank 12 --labels bug --reason 'Local source/specification scope: Freeze exact inputs, resource identities, dependencies and permitted verified-ID slots; allocate one publication generation; exclude circular final-body hashing and late discretionary edits. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 12; predecessors #2059,#2061,#2065. No historical cloud estimation tasks used.'",
+      "startedAt": "2026-10-20T19:39:07.167Z",
+      "endedAt": "2026-10-20T19:40:58.574Z",
+      "exitCode": 0,
+      "output": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 2047 --size S --estimate 3.5 --priority p0 --rank 12 --labels bug --reason Local source/specification scope: Freeze exact inputs, resource identities, dependencies and permitted verified-ID slots; allocate one publication generation; exclude circular final-body hashing and late discretionary edits. Effort: 1.5h implementation, 1h focused failure/compatibility tests, 1h review/integration repair. Wave 12; predecessors #2059,#2061,#2065. No historical cloud estimation tasks used.\n✓ Issue #2047 moved to: ready-for-plan\n✓ move #2047 refine→ready-for-plan complete\n  exit flush  : refine row closed (verified)\n  entry stamp : aitm-entered-ready-for-plan present (verified)\n  entry row   : ready-for-plan row opened (verified)\n  status      : Status == Ready-for-plan (verified)\n  sentinel    : aitm-move-complete state=ready-for-plan (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #2047 promoted: refine → ready-for-plan (direct)\n  ↳ posted \"### 🛠 Refine estimate\" comment\n✓ #2047 refined: size=S, estimate=3.5h, priority=P0; moved refine → Ready for Planning\n"
+    }
+  ],
+  "otherCommands": [
+    {
+      "command": "node scripts/task-tracker/graphql-usage-launch.mjs gh issue edit 2047 --title 'Freeze publication effects and final-body substitution slots'",
+      "startedAt": "2026-10-20T19:31:37.010Z",
+      "endedAt": "2026-10-20T19:31:40.336Z",
+      "exitCode": 0,
+      "output": "https://github.com/kburson/ai-task-manager/issues/2047\n"
+    }
+  ]
+}
