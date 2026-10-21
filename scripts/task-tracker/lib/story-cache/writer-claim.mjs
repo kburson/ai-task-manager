@@ -71,6 +71,15 @@ export function assertStoryWriter(claim, context = {}) {
       );
       if (!current) fail('STORY_WRITER_UNAVAILABLE', 'missing-claim');
       if (!same(current.claim, claim)) fail('STORY_WRITER_OWNED', 'registry-owner');
+      safeDirectory(io, claim.worktree);
+      let directory = claim.worktree;
+      for (const [index, segment] of path
+        .relative(claim.worktree, claim.cachePath)
+        .split(path.sep)
+        .entries()) {
+        directory = path.join(directory, segment);
+        safeDirectory(io, directory, { privateMode: index > 0 });
+      }
     } catch (cause) {
       if (cause.code?.startsWith('STORY_WRITER_')) throw cause;
       fail('STORY_WRITER_UNAVAILABLE', 'registry-check');
@@ -222,6 +231,20 @@ function readPrivateJson(io, file) {
     io.closeSync(fd);
   }
 }
+function presenceFile(file) {
+  return path.join(
+    path.dirname(path.dirname(file)),
+    'story-writer-' + path.basename(file, '.json') + '.presence.json'
+  );
+}
+function presenceOf(claim, registryId) {
+  return {
+    schema: 'aitm.story-writer-presence/v1',
+    registryId,
+    identityKey: claim.identityKey,
+    claimId: claim.claimId,
+  };
+}
 function readClaim(io, file, registryId) {
   const record = readPrivateJson(io, file);
   if (record === null) return null;
@@ -243,6 +266,8 @@ function readClaim(io, file, registryId) {
   if (record.claim.registryKey !== path.basename(file, '.json'))
     fail('STORY_WRITER_UNAVAILABLE', 'registry-key');
   if (record.claim.identityKey !== key) fail('STORY_WRITER_UNAVAILABLE', 'registry-identity');
+  if (!same(readPrivateJson(io, presenceFile(file)), presenceOf(record.claim, registryId)))
+    fail('STORY_WRITER_UNAVAILABLE', 'claim-presence');
   return record;
 }
 function persistClaim(io, file, record) {
@@ -327,8 +352,9 @@ export async function acquireStoryWriter({
             fail('STORY_WRITER_UNAVAILABLE', 'cache-claim');
           return Object.freeze({ ...existing.claim });
         }
+        if (readPrivateJson(io, presenceFile(file)) !== null)
+          fail('STORY_WRITER_UNAVAILABLE', 'missing-published-claim');
         if (io.existsSync(cachePath)) fail('STORY_WRITER_UNAVAILABLE', 'unclaimed-cache');
-        await openStoryStore({ projectRoot: worktree, identity });
         const claim = {
           schema: 'aitm.story-writer-claim/v1',
           claimId: randomUUID(),
@@ -341,6 +367,10 @@ export async function acquireStoryWriter({
           transfer: null,
           registryKey: path.basename(file, '.json'),
         };
+        // Retain issue-level presence before cache creation/publication. A crash or
+        // partial registry loss cannot make another worktree look like a first owner.
+        persistClaim(io, presenceFile(file), presenceOf(claim, registryId));
+        await openStoryStore({ projectRoot: worktree, identity });
         persistClaim(io, file, {
           schema: 'aitm.story-writer-registry/v1',
           host: THIS_HOST,

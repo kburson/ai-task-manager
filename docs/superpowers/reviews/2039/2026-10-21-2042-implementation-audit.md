@@ -28,7 +28,7 @@ Raw local outputs remain under `.scratch/2042-*.log`. Independent review, its fi
 
 ## Previous child and timing integrity
 
-#2055 is CLOSED and board Done, verified at `2026-10-21T19:01:25Z`, with final head `bcdbb85ff2527eefdea62cf5ebe84740e22e87a8`, full CI run `39654719625` successful, native Test, orchestrator Review, approval at `2026-10-21T18:57:59.548Z`, fresh Close Explain ready and actual Close exit zero. Its timing remains Unknown (`legacy-attribution-unknown`), with latest known engagement lower bound 6722.674 seconds. Its old actor endpoint was never fabricated. #2082 is separately delivered and Done; neither prerequisite is redone. Root #2039 remains Develop; PR #2081 waits for all 32 children and final root acceptance.
+Child #2055 is CLOSED and board Done, verified at `2026-10-21T19:01:25Z`, with final head `bcdbb85ff2527eefdea62cf5ebe84740e22e87a8`, full CI run `39654719625` successful, native Test, orchestrator Review, approval at `2026-10-21T18:57:59.548Z`, fresh Close Explain ready and actual Close exit zero. Its timing remains Unknown (`legacy-attribution-unknown`), with latest known engagement lower bound 6722.674 seconds. Its old actor endpoint was never fabricated. #2082 is separately delivered and Done; neither prerequisite is redone. Root #2039 remains Develop; PR #2081 waits for all 32 children and final root acceptance.
 
 ## Retained traffic window
 
@@ -39,3 +39,7 @@ The original standalone #2055 recovery dry-run/apply omitted the `gh` wrapper PA
 ## Pre-review verification checkpoint
 
 After the cleanup refactor, targeted ESLint passed and all 61 writer unit/integration tests passed. The broader 453-test selection above included the complete new tests and the unchanged cache/store/ownership/native-lock/package regressions before that cleanup-only refactor. The package inventory is exactly 954 entries. No final-head CI or native acceptance is inferred from these local checks.
+
+## Independent round 1 and repairs
+
+Fresh Sol / medium review found three Important gaps: expired detached async lock capability, missing owned cache accepted by local assertion, and individual claim-file loss permitting another worktree's first-acquisition path. All were reproduced with failing tests and repaired; the complete verbatim review and explicit author rulings on all findings and declined boundaries are retained separately. The repair selection passed 81 writer/native-lock tests. Per-issue presence now persists before cache creation/final claim publication, and unresolved presence refuses automatic retry. Native acceptance and final CI remain pending a repair review and final verification.

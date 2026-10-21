@@ -256,13 +256,15 @@ test('stale process and lease metadata never permit takeover', async (t) => {
   await rejects(writer.acquireStoryWriter({ ...f, sessionId: 'author-B' }));
   assert.equal(JSON.parse(fs.readFileSync(file)).claim.sessionId, 'author-A');
 });
-test('registry persistence failure cannot return an owning claim', async (t) => {
+test('final claim persistence failure cannot return an owning claim', async (t) => {
   const f = fixture(t);
   const broken = new Proxy(fs, {
     get(target, key) {
       if (key === 'writeFileSync')
-        return () => {
-          throw new Error('disk unavailable');
+        return (...args) => {
+          if (JSON.parse(args[1]).schema === 'aitm.story-writer-registry/v1')
+            throw new Error('disk unavailable');
+          return target.writeFileSync(...args);
         };
       return target[key];
     },
@@ -271,6 +273,8 @@ test('registry persistence failure cannot return an owning claim', async (t) => 
   await rejects(writer.acquireStoryWriter({ ...f, registry }));
   assert.deepEqual(fs.readdirSync(f.registry.path), []);
   assert.equal(fs.existsSync(f.cachePath), true);
+  await rejects(writer.acquireStoryWriter(f));
+  assert.deepEqual(fs.readdirSync(f.registry.path), []);
 });
 test('symbolic link registry records are refused without following or overwriting', async (t) => {
   const f = fixture(t);
@@ -349,4 +353,83 @@ catch (error) { console.log(JSON.stringify({code:error.code})); }`;
     );
   assert.deepEqual(invoke(input).claim, claim);
   assert.deepEqual(invoke({ ...input, sessionId: 'author-B' }), { code: 'STORY_WRITER_OWNED' });
+});
+test('detached async descendants cannot borrow an expired native lock capability', async (t) => {
+  const f = fixture(t);
+  let release;
+  let detached;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  await withIssueLock({ issue: 2042, projDir: f.worktree, sessionId: f.sessionId }, async () => {
+    detached = gate.then(() => writer.acquireStoryWriter(f));
+  });
+  await withIssueLock({ issue: 2042, projDir: f.worktree, sessionId: 'author-B' }, async () => {
+    release();
+    await rejects(detached, 'EISSUELOCKED');
+  });
+  assert.equal(fs.existsSync(f.cachePath), false);
+});
+test('acquired local assertion refuses a missing owned cache', async (t) => {
+  const f = fixture(t);
+  const claim = await writer.acquireStoryWriter(f);
+  fs.rmSync(f.cachePath, { recursive: true });
+  assert.throws(
+    () =>
+      writer.assertStoryWriter(claim, {
+        sessionId: f.sessionId,
+        worktree: f.worktree,
+        assignment: ['tester'],
+      }),
+    { code: 'STORY_WRITER_UNAVAILABLE' }
+  );
+  assert.equal(fs.existsSync(f.cachePath), false);
+});
+test('loss of an individual claim cannot authorize takeover by another worktree', async (t) => {
+  const f = fixture(t);
+  await writer.acquireStoryWriter(f);
+  fs.writeFileSync(path.join(f.cachePath, 'pending.fixture'), 'unpublished owner-A bytes', {
+    mode: 0o600,
+  });
+  fs.unlinkSync(path.join(f.registry.path, fs.readdirSync(f.registry.path)[0]));
+  execFileSync('git', [
+    '-C',
+    f.worktree,
+    '-c',
+    'user.name=Test',
+    '-c',
+    'user.email=test@example.com',
+    'commit',
+    '--allow-empty',
+    '-qm',
+    'fixture',
+  ]);
+  const other = f.worktree + '-linked';
+  execFileSync('git', ['-C', f.worktree, 'worktree', 'add', '-q', '-b', 'linked', other]);
+  t.after(() => fs.rmSync(other, { recursive: true, force: true }));
+  const registry = writer.openStoryWriterRegistry({ projectRoot: other });
+  const cachePath = storyCachePath({ projectRoot: other, identity });
+  await rejects(
+    writer.acquireStoryWriter({ ...f, sessionId: 'author-B', registry, worktree: other, cachePath })
+  );
+  assert.equal(fs.existsSync(cachePath), false);
+  assert.equal(
+    fs.readFileSync(path.join(f.cachePath, 'pending.fixture'), 'utf8'),
+    'unpublished owner-A bytes'
+  );
+});
+test('acquired local assertion refuses a cache symlink replacement', async (t) => {
+  const f = fixture(t);
+  const claim = await writer.acquireStoryWriter(f);
+  const kept = f.cachePath + '-kept';
+  fs.renameSync(f.cachePath, kept);
+  const outside = path.join(f.worktree, 'outside');
+  fs.mkdirSync(outside, { mode: 0o700 });
+  fs.symlinkSync(outside, f.cachePath);
+  assert.throws(
+    () => writer.assertStoryWriter(claim, { sessionId: f.sessionId, worktree: f.worktree }),
+    { code: 'STORY_WRITER_UNAVAILABLE' }
+  );
+  assert.deepEqual(fs.readdirSync(outside), []);
+  assert.equal(fs.existsSync(kept), true);
 });
