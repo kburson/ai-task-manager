@@ -68,7 +68,7 @@ function observeRevision(node) {
     if (
       !object(history.pageInfo) ||
       typeof history.pageInfo.hasNextPage !== 'boolean' ||
-      (history.totalCount === 0 && history.pageInfo.hasNextPage)
+      history.pageInfo.hasNextPage !== history.totalCount > history.nodes.length
     )
       unavailable('history-page-incomplete');
   }

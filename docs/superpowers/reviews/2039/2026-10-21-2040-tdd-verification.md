@@ -19,3 +19,7 @@ The regex preserves rejection of whitespace and control characters using a Unico
 ## Interface rulings
 
 Pure observation validates the supplied full canonical target identity and determines issue versus comment from the issue node ID, checking typename when supplied. Snapshot transport and cross-resource host/repository census remain #2052's responsibility; complete input is not an authorization token. Optional pageInfo absence remains compatible with the accepted concrete seed. Explicitly contradictory or incomplete pageInfo is unavailable. The latest-node connection is bounded to one; extra nodes are unsupported ordering rather than an invitation to guess. Calendar-valid UTC timestamps are compared as instants; counts are never arithmetic revision versions. The returned baseline uses copied, frozen identity and revision objects.
+
+## Independent review repair
+
+Astra/high round 1 identified two edited-history connection contradictions. Added exact cases for totalCount1/hasNextPage=true and totalCount3/hasNextPage=false; both failed with missing expected exception while the previous 36 passed. Optional supplied continuation now agrees with whether the bounded nodes leave older entries. Absence of pageInfo and a valid first:1 result with older history remain supported. The next exact run passed 38/38. This is connection consistency, not a count-derived revision token. The raw reviewer report and author disposition are retained separately; native exact-head full-suite verification is still pending.

@@ -288,3 +288,15 @@ for (const [name, pageInfo] of [
     unavailable(() => observe(node));
   });
 }
+
+for (const [count, hasNextPage] of [
+  [1, true],
+  [3, false],
+]) {
+  test(`edited history refuses contradictory continuation: count=${count}, next=${hasNextPage}`, () => {
+    const node = edited();
+    node.userContentEdits.totalCount = count;
+    node.userContentEdits.pageInfo = { hasNextPage };
+    unavailable(() => observe(node));
+  });
+}
