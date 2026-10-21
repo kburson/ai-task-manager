@@ -9,6 +9,7 @@ import * as writer from '../../../../../task-tracker/lib/story-cache/writer-clai
 import * as registryApi from '../../../../../task-tracker/lib/story-cache/writer-registry.mjs';
 import * as fleet from '../../../../../task-tracker/fleet-registry.mjs';
 import { storyCachePath } from '../../../../../task-tracker/lib/story-cache/store.mjs';
+import { canonicalRecordJson } from '../../../../../task-tracker/lib/github-records/canonical-json.mjs';
 const identity = {
   host: 'github.com',
   repository: 'owner/repo',
@@ -140,23 +141,23 @@ for (const mutation of [
       fs.writeFileSync(file, raw.trim().replace(/}$/, ',"host":"' + record.host + '"}'));
     if (mutation === 'unknown-content') {
       record.body = 'private';
-      fs.writeFileSync(file, JSON.stringify(record));
+      fs.writeFileSync(file, canonicalRecordJson(record) + '\n');
     }
     if (mutation === 'host') {
       record.host = 'other-host';
-      fs.writeFileSync(file, JSON.stringify(record));
+      fs.writeFileSync(file, canonicalRecordJson(record) + '\n');
     }
     if (mutation === 'identity') {
       record.identity.projectItemId = 'other';
-      fs.writeFileSync(file, JSON.stringify(record));
+      fs.writeFileSync(file, canonicalRecordJson(record) + '\n');
     }
     if (mutation === 'path') {
       record.claim.cachePath = path.join(f.worktree, '.tmp', 'gh', 'other');
-      fs.writeFileSync(file, JSON.stringify(record));
+      fs.writeFileSync(file, canonicalRecordJson(record) + '\n');
     }
     if (mutation === 'claim-presence') {
       record.claim.claimId = 'other';
-      fs.writeFileSync(file, JSON.stringify(record));
+      fs.writeFileSync(file, canonicalRecordJson(record) + '\n');
     }
     if (mutation === 'hardlink') fs.linkSync(file, file + '.copy');
     if (mutation === 'symlink') {
@@ -226,4 +227,60 @@ test('registry identity with unknown authority fields refuses after opening', as
   fs.writeFileSync(f.registry.identityPath, JSON.stringify(Object.fromEntries(entries)) + '\n');
   refuses(() => resolve(f));
   refuses(() => register(f));
+});
+
+for (const malformed of [
+  undefined,
+  null,
+  {},
+  { ...identity, issueNumber: 0 },
+  { ...identity, repository: 'bad' },
+  { ...identity, projectItemId: '' },
+  { ...identity, extra: 'field' },
+])
+  test(`valid registry refuses malformed native identity ${JSON.stringify(malformed)}`, async (t) => {
+    const f = await fixture(t);
+    refuses(() => registryApi.resolveStoryWriter({ identity: malformed, registry: f.registry }));
+  });
+
+test('an unregistered owning worktree refuses while its cache bytes remain', async (t) => {
+  const f = await fixture(t);
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=Tester',
+      '-c',
+      'user.email=tester@example.com',
+      'commit',
+      '--allow-empty',
+      '-m',
+      'fixture',
+    ],
+    { cwd: f.worktree }
+  );
+  const owner = path.join(f.worktree, 'owner');
+  execFileSync('git', ['worktree', 'add', '--detach', owner], { cwd: f.worktree, stdio: 'pipe' });
+  const subject = { ...identity, issueNumber: 2057, issueNodeId: 'I_other' };
+  const ownerRegistry = writer.openStoryWriterRegistry({ projectRoot: owner });
+  const claim = await writer.acquireStoryWriter({
+    identity: subject,
+    human: 'tester',
+    sessionId: 'owner',
+    worktree: owner,
+    cachePath: storyCachePath({ projectRoot: owner, identity: subject }),
+    assignment: ['tester'],
+    registry: ownerRegistry,
+  });
+  assert.deepEqual(
+    registryApi.resolveStoryWriter({ identity: subject, registry: f.registry }),
+    claim
+  );
+  const retained = owner + '.retained';
+  fs.cpSync(owner, retained, { recursive: true });
+  execFileSync('git', ['worktree', 'remove', '--force', owner], { cwd: f.worktree });
+  fs.renameSync(retained, owner);
+  assert.equal(fs.existsSync(claim.cachePath), true);
+  refuses(() => registryApi.resolveStoryWriter({ identity: subject, registry: f.registry }));
+  refuses(() => registryApi.registerStoryWriter({ claim, registry: f.registry }));
 });
