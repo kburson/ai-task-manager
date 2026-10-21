@@ -1,8 +1,11 @@
-// @story #2042 #2056
+// @story #2042 #2056 #2057
 // cspell:ignore EISSUELOCKED
 // Local validation is separate from current assignment and registry authority.
 import path from 'node:path';
+import { validateStoryWriterClaim as validateClaim } from './writer-claim-shape.mjs';
 import fs from 'node:fs';
+import { resolveSessionId } from '../session-id.mjs';
+import { assertNotFrozen, releaseProof, readMetadata, PROTOCOL } from './writer-handoff-io.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { resolveRuntimeRoot } from '../runtime-storage.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
@@ -14,46 +17,6 @@ const token = (v) => typeof v === 'string' && v.length > 0 && !/[\s\p{Cc}]/u.tes
 const absolute = (v) => typeof v === 'string' && path.isAbsolute(v) && path.resolve(v) === v;
 function fail(code, reason) {
   throw Object.assign(new Error(`Story writer refused: ${reason}`), { code, reason });
-}
-function validateClaim(claim, context = {}) {
-  if (
-    !claim ||
-    claim.schema !== 'aitm.story-writer-claim/v1' ||
-    !token(claim.claimId) ||
-    !/^[a-f0-9]{64}$/.test(claim.identityKey ?? '') ||
-    !token(claim.human) ||
-    !/^[a-z0-9](?:[a-z0-9-]{0,38})$/.test(claim.human) ||
-    Object.keys(claim).some(
-      (key) =>
-        ![
-          'schema',
-          'claimId',
-          'identityKey',
-          'human',
-          'sessionId',
-          'worktree',
-          'cachePath',
-          'status',
-          'transfer',
-          'registryKey',
-        ].includes(key)
-    ) ||
-    (Object.hasOwn(claim, 'registryKey') && !/^[a-f0-9]{64}$/.test(claim.registryKey)) ||
-    !token(claim.sessionId) ||
-    !absolute(claim.worktree) ||
-    !absolute(claim.cachePath) ||
-    !claim.cachePath.startsWith(path.join(claim.worktree, '.tmp', 'gh') + path.sep) ||
-    claim.status !== 'owned' ||
-    claim.transfer !== null
-  )
-    fail('STORY_WRITER_UNAVAILABLE', 'claim');
-  if (context.sessionId !== claim.sessionId || context.worktree !== claim.worktree)
-    fail('STORY_WRITER_OWNED', 'local-owner');
-  if (
-    Object.hasOwn(context, 'assignment') &&
-    !cacheWriterOwnershipDecision({ assignees: context.assignment, currentUser: claim.human }).ok
-  )
-    fail('STORY_WRITER_ASSIGNMENT', 'live-assignment');
 }
 /** The original pure seed validates a tuple; acquired claims also re-read their native registry. */
 export function assertStoryWriter(claim, context = {}) {
@@ -81,6 +44,7 @@ export function assertStoryWriter(claim, context = {}) {
         directory = path.join(directory, segment);
         safeDirectory(io, directory, { privateMode: index > 0 });
       }
+      assertNotFrozen(io, claim);
     } catch (cause) {
       if (cause.code?.startsWith('STORY_WRITER_')) throw cause;
       fail('STORY_WRITER_UNAVAILABLE', 'registry-check');
@@ -414,6 +378,49 @@ export async function acquireStoryWriter({
   }
 }
 
+/** Inspect existing authority only; never initialize a namespace during binding cleanup. */
+export function inspectStoryWriterScope({ projectRoot, host, repository, issueNumber } = {}) {
+  try {
+    const root = resolveRuntimeRoot({ cwd: projectRoot, env: {} });
+    if (root.projectRoot !== projectRoot) fail('STORY_WRITER_UNAVAILABLE', 'project-root');
+    const common = root.worktreeIdentity.commonDir;
+    safeDirectory(fs, common);
+    const parent = path.join(common, 'aitm');
+    const location = path.join(parent, 'story-writers');
+    const identityPath = path.join(parent, 'story-writers.identity.json');
+    const registry = Object.freeze({ path: location, identityPath });
+    const file = claimFile(registry, { host, repository, issueNumber });
+    const present = (p) => {
+      try {
+        fs.lstatSync(p);
+        return true;
+      } catch (e) {
+        if (e.code === 'ENOENT') return false;
+        throw e;
+      }
+    };
+    const any = present(identityPath) || present(location) || present(presenceFile(file));
+    if (!any) return null;
+    safeDirectory(fs, parent);
+    const identity = readPrivateJson(fs, identityPath);
+    if (!identity || !token(identity.registryId))
+      fail('STORY_WRITER_UNAVAILABLE', 'registry-identity-missing');
+    registries.set(registry, { root, io: fs, parent, registryId: identity.registryId });
+    registryContext(registry, projectRoot);
+    const record = readClaim(fs, file, identity.registryId);
+    if (!record) {
+      if (present(presenceFile(file))) fail('STORY_WRITER_UNAVAILABLE', 'missing-claim');
+      return null;
+    }
+    if (claimFile(registry, record.identity) !== file) fail('STORY_WRITER_UNAVAILABLE', 'scope');
+    const claim = pointerRecord(registry, record.identity);
+    return Object.freeze({ identity: record.identity, claim, registryId: identity.registryId });
+  } catch (cause) {
+    if (cause.code?.startsWith('STORY_WRITER_')) throw cause;
+    fail('STORY_WRITER_UNAVAILABLE', 'scope-inspection');
+  }
+}
+
 function pointerRecord(registry, identity) {
   const known = registries.get(registry);
   if (!known) fail('STORY_WRITER_UNAVAILABLE', 'shared-registry');
@@ -471,4 +478,126 @@ export function registerStoryWriter({ claim, registry } = {}) {
     if (cause.code?.startsWith('STORY_WRITER_')) throw cause;
     fail('STORY_WRITER_UNAVAILABLE', 'reference-registration');
   }
+}
+
+/** Internal observation adapter; it never initializes missing native ownership. */
+export function observeStoryWriterHandoff({ identity, registry, worktree } = {}) {
+  const context = registryContext(registry, worktree);
+  const claim = pointerRecord(registry, identity);
+  return {
+    identity: JSON.parse(canonicalRecordJson(identity)),
+    claim,
+    registryId: context.registryId,
+    io: context.io,
+  };
+}
+/** The sole handoff write seam. Only a freshly verified local byte-ack proof can commit. */
+export async function withStoryWriterHandoff({ claim, registry }, operation) {
+  validateClaim(claim, { sessionId: claim?.sessionId, worktree: claim?.worktree });
+  const context = registryContext(registry, claim.worktree);
+  const actor = () => {
+    if (
+      resolveSessionId() !== claim.sessionId ||
+      resolveRuntimeRoot({ cwd: process.cwd(), env: {} }).projectRoot !== claim.worktree
+    )
+      fail('STORY_WRITER_OWNED', 'handoff-actor');
+  };
+  actor();
+  const file = path.join(registry.path, claim.registryKey + '.json');
+  const initial = readClaim(context.io, file, context.registryId);
+  if (!initial) fail('STORY_WRITER_UNAVAILABLE', 'missing-claim');
+  const identity = initial.identity;
+  if (storyIdentityKey(identity) !== claim.identityKey || claimFile(registry, identity) !== file)
+    fail('STORY_WRITER_UNAVAILABLE', 'handoff-identity');
+  return withIssueLock(
+    {
+      issue: identity.issueNumber,
+      projDir: claim.worktree,
+      sessionId: claim.sessionId,
+      retries: 0,
+    },
+    async () => {
+      const owner = currentIssueLockOwner(identity.issueNumber);
+      const check = () => {
+        actor();
+        if (
+          !owner ||
+          currentIssueLockOwner(identity.issueNumber) !== owner ||
+          owner.projDir !== context.root.mainRoot ||
+          owner.sessionId !== claim.sessionId
+        )
+          fail('STORY_WRITER_UNAVAILABLE', 'native-lock-owner');
+        registryContext(registry, claim.worktree);
+      };
+      const observe = () => {
+        check();
+        return pointerRecord(registry, identity);
+      };
+      const commit = (proof) => {
+        check();
+        const { manifest } = releaseProof(proof, claim, context.registryId);
+        const next = { ...claim, ...manifest.target };
+        validateClaim(next, { sessionId: next.sessionId, worktree: next.worktree });
+        const targetRoot = resolveRuntimeRoot({ cwd: next.worktree, env: {} });
+        if (
+          targetRoot.projectRoot !== next.worktree ||
+          targetRoot.mainRoot !== context.root.mainRoot ||
+          targetRoot.worktreeIdentity.commonDir !== context.root.worktreeIdentity.commonDir
+        )
+          fail('STORY_WRITER_UNAVAILABLE', 'handoff-target-root');
+        const current = readClaim(context.io, file, context.registryId);
+        if (same(current?.claim, next)) return pointerRecord(registry, identity);
+        const frozen = readMetadata(context.io, claim.cachePath, PROTOCOL + '/frozen.json');
+        if (
+          frozen?.schema !== 'aitm.story-writer-handoff-intent/v1' ||
+          frozen.transferId !== manifest.transferId ||
+          frozen.bundleDigest !== proof.bundleDigest ||
+          frozen.claimDigest !==
+            createHash('sha256').update(canonicalRecordJson(claim)).digest('hex') ||
+          !same(frozen.target, manifest.target)
+        )
+          fail('STORY_WRITER_UNAVAILABLE', 'handoff-release-intent');
+        if (!same(current?.claim, claim)) fail('STORY_WRITER_OWNED', 'handoff-owner-changed');
+        const temp = file + '.' + randomUUID() + '.tmp';
+        let fd;
+        try {
+          fd = context.io.openSync(
+            temp,
+            fs.constants.O_WRONLY |
+              fs.constants.O_CREAT |
+              fs.constants.O_EXCL |
+              fs.constants.O_NOFOLLOW,
+            0o600
+          );
+          context.io.writeFileSync(fd, canonicalRecordJson({ ...current, claim: next }) + '\n');
+          context.io.fsyncSync(fd);
+          context.io.closeSync(fd);
+          fd = undefined;
+          check();
+          if (!same(readClaim(context.io, file, context.registryId)?.claim, claim))
+            fail('STORY_WRITER_OWNED', 'handoff-owner-changed');
+          context.io.renameSync(temp, file);
+          syncDirectory(context.io, registry.path);
+          if (!same(readClaim(context.io, file, context.registryId)?.claim, next))
+            fail('STORY_WRITER_UNAVAILABLE', 'handoff-readback');
+          return pointerRecord(registry, identity);
+        } finally {
+          if (fd !== undefined) context.io.closeSync(fd);
+        }
+      };
+      check();
+      const result = await operation(
+        Object.freeze({
+          identity,
+          registryId: context.registryId,
+          io: context.io,
+          check,
+          observe,
+          commit,
+        })
+      );
+      check();
+      return result;
+    }
+  );
 }
