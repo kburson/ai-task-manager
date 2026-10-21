@@ -37,6 +37,10 @@
     {
       "filename": ["docs/superpowers/reviews/2039/plan/SAR/plan.r0.md", "cspell.json"],
       "ignoreWords": ["Childs"]
+    },
+    {
+      "filename": ["scripts/tests/fixtures/2026/aitm-2055-timing.json", "cspell.json"],
+      "ignoreRegExpList": ["IC_kwDOSU6LgM8AAAABdrBCLA"]
     }
   ],
   "ignorePaths": [

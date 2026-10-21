@@ -1,4 +1,5 @@
 // @story #2026
+// cspell:ignore BCLA
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -348,4 +349,92 @@ test('native persisted owner binding with ISO entry timestamp authorizes the exa
   assert.equal(result.status, 'healed');
   assert.equal(state.writes.length, 1);
   assert.equal(readFileSync(path.join(result.evidenceDir, 'before.md'), 'utf8'), original);
+});
+
+// @story #2082 — refusing invented endpoints must not prevent an honest Unknown seal.
+import { planActorEvidenceRecovery } from '../../../../task-tracker/lib/heal-actor-evidence-recovery.mjs';
+const orphanSource = JSON.parse(
+  readFileSync(new URL('../../../fixtures/2026/aitm-2055-timing.json', import.meta.url), 'utf8')
+).body;
+const orphanActor = 'v1:e9361861aa5dfcb8f1597712f0524b6f6732246461222762796690e45fd35bcd';
+const orphanOptions = {
+  profile: 'aitm-2055-2026-10-21',
+  repo: 'kburson/ai-task-manager',
+  issueNumber: 2055,
+  commentId: 'IC_kwDOSU6LgM8AAAABdrBCLA',
+  now: Date.parse('2026-10-21T18:00:00.123Z'),
+};
+const orphanPlan = (body = orphanSource, extra = {}) =>
+  planActorEvidenceRecovery(body, { ...orphanOptions, ...extra });
+test('2055 recovery records actual observation time and preserves all original bytes and Unknown', () => {
+  const result = orphanPlan();
+  const added = result.candidate.split('\n').filter((x) => !orphanSource.split('\n').includes(x));
+  assert.equal(added.length, 1);
+  assert.equal(result.candidate.replace(added[0] + '\n', ''), orphanSource);
+  const row = parseTimingRow(added[0]);
+  assert.equal(row.ts, '2026-10-21 18:00:00 +00:00');
+  assert.equal(row.actorKey, orphanActor);
+  assert.equal(row.event, 'session-end-recovery');
+  assert.deepEqual(row.cells.slice(3, 7), ['Unknown', 'Unknown', '0', '159']);
+  assert.equal(row.cells[8], '19,562');
+  assert.equal(row.engagement, undefined);
+  const before = deriveActorEngagement(
+    orphanSource
+      .split('\n')
+      .map(parseTimingRow)
+      .filter((x) => x?.actorKey),
+    orphanOptions.now
+  );
+  assert.equal(result.accounting.engagedMs, before.engagedMs);
+  assert.deepEqual(result.accounting.incompleteActors, []);
+  assert.equal(result.accounting.unknownRows, 2); // retained unattributed history plus orphan recovery
+  assert.equal(result.accounting.complete, false);
+});
+for (const extra of [
+  { repo: 'other/repo' },
+  { issueNumber: 2056 },
+  { commentId: 'IC_wrong' },
+  { profile: 'other' },
+])
+  test(`2055 wrong immutable identity refuses ${JSON.stringify(extra)}`, () => {
+    assert.throws(() => orphanPlan(orphanSource, extra), /profile-identity/);
+  });
+for (const [from, to] of [
+  ['09:40:43', '09:40:44'],
+  ['key=e9361861', 'key=f9361861'],
+  ['| 159 | agent |', '| 160 | agent |'],
+])
+  test(`2055 modified historical prefix refuses ${from}`, () => {
+    assert.throws(() => orphanPlan(orphanSource.replace(from, to)), /historical-source-mismatch/);
+  });
+for (const value of [
+  NaN,
+  Infinity,
+  -1,
+  '2026-10-21T18:00:00Z',
+  orphanOptions.now + 0.5,
+  Date.parse('2026-10-21T15:00:00Z'),
+])
+  test(`2055 invalid or retroactive recording clock refuses ${value}`, () => {
+    assert.throws(() => orphanPlan(orphanSource, { now: value }), /recording-time/);
+  });
+test('2055 exact canonical recovery is idempotent even after a later native append', () => {
+  const first = orphanPlan();
+  const append =
+    '| 2026-10-21 18:01:00 +00:00 | update |  |  | 0 | 4,147 | later native checkpoint | 129,965 |';
+  const body = first.candidate + append + '\n';
+  const second = orphanPlan(body, { now: Date.parse('2026-10-21T19:00:00Z') });
+  assert.equal(second.candidate, body);
+  assert.equal(second.inserted, 0);
+  const row = first.candidate.split('\n').find((x) => x.includes('session-end-recovery'));
+  assert.throws(() => orphanPlan(first.candidate + row + '\n'), /duplicate-recovery/);
+  assert.throws(
+    () => orphanPlan(first.candidate.replace('| 0 | 159 |', '| 1 | 159 |')),
+    /conflicting-recovery/
+  );
+});
+test('2055 conflicting later target evidence cannot be hidden by a recovery', () => {
+  const row =
+    '| 2026-10-21 17:00:00 +00:00 | pause | Unknown | Unknown | 0 | 159 | new target evidence | 19,562 | <!-- aitm-actor:v1 key=e9361861aa5dfcb8f1597712f0524b6f6732246461222762796690e45fd35bcd -->';
+  assert.throws(() => orphanPlan(orphanSource + row + '\n'), /conflicting-evidence/);
 });
