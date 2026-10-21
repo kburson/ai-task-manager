@@ -491,12 +491,14 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2052: exactly one bounded current-story snapshot reader.
     1 + // #2041: exactly one cache manifest/generation validator.
     1 + // #2053: exactly one complete snapshot vector comparator.
-    1; // #2054: exactly one crash-safe immutable generation store.
+    1 + // #2054: exactly one crash-safe immutable generation store.
+    1; // #2044: exactly one pure timing-event merge module.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-compare.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/store.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-events.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',
