@@ -119,3 +119,25 @@ remain unmeasured. Unknown costs are not zero, and these unequal workload
 windows cannot establish savings. The original #2055 standalone healer capture
 gap remains unverified; later correctly wrapped reads do not repair that gap.
 No capture cap increase, disabling, purge or credential rotation occurred.
+
+## R1 repair verification
+
+The three Important findings, complete raw report and explicit author rulings
+on all nine declined boundaries are retained in commit
+`c073a6f2bc3d1656543cefc5606cb1fb86796654`, which was individually native-traced.
+The original local implementation checkpoint was also native-traced. Every
+repair had its own observed failing regression before production changes.
+
+The fresh broad cache/store/claim/registry/native binding/relocation run passed
+607 tests, zero failures, cancellations or skips, in 122.663 seconds. Its raw
+output is `task-9-focused-r1-repair.log`. The fresh full fast lane passed all
+987 files (`task-9-fast-r1-repair.log`), and complete lint and format checks
+exited zero (`task-9-lint-final.log`, `task-9-format-final.log`). An intermediate
+lint run honestly failed on vocabulary in the retained raw review. A narrow
+file-specific spelling override preserves that report verbatim; the subsequent
+full lint passed. No lint command or check was removed.
+
+A fresh GPT-6.1 Sol / medium reviewer independently accepted the exact R1
+repair checkpoint, with 98 repository tests and eight additional interaction
+probes passing and no actionable findings. Both full reports and every author
+disposition are retained. Native Test and later orchestrator gates remain pending.
