@@ -115,7 +115,11 @@ export async function openStoryStore({ projectRoot, identity, fs: io = nodeFs } 
     const read = async (relativePath, { sync = false } = {}) => {
       const target = path.join(cachePath, relative(relativePath));
       await walk(target);
-      const handle = await io.open(target, constants.O_RDONLY | constants.O_NOFOLLOW);
+      regular(await io.lstat(target));
+      const handle = await io.open(
+        target,
+        constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK
+      );
       try {
         regular(await handle.stat());
         const bytes = await handle.readFile();
@@ -141,20 +145,26 @@ export async function openStoryStore({ projectRoot, identity, fs: io = nodeFs } 
     const write = async (relativePath, bytes) => {
       const target = path.join(cachePath, relative(relativePath));
       await walk(target, { create: true });
-      let handle;
-      try {
-        handle = await io.open(
-          target,
-          constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
-          0o600
-        );
-      } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
-        if (!(await read(relativePath, { sync: true })).equals(Buffer.from(bytes)))
-          fail('immutable-collision');
-        await syncDirectory(path.dirname(target));
-        return;
-      }
+      const reuse = async () => {
+        try {
+          if (!(await read(relativePath, { sync: true })).equals(Buffer.from(bytes)))
+            fail('immutable-collision');
+          await syncDirectory(path.dirname(target));
+          return true;
+        } catch (error) {
+          if (error.code !== 'ENOENT') throw error;
+          return false;
+        }
+      };
+      if (await reuse()) return;
+      // The exclusive store lock serializes all supported publishers. A partial
+      // write stays at a unique unreferenced name, never poisoning a hash path.
+      const temporary = path.join(path.dirname(target), `stage-${randomUUID()}.tmp`);
+      const handle = await io.open(
+        temporary,
+        constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+        0o600
+      );
       try {
         regular(await handle.stat());
         await handle.writeFile(bytes);
@@ -162,6 +172,10 @@ export async function openStoryStore({ projectRoot, identity, fs: io = nodeFs } 
       } finally {
         await handle.close();
       }
+      // Refuse unexpected final bytes even if an external process installed
+      // them while staging. Arbitrary same-user rename races remain out of scope.
+      if (await reuse()) await io.unlink(temporary);
+      else await io.rename(temporary, target);
       await syncDirectory(path.dirname(target));
     };
     const payloadReferences = (value) => {

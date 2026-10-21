@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import fs from 'node:fs/promises';
 import { constants } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { mkdtempProjectIsolated } from '../../../../../task-tracker/lib/scratch-dir.mjs';
@@ -440,7 +441,9 @@ test('existing namespace entries are synced before pointer publication after int
   await store.commitGeneration(next(), { expectedGeneration: null });
   const before = events.slice(
     0,
-    events.findIndex((e) => e.kind === 'rename')
+    events.findIndex(
+      (e) => e.kind === 'rename' && e.target === path.join(f.cachePath, 'manifest.json')
+    )
   );
   for (
     let directory = f.cachePath;
@@ -496,4 +499,77 @@ test('baseline comments and locally changed comment blocks survive immutable res
     'changed comment'
   );
   assert.deepEqual(result.generation.baseSnapshot.inventory, ['C_test']);
+});
+
+for (const kind of ['payload', 'manifest'])
+  test(`FIFO ${kind} refuses promptly with a typed error`, async (t) => {
+    const f = await fixture(t);
+    const first = await f.store.commitGeneration(next(), { expectedGeneration: null });
+    const target = path.join(
+      f.cachePath,
+      kind === 'manifest'
+        ? 'manifest.json'
+        : first.generation.baseSnapshot.resources['issue:I_test'].payloadPath
+    );
+    await fs.unlink(target);
+    execFileSync('mkfifo', [target]);
+    await fs.chmod(target, 0o600);
+    const moduleUrl = new URL(
+      '../../../../../task-tracker/lib/story-cache/store.mjs',
+      import.meta.url
+    ).href;
+    const script = `import {openStoryStore} from ${JSON.stringify(moduleUrl)};try {await openStoryStore(${JSON.stringify({ projectRoot: f.projectRoot, identity })});process.exitCode=1;}catch(e){console.log(e.code);process.exitCode=e.code==='STORY_STORE_UNAVAILABLE'?0:2;}`;
+    const child = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8',
+      timeout: 2000,
+    });
+    assert.equal(child.error, undefined, child.error?.message);
+    assert.equal(child.status, 0, child.stderr);
+    assert.match(child.stdout, /STORY_STORE_UNAVAILABLE/);
+  });
+test('partial payload write preserves prior bytes and permits the identical successor on retry', async (t) => {
+  const f = await fixture(t);
+  await f.store.commitGeneration(next(), { expectedGeneration: null });
+  let injected = false;
+  const io = new Proxy(fs, {
+    get(target, key) {
+      if (key === 'open')
+        return async (...args) => {
+          const handle = await fs.open(...args);
+          return new Proxy(handle, {
+            get(h, k) {
+              if (
+                k === 'writeFile' &&
+                args[0].includes(path.sep + 'payloads' + path.sep) &&
+                !injected
+              )
+                return async (bytes) => {
+                  injected = true;
+                  await h.writeFile(Buffer.from(bytes).subarray(0, 3));
+                  throw new Error('simulated partial write');
+                };
+              const value = h[k];
+              return typeof value === 'function' ? value.bind(h) : value;
+            },
+          });
+        };
+      const value = target[key];
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+  const faulty = await openStoryStore({ projectRoot: f.projectRoot, identity, fs: io });
+  await refuses(faulty.commitGeneration(next(2, 'partial successor'), { expectedGeneration: 1 }));
+  assert.equal(injected, true);
+  const restarted = await openStoryStore({ projectRoot: f.projectRoot, identity });
+  assert.equal((await restarted.readGeneration()).generation.generation, 1);
+  const result = await restarted.commitGeneration(next(2, 'partial successor'), {
+    expectedGeneration: 1,
+  });
+  assert.equal(result.generation.generation, 2);
+  assert.equal(
+    result.payloads
+      .get(result.generation.baseSnapshot.resources['issue:I_test'].payloadPath)
+      .toString(),
+    'partial successor'
+  );
 });
