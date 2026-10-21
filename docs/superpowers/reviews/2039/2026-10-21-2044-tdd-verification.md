@@ -13,8 +13,8 @@ Input refusals include missing/extra fields, invalid identities, structured/miss
 Observed verification:
 
 - Focused timing verifier: 45 passed, zero failed.
-- All current story-cache unit tests, the real store integration verifier and unit-lane purity checks: 286 passed, zero failed. This includes all accepted predecessor tests and the 72 store persistence-failure subcases.
+- All current story-cache unit tests, the real store integration verifier and unit-lane purity checks: 286 passed, zero failed. This includes all accepted predecessor tests and the 72 store persistence-failure cases.
 - Actual package-boundary verifier: 9 passed, zero failed. Exactly one additional runtime timing-event module is declared; no package exclusions or count headroom were changed.
-- Focused ESLint passed. CSpell found one test-label spelling issue, corrected from non-finite wording to infinite. Formatting and final spelling/diff checks precede commit.
+- Focused ESLint passed. CSpell found one test-label spelling issue, corrected from non-finite wording to infinite. Formatting and final spelling/diff checks precede the final collateral commit.
 
 Supporting local logs are .tmp/2044-red.log, .tmp/2044-green.log, .tmp/2044-combined.log and .tmp/2044-package.log. These are actual observed tests, not native lifecycle receipts. Independent review and exact-head CI/native acceptance remain required after the implementation is committed.
