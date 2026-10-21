@@ -1,3 +1,4 @@
+// cspell:ignore EISSUELOCKED
 // @story #2039 #2042
 // cspell:ignore EISSUELOCKED
 import assert from 'node:assert/strict';
