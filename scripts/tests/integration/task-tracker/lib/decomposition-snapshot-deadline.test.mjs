@@ -224,3 +224,25 @@ for (const drift of [false, true])
       assert.ok(ledger.every((row) => !row.family.includes('write')));
     }
   );
+
+import { collectHookDecompositionSnapshot } from '../../../../task-tracker/lib/decomposition-hook-authority.mjs';
+
+// Compatibility proof: a transport which never resolves cannot bypass the native finite bound.
+test('hung transport still refuses once without retries or publication', async () => {
+  let dispatches = 0;
+  await assert.rejects(
+    collectHookDecompositionSnapshot({
+      issue: 2079,
+      cfg: { repo: 'offline/fixture', projectId: 'P' },
+      projectDir: process.cwd(),
+      deps: {
+        graphql: () => {
+          dispatches++;
+          return new Promise(() => {});
+        },
+      },
+    }),
+    /remote-deadline/
+  );
+  assert.equal(dispatches, 1);
+});
