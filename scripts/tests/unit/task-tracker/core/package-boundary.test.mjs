@@ -1,3 +1,4 @@
+// @story #2040
 // @story #1986
 // @story #1926
 // @story #1904
@@ -485,7 +486,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2022: audited rebaseline recovery and native execution proof reader.
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
-    4; // #2096: immutable subject, native source execution and stamp declaration validation.
+    4 + // #2096: immutable subject, native source execution and stamp declaration validation.
+    1; // #2040: exactly one native content-observation runtime module.
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',
