@@ -160,3 +160,38 @@ slow, packaging and runtime-budget gate. That result is retained historical
 proof; it cannot accept the subsequent legacy guard change. No native Test
 ran at that head. The compatibility repair requires its own independent review,
 committed disposition and new full exact-head CI before native Test.
+
+## R3 presence-evidence repair
+
+The fresh compatibility review identified one Important / P1 omission: the new
+legacy evidence census missed the native per-issue presence files retained
+outside the registry directory. Its exact main and linked-root probes showed
+that surviving presence was incorrectly treated as no authority. The full raw
+R3 report and every author boundary ruling are retained in commit
+`a2ca09a92281e44f9fce5b118d6a3e99e4b87116`, individually native-traced.
+
+The author independently observed RED with valid configuration and again with
+missing configuration before repair. The census now includes shared presence
+entry names; once any retained evidence exists, missing configuration refuses.
+Native scope inspection still validates actual identity correspondence, and
+unknown or unreadable evidence does not become an ownership grant. Both local
+cache namespaces being unavailable is covered from a linked worktree. Truly
+absent authority retains legacy release without creating any cache or registry.
+
+The final combined binding and native relocation/lifecycle run passed 40 tests,
+zero failures or skips, in 15.308 seconds (`task-9-presence-final.log`). The
+previous compatibility-only 37-test pass is historical and overlapping. Fresh
+full fast/lint/format and independent precise presence-repair review remain
+required before a new final-head CI run and native Test.
+
+The presence repair's fresh full fast lane passed all 987 files. Full lint and
+full format checks both exited zero (`task-9-fast-presence-repair.log`,
+`task-9-lint-presence-repair.log`, `task-9-format-presence-repair.log`). These
+actual results cover the final product source at a2ca09a92; subsequent report
+and audit updates require their own document checks before publication.
+
+R4 independently accepted the exact presence repair at a2ca09a92 after 48
+repository tests and 14 additional preservation probes, with no actionable
+findings. Its full report and every considered-boundary disposition are
+retained. No product source changed after that review. Final documentation
+publication and a new entire exact-head CI remain prerequisites to native Test.

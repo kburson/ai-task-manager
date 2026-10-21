@@ -72,6 +72,13 @@
         "docs/superpowers/reviews/2039/2026-10-21-2057-reviewer-r2-review.md"
       ],
       "ignoreWords": ["dafb", "nlink", "nonmatching", "hardlinks", "unacquired"]
+    },
+    {
+      "filename": [
+        "docs/superpowers/reviews/2039/2026-10-21-2057-reviewer-r4-review.md",
+        "cspell.json"
+      ],
+      "ignoreWords": ["EACCES"]
     }
   ],
   "ignorePaths": [
