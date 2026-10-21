@@ -33,6 +33,23 @@ function conflict(reason, event, prior) {
     actorId: event.actorId,
   });
 }
+// Compare exact decimal representations of the supplied finite numbers. This
+// avoids cancellation against epoch timestamps without rounding stored values.
+function measuredSpan(event) {
+  const parts = [event.activeSeconds, event.idleSeconds]
+    .filter((value) => value !== null)
+    .map((value) => {
+      const [mantissa, exponent = '0'] = String(value).split('e');
+      const fraction = mantissa.split('.')[1]?.length ?? 0;
+      return { coefficient: BigInt(mantissa.replace('.', '')), power: Number(exponent) - fraction };
+    });
+  const scale = Math.min(-3, ...parts.map(({ power }) => power));
+  const units = parts.reduce(
+    (sum, { coefficient, power }) => sum + coefficient * 10n ** BigInt(power - scale),
+    0n
+  );
+  return { units, millisecondUnits: 10n ** BigInt(-3 - scale) };
+}
 /** Merge normalized native events without inventing IDs, bounds or durations. */
 export function mergeTimingEvents(existing, incoming) {
   if (!Array.isArray(existing) || !Array.isArray(incoming)) invalid('collections');
@@ -65,11 +82,9 @@ export function mergeTimingEvents(existing, incoming) {
     if (!duration(event.activeSeconds) || !duration(event.idleSeconds)) invalid('duration');
     // This is only the minimum span implied by measured components. Unknown
     // stays null in the event and is never promoted to complete duration evidence.
-    const seconds = [event.activeSeconds, event.idleSeconds]
-      .filter((value) => value !== null)
-      .reduce((sum, value) => sum + value, 0);
-    const start = timestamp - seconds * 1000;
-    if (!Number.isFinite(start) || Math.abs(start) > 8.64e15) invalid('interval-range');
+    const span = measuredSpan(event);
+    if (span.units > BigInt(timestamp + 8_640_000_000_000_000) * span.millisecondUnits)
+      invalid('interval-range');
     const fingerprint = canonicalRecordJson(event);
     const prior = events.get(event.eventId);
     if (prior) {
@@ -84,24 +99,25 @@ export function mergeTimingEvents(existing, incoming) {
     if (actorCursors.has(event.sourceCursor))
       conflict('reused-source-cursor', event, actorCursors.get(event.sourceCursor));
     actorCursors.set(event.sourceCursor, event);
-    events.set(event.eventId, { event, timestamp, start, seconds, fingerprint });
+    events.set(event.eventId, { event, timestamp, span, fingerprint });
   }
   const byActor = new Map();
   for (const interval of events.values()) {
-    if (interval.seconds === 0) continue;
+    if (interval.span.units === 0n) continue;
     const actor = interval.event.actorId;
     if (!byActor.has(actor)) byActor.set(actor, []);
     byActor.get(actor).push(interval);
   }
   for (const intervals of byActor.values()) {
     intervals.sort(
-      (a, b) =>
-        a.start - b.start ||
-        a.timestamp - b.timestamp ||
-        compareId(a.event.eventId, b.event.eventId)
+      (a, b) => a.timestamp - b.timestamp || compareId(a.event.eventId, b.event.eventId)
     );
     for (let i = 1; i < intervals.length; i++)
-      if (intervals[i].start < intervals[i - 1].timestamp)
+      if (
+        intervals[i].span.units >
+        BigInt(intervals[i].timestamp - intervals[i - 1].timestamp) *
+          intervals[i].span.millisecondUnits
+      )
         conflict('overlapping-intervals', intervals[i].event, intervals[i - 1].event);
   }
   const ordered = [...events.values()].sort(

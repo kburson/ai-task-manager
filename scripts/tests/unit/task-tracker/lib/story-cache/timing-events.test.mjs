@@ -321,3 +321,25 @@ test('one thousand supplied local events replay deterministically without any tr
   assert.equal(first.length, 1000);
   assert.deepEqual(mergeTimingEvents(JSON.parse(JSON.stringify(first)), events), first);
 });
+test('positive sub-millisecond intervals at the same instant conflict', () => {
+  for (const activeSeconds of [0.0000001, Number.MIN_VALUE])
+    conflict(() =>
+      mergeTimingEvents(
+        [make('first', { activeSeconds, idleSeconds: 0 })],
+        [make('second', { activeSeconds, idleSeconds: 0 })]
+      )
+    );
+});
+test('decimal component sums preserve exact adjacency across the epoch', () => {
+  const first = make('first', {
+    timestamp: '1970-01-01T00:00:00Z',
+    activeSeconds: 1,
+    idleSeconds: 0,
+  });
+  const second = make('second', {
+    timestamp: '1970-01-01T00:00:00.300Z',
+    activeSeconds: 0.1,
+    idleSeconds: 0.2,
+  });
+  assert.deepEqual(mergeTimingEvents([first], [second]), [first, second]);
+});
