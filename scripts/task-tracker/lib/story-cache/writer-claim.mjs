@@ -1,5 +1,5 @@
-// cspell:ignore EISSUELOCKED
 // @story #2042
+// cspell:ignore EISSUELOCKED
 // Local validation is separate from current assignment and registry authority.
 import path from 'node:path';
 import fs from 'node:fs';

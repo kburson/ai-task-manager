@@ -45,4 +45,22 @@ Explicit author rulings on every round-2 declined behavior:
 - Payload integrity/destruction survival: accepted store and explicit recovery own complete payload validation; this writer refuses known missing or unsafe evidence and makes no backup-survival claim.
 - Native lifecycle/full CI/merge/delivery: remains governed and unperformed for this child; a clean artifact review cannot satisfy those gates.
 
-The second local fast-suite run passed all 984 files and format check passed before this final continuation repair; they are not final-head evidence. Full lint reached spelling and found only the existing native error token EISSUELOCKED in the new module/test. Narrow per-file spelling directives retain that exact error code; no check or runtime behavior is waived. Final verification and repair review remain required.
+The second local fast-suite run passed all 984 files and format check passed before this final continuation repair; they are not final-head evidence. Full lint reached spelling and found only the existing native lock-contention error token in the new module/test. Narrow per-file spelling directives retain that exact error code; no check or runtime behavior is waived. Final verification and repair review remain required.
+
+## Round 3 — clean independent code review
+
+The same fresh-context Sol / medium reviewer inspected `57eeb00d5f2a3db7a5918254d043b14fe7bdef7b..12f8be4ace33aaa687b6deaaa71aa2d406388c7d`, confirmed all prior findings resolved and requested no additional implementation changes. It independently passed 106 tests: 86 writer/native-lock/environment/publication cases plus 20 package/ownership cases. Complete verbatim report: `2026-10-21-2042-reviewer-r3-review.md`. No finding was waived or deferred.
+
+Explicit author rulings on every final declined boundary:
+
+- Task 8 registry reference APIs remain #2056; this foundation supplies the shared ownership pointer, not a duplicate pending-content authority or a completed register/resolve interface.
+- Task 9 explicit handoff/export/reassignment/recipient verification remains #2057; incomplete acquisition refuses until a separately governed recovery settles it.
+- Public staging/publication/local-hook integration remains assigned to the later accepted slices; no public writer migration is claimed now.
+- Independent machines/arbitrary provider editors remain outside the local physical registry guarantee; host changes and missing shared identity refuse acquisition.
+- Assignment authenticity/freshness remains the native consumer's bounded-observation responsibility; no historical observation becomes authority or an estimate input.
+- The original pure seed remains the required structural assertion. Genuine acquired claims include a registry key and receive persistent pointer, presence and physical-cache validation.
+- Uncooperative concurrent same-user filesystem rewriting is not made resistant to arbitrary privileged changes. Safe path/mode checks and native cooperating locks address supported access; no atomic transaction against an arbitrary privileged editor is claimed.
+- General payload integrity and simultaneous artifact destruction remain accepted-store/explicit-recovery responsibilities; no backup guarantee is invented.
+- Full CI/native lifecycle/merge/delivery remain unsatisfied by this artifact review. Final-head CI and the native agent Test/orchestrator Review/approval/Close chain still govern; aggregate delivery remains withheld until all 32 children and root acceptance pass.
+
+All code and review rounds are preserved. Final local checks and exact-head cloud CI follow this record; completion is not inferred from code-review acceptance.
